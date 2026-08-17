@@ -553,7 +553,8 @@ record_design_causality_deferred_recovery() {
   persisted="$(psqlq -c "with current_run as materialized (
     select coalesce(framework_try_jsonb(result_json),'{}'::jsonb) result
     from framework_project_completion_run
-    where run_id='$completion_run_id'
+    where run_id='$completion_run_id' and run_status='RUNNING'
+    for update
   ), updated as (
     update framework_project_completion_run r
     set run_status='FAILED',completed_at=current_timestamp,
@@ -570,7 +571,7 @@ record_design_causality_deferred_recovery() {
           ),true
         )::text
     from current_run c
-    where r.run_id='$completion_run_id'
+    where r.run_id='$completion_run_id' and r.run_status='RUNNING'
     returning 1
   ) select count(*) from updated;" 2>/dev/null)" || return 70
   [[ "$persisted" == 1 ]] || return 70

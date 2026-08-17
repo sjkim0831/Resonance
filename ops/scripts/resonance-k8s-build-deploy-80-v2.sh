@@ -17,9 +17,9 @@ source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
 init_build_tool
 # shellcheck source=ops/scripts/docker-registry-cache.sh
 source "$ROOT_DIR/ops/scripts/docker-registry-cache.sh"
-NAMESPACE="${NAMESPACE:-carbonet-prod}"
-DEPLOYMENT="${DEPLOYMENT:-carbonet-runtime}"
-CONTAINER="${CONTAINER:-carbonet-runtime}"
+NAMESPACE="${NAMESPACE:-${CARBONET_K8S_NAMESPACE:-carbonet-prod}}"
+DEPLOYMENT="${DEPLOYMENT:-${CARBONET_K8S_DEPLOYMENT:-carbonet-runtime}}"
+CONTAINER="${CONTAINER:-${CARBONET_K8S_CONTAINER:-carbonet-runtime}}"
 SERVICE="${SERVICE:-carbonet-runtime}"
 MIGRATION_SECRET_NAME="${CARBONET_MIGRATION_SECRET_NAME:-carbonet-migration-secret}"
 MIGRATION_PASSWORD_KEY="${CARBONET_MIGRATION_PASSWORD_KEY:-SPRING_FLYWAY_PASSWORD}"
@@ -944,12 +944,18 @@ rollout_image() {
   # the current deployment untouched; successful runtime pods no longer spend
   # startup time validating the same 277 migrations three times.
   if [[ "${RUN_FLYWAY_MIGRATION_JOB:-true}" == "true" ]]; then
-    if ! CARBONET_K8S_NAMESPACE="$NAMESPACE" \
+    local flyway_status=0
+    CARBONET_K8S_NAMESPACE="$NAMESPACE" \
       CARBONET_K8S_DEPLOYMENT="$DEPLOYMENT" \
       CARBONET_K8S_CONTAINER="$CONTAINER" \
       CARBONET_MIGRATION_SECRET_NAME="$MIGRATION_SECRET_NAME" \
       CARBONET_MIGRATION_PASSWORD_KEY="$MIGRATION_PASSWORD_KEY" \
-      bash "$ROOT_DIR/ops/scripts/run-flyway-migration-job.sh" "$IMAGE_NAME"; then
+      bash "$ROOT_DIR/ops/scripts/run-flyway-migration-job.sh" "$IMAGE_NAME" \
+        || flyway_status=$?
+    if (( flyway_status == 79 )); then
+      log_error "Flyway cleanup proof is unavailable; preserving deployment and durable attempt state for recovery"
+      return 79
+    elif (( flyway_status != 0 )); then
       rollback_and_fail "FLYWAY_JOB_FAILED" \
         "Candidate image database migration failed before rollout" \
         "Inspect $ROOT_DIR/var/logs/flyway-jobs and the failed Kubernetes Job"

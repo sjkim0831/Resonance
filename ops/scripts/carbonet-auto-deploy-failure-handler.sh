@@ -10,6 +10,7 @@ deploy_owner_uid="$(id -u "$deploy_owner" 2>/dev/null || true)"
 deploy_group="$(id -gn "$deploy_owner" 2>/dev/null || true)"
 marker_pending_file="${CARBONET_POSTDEPLOY_MARKER_PENDING_FILE:-$state_dir/postdeploy-marker-pending.state}"
 attempt_journal_file="${CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE:-$state_dir/carbonet-postdeploy-attempt.json}"
+flyway_cleanup_hold_file="${CARBONET_FLYWAY_CLEANUP_HOLD_FILE:-$state_dir/flyway-cleanup-hold.json}"
 attempt_journal_helper="${CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER:-/opt/resonance-data/control-plane/bin/postdeploy-attempt-journal.py}"
 recovery_launcher="${CARBONET_AUTO_DEPLOY_RECOVERY_LAUNCHER:-/opt/resonance-data/control-plane/bin/auto-deploy-main-recovery.sh}"
 recovery_runner="${CARBONET_POSTDEPLOY_RECOVERY_RUNNER:-/opt/resonance-data/control-plane/bin/postdeploy-attempt-recovery-runner.sh}"
@@ -59,7 +60,44 @@ snapshot_preserved=false
 pending_target=""
 pending_candidate=""
 attempt_recovery_pending=false
-if [[ -e "$attempt_journal_file" || -L "$attempt_journal_file" ]]; then
+flyway_cleanup_hold_json=""
+if [[ -e "$flyway_cleanup_hold_file" || -L "$flyway_cleanup_hold_file" ]]; then
+  # This evidence outranks an attempt journal: rollback/retry may not race the
+  # exact Flyway backend whose absence has not yet been proven.
+  if [[ -f "$flyway_cleanup_hold_file" && ! -L "$flyway_cleanup_hold_file" \
+     && "$(stat -c '%U:%a' "$flyway_cleanup_hold_file" 2>/dev/null)" == "$deploy_owner:600" ]] \
+     && flyway_cleanup_hold_json="$(jq -ce '
+       select(.schemaVersion==1 and .status=="CLEANUP_UNPROVEN"
+       and (.jobName|test("^carbonet-flyway-[a-z0-9-]{1,42}$"))
+       and .applicationName==.jobName
+       and (.namespace|test("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"))
+       and (.sourceCommit|test("^[0-9a-f]{40}$"))
+       and (.candidateImage | (type=="string" and length>0 and length<=255))
+       and (.createdAt | (type=="string" and length>0 and length<=64))
+       and (.cleanupHoldSeconds | (type=="number" and .>=30 and .<=600))
+       and .terminationGraceSeconds==30
+       and (.reason=="JOB_APPLY_ARMED" or .reason=="CLEANUP_BUDGET_EXHAUSTED" or .reason=="CLEANUP_CLOCK_UNAVAILABLE")
+       and keys==["applicationName","candidateImage","cleanupHoldSeconds","createdAt","jobName","namespace","reason","schemaVersion","sourceCommit","status","terminationGraceSeconds"])
+     ' "$flyway_cleanup_hold_file" 2>/dev/null)"; then
+    category=FLYWAY_CLEANUP_HOLD
+    # Bind retry identity to the exact cleanup evidence read above. A valid
+    # marker must not depend on GitHub availability before scheduling recovery.
+    pending_target="$(jq -r '.sourceCommit' <<<"$flyway_cleanup_hold_json")"
+    # One lease-bound retry wakes the main preflight, whose first operation is
+    # cleanup-only reconciliation. The per-target attempted marker prevents an
+    # OnFailure burst; the normal timer remains the slower self-heal fallback.
+    retry_allowed=true
+  else
+    category=FLYWAY_CLEANUP_HOLD_INVALID
+  fi
+elif [[ "$deploy_exit_status" == 79 ]] \
+   && grep -Eqi 'SQL State[[:space:]]*:[[:space:]]*P0001|SQLSTATE[[:space:]]*[:=]?[[:space:]]*P0001|precondition failed|FLYWAY_JOB_FAILED' "$evidence"; then
+  category=DATABASE_DETERMINISTIC
+elif [[ "$deploy_exit_status" == 79 ]]; then
+  # Exit 79 is fail-closed. In particular, never let an older durable attempt
+  # journal schedule rollback while the child is handing off cleanup evidence.
+  category=DEPLOY_TERMINATED
+elif [[ -e "$attempt_journal_file" || -L "$attempt_journal_file" ]]; then
   if [[ -f "$attempt_journal_file" && ! -L "$attempt_journal_file" \
      && "$(stat -c '%a' "$attempt_journal_file" 2>/dev/null)" == 600 \
      && -f "$attempt_journal_helper" ]]; then
@@ -103,10 +141,6 @@ elif grep -Eqi 'SQL State[[:space:]]*:[[:space:]]*P0001|SQLSTATE[[:space:]]*[:=]
   # kubectl wait emits a generic timeout. Never let that wrapper timeout turn
   # an already rolled-back migration into an automatic deployment retry.
   category=DATABASE_DETERMINISTIC
-elif [[ "$deploy_exit_status" == 79 ]]; then
-  # Exit 79 is the deployment harness's explicit fail-closed terminal status.
-  # It may require operator reconciliation, but it must never self-retry.
-  category=DEPLOY_TERMINATED
 elif grep -Eqi 'connection reset|connection refused|temporary failure|timed out|timeout|TLS handshake|unable to connect|i/o timeout|HTTP 50[234]|requested URL returned error: 50[234]|readiness returned 50[234]|concurrent token acquisition failed' "$evidence"; then
   category=NETWORK_TRANSIENT
   retry_allowed=true
@@ -123,7 +157,9 @@ elif grep -Eqi 'gradle|compile|build failed|docker build|buildx' "$evidence"; th
 fi
 
 target="$pending_target"
-[[ -n "$target" ]] || target="$(git ls-remote https://github.com/sjkim0831/Resonance.git refs/heads/main 2>/dev/null | awk '{print $1}' || true)"
+[[ -n "$target" ]] || target="$(timeout --signal=TERM --kill-after=1s 8s \
+  git ls-remote https://github.com/sjkim0831/Resonance.git refs/heads/main 2>/dev/null \
+  | awk '{print $1}' || true)"
 [[ -n "$target" ]] || target="unknown-$run_key"
 if [[ "$promotion_authoritative" == true ]]; then
   retry_identity="$(printf '%s\0%s' "$pending_candidate" "$target" | sha256sum | awk '{print $1}')"

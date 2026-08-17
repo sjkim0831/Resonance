@@ -121,6 +121,8 @@ DESIRED_REVISION_FILE="${CARBONET_DESIRED_REVISION_FILE:-/opt/resonance-data/dep
 BACKSTAGE_DEPLOY_STATE_FILE="${BACKSTAGE_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/backstage-runtime-success.commit}"
 RUNTIME_CANDIDATE_CHECKPOINT_FILE="${CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE:-/opt/resonance-data/deploy/carbonet-runtime-candidate.json}"
 POSTDEPLOY_ATTEMPT_JOURNAL_FILE="${CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE:-/opt/resonance-data/deploy/carbonet-postdeploy-attempt.json}"
+FLYWAY_CLEANUP_HOLD_ROOT="${CARBONET_DEPLOY_STATE_DIR:-/opt/resonance-data/deploy}"
+FLYWAY_CLEANUP_HOLD_FILE="${CARBONET_FLYWAY_CLEANUP_HOLD_FILE:-$FLYWAY_CLEANUP_HOLD_ROOT/flyway-cleanup-hold.json}"
 POSTDEPLOY_LEGACY_RETIRE_DIR="${CARBONET_POSTDEPLOY_LEGACY_RETIRE_DIR:-/opt/resonance-data/deploy/retired-attempts}"
 FULL_SCREEN_GATE_STATE_DIR="${CARBONET_FULL_SCREEN_GATE_STATE_DIR:-${FULL_SCREEN_GATE_STATE_DIR:-/opt/resonance-data/deploy/full-screen-deploy-gate}}"
 LEGACY_FULL_SCREEN_GATE_STATE_DIR="${CARBONET_LEGACY_FULL_SCREEN_GATE_STATE_DIR:-$ROOT_DIR/var/run/full-screen-deploy-gate}"
@@ -162,7 +164,9 @@ POSTDEPLOY_STAGE_SCRIPT="${CARBONET_POSTDEPLOY_STAGE_SCRIPT:-$ROOT_DIR/ops/scrip
 POSTDEPLOY_ABORT_SCRIPT="${CARBONET_POSTDEPLOY_ABORT_SCRIPT:-$ROOT_DIR/ops/scripts/abort-postdeploy-release-attempt.sh}"
 POSTDEPLOY_AUTHORITY_SCRIPT="${CARBONET_POSTDEPLOY_AUTHORITY_SCRIPT:-$ROOT_DIR/ops/scripts/check-postdeploy-authoritative-promotion.sh}"
 POSTDEPLOY_LEADER_RESOLVER="${CARBONET_POSTDEPLOY_LEADER_RESOLVER:-$ROOT_DIR/ops/scripts/resolve-patroni-primary-pod.sh}"
+FLYWAY_JOB_RUNNER="${CARBONET_FLYWAY_JOB_RUNNER:-$ROOT_DIR/ops/scripts/run-flyway-migration-job.sh}"
 composite_autocompletion_gate_prepared=false
+flyway_cleanup_recovery_hold=false
 
 rebind_default_postdeploy_helpers() {
   [[ "$POSTDEPLOY_JOURNAL_HELPER_EXPLICIT" == true ]] || POSTDEPLOY_JOURNAL_HELPER="/opt/resonance-data/control-plane/bin/postdeploy-attempt-journal.py"
@@ -183,6 +187,39 @@ resolve_postdeploy_postgres_pod() {
   [[ "$resolved" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || return 1
   POSTGRES_POD="$resolved"
   return 0
+}
+
+recover_flyway_cleanup_hold_if_present() {
+  local recovery_status=0 expected_hold_path actual_hold_path
+  [[ -e "$FLYWAY_CLEANUP_HOLD_FILE" || -L "$FLYWAY_CLEANUP_HOLD_FILE" ]] || return 0
+  expected_hold_path="$(realpath -m "$FLYWAY_CLEANUP_HOLD_ROOT/flyway-cleanup-hold.json")" || return 79
+  actual_hold_path="$(realpath -m "$FLYWAY_CLEANUP_HOLD_FILE")" || return 79
+  if [[ "$actual_hold_path" != "$expected_hold_path" ]]; then
+    flyway_cleanup_recovery_hold=true
+    echo "[auto-deploy] BLOCKED invalid Flyway cleanup-hold path: $FLYWAY_CLEANUP_HOLD_FILE" >&2
+    return 79
+  fi
+  if [[ ! -s "$FLYWAY_JOB_RUNNER" || -L "$FLYWAY_JOB_RUNNER" ]]; then
+    flyway_cleanup_recovery_hold=true
+    echo "[auto-deploy] BLOCKED invalid target-bound Flyway cleanup runner: $FLYWAY_JOB_RUNNER" >&2
+    return 79
+  fi
+  echo "[auto-deploy] reconciling Flyway cleanup hold before any attempt/checkpoint recovery: $FLYWAY_CLEANUP_HOLD_FILE"
+  CARBONET_FLYWAY_CLEANUP_HOLD_FILE="$FLYWAY_CLEANUP_HOLD_FILE" \
+  CARBONET_FLYWAY_CLEANUP_HOLD_TIMEOUT_SECONDS="${CARBONET_FLYWAY_CLEANUP_HOLD_TIMEOUT_SECONDS:-120}" \
+  CARBONET_K8S_NAMESPACE="$NAMESPACE" \
+  CARBONET_POSTDEPLOY_LEADER_RESOLVER="$POSTDEPLOY_LEADER_RESOLVER" \
+  CARBONET_POSTGRES_CONTAINER="$POSTGRES_CONTAINER" \
+  POSTGRES_DB="$POSTGRES_DB" POSTGRES_ADMIN_USER="$POSTGRES_USER" \
+    bash "$FLYWAY_JOB_RUNNER" \
+      --recover-cleanup-hold "$FLYWAY_CLEANUP_HOLD_FILE" || recovery_status=$?
+  if (( recovery_status != 0 )); then
+    flyway_cleanup_recovery_hold=true
+    echo "[auto-deploy] BLOCKED Flyway cleanup remains unproven; deploy/rollback recovery is held (status=$recovery_status)" >&2
+    return 79
+  fi
+  [[ ! -e "$FLYWAY_CLEANUP_HOLD_FILE" && ! -L "$FLYWAY_CLEANUP_HOLD_FILE" ]] || return 79
+  echo '[auto-deploy] Flyway cleanup hold cleared after Job/Pod/session zero proof'
 }
 
 fail_bootstrap_orphan_recovery_helper() {
@@ -571,6 +608,19 @@ defer_exact_durable_attempt_recovery_quarantine() {
   attempt_recovery_quarantine_candidate="$candidate"
   [[ "$attempt_recovery_quarantine_hash" =~ ^[0-9a-f]{64}$ ]]
 }
+mkdir -p "$(dirname "$LOCK_FILE")"
+exec 9>"$LOCK_FILE"
+if [[ "${CARBONET_RECOVERY_ONLY:-false}" == true ]]; then
+  flock -w "${CARBONET_RECOVERY_LOCK_WAIT_SECONDS:-60}" 9 \
+    || { echo '[auto-deploy] recovery lock wait expired' >&2; exit 75; }
+else
+  flock -n 9 || { echo "[auto-deploy] another deployment is running"; exit 0; }
+fi
+# A cleanup-unproven Flyway backend is mutually exclusive with every durable
+# attempt/checkpoint recovery writer. The same deploy flock that serializes Job
+# creation must be held before reconciling its exact Job/application; otherwise
+# a second invocation could terminate the active migration owned by the first.
+recover_flyway_cleanup_hold_if_present || exit $?
 mkdir -p \
   "$(dirname "$LOCK_FILE")" \
   "$(dirname "$DEPLOY_STATE_FILE")" \
@@ -601,14 +651,6 @@ if [[ -s "$RUNTIME_LEDGER_QUARANTINE_FILE" \
     exit 79
   fi
 fi
-exec 9>"$LOCK_FILE"
-if [[ "${CARBONET_RECOVERY_ONLY:-false}" == true ]]; then
-  flock -w "${CARBONET_RECOVERY_LOCK_WAIT_SECONDS:-60}" 9 \
-    || { echo '[auto-deploy] recovery lock wait expired' >&2; exit 75; }
-else
-  flock -n 9 || { echo "[auto-deploy] another deployment is running"; exit 0; }
-fi
-
 cd "$ROOT_DIR"
 
 # Recovery deliberately bypasses every ordinary deploy-preparation writer:
@@ -1339,15 +1381,35 @@ verify_schema_backup_restore_in_scratch() {
   schema_restore_verifier="patroni-scratch"
 }
 
+bounded_cleanup_kubectl() {
+  local timeout_seconds="${CARBONET_DEPLOY_CLEANUP_KUBECTL_TIMEOUT_SECONDS:-8}"
+  local request_timeout_seconds="${CARBONET_DEPLOY_CLEANUP_KUBECTL_REQUEST_TIMEOUT_SECONDS:-5}"
+  if [[ ! "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] \
+     || (( timeout_seconds < 2 || timeout_seconds > 30 )); then
+    timeout_seconds=8
+  fi
+  if [[ ! "$request_timeout_seconds" =~ ^[1-9][0-9]*$ ]] \
+     || (( request_timeout_seconds >= timeout_seconds )); then
+    if (( timeout_seconds > 5 )); then
+      request_timeout_seconds=5
+    else
+      request_timeout_seconds=$((timeout_seconds - 1))
+    fi
+  fi
+  timeout --signal=TERM --kill-after=1s "${timeout_seconds}s" \
+    kubectl --request-timeout="${request_timeout_seconds}s" "$@"
+}
+
 cleanup_remote_backup() {
   [[ "$backup_cleanup_required" == "true" ]] || return 0
   # A terminated `kubectl exec` can leave pg_dump alive inside the pod. End
   # only sessions owned by this deploy invocation, preventing duplicate dumps
   # after a stop or retry without touching other backup jobs.
-  kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+  printf '%s\n' \
+    "select pg_terminate_backend(pid) from pg_stat_activity where application_name=:'app_name' and pid<>pg_backend_pid();" | \
+  bounded_cleanup_kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
     psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -q -At \
-    -v app_name="$backup_application_name" \
-    -c "select pg_terminate_backend(pid) from pg_stat_activity where application_name=:'app_name' and pid<>pg_backend_pid()" \
+    -v ON_ERROR_STOP=1 -v app_name="$backup_application_name" \
     >/dev/null 2>&1 || true
 }
 canonical_runtime_screen_gate_cache_root() {
@@ -1749,9 +1811,17 @@ recover_staged_postdeploy_attempt_after_failure() {
 }
 
 cleanup_deploy() {
-  local original_status=$? recovery_status=0
+  local original_status=$? recovery_status=0 flyway_hold_active=false
   trap - EXIT INT TERM
   set +e
+  if [[ "$flyway_cleanup_recovery_hold" == true \
+     || -e "$FLYWAY_CLEANUP_HOLD_FILE" || -L "$FLYWAY_CLEANUP_HOLD_FILE" ]]; then
+    # Fix the handoff status before any best-effort cleanup can contact the API.
+    # In particular, a half-open kubectl exec must never delay the status-79
+    # OnFailure recovery path or let a later cleanup overwrite its contract.
+    flyway_hold_active=true
+    original_status=79
+  fi
   if [[ "${composite_autocompletion_gate_prepared:-false}" == true ]]; then
     CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" RESONANCE_ROOT="$ROOT_DIR" \
       bash "$ROOT_DIR/ops/scripts/prepare-composite-autocompletion-postdeploy.sh" \
@@ -1775,7 +1845,7 @@ cleanup_deploy() {
   cleanup_remote_backup
   cleanup_local_schema_restore_container || original_status=79
   if [[ -n "$schema_restore_database" ]]; then
-    kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+    bounded_cleanup_kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
       psql -U "$POSTGRES_USER" -h 127.0.0.1 -d postgres \
         -c "drop database if exists \"$schema_restore_database\" with (force)" \
       >/dev/null 2>&1 || true
@@ -1793,7 +1863,14 @@ cleanup_deploy() {
   if [[ -n "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}" ]]; then
     rm -f -- "$CARBONET_DEPLOY_SNAPSHOT_PATH"
   fi
-  if [[ -s "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" && "$postdeploy_candidate_promoted" != true ]]; then
+  if [[ "$flyway_hold_active" == true \
+     || "$flyway_cleanup_recovery_hold" == true \
+     || -e "$FLYWAY_CLEANUP_HOLD_FILE" || -L "$FLYWAY_CLEANUP_HOLD_FILE" ]]; then
+    # Never race an unknown Flyway backend with the durable rollback helpers.
+    # The next invocation must run recover_flyway_cleanup_hold_if_present first.
+    original_status=79
+    echo '[auto-deploy] RECOVERY_HOLD preserved attempt/checkpoint state until Flyway Job/Pod/session zero is proven' >&2
+  elif [[ -s "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" && "$postdeploy_candidate_promoted" != true ]]; then
     recover_staged_postdeploy_attempt_after_failure || recovery_status=$?
   elif [[ "$postdeploy_candidate_initialized" == true && "$postdeploy_candidate_promoted" != true ]]; then
     reconcile_postdeploy_candidate_after_failure || recovery_status=$?
@@ -2689,6 +2766,7 @@ sync_auto_deploy_failure_runtime_if_required() {
   local -a failure_runtime_contract_files=(
     ops/scripts/auto-deploy-main.sh
     ops/scripts/auto-deploy-main-launcher.sh
+    ops/scripts/run-flyway-migration-job.sh
     ops/scripts/carbonet-auto-deploy-failure-handler.sh
     ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh
     ops/scripts/check-postdeploy-authoritative-promotion.sh
@@ -2703,6 +2781,7 @@ sync_auto_deploy_failure_runtime_if_required() {
     ops/scripts/verify-react-asset-closure.mjs
     ops/scripts/carbonet-deploy-notify.sh
     ops/scripts/test-auto-deploy-failure-handler.sh
+    ops/tests/test-auto-deploy-bootstrap-helper-snapshot.sh
     ops/scripts/record-deploy-performance.sh
     ops/systemd/carbonet-auto-deploy.service
     ops/systemd/carbonet-auto-deploy-failure-handler.service
@@ -2715,6 +2794,7 @@ sync_auto_deploy_failure_runtime_if_required() {
     return 0
   fi
   bash ops/scripts/test-auto-deploy-failure-handler.sh
+  bash ops/tests/test-auto-deploy-bootstrap-helper-snapshot.sh "$ROOT_DIR"
   sudo -n install -d -m 0755 -o root -g root \
     /opt/resonance-data/control-plane/bin
   sudo -n install -m 0750 -o root -g root \
@@ -3362,6 +3442,43 @@ run_operational_usage_ledger_static_contract_if_required() {
   [[ ",${PLAN_TESTS:-}," == *",runtime:operational-usage-ledger-e2e,"* ]] || return 0
   bash ops/scripts/test-operational-usage-ledger-e2e-contract.sh "$ROOT_DIR"
   echo "[auto-deploy] operational usage ledger static contract PASS"
+}
+
+run_flyway_job_timeout_contract_if_required() {
+  if ! git diff --quiet "$deployed_commit" "$target_commit" -- \
+      ops/scripts/auto-deploy-main.sh \
+      ops/scripts/auto-deploy-main-launcher.sh \
+      ops/tests/test-auto-deploy-bootstrap-helper-snapshot.sh \
+      ops/scripts/resonance-k8s-build-deploy-80-v2.sh \
+      ops/scripts/carbonet-auto-deploy-failure-handler.sh \
+      ops/scripts/run-flyway-migration-job.sh \
+      ops/tests/test-flyway-job-timeout-contract.sh \
+      apps/carbonet-api/src/main/java/egovframework/com/migration/FlywayMigrationApplication.java; then
+    bash ops/tests/test-flyway-job-timeout-contract.sh
+    echo "[auto-deploy] Flyway Job timeout/cleanup contract PASS"
+  fi
+}
+
+run_composite_axis_migration_performance_if_required() {
+  local timeout_seconds="${COMPOSITE_AXIS_AUTO_DEPLOY_TEST_TIMEOUT_SECONDS:-180}"
+  local -a contract_files=(
+    apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260816154000__compile_composite_executable_design_authority.sql
+    ops/tests/fixtures/composite-axis-migration-performance-prerequisites.sql
+    ops/tests/test-composite-axis-migration-performance-postgres.sh
+    ops/tests/test-composite-executable-design-authority-postgres.sql
+    ops/tests/test-project-runtime-purge-composite-migrations-postgres.sh
+  )
+  [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ \
+     && "$timeout_seconds" -ge 60 && "$timeout_seconds" -le 600 ]] || {
+    echo '[auto-deploy] invalid composite-axis migration performance timeout (expected 60..600 seconds)' >&2
+    return 2
+  }
+  if ! git diff --quiet "$deployed_commit" "$target_commit" -- "${contract_files[@]}"; then
+    echo "[auto-deploy] running operational-scale composite-axis migration regression (hard cap=${timeout_seconds}s)"
+    timeout --signal=TERM --kill-after=10s "${timeout_seconds}s" \
+      bash ops/tests/test-composite-axis-migration-performance-postgres.sh "$ROOT_DIR"
+    echo '[auto-deploy] operational-scale composite-axis migration regression PASS'
+  fi
 }
 
 run_operational_usage_ledger_live_e2e_if_required() {
@@ -4637,6 +4754,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   done < <(printf '%s\n' "${deploy_changed_paths[@]}")
   if deploy_path_changed \
       ops/scripts/auto-deploy-main.sh \
+      ops/scripts/auto-deploy-main-launcher.sh \
+      ops/tests/test-auto-deploy-bootstrap-helper-snapshot.sh \
       ops/scripts/select-catalog-contract-tests.sh \
       ops/scripts/test-select-catalog-contract-tests.sh \
       ops/scripts/sync-unified-asset-catalog.sh \
@@ -4649,6 +4768,9 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/test-runtime-candidate-checkpoint.sh \
       ops/scripts/test-candidate-release-rollout-gate.sh \
       ops/scripts/test-database-plan-flyway-gate.sh \
+      ops/scripts/run-flyway-migration-job.sh \
+      ops/tests/test-flyway-job-timeout-contract.sh \
+      apps/carbonet-api/src/main/java/egovframework/com/migration/FlywayMigrationApplication.java \
       ops/scripts/run-process-development-worker.sh \
       ops/scripts/run-process-development-dispatcher.sh \
       ops/scripts/test-process-worker-deploy-marker.sh \
@@ -5201,6 +5323,8 @@ echo "[auto-deploy] frontend build required: $([[ "$skip_frontend" == "true" ]] 
 # Preserve the last verified runtime closure across the merge. The isolated
 # frontend build will replace it only after closure validation.
 git merge --ff-only "$target_commit"
+run_flyway_job_timeout_contract_if_required
+run_composite_axis_migration_performance_if_required
 sync_auto_deploy_failure_runtime_if_required
 restore_live_frontend_overlay
 run_postdeploy_candidate_static_contract_if_required
@@ -5383,6 +5507,7 @@ source "$RUNTIME_JVM_PROFILE"
 # Service, environment and workload mutations until the candidate Flyway job
 # succeeds. A pre-existing lifecycle row is rollback authority, not permission
 # to serve a new UI against the old schema.
+build_deploy_status=0
 IMMUTABLE_FRONTEND_IMAGE=true \
 SKIP_FRONTEND="$skip_frontend" \
 SKIP_NOTIFY="${SKIP_NOTIFY:-true}" \
@@ -5399,10 +5524,19 @@ CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER="$POSTDEPLOY_JOURNAL_HELPER" \
 CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" \
 CARBONET_POSTDEPLOY_SOURCE_COMMIT="$target_commit" \
 CARBONET_POSTDEPLOY_LEADER_RESOLVER="$POSTDEPLOY_LEADER_RESOLVER" \
+CARBONET_FLYWAY_CLEANUP_HOLD_FILE="$FLYWAY_CLEANUP_HOLD_FILE" \
 RESONANCE_POSTGRES_LEADER_POD="${POSTGRES_POD:-}" \
 CARBONET_POSTGRES_CONTAINER="$POSTGRES_CONTAINER" POSTGRES_DB="$POSTGRES_DB" POSTGRES_ADMIN_USER="$POSTGRES_USER" \
+NAMESPACE="$NAMESPACE" DEPLOYMENT="$DEPLOYMENT" CONTAINER="${CARBONET_K8S_CONTAINER:-carbonet-runtime}" \
 CARBONET_RUNTIME_JAVA_OPTS="$CARBONET_RUNTIME_JAVA_OPTS" \
-  bash ops/scripts/resonance-k8s-build-deploy-80-v2.sh
+  bash ops/scripts/resonance-k8s-build-deploy-80-v2.sh || build_deploy_status=$?
+if (( build_deploy_status == 79 )); then
+  flyway_cleanup_recovery_hold=true
+  echo "[auto-deploy] RECOVERY_HOLD child returned 79; preserving durable attempt/checkpoint state evidence=$FLYWAY_CLEANUP_HOLD_FILE" >&2
+  exit 79
+elif (( build_deploy_status != 0 )); then
+  exit "$build_deploy_status"
+fi
 verify_postdeploy_release_attempt_db_staged || {
   echo '[auto-deploy] build child returned without exact durable DB attempt stage' >&2
   exit 79

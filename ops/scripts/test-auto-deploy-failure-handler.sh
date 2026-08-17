@@ -45,6 +45,7 @@ grep -q 'retry_allowed=true' "$handler"
 grep -q 'category=DATABASE' "$handler"
 grep -q 'category=DATABASE_DETERMINISTIC' "$handler"
 grep -q 'category=DEPLOY_TERMINATED' "$handler"
+grep -q 'category=FLYWAY_CLEANUP_HOLD' "$handler"
 grep -Fq 'ExecMainStatus' "$handler"
 grep -Fq 'ActiveState=inactive' "$handler"
 grep -Fq 'SubState=dead' "$handler"
@@ -205,6 +206,10 @@ SH
   cat >"$classifier_fixture/bin/git" <<'SH'
 #!/usr/bin/env bash
 [[ "$1" == ls-remote ]] || exit 97
+[[ -z "${FAKE_GIT_CALL_RECORD:-}" ]] || printf '%s\n' "$*" >>"$FAKE_GIT_CALL_RECORD"
+if [[ "${FAKE_GIT_HANG:-false}" == true ]]; then
+  /usr/bin/sleep 30
+fi
 printf '%s\trefs/heads/main\n' "${FAKE_TARGET_COMMIT:?}"
 SH
   cat >"$classifier_fixture/bin/systemd-run" <<'SH'
@@ -286,6 +291,64 @@ SH
   run_classifier_mutant explicit_term_79 79 \
     $'explicit TERM79 requested after operator stop\ntimed out waiting for condition' \
     DEPLOY_TERMINATED FAILED false false 0
+
+  hold_case_dir="$classifier_fixture/flyway_cleanup_hold"
+  mkdir -p "$hold_case_dir/state"
+  hold_target='cccccccccccccccccccccccccccccccccccccccc'
+  jq -cn --arg source "$hold_target" '{
+    applicationName:"carbonet-flyway-20260817180000-abcdef",
+    candidateImage:"localhost:5000/carbonet-runtime:test",cleanupHoldSeconds:120,
+    createdAt:"2026-08-17T09:00:00+00:00",jobName:"carbonet-flyway-20260817180000-abcdef",
+    namespace:"carbonet-prod",reason:"CLEANUP_BUDGET_EXHAUSTED",schemaVersion:1,
+    sourceCommit:$source,status:"CLEANUP_UNPROVEN",terminationGraceSeconds:30
+  }' >"$hold_case_dir/state/flyway-cleanup-hold.json"
+  # Even a pre-existing attempt journal is subordinate to unknown Flyway DB
+  # ownership; the only schedule is the one-shot main preflight cleanup retry.
+  printf '%s\n' '{}' >"$hold_case_dir/state/carbonet-postdeploy-attempt.json"
+  chmod 0600 "$hold_case_dir/state/flyway-cleanup-hold.json" \
+    "$hold_case_dir/state/carbonet-postdeploy-attempt.json"
+  printf '%s\n' 'RECOVERY_HOLD cleanup remains unproven' >"$hold_case_dir/journal.log"
+  # Git is a 30-second hang mutant. A valid hold binds sourceCommit from the
+  # single validated JSON read, so remote lookup stays at zero and recovery is
+  # still scheduled inside this 4-second outer regression cap.
+  /usr/bin/timeout --signal=TERM --kill-after=1s 4s env \
+    FAKE_EXEC_MAIN_STATUS=79 \
+    FAKE_JOURNAL_SOURCE="$hold_case_dir/journal.log" \
+    FAKE_TARGET_COMMIT="$classifier_target" \
+    FAKE_GIT_HANG=true \
+    FAKE_GIT_CALL_RECORD="$hold_case_dir/git.record" \
+    FAKE_SYSTEMD_RUN_RECORD="$hold_case_dir/systemd-run.record" \
+    PATH="$classifier_fixture/bin:$PATH" \
+    CARBONET_DEPLOY_OWNER="$(id -un)" \
+    CARBONET_DEPLOY_ROOT="$root" \
+    CARBONET_DEPLOY_STATE_DIR="$hold_case_dir/state" \
+    CARBONET_DEPLOY_NOTIFY_SCRIPT="$classifier_fixture/notify.sh" \
+      bash "$handler" >/dev/null
+  jq -e --arg source "$hold_target" '.category=="FLYWAY_CLEANUP_HOLD" and .status=="RETRY_SCHEDULED"
+    and .retryAllowed==true and .retryAttempted==true
+    and .attemptRecoveryPending==false and .targetCommit==$source' \
+    "$hold_case_dir/state/deploy-status.json" >/dev/null
+  [[ ! -e "$hold_case_dir/git.record" ]]
+  grep -Fq 'systemctl start carbonet-auto-deploy.service' "$hold_case_dir/systemd-run.record"
+  [[ -f "$hold_case_dir/state/retry-${hold_target}.attempted" ]]
+  /usr/bin/timeout --signal=TERM --kill-after=1s 4s env \
+    FAKE_EXEC_MAIN_STATUS=79 \
+    FAKE_JOURNAL_SOURCE="$hold_case_dir/journal.log" \
+    FAKE_TARGET_COMMIT="$classifier_target" \
+    FAKE_GIT_HANG=true \
+    FAKE_GIT_CALL_RECORD="$hold_case_dir/git.record" \
+    FAKE_SYSTEMD_RUN_RECORD="$hold_case_dir/systemd-run.record" \
+    PATH="$classifier_fixture/bin:$PATH" \
+    CARBONET_DEPLOY_OWNER="$(id -un)" \
+    CARBONET_DEPLOY_ROOT="$root" \
+    CARBONET_DEPLOY_STATE_DIR="$hold_case_dir/state" \
+    CARBONET_DEPLOY_NOTIFY_SCRIPT="$classifier_fixture/notify.sh" \
+      bash "$handler" >/dev/null
+  jq -e '.category=="FLYWAY_CLEANUP_HOLD" and .status=="FAILED"
+    and .retryAllowed==true and .retryAttempted==false' \
+    "$hold_case_dir/state/deploy-status.json" >/dev/null
+  [[ "$(wc -l <"$hold_case_dir/systemd-run.record" | tr -d ' ')" == 1 ]]
+  [[ ! -e "$hold_case_dir/git.record" ]]
   rm -rf -- "$classifier_fixture"
 fi
 
@@ -588,13 +651,15 @@ SH
 fi
 
 deterministic_database_line="$(grep -n 'category=DATABASE_DETERMINISTIC' "$handler" | head -1 | cut -d: -f1)"
+cleanup_hold_line="$(grep -n 'category=FLYWAY_CLEANUP_HOLD' "$handler" | head -1 | cut -d: -f1)"
 terminated_line="$(grep -n 'category=DEPLOY_TERMINATED' "$handler" | head -1 | cut -d: -f1)"
 network_line="$(grep -n "category=NETWORK_TRANSIENT" "$handler" | head -1 | cut -d: -f1)"
 e2e_line="$(grep -n "category=E2E" "$handler" | head -1 | cut -d: -f1)"
 database_line="$(grep -n '^[[:space:]]*category=DATABASE$' "$handler" | head -1 | cut -d: -f1)"
+[[ "$cleanup_hold_line" -lt "$deterministic_database_line" ]]
 [[ "$deterministic_database_line" -lt "$terminated_line" ]]
 [[ "$terminated_line" -lt "$network_line" ]]
 [[ "$network_line" -lt "$e2e_line" ]]
 [[ "$e2e_line" -lt "$database_line" ]]
 
-echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x classifier=staleSuccess-write0+network503-retry1+flywayP0001-retry0+term79-retry0"
+echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x classifier=staleSuccess-write0+network503-retry1+flywayP0001-retry0+term79-retry0+flywayCleanupHold-retry1+leaseBound+remote0+hangBound4s"

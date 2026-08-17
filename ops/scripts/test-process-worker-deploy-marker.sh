@@ -54,8 +54,19 @@ grep -Fq "ORCHESTRATOR_TERMINATED_STALE_RECOVERY" "$ORCHESTRATOR" \
   || fail "orchestrator does not reconcile stale project completion runs"
 grep -Fq "PROJECT_COMPLETION_STALE_MINUTES:-10" "$ORCHESTRATOR" \
   || fail "orchestrator stale-run recovery is not bounded by age"
-grep -Fq "where run_id='\$run_id' and run_status='RUNNING'" "$ORCHESTRATOR" \
-  || fail "signal recovery must be scoped to the active run"
+deferred_start="$(grep -n '^record_design_causality_deferred_recovery()' "$ORCHESTRATOR" | cut -d: -f1)"
+deferred_end="$(awk -v start="$deferred_start" 'NR>start && /^}/{print NR;exit}' "$ORCHESTRATOR")"
+deferred_body="$(sed -n "${deferred_start},${deferred_end}p" "$ORCHESTRATOR")"
+grep -Fq "where run_id='\$completion_run_id' and run_status='RUNNING'" <<<"$deferred_body" \
+  || fail "signal recovery read must be scoped to the active RUNNING run"
+grep -Fq 'for update' <<<"$deferred_body" \
+  || fail "signal recovery must lock the active run before its terminal CAS"
+grep -Fq "where r.run_id='\$completion_run_id' and r.run_status='RUNNING'" <<<"$deferred_body" \
+  || fail "signal recovery update must use an exact RUNNING-state CAS"
+grep -Fq '[[ "$persisted" == 1 ]] || return 70' <<<"$deferred_body" \
+  || fail "signal recovery must reject a terminal-state CAS miss"
+grep -Fq '"$run_id" ORCHESTRATOR_SIGNALLED' "$ORCHESTRATOR" \
+  || fail "signal handler must pass only its active run to deferred recovery"
 for signal in INT TERM HUP; do
   grep -Fq "trap 'mark_interrupted $signal" "$ORCHESTRATOR" \
     || fail "orchestrator does not finalize the active run on $signal"

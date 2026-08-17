@@ -86,7 +86,11 @@ db -f "$FENCE_MIGRATION" >/dev/null
 # column consumed by compiler-only fingerprint functions.  Defer those bodies
 # while still applying the complete real migration and exercising its physical
 # tables, triggers and purge/restore graph below.
-db -c 'set check_function_bodies=off' -f "$COMPOSITE_MIGRATION" >/dev/null
+# Flyway applies this PostgreSQL migration in one transaction.  V154000 proves
+# that its leading ALTER still owns ACCESS EXCLUSIVE before it temporarily
+# removes the exact document write fence, so the focused runner must preserve
+# the same transaction boundary instead of autocommitting each SQL statement.
+db -1 -c 'set check_function_bodies=off' -f "$COMPOSITE_MIGRATION" >/dev/null
 migration_ms="$(( ( $(date +%s%N) - started_ns ) / 1000000 ))"
 
 [[ "$(scalar "select count(*) from pg_class where oid='framework_runtime_release_state'::regclass")" == 1 ]] ||
@@ -105,7 +109,7 @@ missing_fences="$(scalar "select count(*) from pg_class relation
          where trigger_row.tgrelid=relation.oid
            and trigger_row.tgname='trg_project_runtime_write_fence'
            and trigger_row.tgfoid=to_regprocedure('framework_guard_project_runtime_write_fence()')
-           and trigger_row.tgenabled<>'D' and trigger_row.tgtype=23
+           and trigger_row.tgenabled='O' and trigger_row.tgtype=23
            and not trigger_row.tgisinternal)<>1")"
 [[ "$missing_fences" == 0 ]] || fail "V154000 integrated fence coverage missing=$missing_fences"
 integrated_fence_count="$(scalar "select count(*) from pg_class relation

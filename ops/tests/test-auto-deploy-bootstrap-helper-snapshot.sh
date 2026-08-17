@@ -6,19 +6,23 @@ LAUNCHER="$ROOT/ops/scripts/auto-deploy-main-launcher.sh"
 AUTO="$ROOT/ops/scripts/auto-deploy-main.sh"
 HANDLER="$ROOT/ops/scripts/carbonet-auto-deploy-failure-handler.sh"
 RUNNER="$ROOT/ops/scripts/postdeploy-attempt-recovery-runner.sh"
-[[ -s "$LAUNCHER" && -s "$AUTO" && -s "$HANDLER" && -s "$RUNNER" ]] || {
+FLYWAY_RUNNER="$ROOT/ops/scripts/run-flyway-migration-job.sh"
+[[ -s "$LAUNCHER" && -s "$AUTO" && -s "$HANDLER" && -s "$RUNNER" && -s "$FLYWAY_RUNNER" ]] || {
   echo '[bootstrap-helper-snapshot-test] missing deploy scripts' >&2
   exit 1
 }
-bash -n "$LAUNCHER" "$AUTO" "$HANDLER" "$RUNNER"
+bash -n "$LAUNCHER" "$AUTO" "$HANDLER" "$RUNNER" "$FLYWAY_RUNNER"
 for token in \
   'snapshot_orphan_recovery_helper=' \
   'snapshot_postdeploy_leader_resolver=' \
   'snapshot_postdeploy_leader_resolver_sha256=' \
+  'snapshot_flyway_job_runner=' \
+  'snapshot_flyway_job_runner_sha256=' \
   'CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT="$target_commit"' \
   'CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER="$snapshot_orphan_recovery_helper"' \
   'CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256="$snapshot_orphan_recovery_helper_sha256"' \
-  'CARBONET_POSTDEPLOY_LEADER_RESOLVER="$snapshot_postdeploy_leader_resolver"'; do
+  'CARBONET_POSTDEPLOY_LEADER_RESOLVER="$snapshot_postdeploy_leader_resolver"' \
+  'CARBONET_FLYWAY_JOB_RUNNER="$snapshot_flyway_job_runner"'; do
   grep -Fq "$token" "$LAUNCHER"
 done
 grep -Fq 'verify_bootstrap_orphan_recovery_helper || exit $?' "$AUTO"
@@ -78,6 +82,10 @@ cat >"$PUBLISHER/ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh
 #!/usr/bin/env bash
 printf 'STALE_ROOT_HELPER:%s\n' "$1"
 SH
+cat >"$PUBLISHER/ops/scripts/run-flyway-migration-job.sh" <<'SH'
+#!/usr/bin/env bash
+printf 'STALE_FLYWAY_RUNNER:%s\n' "$1"
+SH
 chmod 755 "$PUBLISHER/ops/scripts/"*.sh
 git -C "$PUBLISHER" add ops/scripts
 git -C "$PUBLISHER" commit -qm stale-root
@@ -125,16 +133,35 @@ target_leader_resolver_sha="$(git -C "$CARBONET_DEPLOY_ORIGINAL_ROOT" show --for
 [[ "$CARBONET_POSTDEPLOY_LEADER_RESOLVER" \
    != "$CARBONET_DEPLOY_ORIGINAL_ROOT/ops/scripts/resolve-patroni-primary-pod.sh" ]] \
   || fail stale-root-leader-resolver-path
+[[ -s "${CARBONET_FLYWAY_JOB_RUNNER:-}" \
+   && ! -L "$CARBONET_FLYWAY_JOB_RUNNER" ]] || fail missing-flyway-runner
+[[ "$(dirname "$(readlink -f "$CARBONET_FLYWAY_JOB_RUNNER")")" \
+   == "$(dirname "$(readlink -f "$CARBONET_DEPLOY_SNAPSHOT_PATH")")" ]] \
+  || fail flyway-runner-outside-snapshot
+[[ "$(stat -c '%a:%u' "$CARBONET_FLYWAY_JOB_RUNNER")" == "700:$(id -u)" ]] \
+  || fail flyway-runner-non-private
+flyway_runner_sha="$(sha256sum "$CARBONET_FLYWAY_JOB_RUNNER" | awk '{print $1}')"
+target_flyway_runner_sha="$(git -C "$CARBONET_DEPLOY_ORIGINAL_ROOT" show --format= --no-textconv \
+  "$CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT:ops/scripts/run-flyway-migration-job.sh" \
+  | sha256sum | awk '{print $1}')"
+[[ "$flyway_runner_sha" == "$target_flyway_runner_sha" ]] \
+  || fail flyway-runner-target-hash-mismatch
+[[ "$CARBONET_FLYWAY_JOB_RUNNER" \
+   != "$CARBONET_DEPLOY_ORIGINAL_ROOT/ops/scripts/run-flyway-migration-job.sh" ]] \
+  || fail stale-root-flyway-runner-path
 result="$(bash "$CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER" "$CARBONET_DEPLOY_ORIGINAL_ROOT")"
 leader_result="$(bash "$CARBONET_POSTDEPLOY_LEADER_RESOLVER")"
-printf '%s\n%s\n%s\n%s\n%s\n%s\n%s\n' \
+flyway_result="$(bash "$CARBONET_FLYWAY_JOB_RUNNER" fixture)"
+printf '%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n' \
   "$CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT" \
   "$CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER" \
   "$CARBONET_DEPLOY_SNAPSHOT_PATH" \
   "$result" \
   "${CARBONET_RECOVERY_ONLY:-false}" \
   "$CARBONET_POSTDEPLOY_LEADER_RESOLVER" \
-  "$leader_result" >"$CARBONET_TEST_OUTPUT"
+  "$leader_result" \
+  "$CARBONET_FLYWAY_JOB_RUNNER" \
+  "$flyway_result" >"$CARBONET_TEST_OUTPUT"
 SH
 cat >"$PUBLISHER/ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh" <<'SH'
 #!/usr/bin/env bash
@@ -143,6 +170,10 @@ SH
 cat >"$PUBLISHER/ops/scripts/resolve-patroni-primary-pod.sh" <<'SH'
 #!/usr/bin/env bash
 printf 'TARGET_LEADER_RESOLVER\n'
+SH
+cat >"$PUBLISHER/ops/scripts/run-flyway-migration-job.sh" <<'SH'
+#!/usr/bin/env bash
+printf 'TARGET_FLYWAY_RUNNER:%s\n' "$1"
 SH
 chmod 755 "$PUBLISHER/ops/scripts/"*.sh
 git -C "$PUBLISHER" add ops/scripts
@@ -189,6 +220,18 @@ elif [[ "${CARBONET_TEST_MAKE_RESOLVER_NONEXEC:-false}" == true ]]; then
       "$REAL_CHMOD" 600 "$candidate"
     fi
   done
+elif [[ "${CARBONET_TEST_TAMPER_FLYWAY_RUNNER:-false}" == true ]]; then
+  for candidate in "$@"; do
+    if [[ "$(basename "$candidate")" == run-flyway-migration-job.sh ]]; then
+      printf '# tampered after launcher hash\n' >>"$candidate"
+    fi
+  done
+elif [[ "${CARBONET_TEST_MAKE_FLYWAY_RUNNER_NONEXEC:-false}" == true ]]; then
+  for candidate in "$@"; do
+    if [[ "$(basename "$candidate")" == run-flyway-migration-job.sh ]]; then
+      "$REAL_CHMOD" 600 "$candidate"
+    fi
+  done
 fi
 SH
 chmod 755 "$FAKE_BIN/mktemp" "$FAKE_BIN/chmod"
@@ -216,8 +259,9 @@ mapfile -t normal <"$NORMAL_OUTPUT"
 [[ "${normal[0]}" == "$TARGET" \
    && "${normal[3]}" == "TARGET_HELPER:$OPERATOR" \
    && "${normal[4]}" == false \
-   && "${normal[6]}" == TARGET_LEADER_RESOLVER ]]
-[[ ! -e "${normal[1]}" && ! -e "${normal[2]}" && ! -e "${normal[5]}" ]]
+   && "${normal[6]}" == TARGET_LEADER_RESOLVER \
+   && "${normal[8]}" == TARGET_FLYWAY_RUNNER:fixture ]]
+[[ ! -e "${normal[1]}" && ! -e "${normal[2]}" && ! -e "${normal[5]}" && ! -e "${normal[7]}" ]]
 assert_snapshot_parent_empty
 
 RECOVERY_OUTPUT="$TMP/recovery.out"
@@ -231,7 +275,8 @@ mapfile -t recovery <"$RECOVERY_OUTPUT"
 [[ "${recovery[0]}" == "$TARGET" \
    && "${recovery[3]}" == "TARGET_HELPER:$OPERATOR" \
    && "${recovery[4]}" == true \
-   && "${recovery[6]}" == TARGET_LEADER_RESOLVER ]]
+   && "${recovery[6]}" == TARGET_LEADER_RESOLVER \
+   && "${recovery[8]}" == TARGET_FLYWAY_RUNNER:fixture ]]
 assert_snapshot_parent_empty
 
 status=0
@@ -260,6 +305,25 @@ env "${COMMON_ENV[@]}" \
   CARBONET_RECOVERY_ONLY=true "CARBONET_RECOVERY_TARGET_COMMIT=$TARGET" \
   bash "$LAUNCHER" >"$TMP/resolver-nonexec.log" 2>&1 || status=$?
 [[ "$status" == 79 && ! -e "$TMP/resolver-nonexec.out" ]]
+assert_snapshot_parent_empty
+
+status=0
+env "${COMMON_ENV[@]}" \
+  CARBONET_TEST_TAMPER_FLYWAY_RUNNER=true \
+  "CARBONET_TEST_OUTPUT=$TMP/flyway-runner-tampered.out" \
+  "CARBONET_TEST_EXPECTED_TARGET=$TARGET" \
+  bash "$LAUNCHER" >"$TMP/flyway-runner-tampered.log" 2>&1 || status=$?
+[[ "$status" == 79 && ! -e "$TMP/flyway-runner-tampered.out" ]]
+assert_snapshot_parent_empty
+
+status=0
+env "${COMMON_ENV[@]}" \
+  CARBONET_TEST_MAKE_FLYWAY_RUNNER_NONEXEC=true \
+  "CARBONET_TEST_OUTPUT=$TMP/flyway-runner-nonexec.out" \
+  "CARBONET_TEST_EXPECTED_TARGET=$TARGET" \
+  CARBONET_RECOVERY_ONLY=true "CARBONET_RECOVERY_TARGET_COMMIT=$TARGET" \
+  bash "$LAUNCHER" >"$TMP/flyway-runner-nonexec.log" 2>&1 || status=$?
+[[ "$status" == 79 && ! -e "$TMP/flyway-runner-nonexec.out" ]]
 assert_snapshot_parent_empty
 
 # Exercise the production verifier itself so a launcher fixture cannot mask a
@@ -297,6 +361,21 @@ expect_remote_target_failure() {
   assert_snapshot_parent_empty
 }
 
+git -C "$PUBLISHER" rm -q ops/scripts/run-flyway-migration-job.sh
+git -C "$PUBLISHER" commit -qm missing-flyway-runner
+git -C "$PUBLISHER" push -q origin HEAD:main
+MISSING_FLYWAY_RUNNER_TARGET="$(git -C "$PUBLISHER" rev-parse HEAD)"
+expect_remote_target_failure missing-flyway-runner "$MISSING_FLYWAY_RUNNER_TARGET"
+
+git -C "$PUBLISHER" checkout "$TARGET" -- ops/scripts/run-flyway-migration-job.sh
+: >"$PUBLISHER/ops/scripts/run-flyway-migration-job.sh"
+git -C "$PUBLISHER" add ops/scripts/run-flyway-migration-job.sh
+git -C "$PUBLISHER" commit -qm empty-flyway-runner
+git -C "$PUBLISHER" push -q origin HEAD:main
+EMPTY_FLYWAY_RUNNER_TARGET="$(git -C "$PUBLISHER" rev-parse HEAD)"
+expect_remote_target_failure empty-flyway-runner "$EMPTY_FLYWAY_RUNNER_TARGET"
+
+git -C "$PUBLISHER" checkout "$TARGET" -- ops/scripts/run-flyway-migration-job.sh
 git -C "$PUBLISHER" rm -q ops/scripts/resolve-patroni-primary-pod.sh
 git -C "$PUBLISHER" commit -qm missing-leader-resolver
 git -C "$PUBLISHER" push -q origin HEAD:main
@@ -334,4 +413,4 @@ env "${COMMON_ENV[@]}" CARBONET_TEST_MAKE_HELPER_NONEXEC=true \
 [[ "$status" == 79 && ! -e "$TMP/nonexec.out" ]]
 assert_snapshot_parent_empty
 
-printf '[bootstrap-helper-snapshot-test] PASS targetExact=2 staleRootExec=0 recovery=1 missingHelper=79 missingResolver=79 emptyHelper=79 emptyResolver=79 helperNonPrivate=79 resolverNonPrivate=79 helperTampered=79 resolverTampered=79 productionMutants=2 cleanupLaunches=10\n'
+printf '[bootstrap-helper-snapshot-test] PASS targetExact=3 staleRootExec=0 recovery=1 missingHelper=79 missingResolver=79 missingFlywayRunner=79 emptyHelper=79 emptyResolver=79 emptyFlywayRunner=79 helperNonPrivate=79 resolverNonPrivate=79 flywayRunnerNonPrivate=79 helperTampered=79 resolverTampered=79 flywayRunnerTampered=79 productionMutants=2 cleanupLaunches=14\n'

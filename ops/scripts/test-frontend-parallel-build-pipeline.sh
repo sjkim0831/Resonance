@@ -58,6 +58,9 @@ assert 'IMMUTABLE_PARALLEL_BUILD_FAILED' in block
 assert 'IMMUTABLE_FRONTEND_SOURCE_DIR:-$OVERLAY_HOST_PATH' in source
 assert 'Immutable JAR candidate sourced from verified overlay' in source
 assert 'OVERLAY_DIR="$OVERLAY_HOST_PATH" SOURCE_DIR="$FRONTEND_DIR"' in source
+assert 'NAMESPACE="${NAMESPACE:-${CARBONET_K8S_NAMESPACE:-carbonet-prod}}"' in source
+assert 'DEPLOYMENT="${DEPLOYMENT:-${CARBONET_K8S_DEPLOYMENT:-carbonet-runtime}}"' in source
+assert 'CONTAINER="${CONTAINER:-${CARBONET_K8S_CONTAINER:-carbonet-runtime}}"' in source
 print("IMMUTABLE_FRONTEND_BACKEND_PARALLEL_PASS final-jar-after-barrier=true")
 
 
@@ -74,6 +77,12 @@ def probe_build_child_environment(candidate: str) -> dict[str, str]:
     command = "  bash ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
     assert child.count(command) == 1
     probe = child.replace(command, "  env", 1)
+    probe = (
+        "NAMESPACE=probe-namespace\n"
+        "DEPLOYMENT=probe-deployment\n"
+        "CARBONET_K8S_CONTAINER=probe-container\n"
+        + probe
+    )
     probe_env = os.environ.copy()
     probe_env.pop("IMMUTABLE_FRONTEND_IMAGE", None)
     probe_env.update(
@@ -87,6 +96,8 @@ def probe_build_child_environment(candidate: str) -> dict[str, str]:
             "POSTDEPLOY_JOURNAL_HELPER": "/tmp/probe-helper",
             "postdeploy_candidate_id": "postdeploy:probe",
             "POSTDEPLOY_LEADER_RESOLVER": "/tmp/probe-resolver",
+            "FLYWAY_CLEANUP_HOLD_FILE": "/tmp/probe-flyway-cleanup-hold.json",
+            "build_deploy_status": "0",
             "POSTGRES_POD": "postgres-probe-0",
             "POSTGRES_CONTAINER": "postgres",
             "POSTGRES_DB": "carbonet",
@@ -118,6 +129,9 @@ def assert_contiguous_build_child(candidate: str) -> None:
     assert observed.get("IMMUTABLE_FRONTEND_IMAGE") == "true"
     assert observed.get("SKIP_FRONTEND") == "true"
     assert observed.get("RUN_FLYWAY_MIGRATION_JOB") == "true"
+    assert observed.get("NAMESPACE") == "probe-namespace"
+    assert observed.get("DEPLOYMENT") == "probe-deployment"
+    assert observed.get("CONTAINER") == "probe-container"
 
 
 assert_contiguous_build_child(auto_source)
@@ -134,6 +148,19 @@ except AssertionError:
     pass
 else:
     raise AssertionError("comment-placement mutant escaped the env-chain contract")
+
+target_chain = (
+    'NAMESPACE="$NAMESPACE" DEPLOYMENT="$DEPLOYMENT" '
+    'CONTAINER="${CARBONET_K8S_CONTAINER:-carbonet-runtime}" \\\n'
+)
+targeting_poisoned = auto_source.replace(target_chain, "", 1)
+assert targeting_poisoned != auto_source
+try:
+    assert_contiguous_build_child(targeting_poisoned)
+except AssertionError:
+    pass
+else:
+    raise AssertionError("namespace/deployment/container propagation mutant escaped the env-chain contract")
 
 
 def immutable_main_block(candidate: str) -> str:

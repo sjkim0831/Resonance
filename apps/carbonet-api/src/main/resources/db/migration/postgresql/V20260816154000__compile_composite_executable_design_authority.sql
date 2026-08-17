@@ -56,6 +56,107 @@ SELECT target.process_code,target.step_code,target.route_path,target.audience,
    AND contracts.route_path=target.route_path
    AND contracts.audience=target.audience;
 
+-- V20260816153500 installs a generic row fence on this table.  Its generic
+-- payload conversion includes the multi-kilobyte document content, so cloning
+-- and retiring every legacy head would detoast the same bytes repeatedly.  The
+-- ALTER above already holds ACCESS EXCLUSIVE until this transactional Flyway
+-- migration commits.  Preserve the cross-table fence contract once per
+-- canonical process, fail fast instead of waiting in an AX<->advisory-lock
+-- cycle, reject every durably purged target, and drop only the exact document
+-- fence.  The installer and exact catalog proof at the end restore it before
+-- the ACCESS EXCLUSIVE lock can be released; any error rolls the drop back.
+-- READ COMMITTED takes a new snapshot for every statement, so protect every
+-- target/projected-context source relation before discovering process keys.
+-- The single C-name-ordered SHARE NOWAIT statement admits readers, blocks source DML until
+-- commit, and converts an already-active writer into a retryable failure instead
+-- of an AX/source-table cycle or a late unguarded process resurrection.
+DO $$
+DECLARE
+  process_key text;
+  purged_processes text;
+BEGIN
+  IF NOT EXISTS(
+    SELECT 1 FROM pg_locks held_lock
+     WHERE held_lock.pid=pg_backend_pid()
+       AND held_lock.locktype='relation'
+       AND held_lock.relation='integrated_design_document'::regclass
+       AND held_lock.mode='AccessExclusiveLock' AND held_lock.granted
+  ) THEN
+    RAISE EXCEPTION 'COMPOSITE_MIGRATION_DOCUMENT_AX_LOCK_MISSING'
+      USING ERRCODE='55000';
+  END IF;
+
+  IF to_regprocedure('framework_guard_project_runtime_write_fence()') IS NULL
+     OR to_regprocedure('framework_install_project_runtime_write_fences()') IS NULL
+     OR to_regclass('framework_project_runtime_purge_receipt') IS NULL THEN
+    RAISE EXCEPTION 'COMPOSITE_MIGRATION_WRITE_FENCE_PREREQUISITE_MISSING'
+      USING ERRCODE='55000';
+  END IF;
+  IF (SELECT count(*) FROM pg_trigger trigger_row
+       WHERE trigger_row.tgrelid='integrated_design_document'::regclass
+         AND trigger_row.tgname='trg_project_runtime_write_fence'
+         AND trigger_row.tgfoid=
+             to_regprocedure('framework_guard_project_runtime_write_fence()')
+         AND trigger_row.tgenabled='O' AND trigger_row.tgtype=23
+         AND NOT trigger_row.tgisinternal)<>1 THEN
+    RAISE EXCEPTION 'COMPOSITE_MIGRATION_DOCUMENT_WRITE_FENCE_NOT_EXACT'
+      USING ERRCODE='55000';
+  END IF;
+
+  LOCK TABLE framework_process_definition,
+             framework_process_step,
+             framework_process_step_screen_binding,
+             framework_professional_screen_contract,
+             framework_screen_blueprint,
+             framework_screen_resource
+    IN SHARE MODE NOWAIT;
+
+  CREATE TEMP TABLE v154_composite_target_identity_snapshot
+    ON COMMIT DROP AS
+  SELECT * FROM framework_composite_design_target_identity;
+  CREATE UNIQUE INDEX ux_v154_composite_target_identity_snapshot
+    ON v154_composite_target_identity_snapshot(
+      process_code,step_code,route_path,audience);
+  ANALYZE v154_composite_target_identity_snapshot;
+
+  CREATE TEMP TABLE v154_composite_target_process_snapshot
+    ON COMMIT DROP AS
+  SELECT DISTINCT process_code
+    FROM v154_composite_target_identity_snapshot;
+  CREATE UNIQUE INDEX ux_v154_composite_target_process_snapshot
+    ON v154_composite_target_process_snapshot(process_code);
+  ANALYZE v154_composite_target_process_snapshot;
+
+  FOR process_key IN
+    SELECT target_process.process_code
+      FROM v154_composite_target_process_snapshot target_process
+     ORDER BY target_process.process_code COLLATE "C"
+  LOOP
+    IF NOT pg_try_advisory_xact_lock(hashtextextended(
+      'CANONICAL_PROCESS_PUBLICATION_V1:'||process_key,0)) THEN
+      RAISE EXCEPTION 'COMPOSITE_MIGRATION_PROCESS_LOCK_BUSY: %',process_key
+        USING ERRCODE='40001';
+    END IF;
+  END LOOP;
+
+  SELECT string_agg(purged.process_code,',' ORDER BY purged.process_code COLLATE "C")
+    INTO purged_processes
+    FROM (
+      SELECT DISTINCT receipt.process_code
+        FROM framework_project_runtime_purge_receipt receipt
+        JOIN v154_composite_target_process_snapshot target_process
+          ON target_process.process_code=receipt.process_code
+       WHERE receipt.receipt_status='PURGED'
+    ) purged;
+  IF purged_processes IS NOT NULL THEN
+    RAISE EXCEPTION 'COMPOSITE_MIGRATION_TARGET_PURGED: %',purged_processes
+      USING ERRCODE='55000';
+  END IF;
+
+  DROP TRIGGER trg_project_runtime_write_fence ON integrated_design_document;
+END
+$$;
+
 DO $$
 DECLARE constraint_name name;
 BEGIN
@@ -89,7 +190,7 @@ SELECT legacy.process_code,legacy.step_code,legacy.route_path,source.audience,
   JOIN (
     SELECT DISTINCT process_code,step_code,lower(split_part(route_path,'?',1)) route_path,
            upper(audience) audience
-      FROM framework_composite_design_target_identity
+      FROM v154_composite_target_identity_snapshot
   ) source ON source.process_code=legacy.process_code
           AND source.step_code=legacy.step_code
           AND source.route_path=lower(split_part(legacy.route_path,'?',1))
@@ -97,7 +198,7 @@ SELECT legacy.process_code,legacy.step_code,legacy.route_path,source.audience,
 
 UPDATE integrated_design_document legacy SET active_yn='N'
  WHERE legacy.audience='' AND EXISTS(
-   SELECT 1 FROM framework_composite_design_target_identity contract
+   SELECT 1 FROM v154_composite_target_identity_snapshot contract
     WHERE contract.process_code=legacy.process_code
       AND contract.step_code=legacy.step_code
       AND contract.route_path=
@@ -975,15 +1076,6 @@ CREATE TABLE integrated_design_autocompletion_gate (
 INSERT INTO integrated_design_autocompletion_gate(gate_key,approval_status)
 VALUES ('GLOBAL','DISABLED');
 
-INSERT INTO integrated_design_autocompletion_receipt(
-  process_code,completion_status,dependency_fingerprint,receipt_json)
-SELECT DISTINCT contract.process_code,'PENDING',
-       framework_composite_dependency_fingerprint(contract.process_code),
-       jsonb_build_object('requestedScope',jsonb_build_object(
-         'scopeType','GLOBAL','source','MIGRATION_GLOBAL_TARGET'))
-  FROM framework_composite_design_target_identity contract
-ON CONFLICT(process_code) DO NOTHING;
-
 -- Upgrade only machine-owned workbench material.  Approved, verified, and
 -- manually edited documents are preserved byte-for-byte and must be explicitly
 -- adopted into the executable schema by their owner.
@@ -1119,7 +1211,8 @@ BEGIN
       ('NOTIFICATION','알림·기한·에스컬레이션'),('TEST','테스트 시나리오·기대값'),
       ('TASK_EVIDENCE','개발 태스크·산출물·증적'),('RELEASE_AUDIT','배포·감사·복구')
   ), projected AS MATERIALIZED (
-    SELECT context.*,document.document_type,document.title,
+    SELECT context.process_code,context.step_code,context.route_path,context.audience,
+      document.document_type,document.title,
       jsonb_build_object(
         'schemaVersion','carbonet.integrated-design-axis/v1',
         'documentType',document.document_type,'axisVersion','1.0.0',
@@ -1685,6 +1778,23 @@ BEGIN
 END
 $$;
 
+DO $$
+BEGIN
+  IF EXISTS(
+    (SELECT * FROM v154_composite_target_identity_snapshot
+     EXCEPT
+     SELECT * FROM framework_composite_design_target_identity)
+    UNION ALL
+    (SELECT * FROM framework_composite_design_target_identity
+     EXCEPT
+     SELECT * FROM v154_composite_target_identity_snapshot)
+  ) THEN
+    RAISE EXCEPTION 'COMPOSITE_MIGRATION_TARGET_SOURCE_DRIFT'
+      USING ERRCODE='40001';
+  END IF;
+END
+$$;
+
 SELECT * FROM refresh_integrated_design_axis_documents(NULL,false);
 
 DO $$
@@ -1717,7 +1827,7 @@ BEGIN
              AND trigger_row.tgname='trg_project_runtime_write_fence'
              AND trigger_row.tgfoid=
                  to_regprocedure('framework_guard_project_runtime_write_fence()')
-             AND trigger_row.tgenabled<>'D' AND trigger_row.tgtype=23
+             AND trigger_row.tgenabled='O' AND trigger_row.tgtype=23
              AND NOT trigger_row.tgisinternal)<>1;
   IF missing_fences IS NOT NULL THEN
     RAISE EXCEPTION 'integrated design write-fence coverage is incomplete: %',missing_fences
@@ -1725,3 +1835,23 @@ BEGIN
   END IF;
 END
 $$;
+
+-- Seed the current post-refresh H0 only after every write fence is restored.
+-- H0-only sources remain writable: this receipt is deliberately PENDING, and
+-- the activation gate must recompute and match the current fingerprint.
+-- DISTINCT over the original contract rows evaluated this STABLE function
+-- before de-duplication, reparsing every active document once per screen
+-- context (968 times on the live corpus).  Materializing process keys preserves
+-- the exact fingerprint contract while evaluating H0 once per 144 target processes.
+WITH target_process AS MATERIALIZED (
+  SELECT process_code
+    FROM v154_composite_target_process_snapshot
+)
+INSERT INTO integrated_design_autocompletion_receipt(
+  process_code,completion_status,dependency_fingerprint,receipt_json)
+SELECT target_process.process_code,'PENDING',
+       framework_composite_dependency_fingerprint(target_process.process_code),
+       jsonb_build_object('requestedScope',jsonb_build_object(
+         'scopeType','GLOBAL','source','MIGRATION_GLOBAL_TARGET'))
+  FROM target_process
+ON CONFLICT(process_code) DO NOTHING;

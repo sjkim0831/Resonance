@@ -8430,6 +8430,41 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
 
     private void installProjectRuntimeWriteFenceFixture(){
         jdbc.execute("""
+            CREATE TABLE framework_project_runtime_purge_receipt (
+              receipt_id uuid PRIMARY KEY,
+              operation_key uuid NOT NULL,
+              project_id varchar(64) NOT NULL,
+              process_code varchar(80) NOT NULL,
+              design_version integer NOT NULL CHECK(design_version>0),
+              contract_sha256 varchar(64) NOT NULL
+                CHECK(contract_sha256 ~ '^[0-9a-f]{64}$'),
+              scope_mode varchar(24) NOT NULL
+                CHECK(scope_mode IN ('TEST_OWNED','QA_PROVENANCE','EXACT_PROJECT')),
+              receipt_status varchar(16) NOT NULL
+                CHECK(receipt_status IN (
+                  'PREVIEWED','BLOCKED','PURGING','PURGED','RESTORING','RESTORED'
+                )),
+              snapshot_sha256 varchar(64) NOT NULL
+                CHECK(snapshot_sha256 ~ '^[0-9a-f]{64}$'),
+              impact_json jsonb NOT NULL CHECK(jsonb_typeof(impact_json)='object'),
+              blocker_json jsonb NOT NULL CHECK(jsonb_typeof(blocker_json)='object'),
+              postcondition_json jsonb NOT NULL DEFAULT '{}'::jsonb
+                CHECK(jsonb_typeof(postcondition_json)='object'),
+              requested_by varchar(120) NOT NULL,
+              previewed_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+              purged_at timestamptz,
+              restored_at timestamptz,
+              updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+              UNIQUE(project_id,operation_key),
+              CHECK(project_id=btrim(project_id)
+                    AND project_id ~ '^[A-Z][A-Z0-9_-]{2,63}$'),
+              CHECK(process_code=btrim(process_code)
+                    AND process_code ~ '^[A-Z][A-Z0-9_:-]{1,79}$'),
+              CHECK(requested_by=btrim(requested_by)
+                    AND requested_by ~ '^[A-Za-z0-9._@-]{2,120}$')
+            );
+            """);
+        jdbc.execute("""
             create function framework_guard_project_runtime_write_fence()
             returns trigger language plpgsql as $$ begin return new; end $$
             """);
@@ -8465,6 +8500,7 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
               return installed;
             end $$
             """);
+        jdbc.execute("select framework_install_project_runtime_write_fences()");
     }
 
     private static final class PausingJdbcTemplate extends JdbcTemplate {

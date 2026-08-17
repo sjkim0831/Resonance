@@ -44,6 +44,7 @@ snapshot_script="$snapshot_dir/auto-deploy-main.sh"
 snapshot_plan="$snapshot_dir/plan-incremental-work.sh"
 snapshot_orphan_recovery_helper="$snapshot_dir/reconcile-exact-legacy-orphan-runtime-quarantine.sh"
 snapshot_postdeploy_leader_resolver="$snapshot_dir/resolve-patroni-primary-pod.sh"
+snapshot_flyway_job_runner="$snapshot_dir/run-flyway-migration-job.sh"
 trap 'rm -rf -- "$snapshot_dir"' EXIT INT TERM
 
 git -C "$ROOT_DIR" show --format= --no-textconv \
@@ -70,15 +71,28 @@ fi
   echo '[auto-deploy-launcher] target postdeploy leader resolver is empty' >&2
   exit 79
 }
+if ! git -C "$ROOT_DIR" show --format= --no-textconv \
+  "$target_commit:ops/scripts/run-flyway-migration-job.sh" \
+  >"$snapshot_flyway_job_runner"; then
+  echo '[auto-deploy-launcher] target Flyway cleanup runner is missing' >&2
+  exit 79
+fi
+[[ -s "$snapshot_flyway_job_runner" ]] || {
+  echo '[auto-deploy-launcher] target Flyway cleanup runner is empty' >&2
+  exit 79
+}
 snapshot_orphan_recovery_helper_sha256="$(sha256sum "$snapshot_orphan_recovery_helper" | awk '{print $1}')"
 [[ "$snapshot_orphan_recovery_helper_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 79
 snapshot_postdeploy_leader_resolver_sha256="$(sha256sum "$snapshot_postdeploy_leader_resolver" | awk '{print $1}')"
 [[ "$snapshot_postdeploy_leader_resolver_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 79
+snapshot_flyway_job_runner_sha256="$(sha256sum "$snapshot_flyway_job_runner" | awk '{print $1}')"
+[[ "$snapshot_flyway_job_runner_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 79
 chmod 700 \
   "$snapshot_script" \
   "$snapshot_plan" \
   "$snapshot_orphan_recovery_helper" \
-  "$snapshot_postdeploy_leader_resolver"
+  "$snapshot_postdeploy_leader_resolver" \
+  "$snapshot_flyway_job_runner"
 [[ "$(stat -c '%a:%u' "$snapshot_orphan_recovery_helper" 2>/dev/null || true)" \
    == "700:$(id -u)" ]] || {
   echo '[auto-deploy-launcher] target orphan-recovery helper snapshot is not private' >&2
@@ -94,6 +108,13 @@ chmod 700 \
   echo '[auto-deploy-launcher] target postdeploy leader resolver snapshot changed' >&2
   exit 79
 }
+[[ "$(stat -c '%a:%u' "$snapshot_flyway_job_runner" 2>/dev/null || true)" \
+   == "700:$(id -u)" \
+   && "$(sha256sum "$snapshot_flyway_job_runner" | awk '{print $1}')" \
+      == "$snapshot_flyway_job_runner_sha256" ]] || {
+  echo '[auto-deploy-launcher] target Flyway cleanup runner snapshot changed or is not private' >&2
+  exit 79
+}
 
 CARBONET_DEPLOY_SNAPSHOT_ACTIVE=true \
 CARBONET_DEPLOY_ORIGINAL_ROOT="$ROOT_DIR" \
@@ -103,4 +124,5 @@ CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT="$target_commit" \
 CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER="$snapshot_orphan_recovery_helper" \
 CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256="$snapshot_orphan_recovery_helper_sha256" \
 CARBONET_POSTDEPLOY_LEADER_RESOLVER="$snapshot_postdeploy_leader_resolver" \
+CARBONET_FLYWAY_JOB_RUNNER="$snapshot_flyway_job_runner" \
   bash "$snapshot_script" "$@"

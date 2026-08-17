@@ -16,11 +16,14 @@ all_tests=(
   ops/scripts/test-frontend-deploy-performance-budget.sh
   ops/scripts/test-deploy-phase-telemetry.sh
   ops/scripts/test-database-plan-flyway-gate.sh
+  ops/tests/test-flyway-job-timeout-contract.sh
   ops/scripts/test-process-worker-deploy-marker.sh
   ops/scripts/test-frontend-parallel-build-pipeline.sh
   ops/scripts/test-push-deploy-dispatch.sh
   ops/scripts/test-github-deploy-webhook.sh
   ops/scripts/test-post-reboot-runtime-recovery.sh
+  ops/scripts/test-auto-deploy-failure-handler.sh
+  ops/tests/test-auto-deploy-bootstrap-helper-snapshot.sh
 )
 
 add_test() {
@@ -60,13 +63,27 @@ select_for_path() {
       add_test ops/scripts/test-deploy-phase-telemetry.sh ;;
     ops/scripts/plan-incremental-work.sh|ops/scripts/test-database-plan-flyway-gate.sh)
       add_test ops/scripts/test-database-plan-flyway-gate.sh ;;
+    ops/scripts/run-flyway-migration-job.sh|ops/tests/test-flyway-job-timeout-contract.sh|apps/carbonet-api/src/main/java/egovframework/com/migration/FlywayMigrationApplication.java)
+      add_test ops/tests/test-flyway-job-timeout-contract.sh ;;
+    apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260816154000__compile_composite_executable_design_authority.sql|ops/tests/test-composite-axis-migration-performance-postgres.sh|ops/tests/fixtures/composite-axis-migration-performance-prerequisites.sql|ops/tests/test-composite-executable-design-authority-postgres.sql|ops/tests/test-project-runtime-purge-composite-migrations-postgres.sh)
+      add_test ops/tests/test-composite-axis-migration-performance-postgres.sh ;;
     ops/scripts/run-process-development-worker.sh|ops/scripts/run-process-development-dispatcher.sh|ops/scripts/test-process-worker-deploy-marker.sh)
       add_test ops/scripts/test-process-worker-deploy-marker.sh ;;
     ops/scripts/test-frontend-parallel-build-pipeline.sh)
       add_test ops/scripts/test-frontend-parallel-build-pipeline.sh ;;
     ops/scripts/resonance-k8s-build-deploy-80-v2.sh)
+      add_test ops/tests/test-flyway-job-timeout-contract.sh
       add_test ops/scripts/test-frontend-parallel-build-pipeline.sh
       add_test ops/scripts/test-runtime-candidate-checkpoint.sh ;;
+    ops/scripts/carbonet-auto-deploy-failure-handler.sh|ops/scripts/test-auto-deploy-failure-handler.sh)
+      add_test ops/tests/test-flyway-job-timeout-contract.sh
+      add_test ops/scripts/test-auto-deploy-failure-handler.sh ;;
+    ops/scripts/auto-deploy-main-launcher.sh)
+      add_test ops/tests/test-flyway-job-timeout-contract.sh
+      add_test ops/scripts/test-auto-deploy-failure-handler.sh
+      add_test ops/tests/test-auto-deploy-bootstrap-helper-snapshot.sh ;;
+    ops/tests/test-auto-deploy-bootstrap-helper-snapshot.sh)
+      add_test ops/tests/test-auto-deploy-bootstrap-helper-snapshot.sh ;;
     ops/scripts/test-push-deploy-dispatch.sh|.github/workflows/carbonet-push-deploy.yml)
       add_test ops/scripts/test-push-deploy-dispatch.sh ;;
     ops/scripts/resonance-github-deploy-webhook.py|ops/scripts/sync-github-deploy-webhook-url.py|ops/scripts/test-github-deploy-webhook.sh)

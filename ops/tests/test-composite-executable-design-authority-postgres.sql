@@ -21,7 +21,23 @@ CREATE TABLE framework_screen_blueprint(
   validation_status text NOT NULL,transition_status text NOT NULL,source_reference text NOT NULL,
   implementation_strategy text NOT NULL,specification_json text NOT NULL
 );
-CREATE TABLE framework_development_job(job_id bigint PRIMARY KEY);
+CREATE TABLE framework_development_job(
+  job_id bigint PRIMARY KEY,process_code text NOT NULL DEFAULT 'PROC',
+  result_json text NOT NULL DEFAULT '{}',
+  specification_json text NOT NULL DEFAULT '{"processInputHash":"fixture"}',
+  job_type text NOT NULL DEFAULT 'FULL_STACK_GENERATION',
+  job_group_code text NOT NULL DEFAULT 'PROC_CANONICAL_PUBLICATION',
+  job_status text NOT NULL DEFAULT 'PLANNED',quality_status text NOT NULL DEFAULT 'PENDING');
+CREATE TABLE framework_runtime_release_state(
+  release_key varchar(40) PRIMARY KEY,source_commit varchar(40) NOT NULL,
+  deployment_namespace varchar(100) NOT NULL,deployment_name varchar(100) NOT NULL,
+  deployment_uid varchar(120) NOT NULL,deployment_generation bigint NOT NULL,
+  observed_generation bigint NOT NULL,desired_replicas integer NOT NULL,
+  image_ref text NOT NULL,image_id text NOT NULL,health_status varchar(20) NOT NULL,
+  recorded_by varchar(100) NOT NULL,recorded_at timestamptz NOT NULL DEFAULT current_timestamp);
+CREATE TABLE framework_postdeploy_release_attempt(
+  candidate_id text NOT NULL,source_commit text NOT NULL,
+  UNIQUE(candidate_id,source_commit));
 CREATE TABLE framework_process_definition(
   process_code text PRIMARY KEY,domain_code text NOT NULL,owner_actor_code text NOT NULL,
   process_version text NOT NULL
@@ -50,10 +66,18 @@ CREATE TABLE framework_screen_resource(
 CREATE TABLE framework_process_step_screen_binding(
   process_code text NOT NULL,step_code text NOT NULL,screen_resource_id bigint NOT NULL,
   actor_code text NOT NULL,audience text NOT NULL,binding_status text NOT NULL);
-CREATE TABLE comtnthemedefinition(theme_id text PRIMARY KEY,use_at char(1),is_active char(1));
-CREATE TABLE ui_section_registry(section_id text PRIMARY KEY,active_yn char(1));
+CREATE TABLE comtnthemedefinition(
+  theme_id text PRIMARY KEY,theme_nm text,theme_dc text,theme_type text,
+  color_config text,typography_config text,spacing_config text,border_config text,
+  shadow_config text,class_prefix text,is_default boolean,use_at char(1),is_active char(1));
+CREATE TABLE ui_section_registry(
+  section_id varchar(100) PRIMARY KEY,section_name varchar(180),section_type varchar(40),
+  layout_contract text,responsive_contract text,accessibility_contract text,
+  design_reference varchar(200),asset_fingerprint varchar(64),active_yn char(1));
 CREATE TABLE ui_component_registry(
-  component_id text PRIMARY KEY,component_type text NOT NULL,active_yn char(1));
+  component_id text PRIMARY KEY,component_name text,component_type text NOT NULL,
+  owner_domain text,props_schema_json text,design_reference text,default_props text,
+  category text,asset_fingerprint text,active_yn char(1));
 CREATE TABLE framework_process_execution(execution_id uuid PRIMARY KEY);
 CREATE TABLE framework_process_execution_event(event_id bigint PRIMARY KEY);
 CREATE TABLE framework_actor_definition(actor_code text PRIMARY KEY,use_at char(1) NOT NULL);
@@ -112,6 +136,10 @@ BEGIN
   RETURN installed;
 END $$;
 
+CREATE TABLE framework_project_runtime_purge_receipt(
+  process_code text NOT NULL,project_id text,receipt_status text NOT NULL);
+SELECT framework_install_project_runtime_write_fences();
+
 INSERT INTO framework_process_definition VALUES('PROC','WORK','ACTOR','1.0.0');
 INSERT INTO framework_process_step VALUES(
   'PROC','STEP',1,'ACTOR','SAVE','DRAFT','DONE','record saved',false,
@@ -121,9 +149,11 @@ INSERT INTO framework_screen_resource VALUES(2,'/work/other','KRDS_WORKSPACE');
 INSERT INTO framework_process_step_screen_binding VALUES
   ('PROC','STEP',1,'ACTOR','USER','ACTIVE'),('PROC','STEP',1,'ACTOR','ADMIN','ACTIVE'),
   ('PROC','STEP',2,'ACTOR','USER','ACTIVE');
-INSERT INTO comtnthemedefinition VALUES('KRDS_GOV_DEFAULT','Y','Y');
-INSERT INTO ui_section_registry VALUES('MAIN','Y');
-INSERT INTO ui_component_registry VALUES('JSON_FORM','JSON_FORM','Y');
+INSERT INTO comtnthemedefinition(theme_id,use_at,is_active)
+VALUES('KRDS_GOV_DEFAULT','Y','Y');
+INSERT INTO ui_section_registry(section_id,active_yn) VALUES('MAIN','Y');
+INSERT INTO ui_component_registry(component_id,component_type,active_yn)
+VALUES('JSON_FORM','JSON_FORM','Y');
 
 INSERT INTO framework_professional_screen_contract VALUES
 (101,'PROC','STEP','/work','USER','ACTOR','Complete the governed work safely',
