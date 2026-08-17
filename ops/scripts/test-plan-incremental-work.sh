@@ -173,10 +173,35 @@ eval "$(bash "$PLANNER" "$backend" "$database" --format env)"
 [[ "$PLAN_DATABASE_REQUIRED" == true ]]
 [[ "$PLAN_TESTS" == *"runtime:postdeploy-candidate-evidence"* ]]
 
+mkdir -p apps/carbonet-api/src/main/resources/db/migration/postgresql
+printf 'select 1;\n' \
+  > apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817235000__bind_runtime_identity_to_pod_template.sql
+git add . && git commit -qm runtime-release-identity
+runtime_release_identity="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$database" "$runtime_release_identity" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == true ]]
+[[ "$PLAN_BACKEND_REQUIRED" == true ]]
+[[ "$PLAN_DATABASE_REQUIRED" == true ]]
+[[ "$PLAN_TESTS" == *"database:migration-validate"* ]]
+[[ "$PLAN_TESTS" == *"runtime:postdeploy-candidate-evidence"* ]]
+[[ ",$PLAN_TESTS," != *",runtime:identity-staged-reconcile-required,"* ]]
+[[ "$PLAN_REASONS" == *"runtime-release-identity-candidate-contract"* ]]
+[[ "$PLAN_REASONS" != *"identity-design-requires-staged-reconcile"* ]]
+
+printf 'select 1;\n' \
+  > apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817235100__identity_policy.sql
+git add . && git commit -qm database-identity-design
+database_identity_design="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$runtime_release_identity" "$database_identity_design" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == true ]]
+[[ "$PLAN_DATABASE_REQUIRED" == true ]]
+[[ "$PLAN_TESTS" == *"runtime:identity-staged-reconcile-required"* ]]
+[[ "$PLAN_REASONS" == *"identity-design-requires-staged-reconcile"* ]]
+
 printf 'class IdentityPolicy {}\n' > apps/carbonet-api/src/main/java/example/IdentityPolicy.java
 git add . && git commit -qm identity-design
 identity_design="$(git rev-parse HEAD)"
-eval "$(bash "$PLANNER" "$database" "$identity_design" --format env)"
+eval "$(bash "$PLANNER" "$database_identity_design" "$identity_design" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == true ]]
 [[ "$PLAN_TESTS" == *"runtime:identity-staged-reconcile-required"* ]]
 [[ "$PLAN_REASONS" == *"identity-design-requires-staged-reconcile"* ]]

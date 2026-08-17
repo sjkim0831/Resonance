@@ -65,6 +65,16 @@ while IFS= read -r path; do
       ;;
   esac
   case "$path" in
+    apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817235000__bind_runtime_identity_to_pod_template.sql)
+      # This migration binds the deployment PodTemplate hash to the durable
+      # runtime-release ledger. It is guarded by the database transaction,
+      # durable postdeploy attempt, candidate evidence, and rollback contracts;
+      # it does not mutate Keycloak, actors, accounts, roles, or assignments.
+      # Keep this exception exact so every other identity-named migration still
+      # fails closed until it has its own staged reconcile/rollback contract.
+      add_test "runtime:postdeploy-candidate-evidence"
+      add_reason "runtime-release-identity-candidate-contract"
+      ;;
     apps/*/src/main/*[Ii]dentity*|modules/*/src/main/*[Ii]dentity*|common/*/src/main/*[Ii]dentity*|\
     apps/carbonet-api/src/main/resources/db/migration/*[Ii]dentity*|\
     deploy/*[Kk]eycloak*|manifests/*[Kk]eycloak*|ops/config/*[Ii]dentity*)
