@@ -220,27 +220,108 @@ SELECT 'THEME', theme_id,
  WHERE theme_id ~ '^[A-Za-z0-9][A-Za-z0-9_.:-]{1,199}$'
 ON CONFLICT (asset_type,asset_id) DO NOTHING;
 
--- Legacy manifests stored only page-component zones. Preserve those real zones
--- with deterministic governed section identities so the migrated SCREEN head
--- is valid and can subsequently be edited through the source endpoint.
-WITH legacy_zones AS (
-  SELECT DISTINCT page.page_id,page.page_name,page.design_token_version,
-         mapping.layout_zone,
-         'MIG_ZONE_'||upper(md5(page.page_id||chr(31)||mapping.layout_zone)) section_id
+-- Keep the initial legacy set stable while its manifests are canonicalized.
+-- The explicit DROP at the end also makes direct psql -f verification safe
+-- when each top-level statement is committed independently.
+CREATE TEMP TABLE common_design_legacy_page_migration AS
+SELECT page_id
+  FROM ui_page_manifest page
+ WHERE NOT coalesce(framework_common_design_screen_composition_exact(
+       framework_try_jsonb(page.component_schema)),false);
+CREATE UNIQUE INDEX common_design_legacy_page_migration_pk
+    ON common_design_legacy_page_migration(page_id);
+
+-- Runtime manifests historically used lowercase kebab tokens while the
+-- governed theme registry uses uppercase identifiers. Resolve an exact theme
+-- first, then the deterministic punctuation-insensitive registry identity.
+WITH requested_theme AS (
+  SELECT page.page_id,
+         coalesce(nullif(trim(page.design_token_version),''),'KRDS_GOV_DEFAULT')
+           requested_id
     FROM ui_page_manifest page
+), resolved_theme AS (
+  SELECT requested.page_id,
+         coalesce((
+           SELECT theme.theme_id
+             FROM comtnthemedefinition theme
+            WHERE theme.theme_id=requested.requested_id
+               OR regexp_replace(upper(trim(theme.theme_id)),
+                    '[^A-Z0-9]+','_','g')=
+                  regexp_replace(upper(requested.requested_id),
+                    '[^A-Z0-9]+','_','g')
+            ORDER BY (theme.theme_id=requested.requested_id) DESC,
+                     (lower(theme.theme_id)=lower(requested.requested_id)) DESC,
+                     theme.theme_id COLLATE "C"
+            LIMIT 1
+         ),requested.requested_id) canonical_id
+    FROM requested_theme requested
+)
+UPDATE ui_page_manifest page
+   SET design_token_version=resolved.canonical_id,
+       updated_at=current_timestamp
+  FROM resolved_theme resolved
+ WHERE page.page_id=resolved.page_id
+   AND page.design_token_version IS DISTINCT FROM resolved.canonical_id;
+
+-- Legacy manifests stored only page-component zones. A section is a global
+-- common asset, so every structurally identical runtime zone must resolve to
+-- one shared identity rather than one identity per page. The prior structural
+-- uniqueness migration enforces this same five-column authority.
+WITH legacy_zones AS (
+  SELECT DISTINCT
+         coalesce(nullif(trim(mapping.layout_zone),''),'KRDS_GRID') layout_contract,
+         coalesce(nullif(trim(page.design_token_version),''),'KRDS_GOV_DEFAULT')
+           design_reference
+    FROM ui_page_manifest page
+    JOIN common_design_legacy_page_migration legacy ON legacy.page_id=page.page_id
     JOIN ui_page_component_map mapping ON mapping.page_id=page.page_id
-   WHERE NOT coalesce(framework_common_design_screen_composition_exact(
-     framework_try_jsonb(page.component_schema)),false)
+), canonical_legacy_zones AS (
+  SELECT 'MIG_ZONE_'||upper(md5(
+           'MIGRATED_ZONE'||chr(31)||layout_contract||chr(31)||
+           'PRESERVE_RUNTIME_ORDER'||chr(31)||'MIGRATED_RUNTIME_ZONE'||chr(31)||
+           design_reference)) section_id,
+         layout_contract,design_reference
+    FROM legacy_zones
 )
 INSERT INTO ui_section_registry(
   section_id,section_name,section_type,layout_contract,responsive_contract,
   accessibility_contract,design_reference,asset_fingerprint,active_yn)
-SELECT section_id,left(coalesce(nullif(trim(page_name),''),page_id)||' / '||layout_zone,180),
-       'MIGRATED_ZONE',layout_zone,'PRESERVE_RUNTIME_ORDER',
-       'MIGRATED_RUNTIME_ZONE',left(coalesce(nullif(trim(design_token_version),''),
-       'KRDS_GOV_DEFAULT'),200),NULL,'Y'
-  FROM legacy_zones
-ON CONFLICT (section_id) DO NOTHING;
+SELECT section_id,left('Migrated runtime zone / '||layout_contract||' / '||
+       design_reference,180),'MIGRATED_ZONE',layout_contract,
+       'PRESERVE_RUNTIME_ORDER','MIGRATED_RUNTIME_ZONE',
+       left(design_reference,200),NULL,'Y'
+  FROM canonical_legacy_zones
+ON CONFLICT DO NOTHING;
+
+DO $$
+BEGIN
+  IF EXISTS(
+    SELECT 1
+      FROM (
+        SELECT DISTINCT
+               coalesce(nullif(trim(mapping.layout_zone),''),'KRDS_GRID')
+                 layout_contract,
+               coalesce(nullif(trim(page.design_token_version),''),
+                 'KRDS_GOV_DEFAULT') design_reference
+          FROM ui_page_manifest page
+          JOIN common_design_legacy_page_migration legacy
+            ON legacy.page_id=page.page_id
+          JOIN ui_page_component_map mapping ON mapping.page_id=page.page_id
+      ) requested
+     WHERE (SELECT count(*)
+              FROM ui_section_registry section_asset
+             WHERE section_asset.active_yn='Y'
+               AND section_asset.section_type='MIGRATED_ZONE'
+               AND section_asset.layout_contract=requested.layout_contract
+               AND section_asset.responsive_contract='PRESERVE_RUNTIME_ORDER'
+               AND section_asset.accessibility_contract='MIGRATED_RUNTIME_ZONE'
+               AND section_asset.design_reference=requested.design_reference)<>1
+  ) THEN
+    RAISE EXCEPTION 'COMMON_DESIGN_LEGACY_SECTION_AUTHORITY_NOT_EXACT'
+      USING ERRCODE='23514';
+  END IF;
+END
+$$;
 
 UPDATE ui_section_registry
    SET section_name=coalesce(nullif(trim(section_name),''),section_id),
@@ -323,6 +404,88 @@ UPDATE framework_common_design_asset_source_state
    SET asset_fingerprint=framework_common_design_asset_fingerprint(canonical_asset)
  WHERE asset_type IN ('THEME','SECTION','COMPONENT')
    AND asset_fingerprint IS NULL;
+
+-- Compile every legacy page from the canonical registry identities. Runtime
+-- display-order collisions and instance-key collisions are deterministically
+-- renumbered without changing their stable relative order.
+CREATE OR REPLACE FUNCTION framework_common_design_legacy_screen_composition(
+    requested_page_id text, requested_theme text, requested_layout text)
+RETURNS jsonb LANGUAGE sql STABLE STRICT AS $$
+WITH raw_zones AS (
+  SELECT coalesce(nullif(trim(mapping.layout_zone),''),'KRDS_GRID') zone,
+         min(mapping.display_order) first_display_order
+    FROM ui_page_component_map mapping
+   WHERE mapping.page_id=requested_page_id
+   GROUP BY coalesce(nullif(trim(mapping.layout_zone),''),'KRDS_GRID')
+), canonical_zones AS (
+  SELECT zone,(row_number() OVER(
+           ORDER BY first_display_order,zone COLLATE "C")-1)::integer display_order
+    FROM raw_zones
+), section_payload AS (
+  SELECT jsonb_agg(jsonb_build_object(
+           'sectionId',section_asset.section_id,
+           'zone',zone.zone,'displayOrder',zone.display_order,
+           'props','{}'::jsonb)
+         ORDER BY zone.display_order) value
+    FROM canonical_zones zone
+    JOIN ui_section_registry section_asset
+      ON section_asset.active_yn='Y'
+     AND section_asset.section_type='MIGRATED_ZONE'
+     AND section_asset.layout_contract=zone.zone
+     AND section_asset.responsive_contract='PRESERVE_RUNTIME_ORDER'
+     AND section_asset.accessibility_contract='MIGRATED_RUNTIME_ZONE'
+     AND section_asset.design_reference=requested_theme
+), raw_components AS (
+  SELECT mapping.map_id,mapping.component_id,section_asset.section_id,
+         mapping.display_order,
+         coalesce(framework_try_jsonb(mapping.instance_props),'{}'::jsonb) props,
+         coalesce(nullif(trim(mapping.conditional_rule_summary),''),'always') condition,
+         CASE
+           WHEN coalesce(nullif(trim(mapping.instance_key),''),
+                  mapping.component_id||'-'||mapping.display_order)
+                ~ '^[A-Za-z0-9][A-Za-z0-9_.:-]{1,199}$'
+           THEN coalesce(nullif(trim(mapping.instance_key),''),
+                  mapping.component_id||'-'||mapping.display_order)
+           ELSE 'MIG_INSTANCE_'||upper(md5(requested_page_id||chr(31)||mapping.map_id))
+         END base_instance_key
+    FROM ui_page_component_map mapping
+    JOIN ui_section_registry section_asset
+      ON section_asset.active_yn='Y'
+     AND section_asset.section_type='MIGRATED_ZONE'
+     AND section_asset.layout_contract=coalesce(
+           nullif(trim(mapping.layout_zone),''),'KRDS_GRID')
+     AND section_asset.responsive_contract='PRESERVE_RUNTIME_ORDER'
+     AND section_asset.accessibility_contract='MIGRATED_RUNTIME_ZONE'
+     AND section_asset.design_reference=requested_theme
+   WHERE mapping.page_id=requested_page_id
+), ranked_components AS (
+  SELECT component.*,
+         (row_number() OVER(ORDER BY component.display_order,
+              component.map_id COLLATE "C")-1)::integer canonical_display_order,
+         row_number() OVER(PARTITION BY component.base_instance_key
+              ORDER BY component.display_order,component.map_id COLLATE "C")
+           duplicate_order
+    FROM raw_components component
+), component_payload AS (
+  SELECT jsonb_agg(jsonb_build_object(
+           'componentId',component.component_id,
+           'sectionId',component.section_id,
+           'instanceKey',CASE WHEN component.duplicate_order=1
+             THEN component.base_instance_key
+             ELSE 'MIG_INSTANCE_'||upper(md5(requested_page_id||chr(31)||
+                    component.map_id||chr(31)||component.base_instance_key)) END,
+           'displayOrder',component.canonical_display_order,
+           'props',component.props,'condition',component.condition)
+         ORDER BY component.canonical_display_order) value
+    FROM ranked_components component
+)
+SELECT jsonb_build_object(
+         'schema','carbonet.screen-composition/v1',
+         'layout',requested_layout,'theme',requested_theme,
+         'sections',coalesce(section_payload.value,'[]'::jsonb),
+         'components',coalesce(component_payload.value,'[]'::jsonb))
+  FROM section_payload CROSS JOIN component_payload
+$$;
 
 -- An exact manifest composition is authoritative during bootstrap. Rebuild its
 -- page map now so manifest, renderer input and source head cannot drift.
@@ -411,46 +574,32 @@ INSERT INTO framework_common_design_asset_source_state(
 WITH runtime_composition AS (
 SELECT page.*,
        coalesce(case when framework_common_design_screen_composition_exact(existing.value)
-                     then existing.value->'sections' end,
-                section.sections,'[]'::jsonb) AS sections,
+                      then existing.value->'sections' end,
+                 legacy.value->'sections','[]'::jsonb) AS sections,
        coalesce(case when framework_common_design_screen_composition_exact(existing.value)
-                     then existing.value->'components' end,
-                component.components,'[]'::jsonb) AS components,
+                      then existing.value->'components' end,
+                 legacy.value->'components','[]'::jsonb) AS components,
        coalesce(case when framework_common_design_screen_composition_exact(existing.value)
-                     then nullif(existing.value->>'layout','') end,
-                nullif(trim(page.layout_version),''),'KRDS_WORKSPACE') AS exact_layout,
+                      then nullif(existing.value->>'layout','') end,
+                 legacy.value->>'layout','KRDS_WORKSPACE') AS exact_layout,
        coalesce(case when framework_common_design_screen_composition_exact(existing.value)
-                     then nullif(existing.value->>'theme','') end,
-                nullif(trim(page.design_token_version),''),'KRDS_GOV_DEFAULT') AS exact_theme
+                      then nullif(existing.value->>'theme','') end,
+                 legacy.value->>'theme',nullif(trim(page.design_token_version),''),
+                 'KRDS_GOV_DEFAULT') AS exact_theme
   FROM ui_page_manifest page
   LEFT JOIN LATERAL (
       SELECT framework_try_jsonb(page.component_schema) value
   ) existing ON true
+  LEFT JOIN common_design_legacy_page_migration legacy_page
+    ON legacy_page.page_id=page.page_id
   LEFT JOIN LATERAL (
-      SELECT jsonb_agg(jsonb_build_object(
-               'sectionId','MIG_ZONE_'||upper(md5(
-                   page.page_id||chr(31)||mapping.layout_zone)),
-               'zone',mapping.layout_zone,
-               'displayOrder',mapping.display_order,
-               'props','{}'::jsonb)
-             ORDER BY mapping.display_order,mapping.layout_zone COLLATE "C") AS sections
-        FROM (SELECT layout_zone,min(display_order) display_order
-                FROM ui_page_component_map WHERE page_id=page.page_id
-               GROUP BY layout_zone) mapping
-  ) section ON true
-  LEFT JOIN LATERAL (
-      SELECT jsonb_agg(jsonb_build_object(
-               'componentId',mapping.component_id,
-               'sectionId','MIG_ZONE_'||upper(md5(
-                   page.page_id||chr(31)||mapping.layout_zone)),
-               'instanceKey',coalesce(nullif(trim(mapping.instance_key),''),
-                   mapping.component_id||'-'||mapping.display_order),
-               'displayOrder',mapping.display_order,
-               'props',coalesce(framework_try_jsonb(mapping.instance_props),'{}'::jsonb),
-               'condition',coalesce(nullif(trim(mapping.conditional_rule_summary),''),'always'))
-             ORDER BY mapping.display_order,mapping.map_id COLLATE "C") AS components
-        FROM ui_page_component_map mapping WHERE mapping.page_id=page.page_id
-  ) component ON true
+      SELECT framework_common_design_legacy_screen_composition(
+               page.page_id,coalesce(nullif(trim(page.design_token_version),''),
+                 'KRDS_GOV_DEFAULT'),
+               CASE WHEN trim(page.layout_version)~'^[A-Z][A-Z0-9_]{1,79}$'
+                    THEN trim(page.layout_version) ELSE 'KRDS_WORKSPACE' END) value
+       WHERE legacy_page.page_id IS NOT NULL
+  ) legacy ON true
 ), screen_assets AS (
 SELECT page.page_id,
        jsonb_build_object(
@@ -513,6 +662,22 @@ SELECT page.page_id,
     FROM screen_assets
 ON CONFLICT (asset_type,asset_id) DO NOTHING;
 
+DO $$
+BEGIN
+  IF EXISTS(
+    SELECT 1
+      FROM common_design_legacy_page_migration legacy
+      LEFT JOIN framework_common_design_asset_source_state source
+        ON source.asset_type='SCREEN' AND source.asset_id=legacy.page_id
+       AND source.asset_fingerprint IS NOT NULL
+     WHERE source.asset_id IS NULL
+  ) THEN
+    RAISE EXCEPTION 'COMMON_DESIGN_LEGACY_SCREEN_AUTHORITY_NOT_EXACT'
+      USING ERRCODE='23514';
+  END IF;
+END
+$$;
+
 UPDATE ui_page_manifest page
    SET page_name=source.canonical_asset->>'assetName',
        version_id=source.canonical_asset->>'version',
@@ -531,39 +696,13 @@ UPDATE ui_page_manifest page
 -- only by the globally authorized source transaction.
 WITH legacy_composition AS (
   SELECT page.page_id,
-         jsonb_build_object(
-           'schema','carbonet.screen-composition/v1',
-           'layout',coalesce(nullif(trim(page.layout_version),''),'KRDS_WORKSPACE'),
-           'theme',coalesce(nullif(trim(page.design_token_version),''),'KRDS_GOV_DEFAULT'),
-           'sections',coalesce(section.sections,'[]'::jsonb),
-           'components',coalesce(component.components,'[]'::jsonb)) composition
+         framework_common_design_legacy_screen_composition(
+           page.page_id,coalesce(nullif(trim(page.design_token_version),''),
+             'KRDS_GOV_DEFAULT'),
+           CASE WHEN trim(page.layout_version)~'^[A-Z][A-Z0-9_]{1,79}$'
+                THEN trim(page.layout_version) ELSE 'KRDS_WORKSPACE' END) composition
     FROM ui_page_manifest page
-    LEFT JOIN LATERAL (
-      SELECT jsonb_agg(jsonb_build_object(
-               'sectionId','MIG_ZONE_'||upper(md5(
-                   page.page_id||chr(31)||mapping.layout_zone)),
-               'zone',mapping.layout_zone,'displayOrder',mapping.display_order,
-               'props','{}'::jsonb)
-             ORDER BY mapping.display_order,mapping.layout_zone COLLATE "C") sections
-        FROM (SELECT layout_zone,min(display_order) display_order
-                FROM ui_page_component_map WHERE page_id=page.page_id
-               GROUP BY layout_zone) mapping
-    ) section ON true
-    LEFT JOIN LATERAL (
-      SELECT jsonb_agg(jsonb_build_object(
-               'componentId',mapping.component_id,
-               'sectionId','MIG_ZONE_'||upper(md5(
-                   page.page_id||chr(31)||mapping.layout_zone)),
-               'instanceKey',coalesce(nullif(trim(mapping.instance_key),''),
-                   mapping.component_id||'-'||mapping.display_order),
-               'displayOrder',mapping.display_order,
-               'props',coalesce(framework_try_jsonb(mapping.instance_props),'{}'::jsonb),
-               'condition',coalesce(nullif(trim(mapping.conditional_rule_summary),''),'always'))
-             ORDER BY mapping.display_order,mapping.map_id COLLATE "C") components
-        FROM ui_page_component_map mapping WHERE mapping.page_id=page.page_id
-    ) component ON true
-   WHERE NOT coalesce(framework_common_design_screen_composition_exact(
-     framework_try_jsonb(page.component_schema)),false)
+    JOIN common_design_legacy_page_migration legacy ON legacy.page_id=page.page_id
 )
 UPDATE ui_page_manifest page
    SET component_schema=legacy.composition::text,updated_at=current_timestamp
@@ -571,6 +710,41 @@ UPDATE ui_page_manifest page
  WHERE page.page_id=legacy.page_id
    AND EXISTS(SELECT 1 FROM framework_common_design_asset_source_state source
        WHERE source.asset_type='SCREEN' AND source.asset_id=page.page_id);
+
+-- The legacy compiler may repair duplicate order values and instance keys.
+-- Reproject those canonical values into the runtime map so source, manifest
+-- and renderer input remain byte-for-byte semantically aligned.
+DELETE FROM ui_page_component_map mapping
+ USING common_design_legacy_page_migration legacy,
+       framework_common_design_asset_source_state source
+ WHERE mapping.page_id=legacy.page_id
+   AND source.asset_type='SCREEN' AND source.asset_id=legacy.page_id;
+
+WITH legacy_pages AS (
+  SELECT legacy.page_id,source.canonical_asset#>'{payload,sections}' sections,
+         source.canonical_asset#>'{payload,components}' components
+    FROM common_design_legacy_page_migration legacy
+    JOIN framework_common_design_asset_source_state source
+      ON source.asset_type='SCREEN' AND source.asset_id=legacy.page_id
+)
+INSERT INTO ui_page_component_map(
+  map_id,page_id,layout_zone,component_id,instance_key,display_order,
+  conditional_rule_summary,instance_props,created_at,updated_at)
+SELECT 'MIG_MAP_'||upper(md5(page.page_id||chr(31)||
+       (component->>'instanceKey'))),
+       page.page_id,section->>'zone',component->>'componentId',
+       component->>'instanceKey',(component->>'displayOrder')::integer,
+       component->>'condition',(component->'props')::text,
+       current_timestamp,current_timestamp
+  FROM legacy_pages page
+ CROSS JOIN LATERAL jsonb_array_elements(page.components) component
+ JOIN LATERAL (
+   SELECT section FROM jsonb_array_elements(page.sections) section
+    WHERE section->>'sectionId'=component->>'sectionId'
+ ) exact_section ON true;
+
+DROP FUNCTION framework_common_design_legacy_screen_composition(text,text,text);
+DROP TABLE common_design_legacy_page_migration;
 
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE
     ON framework_common_design_asset_source_state FROM PUBLIC;
