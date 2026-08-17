@@ -27,7 +27,7 @@ if grep -Fq 'rollout restart deployment/resonance-backstage' "$DEPLOY"; then
   echo "Backstage deploy must not force a duplicate rollout" >&2
   exit 1
 fi
-grep -A8 'path: /.backstage/health/v1/readiness' "$MANIFEST" |
+grep -A8 'path: /api/resonance-projects/health/project-runtime-purge-recovery' "$MANIFEST" |
   grep -Fq 'periodSeconds: 1'
 grep -A8 'path: /components.yaml' "$MANIFEST" |
   grep -Fq 'periodSeconds: 1'
