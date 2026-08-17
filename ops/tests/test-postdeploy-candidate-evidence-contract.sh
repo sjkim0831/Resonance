@@ -664,7 +664,15 @@ if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") != "true":
     assert after_promoter.index("clear-success", authority) > runtime_marker_check
     assert after_promoter.index('archive_postdeploy_attempt_journal_terminal "$attempt_terminal_status"', authority) > runtime_marker_check
     assert deploy.count("enable_postdeploy_candidate_mode") == 4  # definition + 3 runtime paths
-    assert deploy.count("finalize_postdeploy_candidate_release") == 4
+    # One frontend-only path calls the base finalizer directly. The two runtime
+    # paths must pass through the composite-gate cleanup wrapper, which itself
+    # invokes the base finalizer exactly once. Count exact definitions/calls so
+    # the wrapper name cannot inflate the old substring-based assertion.
+    assert deploy.count("finalize_postdeploy_candidate_release() {") == 1
+    assert deploy.count("finalize_postdeploy_candidate_release_with_composite_gate_cleanup() {") == 1
+    assert deploy.count("if finalize_postdeploy_candidate_release; then") == 1
+    assert len(re.findall(r"(?m)^\s*finalize_postdeploy_candidate_release\s*$", deploy)) == 1
+    assert len(re.findall(r"(?m)^\s*finalize_postdeploy_candidate_release_with_composite_gate_cleanup\s*$", deploy)) == 2
     assert deploy.count("run_postdeploy_candidate_validation_groups") == 4
     assert deploy.count("CARBONET_SCREEN_CONTRACT_PREVIEW_ONLY=1 run_screen_contract_runtime_save_gate_if_required") == 2
     # Three normal completion paths plus durable aborted-recovery and
