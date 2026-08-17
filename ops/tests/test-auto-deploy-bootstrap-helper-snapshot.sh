@@ -13,9 +13,12 @@ RUNNER="$ROOT/ops/scripts/postdeploy-attempt-recovery-runner.sh"
 bash -n "$LAUNCHER" "$AUTO" "$HANDLER" "$RUNNER"
 for token in \
   'snapshot_orphan_recovery_helper=' \
+  'snapshot_postdeploy_leader_resolver=' \
+  'snapshot_postdeploy_leader_resolver_sha256=' \
   'CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT="$target_commit"' \
   'CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER="$snapshot_orphan_recovery_helper"' \
-  'CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256="$snapshot_orphan_recovery_helper_sha256"'; do
+  'CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256="$snapshot_orphan_recovery_helper_sha256"' \
+  'CARBONET_POSTDEPLOY_LEADER_RESOLVER="$snapshot_postdeploy_leader_resolver"'; do
   grep -Fq "$token" "$LAUNCHER"
 done
 grep -Fq 'verify_bootstrap_orphan_recovery_helper || exit $?' "$AUTO"
@@ -106,17 +109,40 @@ target_sha="$(git -C "$CARBONET_DEPLOY_ORIGINAL_ROOT" show --format= --no-textco
 [[ "$CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER" \
    != "$CARBONET_DEPLOY_ORIGINAL_ROOT/ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh" ]] \
   || fail stale-root-path
+[[ -s "${CARBONET_POSTDEPLOY_LEADER_RESOLVER:-}" \
+   && ! -L "$CARBONET_POSTDEPLOY_LEADER_RESOLVER" ]] || fail missing-leader-resolver
+[[ "$(dirname "$(readlink -f "$CARBONET_POSTDEPLOY_LEADER_RESOLVER")")" \
+   == "$(dirname "$(readlink -f "$CARBONET_DEPLOY_SNAPSHOT_PATH")")" ]] \
+  || fail leader-resolver-outside-snapshot
+[[ "$(stat -c '%a:%u' "$CARBONET_POSTDEPLOY_LEADER_RESOLVER")" == "700:$(id -u)" ]] \
+  || fail leader-resolver-non-private
+leader_resolver_sha="$(sha256sum "$CARBONET_POSTDEPLOY_LEADER_RESOLVER" | awk '{print $1}')"
+target_leader_resolver_sha="$(git -C "$CARBONET_DEPLOY_ORIGINAL_ROOT" show --format= --no-textconv \
+  "$CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT:ops/scripts/resolve-patroni-primary-pod.sh" \
+  | sha256sum | awk '{print $1}')"
+[[ "$leader_resolver_sha" == "$target_leader_resolver_sha" ]] \
+  || fail leader-resolver-target-hash-mismatch
+[[ "$CARBONET_POSTDEPLOY_LEADER_RESOLVER" \
+   != "$CARBONET_DEPLOY_ORIGINAL_ROOT/ops/scripts/resolve-patroni-primary-pod.sh" ]] \
+  || fail stale-root-leader-resolver-path
 result="$(bash "$CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER" "$CARBONET_DEPLOY_ORIGINAL_ROOT")"
-printf '%s\n%s\n%s\n%s\n%s\n' \
+leader_result="$(bash "$CARBONET_POSTDEPLOY_LEADER_RESOLVER")"
+printf '%s\n%s\n%s\n%s\n%s\n%s\n%s\n' \
   "$CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT" \
   "$CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER" \
   "$CARBONET_DEPLOY_SNAPSHOT_PATH" \
   "$result" \
-  "${CARBONET_RECOVERY_ONLY:-false}" >"$CARBONET_TEST_OUTPUT"
+  "${CARBONET_RECOVERY_ONLY:-false}" \
+  "$CARBONET_POSTDEPLOY_LEADER_RESOLVER" \
+  "$leader_result" >"$CARBONET_TEST_OUTPUT"
 SH
 cat >"$PUBLISHER/ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh" <<'SH'
 #!/usr/bin/env bash
 printf 'TARGET_HELPER:%s\n' "$1"
+SH
+cat >"$PUBLISHER/ops/scripts/resolve-patroni-primary-pod.sh" <<'SH'
+#!/usr/bin/env bash
+printf 'TARGET_LEADER_RESOLVER\n'
 SH
 chmod 755 "$PUBLISHER/ops/scripts/"*.sh
 git -C "$PUBLISHER" add ops/scripts
@@ -146,8 +172,23 @@ if [[ "${CARBONET_TEST_TAMPER_HELPER:-false}" == true ]]; then
     fi
   done
 elif [[ "${CARBONET_TEST_MAKE_HELPER_NONEXEC:-false}" == true ]]; then
-  helper="${!#}"
-  "$REAL_CHMOD" 600 "$helper"
+  for candidate in "$@"; do
+    if [[ "$(basename "$candidate")" == reconcile-exact-legacy-orphan-runtime-quarantine.sh ]]; then
+      "$REAL_CHMOD" 600 "$candidate"
+    fi
+  done
+elif [[ "${CARBONET_TEST_TAMPER_RESOLVER:-false}" == true ]]; then
+  for candidate in "$@"; do
+    if [[ "$(basename "$candidate")" == resolve-patroni-primary-pod.sh ]]; then
+      printf '# tampered after launcher hash\n' >>"$candidate"
+    fi
+  done
+elif [[ "${CARBONET_TEST_MAKE_RESOLVER_NONEXEC:-false}" == true ]]; then
+  for candidate in "$@"; do
+    if [[ "$(basename "$candidate")" == resolve-patroni-primary-pod.sh ]]; then
+      "$REAL_CHMOD" 600 "$candidate"
+    fi
+  done
 fi
 SH
 chmod 755 "$FAKE_BIN/mktemp" "$FAKE_BIN/chmod"
@@ -174,8 +215,9 @@ env "${COMMON_ENV[@]}" \
 mapfile -t normal <"$NORMAL_OUTPUT"
 [[ "${normal[0]}" == "$TARGET" \
    && "${normal[3]}" == "TARGET_HELPER:$OPERATOR" \
-   && "${normal[4]}" == false ]]
-[[ ! -e "${normal[1]}" && ! -e "${normal[2]}" ]]
+   && "${normal[4]}" == false \
+   && "${normal[6]}" == TARGET_LEADER_RESOLVER ]]
+[[ ! -e "${normal[1]}" && ! -e "${normal[2]}" && ! -e "${normal[5]}" ]]
 assert_snapshot_parent_empty
 
 RECOVERY_OUTPUT="$TMP/recovery.out"
@@ -188,7 +230,8 @@ env "${COMMON_ENV[@]}" \
 mapfile -t recovery <"$RECOVERY_OUTPUT"
 [[ "${recovery[0]}" == "$TARGET" \
    && "${recovery[3]}" == "TARGET_HELPER:$OPERATOR" \
-   && "${recovery[4]}" == true ]]
+   && "${recovery[4]}" == true \
+   && "${recovery[6]}" == TARGET_LEADER_RESOLVER ]]
 assert_snapshot_parent_empty
 
 status=0
@@ -198,6 +241,25 @@ env "${COMMON_ENV[@]}" \
   "CARBONET_TEST_EXPECTED_TARGET=$TARGET" \
   bash "$LAUNCHER" >"$TMP/tampered.log" 2>&1 || status=$?
 [[ "$status" == 79 && ! -e "$TMP/tampered.out" ]]
+assert_snapshot_parent_empty
+
+status=0
+env "${COMMON_ENV[@]}" \
+  CARBONET_TEST_TAMPER_RESOLVER=true \
+  "CARBONET_TEST_OUTPUT=$TMP/resolver-tampered.out" \
+  "CARBONET_TEST_EXPECTED_TARGET=$TARGET" \
+  bash "$LAUNCHER" >"$TMP/resolver-tampered.log" 2>&1 || status=$?
+[[ "$status" == 79 && ! -e "$TMP/resolver-tampered.out" ]]
+assert_snapshot_parent_empty
+
+status=0
+env "${COMMON_ENV[@]}" \
+  CARBONET_TEST_MAKE_RESOLVER_NONEXEC=true \
+  "CARBONET_TEST_OUTPUT=$TMP/resolver-nonexec.out" \
+  "CARBONET_TEST_EXPECTED_TARGET=$TARGET" \
+  CARBONET_RECOVERY_ONLY=true "CARBONET_RECOVERY_TARGET_COMMIT=$TARGET" \
+  bash "$LAUNCHER" >"$TMP/resolver-nonexec.log" 2>&1 || status=$?
+[[ "$status" == 79 && ! -e "$TMP/resolver-nonexec.out" ]]
 assert_snapshot_parent_empty
 
 # Exercise the production verifier itself so a launcher fixture cannot mask a
@@ -235,6 +297,21 @@ expect_remote_target_failure() {
   assert_snapshot_parent_empty
 }
 
+git -C "$PUBLISHER" rm -q ops/scripts/resolve-patroni-primary-pod.sh
+git -C "$PUBLISHER" commit -qm missing-leader-resolver
+git -C "$PUBLISHER" push -q origin HEAD:main
+MISSING_RESOLVER_TARGET="$(git -C "$PUBLISHER" rev-parse HEAD)"
+expect_remote_target_failure missing-resolver "$MISSING_RESOLVER_TARGET"
+
+git -C "$PUBLISHER" checkout "$TARGET" -- ops/scripts/resolve-patroni-primary-pod.sh
+: >"$PUBLISHER/ops/scripts/resolve-patroni-primary-pod.sh"
+git -C "$PUBLISHER" add ops/scripts/resolve-patroni-primary-pod.sh
+git -C "$PUBLISHER" commit -qm empty-leader-resolver
+git -C "$PUBLISHER" push -q origin HEAD:main
+EMPTY_RESOLVER_TARGET="$(git -C "$PUBLISHER" rev-parse HEAD)"
+expect_remote_target_failure empty-resolver "$EMPTY_RESOLVER_TARGET"
+
+git -C "$PUBLISHER" checkout "$TARGET" -- ops/scripts/resolve-patroni-primary-pod.sh
 git -C "$PUBLISHER" rm -q ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh
 git -C "$PUBLISHER" commit -qm missing-helper
 git -C "$PUBLISHER" push -q origin HEAD:main
@@ -257,4 +334,4 @@ env "${COMMON_ENV[@]}" CARBONET_TEST_MAKE_HELPER_NONEXEC=true \
 [[ "$status" == 79 && ! -e "$TMP/nonexec.out" ]]
 assert_snapshot_parent_empty
 
-printf '[bootstrap-helper-snapshot-test] PASS targetExact=1 staleRootExec=0 recovery=1 missing=79 empty=79 nonexec=79 tampered=79 productionMutants=2 cleanupLaunches=6\n'
+printf '[bootstrap-helper-snapshot-test] PASS targetExact=2 staleRootExec=0 recovery=1 missingHelper=79 missingResolver=79 emptyHelper=79 emptyResolver=79 helperNonPrivate=79 resolverNonPrivate=79 helperTampered=79 resolverTampered=79 productionMutants=2 cleanupLaunches=10\n'
