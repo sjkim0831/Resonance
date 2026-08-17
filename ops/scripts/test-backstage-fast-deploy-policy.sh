@@ -59,6 +59,7 @@ grep -Fq 'deterministic policy gates reused: unchanged fingerprint' "$AUTO_DEPLO
 grep -Fq 'sha256sum "${policy_existing_files[@]}"' "$AUTO_DEPLOY"
 grep -Fq 'cached_policy_digest" == "$policy_digest"' "$AUTO_DEPLOY"
 grep -Fq "printf 'MISSING  %s\\n'" "$AUTO_DEPLOY"
+grep -Fq 'BACKUP_TIMEOUT_SECONDS="${CARBONET_BACKUP_TIMEOUT_SECONDS:-3600}"' "$AUTO_DEPLOY"
 if grep -Fq "awk '/^Driver:/ {print \$2; exit}'" "$DEPLOY"; then
   echo "buildx capability detection must not trigger SIGPIPE under pipefail" >&2
   exit 1
