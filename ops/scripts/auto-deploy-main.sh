@@ -884,8 +884,6 @@ if [[ ! -r "$KUBECONFIG" ]]; then
   echo "[auto-deploy] refusing deployment: kubeconfig is not readable ($KUBECONFIG)" >&2
   exit 8
 fi
-mkdir -p "$BACKUP_DIR"
-
 # Detached deployment worktrees are disposable build inputs. Remove leftovers
 # from completed or interrupted runs before Kubernetes evaluates DiskPressure;
 # otherwise the single node can taint itself before Patroni/etcd health checks.
@@ -1031,8 +1029,24 @@ echo "[auto-deploy] PostgreSQL backup leader: $POSTGRES_POD"
 mkdir -p "$(dirname "$platform_preflight_cache")"
 printf '%s|%s\n' "$platform_preflight_now" "$POSTGRES_POD" >"${platform_preflight_cache}.tmp"
 chmod 0644 "${platform_preflight_cache}.tmp"
-mv "${platform_preflight_cache}.tmp" "$platform_preflight_cache"
+  mv "${platform_preflight_cache}.tmp" "$platform_preflight_cache"
 fi
+mkdir -p -m 0700 -- "$BACKUP_DIR"
+[[ -d "$BACKUP_DIR" && ! -L "$BACKUP_DIR" ]] || {
+  echo "[auto-deploy] refusing unsafe pre-deploy backup directory: $BACKUP_DIR" >&2
+  exit 8
+}
+if find "$BACKUP_DIR" -maxdepth 1 \
+    \( -type l -o \! -user "$(id -u)" \) -print -quit | grep -q .; then
+  echo "[auto-deploy] refusing pre-deploy backup storage with links or foreign ownership" >&2
+  exit 8
+fi
+chmod 0700 "$BACKUP_DIR"
+find "$BACKUP_DIR" -maxdepth 1 -type f -exec chmod 0600 {} +
+[[ "$(stat -c '%a:%u' "$BACKUP_DIR")" == "700:$(id -u)" ]] || {
+  echo "[auto-deploy] refusing pre-deploy backup storage without private ownership" >&2
+  exit 8
+}
 record_deploy_phase "platform_preflight"
 else
   recovery_target_commit="${CARBONET_RECOVERY_TARGET_COMMIT:-}"
@@ -1069,6 +1083,8 @@ fi
 live_frontend_overlay="${CARBONET_LIVE_FRONTEND_OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}"
 backup_application_name="carbonet-auto-deploy-$$"
 backup_cleanup_required=false
+backup_partial_file=""
+roles_backup_partial_file=""
 schema_backup_dir=""
 schema_restore_database=""
 schema_restore_container=""
@@ -1398,6 +1414,34 @@ bounded_cleanup_kubectl() {
   fi
   timeout --signal=TERM --kill-after=1s "${timeout_seconds}s" \
     kubectl --request-timeout="${request_timeout_seconds}s" "$@"
+}
+
+arm_private_backup_partial() {
+  local final="$1" partial backup_parent final_parent
+  backup_parent="$(readlink -f "$BACKUP_DIR" 2>/dev/null)" || return 1
+  final_parent="$(readlink -f "$(dirname -- "$final")" 2>/dev/null)" || return 1
+  [[ "$final" == "$BACKUP_DIR"/* \
+     && "$final_parent" == "$backup_parent" \
+     && ! -e "$final" && ! -L "$final" ]] || return 1
+  partial="${final}.partial.$$"
+  [[ ! -e "$partial" && ! -L "$partial" ]] || return 1
+  printf '%s\n' "$partial"
+}
+
+publish_private_backup_partial() {
+  local partial="$1" final="$2" backup_parent final_parent partial_parent
+  backup_parent="$(readlink -f "$BACKUP_DIR" 2>/dev/null)" || return 1
+  final_parent="$(readlink -f "$(dirname -- "$final")" 2>/dev/null)" || return 1
+  partial_parent="$(readlink -f "$(dirname -- "$partial")" 2>/dev/null)" || return 1
+  [[ "$partial" == "${final}.partial.$$" \
+     && "$final" == "$BACKUP_DIR"/* \
+     && "$final_parent" == "$backup_parent" \
+     && "$partial_parent" == "$backup_parent" \
+     && -f "$partial" && ! -L "$partial" \
+     && "$(stat -c '%a:%u' "$partial")" == "600:$(id -u)" \
+     && ! -e "$final" && ! -L "$final" ]] || return 1
+  mv -T -- "$partial" "$final" || return 1
+  sync -f "$BACKUP_DIR" || return 1
 }
 
 cleanup_remote_backup() {
@@ -1853,6 +1897,13 @@ cleanup_deploy() {
   if [[ -n "$schema_backup_dir" ]]; then
     rm -rf -- "$schema_backup_dir"
   fi
+  for partial_backup in "$backup_partial_file" "$roles_backup_partial_file"; do
+    [[ -z "$partial_backup" ]] && continue
+    case "$partial_backup" in
+      "$BACKUP_DIR"/*.partial."$$") rm -f -- "$partial_backup" ;;
+      *) original_status=79 ;;
+    esac
+  done
   current_root="$(realpath -m "${ROOT_DIR:-/}")"
   persistent_root="$(realpath -m "${persistent_build_worktree:-/nonexistent}")"
   if [[ "$current_root" == "$persistent_root" &&
@@ -5057,6 +5108,8 @@ if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:
   echo "[auto-deploy] database backup scope: $backup_scope"
 fi
 if [[ "$backup_required" == "true" ]]; then
+  backup_previous_umask="$(umask)"
+  umask 077
   backup_cleanup_required=true
   # A disconnected kubectl/pg_dump pipeline can survive the systemd process
   # and retain ACCESS SHARE locks indefinitely. Reap only deploy-owned
@@ -5068,7 +5121,9 @@ if [[ "$backup_required" == "true" ]]; then
     >/dev/null 2>&1 || true
   if [[ "$schema_backup_only" == "true" ]]; then
     backup_file="$BACKUP_DIR/carbonet-schema-$timestamp-$current_commit.tar"
-    schema_backup_dir="$(mktemp -d)"
+    backup_partial_file="$(arm_private_backup_partial "$backup_file")" || {
+      echo "[auto-deploy] refusing unsafe schema backup partial path" >&2; exit 11; }
+    schema_backup_dir="$(mktemp -d "$BACKUP_DIR/.schema-backup.XXXXXX")"
     source_restore_counts="$(kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
       psql -U "$POSTGRES_USER" -h 127.0.0.1 -d "$POSTGRES_DB" -X -q -At -F $'\t' \
         -v ON_ERROR_STOP=1 -c "select \
@@ -5146,39 +5201,49 @@ if [[ "$backup_required" == "true" ]]; then
       echo "[auto-deploy] refusing deployment: full schema and Flyway-history restore verification failed" >&2
       exit 19
     }
-    tar -C "$schema_backup_dir" -cf "$backup_file" \
+    tar -C "$schema_backup_dir" -cf "$backup_partial_file" \
       schema.dump flyway-history.dump migrations.manifest migrations.patch restore-evidence.json
-    backup_bytes="$(stat -c %s "$backup_file")"
-    if [[ "$backup_bytes" -lt 2048 ]] || ! tar -tf "$backup_file" | grep -q '^schema.dump$'; then
-      rm -f "$backup_file"
+    backup_bytes="$(stat -c %s "$backup_partial_file")"
+    if [[ "$backup_bytes" -lt 2048 ]] || ! tar -tf "$backup_partial_file" | grep -q '^schema.dump$'; then
+      rm -f "$backup_partial_file"
       echo "[auto-deploy] refusing deployment: schema backup package is invalid (${backup_bytes} bytes)" >&2
       exit 11
     fi
+    publish_private_backup_partial "$backup_partial_file" "$backup_file" || {
+      echo "[auto-deploy] refusing deployment: schema backup atomic publish failed" >&2; exit 11; }
+    backup_partial_file=""
     rm -rf "$schema_backup_dir"
     schema_backup_dir=""
     echo "[auto-deploy] schema backup verified: $backup_file (${backup_bytes} bytes, verifier=${schema_restore_verifier}, restoredFlywayRows=${restored_history_count}, restoredSchemaObjects=${restored_schema_object_count})"
   elif [[ "$menu_backup_only" == "true" ]]; then
     backup_file="$BACKUP_DIR/carbonet-menu-$timestamp-$current_commit.sql.gz"
+    backup_partial_file="$(arm_private_backup_partial "$backup_file")" || {
+      echo "[auto-deploy] refusing unsafe menu backup partial path" >&2; exit 11; }
     echo "[auto-deploy] menu-only migration detected; creating targeted transactional backup"
     if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
       kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
         env "PGAPPNAME=$backup_application_name" "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
         pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges \
           -h 127.0.0.1 -t comtnmenuinfo -t comtccmmndetailcode \
-      | gzip -1 > "$backup_file"; then
-      rm -f "$backup_file"
+      | gzip -1 > "$backup_partial_file"; then
+      rm -f "$backup_partial_file"
       echo "[auto-deploy] refusing deployment: targeted menu backup failed" >&2
       exit 14
     fi
-    backup_bytes="$(stat -c %s "$backup_file")"
-    if [[ "$backup_bytes" -lt 1024 ]] || ! gzip -t "$backup_file"; then
-      rm -f "$backup_file"
+    backup_bytes="$(stat -c %s "$backup_partial_file")"
+    if [[ "$backup_bytes" -lt 1024 ]] || ! gzip -t "$backup_partial_file"; then
+      rm -f "$backup_partial_file"
       echo "[auto-deploy] refusing deployment: targeted menu backup is invalid (${backup_bytes} bytes)" >&2
       exit 11
     fi
+    publish_private_backup_partial "$backup_partial_file" "$backup_file" || {
+      echo "[auto-deploy] refusing deployment: targeted menu backup atomic publish failed" >&2; exit 11; }
+    backup_partial_file=""
     echo "[auto-deploy] targeted menu backup verified: $backup_file (${backup_bytes} bytes)"
   elif [[ "$governance_backup_only" == "true" ]]; then
     backup_file="$BACKUP_DIR/carbonet-governance-$timestamp-$current_commit.sql.gz"
+    backup_partial_file="$(arm_private_backup_partial "$backup_file")" || {
+      echo "[auto-deploy] refusing unsafe governance backup partial path" >&2; exit 11; }
     echo "[auto-deploy] governance-only migration detected; creating targeted transactional backup"
     if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
       kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
@@ -5208,20 +5273,25 @@ if [[ "$backup_required" == "true" ]]; then
           -t framework_company_reapplication_audit \
           -t comtninsttinfo -t comtninsttfile \
           -t comtncomponentinfo \
-      | gzip -1 > "$backup_file"; then
-      rm -f "$backup_file"
+      | gzip -1 > "$backup_partial_file"; then
+      rm -f "$backup_partial_file"
       echo "[auto-deploy] refusing deployment: targeted governance backup failed" >&2
       exit 14
     fi
-    backup_bytes="$(stat -c %s "$backup_file")"
-    if [[ "$backup_bytes" -lt 1024 ]] || ! gzip -t "$backup_file"; then
-      rm -f "$backup_file"
+    backup_bytes="$(stat -c %s "$backup_partial_file")"
+    if [[ "$backup_bytes" -lt 1024 ]] || ! gzip -t "$backup_partial_file"; then
+      rm -f "$backup_partial_file"
       echo "[auto-deploy] refusing deployment: targeted governance backup is invalid (${backup_bytes} bytes)" >&2
       exit 11
     fi
+    publish_private_backup_partial "$backup_partial_file" "$backup_file" || {
+      echo "[auto-deploy] refusing deployment: targeted governance backup atomic publish failed" >&2; exit 11; }
+    backup_partial_file=""
     echo "[auto-deploy] targeted governance backup verified: $backup_file (${backup_bytes} bytes)"
   elif [[ "$activity_backup_only" == "true" ]]; then
     backup_file="$BACKUP_DIR/carbonet-activity-$timestamp-$current_commit.sql.gz"
+    backup_partial_file="$(arm_private_backup_partial "$backup_file")" || {
+      echo "[auto-deploy] refusing unsafe activity backup partial path" >&2; exit 11; }
     echo "[auto-deploy] activity-workflow migration detected; creating targeted transactional backup"
     if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
       kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
@@ -5234,20 +5304,25 @@ if [[ "$backup_required" == "true" ]]; then
           -t emission_factor_reference -t emission_factor_mapping_decision \
           -t emission_calculation_run -t emission_calculation_item \
           -t emission_project_task -t emission_project_history -t emission_workflow_notification \
-      | gzip -1 > "$backup_file"; then
-      rm -f "$backup_file"
+      | gzip -1 > "$backup_partial_file"; then
+      rm -f "$backup_partial_file"
       echo "[auto-deploy] refusing deployment: targeted activity-workflow backup failed" >&2
       exit 14
     fi
-    backup_bytes="$(stat -c %s "$backup_file")"
-    if [[ "$backup_bytes" -lt 1024 ]] || ! gzip -t "$backup_file"; then
-      rm -f "$backup_file"
+    backup_bytes="$(stat -c %s "$backup_partial_file")"
+    if [[ "$backup_bytes" -lt 1024 ]] || ! gzip -t "$backup_partial_file"; then
+      rm -f "$backup_partial_file"
       echo "[auto-deploy] refusing deployment: targeted activity-workflow backup is invalid (${backup_bytes} bytes)" >&2
       exit 11
     fi
+    publish_private_backup_partial "$backup_partial_file" "$backup_file" || {
+      echo "[auto-deploy] refusing deployment: targeted activity backup atomic publish failed" >&2; exit 11; }
+    backup_partial_file=""
     echo "[auto-deploy] targeted activity-workflow backup verified: $backup_file (${backup_bytes} bytes)"
   elif [[ "$identity_backup_only" == "true" ]]; then
     backup_file="$BACKUP_DIR/carbonet-identity-$timestamp-$current_commit.sql.gz"
+    backup_partial_file="$(arm_private_backup_partial "$backup_file")" || {
+      echo "[auto-deploy] refusing unsafe identity backup partial path" >&2; exit 11; }
     echo "[auto-deploy] identity-only migration detected; creating targeted transactional backup"
     if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
       kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
@@ -5257,54 +5332,68 @@ if [[ "$backup_required" == "true" ]]; then
           -t comtnpasswordresethist -t comtnauthtokenstore \
           -t spring_session -t spring_session_attributes \
           -t account_recovery_request -t account_recovery_audit \
-      | gzip -1 > "$backup_file"; then
-      rm -f "$backup_file"
+      | gzip -1 > "$backup_partial_file"; then
+      rm -f "$backup_partial_file"
       echo "[auto-deploy] refusing deployment: targeted identity backup failed" >&2
       exit 14
     fi
-    backup_bytes="$(stat -c %s "$backup_file")"
-    if [[ "$backup_bytes" -lt 1024 ]] || ! gzip -t "$backup_file"; then
-      rm -f "$backup_file"
+    backup_bytes="$(stat -c %s "$backup_partial_file")"
+    if [[ "$backup_bytes" -lt 1024 ]] || ! gzip -t "$backup_partial_file"; then
+      rm -f "$backup_partial_file"
       echo "[auto-deploy] refusing deployment: targeted identity backup is invalid (${backup_bytes} bytes)" >&2
       exit 11
     fi
+    publish_private_backup_partial "$backup_partial_file" "$backup_file" || {
+      echo "[auto-deploy] refusing deployment: targeted identity backup atomic publish failed" >&2; exit 11; }
+    backup_partial_file=""
     echo "[auto-deploy] targeted identity backup verified: $backup_file (${backup_bytes} bytes)"
   else
   echo "[auto-deploy] database migration detected; creating full pre-deploy backup"
+  roles_backup_partial_file="$(arm_private_backup_partial "$roles_backup_file")" || {
+    echo "[auto-deploy] refusing unsafe roles backup partial path" >&2; exit 17; }
   echo "[auto-deploy] backing up PostgreSQL roles to $roles_backup_file"
   if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
     kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
       env "PGAPPNAME=$backup_application_name" "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
       pg_dumpall -U "$POSTGRES_USER" --roles-only -h 127.0.0.1 \
-    | gzip -1 > "$roles_backup_file"; then
-    rm -f "$roles_backup_file"
+    | gzip -1 > "$roles_backup_partial_file"; then
+    rm -f "$roles_backup_partial_file"
     echo "[auto-deploy] refusing deployment: PostgreSQL role backup failed" >&2
     exit 16
   fi
-  if [[ "$(stat -c %s "$roles_backup_file")" -lt 100 ]] || ! gzip -t "$roles_backup_file"; then
-    rm -f "$roles_backup_file"
+  if [[ "$(stat -c %s "$roles_backup_partial_file")" -lt 100 ]] || ! gzip -t "$roles_backup_partial_file"; then
+    rm -f "$roles_backup_partial_file"
     echo "[auto-deploy] refusing deployment: PostgreSQL role backup is invalid" >&2
     exit 17
   fi
+  publish_private_backup_partial "$roles_backup_partial_file" "$roles_backup_file" || {
+    echo "[auto-deploy] refusing deployment: roles backup atomic publish failed" >&2; exit 17; }
+  roles_backup_partial_file=""
+  backup_partial_file="$(arm_private_backup_partial "$backup_file")" || {
+    echo "[auto-deploy] refusing unsafe database backup partial path" >&2; exit 11; }
   echo "[auto-deploy] backing up database to $backup_file"
   if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
     kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
       env "PGAPPNAME=$backup_application_name" "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
       pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges \
         -h 127.0.0.1 \
-    | gzip -1 > "$backup_file"; then
-    rm -f "$backup_file"
+    | gzip -1 > "$backup_partial_file"; then
+    rm -f "$backup_partial_file"
     echo "[auto-deploy] refusing deployment: database backup failed or exceeded ${BACKUP_TIMEOUT_SECONDS}s" >&2
     exit 14
   fi
-  test -s "$backup_file"
-  backup_bytes="$(stat -c %s "$backup_file")"
-  if [[ "$backup_bytes" -lt "$MIN_BACKUP_BYTES" ]] || ! gzip -t "$backup_file"; then
-    rm -f "$backup_file"
+  test -s "$backup_partial_file"
+  backup_bytes="$(stat -c %s "$backup_partial_file")"
+  if [[ "$backup_bytes" -lt "$MIN_BACKUP_BYTES" ]] || ! gzip -t "$backup_partial_file"; then
+    rm -f "$backup_partial_file"
     echo "[auto-deploy] refusing deployment: database backup is invalid or too small (${backup_bytes} bytes)" >&2
     exit 11
   fi
+  publish_private_backup_partial "$backup_partial_file" "$backup_file" || {
+    echo "[auto-deploy] refusing deployment: database backup atomic publish failed" >&2; exit 11; }
+  backup_partial_file=""
   fi
+  umask "$backup_previous_umask"
 else
   echo "[auto-deploy] database backup skipped: no schema migration in selected work"
 fi

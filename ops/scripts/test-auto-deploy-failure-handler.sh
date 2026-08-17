@@ -44,6 +44,7 @@ grep -q '_SYSTEMD_INVOCATION_ID=' "$handler"
 grep -q 'retry_allowed=true' "$handler"
 grep -q 'category=DATABASE' "$handler"
 grep -q 'category=DATABASE_DETERMINISTIC' "$handler"
+grep -q 'category=POSTDEPLOY_VALIDATION_DETERMINISTIC' "$handler"
 grep -q 'category=DEPLOY_TERMINATED' "$handler"
 grep -q 'category=FLYWAY_CLEANUP_HOLD' "$handler"
 grep -Fq 'ExecMainStatus' "$handler"
@@ -260,6 +261,12 @@ SH
     local schedule_count
     local retry_marker_count
     mkdir -p "$case_dir/state"
+    if [[ "$name" == emission_workflow_invalid ]]; then
+      # Deterministic validation evidence must outrank even a durable attempt
+      # marker; otherwise the handler would enter attempt recovery first.
+      printf '%s\n' '{"fixture":"must-not-be-read"}' >"$case_dir/state/carbonet-postdeploy-attempt.json"
+      chmod 0600 "$case_dir/state/carbonet-postdeploy-attempt.json"
+    fi
     printf '%s\n' "$journal_text" >"$case_dir/journal.log"
     FAKE_EXEC_MAIN_STATUS="$exit_status" \
     FAKE_JOURNAL_SOURCE="$case_dir/journal.log" \
@@ -285,6 +292,9 @@ SH
   run_classifier_mutant network_503 1 \
     'readiness returned 503 while probing the candidate' \
     NETWORK_TRANSIENT RETRY_SCHEDULED true true 1
+  run_classifier_mutant emission_workflow_invalid 1 \
+    $'[validation-groups] FAIL name=emission-workflow\n[emission-workflow] invalid projects: 35\ntimed out waiting for sibling validation group' \
+    POSTDEPLOY_VALIDATION_DETERMINISTIC FAILED false false 0
   run_classifier_mutant flyway_p0001 79 \
     $'error: timed out waiting for condition\nFLYWAY_JOB_FAILED\nSQL State  : P0001\nWORK_EXECUTION stage B precondition failed\nChanges successfully rolled back' \
     DATABASE_DETERMINISTIC FAILED false false 0
@@ -651,6 +661,7 @@ SH
 fi
 
 deterministic_database_line="$(grep -n 'category=DATABASE_DETERMINISTIC' "$handler" | head -1 | cut -d: -f1)"
+deterministic_postdeploy_line="$(grep -n 'category=POSTDEPLOY_VALIDATION_DETERMINISTIC' "$handler" | head -1 | cut -d: -f1)"
 cleanup_hold_line="$(grep -n 'category=FLYWAY_CLEANUP_HOLD' "$handler" | head -1 | cut -d: -f1)"
 terminated_line="$(grep -n 'category=DEPLOY_TERMINATED' "$handler" | head -1 | cut -d: -f1)"
 network_line="$(grep -n "category=NETWORK_TRANSIENT" "$handler" | head -1 | cut -d: -f1)"
@@ -658,8 +669,10 @@ e2e_line="$(grep -n "category=E2E" "$handler" | head -1 | cut -d: -f1)"
 database_line="$(grep -n '^[[:space:]]*category=DATABASE$' "$handler" | head -1 | cut -d: -f1)"
 [[ "$cleanup_hold_line" -lt "$deterministic_database_line" ]]
 [[ "$deterministic_database_line" -lt "$terminated_line" ]]
+[[ "$terminated_line" -lt "$deterministic_postdeploy_line" ]]
+[[ "$deterministic_postdeploy_line" -lt "$network_line" ]]
 [[ "$terminated_line" -lt "$network_line" ]]
 [[ "$network_line" -lt "$e2e_line" ]]
 [[ "$e2e_line" -lt "$database_line" ]]
 
-echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x classifier=staleSuccess-write0+network503-retry1+flywayP0001-retry0+term79-retry0+flywayCleanupHold-retry1+leaseBound+remote0+hangBound4s"
+echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x classifier=staleSuccess-write0+network503-retry1+emissionWorkflowInvalid-retry0+flywayP0001-retry0+term79-retry0+flywayCleanupHold-retry1+leaseBound+remote0+hangBound4s"

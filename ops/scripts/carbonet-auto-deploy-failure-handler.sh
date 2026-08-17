@@ -97,6 +97,12 @@ elif [[ "$deploy_exit_status" == 79 ]]; then
   # Exit 79 is fail-closed. In particular, never let an older durable attempt
   # journal schedule rollback while the child is handing off cleanup evidence.
   category=DEPLOY_TERMINATED
+elif [[ "$deploy_exit_status" == 1 ]] \
+   && grep -Eqi '\[emission-workflow\][[:space:]]+invalid projects:[[:space:]]*[1-9][0-9]*' "$evidence"; then
+  # A nonzero workflow-health count is a deterministic database-contract
+  # result. It must outrank both a durable attempt journal and incidental
+  # network text emitted by sibling validation groups.
+  category=POSTDEPLOY_VALIDATION_DETERMINISTIC
 elif [[ -e "$attempt_journal_file" || -L "$attempt_journal_file" ]]; then
   if [[ -f "$attempt_journal_file" && ! -L "$attempt_journal_file" \
      && "$(stat -c '%a' "$attempt_journal_file" 2>/dev/null)" == 600 \

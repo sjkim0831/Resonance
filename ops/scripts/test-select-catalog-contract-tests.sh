@@ -5,7 +5,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 selector="$root/ops/scripts/select-catalog-contract-tests.sh"
 
 mapfile -t all < <(printf '%s\n' ops/scripts/auto-deploy-main.sh | bash "$selector" --paths-stdin)
-[[ "${#all[@]}" == 17 ]]
+[[ "${#all[@]}" == 19 ]]
 
 mapfile -t asset < <(printf '%s\n' ops/scripts/sync-unified-asset-catalog.sh | bash "$selector" --paths-stdin)
 [[ "${#asset[@]}" == 1 && "${asset[0]}" == ops/scripts/test-atomic-asset-e4b-validation.sh ]]
@@ -42,6 +42,49 @@ mapfile -t composite_migration < <(
 )
 [[ "${#composite_migration[@]}" == 1 ]]
 [[ "${composite_migration[0]}" == ops/tests/test-composite-axis-migration-performance-postgres.sh ]]
+
+mapfile -t emission_workflow < <(
+  printf '%s\n' \
+    apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817210500__align_emission_workflow_entry_predecessor_health.sql \
+    ops/tests/test-emission-workflow-health-postgres.sh \
+    apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817210500__align_emission_workflow_entry_predecessor_health.sql |
+    bash "$selector" --paths-stdin
+)
+[[ "${#emission_workflow[@]}" == 1 ]]
+[[ "${emission_workflow[0]}" == ops/tests/test-emission-workflow-health-postgres.sh ]]
+
+mapfile -t backup_prune < <(
+  printf '%s\n' \
+    ops/scripts/prune-predeploy-backups.sh \
+    ops/scripts/test-prune-predeploy-backups.sh \
+    ops/scripts/prune-predeploy-backups.sh |
+    bash "$selector" --paths-stdin
+)
+[[ "${#backup_prune[@]}" == 1 ]]
+[[ "${backup_prune[0]}" == ops/scripts/test-prune-predeploy-backups.sh ]]
+
+python3 - "$root/ops/tests/test-emission-workflow-health-postgres.sh" <<'PY'
+import pathlib
+import sys
+
+source = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+cleanup = source.index("cleanup() {")
+exit_trap = source.index("trap cleanup EXIT", cleanup)
+run = source.index('sudo ctr -n "$namespace" run --detach', exit_trap)
+for contract in (
+    'tasks kill --signal SIGKILL "$container_id"',
+    'tasks rm --force "$container_id"',
+    'containers rm "$container_id"',
+    "trap 'exit 130' INT",
+    "trap 'exit 143' TERM",
+):
+    if contract not in source:
+        raise SystemExit(f"emission PostgreSQL cleanup contract missing: {contract}")
+if "started=" in source or "if (( started ))" in source:
+    raise SystemExit("emission PostgreSQL cleanup must be armed before ctr run")
+if not cleanup < exit_trap < run:
+    raise SystemExit("emission PostgreSQL cleanup trap must precede ctr run")
+PY
 
 python3 - "$root/ops/scripts/auto-deploy-main.sh" <<'PY'
 import pathlib
@@ -87,4 +130,4 @@ mapfile -t deduplicated < <(
 )
 [[ "${#deduplicated[@]}" == 2 ]]
 
-echo "[catalog-contract-selector-test] PASS all=17 asset=1 performance=2 webhook=1 runtimeCheckpoint=1 flywayTimeout=1 compositeMigration=1 handoff=5"
+echo "[catalog-contract-selector-test] PASS all=19 asset=1 performance=2 webhook=1 runtimeCheckpoint=1 flywayTimeout=1 compositeMigration=1 emissionWorkflow=1 backupPrune=1 handoff=5"

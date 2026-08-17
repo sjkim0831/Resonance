@@ -183,7 +183,7 @@ trap - EXIT
 
 python3 - "$ROOT" "$MIGRATION" "$STAGER" "$PROMOTER" "$DEPLOY" <<'PY'
 from pathlib import Path
-import os, re, sys
+import os, re, shutil, subprocess, sys, tempfile
 
 root, migration_path, stager_path, promoter_path, deploy_path = map(Path, sys.argv[1:])
 migration = migration_path.read_text(encoding="utf-8")
@@ -637,6 +637,150 @@ if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") != "true":
     assert 'CARBONET_RUNTIME_LEDGER_OBSERVE_ONLY="$observe_only"' in deploy
     assert 'record_runtime_release_state "$baseline" observe-only' in reconciler
     assert '${CARBONET_DEPLOY_STATE_DIR:-/opt/resonance-data/deploy}/runtime-ledger-invalidation.quarantine' in deploy
+    assert 'chmod 0700 "$BACKUP_DIR"' in deploy
+    assert 'find "$BACKUP_DIR" -maxdepth 1 -type f -exec chmod 0600 {} +' in deploy
+    assert '\\( -type l -o \\! -user "$(id -u)" \\)' in deploy
+    assert 'mv "${platform_preflight_cache}.tmp" "$platform_preflight_cache"\nfi\nmkdir -p -m 0700 -- "$BACKUP_DIR"' in deploy
+    assert 'backup_previous_umask="$(umask)"' in deploy
+    assert 'schema_backup_dir="$(mktemp -d "$BACKUP_DIR/.schema-backup.XXXXXX")"' in deploy
+    assert 'arm_private_backup_partial() {' in deploy
+    assert 'publish_private_backup_partial() {' in deploy
+    assert 'partial="${final}.partial.$$"' in deploy
+    assert 'mv -T -- "$partial" "$final" || return 1' in deploy
+    assert 'sync -f "$BACKUP_DIR" || return 1\n}' in deploy
+    assert 'sync -f "$BACKUP_DIR" 2>/dev/null || true' not in deploy
+    publish_start = deploy.index('publish_private_backup_partial() {')
+    publish_body = deploy[publish_start:deploy.index('\n}', publish_start) + 2]
+    arm_start = deploy.index('arm_private_backup_partial() {')
+    arm_body = deploy[arm_start:deploy.index('\n}', arm_start) + 2]
+    assert publish_body.index('mv -T -- "$partial" "$final" || return 1') < publish_body.index('sync -f "$BACKUP_DIR" || return 1')
+    assert '"$(stat -c \'%a:%u\' "$partial")" == "600:$(id -u)"' in publish_body
+    assert '&& -f "$partial" && ! -L "$partial"' in publish_body
+    assert '&& ! -e "$final" && ! -L "$final"' in publish_body
+    assert '[[ ! -e "$partial" && ! -L "$partial" ]]' in arm_body
+    assert 'mv -T -- "$partial" "$final"\n' not in publish_body
+    assert 'sync -f "$BACKUP_DIR"\n' not in publish_body
+    # Execute the exact helper body with one failed primitive at a time. The
+    # caller invokes it in an OR-list, so explicit returns—not ambient
+    # `set -e`—must preserve both mv and directory-sync failures.
+    with tempfile.TemporaryDirectory(prefix="backup-publish-contract-") as backup_tmp:
+        helper_probe = r'''set -euo pipefail
+umask 077
+BACKUP_DIR="$1"
+failure="$2"
+wrong_owner_uid="${3:-}"
+''' + arm_body + "\n" + publish_body + r'''
+final="$BACKUP_DIR/carbonet-probe.sql.gz"
+partial="${final}.partial.$$"
+printf 'verified-backup\n' >"$partial"
+chmod 0600 "$partial"
+case "$failure" in
+  mv)
+    mv() { return 71; }
+    ! publish_private_backup_partial "$partial" "$final"
+    [[ -f "$partial" && ! -e "$final" ]]
+    ;;
+  sync)
+    sync() { return 72; }
+    ! publish_private_backup_partial "$partial" "$final"
+    [[ ! -e "$partial" && -f "$final" ]]
+    ;;
+  wrong-mode)
+    chmod 0644 "$partial"
+    ! publish_private_backup_partial "$partial" "$final"
+    [[ -f "$partial" && ! -e "$final" ]]
+    ;;
+  wrong-owner)
+    if (( EUID == 0 )); then
+      chown "$wrong_owner_uid" "$partial"
+    else
+      sudo -n chown "$wrong_owner_uid" "$partial"
+    fi
+    ! publish_private_backup_partial "$partial" "$final"
+    [[ -f "$partial" && ! -e "$final" ]]
+    ;;
+  partial-symlink)
+    rm -- "$partial"
+    printf 'sentinel\n' >"$BACKUP_DIR/sentinel"
+    ln -s "$BACKUP_DIR/sentinel" "$partial"
+    ! publish_private_backup_partial "$partial" "$final"
+    [[ "$(cat "$BACKUP_DIR/sentinel")" == sentinel && -L "$partial" && ! -e "$final" ]]
+    ;;
+  final-collision)
+    printf 'existing-final\n' >"$final"
+    ! publish_private_backup_partial "$partial" "$final"
+    [[ "$(cat "$final")" == existing-final && -f "$partial" ]]
+    ;;
+  wrong-binding)
+    wrong="$BACKUP_DIR/wrong.partial.$$"
+    mv -- "$partial" "$wrong"
+    ! publish_private_backup_partial "$wrong" "$final"
+    [[ -f "$wrong" && ! -e "$final" ]]
+    ;;
+  outside-prefix)
+    outside="$BACKUP_DIR/../outside-carbonet-probe.sql.gz"
+    outside_partial="${outside}.partial.$$"
+    mv -- "$partial" "$outside_partial"
+    ! publish_private_backup_partial "$outside_partial" "$outside"
+    [[ -f "$outside_partial" && ! -e "$outside" ]]
+    ;;
+  arm-outside-prefix)
+    rm -- "$partial"
+    outside="$BACKUP_DIR/../outside-carbonet-probe.sql.gz"
+    ! arm_private_backup_partial "$outside" >/dev/null
+    [[ ! -e "$outside" && ! -e "${outside}.partial.$$" ]]
+    ;;
+  arm-final-collision)
+    rm -- "$partial"
+    printf 'existing-final\n' >"$final"
+    ! arm_private_backup_partial "$final" >/dev/null
+    [[ "$(cat "$final")" == existing-final ]]
+    ;;
+  arm-partial-symlink)
+    rm -- "$partial"
+    ln -s "$BACKUP_DIR/missing-sentinel" "$partial"
+    ! arm_private_backup_partial "$final" >/dev/null
+    [[ -L "$partial" && ! -e "$partial" && ! -e "$final" ]]
+    ;;
+  arm-final-symlink)
+    rm -- "$partial"
+    ln -s "$BACKUP_DIR/missing-final-target" "$final"
+    ! arm_private_backup_partial "$final" >/dev/null
+    [[ -L "$final" && ! -e "$final" && ! -e "$partial" ]]
+    ;;
+  *) exit 99 ;;
+esac
+'''
+        primitives = [
+            "mv", "sync", "wrong-mode", "partial-symlink", "final-collision",
+            "wrong-binding", "outside-prefix", "arm-outside-prefix",
+            "arm-final-collision", "arm-partial-symlink", "arm-final-symlink",
+        ]
+        sudo_available = shutil.which("sudo") is not None and subprocess.run(
+            ["sudo", "-n", "true"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        ).returncode == 0
+        if os.geteuid() == 0 or sudo_available:
+            primitives.append("wrong-owner")
+        wrong_owner_uid = "65534" if os.geteuid() == 0 else "0"
+        for primitive in primitives:
+            probe_dir = Path(backup_tmp) / primitive
+            probe_dir.mkdir(mode=0o700)
+            subprocess.run(
+                ["bash", "-c", helper_probe, "_", str(probe_dir), primitive, wrong_owner_uid],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+    backup_block = deploy[deploy.index('if [[ "$backup_required" == "true" ]]'):
+                          deploy.index('# Apply the same policy after a successful dump')]
+    assert backup_block.index('umask 077') < backup_block.index('> "$roles_backup_partial_file"')
+    assert backup_block.index('umask 077') < backup_block.index('> "$backup_partial_file"')
+    assert backup_block.rindex('umask "$backup_previous_umask"') > backup_block.rindex('> "$backup_partial_file"')
+    assert '> "$roles_backup_file"' not in backup_block
+    assert '> "$backup_file"' not in backup_block
+    assert backup_block.count('publish_private_backup_partial "$backup_partial_file" "$backup_file"') == 6
+    assert backup_block.count('publish_private_backup_partial "$roles_backup_partial_file" "$roles_backup_file"') == 1
     assert "retire_orphan_versioned_snapshot" in deploy and "orphan pre-runtime snapshot RETIRED mutation=0" in deploy
     cleanup_contract = deploy[deploy.index("cleanup_deploy() {"):deploy.index("# Prepare an attempt-unique identity")]
     assert '(( recovery_status == 0 )) || original_status="$recovery_status"' in cleanup_contract
