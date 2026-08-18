@@ -511,7 +511,7 @@ record_runtime_release_state() {
   local observe_only=false expected_template_sha256=""
   [[ "$mode" != observe-only ]] || observe_only=true
   if [[ -n "$externally_verified_template_sha256" ]]; then
-    [[ "$mode" == recovery-promoted \
+    [[ ( "$mode" == recovery-promoted || "$mode" == frontend-overlay ) \
        && "$externally_verified_template_sha256" =~ ^[0-9a-f]{64}$ ]] || return 1
     expected_template_sha256="$externally_verified_template_sha256"
   elif [[ "$observe_only" == true ]]; then
@@ -5289,11 +5289,16 @@ SQL
 }
 
 finalize_postdeploy_candidate_release() {
+  local externally_verified_template_sha256="${1:-}"
   local promoter_status=0 authority_status=2 applied_marker="" runtime_marker="" runtime_hash=""
   local attempt_terminal_status=PROMOTED transition_status=PROMOTED transition_reason=PROMOTION_COMMITTED
   local journal="" snapshot_id="" snapshot_manifest="" baseline=""
   local gate_overlay="${live_frontend_overlay:-${CARBONET_LIVE_FRONTEND_OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}}"
-  record_runtime_release_state "$target_commit"
+  if [[ -n "$externally_verified_template_sha256" ]]; then
+    record_runtime_release_state "$target_commit" frontend-overlay "$externally_verified_template_sha256"
+  else
+    record_runtime_release_state "$target_commit"
+  fi
   run_operational_usage_ledger_live_e2e_if_required "$target_commit"
   verify_postdeploy_candidate_staged
   if CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
@@ -6373,7 +6378,12 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
   run_postdeploy_candidate_validation_groups true
   run_screen_contract_runtime_save_gate_if_required
   record_deploy_phase "frontend_build_and_verify"
-  finalize_postdeploy_candidate_release
+  frontend_overlay_template_sha256="$(python3 "$POSTDEPLOY_JOURNAL_HELPER" \
+    --file "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" read | jq -r \
+    --arg target "$target_commit" \
+    'select(.sourceCommit==$target) | .rollback.podTemplateSha256 // empty')" || exit 79
+  [[ "$frontend_overlay_template_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 79
+  finalize_postdeploy_candidate_release "$frontend_overlay_template_sha256"
   record_deploy_performance frontend || echo '[auto-deploy] WARN frontend performance telemetry failed' >&2
   echo "[auto-deploy] frontend overlay deployed without Java/image build or rollout: $target_commit"
   exit 0

@@ -1260,6 +1260,12 @@ esac
                          deploy.index("run_postdeploy_candidate_validation_groups() {")]
     assert enable_body.index("invalidate_runtime_release_state") < enable_body.index("bind_postdeploy_candidate_live_source")
     assert enable_body.index("bind_postdeploy_candidate_live_source") < enable_body.index("postdeploy_candidate_initialized=true")
+    frontend_path = deploy[deploy.index("# A frontend-only commit is compiled directly"):
+                           deploy.index("# A measured JVM profile changes only")]
+    assert 'frontend_overlay_template_sha256="$(python3 "$POSTDEPLOY_JOURNAL_HELPER"' in frontend_path
+    assert 'select(.sourceCommit==$target) | .rollback.podTemplateSha256 // empty' in frontend_path
+    assert 'finalize_postdeploy_candidate_release "$frontend_overlay_template_sha256"' in frontend_path
+    assert '( "$mode" == recovery-promoted || "$mode" == frontend-overlay )' in deploy
     # One frontend-only path calls the base finalizer directly. The two runtime
     # paths must pass through the composite-gate cleanup wrapper, which itself
     # invokes the base finalizer exactly once. Count exact definitions/calls so
@@ -1267,7 +1273,11 @@ esac
     assert deploy.count("finalize_postdeploy_candidate_release() {") == 1
     assert deploy.count("finalize_postdeploy_candidate_release_with_composite_gate_cleanup() {") == 1
     assert deploy.count("if finalize_postdeploy_candidate_release; then") == 1
-    assert len(re.findall(r"(?m)^\s*finalize_postdeploy_candidate_release\s*$", deploy)) == 1
+    assert len(re.findall(r"(?m)^\s*finalize_postdeploy_candidate_release\s*$", deploy)) == 0
+    assert len(re.findall(
+        r'(?m)^\s*finalize_postdeploy_candidate_release "\$frontend_overlay_template_sha256"\s*$',
+        deploy,
+    )) == 1
     assert len(re.findall(r"(?m)^\s*finalize_postdeploy_candidate_release_with_composite_gate_cleanup\s*$", deploy)) == 2
     assert deploy.count("run_postdeploy_candidate_validation_groups") == 4
     assert deploy.count("CARBONET_SCREEN_CONTRACT_PREVIEW_ONLY=1 run_screen_contract_runtime_save_gate_if_required") == 2
