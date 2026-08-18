@@ -48,13 +48,9 @@ public class ReportPdfIssuanceService {
 
         byte[] pdf = render(html);
         Map<String, Object> visualProfile = buildVisualProfile(pdf);
-        registryService.issue(record, actorId);
-        registryService.registerVisualProfile(Map.of(
-                "certificateId", String.valueOf(record.get("certificateId")),
-                "visualProfile", visualProfile
-        ));
+        Map<String, Object> issuance = registryService.issuePdf(record, actorId, visualProfile, pdf);
         return new IssuedPdf(pdf, String.valueOf(record.get("certificateId")),
-                ((List<?>) visualProfile.get("pages")).size());
+                ((List<?>) visualProfile.get("pages")).size(), String.valueOf(issuance.get("pdfSha256")));
     }
 
     private void validateHtml(String html) {
@@ -150,5 +146,5 @@ public class ReportPdfIssuanceService {
         } catch (IOException ignored) { }
     }
 
-    public record IssuedPdf(byte[] bytes, String certificateId, int pageCount) { }
+    public record IssuedPdf(byte[] bytes, String certificateId, int pageCount, String pdfSha256) { }
 }

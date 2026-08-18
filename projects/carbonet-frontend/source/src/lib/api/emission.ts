@@ -232,6 +232,18 @@ export type ReportDatasetVerificationResponse = {
   message?: string;
 };
 
+export type ReportPdfFileVerificationResponse = {
+  valid: boolean;
+  status: "EXACT_PDF_MATCH" | "TAMPERED_PDF" | "PDF_FINGERPRINT_UNAVAILABLE" | "NOT_FOUND" | "INVALID_PDF" | "VERIFICATION_ERROR";
+  verificationMode: "EXACT_PDF_BYTES";
+  certificateId: string;
+  uploadedPdfSizeBytes?: number;
+  registeredPdfSizeBytes?: number;
+  byteHashMatch?: boolean;
+  sizeMatch?: boolean;
+  message?: string;
+};
+
 export type ReportDatasetFieldComparison = {
   path: string;
   valueType: string;
@@ -426,6 +438,19 @@ export async function verifySurveyReportDataset(payload: ReportVerificationDatas
       : buildLocalizedPath("/admin/api/admin/emission-survey-report/verify", "/en/admin/api/admin/emission-survey-report/verify"),
     payload,
     { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+}
+
+export async function verifySurveyReportPdfFile(file: File, certificateId: string) {
+  const publicHome = window.location.pathname.startsWith("/home/") || window.location.pathname.startsWith("/en/home/");
+  const form = new FormData();
+  form.append("certificateId", certificateId);
+  form.append("file", file, file.name);
+  return postFormData<ReportPdfFileVerificationResponse>(
+    publicHome
+      ? buildLocalizedPath("/api/home/certificate-verify/verify-file", "/api/en/home/certificate-verify/verify-file")
+      : buildLocalizedPath("/admin/api/admin/emission-survey-report/verify-file", "/en/admin/api/admin/emission-survey-report/verify-file"),
+    form
   );
 }
 

@@ -9,12 +9,16 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,6 +28,7 @@ public class ReportVerificationRegistryService {
 
     private static final int MAX_DIFFERENCES = 50;
     private static final int MAX_FIELD_COMPARISONS = 2_000;
+    public static final int MAX_VERIFICATION_PDF_BYTES = 25 * 1024 * 1024;
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -164,6 +169,167 @@ public class ReportVerificationRegistryService {
         }
         return Map.of("success", true, "certificateId", certificateId,
                 "pageCount", profile.path("pages").size(), "profileVersion", 1);
+    }
+
+    @Transactional
+    public Map<String, Object> issuePdf(Map<String, Object> request, String actorId,
+                                        Map<String, Object> visualProfile, byte[] pdfBytes) {
+        Map<String, Object> issued = issue(request, actorId);
+        String certificateId = required(request, "certificateId");
+        validatePdfBytes(pdfBytes);
+        JsonNode profile = objectMapper.valueToTree(visualProfile);
+        if (!profile.isObject() || !profile.path("pages").isArray()) {
+            throw new IllegalArgumentException("A page visual profile is required.");
+        }
+        String profileJson = writeJson(profile);
+        if (profileJson.length() > 2_000_000) {
+            throw new IllegalArgumentException("The visual profile is too large.");
+        }
+        Map<String, Object> fingerprint = bindIssuedPdfFingerprint(certificateId, pdfBytes, actorId);
+        String pdfSha256 = text(fingerprint.get("pdfSha256"));
+        int updated = jdbcTemplate.update("""
+                UPDATE carbonet_report_verification_registry
+                   SET visual_profile_json = CAST(? AS jsonb), visual_profile_version = 1,
+                       visual_profile_updated_at = now(),
+                       updated_at = now()
+                 WHERE certificate_id = ? AND status_code = 'ISSUED'
+                   AND pdf_sha256 = ? AND pdf_size_bytes = ?
+                """, profileJson, certificateId, pdfSha256, pdfBytes.length);
+        if (updated != 1) {
+            throw new IllegalStateException("The issued PDF fingerprint could not be finalized with its visual profile.");
+        }
+        Map<String, Object> response = new LinkedHashMap<>(issued);
+        response.put("pdfSha256", pdfSha256);
+        response.put("pdfSizeBytes", pdfBytes.length);
+        response.put("visualPageCount", profile.path("pages").size());
+        return response;
+    }
+
+    @Transactional
+    public Map<String, Object> bindIssuedPdfFingerprint(String certificateId, byte[] pdfBytes, String actorId) {
+        String normalizedCertificateId = certificateId == null ? "" : certificateId.trim();
+        if (normalizedCertificateId.isBlank()) {
+            throw new IllegalArgumentException("certificateId is required.");
+        }
+        validatePdfBytes(pdfBytes);
+        String pdfSha256 = sha256Hex(pdfBytes);
+        List<Map<String, Object>> registryRows = jdbcTemplate.queryForList("""
+                SELECT pdf_sha256, pdf_size_bytes
+                  FROM carbonet_report_verification_registry
+                 WHERE certificate_id = ? AND status_code = 'ISSUED'
+                 FOR UPDATE
+                """, normalizedCertificateId);
+        List<Map<String, Object>> projectRows = jdbcTemplate.queryForList("""
+                SELECT pdf_sha256, pdf_size_bytes
+                  FROM emission_project_report
+                 WHERE certificate_id = ? AND report_status = 'FINALIZED' AND certificate_status = 'ACTIVE'
+                 FOR UPDATE
+                """, normalizedCertificateId);
+        if (registryRows.isEmpty() && projectRows.isEmpty()) {
+            throw new IllegalArgumentException("An active issued certificate is required before registering PDF bytes.");
+        }
+        boolean newlyBound = false;
+        for (Map<String, Object> row : concatRows(registryRows, projectRows)) {
+            String existingSha = text(row.get("pdf_sha256")).trim().toLowerCase(Locale.ROOT);
+            Long existingSize = longValue(row.get("pdf_size_bytes"));
+            if (existingSha.isBlank() && existingSize == null) {
+                newlyBound = true;
+                continue;
+            }
+            if (!existingSha.equals(pdfSha256) || existingSize == null || existingSize != pdfBytes.length) {
+                throw new IllegalStateException("The certificate ID is already bound to different PDF bytes.");
+            }
+        }
+        String registeredBy = textOr(actorId, "system");
+        if (!registryRows.isEmpty()) {
+            int updated = jdbcTemplate.update("""
+                    UPDATE carbonet_report_verification_registry
+                       SET pdf_sha256 = COALESCE(pdf_sha256, ?),
+                           pdf_size_bytes = COALESCE(pdf_size_bytes, ?),
+                           pdf_fingerprint_registered_by = COALESCE(pdf_fingerprint_registered_by, ?),
+                           pdf_fingerprint_registered_at = COALESCE(pdf_fingerprint_registered_at, now()),
+                           updated_at = now()
+                     WHERE certificate_id = ? AND status_code = 'ISSUED'
+                       AND (pdf_sha256 IS NULL OR pdf_sha256 = ?)
+                       AND (pdf_size_bytes IS NULL OR pdf_size_bytes = ?)
+                    """, pdfSha256, pdfBytes.length, registeredBy, normalizedCertificateId,
+                    pdfSha256, pdfBytes.length);
+            if (updated != registryRows.size()) {
+                throw new IllegalStateException("The report-registry PDF fingerprint binding changed concurrently.");
+            }
+        }
+        if (!projectRows.isEmpty()) {
+            int updated = jdbcTemplate.update("""
+                    UPDATE emission_project_report
+                       SET pdf_sha256 = COALESCE(pdf_sha256, ?),
+                           pdf_size_bytes = COALESCE(pdf_size_bytes, ?),
+                           pdf_fingerprint_registered_by = COALESCE(pdf_fingerprint_registered_by, ?),
+                           pdf_fingerprint_registered_at = COALESCE(pdf_fingerprint_registered_at, now())
+                     WHERE certificate_id = ? AND report_status = 'FINALIZED' AND certificate_status = 'ACTIVE'
+                       AND (pdf_sha256 IS NULL OR pdf_sha256 = ?)
+                       AND (pdf_size_bytes IS NULL OR pdf_size_bytes = ?)
+                    """, pdfSha256, pdfBytes.length, registeredBy, normalizedCertificateId,
+                    pdfSha256, pdfBytes.length);
+            if (updated != projectRows.size()) {
+                throw new IllegalStateException("The project-report PDF fingerprint binding changed concurrently.");
+            }
+        }
+        return Map.of(
+                "success", true,
+                "status", newlyBound ? "PDF_FINGERPRINT_BOUND" : "PDF_FINGERPRINT_ALREADY_BOUND",
+                "certificateId", normalizedCertificateId,
+                "pdfSha256", pdfSha256,
+                "pdfSizeBytes", pdfBytes.length
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> verifyPdfFile(String certificateId, byte[] pdfBytes) {
+        String normalizedCertificateId = certificateId == null ? "" : certificateId.trim();
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("certificateId", normalizedCertificateId);
+        if (normalizedCertificateId.isBlank()) {
+            return pdfFileResult(response, "INVALID_PDF", false,
+                    "A certificate ID is required for exact PDF verification.");
+        }
+        try {
+            validatePdfBytes(pdfBytes);
+        } catch (IllegalArgumentException exception) {
+            return pdfFileResult(response, "INVALID_PDF", false, exception.getMessage());
+        }
+
+        Map<String, Object> stored;
+        try {
+            stored = loadPdfFingerprint(normalizedCertificateId);
+        } catch (IllegalArgumentException exception) {
+            return pdfFileResult(response, "NOT_FOUND", false,
+                    "No issued PDF record exists for this certificate ID.");
+        }
+
+        String registeredSha256 = text(stored.get("pdf_sha256")).trim().toLowerCase(Locale.ROOT);
+        Long registeredSize = longValue(stored.get("pdf_size_bytes"));
+        response.put("uploadedPdfSizeBytes", pdfBytes.length);
+        if (registeredSha256.isBlank() || registeredSize == null) {
+            response.put("byteHashMatch", false);
+            response.put("sizeMatch", false);
+            return pdfFileResult(response, "PDF_FINGERPRINT_UNAVAILABLE", false,
+                    "This legacy issuance has no final-PDF fingerprint and cannot prove exact-file authenticity.");
+        }
+
+        String uploadedSha256 = sha256Hex(pdfBytes);
+        boolean byteHashMatch = MessageDigest.isEqual(
+                registeredSha256.getBytes(java.nio.charset.StandardCharsets.US_ASCII),
+                uploadedSha256.getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+        boolean sizeMatch = registeredSize == pdfBytes.length;
+        response.put("byteHashMatch", byteHashMatch);
+        response.put("sizeMatch", sizeMatch);
+        response.put("registeredPdfSizeBytes", registeredSize);
+        if (byteHashMatch && sizeMatch) {
+            return pdfFileResult(response, "EXACT_PDF_MATCH", true,
+                    "The uploaded PDF bytes exactly match the issued PDF.");
+        }
+        return pdfFileResult(response, "TAMPERED_PDF", false,
+                "The uploaded PDF bytes differ from the issued PDF.");
     }
 
     @Transactional(readOnly = true)
@@ -756,7 +922,8 @@ public class ReportVerificationRegistryService {
     private Map<String, Object> load(String certificateId) {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
                 SELECT certificate_id, issued_at, report_title, product_name, payload_hash,
-                       integrity_code, dataset_hash, dataset_json::text AS dataset_json, created_at
+                       integrity_code, dataset_hash, dataset_json::text AS dataset_json,
+                       pdf_sha256, pdf_size_bytes, created_at
                   FROM carbonet_report_verification_registry
                  WHERE certificate_id = ? AND status_code = 'ISSUED'
                 """, certificateId);
@@ -764,6 +931,93 @@ public class ReportVerificationRegistryService {
             throw new IllegalArgumentException("Issued report not found.");
         }
         return rows.get(0);
+    }
+
+    private Map<String, Object> loadPdfFingerprint(String certificateId) {
+        List<Map<String, Object>> registryRows = jdbcTemplate.queryForList("""
+                SELECT pdf_sha256, pdf_size_bytes
+                  FROM carbonet_report_verification_registry
+                 WHERE certificate_id = ? AND status_code = 'ISSUED'
+                """, certificateId);
+        List<Map<String, Object>> projectRows = jdbcTemplate.queryForList("""
+                SELECT pdf_sha256, pdf_size_bytes
+                  FROM emission_project_report
+                 WHERE certificate_id = ? AND report_status = 'FINALIZED' AND certificate_status = 'ACTIVE'
+                """, certificateId);
+        List<Map<String, Object>> rows = concatRows(registryRows, projectRows);
+        if (rows.isEmpty()) {
+            throw new IllegalArgumentException("Issued report not found.");
+        }
+        Map<String, Object> selected = null;
+        for (Map<String, Object> row : rows) {
+            String sha = text(row.get("pdf_sha256")).trim().toLowerCase(Locale.ROOT);
+            if (sha.isBlank()) {
+                continue;
+            }
+            Long size = longValue(row.get("pdf_size_bytes"));
+            if (selected != null) {
+                String selectedSha = text(selected.get("pdf_sha256")).trim().toLowerCase(Locale.ROOT);
+                Long selectedSize = longValue(selected.get("pdf_size_bytes"));
+                if (!selectedSha.equals(sha) || selectedSize == null || !selectedSize.equals(size)) {
+                    throw new IllegalStateException("Conflicting PDF fingerprints exist for the certificate ID.");
+                }
+            }
+            selected = row;
+        }
+        return selected == null ? rows.get(0) : selected;
+    }
+
+    private List<Map<String, Object>> concatRows(List<Map<String, Object>> left,
+                                                  List<Map<String, Object>> right) {
+        List<Map<String, Object>> rows = new ArrayList<>(left.size() + right.size());
+        rows.addAll(left);
+        rows.addAll(right);
+        return rows;
+    }
+
+    private Map<String, Object> pdfFileResult(Map<String, Object> response, String status,
+                                               boolean valid, String message) {
+        response.put("valid", valid);
+        response.put("status", status);
+        response.put("message", message);
+        response.put("verificationMode", "EXACT_PDF_BYTES");
+        return response;
+    }
+
+    private void validatePdfBytes(byte[] pdfBytes) {
+        if (pdfBytes == null || pdfBytes.length < 5) {
+            throw new IllegalArgumentException("The uploaded PDF is empty or invalid.");
+        }
+        if (pdfBytes.length > MAX_VERIFICATION_PDF_BYTES) {
+            throw new IllegalArgumentException("The uploaded PDF exceeds the 25 MB verification limit.");
+        }
+        byte[] pdfMagic = {'%', 'P', 'D', 'F', '-'};
+        if (!Arrays.equals(pdfMagic, Arrays.copyOf(pdfBytes, pdfMagic.length))) {
+            throw new IllegalArgumentException("The uploaded file does not contain a PDF header.");
+        }
+    }
+
+    private String sha256Hex(byte[] bytes) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable.", exception);
+        }
+    }
+
+    private Long longValue(Object value) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        String text = text(value).trim();
+        if (text.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(text);
+        } catch (NumberFormatException exception) {
+            throw new IllegalStateException("Stored PDF size is invalid.", exception);
+        }
     }
 
     private void compare(String path, JsonNode expected, JsonNode actual, List<Map<String, Object>> differences) {

@@ -8,7 +8,9 @@ import {
   proofreadSurveyReportLabels,
   registerSurveyReportVisualProfile,
   verifySurveyReportDataset,
+  verifySurveyReportPdfFile,
   verifySurveyReportPhoto,
+  type ReportPdfFileVerificationResponse,
   type ReportPhotoVerificationResponse,
   type ReportDatasetVerificationResponse
 } from "../../lib/api/emission";
@@ -3475,12 +3477,13 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
   const [uploadedPayloadFound, setUploadedPayloadFound] = useState(false);
   const [payload, setPayload] = useState<ReportVerificationPayload | null>(null);
   const [datasetVerification, setDatasetVerification] = useState<ReportDatasetVerificationResponse | null>(null);
+  const [pdfFileVerification, setPdfFileVerification] = useState<ReportPdfFileVerificationResponse | null>(null);
   const [photoVerification, setPhotoVerification] = useState<ReportPhotoVerificationResponse | null>(null);
   const [ocrProgress, setOcrProgress] = useState<{ busy: boolean; percent: number; status: string }>({ busy: false, percent: 0, status: "" });
   const [verificationLogs, setVerificationLogs] = useState<Array<{ id: string; at: string; level: "INFO" | "OK" | "WARN" | "ERROR"; message: string; detail?: string }>>([]);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const [resultMessage, setResultMessage] = useState(en ? "Upload the certificate PDF or paste the verification block." : "인증서 PDF를 업로드하거나 검증 블록을 붙여넣으세요.");
-  const [resultTone, setResultTone] = useState<"info" | "success" | "warning">("info");
+  const [resultTone, setResultTone] = useState<"info" | "success" | "warning" | "danger">("info");
   const appendVerificationLog = (level: "INFO" | "OK" | "WARN" | "ERROR", message: string, detail?: string) => {
     setVerificationLogs((current) => [...current, {
       id: `${Date.now()}-${current.length}`,
@@ -3489,6 +3492,49 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       message,
       detail
     }].slice(-200));
+  };
+
+  const applyPdfFileVerdict = (verification: ReportPdfFileVerificationResponse) => {
+    setPdfFileVerification(verification);
+    if (verification.status === "EXACT_PDF_MATCH" && verification.valid) {
+      return true;
+    }
+    if (verification.status === "TAMPERED_PDF") {
+      setResultTone("danger");
+      setResultMessage(en
+        ? "Tampered PDF: the uploaded file bytes differ from the issued original. QR, OCR, and visual similarity cannot override this result."
+        : "변조 파일입니다. 업로드한 PDF 바이트가 발급 원본과 다릅니다. QR·OCR·시각 유사도로 이 결과를 덮어쓸 수 없습니다.");
+      return false;
+    }
+    setResultTone("warning");
+    setResultMessage(verification.status === "PDF_FINGERPRINT_UNAVAILABLE"
+      ? (en ? "This legacy issuance has no final-PDF fingerprint, so exact-file authenticity cannot be proven." : "이 구형 발급 기록에는 최종 PDF 지문이 없어 파일 원본성을 증명할 수 없습니다.")
+      : verification.status === "NOT_FOUND"
+        ? (en ? "No issued PDF fingerprint exists for this certificate ID." : "이 인증서 ID의 발급 PDF 지문을 원장에서 찾지 못했습니다.")
+        : (en ? "The server could not complete exact PDF-byte verification." : "서버가 PDF 원본 바이트 검증을 완료하지 못했습니다."));
+    return false;
+  };
+
+  const verifyExactPdfFile = async (file: File, certificateId: string) => {
+    try {
+      const verification = await verifySurveyReportPdfFile(file, certificateId);
+      appendVerificationLog(verification.valid ? "OK" : verification.status === "TAMPERED_PDF" ? "ERROR" : "WARN",
+        en ? "Exact PDF-byte comparison completed." : "PDF 원본 바이트 대조를 완료했습니다.",
+        `status=${verification.status}, hash=${verification.byteHashMatch === true ? "match" : "mismatch"}, size=${verification.sizeMatch === true ? "match" : "mismatch"}`);
+      applyPdfFileVerdict(verification);
+      return verification;
+    } catch (error) {
+      const verification: ReportPdfFileVerificationResponse = {
+        valid: false,
+        status: "VERIFICATION_ERROR",
+        verificationMode: "EXACT_PDF_BYTES",
+        certificateId,
+        message: error instanceof Error ? error.message : String(error)
+      };
+      appendVerificationLog("ERROR", en ? "Exact PDF-byte comparison failed." : "PDF 원본 바이트 대조에 실패했습니다.", verification.message);
+      applyPdfFileVerdict(verification);
+      return verification;
+    }
   };
 
   const matchedRecord = useMemo(() => {
@@ -3502,7 +3548,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     )) || null;
   }, [payload]);
 
-  const evaluatePayload = async (nextPayload: ReportVerificationPayload | null, sourceLabel: string) => {
+  const evaluatePayload = async (nextPayload: ReportVerificationPayload | null, sourceLabel: string,
+                                 exactPdfVerification: ReportPdfFileVerificationResponse | null = null) => {
     if (!nextPayload) {
       appendVerificationLog("WARN", en ? "No embedded verification dataset found." : "내장 검증 데이터셋을 찾지 못했습니다.", sourceLabel);
       setPayload(null);
@@ -3511,6 +3558,10 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       setResultMessage(en
         ? `No Carbonet verification block was found in ${sourceLabel}. If the browser compressed PDF text, paste the block printed on the last page.`
         : `${sourceLabel}에서 Carbonet 검증 블록을 찾지 못했습니다. 브라우저가 PDF 텍스트를 압축했다면 마지막 페이지의 검증 블록을 붙여넣으세요.`);
+      return;
+    }
+    if (exactPdfVerification && !applyPdfFileVerdict(exactPdfVerification)) {
+      setPayload(nextPayload);
       return;
     }
     const payloadReportType = nextPayload.reportType || (nextPayload.dataset?.reportType as ReportVerificationType | undefined) || "EMISSION_SURVEY";
@@ -3531,7 +3582,9 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
         setDatasetVerification(verification);
         setResultTone(verification.valid ? "success" : "warning");
         setResultMessage(verification.valid
-          ? (en ? "Authenticity verified: all certificate tags and the complete report dataset match the issued record." : "진위 확인 완료: 인증 태그와 리포트 전체 데이터셋이 발급 원장과 모두 일치합니다.")
+          ? exactPdfVerification
+            ? (en ? "Authenticity verified: the exact PDF bytes, certificate tags, and complete dataset all match the issued record." : "진위 확인 완료: PDF 원본 바이트·인증 태그·전체 데이터셋이 발급 원장과 모두 일치합니다.")
+            : (en ? "Certificate tags and the complete report dataset match the issued record." : "인증 태그와 리포트 전체 데이터셋이 발급 원장과 일치합니다.")
           : (en ? `Dataset verification failed. ${verification.differenceCount || 0} differences were found.` : `데이터셋 검증에 실패했습니다. ${verification.differenceCount || 0}개의 불일치 항목을 확인했습니다.`));
       } catch (error) {
         appendVerificationLog("ERROR", en ? "Registry dataset comparison failed." : "원장 데이터셋 대조에 실패했습니다.", error instanceof Error ? error.message : String(error));
@@ -3539,6 +3592,12 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
         setResultTone("warning");
         setResultMessage(error instanceof Error ? error.message : (en ? "Server dataset verification failed." : "서버 데이터셋 검증에 실패했습니다."));
       }
+      return;
+    }
+    if (exactPdfVerification?.status === "EXACT_PDF_MATCH") {
+      setDatasetVerification(null);
+      setResultTone("success");
+      setResultMessage(en ? "Authenticity verified: the uploaded PDF bytes exactly match the issued original." : "진위 확인 완료: 업로드한 PDF 바이트가 발급 원본과 정확히 일치합니다.");
       return;
     }
     const records = loadReportVerificationRecords();
@@ -3560,7 +3619,9 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       : (en ? "Verification block is readable, but no matching local issued record exists on this browser." : "검증 블록은 읽었지만 이 브라우저의 발급 이력에서 일치하는 기록을 찾지 못했습니다."));
   };
 
-  const evaluatePhotographedPages = async (pages: Blob[], sourceLabel: string, preserveDigitalPayload = false) => {
+  const evaluatePhotographedPages = async (pages: Blob[], sourceLabel: string, preserveDigitalPayload = false,
+                                            rawPdfFile: File | null = null,
+                                            initialPdfVerification: ReportPdfFileVerificationResponse | null = null) => {
     appendVerificationLog("INFO", en ? "Photographed-page verification started." : "촬영 페이지 검증을 시작했습니다.", `${sourceLabel}, pages=${pages.length}`);
     if (!preserveDigitalPayload) {
       setUploadedPayloadFound(false);
@@ -3568,9 +3629,17 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     setOcrProgress({ busy: true, percent: 0, status: en ? "Preparing pages" : "페이지 이미지 보정 중" });
     setResultTone("info");
     setResultMessage(en ? `Reading visible report data from ${sourceLabel}...` : `${sourceLabel}의 화면 데이터셋을 읽고 있습니다...`);
+    let exactPdfVerification = initialPdfVerification;
     try {
       const qrEvidence = await scanReportQrEvidence(pages);
       appendVerificationLog(qrEvidence ? "OK" : "WARN", qrEvidence ? (en ? "Verification QR decoded." : "검증 QR을 판독했습니다.") : (en ? "Verification QR was not found." : "검증 QR을 찾지 못했습니다."), qrEvidence?.certificateId);
+      if (rawPdfFile && !exactPdfVerification && qrEvidence?.certificateId) {
+        exactPdfVerification = await verifyExactPdfFile(rawPdfFile, qrEvidence.certificateId);
+        if (exactPdfVerification.status === "TAMPERED_PDF") {
+          applyPdfFileVerdict(exactPdfVerification);
+          return;
+        }
+      }
       const visualProfile = await buildReportVisualProfile(pages);
       appendVerificationLog("OK", en ? "Uploaded visual fingerprint generated." : "업로드 문서 시각 지문을 생성했습니다.", `grid=${visualProfile.columns}x${visualProfile.rows}, pages=${visualProfile.pages.length}`);
       const recognized = await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
@@ -3579,6 +3648,26 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType);
       appendVerificationLog(verification.photoConsistent ? "OK" : "WARN", en ? "Issued-report candidate comparison completed." : "발급 리포트 후보 대조를 완료했습니다.", `certificate=${verification.certificateId || "-"}, candidates=${verification.comparisons?.length || 0}, exact=${verification.comparisons?.filter((item) => item.overallExactMatch).length || 0}, confidence=${verification.confidence}%, visual=${verification.visualSimilarity ?? 0}%, mismatches=${verification.fieldMismatches?.length || 0}`);
       setPhotoVerification(verification);
+      if (rawPdfFile && !exactPdfVerification && verification.certificateId) {
+        exactPdfVerification = await verifyExactPdfFile(rawPdfFile, verification.certificateId);
+      }
+      if (rawPdfFile) {
+        if (!exactPdfVerification) {
+          setResultTone("warning");
+          setResultMessage(en
+            ? "The PDF certificate ID could not be bound to an issued byte fingerprint. OCR similarity alone cannot prove authenticity."
+            : "PDF 인증서 ID를 발급 바이트 지문과 결박하지 못했습니다. OCR 유사도만으로는 진위를 증명할 수 없습니다.");
+          return;
+        }
+        if (!applyPdfFileVerdict(exactPdfVerification)) {
+          return;
+        }
+        setResultTone(verification.photoConsistent ? "success" : "warning");
+        setResultMessage(verification.photoConsistent
+          ? (en ? `Exact issued PDF match confirmed; visible OCR also matched (${verification.confidence}%).` : `발급 PDF 원본 바이트가 정확히 일치하고 화면 OCR도 일치했습니다(${verification.confidence}%).`)
+          : (en ? `Exact PDF bytes match, but visible OCR requires review (${verification.confidence}%).` : `PDF 원본 바이트는 일치하지만 화면 OCR 결과는 검토가 필요합니다(${verification.confidence}%).`));
+        return;
+      }
       if (preserveDigitalPayload) {
         setResultTone(verification.photoConsistent ? "success" : "warning");
         setResultMessage(verification.photoConsistent
@@ -3595,6 +3684,9 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       }
     } catch (error) {
       appendVerificationLog("ERROR", en ? "Photographed report verification failed." : "촬영 리포트 검증에 실패했습니다.", error instanceof Error ? error.message : String(error));
+      if (exactPdfVerification && !applyPdfFileVerdict(exactPdfVerification)) {
+        return;
+      }
       setResultTone("warning");
       setResultMessage(error instanceof Error ? error.message : (en ? "Photo OCR failed." : "사진 OCR 처리에 실패했습니다."));
     } finally {
@@ -3611,8 +3703,12 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     setVerificationLogs([]);
     appendVerificationLog("INFO", en ? "File selected." : "검증 파일을 선택했습니다.", files.map((item) => `${item.name} (${Math.round(item.size / 1024)} KB)`).join(", "));
     setFileName(files.map((item) => item.name).join(", "));
+    setPayload(null);
+    setUploadedPayloadFound(false);
+    setUploadedVerificationText("");
     setPhotoVerification(null);
     setDatasetVerification(null);
+    setPdfFileVerification(null);
     if (files.every((item) => item.type.startsWith("image/"))) {
       photoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
       setPhotoPreviewUrls(files.map((item) => URL.createObjectURL(item)));
@@ -3628,13 +3724,18 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     setUploadedVerificationText(extractedText);
     setUploadedPayloadFound(Boolean(nextPayload));
     if (nextPayload) {
-      await evaluatePayload(nextPayload, file.name);
+      const exactPdfVerification = await verifyExactPdfFile(file, nextPayload.certificateId);
+      await evaluatePayload(nextPayload, file.name, exactPdfVerification);
+      if (exactPdfVerification.status === "TAMPERED_PDF") {
+        setOcrProgress({ busy: false, percent: 0, status: en ? "Tampered PDF blocked" : "변조 PDF 차단" });
+        return;
+      }
       setOcrProgress({ busy: true, percent: 0, status: en ? "Cross-checking visible PDF data" : "PDF 화면 데이터 교차 검증 중" });
       try {
         const pages = await renderReportPdfPages(file, (percent, status) => setOcrProgress({ busy: true, percent, status }));
         appendVerificationLog("OK", en ? "PDF pages rendered for OCR cross-check." : "OCR 교차 검증용 PDF 페이지 변환을 완료했습니다.", `pages=${pages.length}`);
         setPhotoPreviewUrls(pages.map((page) => URL.createObjectURL(page)));
-        await evaluatePhotographedPages(pages, file.name, true);
+        await evaluatePhotographedPages(pages, file.name, true, file, exactPdfVerification);
       } catch (error) {
         appendVerificationLog("ERROR", en ? "Visible PDF OCR cross-check failed." : "PDF 화면 OCR 교차 검증에 실패했습니다.", error instanceof Error ? error.message : String(error));
         setOcrProgress((current) => ({ ...current, busy: false }));
@@ -3648,7 +3749,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       const pages = await renderReportPdfPages(file, (percent, status) => setOcrProgress({ busy: true, percent, status }));
       appendVerificationLog("OK", en ? "PDF pages rendered for visual verification." : "시각 검증용 PDF 페이지 변환을 완료했습니다.", `pages=${pages.length}`);
       setPhotoPreviewUrls(pages.map((page) => URL.createObjectURL(page)));
-      await evaluatePhotographedPages(pages, file.name);
+      await evaluatePhotographedPages(pages, file.name, false, file);
     } catch (error) {
       setOcrProgress((current) => ({ ...current, busy: false }));
       setResultTone("warning");
@@ -3657,6 +3758,9 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
   };
 
   const handleManualVerify = () => {
+    if (pdfFileVerification && !applyPdfFileVerdict(pdfFileVerification)) {
+      return;
+    }
     if (photoVerification) {
       setResultTone(photoVerification.photoConsistent ? "success" : "warning");
       setResultMessage(photoVerification.photoConsistent
@@ -3673,6 +3777,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
 
   const toneClass = resultTone === "success"
     ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+    : resultTone === "danger"
+      ? "border-rose-300 bg-rose-50 text-rose-950"
     : resultTone === "warning"
       ? "border-amber-200 bg-amber-50 text-amber-950"
       : "border-sky-200 bg-sky-50 text-sky-950";
@@ -3742,8 +3848,12 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
               </div>
             ) : null}
             {fileName ? (
-              <div className={`mt-3 rounded-2xl border px-4 py-3 text-sm font-bold ${uploadedPayloadFound || photoVerification?.photoConsistent ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
-                {photoVerification
+              <div className={`mt-3 rounded-2xl border px-4 py-3 text-sm font-bold ${pdfFileVerification?.status === "TAMPERED_PDF" ? "border-rose-300 bg-rose-50 text-rose-950" : pdfFileVerification?.status === "EXACT_PDF_MATCH" || (!pdfFileVerification && (uploadedPayloadFound || photoVerification?.photoConsistent)) ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+                {pdfFileVerification?.status === "TAMPERED_PDF"
+                  ? (en ? "Tampered PDF: exact issued-file bytes do not match." : "변조 파일: 발급 원본 PDF 바이트와 일치하지 않습니다.")
+                  : pdfFileVerification?.status === "EXACT_PDF_MATCH"
+                  ? (en ? "Exact issued-PDF byte match confirmed." : "발급 PDF 원본 바이트가 정확히 일치합니다.")
+                  : photoVerification
                   ? (en ? `Photo OCR comparison completed (${photoVerification.confidence}%).` : `사진 OCR 데이터셋 대조를 완료했습니다(${photoVerification.confidence}%).`)
                   : uploadedPayloadFound
                   ? (en ? "Verification data was found in the uploaded PDF. The button below can verify it again." : "업로드한 PDF에서 검증 데이터를 찾았습니다. 아래 버튼으로 다시 확인할 수 있습니다.")
@@ -3774,7 +3884,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
             <section className={`rounded-2xl border p-5 shadow-sm ${toneClass}`}>
               <p className="text-xs font-black uppercase tracking-[0.16em] opacity-80">{en ? "Verification Result" : "검증 결과"}</p>
               <h2 className="mt-2 text-xl font-black">
-                {resultTone === "success" ? (en ? "Valid" : "정상") : resultTone === "warning" ? (en ? "Needs Review" : "확인 필요") : (en ? "Waiting" : "대기")}
+                {resultTone === "success" ? (en ? "Valid" : "정상") : resultTone === "danger" ? (en ? "Tampered PDF" : "변조 파일") : resultTone === "warning" ? (en ? "Needs Review" : "확인 필요") : (en ? "Waiting" : "대기")}
               </h2>
               <p className="mt-2 text-sm font-bold leading-6">{resultMessage}</p>
             </section>
@@ -3864,6 +3974,9 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Dataset Comparison" : "데이터셋 대조"}</p>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black">
+                <span className={`col-span-2 rounded-lg px-3 py-2 ${pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "bg-emerald-100 text-emerald-900" : pdfFileVerification?.status === "TAMPERED_PDF" ? "bg-rose-100 text-rose-900" : pdfFileVerification ? "bg-amber-50 text-amber-900" : "bg-slate-100 text-slate-500"}`}>
+                  {en ? "PDF bytes vs issued original" : "PDF 원본 바이트 ↔ 발급 원장"}: {pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "EXACT" : pdfFileVerification?.status === "TAMPERED_PDF" ? "TAMPERED" : pdfFileVerification ? "UNVERIFIABLE" : "-"}
+                </span>
                 <span className={`rounded-lg px-3 py-2 ${photoVerification || datasetVerification ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>
                   {en ? "Pre-PDF registry dataset" : "PDF 생성 전 원장 데이터셋"}: {photoVerification || datasetVerification ? "OK" : "-"}
                 </span>
@@ -3879,8 +3992,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                 <span className={`col-span-2 rounded-lg px-3 py-2 ${photoVerification?.qrFullyMatched ? "bg-emerald-100 text-emerald-900" : photoVerification?.qrDetected ? "bg-rose-50 text-rose-800" : "bg-slate-100 text-slate-500"}`}>
                   {en ? "Photographed QR signature vs registry" : "촬영 QR 서명 ↔ 원장"}: {photoVerification?.qrFullyMatched ? "OK" : photoVerification?.qrDetected ? "FAIL" : "-"}
                 </span>
-                <span className={`col-span-2 rounded-lg px-3 py-2 ${datasetVerification?.datasetMatch && photoVerification?.photoConsistent ? "bg-emerald-100 text-emerald-900" : "bg-slate-100 text-slate-600"}`}>
-                  {en ? "Three-way equality" : "3자 데이터 일치"}: {datasetVerification?.datasetMatch && photoVerification?.photoConsistent ? "OK" : datasetVerification ? (en ? "OCR REVIEW" : "OCR 검토") : (en ? "EMBEDDED DATA UNAVAILABLE" : "내장 데이터 없음")}
+                <span className={`col-span-2 rounded-lg px-3 py-2 ${datasetVerification?.datasetMatch && photoVerification?.photoConsistent && (!pdfFileVerification || pdfFileVerification.status === "EXACT_PDF_MATCH") ? "bg-emerald-100 text-emerald-900" : pdfFileVerification?.status === "TAMPERED_PDF" ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-600"}`}>
+                  {en ? "Four-way equality" : "4자 데이터 일치"}: {pdfFileVerification?.status === "TAMPERED_PDF" ? "TAMPERED" : datasetVerification?.datasetMatch && photoVerification?.photoConsistent && (!pdfFileVerification || pdfFileVerification.status === "EXACT_PDF_MATCH") ? "OK" : datasetVerification ? (en ? "OCR REVIEW" : "OCR 검토") : (en ? "EMBEDDED DATA UNAVAILABLE" : "내장 데이터 없음")}
                 </span>
               </div>
               <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">

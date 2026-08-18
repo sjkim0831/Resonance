@@ -10,9 +10,14 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
@@ -48,6 +53,7 @@ public class ReportVerificationRegistryController {
                         "attachment; filename=carbonet-report-" + issued.certificateId() + ".pdf")
                 .header("X-Carbonet-Certificate-Id", issued.certificateId())
                 .header("X-Carbonet-Visual-Pages", String.valueOf(issued.pageCount()))
+                .header("X-Carbonet-Pdf-Sha256", issued.pdfSha256())
                 .body(issued.bytes());
     }
 
@@ -69,6 +75,55 @@ public class ReportVerificationRegistryController {
     })
     public ResponseEntity<Map<String, Object>> verify(@RequestBody Map<String, Object> payload) {
         return ResponseEntity.ok(reportVerificationRegistryService.verify(payload));
+    }
+
+    @PostMapping(value = {
+            "/api/home/certificate-verify/verify-file",
+            "/api/en/home/certificate-verify/verify-file",
+            "/api/admin/emission-survey-report/verify-file",
+            "/admin/api/admin/emission-survey-report/verify-file",
+            "/en/admin/api/admin/emission-survey-report/verify-file"
+    }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> verifyPdfFile(@RequestParam("certificateId") String certificateId,
+                                                              @RequestPart("file") MultipartFile file) {
+        if (file.getSize() > ReportVerificationRegistryService.MAX_VERIFICATION_PDF_BYTES) {
+            return ResponseEntity.badRequest().body(invalidPdfResult(certificateId,
+                    "The uploaded PDF exceeds the 25 MB verification limit."));
+        }
+        try {
+            return ResponseEntity.ok(reportVerificationRegistryService.verifyPdfFile(certificateId, file.getBytes()));
+        } catch (IOException exception) {
+            return ResponseEntity.badRequest().body(invalidPdfResult(certificateId,
+                    "The uploaded PDF could not be read."));
+        }
+    }
+
+    @PostMapping(value = {
+            "/admin/api/admin/emission-survey-report/register-issued-pdf",
+            "/en/admin/api/admin/emission-survey-report/register-issued-pdf"
+    }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> registerIssuedPdf(@RequestParam("certificateId") String certificateId,
+                                                                  @RequestPart("file") MultipartFile file,
+                                                                  HttpServletRequest request) {
+        if (file.getSize() > ReportVerificationRegistryService.MAX_VERIFICATION_PDF_BYTES) {
+            return ResponseEntity.badRequest().body(invalidPdfResult(certificateId,
+                    "The trusted PDF exceeds the 25 MB registration limit."));
+        }
+        try {
+            String actorId = resolveActorId(request);
+            if ("anonymous".equals(actorId)) {
+                Map<String, Object> response = invalidPdfResult(certificateId,
+                        "An authenticated administrator is required to register trusted PDF bytes.");
+                response.put("status", "PDF_FINGERPRINT_BIND_FORBIDDEN");
+                return ResponseEntity.status(403).body(response);
+            }
+            return ResponseEntity.ok(reportVerificationRegistryService.bindIssuedPdfFingerprint(
+                    certificateId, file.getBytes(), actorId));
+        } catch (IOException | RuntimeException exception) {
+            Map<String, Object> response = invalidPdfResult(certificateId, exception.getMessage());
+            response.put("status", "PDF_FINGERPRINT_BIND_REJECTED");
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 
     @PostMapping({
@@ -98,5 +153,15 @@ public class ReportVerificationRegistryController {
         } catch (Exception exception) {
             return "anonymous";
         }
+    }
+
+    private Map<String, Object> invalidPdfResult(String certificateId, String message) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("valid", false);
+        response.put("status", "INVALID_PDF");
+        response.put("certificateId", certificateId == null ? "" : certificateId.trim());
+        response.put("verificationMode", "EXACT_PDF_BYTES");
+        response.put("message", message);
+        return response;
     }
 }
