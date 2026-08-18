@@ -189,10 +189,22 @@ eval "$(bash "$PLANNER" "$database" "$runtime_release_identity" --format env)"
 [[ "$PLAN_REASONS" != *"identity-design-requires-staged-reconcile"* ]]
 
 printf 'select 1;\n' \
+  > apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260818151500__make_runtime_identity_hpa_stable.sql
+git add . && git commit -qm hpa-stable-runtime-identity
+hpa_stable_runtime_identity="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$runtime_release_identity" "$hpa_stable_runtime_identity" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == true ]]
+[[ "$PLAN_BACKEND_REQUIRED" == true ]]
+[[ "$PLAN_DATABASE_REQUIRED" == true ]]
+[[ "$PLAN_TESTS" == *"runtime:postdeploy-candidate-evidence"* ]]
+[[ ",$PLAN_TESTS," != *",runtime:identity-staged-reconcile-required,"* ]]
+[[ "$PLAN_REASONS" == *"runtime-release-identity-candidate-contract"* ]]
+
+printf 'select 1;\n' \
   > apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817235100__identity_policy.sql
 git add . && git commit -qm database-identity-design
 database_identity_design="$(git rev-parse HEAD)"
-eval "$(bash "$PLANNER" "$runtime_release_identity" "$database_identity_design" --format env)"
+eval "$(bash "$PLANNER" "$hpa_stable_runtime_identity" "$database_identity_design" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == true ]]
 [[ "$PLAN_DATABASE_REQUIRED" == true ]]
 [[ "$PLAN_TESTS" == *"runtime:identity-staged-reconcile-required"* ]]
