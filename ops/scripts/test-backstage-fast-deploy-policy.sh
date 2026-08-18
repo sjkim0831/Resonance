@@ -220,6 +220,15 @@ prevalidate = body(
 for token in (
     'command git clone --shared --no-checkout --quiet "$POLICY_ROOT"',
     'checkout --detach --quiet "$target_commit"',
+    'CARBONET_TARGET_PREVALIDATION_ROOT:-$POLICY_ROOT/var/deploy-prevalidation',
+    'prevalidation_parent_lex="$(realpath -m -s -- "$prevalidation_parent"',
+    'prevalidation_parent_resolved="$(readlink -m -- "$prevalidation_parent"',
+    'prevalidation_parent_identity="$(target_prevalidation_directory_identity',
+    'prevalidation_root_identity="$(target_prevalidation_directory_identity',
+    'validate_target_prevalidation_attempt_identity',
+    'cleanup_target_prevalidation_root "${prevalidation_identity_args[@]}"',
+    'TMPDIR="$prevalidation_root/policy-tmp"',
+    'TMPDIR="$prevalidation_root/contracts-tmp"',
     'validate_target_backstage_fast_deploy_policy_if_required',
     'bash ops/scripts/select-catalog-contract-tests.sh --paths-stdin',
     'policy_pid="$!"',
@@ -231,6 +240,23 @@ for token in (
 ):
     if token not in prevalidate:
         raise SystemExit(f"clean target parallel prevalidation is incomplete: {token}")
+for helper in (
+    "target_prevalidation_directory_identity",
+    "validate_target_prevalidation_attempt_identity",
+    "cleanup_target_prevalidation_root",
+):
+    if f"{helper}() {{" not in auto:
+        raise SystemExit(f"target prevalidation identity helper is missing: {helper}")
+if 'chmod 0700 -- "$prevalidation_parent"' in prevalidate:
+    raise SystemExit("existing target prevalidation parent must never be chmod-mutated")
+if 'rm -rf -- "$prevalidation_root"' in prevalidate:
+    raise SystemExit("target prevalidation cleanup bypasses its pinned directory identity")
+durable_contract = "ops/tests/test-durable-postdeploy-rollback-reconciler.sh"
+durable_file = pathlib.Path(sys.argv[1]).resolve().parents[2] / durable_contract
+if auto.count(durable_contract) < 3 or "ops/scripts/test-durable-postdeploy-rollback-reconciler.sh" in auto:
+    raise SystemExit("durable rollback contract path is not canonical in every prevalidation caller")
+if not durable_file.is_file() or durable_file.is_symlink():
+    raise SystemExit("durable rollback contract must be a regular committed test file")
 selector_map = auto.index("mapfile -t catalog_contract_tests")
 selector_filter = auto.index("filter_prevalidated_backstage_fast_policy_contract_test", selector_map)
 selector_sha_filter = auto.index("filter_sha_pinned_prevalidated_catalog_contract_tests", selector_map)
@@ -807,7 +833,7 @@ sha_dedupe_calls="$runtime_config_fixture/sha-dedupe.calls"
 export SHA_DEDUPE_CALLS="$sha_dedupe_calls"
 sha_dedupe_contracts=(
   ops/tests/test-postdeploy-candidate-evidence-contract.sh
-  ops/scripts/test-durable-postdeploy-rollback-reconciler.sh
+  ops/tests/test-durable-postdeploy-rollback-reconciler.sh
   ops/scripts/test-operational-usage-ledger-e2e-contract.sh
 )
 for contract_path in "${sha_dedupe_contracts[@]}"; do
@@ -851,13 +877,13 @@ mkdir -p "$prevalidation_repo/ops/scripts"
 : >"$prevalidation_calls"
 export PREVALIDATION_CALLS="$prevalidation_calls"
 printf '%s\n' '#!/usr/bin/env bash' \
-  'printf "%s\\n" TARGET_POLICY >>"${PREVALIDATION_CALLS:?}"' \
+  'printf "TARGET_POLICY %s\\n" "${TMPDIR:-}" >>"${PREVALIDATION_CALLS:?}"' \
   >"$prevalidation_repo/ops/scripts/test-backstage-fast-deploy-policy.sh"
 printf '%s\n' '#!/usr/bin/env bash' 'cat >/dev/null' \
   "printf '%s\\n' ops/scripts/test-backstage-fast-deploy-policy.sh ops/scripts/test-other-contract.sh" \
   >"$prevalidation_repo/ops/scripts/select-catalog-contract-tests.sh"
 printf '%s\n' '#!/usr/bin/env bash' \
-  'printf "%s\\n" TARGET_CONTRACT >>"${PREVALIDATION_CALLS:?}"' \
+  'printf "TARGET_CONTRACT %s\\n" "${TMPDIR:-}" >>"${PREVALIDATION_CALLS:?}"' \
   '[[ "${PREVALIDATION_FORCE_FAIL:-false}" != true ]]' \
   >"$prevalidation_repo/ops/scripts/test-other-contract.sh"
 printf '%s\n' '#!/usr/bin/env bash' >"$prevalidation_repo/ops/scripts/auto-deploy-main.sh"
@@ -872,6 +898,7 @@ printf '%s\n' '# target selector impact' >>"$prevalidation_repo/ops/scripts/auto
 git -C "$prevalidation_repo" add ops/scripts/auto-deploy-main.sh
 git -C "$prevalidation_repo" commit -qm target
 prevalidation_target="$(git -C "$prevalidation_repo" rev-parse HEAD)"
+mkdir -m 0700 "$prevalidation_repo/var"
 printf '%s\n' '#!/usr/bin/env bash' \
   'printf "%s\\n" WORKTREE_POLICY >>"${PREVALIDATION_CALLS:?}"' 'exit 99' \
   >"$prevalidation_repo/ops/scripts/test-backstage-fast-deploy-policy.sh"
@@ -900,6 +927,11 @@ prevalidate_target_contract_lanes_before_mutation >/dev/null
    && "$(grep -Fc WORKTREE_POLICY "$prevalidation_calls" || true)" == 0 \
    && "$backstage_fast_policy_validated_sha256" =~ ^[0-9a-f]{64}$ \
    && "${prevalidated_catalog_contract_sha256[ops/scripts/test-other-contract.sh]:-}" =~ ^[0-9a-f]{64}$ ]]
+prevalidation_policy_tmp="$(awk '$1=="TARGET_POLICY" {print $2}' "$prevalidation_calls")"
+prevalidation_contract_tmp="$(awk '$1=="TARGET_CONTRACT" {print $2}' "$prevalidation_calls")"
+[[ "$prevalidation_policy_tmp" == "$prevalidation_repo"/var/deploy-prevalidation/carbonet-target-prevalidate.*/policy-tmp \
+   && "$prevalidation_contract_tmp" == "$prevalidation_repo"/var/deploy-prevalidation/carbonet-target-prevalidate.*/contracts-tmp \
+   && "$prevalidation_policy_tmp" != "$prevalidation_contract_tmp" ]]
 # Late exact rollback repair may reuse only the target-commit policy receipt,
 # never the foreign source-worktree bytes or a stale digest.
 require_prevalidated_backstage_fast_policy_for_late_repair
@@ -924,11 +956,92 @@ fi
 set -e
 [[ "$prevalidation_failure_status" == 79 && "$prevalidation_mutation_calls" == 0 ]]
 unset PREVALIDATION_FORCE_FAIL
+
+# Existing or symlinked override parents fail closed without permission or
+# child mutations. The deployment user must never "repair" an untrusted path
+# by chmod-following it before the identity has been pinned.
+prevalidation_calls_before_invalid_parent="$(wc -l <"$prevalidation_calls" | tr -d '[:space:]')"
+prevalidation_wrong_mode_parent="$prevalidation_fixture/wrong-mode-parent"
+mkdir -m 0755 "$prevalidation_wrong_mode_parent"
+CARBONET_TARGET_PREVALIDATION_ROOT="$prevalidation_wrong_mode_parent"
+export CARBONET_TARGET_PREVALIDATION_ROOT
+set +e
+prevalidate_target_contract_lanes_before_mutation >/dev/null 2>&1
+prevalidation_wrong_mode_status="$?"
+set -e
+[[ "$prevalidation_wrong_mode_status" == 79 \
+   && "$(stat -c '%a' "$prevalidation_wrong_mode_parent")" == 755 \
+   && -z "$(find "$prevalidation_wrong_mode_parent" -mindepth 1 -print -quit)" \
+   && "$(wc -l <"$prevalidation_calls" | tr -d '[:space:]')" \
+      == "$prevalidation_calls_before_invalid_parent" ]]
+prevalidation_real_parent="$prevalidation_fixture/real-parent"
+prevalidation_link_parent="$prevalidation_fixture/link-parent"
+mkdir -m 0700 "$prevalidation_real_parent"
+ln -s "$prevalidation_real_parent" "$prevalidation_link_parent"
+CARBONET_TARGET_PREVALIDATION_ROOT="$prevalidation_link_parent"
+set +e
+prevalidate_target_contract_lanes_before_mutation >/dev/null 2>&1
+prevalidation_symlink_status="$?"
+set -e
+unset CARBONET_TARGET_PREVALIDATION_ROOT
+[[ "$prevalidation_symlink_status" == 79 \
+   && "$(stat -c '%a' "$prevalidation_real_parent")" == 700 \
+   && -z "$(find "$prevalidation_real_parent" -mindepth 1 -print -quit)" \
+   && "$(wc -l <"$prevalidation_calls" | tr -d '[:space:]')" \
+      == "$prevalidation_calls_before_invalid_parent" ]]
+
+# Cleanup is bound to both parent and attempt dev:inode identities. A same-UID
+# concurrent writer that renames either directory cannot make cleanup delete a
+# replacement sentinel.
+for prevalidation_swap_kind in root parent; do
+  prevalidation_race_parent="$prevalidation_fixture/cleanup-race-$prevalidation_swap_kind"
+  prevalidation_race_root="$prevalidation_race_parent/carbonet-target-prevalidate.fixture"
+  mkdir -m 0700 "$prevalidation_race_parent"
+  mkdir -m 0700 "$prevalidation_race_root"
+  printf '%s\n' original >"$prevalidation_race_root/original"
+  prevalidation_race_parent_resolved="$(readlink -e "$prevalidation_race_parent")"
+  prevalidation_race_root_resolved="$(readlink -e "$prevalidation_race_root")"
+  prevalidation_race_parent_identity="$(target_prevalidation_directory_identity \
+    "$prevalidation_race_parent" "$prevalidation_race_parent_resolved")"
+  prevalidation_race_root_identity="$(target_prevalidation_directory_identity \
+    "$prevalidation_race_root" "$prevalidation_race_root_resolved")"
+  if [[ "$prevalidation_swap_kind" == root ]]; then
+    mv "$prevalidation_race_root" "$prevalidation_race_root.original"
+    mkdir -m 0700 "$prevalidation_race_root"
+    printf '%s\n' replacement >"$prevalidation_race_root/replacement-sentinel"
+  else
+    mv "$prevalidation_race_parent" "$prevalidation_race_parent.original"
+    mkdir -m 0700 "$prevalidation_race_parent"
+    printf '%s\n' replacement >"$prevalidation_race_parent/replacement-sentinel"
+  fi
+  set +e
+  cleanup_target_prevalidation_root \
+    "$prevalidation_race_parent" "$prevalidation_race_parent_resolved" \
+    "$prevalidation_race_parent_identity" "$prevalidation_race_root" \
+    "$prevalidation_race_root_resolved" "$prevalidation_race_root_identity" \
+    >"$prevalidation_fixture/cleanup-race-$prevalidation_swap_kind.log" 2>&1
+  prevalidation_cleanup_race_status="$?"
+  set -e
+  [[ "$prevalidation_cleanup_race_status" == 79 ]]
+  grep -Fq 'REFUSE target prevalidation cleanup: directory identity drift' \
+    "$prevalidation_fixture/cleanup-race-$prevalidation_swap_kind.log"
+  if [[ "$prevalidation_swap_kind" == root ]]; then
+    [[ "$(cat "$prevalidation_race_root/replacement-sentinel")" == replacement \
+       && "$(cat "$prevalidation_race_root.original/original")" == original ]]
+    rm -rf -- "$prevalidation_race_root" "$prevalidation_race_root.original"
+  else
+    [[ "$(cat "$prevalidation_race_parent/replacement-sentinel")" == replacement \
+       && "$(cat "$prevalidation_race_parent.original/carbonet-target-prevalidate.fixture/original")" == original ]]
+    rm -rf -- "$prevalidation_race_parent" "$prevalidation_race_parent.original"
+  fi
+done
 ROOT_DIR="$ROOT"
 POLICY_ROOT="$ROOT"
 rm -rf -- "$prevalidation_fixture"
 unset -f prevalidate_target_contract_lanes_before_mutation \
-  automation_only_fast_path_eligible validate_target_backstage_fast_deploy_policy_if_required
+  automation_only_fast_path_eligible validate_target_backstage_fast_deploy_policy_if_required \
+  target_prevalidation_directory_identity validate_target_prevalidation_attempt_identity \
+  cleanup_target_prevalidation_root
 
 # Exercise the real parent wrapper and child lock adopter with one actual OFD.
 # A second-open regression would block, so the five-second bound turns it into
@@ -2004,6 +2117,7 @@ repair_flow_base="$(git -C "$repair_flow_repo" rev-parse HEAD)"
 git -C "$repair_flow_repo" -c user.name=repair-flow-test \
   -c user.email=repair-flow-test@example.invalid commit --allow-empty -qm target
 repair_flow_target="$(git -C "$repair_flow_repo" rev-parse HEAD)"
+mkdir -m 0700 "$repair_flow_repo/var"
 repair_flow_base_tree="$(git -C "$repair_flow_repo" rev-parse "$repair_flow_base^{tree}")"
 repair_flow_target_tree="$(git -C "$repair_flow_repo" rev-parse "$repair_flow_target^{tree}")"
 [[ "$repair_flow_base" =~ ^[0-9a-f]{40}$ \
@@ -2191,7 +2305,9 @@ unset -f run_forced_identity_repair_flow write_postdeploy_promotion_quarantine \
   filter_prevalidated_backstage_fast_policy_contract_test \
   run_sha_pinned_catalog_contract_prevalidation \
   filter_sha_pinned_prevalidated_catalog_contract_tests \
-  automation_only_fast_path_eligible
+  automation_only_fast_path_eligible \
+  target_prevalidation_directory_identity validate_target_prevalidation_attempt_identity \
+  cleanup_target_prevalidation_root
 
 # Identity absence is not a shortcut for any externally authoritative cut.
 # AUTHORIZED:0 and ARMED:0 retain the exact artifact and return 79 for both

@@ -307,7 +307,7 @@ run_sha_pinned_catalog_contract_prevalidation() {
   local contract_path="$1" contract_file sha_before sha_after recorded_sha
   case "$contract_path" in
     ops/tests/test-postdeploy-candidate-evidence-contract.sh|\
-    ops/scripts/test-durable-postdeploy-rollback-reconciler.sh|\
+    ops/tests/test-durable-postdeploy-rollback-reconciler.sh|\
     ops/scripts/test-operational-usage-ledger-e2e-contract.sh) ;;
     *) return 79 ;;
   esac
@@ -354,8 +354,53 @@ filter_sha_pinned_prevalidated_catalog_contract_tests() {
   fi
 }
 
+target_prevalidation_directory_identity() {
+  local path="$1" expected_resolved="$2" actual_resolved metadata
+  local device inode owner mode
+  [[ "$path" == /* && -d "$path" && ! -L "$path" ]] || return 79
+  actual_resolved="$(readlink -e -- "$path" 2>/dev/null)" || return 79
+  [[ "$actual_resolved" == "$expected_resolved" ]] || return 79
+  metadata="$(stat -Lc '%d:%i:%u:%a' -- "$path" 2>/dev/null)" || return 79
+  IFS=: read -r device inode owner mode <<<"$metadata"
+  [[ "$device" =~ ^[0-9]+$ && "$inode" =~ ^[0-9]+$ \
+     && "$owner" == "$(id -u)" && "$mode" == 700 ]] || return 79
+  printf '%s:%s\n' "$device" "$inode"
+}
+
+validate_target_prevalidation_attempt_identity() {
+  local parent="$1" parent_resolved="$2" parent_identity="$3"
+  local root="$4" root_resolved="$5" root_identity="$6"
+  local current_parent current_root
+  current_parent="$(target_prevalidation_directory_identity \
+    "$parent" "$parent_resolved")" || return 79
+  [[ "$current_parent" == "$parent_identity" ]] || return 79
+  current_root="$(target_prevalidation_directory_identity \
+    "$root" "$root_resolved")" || return 79
+  [[ "$current_root" == "$root_identity" \
+     && "$(dirname -- "$root_resolved")" == "$parent_resolved" ]] || return 79
+}
+
+cleanup_target_prevalidation_root() {
+  local parent="$1" parent_resolved="$2" parent_identity="$3"
+  local root="$4" root_resolved="$5" root_identity="$6"
+  if ! validate_target_prevalidation_attempt_identity \
+      "$parent" "$parent_resolved" "$parent_identity" \
+      "$root" "$root_resolved" "$root_identity"; then
+    echo "[auto-deploy] REFUSE target prevalidation cleanup: directory identity drift path=$root mutation=0" >&2
+    return 79
+  fi
+  rm -rf --one-file-system -- "$root" || return 79
+  [[ ! -e "$root" && ! -L "$root" ]] || return 79
+  [[ "$(target_prevalidation_directory_identity \
+    "$parent" "$parent_resolved")" == "$parent_identity" ]] || return 79
+}
+
 prevalidate_target_contract_lanes_before_mutation() {
   local policy_required=false contract_required=false selector_required=false
+  local prevalidation_parent prevalidation_parent_lex prevalidation_parent_resolved
+  local prevalidation_parent_identity prevalidation_root_lex prevalidation_root_resolved
+  local prevalidation_root_identity
+  local -a prevalidation_identity_args=()
   local prevalidation_root policy_root="" contract_root="" policy_log contracts_log
   local policy_receipt contracts_receipt policy_pid="" contracts_pid=""
   local policy_status=0 contracts_status=0 policy_sha path expected_sha current_sha
@@ -374,34 +419,68 @@ prevalidate_target_contract_lanes_before_mutation() {
   [[ "$policy_required" == true || "$contract_required" == true ]] || return 0
   [[ "$target_commit" =~ ^[0-9a-f]{40}$ ]] || return 79
 
-  prevalidation_root="$(mktemp -d /tmp/carbonet-target-prevalidate.XXXXXXXX)" || return 79
-  chmod 0700 "$prevalidation_root" || return 79
-  [[ -d "$prevalidation_root" && ! -L "$prevalidation_root" \
-     && "$(stat -c '%a:%u' "$prevalidation_root" 2>/dev/null || true)" == "700:$(id -u)" ]] || return 79
+  prevalidation_parent="${CARBONET_TARGET_PREVALIDATION_ROOT:-$POLICY_ROOT/var/deploy-prevalidation}"
+  [[ "$prevalidation_parent" == /* ]] || return 79
+  prevalidation_parent_lex="$(realpath -m -s -- "$prevalidation_parent" 2>/dev/null)" || return 79
+  prevalidation_parent_resolved="$(readlink -m -- "$prevalidation_parent" 2>/dev/null)" || return 79
+  [[ "$prevalidation_parent_lex" == "$prevalidation_parent_resolved" ]] || return 79
+  if [[ ! -e "$prevalidation_parent" && ! -L "$prevalidation_parent" ]]; then
+    (umask 077; mkdir -- "$prevalidation_parent") || return 79
+  fi
+  prevalidation_parent_resolved="$(readlink -e -- "$prevalidation_parent" 2>/dev/null)" || return 79
+  [[ "$prevalidation_parent_resolved" == "$prevalidation_parent_lex" ]] || return 79
+  prevalidation_parent_identity="$(target_prevalidation_directory_identity \
+    "$prevalidation_parent" "$prevalidation_parent_resolved")" || return 79
+  prevalidation_root="$(mktemp -d "$prevalidation_parent/carbonet-target-prevalidate.XXXXXXXX")" || return 79
+  prevalidation_root_lex="$(realpath -m -s -- "$prevalidation_root" 2>/dev/null)" || return 79
+  prevalidation_root_resolved="$(readlink -e -- "$prevalidation_root" 2>/dev/null)" || return 79
+  [[ "$prevalidation_root_lex" == "$prevalidation_root_resolved" \
+     && "$(dirname -- "$prevalidation_root_resolved")" == "$prevalidation_parent_resolved" \
+     && "$(target_prevalidation_directory_identity \
+       "$prevalidation_parent" "$prevalidation_parent_resolved")" == "$prevalidation_parent_identity" ]] || return 79
+  prevalidation_root_identity="$(target_prevalidation_directory_identity \
+    "$prevalidation_root" "$prevalidation_root_resolved")" || return 79
+  prevalidation_identity_args=(
+    "$prevalidation_parent" "$prevalidation_parent_resolved" "$prevalidation_parent_identity"
+    "$prevalidation_root" "$prevalidation_root_resolved" "$prevalidation_root_identity"
+  )
+  mkdir -m 0700 "$prevalidation_root/policy-tmp" "$prevalidation_root/contracts-tmp" || {
+    cleanup_target_prevalidation_root "${prevalidation_identity_args[@]}" || true
+    return 79
+  }
   policy_log="$prevalidation_root/policy.log"
   contracts_log="$prevalidation_root/contracts.log"
   policy_receipt="$prevalidation_root/policy.receipt"
   contracts_receipt="$prevalidation_root/contracts.receipt"
 
   if [[ "$policy_required" == true ]]; then
+    validate_target_prevalidation_attempt_identity \
+      "${prevalidation_identity_args[@]}" || return 79
     policy_root="$prevalidation_root/policy-root"
     if ! command git clone --shared --no-checkout --quiet "$POLICY_ROOT" "$policy_root" \
        || ! command git -C "$policy_root" checkout --detach --quiet "$target_commit" \
        || [[ "$(command git -C "$policy_root" rev-parse HEAD 2>/dev/null || true)" != "$target_commit" ]] \
        || [[ -n "$(command git -C "$policy_root" status --porcelain --untracked-files=no 2>/dev/null)" ]]; then
-      rm -rf -- "$prevalidation_root"
+      cleanup_target_prevalidation_root "${prevalidation_identity_args[@]}" || true
       return 79
     fi
   fi
   if [[ "$contract_required" == true ]]; then
+    validate_target_prevalidation_attempt_identity \
+      "${prevalidation_identity_args[@]}" || return 79
     contract_root="$prevalidation_root/contracts-root"
     if ! command git clone --shared --no-checkout --quiet "$POLICY_ROOT" "$contract_root" \
        || ! command git -C "$contract_root" checkout --detach --quiet "$target_commit" \
        || [[ "$(command git -C "$contract_root" rev-parse HEAD 2>/dev/null || true)" != "$target_commit" ]] \
        || [[ -n "$(command git -C "$contract_root" status --porcelain --untracked-files=no 2>/dev/null)" ]]; then
-      rm -rf -- "$prevalidation_root"
+      cleanup_target_prevalidation_root "${prevalidation_identity_args[@]}" || true
       return 79
     fi
+  fi
+  if ! validate_target_prevalidation_attempt_identity \
+      "${prevalidation_identity_args[@]}"; then
+    cleanup_target_prevalidation_root "${prevalidation_identity_args[@]}" || true
+    return 79
   fi
 
   if [[ "$policy_required" == true ]]; then
@@ -409,7 +488,8 @@ prevalidate_target_contract_lanes_before_mutation() {
       set -euo pipefail
       umask 077
       ROOT_DIR="$policy_root"
-      export ROOT_DIR CARBONET_DEPLOY_ROOT="$policy_root" CARBONET_CLEAN_WORKTREE_ACTIVE=true
+      TMPDIR="$prevalidation_root/policy-tmp"
+      export ROOT_DIR TMPDIR CARBONET_DEPLOY_ROOT="$policy_root" CARBONET_CLEAN_WORKTREE_ACTIVE=true
       cd "$policy_root"
       # A startup recovery receipt can prove that no repair is needed only
       # after this mutation-free lane has finished. Force the isolated worker
@@ -428,7 +508,8 @@ prevalidate_target_contract_lanes_before_mutation() {
       set -euo pipefail
       umask 077
       ROOT_DIR="$contract_root"
-      export ROOT_DIR CARBONET_DEPLOY_ROOT="$contract_root" CARBONET_CLEAN_WORKTREE_ACTIVE=true
+      TMPDIR="$prevalidation_root/contracts-tmp"
+      export ROOT_DIR TMPDIR CARBONET_DEPLOY_ROOT="$contract_root" CARBONET_CLEAN_WORKTREE_ACTIVE=true
       cd "$contract_root"
       local_selected_file="$prevalidation_root/selected.tests"
       : >"$local_selected_file"
@@ -446,7 +527,7 @@ prevalidate_target_contract_lanes_before_mutation() {
       done <"$local_selected_file"
       if [[ ",${PLAN_TESTS:-}," == *",runtime:postdeploy-candidate-evidence,"* ]]; then
         for path in ops/tests/test-postdeploy-candidate-evidence-contract.sh \
-          ops/scripts/test-durable-postdeploy-rollback-reconciler.sh; do
+          ops/tests/test-durable-postdeploy-rollback-reconciler.sh; do
           if [[ -z "${selected_seen[$path]:-}" ]]; then
             selected_seen["$path"]=true
             selected_tests+=("$path")
@@ -500,39 +581,54 @@ prevalidate_target_contract_lanes_before_mutation() {
 
   if [[ -n "$policy_pid" ]]; then wait "$policy_pid" || policy_status=$?; fi
   if [[ -n "$contracts_pid" ]]; then wait "$contracts_pid" || contracts_status=$?; fi
+  if ! validate_target_prevalidation_attempt_identity \
+      "${prevalidation_identity_args[@]}"; then
+    cleanup_target_prevalidation_root "${prevalidation_identity_args[@]}" || true
+    return 79
+  fi
   [[ ! -f "$policy_log" ]] || cat "$policy_log"
   [[ ! -f "$contracts_log" ]] || cat "$contracts_log"
   if (( policy_status != 0 || contracts_status != 0 )); then
     echo "[auto-deploy] target prevalidation failed policy=$policy_status contracts=$contracts_status mutation=0" >&2
-    rm -rf -- "$prevalidation_root"
+    cleanup_target_prevalidation_root "${prevalidation_identity_args[@]}" || true
     return 79
   fi
   if [[ "$policy_required" == true ]]; then
     [[ -f "$policy_receipt" && ! -L "$policy_receipt" \
        && "$(stat -c '%a:%u:%h' "$policy_receipt" 2>/dev/null || true)" == "600:$(id -u):1" ]] || {
-      rm -rf -- "$prevalidation_root"; return 79; }
+      cleanup_target_prevalidation_root "${prevalidation_identity_args[@]}" || true
+      return 79
+    }
     policy_sha="$(tr -d '[:space:]' <"$policy_receipt")"
     [[ "$policy_sha" =~ ^[0-9a-f]{64}$ \
        && "$(sha256sum "$policy_root/ops/scripts/test-backstage-fast-deploy-policy.sh" | awk '{print $1}')" == "$policy_sha" ]] || {
-      rm -rf -- "$prevalidation_root"; return 79; }
+      cleanup_target_prevalidation_root "${prevalidation_identity_args[@]}" || true
+      return 79
+    }
     backstage_fast_policy_validated_sha256="$policy_sha"
   fi
   if [[ "$contract_required" == true ]]; then
     [[ -f "$contracts_receipt" && ! -L "$contracts_receipt" \
        && "$(stat -c '%a:%u:%h' "$contracts_receipt" 2>/dev/null || true)" == "600:$(id -u):1" ]] || {
-      rm -rf -- "$prevalidation_root"; return 79; }
+      cleanup_target_prevalidation_root "${prevalidation_identity_args[@]}" || true
+      return 79
+    }
     while IFS=$'\t' read -r path expected_sha; do
       [[ "$path" =~ ^ops/(scripts|tests)/test-[A-Za-z0-9._/-]+\.sh$ \
          && "$path" != *../* && "$expected_sha" =~ ^[0-9a-f]{64}$ \
          && -f "$contract_root/$path" && ! -L "$contract_root/$path" ]] || {
-        rm -rf -- "$prevalidation_root"; return 79; }
+        cleanup_target_prevalidation_root "${prevalidation_identity_args[@]}" || true
+        return 79
+      }
       current_sha="$(sha256sum "$contract_root/$path" 2>/dev/null | awk '{print $1}')"
       [[ "$current_sha" == "$expected_sha" ]] || {
-        rm -rf -- "$prevalidation_root"; return 79; }
+        cleanup_target_prevalidation_root "${prevalidation_identity_args[@]}" || true
+        return 79
+      }
       prevalidated_catalog_contract_sha256["$path"]="$expected_sha"
     done <"$contracts_receipt"
   fi
-  rm -rf -- "$prevalidation_root"
+  cleanup_target_prevalidation_root "${prevalidation_identity_args[@]}" || return 79
   echo "[auto-deploy] clean target prevalidation PASS policy=$policy_required contracts=${#prevalidated_catalog_contract_sha256[@]} mutation=0"
 }
 
@@ -8002,7 +8098,7 @@ run_postdeploy_candidate_static_contract_if_required() {
   run_sha_pinned_catalog_contract_prevalidation \
     ops/tests/test-postdeploy-candidate-evidence-contract.sh
   run_sha_pinned_catalog_contract_prevalidation \
-    ops/scripts/test-durable-postdeploy-rollback-reconciler.sh
+    ops/tests/test-durable-postdeploy-rollback-reconciler.sh
   echo "[auto-deploy] postdeploy candidate static contract PASS"
 }
 
