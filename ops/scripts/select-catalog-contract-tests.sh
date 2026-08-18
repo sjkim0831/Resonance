@@ -111,6 +111,7 @@ select_for_path() {
     ops/scripts/test-backstage-runtime-purge-recovery-secret.sh|\
     ops/scripts/test-backstage-deployment-rollback.sh|\
     ops/scripts/test-backstage-fast-deploy-policy.sh|\
+    platform/control-plane/backstage/*|\
     modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/web/ActorProcessControlPlaneBridgeController.java|\
     modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/platform/governance/web/ActorProcessControlPlaneBridgeProjectPurgeTest.java)
       add_test ops/scripts/test-backstage-fast-deploy-policy.sh ;;

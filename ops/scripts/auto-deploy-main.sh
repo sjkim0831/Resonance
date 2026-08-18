@@ -59,6 +59,9 @@ policy_contract_files=(
   ops/scripts/test-backstage-runtime-purge-recovery-secret.sh
   ops/scripts/test-backstage-deployment-rollback.sh
   ops/scripts/resonance-backstage-deploy.sh
+  platform/control-plane/backstage/package.json
+  platform/control-plane/backstage/config.d.ts
+  platform/control-plane/backstage/packages/app/package.json
   modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/web/ActorProcessControlPlaneBridgeController.java
   modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/platform/governance/web/ActorProcessControlPlaneBridgeProjectPurgeTest.java
   ops/scripts/auto-deploy-main.sh

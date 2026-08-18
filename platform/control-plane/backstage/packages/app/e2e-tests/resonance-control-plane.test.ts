@@ -73,7 +73,8 @@ async function signIn(page: Page) {
     .getByRole('button')
     .filter({ hasText: /Resonance|로그인|Sign in/i })
     .first();
-  let readySurface: 'sidebar' | 'sign-in' | null = null;
+  const guestEntryButton = page.getByRole('button', { name: /^Enter$/i });
+  let readySurface: 'sidebar' | 'sign-in' | 'guest' | null = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     const response = await page.goto('/', {
       waitUntil: 'domcontentloaded',
@@ -90,6 +91,9 @@ async function signIn(page: Page) {
       signInButton
         .waitFor({ state: 'visible', timeout: 20_000 })
         .then(() => 'sign-in' as const),
+      guestEntryButton
+        .waitFor({ state: 'visible', timeout: 20_000 })
+        .then(() => 'guest' as const),
     ]).catch(() => null);
     if (readySurface) break;
     await page.waitForTimeout(attempt * 1_000);
@@ -101,6 +105,11 @@ async function signIn(page: Page) {
   }
   if (readySurface === 'sidebar') {
     return;
+  }
+  if (readySurface === 'guest') {
+    throw new Error(
+      'Backstage OIDC sign-in runtime config is missing; guest entry was rendered',
+    );
   }
 
   const [popup] = await Promise.all([

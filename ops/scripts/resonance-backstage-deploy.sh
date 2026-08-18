@@ -482,6 +482,58 @@ build_backstage_application() {
   echo "[backstage] TypeScript and backend bundle gates completed concurrently"
 }
 
+verify_oidc_frontend_schema_json() {
+  local expected_package="$1"
+  node -e '
+    const fs = require("fs");
+    let document;
+    try {
+      document = JSON.parse(fs.readFileSync(0, "utf8"));
+    } catch {
+      process.exit(2);
+    }
+    if (!Array.isArray(document.schemas)) process.exit(3);
+    const matches = document.schemas.filter(schema => {
+      const properties = schema?.value?.properties?.app?.properties;
+      return Boolean(
+        properties?.resonanceOidcEnabled ||
+          properties?.resonanceOidcDisplayName,
+      );
+    });
+    if (matches.length !== 1) process.exit(4);
+    if (matches[0].packageName !== process.argv[1]) process.exit(5);
+    const properties = matches[0].value.properties.app.properties;
+    if (
+      properties.resonanceOidcEnabled?.type !== "boolean" ||
+      properties.resonanceOidcEnabled?.visibility !== "frontend" ||
+      properties.resonanceOidcDisplayName?.type !== "string" ||
+      properties.resonanceOidcDisplayName?.visibility !== "frontend"
+    ) process.exit(6);
+  ' "$expected_package"
+}
+
+verify_backstage_frontend_schema_artifacts() {
+  local schema_path bundle_path expected_package
+  schema_path="$APP/packages/app/dist/.config-schema.json"
+  bundle_path="$APP/packages/backend/dist/bundle.tar.gz"
+  expected_package="$(node -p 'require(process.argv[1]).name' "$APP/package.json")"
+  [[ -n "$expected_package" ]] || return 1
+  if [[ ! -f "$schema_path" || ! -f "$bundle_path" ]]; then
+    echo '[backstage] OIDC frontend schema artifact is missing or invalid' >&2
+    return 1
+  fi
+  if ! verify_oidc_frontend_schema_json "$expected_package" <"$schema_path"; then
+    echo '[backstage] OIDC frontend schema artifact is missing or invalid' >&2
+    return 1
+  fi
+  if ! tar -xOzf "$bundle_path" packages/app/dist/.config-schema.json |
+      verify_oidc_frontend_schema_json "$expected_package"; then
+    echo '[backstage] bundled OIDC frontend schema artifact is missing or invalid' >&2
+    return 1
+  fi
+  echo '[backstage] OIDC frontend schema artifact PASS source=1 bundle=1 duplicates=0'
+}
+
 install_backstage_dependencies() {
   local cache_key cache_dir cache_modules cache_state cache_lock state_marker
   cache_key="$(
@@ -838,6 +890,83 @@ wait_for_runtime() {
   return 1
 }
 
+verify_frontend_auth_runtime_config() {
+  local expected_oidc="$OIDC_READY" attempt html
+  local retrieval_succeeded=false
+  for attempt in 1 2 3; do
+    if html="$(curl "${CURL_TLS_ARGS[@]}" -fsS --max-time 10 "$BACKSTAGE_URL/")"; then
+      retrieval_succeeded=true
+      if printf '%s' "$html" |
+          EXPECTED_OIDC="$expected_oidc" node -e '
+            let html = "";
+            process.stdin.setEncoding("utf8");
+            process.stdin.on("data", chunk => { html += chunk; });
+            process.stdin.on("end", () => {
+              const scripts = Array.from(
+                html.matchAll(
+                  /<script\b[^>]*\btype=["\x27]backstage\.io\/config["\x27][^>]*>([\s\S]*?)<\/script>/gi,
+                ),
+              );
+              if (scripts.length === 0) process.exit(2);
+              const configs = [];
+              for (const script of scripts) {
+                let document;
+                try {
+                  document = JSON.parse(script[1]);
+                } catch {
+                  process.exit(3);
+                }
+                if (!Array.isArray(document)) process.exit(4);
+                configs.push(...document);
+              }
+              let enabled;
+              let displayName;
+              for (const entry of configs) {
+                if (
+                  !entry ||
+                  typeof entry !== "object" ||
+                  !entry.data ||
+                  typeof entry.data !== "object" ||
+                  Array.isArray(entry.data)
+                ) process.exit(5);
+                const app = entry.data.app;
+                if (app === undefined) continue;
+                if (!app || typeof app !== "object" || Array.isArray(app)) {
+                  process.exit(6);
+                }
+                if (Object.prototype.hasOwnProperty.call(app, "resonanceOidcEnabled")) {
+                  enabled = app.resonanceOidcEnabled;
+                }
+                if (Object.prototype.hasOwnProperty.call(app, "resonanceOidcDisplayName")) {
+                  displayName = app.resonanceOidcDisplayName;
+                }
+              }
+              const expected = process.env.EXPECTED_OIDC === "true";
+              if (expected) {
+                if (
+                  enabled !== true ||
+                  typeof displayName !== "string" ||
+                  displayName.trim().length === 0
+                ) process.exit(7);
+              } else if (enabled === true) {
+                process.exit(8);
+              }
+            });
+          '; then
+        echo "[backstage] frontend auth runtime config PASS oidc=$expected_oidc attempt=$attempt"
+        return 0
+      fi
+    fi
+    (( attempt < 3 )) && sleep "$attempt"
+  done
+  if [[ "$retrieval_succeeded" != "true" ]]; then
+    echo '[backstage] frontend runtime config lookup failed' >&2
+  else
+    echo '[backstage] frontend OIDC runtime config is missing or inconsistent' >&2
+  fi
+  return 1
+}
+
 wait_for_catalog() {
   local attempt identity token count
   for attempt in $(seq 1 30); do
@@ -962,6 +1091,7 @@ case "$mode" in
         run_yarn_script_if_defined validate:design-release-bridge
         run_yarn_script_if_defined generate:project-registry
         build_backstage_application
+        verify_backstage_frontend_schema_artifacts
       )
       finish_phase application-build
       start_phase image-build
@@ -1077,6 +1207,7 @@ case "$mode" in
     start_phase rollout-readiness
     kubectl -n "$NAMESPACE" rollout status deployment/resonance-backstage --timeout=600s
     wait_for_runtime
+    verify_frontend_auth_runtime_config
     if [[ "$OIDC_READY" == "true" ]]; then
       wait_for_catalog_database
     else

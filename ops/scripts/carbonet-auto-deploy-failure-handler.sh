@@ -94,7 +94,7 @@ elif [[ "$deploy_exit_status" == 79 ]] \
    && grep -Eqi 'SQL State[[:space:]]*:[[:space:]]*P0001|SQLSTATE[[:space:]]*[:=]?[[:space:]]*P0001|precondition failed|FLYWAY_JOB_FAILED' "$evidence"; then
   category=DATABASE_DETERMINISTIC
 elif [[ "$deploy_exit_status" == 79 ]] \
-   && grep -Eqi '\[backstage\][[:space:]]+runtime purge recovery (account secret is required|actor ref is invalid)|Runtime purge recovery authority preflight returned no proof|RECOVERY_AUTHORITY_NOT_READY' "$evidence"; then
+   && grep -Eqi '\[backstage\][[:space:]]+runtime purge recovery (account secret is required|actor ref is invalid)|Runtime purge recovery authority preflight returned no proof|RECOVERY_AUTHORITY_NOT_READY|\[backstage\] (bundled )?OIDC frontend schema artifact is missing or invalid|\[backstage\] frontend OIDC runtime config is missing or inconsistent|Backstage OIDC sign-in runtime config is missing' "$evidence"; then
   # A rollback safety hold may promote the outer deploy status to 79 after a
   # deterministic Backstage authority failure. Preserve the root cause before
   # the generic exit-79 terminal branch so it can never schedule a retry.
@@ -153,7 +153,7 @@ elif grep -Eqi 'SQL State[[:space:]]*:[[:space:]]*P0001|SQLSTATE[[:space:]]*[:=]
   # kubectl wait emits a generic timeout. Never let that wrapper timeout turn
   # an already rolled-back migration into an automatic deployment retry.
   category=DATABASE_DETERMINISTIC
-elif grep -Eqi '\[backstage\][[:space:]]+runtime purge recovery (account secret is required|actor ref is invalid)|Runtime purge recovery authority preflight returned no proof|RECOVERY_AUTHORITY_NOT_READY' "$evidence"; then
+elif grep -Eqi '\[backstage\][[:space:]]+runtime purge recovery (account secret is required|actor ref is invalid)|Runtime purge recovery authority preflight returned no proof|RECOVERY_AUTHORITY_NOT_READY|\[backstage\] (bundled )?OIDC frontend schema artifact is missing or invalid|\[backstage\] frontend OIDC runtime config is missing or inconsistent|Backstage OIDC sign-in runtime config is missing' "$evidence"; then
   # Missing, malformed, or deterministically unprovable recovery authority is
   # deployment configuration/code, not a transport outage. Incidental timeout
   # text from rollout or sibling cleanup must never schedule an identical
@@ -164,7 +164,7 @@ elif grep -Eqi 'STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=(AUTHORITY_
   # contradictions require reconciliation; an identical retry cannot repair
   # them. Attempt/promotion recovery evidence above always takes precedence.
   category=RUNTIME_IDENTITY_DETERMINISTIC
-elif grep -Eqi 'STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=(DATA_UNAVAILABLE|READINESS_TRANSIENT)|connection reset|connection refused|temporary failure|timed out|timeout|TLS handshake|unable to connect|i/o timeout|HTTP 50[234]|requested URL returned error: 50[234]|readiness returned 50[234]|concurrent token acquisition failed' "$evidence"; then
+elif grep -Eqi 'STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=(DATA_UNAVAILABLE|READINESS_TRANSIENT)|\[backstage\] frontend runtime config lookup failed|connection reset|connection refused|temporary failure|timed out|timeout|TLS handshake|unable to connect|i/o timeout|HTTP 50[234]|requested URL returned error: 50[234]|readiness returned 50[234]|concurrent token acquisition failed' "$evidence"; then
   category=NETWORK_TRANSIENT
   retry_allowed=true
 elif grep -Eqi 'visual E2E|playwright|screenshot|browser regression' "$evidence"; then

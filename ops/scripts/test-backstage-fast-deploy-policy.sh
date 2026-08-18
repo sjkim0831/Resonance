@@ -14,6 +14,9 @@ FULL_E2E_TIMER="$ROOT/ops/systemd/resonance-backstage-full-e2e.timer"
 ROLE_E2E="$ROOT/ops/scripts/resonance-actor-process-role-e2e.sh"
 PURGE_BRIDGE="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/web/ActorProcessControlPlaneBridgeController.java"
 PURGE_BRIDGE_TEST="$ROOT/modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/platform/governance/web/ActorProcessControlPlaneBridgeProjectPurgeTest.java"
+ROOT_PACKAGE="$ROOT/platform/control-plane/backstage/package.json"
+ROOT_CONFIG_SCHEMA="$ROOT/platform/control-plane/backstage/config.d.ts"
+APP_PACKAGE="$ROOT/platform/control-plane/backstage/packages/app/package.json"
 
 grep -Fq 'DEPENDENCY_CACHE_ROOT=' "$DEPLOY"
 grep -Fq 'resonance-backstage-runtime-fingerprint.sh' "$DEPLOY"
@@ -51,6 +54,15 @@ grep -Fq 'Backstage visual E2E running concurrently' "$AUTO_DEPLOY"
 grep -Fq 'wait_backstage_visual_e2e' "$AUTO_DEPLOY"
 grep -Fq 'concurrent Backstage visual E2E failed' "$AUTO_DEPLOY"
 grep -Fq 'actor-process role E2E skipped for unrelated routes' "$AUTO_DEPLOY"
+grep -Fq '"configSchema": "config.d.ts"' "$ROOT_PACKAGE"
+grep -Fq '@visibility frontend' "$ROOT_CONFIG_SCHEMA"
+[[ "$(grep -Fc 'resonanceOidcEnabled' "$ROOT_CONFIG_SCHEMA")" == 1 ]]
+[[ "$(grep -Fc 'resonanceOidcDisplayName' "$ROOT_CONFIG_SCHEMA")" == 1 ]]
+! grep -Fq '"configSchema"' "$APP_PACKAGE"
+[[ ! -e "$ROOT/platform/control-plane/backstage/packages/app/config.d.ts" ]]
+grep -Fq 'verify_backstage_frontend_schema_artifacts' "$DEPLOY"
+grep -Fq 'verify_frontend_auth_runtime_config' "$DEPLOY"
+grep -Fq 'Backstage OIDC sign-in runtime config is missing; guest entry was rendered' "$E2E_SPEC"
 bash "$ROOT/ops/scripts/test-backstage-runtime-fingerprint.sh"
 bash "$ROOT/ops/scripts/test-backstage-runtime-purge-recovery-secret.sh" "$ROOT"
 bash "$ROOT/ops/scripts/test-backstage-deployment-rollback.sh" "$ROOT"
@@ -114,7 +126,148 @@ for merge_section in auto.split('git merge --ff-only "$target_commit"')[1:]:
     recover = merge_section.find("recover_pending_backstage_deployment_after_target_merge || exit $?")
     if static_gate < 0 or recover < static_gate:
         raise SystemExit("target Backstage recovery must follow its static contract")
+deploy_case = deploy.split("  deploy)", 1)[1]
+application_build = deploy_case.index("build_backstage_application")
+schema_artifact_gate = deploy_case.index(
+    "verify_backstage_frontend_schema_artifacts", application_build
+)
+image_build = deploy_case.index("start_phase image-build", schema_artifact_gate)
+if not application_build < schema_artifact_gate < image_build:
+    raise SystemExit("OIDC frontend schema artifact is not proved before image build")
+rollout = deploy_case.index("rollout status deployment/resonance-backstage")
+runtime_ready = deploy_case.index("wait_for_runtime", rollout)
+frontend_config_gate = deploy_case.index("verify_frontend_auth_runtime_config", runtime_ready)
+finalize = deploy_case.index("finalize_successful_backstage_deployment", frontend_config_gate)
+if not rollout < runtime_ready < frontend_config_gate < finalize:
+    raise SystemExit(
+        "frontend auth config is not proved after readiness and before rollback state finalization"
+    )
+for policy_path in (
+    "platform/control-plane/backstage/package.json",
+    "platform/control-plane/backstage/config.d.ts",
+    "platform/control-plane/backstage/packages/app/package.json",
+):
+    if policy_path not in auto:
+        raise SystemExit(f"Backstage packaging input is absent from policy digest: {policy_path}")
 PY
+
+runtime_config_fixture="$(mktemp -d)"
+trap 'rm -rf -- "${runtime_config_fixture:-}" "${lock_fixture:-}"' EXIT
+runtime_config_function="$runtime_config_fixture/function.sh"
+sed -n \
+  '/^verify_frontend_auth_runtime_config() {/,/^wait_for_catalog() {/p' \
+  "$DEPLOY" | sed '$d' >"$runtime_config_function"
+# shellcheck disable=SC1090
+source "$runtime_config_function"
+CURL_TLS_ARGS=()
+BACKSTAGE_URL=https://backstage.invalid
+curl() {
+  cat -- "$RUNTIME_CONFIG_HTML_FIXTURE"
+}
+cat >"$runtime_config_fixture/oidc.html" <<'HTML'
+<html><script type="backstage.io/config">[{"context":"app-config.production.yaml","data":{"app":{"resonanceOidcEnabled":false}}},{"context":"app-config.oidc.yaml","data":{"app":{"resonanceOidcEnabled":true,"resonanceOidcDisplayName":"Resonance account"}}}]</script></html>
+HTML
+OIDC_READY=true RUNTIME_CONFIG_HTML_FIXTURE="$runtime_config_fixture/oidc.html" \
+  verify_frontend_auth_runtime_config >"$runtime_config_fixture/oidc.out"
+cat >"$runtime_config_fixture/missing.html" <<'HTML'
+<html><script type="backstage.io/config">[{"context":"app-config.yaml","data":{"app":{"title":"Resonance Control Plane"}}}]</script></html>
+HTML
+set +e
+OIDC_READY=true RUNTIME_CONFIG_HTML_FIXTURE="$runtime_config_fixture/missing.html" \
+  verify_frontend_auth_runtime_config >"$runtime_config_fixture/missing.out" \
+    2>"$runtime_config_fixture/missing.err"
+runtime_config_missing_status="$?"
+set -e
+[[ "$runtime_config_missing_status" == 1 ]]
+grep -Fq 'frontend OIDC runtime config is missing or inconsistent' \
+  "$runtime_config_fixture/missing.err"
+cat >"$runtime_config_fixture/object.html" <<'HTML'
+<html><script type="backstage.io/config">{"app":{"resonanceOidcEnabled":true,"resonanceOidcDisplayName":"Resonance account"}}</script></html>
+HTML
+set +e
+OIDC_READY=true RUNTIME_CONFIG_HTML_FIXTURE="$runtime_config_fixture/object.html" \
+  verify_frontend_auth_runtime_config >"$runtime_config_fixture/object.out" \
+    2>"$runtime_config_fixture/object.err"
+runtime_config_object_status="$?"
+set -e
+[[ "$runtime_config_object_status" == 1 ]]
+grep -Fq 'frontend OIDC runtime config is missing or inconsistent' \
+  "$runtime_config_fixture/object.err"
+cat >"$runtime_config_fixture/guest.html" <<'HTML'
+<html><script type="backstage.io/config">[{"context":"app-config.oidc.yaml","data":{"app":{"resonanceOidcEnabled":true,"resonanceOidcDisplayName":"Resonance account"}}},{"context":"operator-override","data":{"app":{"resonanceOidcEnabled":false}}}]</script></html>
+HTML
+OIDC_READY=false RUNTIME_CONFIG_HTML_FIXTURE="$runtime_config_fixture/guest.html" \
+  verify_frontend_auth_runtime_config >"$runtime_config_fixture/guest.out"
+cat >"$runtime_config_fixture/multiple.html" <<'HTML'
+<html><script type="backstage.io/config">[{"context":"app-config.oidc.yaml","data":{"app":{"resonanceOidcEnabled":true,"resonanceOidcDisplayName":"Resonance account"}}}]</script><script type="backstage.io/config">[{"context":"operator-override","data":{"app":{"resonanceOidcEnabled":false}}}]</script></html>
+HTML
+OIDC_READY=false RUNTIME_CONFIG_HTML_FIXTURE="$runtime_config_fixture/multiple.html" \
+  verify_frontend_auth_runtime_config >"$runtime_config_fixture/multiple.out"
+unset -f curl verify_frontend_auth_runtime_config
+
+schema_function="$runtime_config_fixture/schema-function.sh"
+sed -n \
+  '/^verify_oidc_frontend_schema_json() {/,/^install_backstage_dependencies() {/p' \
+  "$DEPLOY" | sed '$d' >"$schema_function"
+# shellcheck disable=SC1090
+source "$schema_function"
+schema_app="$runtime_config_fixture/schema-app"
+schema_dist="$schema_app/packages/app/dist"
+schema_bundle_dist="$schema_app/packages/backend/dist"
+mkdir -p "$schema_dist" "$schema_bundle_dist"
+printf '%s\n' '{"name":"root"}' >"$schema_app/package.json"
+cat >"$schema_dist/.config-schema.json" <<'JSON'
+{"schemas":[{"packageName":"root","value":{"properties":{"app":{"properties":{"resonanceOidcEnabled":{"type":"boolean","visibility":"frontend"},"resonanceOidcDisplayName":{"type":"string","visibility":"frontend"}}}}}}]}
+JSON
+tar -czf "$schema_bundle_dist/bundle.tar.gz" \
+  -C "$schema_app" packages/app/dist/.config-schema.json
+APP="$schema_app" verify_backstage_frontend_schema_artifacts \
+  >"$runtime_config_fixture/schema-valid.out"
+cat >"$schema_dist/.config-schema.json" <<'JSON'
+{"schemas":[{"packageName":"root","value":{"properties":{"app":{"properties":{"resonanceOidcEnabled":{"type":"boolean","visibility":"frontend"},"resonanceOidcDisplayName":{"type":"string","visibility":"frontend"}}}}}},{"packageName":"duplicate","value":{"properties":{"app":{"properties":{"resonanceOidcEnabled":{"type":"boolean","visibility":"frontend"}}}}}}]}
+JSON
+set +e
+APP="$schema_app" verify_backstage_frontend_schema_artifacts \
+  >"$runtime_config_fixture/schema-duplicate.out" \
+  2>"$runtime_config_fixture/schema-duplicate.err"
+schema_duplicate_status="$?"
+set -e
+[[ "$schema_duplicate_status" == 1 ]]
+grep -Fq 'OIDC frontend schema artifact is missing or invalid' \
+  "$runtime_config_fixture/schema-duplicate.err"
+cat >"$schema_dist/.config-schema.json" <<'JSON'
+{"schemas":[{"packageName":"app","value":{"properties":{"app":{"properties":{"resonanceOidcEnabled":{"type":"boolean","visibility":"frontend"},"resonanceOidcDisplayName":{"type":"string","visibility":"frontend"}}}}}}]}
+JSON
+set +e
+APP="$schema_app" verify_backstage_frontend_schema_artifacts \
+  >"$runtime_config_fixture/schema-wrong-package.out" \
+  2>"$runtime_config_fixture/schema-wrong-package.err"
+schema_wrong_package_status="$?"
+set -e
+[[ "$schema_wrong_package_status" == 1 ]]
+grep -Fq 'OIDC frontend schema artifact is missing or invalid' \
+  "$runtime_config_fixture/schema-wrong-package.err"
+cat >"$schema_dist/.config-schema.json" <<'JSON'
+{"schemas":[{"packageName":"root","value":{"properties":{"app":{"properties":{"resonanceOidcEnabled":{"type":"boolean","visibility":"frontend"},"resonanceOidcDisplayName":{"type":"string","visibility":"frontend"}}}}}}]}
+JSON
+schema_bad_bundle="$runtime_config_fixture/schema-bad-bundle"
+mkdir -p "$schema_bad_bundle/packages/app/dist"
+cat >"$schema_bad_bundle/packages/app/dist/.config-schema.json" <<'JSON'
+{"schemas":[]}
+JSON
+tar -czf "$schema_bundle_dist/bundle.tar.gz" \
+  -C "$schema_bad_bundle" packages/app/dist/.config-schema.json
+set +e
+APP="$schema_app" verify_backstage_frontend_schema_artifacts \
+  >"$runtime_config_fixture/schema-bundle.out" \
+  2>"$runtime_config_fixture/schema-bundle.err"
+schema_bundle_status="$?"
+set -e
+[[ "$schema_bundle_status" == 1 ]]
+grep -Fq 'bundled OIDC frontend schema artifact is missing or invalid' \
+  "$runtime_config_fixture/schema-bundle.err"
+unset -f verify_oidc_frontend_schema_json verify_backstage_frontend_schema_artifacts
+rm -rf -- "$runtime_config_fixture"
 
 lock_fixture="$(mktemp -d)"
 trap 'rm -rf -- "$lock_fixture"' EXIT
@@ -271,4 +424,4 @@ grep -Fq 'token_pids+=("$!")' "$ROLE_E2E"
 grep -Fq 'dataset_pids+=("$!")' "$ROLE_E2E"
 grep -Fq 'concurrent dataset fetch failed' "$ROLE_E2E"
 
-echo "PASS Backstage deploy reuses dependencies, performs one fast rollout, scopes E2E by impact, and serializes all supported Deployment writers pendingRawWriters=2 pendingMutation=0"
+echo "PASS Backstage deploy reuses dependencies, performs one fast rollout, scopes E2E by impact, and serializes all supported Deployment writers pendingRawWriters=2 pendingMutation=0 schemaArtifactCases=4 frontendConfigCases=5 guestFailClosed=1"

@@ -297,6 +297,15 @@ SH
   run_classifier_mutant backstage_secret_lookup_transient 1 \
     $'[backstage] runtime purge recovery secret lookup failed\nUnable to connect to the server: i/o timeout' \
     NETWORK_TRANSIENT RETRY_SCHEDULED true true 1
+  run_classifier_mutant backstage_frontend_config_lookup_503 1 \
+    $'[backstage] frontend runtime config lookup failed\ncurl: (22) The requested URL returned error: 503' \
+    NETWORK_TRANSIENT RETRY_SCHEDULED true true 1
+  run_classifier_mutant backstage_frontend_config_lookup_dns 1 \
+    $'[backstage] frontend runtime config lookup failed\ncurl: (6) Could not resolve host: backstage.invalid' \
+    NETWORK_TRANSIENT RETRY_SCHEDULED true true 1
+  run_classifier_mutant backstage_frontend_config_lookup_connect 1 \
+    $'[backstage] frontend runtime config lookup failed\ncurl: (7) Failed to connect to backstage.invalid port 443: Could not connect to server' \
+    NETWORK_TRANSIENT RETRY_SCHEDULED true true 1
   run_classifier_mutant emission_workflow_invalid 1 \
     $'[validation-groups] FAIL name=emission-workflow\n[emission-workflow] invalid projects: 35\ntimed out waiting for sibling validation group' \
     POSTDEPLOY_VALIDATION_DETERMINISTIC FAILED false false 0
@@ -308,6 +317,12 @@ SH
     BACKSTAGE_CONFIGURATION_DETERMINISTIC FAILED false false 0
   run_classifier_mutant backstage_recovery_authority_unprovable 79 \
     $'RECOVERY_AUTHORITY_NOT_READY\nRuntime purge recovery authority preflight returned no proof.\ntimed out waiting for deployment rollout' \
+    BACKSTAGE_CONFIGURATION_DETERMINISTIC FAILED false false 0
+  run_classifier_mutant backstage_frontend_oidc_config_missing 26 \
+    $'[backstage] frontend OIDC runtime config is missing or inconsistent\nBackstage OIDC sign-in runtime config is missing; guest entry was rendered\ntimed out waiting for visual E2E' \
+    BACKSTAGE_CONFIGURATION_DETERMINISTIC FAILED false false 0
+  run_classifier_mutant backstage_frontend_oidc_schema_missing 1 \
+    $'[backstage] bundled OIDC frontend schema artifact is missing or invalid\ntimeout while collecting unrelated diagnostics' \
     BACKSTAGE_CONFIGURATION_DETERMINISTIC FAILED false false 0
   run_classifier_mutant runtime_identity_mismatch 1 \
     $'[prebuild] timed out waiting for sibling test\n[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=TEMPLATE_MISMATCH' \
@@ -751,4 +766,4 @@ database_line="$(grep -n '^[[:space:]]*category=DATABASE$' "$handler" | head -1 
 [[ "$network_line" -lt "$e2e_line" ]]
 [[ "$e2e_line" -lt "$database_line" ]]
 
-echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x+promotedFinalLive identityPrecedence=attempt+promotion classifier=staleSuccess-write0+network503-retry1+backstageLookup-retry1+emissionWorkflowInvalid-retry0+backstageConfig3-retry0+runtimeIdentityMismatch-retry0+runtimeIdentityReadiness-retry1+flywayP0001-retry0+term79-retry0+flywayCleanupHold-retry1+leaseBound+remote0+hangBound4s"
+echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x+promotedFinalLive identityPrecedence=attempt+promotion classifier=staleSuccess-write0+network503-retry1+backstageLookup-retry1+backstageFrontendLookup-retry3+emissionWorkflowInvalid-retry0+backstageConfig5-retry0+runtimeIdentityMismatch-retry0+runtimeIdentityReadiness-retry1+flywayP0001-retry0+term79-retry0+flywayCleanupHold-retry1+leaseBound+remote0+hangBound4s"

@@ -19,6 +19,10 @@ for backstage_contract_path in \
     ops/scripts/test-backstage-runtime-purge-recovery-secret.sh \
     ops/scripts/test-backstage-deployment-rollback.sh \
     ops/scripts/test-backstage-fast-deploy-policy.sh \
+    platform/control-plane/backstage/package.json \
+    platform/control-plane/backstage/config.d.ts \
+    platform/control-plane/backstage/packages/app/package.json \
+    platform/control-plane/backstage/packages/app/e2e-tests/resonance-control-plane.test.ts \
     modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/web/ActorProcessControlPlaneBridgeController.java \
     modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/platform/governance/web/ActorProcessControlPlaneBridgeProjectPurgeTest.java; do
   mapfile -t backstage_contract_tests < <(printf '%s\n' "$backstage_contract_path" | bash "$selector" --paths-stdin)
