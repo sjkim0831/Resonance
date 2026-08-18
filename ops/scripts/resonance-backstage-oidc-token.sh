@@ -19,6 +19,13 @@ done
   echo "[oidc-token] invalid identity or missing internal CA" >&2
   exit 2
 }
+BACKSTAGE_ORIGIN_ENCODED="$(node -e '
+  const url = new URL(process.argv[1]);
+  process.stdout.write(encodeURIComponent(url.origin));
+' "$BACKSTAGE_URL")" || {
+  echo "[oidc-token] invalid Backstage URL" >&2
+  exit 2
+}
 OIDC_CONNECT_TIMEOUT_SECONDS="${OIDC_TOKEN_CONNECT_TIMEOUT_SECONDS:-5}"
 OIDC_HTTP_TIMEOUT_SECONDS="${OIDC_TOKEN_HTTP_TIMEOUT_SECONDS:-15}"
 [[ "$OIDC_CONNECT_TIMEOUT_SECONDS" =~ ^[1-5]$ \
@@ -88,7 +95,7 @@ start_status="$(curl --cacert "$CA_CERT" --connect-timeout "$OIDC_CONNECT_TIMEOU
   --max-time "$OIDC_HTTP_TIMEOUT_SECONDS" -fsS \
   -D "$run_dir/start.headers" -o /dev/null -c "$run_dir/cookies" \
   -w '%{http_code}' \
-  "$BACKSTAGE_URL/api/auth/oidc/start?env=production&origin=https%3A%2F%2Fbackstage.172.16.1.232.nip.io")" || {
+  "$BACKSTAGE_URL/api/auth/oidc/start?env=production&origin=$BACKSTAGE_ORIGIN_ENCODED")" || {
   start_status="${start_status:-000}"
   echo "[oidc-token] Backstage OIDC start failed: HTTP $start_status" >&2
   exit 3
