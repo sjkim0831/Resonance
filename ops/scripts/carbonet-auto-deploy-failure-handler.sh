@@ -46,10 +46,46 @@ deploy_exit_status="$(systemctl show carbonet-auto-deploy.service -p ExecMainSta
 deploy_exit_status="${deploy_exit_status//[[:space:]]/}"
 [[ "$deploy_exit_status" =~ ^[0-9]+$ ]] || deploy_exit_status=""
 evidence="$evidence_dir/${run_key}.log"
+
+sanitize_failure_evidence() {
+  # systemd/sudo audit records can contain the complete command argv. The
+  # classifier needs deploy messages, not privileged command lines or secret
+  # values. Keep the evidence useful while ensuring credentials never become a
+  # second durable artifact under failure-evidence/.
+  # SQL clients can echo a failing statement across multiple diagnostic lines.
+  # Once a PASSWORD literal starts, never copy another source line from that
+  # evidence stream. A credential can contain newlines and text that resembles
+  # a journal or SQLSTATE boundary, so reopening the stream at such a marker
+  # would let attacker-controlled suffixes escape or forge a classifier marker.
+  # This is deliberately fail-closed: unrelated trailing diagnostics are less
+  # important than never persisting or trusting credential-controlled bytes.
+  awk '
+    {
+      line = $0
+      upper = toupper(line)
+      if (sql_password_continuation) {
+        next
+      }
+      if (match(upper, /PASSWORD[[:space:]]+\047/)) {
+        print substr(line, 1, RSTART - 1) "PASSWORD " sprintf("%c", 39) "[REDACTED]" sprintf("%c", 39)
+        sql_password_continuation = 1
+        next
+      }
+      print line
+    }
+  ' | sed -E \
+    -e '/sudo(\[[0-9]+\])?: .*COMMAND=/Id' \
+    -e 's#([A-Za-z][A-Za-z0-9+.-]*://[^:/@[:space:]]+):[^@/[:space:]]+@#\1:[REDACTED]@#g' \
+    -e 's#((Authorization|Cookie|Set-Cookie):[[:space:]]*(Bearer|Basic)?)[[:space:]]*[^[:space:]]+#\1 [REDACTED]#Ig' \
+    -e 's#(([A-Za-z0-9_.-]*(password|passwd|token|secret)[A-Za-z0-9_.-]*)[[:space:]]*[:=][[:space:]]*)[^[:space:];,]+#\1[REDACTED]#Ig'
+}
+
 if [[ -n "$invocation_id" ]]; then
-  journalctl "_SYSTEMD_INVOCATION_ID=$invocation_id" --no-pager >"$evidence"
+  journalctl "_SYSTEMD_INVOCATION_ID=$invocation_id" --no-pager |
+    sanitize_failure_evidence >"$evidence"
 else
-  journalctl -u carbonet-auto-deploy.service -n 400 --no-pager >"$evidence"
+  journalctl -u carbonet-auto-deploy.service -n 400 --no-pager |
+    sanitize_failure_evidence >"$evidence"
 fi
 chmod 0640 "$evidence"
 
@@ -61,7 +97,11 @@ pending_target=""
 pending_candidate=""
 attempt_recovery_pending=false
 flyway_cleanup_hold_json=""
-if [[ -e "$flyway_cleanup_hold_file" || -L "$flyway_cleanup_hold_file" ]]; then
+if [[ "$deploy_exit_status" == 143 ]]; then
+  # An operator/systemd TERM is terminal even when an older cleanup hold or
+  # timeout line exists. Never turn an explicit stop into an automatic retry.
+  category=DEPLOY_TERMINATED
+elif [[ -e "$flyway_cleanup_hold_file" || -L "$flyway_cleanup_hold_file" ]]; then
   # This evidence outranks an attempt journal: rollback/retry may not race the
   # exact Flyway backend whose absence has not yet been proven.
   if [[ -f "$flyway_cleanup_hold_file" && ! -L "$flyway_cleanup_hold_file" \
@@ -91,7 +131,7 @@ if [[ -e "$flyway_cleanup_hold_file" || -L "$flyway_cleanup_hold_file" ]]; then
     category=FLYWAY_CLEANUP_HOLD_INVALID
   fi
 elif [[ "$deploy_exit_status" == 79 ]] \
-   && grep -Eqi 'SQL State[[:space:]]*:[[:space:]]*P0001|SQLSTATE[[:space:]]*[:=]?[[:space:]]*P0001|precondition failed|FLYWAY_JOB_FAILED' "$evidence"; then
+   && grep -Eqi 'SQL State[[:space:]]*:[[:space:]]*P0001|SQLSTATE[[:space:]]*[:=]?[[:space:]]*P0001|precondition failed|FLYWAY_JOB_FAILED|\[backstage\][[:space:]]+DATABASE_ROLE_PASSWORD_UPDATE_FAILED' "$evidence"; then
   category=DATABASE_DETERMINISTIC
 elif [[ "$deploy_exit_status" == 79 ]] \
    && grep -Eqi '\[backstage\][[:space:]]+runtime purge recovery (account secret is required|actor ref is invalid)|Runtime purge recovery authority preflight returned no proof|RECOVERY_AUTHORITY_NOT_READY|\[backstage\] (bundled )?OIDC frontend schema artifact is missing or invalid|\[backstage\] frontend OIDC runtime config is missing or inconsistent|Backstage OIDC sign-in runtime config is missing' "$evidence"; then
@@ -100,8 +140,8 @@ elif [[ "$deploy_exit_status" == 79 ]] \
   # the generic exit-79 terminal branch so it can never schedule a retry.
   category=BACKSTAGE_CONFIGURATION_DETERMINISTIC
 elif [[ "$deploy_exit_status" == 79 ]]; then
-  # Exit 79 is fail-closed. In particular, never let an older durable attempt
-  # journal schedule rollback while the child is handing off cleanup evidence.
+  # Exit 79 is fail-closed. Never let an older durable attempt journal or
+  # incidental timeout text schedule a retry after this terminal path.
   category=DEPLOY_TERMINATED
 elif [[ "$deploy_exit_status" == 1 ]] \
    && grep -Eqi '\[emission-workflow\][[:space:]]+invalid projects:[[:space:]]*[1-9][0-9]*' "$evidence"; then
@@ -148,7 +188,7 @@ elif [[ -e "$marker_pending_file" || -L "$marker_pending_file" ]]; then
   else
     category=PROMOTION_AUTHORITY_UNAVAILABLE
   fi
-elif grep -Eqi 'SQL State[[:space:]]*:[[:space:]]*P0001|SQLSTATE[[:space:]]*[:=]?[[:space:]]*P0001|precondition failed|FLYWAY_JOB_FAILED' "$evidence"; then
+elif grep -Eqi 'SQL State[[:space:]]*:[[:space:]]*P0001|SQLSTATE[[:space:]]*[:=]?[[:space:]]*P0001|precondition failed|FLYWAY_JOB_FAILED|\[backstage\][[:space:]]+DATABASE_ROLE_PASSWORD_UPDATE_FAILED' "$evidence"; then
   # A Flyway contract/precondition failure is deterministic even when a later
   # kubectl wait emits a generic timeout. Never let that wrapper timeout turn
   # an already rolled-back migration into an automatic deployment retry.
@@ -164,11 +204,13 @@ elif grep -Eqi 'STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=(AUTHORITY_
   # contradictions require reconciliation; an identical retry cannot repair
   # them. Attempt/promotion recovery evidence above always takes precedence.
   category=RUNTIME_IDENTITY_DETERMINISTIC
+elif grep -Eqi 'refusing success marker: concurrent Backstage visual E2E failed|visual E2E|playwright|screenshot|browser regression' "$evidence"; then
+  # A completed browser regression is deterministic test evidence. Its own
+  # timeout wording must never be mistaken for a retryable transport outage.
+  category=E2E
 elif grep -Eqi 'STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=(DATA_UNAVAILABLE|READINESS_TRANSIENT)|\[backstage\] frontend runtime config lookup failed|connection reset|connection refused|temporary failure|timed out|timeout|TLS handshake|unable to connect|i/o timeout|HTTP 50[234]|requested URL returned error: 50[234]|readiness returned 50[234]|concurrent token acquisition failed' "$evidence"; then
   category=NETWORK_TRANSIENT
   retry_allowed=true
-elif grep -Eqi 'visual E2E|playwright|screenshot|browser regression' "$evidence"; then
-  category=E2E
 elif grep -Eqi 'no valid .*backup|Flyway.*(fail|error)|Patroni.*(fail|not ready)|PostgreSQL.*(fail|not ready|unavailable)|database migration.*(fail|error)|schema backup.*(fail|invalid)' "$evidence"; then
   category=DATABASE
 elif grep -Eqi 'capacity-gate.*(FAIL|BLOCK|refus)|DiskPressure=True|no space left|insufficient (disk|memory)|out of memory|OOMKilled' "$evidence"; then

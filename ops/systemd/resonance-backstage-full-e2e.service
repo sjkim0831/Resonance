@@ -9,6 +9,7 @@ User=sjkim
 Group=sjkim
 Environment=BACKSTAGE_E2E_USERNAME=sjkim
 Environment=BACKSTAGE_E2E_SECRET_NAME=resonance-keycloak-integrated-admin
+Environment=RESONANCE_BACKSTAGE_URL=https://backstage.172.16.1.232.nip.io:32947
 ExecStart=/opt/resonance-data/control-plane/bin/resonance-backstage-full-e2e.sh
 TimeoutStartSec=300
 MemoryHigh=2560M

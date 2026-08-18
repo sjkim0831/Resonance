@@ -9,6 +9,7 @@ RUNNER="$ROOT/ops/scripts/resonance-backstage-visual-e2e.sh"
 }
 
 export RESONANCE_ROOT="$ROOT"
+export RESONANCE_BACKSTAGE_URL="https://backstage.172.16.1.232.nip.io:32947"
 export RESONANCE_BACKSTAGE_E2E_SCOPE=full
 unset RESONANCE_BACKSTAGE_E2E_ROUTES
 exec bash "$RUNNER"

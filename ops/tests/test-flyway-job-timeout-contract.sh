@@ -77,7 +77,9 @@ auto_source = pathlib.Path(sys.argv[3]).read_text(encoding="utf-8")
 build_source = pathlib.Path(sys.argv[4]).read_text(encoding="utf-8")
 handler_source = pathlib.Path(sys.argv[5]).read_text(encoding="utf-8")
 launcher_source = pathlib.Path(sys.argv[6]).read_text(encoding="utf-8")
-cleanup = auto_source.split("cleanup_remote_backup() {", 1)[1].split("\n}", 1)[0]
+cleanup = auto_source.split("cleanup_remote_backup() {", 1)[1].split(
+    "\ncanonical_runtime_screen_gate_cache_root() {", 1
+)[0]
 bounded_cleanup = auto_source.split("bounded_cleanup_kubectl() {", 1)[1].split("\n}", 1)[0]
 if "exec -i" not in cleanup or "-v ON_ERROR_STOP=1 -v app_name=" not in cleanup:
     raise SystemExit("backup cleanup must feed psql variables through an interactive stdin command")
@@ -85,6 +87,47 @@ if '-c "select pg_terminate_backend' in cleanup:
     raise SystemExit("backup cleanup retained the psql -c variable interpolation bug")
 if "bounded_cleanup_kubectl" not in cleanup:
     raise SystemExit("backup cleanup kubectl call is not externally bounded")
+def validate_backup_process_cleanup(source: str) -> None:
+    for token in (
+        '[[ "$backup_application_name" =~ ^carbonet-auto-deploy-[1-9][0-9]*$ ]]',
+        '/proc/[0-9]*',
+        '"$proc/comm"',
+        '"$proc/environ"',
+        'case "$command_name" in pg_dump|pg_dumpall)',
+        'grep -Fqx -- "PGAPPNAME=$expected_app"',
+        'env "EXPECTED_PGAPPNAME=$backup_application_name" sh -eu -s',
+        "select count(*) from pg_stat_activity where application_name=:'app_name';",
+        '[[ "$(tr -d \'[:space:]\' <<<"$cleanup_session_count")" == 0 ]]',
+        'backup_cleanup_required=false',
+    ):
+        if token not in source:
+            raise ValueError(f"backup pod-process cleanup missing: {token}")
+    term = source.index("signal_owned_backup_pids TERM")
+    term_wait = source.index('while [ -n "$(owned_backup_pids)" ]', term)
+    hard_kill = source.index("signal_owned_backup_pids KILL", term_wait)
+    kill_wait = source.index('while [ -n "$(owned_backup_pids)" ]', hard_kill)
+    final_zero = source.index('[ -z "$(owned_backup_pids)" ]', kill_wait)
+    if not term < term_wait < hard_kill < kill_wait < final_zero:
+        raise ValueError("backup pod-process cleanup order is not TERM, wait, KILL, wait, zero")
+
+try:
+    validate_backup_process_cleanup(cleanup)
+except ValueError as error:
+    raise SystemExit(str(error)) from error
+
+cleanup_mutants = {
+    "comm": cleanup.replace('"$proc/comm"', '"$proc/cmdline"'),
+    "environ": cleanup.replace('"$proc/environ"', '"$proc/cmdline"'),
+    "term": cleanup.replace("signal_owned_backup_pids TERM", "signal_owned_backup_pids USR1", 1),
+    "kill": cleanup.replace("signal_owned_backup_pids KILL", "signal_owned_backup_pids TERM", 1),
+    "zero": cleanup.replace('[ -z "$(owned_backup_pids)" ]', 'true', 1),
+}
+for label, mutant in cleanup_mutants.items():
+    try:
+        validate_backup_process_cleanup(mutant)
+    except ValueError:
+        continue
+    raise SystemExit(f"backup pod-process cleanup mutant survived: {label}")
 for token in ('timeout --signal=TERM --kill-after=1s', '--request-timeout="${request_timeout_seconds}s"'):
     if token not in bounded_cleanup:
         raise SystemExit(f"bounded deploy cleanup missing: {token}")
@@ -93,6 +136,8 @@ hold_fixed = cleanup_trap.index("flyway_hold_active=true")
 backup_cleanup = cleanup_trap.index("cleanup_remote_backup", hold_fixed)
 if not hold_fixed < backup_cleanup:
     raise SystemExit("cleanup hold status 79 must be fixed before remote backup cleanup")
+if "cleanup_remote_backup || original_status=79" not in cleanup_trap:
+    raise SystemExit("backup process/session zero failure must force cleanup status 79")
 for token in (
     'cleanup_backup_dir="${BACKUP_DIR:-}"',
     '"${backup_partial_file:-}"',
@@ -231,12 +276,21 @@ if [[ "$joined" == *" get job/"* ]]; then
   exit 0
 fi
 if [[ "$joined" == *" exec "* ]]; then
+  payload="$(cat)"
+  if [[ "$joined" == *" EXPECTED_PGAPPNAME="* && "$joined" == *" sh -eu -s "* ]]; then
+    [[ "$joined" == *" EXPECTED_PGAPPNAME=carbonet-auto-deploy-4242 "* ]] || exit 94
+    printf '%s\n' "$payload" >"$MOCK_POD_CLEANUP"
+    printf '%s\n' 'BACKUP_PROCESS_CLEANUP exactApp=1 stdin=1' >>"$MOCK_EVENTS"
+    [[ "${MOCK_BACKUP_PROCESS_CLEANUP_FAILURE:-false}" != true ]] || exit 95
+    exit 0
+  fi
+  sql="$payload"
+  printf '%s\n' "$sql" >>"$MOCK_SQL"
   if [[ "${MOCK_BACKUP_CLEANUP_HANG:-false}" == true \
-     && "$joined" == *" app_name=carbonet-auto-deploy-timeout-contract "* ]]; then
+     && "$joined" == *" app_name=carbonet-auto-deploy-4242 "* \
+     && "$sql" == *"select pg_terminate_backend(pid)"* ]]; then
     /usr/bin/sleep 30
   fi
-  sql="$(cat)"
-  printf '%s\n' "$sql" >>"$MOCK_SQL"
   if [[ "$sql" == *"flyway_application_name"* ]]; then
     [[ "$sql" == *"pg_is_in_recovery()"* ]] || exit 92
   fi
@@ -253,6 +307,11 @@ if [[ "$joined" == *" exec "* ]]; then
     index="$count"
     (( index >= ${#sequence[@]} )) && index=$((${#sequence[@]} - 1))
     printf '%s\n' "${sequence[$index]}"
+    exit 0
+  fi
+  if [[ "$sql" == *"select count(*) from pg_stat_activity where application_name=:'app_name';"* \
+     && "${MOCK_BACKUP_SESSION_RESIDUE:-false}" == true ]]; then
+    printf '%s\n' 1
     exit 0
   fi
   printf '%s\n' 0
@@ -347,6 +406,7 @@ common_env=(
   MOCK_RESOLVER_COUNTER="$tmp/resolver-counter"
   MOCK_OBSERVER_SEEN="$tmp/observer-seen"
   MOCK_SQL="$tmp/sql"
+  MOCK_POD_CLEANUP="$tmp/pod-cleanup"
   RESONANCE_POSTGRES_LEADER_POD=stale-injected-replica
   CARBONET_POSTDEPLOY_LEADER_RESOLVER="$tmp/bin/leader-resolver"
   CARBONET_POSTGRES_CONTAINER=patroni
@@ -380,6 +440,7 @@ run_job() {
 reset_mock() {
   : >"$tmp/events"
   : >"$tmp/sql"
+  : >"$tmp/pod-cleanup"
   rm -f "$tmp/job-counter" "$tmp/date-counter" "$tmp/session-counter" \
     "$tmp/delete-counter" "$tmp/resolver-counter" "$tmp/observer-seen"
 }
@@ -466,17 +527,20 @@ assert_manifest_residue_zero 'deployment read failure'
 [[ ! -e "$tmp/cleanup-hold.json" && ! -L "$tmp/cleanup-hold.json" ]]
 
 # Execute the real backup cleanup function with a mocked kubectl boundary. psql
-# only expands :'app_name' for stdin scripts, so the invocation must use exec -i
-# and must not pass the SQL through -c.
-: >"$tmp/events"; : >"$tmp/sql"
+# only expands :'app_name' for stdin scripts, while the pod-process cleanup is a
+# separate stdin `sh -eu -s` program bound to one numeric invocation identity.
+: >"$tmp/events"; : >"$tmp/sql"; : >"$tmp/pod-cleanup"
 bounded_cleanup_function="$(sed -n '/^bounded_cleanup_kubectl() {$/,/^}$/p' "$AUTO_DEPLOY")"
-backup_cleanup_function="$(sed -n '/^cleanup_remote_backup() {$/,/^}$/p' "$AUTO_DEPLOY")"
+backup_cleanup_function="$(sed -n \
+  '/^cleanup_remote_backup() {$/,/^canonical_runtime_screen_gate_cache_root() {$/p' \
+  "$AUTO_DEPLOY" | sed '$d')"
 cleanup_deploy_function="$(sed -n '/^cleanup_deploy() {$/,/^}$/p' "$AUTO_DEPLOY")"
-(
+
+run_backup_cleanup_fixture() (
   eval "$bounded_cleanup_function"
   eval "$backup_cleanup_function"
   backup_cleanup_required=true
-  backup_application_name=carbonet-auto-deploy-timeout-contract
+  backup_application_name="${BACKUP_FIXTURE_APPLICATION:-carbonet-auto-deploy-4242}"
   NAMESPACE=carbonet-prod
   POSTGRES_POD=postgres-patroni-0
   POSTGRES_CONTAINER=patroni
@@ -490,13 +554,112 @@ cleanup_deploy_function="$(sed -n '/^cleanup_deploy() {$/,/^}$/p' "$AUTO_DEPLOY"
   MOCK_JOB_COUNTER="$tmp/job-counter"
   MOCK_DATE_COUNTER="$tmp/date-counter"
   MOCK_SESSION_COUNTER="$tmp/session-counter"
+  MOCK_POD_CLEANUP="$tmp/pod-cleanup"
   export PATH MOCK_EVENTS MOCK_SQL MOCK_DEPLOYMENT MOCK_CAPTURE_DIR
-  export MOCK_JOB_COUNTER MOCK_DATE_COUNTER MOCK_SESSION_COUNTER
+  export MOCK_JOB_COUNTER MOCK_DATE_COUNTER MOCK_SESSION_COUNTER MOCK_POD_CLEANUP
+  export MOCK_BACKUP_PROCESS_CLEANUP_FAILURE MOCK_BACKUP_SESSION_RESIDUE
   cleanup_remote_backup
 )
+
+run_backup_cleanup_fixture
 grep -Fq "application_name=:'app_name'" "$tmp/sql"
 grep -Fq 'exec -i postgres-patroni-0' "$tmp/events"
+grep -Fq 'EXPECTED_PGAPPNAME=carbonet-auto-deploy-4242 sh -eu -s' "$tmp/events"
+grep -Fq 'BACKUP_PROCESS_CLEANUP exactApp=1 stdin=1' "$tmp/events"
 ! grep -Fq ' -c select pg_terminate_backend' "$tmp/events"
+python3 - "$tmp/pod-cleanup" <<'PY'
+import pathlib, sys
+source = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+term = source.index("signal_owned_backup_pids TERM")
+term_wait = source.index('while [ -n "$(owned_backup_pids)" ]', term)
+hard_kill = source.index("signal_owned_backup_pids KILL", term_wait)
+kill_wait = source.index('while [ -n "$(owned_backup_pids)" ]', hard_kill)
+zero = source.index('[ -z "$(owned_backup_pids)" ]', kill_wait)
+assert term < term_wait < hard_kill < kill_wait < zero
+PY
+
+# Every unproven cleanup boundary is terminal status 79: invalid application
+# identity, pod-side signal/zero failure, and a surviving exact DB session.
+for mutant in invalid-app process-failure session-residue; do
+  : >"$tmp/events"; : >"$tmp/sql"; : >"$tmp/pod-cleanup"
+  set +e
+  case "$mutant" in
+    invalid-app)
+      BACKUP_FIXTURE_APPLICATION=carbonet-auto-deploy-42x run_backup_cleanup_fixture
+      ;;
+    process-failure)
+      MOCK_BACKUP_PROCESS_CLEANUP_FAILURE=true run_backup_cleanup_fixture
+      ;;
+    session-residue)
+      MOCK_BACKUP_SESSION_RESIDUE=true run_backup_cleanup_fixture
+      ;;
+  esac >/dev/null 2>&1
+  mutant_status=$?
+  set -e
+  [[ "$mutant_status" == 79 ]]
+  if [[ "$mutant" == invalid-app ]]; then
+    [[ ! -s "$tmp/events" ]]
+  fi
+done
+
+# The parent EXIT trap must promote a pod cleanup failure to the fail-closed 79
+# handoff even when the original command status was zero.
+: >"$tmp/events"; : >"$tmp/sql"; : >"$tmp/pod-cleanup"; : >"$tmp/process-cleanup-events"
+mkdir -p "$tmp/process-cleanup-root" "$tmp/process-cleanup-backups"
+set +e
+(
+  eval "$bounded_cleanup_function"
+  eval "$backup_cleanup_function"
+  eval "$cleanup_deploy_function"
+  terminate_runtime_screen_gate_group() { :; }
+  cleanup_local_schema_restore_container() { return 0; }
+  recover_runtime_after_failure_if_safe() { return 0; }
+  recover_staged_postdeploy_attempt_after_failure() {
+    printf '%s\n' ROLLBACK_CALLED >>"$tmp/process-cleanup-events"
+    return 0
+  }
+  reconcile_postdeploy_candidate_after_failure() {
+    printf '%s\n' RECONCILE_CALLED >>"$tmp/process-cleanup-events"
+    return 0
+  }
+  backup_cleanup_required=true
+  backup_application_name=carbonet-auto-deploy-4242
+  NAMESPACE=carbonet-prod
+  POSTGRES_POD=postgres-patroni-0
+  POSTGRES_CONTAINER=patroni
+  POSTGRES_USER=postgres
+  POSTGRES_DB=carbonet
+  BACKUP_DIR="$tmp/process-cleanup-backups"
+  backup_partial_file=""
+  roles_backup_partial_file=""
+  flyway_cleanup_recovery_hold=false
+  FLYWAY_CLEANUP_HOLD_FILE="$tmp/no-cleanup-hold.json"
+  composite_autocompletion_gate_prepared=false
+  runtime_asset_sync_pid=""
+  catalog_identity_sync_pid=""
+  backstage_visual_e2e_pid=""
+  schema_restore_database=""
+  schema_backup_dir=""
+  ROOT_DIR="$tmp/process-cleanup-root"
+  persistent_build_worktree="$tmp/other-root"
+  CARBONET_DEPLOY_SNAPSHOT_PATH=""
+  POSTDEPLOY_ATTEMPT_JOURNAL_FILE="$tmp/no-attempt.json"
+  postdeploy_candidate_promoted=false
+  postdeploy_candidate_initialized=false
+  DEPLOY_PHASE_FILE="$tmp/process-cleanup-phases.jsonl"
+  PATH="$tmp/bin:$PATH"
+  MOCK_BACKUP_PROCESS_CLEANUP_FAILURE=true
+  MOCK_EVENTS="$tmp/events"
+  MOCK_SQL="$tmp/sql"
+  MOCK_POD_CLEANUP="$tmp/pod-cleanup"
+  export PATH MOCK_BACKUP_PROCESS_CLEANUP_FAILURE MOCK_EVENTS MOCK_SQL MOCK_POD_CLEANUP
+  cleanup_deploy
+) >/dev/null 2>"$tmp/process-cleanup.err"
+process_cleanup_status=$?
+set -e
+[[ "$process_cleanup_status" == 79 ]]
+! grep -Fq 'unbound variable' "$tmp/process-cleanup.err"
+[[ ! -s "$tmp/process-cleanup-events" ]]
 
 # A half-open API during backup-session cleanup must not delay the durable
 # Flyway recovery handoff. Exercise the real cleanup trap with a kubectl mock
@@ -505,7 +668,7 @@ grep -Fq 'exec -i postgres-patroni-0' "$tmp/events"
 # partial variable are intentionally absent, while the roles partial points at
 # a sentinel: the extracted trap must remain nounset-safe and refuse deletion
 # when backup initialization has not established its exact directory boundary.
-: >"$tmp/events"; : >"$tmp/sql"; : >"$tmp/hold-cleanup-events"
+: >"$tmp/events"; : >"$tmp/sql"; : >"$tmp/pod-cleanup"; : >"$tmp/hold-cleanup-events"
 printf '%s\n' ARMED >"$tmp/cleanup-hold.json"
 guarded_partial="$tmp/guarded-roles.sql.gz.partial.$$"
 printf '%s\n' GUARDED >"$guarded_partial"
@@ -518,6 +681,7 @@ set +e
   eval "$cleanup_deploy_function"
   terminate_runtime_screen_gate_group() { :; }
   cleanup_local_schema_restore_container() { return 0; }
+  recover_runtime_after_failure_if_safe() { return 0; }
   recover_staged_postdeploy_attempt_after_failure() {
     printf '%s\n' ROLLBACK_CALLED >>"$tmp/hold-cleanup-events"
     return 0
@@ -527,7 +691,7 @@ set +e
     return 0
   }
   backup_cleanup_required=true
-  backup_application_name=carbonet-auto-deploy-timeout-contract
+  backup_application_name=carbonet-auto-deploy-4242
   NAMESPACE=carbonet-prod
   POSTGRES_POD=postgres-patroni-0
   POSTGRES_CONTAINER=patroni
@@ -556,7 +720,8 @@ set +e
   MOCK_BACKUP_CLEANUP_HANG=true
   MOCK_EVENTS="$tmp/events"
   MOCK_SQL="$tmp/sql"
-  export PATH MOCK_BACKUP_CLEANUP_HANG MOCK_EVENTS MOCK_SQL
+  MOCK_POD_CLEANUP="$tmp/pod-cleanup"
+  export PATH MOCK_BACKUP_CLEANUP_HANG MOCK_EVENTS MOCK_SQL MOCK_POD_CLEANUP
   cleanup_deploy
 ) >/dev/null 2>"$tmp/hold-cleanup.err"
 hold_cleanup_status=$?
@@ -795,4 +960,4 @@ run_job MOCK_JOB_STATE=COMPLETE >/dev/null
 [[ ! -e "$tmp/cleanup-hold.json" && ! -L "$tmp/cleanup-hold.json" ]]
 
 assert_manifest_residue_zero 'full timeout contract'
-printf '%s\n' 'FLYWAY_JOB_TIMEOUT_CONTRACT_PASS defaultJob=900s defaultStatement=780s settle=120s lock=10s observer=930s cleanupHold=120s bounds=12 terminalCleanup=6 prematureDelete=0 controlledAbort=1 dbSessionExact=1 failoverGuard=1 cancelTerminate=2 historyGlobal=0 podResidue=0 applyAmbiguity=owned holdExit=79 holdValidation=source+namespace+path holdRecovery=cleared lockRace=cleanup0+markerIntact parentHandoff=79 backupCleanupPsql=stdin backupCleanupHang=bounded2s+status79 manifestResidue=success0+invalid12x0+deploymentReadFailure0'
+printf '%s\n' 'FLYWAY_JOB_TIMEOUT_CONTRACT_PASS defaultJob=900s defaultStatement=780s settle=120s lock=10s observer=930s cleanupHold=120s bounds=12 terminalCleanup=6 prematureDelete=0 controlledAbort=1 dbSessionExact=1 failoverGuard=1 cancelTerminate=2 historyGlobal=0 podResidue=0 applyAmbiguity=owned holdExit=79 holdValidation=source+namespace+path holdRecovery=cleared lockRace=cleanup0+markerIntact parentHandoff=79 backupCleanupPsql=stdin backupProcessExact=comm+PGAPPNAME backupProcessOrder=TERM+wait+KILL+wait+zero backupProcessStaticMutants=5/5 backupCleanupFailureMutants=4/4 backupCleanupHang=bounded2s+status79 manifestResidue=success0+invalid12x0+deploymentReadFailure0'

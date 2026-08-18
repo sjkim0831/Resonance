@@ -278,8 +278,9 @@ git add . && git commit -qm backstage-catalog
 backstage_catalog="$(git rev-parse HEAD)"
 eval "$(bash "$PLANNER" "$control_plane" "$backstage_catalog" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == false ]]
-[[ "$PLAN_BACKSTAGE_REQUIRED" == false ]]
-[[ "$PLAN_TESTS" == *"backstage:catalog-sync"* ]]
+[[ "$PLAN_BACKSTAGE_REQUIRED" == true ]]
+[[ "$PLAN_TESTS" == *"backstage:build-deploy"* ]]
+[[ "$PLAN_TESTS" != *"backstage:catalog-sync"* ]]
 [[ "$PLAN_REASONS" == *"backstage-catalog"* ]]
 
 printf 'export const page = true;\n' > platform/control-plane/backstage/packages/app/src/page.tsx
@@ -329,6 +330,39 @@ eval "$(bash "$PLANNER" "$backstage_rollback_contract" "$backstage_test" --forma
 [[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
 [[ "$PLAN_TESTS" == *"backstage:visual-e2e"* ]]
 [[ "$PLAN_REASONS" == *"backstage-test-only"* ]]
+
+# Mixed plans must retain both axes. The deploy orchestrator deliberately
+# excludes these two combinations from its frontend/profile fast exits so the
+# deferred Backstage handoff reaches the shared global authority.
+printf 'export const mixedFrontend = true;\n' \
+  > projects/carbonet-frontend/source/src/mixed-frontend.tsx
+printf 'export const mixedBackstage = true;\n' \
+  > platform/control-plane/backstage/packages/app/src/mixed-frontend.tsx
+git add . && git commit -qm mixed-frontend-backstage
+mixed_frontend_backstage="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$backstage_test" "$mixed_frontend_backstage" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == true ]]
+[[ "$PLAN_FRONTEND_REQUIRED" == true ]]
+[[ "$PLAN_BACKSTAGE_REQUIRED" == true ]]
+[[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
+[[ "$PLAN_TESTS" == *"frontend:build"* ]]
+[[ "$PLAN_TESTS" == *"backstage:build-deploy"* ]]
+
+mkdir -p ops/config
+printf 'JAVA_OPTS=-Xms1g\n' > ops/config/runtime-jvm-profile.env
+printf 'export const mixedProfile = true;\n' \
+  > platform/control-plane/backstage/packages/app/src/mixed-profile.tsx
+git add . && git commit -qm mixed-startup-profile-backstage
+mixed_profile_backstage="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$mixed_frontend_backstage" "$mixed_profile_backstage" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == true ]]
+[[ "$PLAN_FRONTEND_REQUIRED" == false ]]
+[[ "$PLAN_BACKEND_REQUIRED" == false ]]
+[[ "$PLAN_DATABASE_REQUIRED" == false ]]
+[[ "$PLAN_BACKSTAGE_REQUIRED" == true ]]
+[[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
+[[ "$PLAN_TESTS" == *"runtime:startup-profile"* ]]
+[[ "$PLAN_TESTS" == *"backstage:build-deploy"* ]]
 
 assert_leader_contract_caller "$USAGE_LEDGER_CONTRACT" \
   || fail 'operational usage-ledger static gate does not call the logout leader contract'

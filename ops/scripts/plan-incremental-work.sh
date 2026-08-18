@@ -173,11 +173,14 @@ while IFS= read -r path; do
       add_reason "backstage-runtime"
       ;;
     platform/control-plane/catalog/*)
-      # Production Backstage serves these files from a ConfigMap. Synchronize
-      # and verify the live catalog without rebuilding the Backstage image.
-      infrastructure_required=true
+      # Catalog bytes are part of the authenticated Backstage live-resource
+      # closure. Route them through the deferred child handoff so ConfigMap,
+      # rollout, visual gates, runtime identity and final marker advance as one
+      # attempt; the immutable image itself is reused when its fingerprint did
+      # not change.
+      infrastructure_required=true; backstage_required=true
       add_test "control-plane:validate"
-      add_test "backstage:catalog-sync"
+      add_test "backstage:build-deploy"
       add_reason "backstage-catalog"
       ;;
     platform/control-plane/*|deploy/k8s/control-plane/*)

@@ -4,13 +4,36 @@ set -euo pipefail
 if [[ "${CARBONET_DEPLOY_SNAPSHOT_ACTIVE:-false}" != "true" ]]; then
   original_script="$(readlink -f "${BASH_SOURCE[0]}")"
   original_root="$(cd "$(dirname "$original_script")/../.." && pwd)"
-  snapshot_script="$(mktemp /tmp/carbonet-auto-deploy-main.XXXXXX.sh)"
+  snapshot_dir="$(mktemp -d /tmp/carbonet-auto-deploy-main.XXXXXX)"
+  chmod 0700 "$snapshot_dir"
+  [[ -d "$snapshot_dir" && ! -L "$snapshot_dir" \
+     && "$(stat -c '%a:%u' "$snapshot_dir" 2>/dev/null || true)" == "700:$(id -u)" ]] || exit 79
+  snapshot_script="$snapshot_dir/auto-deploy-main.sh"
   cp "$original_script" "$snapshot_script"
   chmod 700 "$snapshot_script"
   export CARBONET_DEPLOY_SNAPSHOT_ACTIVE=true
   export CARBONET_DEPLOY_ORIGINAL_ROOT="$original_root"
   export CARBONET_DEPLOY_SNAPSHOT_PATH="$snapshot_script"
-  exec bash "$snapshot_script" "$@"
+  exec bash -c '
+    set -euo pipefail
+    snapshot_dir="$1"
+    expected_uid="$2"
+    shift 2
+    cleanup_direct_snapshot() {
+      local status=$?
+      trap - EXIT
+      case "$snapshot_dir" in /tmp/carbonet-auto-deploy-main.*) ;; *) exit 79 ;; esac
+      if [[ -d "$snapshot_dir" && ! -L "$snapshot_dir" \
+         && "$(stat -c "%a:%u" "$snapshot_dir" 2>/dev/null || true)" == "700:$expected_uid" ]]; then
+        rm -rf -- "$snapshot_dir" || status=79
+      else
+        status=79
+      fi
+      exit "$status"
+    }
+    trap cleanup_direct_snapshot EXIT
+    bash "$snapshot_dir/auto-deploy-main.sh" "$@"
+  ' carbonet-auto-deploy-direct-wrapper "$snapshot_dir" "$(id -u)" "$@"
 fi
 
 POLICY_ROOT="${CARBONET_DEPLOY_ORIGINAL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
@@ -128,13 +151,39 @@ DESIRED_REVISION_FILE="${CARBONET_DESIRED_REVISION_FILE:-/opt/resonance-data/dep
 BACKSTAGE_DEPLOY_STATE_FILE="${BACKSTAGE_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/backstage-runtime-success.commit}"
 BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR="${BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR:-/opt/resonance-data/control-plane/deploy-state/backstage}"
 BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE="${BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE:-$BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR/deployment-rollback.pending.json}"
+BACKSTAGE_RUNTIME_IDENTITY_FILE="${BACKSTAGE_RUNTIME_IDENTITY_FILE:-$BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR/runtime-success.identity.json}"
+BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE="${BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE:-$BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR/repair-authority.json}"
+BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE="${BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE:-$BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR/parent-authority-binding.json}"
 BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_WAIT_SECONDS="${BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_WAIT_SECONDS:-5}"
 BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD=""
 BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD=false
+BACKSTAGE_DEPLOY_HELPER_EXPLICIT=false
+[[ -v CARBONET_BACKSTAGE_DEPLOY_HELPER ]] && BACKSTAGE_DEPLOY_HELPER_EXPLICIT=true
+BACKSTAGE_DEPLOY_HELPER="${CARBONET_BACKSTAGE_DEPLOY_HELPER:-$ROOT_DIR/ops/scripts/resonance-backstage-deploy.sh}"
+BACKSTAGE_DEPLOY_HELPER_SHA256="${CARBONET_BACKSTAGE_DEPLOY_HELPER_SHA256:-}"
+BACKSTAGE_PUBLIC_URL="${BACKSTAGE_PUBLIC_URL:-https://backstage.172.16.1.232.nip.io:32947}"
+backstage_deployment_handoff_active=false
+backstage_deployment_authority_kind=""
+backstage_deployment_target_commit=""
+backstage_deployment_attempt_id=""
+backstage_deployment_pending_sha256=""
+backstage_deployment_handoff_binding_captured=false
+backstage_authority_finalize_lock_active=false
+backstage_pending_reconciled_before_runtime=false
+backstage_pending_reconciled_to_target=false
+backstage_runtime_identity_repair_required=false
+backstage_recovery_may_require_repair=false
+backstage_startup_recovery_hold=false
+backstage_fast_policy_validated_sha256=""
+declare -A prevalidated_catalog_contract_sha256=()
 RUNTIME_CANDIDATE_CHECKPOINT_FILE="${CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE:-/opt/resonance-data/deploy/carbonet-runtime-candidate.json}"
 POSTDEPLOY_ATTEMPT_JOURNAL_FILE="${CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE:-/opt/resonance-data/deploy/carbonet-postdeploy-attempt.json}"
 FLYWAY_CLEANUP_HOLD_ROOT="${CARBONET_DEPLOY_STATE_DIR:-/opt/resonance-data/deploy}"
 FLYWAY_CLEANUP_HOLD_FILE="${CARBONET_FLYWAY_CLEANUP_HOLD_FILE:-$FLYWAY_CLEANUP_HOLD_ROOT/flyway-cleanup-hold.json}"
+
+validate_backstage_public_url() {
+  [[ "${BACKSTAGE_PUBLIC_URL:-}" == "https://backstage.172.16.1.232.nip.io:32947" ]]
+}
 
 acquire_backstage_deployment_mutation_lock() {
   local state_dir expected_identity identity_before identity_after fd_identity
@@ -189,7 +238,7 @@ release_backstage_deployment_mutation_lock() {
 }
 
 acquire_clean_backstage_deployment_mutation_lock() {
-  local lock_status=0
+  local lock_status=0 binding_status=1
   acquire_backstage_deployment_mutation_lock || lock_status=$?
   (( lock_status == 0 )) || return "$lock_status"
   # A crashed full Backstage deploy leaves this authenticated baseline until
@@ -197,16 +246,1995 @@ acquire_clean_backstage_deployment_mutation_lock() {
   # writers may serialize after that crash, but they must never mutate over
   # the pending recovery obligation.
   if [[ -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ||
-        -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ]]; then
+        -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ||
+        -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" ||
+        -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" ]]; then
     release_backstage_deployment_mutation_lock
     echo '[auto-deploy] BLOCKED Backstage Deployment mutation: pending rollback must recover first' >&2
     return 79
   fi
+  if parent_backstage_authority_binding_active; then
+    binding_status=0
+  else
+    binding_status=$?
+  fi
+  if [[ "$binding_status" != 1 ]]; then
+    release_backstage_deployment_mutation_lock
+    echo '[auto-deploy] BLOCKED Backstage Deployment mutation: parent authority binding must reconcile first' >&2
+    return 79
+  fi
+}
+
+validate_target_backstage_fast_deploy_policy_if_required() {
+  local policy_test policy_sha_before policy_sha_after
+  [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" == true ]] || return 0
+  policy_test="$ROOT_DIR/ops/scripts/test-backstage-fast-deploy-policy.sh"
+  [[ -f "$policy_test" && ! -L "$policy_test" ]] || return 79
+  policy_sha_before="$(sha256sum "$policy_test" 2>/dev/null | awk '{print $1}')" || return 79
+  [[ "$policy_sha_before" =~ ^[0-9a-f]{64}$ ]] || return 79
+  bash "$policy_test" || return $?
+  policy_sha_after="$(sha256sum "$policy_test" 2>/dev/null | awk '{print $1}')" || return 79
+  if [[ "$policy_sha_after" != "$policy_sha_before" ]]; then
+    echo '[auto-deploy] target Backstage fast-policy changed while it was running; result not reusable' >&2
+    return 79
+  fi
+  backstage_fast_policy_validated_sha256="$policy_sha_after"
+}
+
+filter_prevalidated_backstage_fast_policy_contract_test() {
+  local policy_test current_sha selected_test removed=false
+  local -a filtered_tests=()
+  [[ -n "${backstage_fast_policy_validated_sha256:-}" ]] || return 0
+  [[ "$backstage_fast_policy_validated_sha256" =~ ^[0-9a-f]{64}$ ]] || return 79
+  policy_test="ops/scripts/test-backstage-fast-deploy-policy.sh"
+  [[ -f "$policy_test" && ! -L "$policy_test" ]] || return 0
+  current_sha="$(sha256sum "$policy_test" 2>/dev/null | awk '{print $1}')" || return 0
+  [[ "$current_sha" == "$backstage_fast_policy_validated_sha256" ]] || return 0
+  for selected_test in "${catalog_contract_tests[@]}"; do
+    if [[ "$selected_test" == "$policy_test" ]]; then
+      removed=true
+    else
+      filtered_tests+=("$selected_test")
+    fi
+  done
+  catalog_contract_tests=("${filtered_tests[@]}")
+  if [[ "$removed" == true ]]; then
+    echo "[auto-deploy] target Backstage fast-policy contract reused sha256=$current_sha"
+  fi
+}
+
+run_sha_pinned_catalog_contract_prevalidation() {
+  local contract_path="$1" contract_file sha_before sha_after recorded_sha
+  case "$contract_path" in
+    ops/tests/test-postdeploy-candidate-evidence-contract.sh|\
+    ops/scripts/test-durable-postdeploy-rollback-reconciler.sh|\
+    ops/scripts/test-operational-usage-ledger-e2e-contract.sh) ;;
+    *) return 79 ;;
+  esac
+  contract_file="$ROOT_DIR/$contract_path"
+  [[ -f "$contract_file" && ! -L "$contract_file" ]] || return 79
+  sha_before="$(sha256sum "$contract_file" 2>/dev/null | awk '{print $1}')" || return 79
+  [[ "$sha_before" =~ ^[0-9a-f]{64}$ ]] || return 79
+  recorded_sha="${prevalidated_catalog_contract_sha256[$contract_path]:-}"
+  if [[ -n "$recorded_sha" ]]; then
+    [[ "$recorded_sha" =~ ^[0-9a-f]{64}$ && "$sha_before" == "$recorded_sha" ]] || return 79
+    echo "[auto-deploy] pre-mutation static contract reused path=$contract_path sha256=$recorded_sha"
+    return 0
+  fi
+  bash "$contract_file" "$ROOT_DIR" || return $?
+  sha_after="$(sha256sum "$contract_file" 2>/dev/null | awk '{print $1}')" || return 79
+  [[ "$sha_after" == "$sha_before" ]] || {
+    echo "[auto-deploy] contract changed during prevalidation: $contract_path" >&2
+    return 79
+  }
+  prevalidated_catalog_contract_sha256["$contract_path"]="$sha_after"
+}
+
+filter_sha_pinned_prevalidated_catalog_contract_tests() {
+  local selected_test expected_sha current_sha removed=0
+  local -a filtered_tests=()
+  for selected_test in "${catalog_contract_tests[@]}"; do
+    expected_sha="${prevalidated_catalog_contract_sha256[$selected_test]:-}"
+    if [[ -z "$expected_sha" ]]; then
+      filtered_tests+=("$selected_test")
+      continue
+    fi
+    [[ "$expected_sha" =~ ^[0-9a-f]{64}$ \
+       && -f "$ROOT_DIR/$selected_test" && ! -L "$ROOT_DIR/$selected_test" ]] || return 79
+    current_sha="$(sha256sum "$ROOT_DIR/$selected_test" 2>/dev/null | awk '{print $1}')" || return 79
+    [[ "$current_sha" == "$expected_sha" ]] || {
+      echo "[auto-deploy] prevalidated contract SHA drifted before selector reuse: $selected_test" >&2
+      return 79
+    }
+    removed=$((removed + 1))
+  done
+  catalog_contract_tests=("${filtered_tests[@]}")
+  if (( removed > 0 )); then
+    echo "[auto-deploy] SHA-pinned static contract results reused count=$removed"
+  fi
+}
+
+prevalidate_target_contract_lanes_before_mutation() {
+  local policy_required=false contract_required=false selector_required=false
+  local prevalidation_root policy_root="" contract_root="" policy_log contracts_log
+  local policy_receipt contracts_receipt policy_pid="" contracts_pid=""
+  local policy_status=0 contracts_status=0 policy_sha path expected_sha current_sha
+  if [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" == true \
+     || "${backstage_recovery_may_require_repair:-false}" == true ]]; then
+    policy_required=true
+  fi
+  if [[ "${PLAN_RUNTIME_REQUIRED:-false}" != true ]] && ! automation_only_fast_path_eligible; then
+    selector_required=true
+    contract_required=true
+  fi
+  if [[ ",${PLAN_TESTS:-}," == *",runtime:postdeploy-candidate-evidence,"* \
+     || ",${PLAN_TESTS:-}," == *",runtime:operational-usage-ledger-e2e,"* ]]; then
+    contract_required=true
+  fi
+  [[ "$policy_required" == true || "$contract_required" == true ]] || return 0
+  [[ "$target_commit" =~ ^[0-9a-f]{40}$ ]] || return 79
+
+  prevalidation_root="$(mktemp -d /tmp/carbonet-target-prevalidate.XXXXXXXX)" || return 79
+  chmod 0700 "$prevalidation_root" || return 79
+  [[ -d "$prevalidation_root" && ! -L "$prevalidation_root" \
+     && "$(stat -c '%a:%u' "$prevalidation_root" 2>/dev/null || true)" == "700:$(id -u)" ]] || return 79
+  policy_log="$prevalidation_root/policy.log"
+  contracts_log="$prevalidation_root/contracts.log"
+  policy_receipt="$prevalidation_root/policy.receipt"
+  contracts_receipt="$prevalidation_root/contracts.receipt"
+
+  if [[ "$policy_required" == true ]]; then
+    policy_root="$prevalidation_root/policy-root"
+    if ! command git clone --shared --no-checkout --quiet "$POLICY_ROOT" "$policy_root" \
+       || ! command git -C "$policy_root" checkout --detach --quiet "$target_commit" \
+       || [[ "$(command git -C "$policy_root" rev-parse HEAD 2>/dev/null || true)" != "$target_commit" ]] \
+       || [[ -n "$(command git -C "$policy_root" status --porcelain --untracked-files=no 2>/dev/null)" ]]; then
+      rm -rf -- "$prevalidation_root"
+      return 79
+    fi
+  fi
+  if [[ "$contract_required" == true ]]; then
+    contract_root="$prevalidation_root/contracts-root"
+    if ! command git clone --shared --no-checkout --quiet "$POLICY_ROOT" "$contract_root" \
+       || ! command git -C "$contract_root" checkout --detach --quiet "$target_commit" \
+       || [[ "$(command git -C "$contract_root" rev-parse HEAD 2>/dev/null || true)" != "$target_commit" ]] \
+       || [[ -n "$(command git -C "$contract_root" status --porcelain --untracked-files=no 2>/dev/null)" ]]; then
+      rm -rf -- "$prevalidation_root"
+      return 79
+    fi
+  fi
+
+  if [[ "$policy_required" == true ]]; then
+    (
+      set -euo pipefail
+      umask 077
+      ROOT_DIR="$policy_root"
+      export ROOT_DIR CARBONET_DEPLOY_ROOT="$policy_root" CARBONET_CLEAN_WORKTREE_ACTIVE=true
+      cd "$policy_root"
+      # A startup recovery receipt can prove that no repair is needed only
+      # after this mutation-free lane has finished. Force the isolated worker
+      # to execute the policy without changing the caller's deployment plan.
+      PLAN_BACKSTAGE_REQUIRED=true
+      backstage_fast_policy_validated_sha256=""
+      validate_target_backstage_fast_deploy_policy_if_required
+      [[ "$backstage_fast_policy_validated_sha256" =~ ^[0-9a-f]{64}$ ]]
+      printf '%s\n' "$backstage_fast_policy_validated_sha256" >"$policy_receipt"
+    ) >"$policy_log" 2>&1 &
+    policy_pid="$!"
+  fi
+
+  if [[ "$contract_required" == true ]]; then
+    (
+      set -euo pipefail
+      umask 077
+      ROOT_DIR="$contract_root"
+      export ROOT_DIR CARBONET_DEPLOY_ROOT="$contract_root" CARBONET_CLEAN_WORKTREE_ACTIVE=true
+      cd "$contract_root"
+      local_selected_file="$prevalidation_root/selected.tests"
+      : >"$local_selected_file"
+      if [[ "$selector_required" == true ]]; then
+        command git diff --name-only --diff-filter=ACMRD "$deployed_commit" "$target_commit" |
+          bash ops/scripts/select-catalog-contract-tests.sh --paths-stdin >"$local_selected_file"
+      fi
+      declare -a selected_tests=() test_pids=() test_logs=()
+      declare -A selected_seen=() selected_sha=()
+      while IFS= read -r path; do
+        [[ -n "$path" ]] || continue
+        [[ -z "${selected_seen[$path]:-}" ]] || continue
+        selected_seen["$path"]=true
+        selected_tests+=("$path")
+      done <"$local_selected_file"
+      if [[ ",${PLAN_TESTS:-}," == *",runtime:postdeploy-candidate-evidence,"* ]]; then
+        for path in ops/tests/test-postdeploy-candidate-evidence-contract.sh \
+          ops/scripts/test-durable-postdeploy-rollback-reconciler.sh; do
+          if [[ -z "${selected_seen[$path]:-}" ]]; then
+            selected_seen["$path"]=true
+            selected_tests+=("$path")
+          fi
+        done
+      fi
+      if [[ ",${PLAN_TESTS:-}," == *",runtime:operational-usage-ledger-e2e,"* ]]; then
+        path=ops/scripts/test-operational-usage-ledger-e2e-contract.sh
+        if [[ -z "${selected_seen[$path]:-}" ]]; then
+          selected_seen["$path"]=true
+          selected_tests+=("$path")
+        fi
+      fi
+      mkdir -m 0700 "$prevalidation_root/contract-logs"
+      for path in "${selected_tests[@]}"; do
+        [[ "$path" =~ ^ops/(scripts|tests)/test-[A-Za-z0-9._/-]+\.sh$ \
+           && "$path" != *../* && -f "$contract_root/$path" && ! -L "$contract_root/$path" ]] || exit 79
+        current_sha="$(sha256sum "$contract_root/$path" 2>/dev/null | awk '{print $1}')"
+        [[ "$current_sha" =~ ^[0-9a-f]{64}$ ]] || exit 79
+        selected_sha["$path"]="$current_sha"
+        if [[ "$policy_required" == true \
+           && "$path" == ops/scripts/test-backstage-fast-deploy-policy.sh ]]; then
+          continue
+        fi
+        test_log="$prevalidation_root/contract-logs/${#test_pids[@]}.log"
+        (bash "$path") >"$test_log" 2>&1 &
+        test_pids+=("$!")
+        test_logs+=("$test_log")
+      done
+      failed=0
+      for index in "${!test_pids[@]}"; do
+        test_status=0
+        wait "${test_pids[$index]}" || test_status=$?
+        cat "${test_logs[$index]}"
+        (( test_status == 0 )) || failed=$((failed + 1))
+      done
+      (( failed == 0 )) || exit 79
+      : >"$contracts_receipt"
+      for path in "${selected_tests[@]}"; do
+        if [[ "$policy_required" == true \
+           && "$path" == ops/scripts/test-backstage-fast-deploy-policy.sh ]]; then
+          continue
+        fi
+        current_sha="$(sha256sum "$contract_root/$path" 2>/dev/null | awk '{print $1}')"
+        [[ "$current_sha" == "${selected_sha[$path]}" ]] || exit 79
+        printf '%s\t%s\n' "$path" "$current_sha" >>"$contracts_receipt"
+      done
+    ) >"$contracts_log" 2>&1 &
+    contracts_pid="$!"
+  fi
+
+  if [[ -n "$policy_pid" ]]; then wait "$policy_pid" || policy_status=$?; fi
+  if [[ -n "$contracts_pid" ]]; then wait "$contracts_pid" || contracts_status=$?; fi
+  [[ ! -f "$policy_log" ]] || cat "$policy_log"
+  [[ ! -f "$contracts_log" ]] || cat "$contracts_log"
+  if (( policy_status != 0 || contracts_status != 0 )); then
+    echo "[auto-deploy] target prevalidation failed policy=$policy_status contracts=$contracts_status mutation=0" >&2
+    rm -rf -- "$prevalidation_root"
+    return 79
+  fi
+  if [[ "$policy_required" == true ]]; then
+    [[ -f "$policy_receipt" && ! -L "$policy_receipt" \
+       && "$(stat -c '%a:%u:%h' "$policy_receipt" 2>/dev/null || true)" == "600:$(id -u):1" ]] || {
+      rm -rf -- "$prevalidation_root"; return 79; }
+    policy_sha="$(tr -d '[:space:]' <"$policy_receipt")"
+    [[ "$policy_sha" =~ ^[0-9a-f]{64}$ \
+       && "$(sha256sum "$policy_root/ops/scripts/test-backstage-fast-deploy-policy.sh" | awk '{print $1}')" == "$policy_sha" ]] || {
+      rm -rf -- "$prevalidation_root"; return 79; }
+    backstage_fast_policy_validated_sha256="$policy_sha"
+  fi
+  if [[ "$contract_required" == true ]]; then
+    [[ -f "$contracts_receipt" && ! -L "$contracts_receipt" \
+       && "$(stat -c '%a:%u:%h' "$contracts_receipt" 2>/dev/null || true)" == "600:$(id -u):1" ]] || {
+      rm -rf -- "$prevalidation_root"; return 79; }
+    while IFS=$'\t' read -r path expected_sha; do
+      [[ "$path" =~ ^ops/(scripts|tests)/test-[A-Za-z0-9._/-]+\.sh$ \
+         && "$path" != *../* && "$expected_sha" =~ ^[0-9a-f]{64}$ \
+         && -f "$contract_root/$path" && ! -L "$contract_root/$path" ]] || {
+        rm -rf -- "$prevalidation_root"; return 79; }
+      current_sha="$(sha256sum "$contract_root/$path" 2>/dev/null | awk '{print $1}')"
+      [[ "$current_sha" == "$expected_sha" ]] || {
+        rm -rf -- "$prevalidation_root"; return 79; }
+      prevalidated_catalog_contract_sha256["$path"]="$expected_sha"
+    done <"$contracts_receipt"
+  fi
+  rm -rf -- "$prevalidation_root"
+  echo "[auto-deploy] clean target prevalidation PASS policy=$policy_required contracts=${#prevalidated_catalog_contract_sha256[@]} mutation=0"
+}
+
+frontend_only_fast_path_eligible() {
+  [[ "${PLAN_FRONTEND_REQUIRED:-false}" == true \
+     && "${PLAN_BACKEND_REQUIRED:-false}" != true \
+     && "${PLAN_DATABASE_REQUIRED:-false}" != true \
+     && "${PLAN_BACKSTAGE_REQUIRED:-false}" != true \
+     && ",${PLAN_TESTS:-}," != *",runtime:startup-profile,"* ]]
+}
+
+startup_profile_fast_path_eligible() {
+  [[ "${PLAN_RUNTIME_REQUIRED:-false}" == true \
+     && "${PLAN_FRONTEND_REQUIRED:-false}" != true \
+     && "${PLAN_BACKEND_REQUIRED:-false}" != true \
+     && "${PLAN_DATABASE_REQUIRED:-false}" != true \
+     && "${PLAN_BACKSTAGE_REQUIRED:-false}" != true \
+     && ",${PLAN_TESTS:-}," == *",runtime:startup-profile,"* ]]
+}
+
+automation_only_fast_path_eligible() {
+  [[ "${PLAN_FRONTEND_REQUIRED:-false}" != true \
+     && "${PLAN_BACKEND_REQUIRED:-false}" != true \
+     && "${PLAN_DATABASE_REQUIRED:-false}" != true \
+     && "${PLAN_RUNTIME_REQUIRED:-false}" != true \
+     && "${PLAN_BACKSTAGE_REQUIRED:-false}" != true \
+     && "${PLAN_INFRASTRUCTURE_REQUIRED:-false}" == true \
+     && ( ",${PLAN_TESTS:-}," == *",automation:shell-syntax,"* \
+          || ",${PLAN_TESTS:-}," == *",automation:full-screen-smoke,"* ) ]]
+}
+
+runtime_candidate_checkpoint_plan_eligible() {
+  ! frontend_only_fast_path_eligible \
+    && ! startup_profile_fast_path_eligible \
+    && ! automation_only_fast_path_eligible
+}
+
+apply_no_change_backstage_repair_plan() {
+  [[ "${no_change_backstage_repair_required:-false}" == true ]] || return 0
+  PLAN_BACKSTAGE_REQUIRED=true
+  PLAN_INFRASTRUCTURE_REQUIRED=true
+  PLAN_REASONS="${PLAN_REASONS:+$PLAN_REASONS,}backstage-runtime-drift-repair"
+  case ",${PLAN_TESTS:-}," in
+    *,backstage:build-deploy,*) ;;
+    *) PLAN_TESTS="${PLAN_TESTS:+$PLAN_TESTS,}backstage:build-deploy" ;;
+  esac
+}
+
+require_prevalidated_backstage_fast_policy_for_late_repair() {
+  local policy_path="ops/scripts/test-backstage-fast-deploy-policy.sh"
+  local target_policy_sha=""
+  [[ "$target_commit" =~ ^[0-9a-f]{40}$ \
+     && "${backstage_fast_policy_validated_sha256:-}" =~ ^[0-9a-f]{64}$ ]] || return 79
+  target_policy_sha="$(git -C "$POLICY_ROOT" show --format= --no-textconv \
+      "$target_commit:$policy_path" 2>/dev/null | sha256sum | awk '{print $1}')" || return 79
+  [[ "$target_policy_sha" =~ ^[0-9a-f]{64}$ \
+     && "$target_policy_sha" == "$backstage_fast_policy_validated_sha256" ]] || return 79
+}
+
+apply_backstage_runtime_identity_repair_plan_if_required() {
+  [[ "${backstage_runtime_identity_repair_required:-false}" == true ]] || return 0
+  # A label-less rollback is a safe terminal rollback, not release success.
+  # Force one target-bound child repair and prevent the no-change recovery
+  # branch from writing a false authority quarantine. The target policy lane
+  # ran before any mutation because the original pending/token/artifact was a
+  # conservative prevalidation hint; bind its exact target SHA again here.
+  no_change_candidate=false
+  no_change_backstage_repair_required=true
+  apply_no_change_backstage_repair_plan
+  require_prevalidated_backstage_fast_policy_for_late_repair
+}
+
+backstage_runtime_fingerprint_at_ref() {
+  local ref="$1" fingerprint=""
+  [[ "$ref" =~ ^[0-9a-f]{40}$ \
+     && "$(git -C "$POLICY_ROOT" cat-file -t "$ref" 2>/dev/null || true)" == commit ]] || return 79
+  fingerprint="$(git -C "$POLICY_ROOT" show --format= --no-textconv \
+      "$ref:ops/scripts/resonance-backstage-runtime-fingerprint.sh" 2>/dev/null | \
+    bash -s -- "$POLICY_ROOT" "$ref")" || return 79
+  fingerprint="$(tr -d '[:space:]' <<<"$fingerprint")"
+  [[ "$fingerprint" =~ ^[0-9a-f]{64}$ ]] || return 79
+  printf '%s\n' "$fingerprint"
+}
+
+backstage_deployment_closure_at_ref() {
+  local ref="$1" runtime_fingerprint="$2" tree_entries path entry_count
+  local -a closure_paths=(
+    deploy/k8s/control-plane/backstage.yaml
+    ops/scripts/resonance-backstage-deploy.sh
+    ops/scripts/resonance-backstage-runtime-fingerprint.sh
+    platform/control-plane/catalog/organization.yaml
+    platform/control-plane/catalog/systems.yaml
+    platform/control-plane/catalog/components.yaml
+    platform/control-plane/catalog/apis.yaml
+    platform/control-plane/catalog/resources.yaml
+    platform/control-plane/catalog/environments.yaml
+  )
+  [[ "$ref" =~ ^[0-9a-f]{40}$ && "$runtime_fingerprint" =~ ^[0-9a-f]{64}$ \
+     && "$(git -C "$POLICY_ROOT" cat-file -t "$ref" 2>/dev/null || true)" == commit ]] || return 79
+  for path in "${closure_paths[@]}"; do
+    git -C "$POLICY_ROOT" cat-file -e "$ref:$path" 2>/dev/null || return 79
+  done
+  tree_entries="$(git -C "$POLICY_ROOT" ls-tree -r "$ref" -- "${closure_paths[@]}")" || return 79
+  entry_count="$(awk 'NF { count++ } END { print count + 0 }' <<<"$tree_entries")"
+  [[ "$entry_count" == "${#closure_paths[@]}" ]] || return 79
+  {
+    printf 'runtimeFingerprint=%s\n' "$runtime_fingerprint"
+    printf '%s\n' "$tree_entries"
+  } | sha256sum | awk '{print $1}'
+}
+
+verify_backstage_runtime_identity_for_ref_under_lock() {
+  local exact_ref="$1"
+  [[ "$exact_ref" =~ ^[0-9a-f]{40}$ \
+     && "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD" == true \
+     && "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD" =~ ^[0-9]+$ ]] || return 79
+  # The target-bound child validates the secure marker by deployment closure,
+  # then the durable attempt identity, Deployment UID/image/full spec and a
+  # bounded readiness proof. Passing the already-held directory FD avoids an
+  # unlock/relock writer window and a second-open flock deadlock.
+  BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD="$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD" \
+    run_target_backstage_deploy_helper verify-runtime-identity "$exact_ref"
+}
+
+verify_no_change_backstage_runtime_identity() {
+  verify_backstage_runtime_identity_for_ref_under_lock "$target_commit"
+}
+
+prove_backstage_terminal_success() {
+  local exact_ref="$1"
+  acquire_clean_backstage_deployment_mutation_lock || return $?
+  terminal_deploy_recovery_residue_absent || return 79
+  verify_backstage_runtime_identity_for_ref_under_lock "$exact_ref" || return $?
+  # Intentionally retain the shared directory FD until process exit. No
+  # repository-supported writer can publish a pending handoff after this final
+  # proof and before the success return.
+}
+
+no_change_prepared_composite_activation_eligible() {
+  [[ "${backstage_pending_reconciled_before_runtime:-false}" != true \
+     && "${early_composite_gate_status:-UNKNOWN}" == PREPARED \
+     && "${early_composite_gate_candidate:-}" =~ ^[A-Za-z0-9._:-]{12,160}$ ]]
+}
+
+resolve_target_backstage_deploy_helper() {
+  local target_sha actual_sha snapshot_dir snapshot_identity helper_tmp
+  [[ "$target_commit" =~ ^[0-9a-f]{40}$ ]] || return 79
+  target_sha="$(git -C "$POLICY_ROOT" show --format= --no-textconv \
+    "$target_commit:ops/scripts/resonance-backstage-deploy.sh" 2>/dev/null |
+    sha256sum | awk '{print $1}')" || return 79
+  [[ "$target_sha" =~ ^[0-9a-f]{64}$ ]] || return 79
+
+  if [[ "$BACKSTAGE_DEPLOY_HELPER_EXPLICIT" == true ]]; then
+    [[ -f "$BACKSTAGE_DEPLOY_HELPER" && ! -L "$BACKSTAGE_DEPLOY_HELPER" \
+       && "$(stat -c '%a:%u' "$BACKSTAGE_DEPLOY_HELPER" 2>/dev/null || true)" == "700:$(id -u)" \
+       && "$BACKSTAGE_DEPLOY_HELPER_SHA256" == "$target_sha" ]] || return 79
+  elif [[ -f "$ROOT_DIR/ops/scripts/resonance-backstage-deploy.sh" \
+       && ! -L "$ROOT_DIR/ops/scripts/resonance-backstage-deploy.sh" \
+       && "$(sha256sum "$ROOT_DIR/ops/scripts/resonance-backstage-deploy.sh" | awk '{print $1}')" == "$target_sha" ]]; then
+    BACKSTAGE_DEPLOY_HELPER="$ROOT_DIR/ops/scripts/resonance-backstage-deploy.sh"
+    BACKSTAGE_DEPLOY_HELPER_SHA256="$target_sha"
+  else
+    snapshot_dir="$(dirname "$(readlink -f "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}" 2>/dev/null || true)")"
+    snapshot_identity="$(stat -c '%a:%u' "$snapshot_dir" 2>/dev/null || true)"
+    [[ "$snapshot_dir" != / && "$snapshot_identity" == "700:$(id -u)" ]] || return 79
+    helper_tmp="$(mktemp "$snapshot_dir/.resonance-backstage-deploy.XXXXXX")" || return 79
+    if ! git -C "$POLICY_ROOT" show --format= --no-textconv \
+        "$target_commit:ops/scripts/resonance-backstage-deploy.sh" >"$helper_tmp"; then
+      rm -f -- "$helper_tmp"
+      return 79
+    fi
+    chmod 700 "$helper_tmp" || { rm -f -- "$helper_tmp"; return 79; }
+    [[ "$(sha256sum "$helper_tmp" | awk '{print $1}')" == "$target_sha" ]] \
+      || { rm -f -- "$helper_tmp"; return 79; }
+    BACKSTAGE_DEPLOY_HELPER="$snapshot_dir/resonance-backstage-deploy.sh"
+    mv -fT -- "$helper_tmp" "$BACKSTAGE_DEPLOY_HELPER" || return 79
+    BACKSTAGE_DEPLOY_HELPER_SHA256="$target_sha"
+  fi
+  actual_sha="$(sha256sum "$BACKSTAGE_DEPLOY_HELPER" 2>/dev/null | awk '{print $1}')"
+  [[ "$actual_sha" == "$target_sha" ]] || return 79
+}
+
+run_target_backstage_deploy_helper() {
+  resolve_target_backstage_deploy_helper || return $?
+  [[ "$(sha256sum "$BACKSTAGE_DEPLOY_HELPER" 2>/dev/null | awk '{print $1}')" \
+     == "$BACKSTAGE_DEPLOY_HELPER_SHA256" ]] || return 79
+  RESONANCE_ROOT="$ROOT_DIR" \
+  BACKSTAGE_DEPLOY_STATE_FILE="$BACKSTAGE_DEPLOY_STATE_FILE" \
+  BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR="$BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR" \
+  BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE="$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+  BACKSTAGE_RUNTIME_IDENTITY_FILE="$BACKSTAGE_RUNTIME_IDENTITY_FILE" \
+  BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE="$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+  BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE="$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+  BACKSTAGE_PUBLIC_URL="$BACKSTAGE_PUBLIC_URL" \
+  BACKSTAGE_EXPECTED_PENDING_SHA256="${BACKSTAGE_EXPECTED_PENDING_SHA256:-}" \
+  BACKSTAGE_EXPECTED_ATTEMPT_ID="${BACKSTAGE_EXPECTED_ATTEMPT_ID:-}" \
+  BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD="${BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD:-}" \
+    bash "$BACKSTAGE_DEPLOY_HELPER" "$@"
+}
+
+PARENT_BACKSTAGE_REPAIR_AUTHORITY_EXISTS=false
+PARENT_BACKSTAGE_REPAIR_AUTHORITY_STATUS=""
+PARENT_BACKSTAGE_REPAIR_AUTHORITY_FILE_SHA256=""
+PARENT_BACKSTAGE_REPAIR_AUTHORITY_FILE_STAT=""
+PARENT_BACKSTAGE_REPAIR_PENDING_TARGET=""
+PARENT_BACKSTAGE_REPAIR_PENDING_ATTEMPT_ID=""
+PARENT_BACKSTAGE_REPAIR_PENDING_SHA256=""
+
+load_parent_backstage_handoff_binding() {
+  local exact_pending_sha256="$1" exact_target="$2" exact_attempt="$3" exact_authority="$4"
+  local expected_schema_version="${5:-4}"
+  local pending_before pending_after pending_json sha_before sha_after
+  [[ "$exact_pending_sha256" =~ ^[0-9a-f]{64}$ \
+     && "$exact_target" =~ ^[0-9a-f]{40}$ \
+     && "$exact_attempt" =~ ^[0-9a-f]{32}$ \
+     && "$exact_authority" =~ ^(DB_PROMOTION|APPLIED_MARKER|REPAIR_TOKEN)$ \
+     && "$expected_schema_version" =~ ^(3|4)$ \
+     && -f "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && "$(stat -c '%a:%u:%h' "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)" \
+        == "600:$(id -u):1" ]] || return 79
+  pending_before="$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' \
+    "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)"
+  sha_before="$(sha256sum "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null | awk '{print $1}')"
+  pending_json="$(<"$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE")" || return 79
+  sha_after="$(sha256sum "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null | awk '{print $1}')"
+  pending_after="$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' \
+    "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)"
+  [[ -n "$pending_before" && "$pending_before" == "$pending_after" \
+     && "$sha_before" == "$sha_after" && "$sha_after" == "$exact_pending_sha256" ]] || return 79
+  jq -e --argjson schema "$expected_schema_version" \
+      --arg target "$exact_target" --arg attempt "$exact_attempt" \
+      --arg authority "$exact_authority" '
+        .schemaVersion == $schema and .phase == "CANDIDATE_READY" and
+        .finalizeMode == "deferred" and .coordinator == "auto" and
+        .targetCommit == $target and .attemptId == $attempt and
+        .authorityKind == $authority
+      ' <<<"$pending_json" >/dev/null 2>&1 || return 79
+}
+
+capture_parent_backstage_handoff_binding_locked() {
+  local exact_pending_sha256="$1"
+  [[ "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD" == true \
+     && "${backstage_deployment_handoff_active:-false}" == true \
+     && "${backstage_deployment_target_commit:-}" =~ ^[0-9a-f]{40}$ \
+     && "${backstage_deployment_attempt_id:-}" =~ ^[0-9a-f]{32}$ \
+     && "${backstage_deployment_authority_kind:-}" =~ ^(DB_PROMOTION|APPLIED_MARKER|REPAIR_TOKEN)$ ]] \
+    || return 79
+  load_parent_backstage_handoff_binding "$exact_pending_sha256" \
+    "$backstage_deployment_target_commit" "$backstage_deployment_attempt_id" \
+    "$backstage_deployment_authority_kind" || return 79
+  backstage_deployment_pending_sha256="$exact_pending_sha256"
+  backstage_deployment_handoff_binding_captured=true
+}
+
+validate_parent_backstage_handoff_binding_locked() {
+  [[ "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD" == true \
+     && "${backstage_deployment_handoff_active:-false}" == true \
+     && "${backstage_deployment_handoff_binding_captured:-false}" == true \
+     && "${backstage_deployment_pending_sha256:-}" =~ ^[0-9a-f]{64}$ ]] || return 79
+  load_parent_backstage_handoff_binding "$backstage_deployment_pending_sha256" \
+    "$backstage_deployment_target_commit" "$backstage_deployment_attempt_id" \
+    "$backstage_deployment_authority_kind"
+}
+
+clear_parent_backstage_handoff_binding() {
+  backstage_deployment_target_commit=""
+  backstage_deployment_attempt_id=""
+  backstage_deployment_pending_sha256=""
+  backstage_deployment_handoff_binding_captured=false
+}
+
+begin_parent_backstage_authority_finalize_lock() {
+  local acquired_here=false
+  [[ "${backstage_deployment_handoff_active:-false}" == true ]] || return 0
+  if [[ "${backstage_authority_finalize_lock_active:-false}" == true ]]; then
+    [[ "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD" == true \
+       && "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD" =~ ^[0-9]+$ ]] || return 79
+  else
+    acquire_backstage_deployment_mutation_lock || return $?
+    acquired_here=true
+  fi
+  if ! validate_parent_backstage_handoff_binding_locked; then
+    if [[ "$acquired_here" == true ]]; then
+      release_backstage_deployment_mutation_lock
+    fi
+    backstage_authority_finalize_lock_active=false
+    return 79
+  fi
+  backstage_authority_finalize_lock_active=true
+}
+
+PARENT_BACKSTAGE_AUTHORITY_BINDING_EXISTS=false
+PARENT_BACKSTAGE_AUTHORITY_BINDING_STATUS=""
+PARENT_BACKSTAGE_AUTHORITY_BINDING_KIND=""
+PARENT_BACKSTAGE_AUTHORITY_BINDING_TARGET=""
+PARENT_BACKSTAGE_AUTHORITY_BINDING_ATTEMPT_ID=""
+PARENT_BACKSTAGE_AUTHORITY_BINDING_PENDING_SHA256=""
+PARENT_BACKSTAGE_AUTHORITY_BINDING_RELEASE_ATTEMPT_ID=""
+PARENT_BACKSTAGE_AUTHORITY_BINDING_APPLIED_MARKER_BEFORE_SHA256=""
+PARENT_BACKSTAGE_AUTHORITY_BINDING_APPLIED_MARKER_BEFORE_STAT=""
+PARENT_BACKSTAGE_AUTHORITY_BINDING_FILE_SHA256=""
+PARENT_BACKSTAGE_AUTHORITY_BINDING_FILE_STAT=""
+PARENT_BACKSTAGE_AUTHORITY_BINDING_JSON=""
+
+load_parent_backstage_authority_binding() {
+  local exact_kind="${1:-}" exact_target="${2:-}" exact_attempt="${3:-}"
+  local exact_pending_sha256="${4:-}" exact_release_attempt_id="${5:-}"
+  local binding_dir binding_logical_dir binding_resolved_dir binding_physical_dir
+  local binding_before binding_after binding_json binding_payload expected_integrity actual_integrity
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_EXISTS=false
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_STATUS=""
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_KIND=""
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_TARGET=""
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_ATTEMPT_ID=""
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_PENDING_SHA256=""
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_RELEASE_ATTEMPT_ID=""
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_APPLIED_MARKER_BEFORE_SHA256=""
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_APPLIED_MARKER_BEFORE_STAT=""
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_FILE_SHA256=""
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_FILE_STAT=""
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_JSON=""
+  if [[ ! -e "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+     && ! -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" ]]; then
+    return 1
+  fi
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_EXISTS=true
+  binding_dir="$(dirname -- "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE")"
+  [[ -d "$binding_dir" && ! -L "$binding_dir" \
+     && "$(stat -c '%a:%u' "$binding_dir" 2>/dev/null || true)" == "700:$(id -u)" ]] || return 79
+  binding_logical_dir="$(realpath -m -s -- "$binding_dir" 2>/dev/null || true)"
+  binding_resolved_dir="$(readlink -m -- "$binding_dir" 2>/dev/null || true)"
+  binding_physical_dir="$(readlink -f -- "$binding_dir" 2>/dev/null || true)"
+  [[ -n "$binding_logical_dir" \
+     && "$binding_logical_dir" == "$binding_resolved_dir" \
+     && "$binding_resolved_dir" == "$binding_physical_dir" \
+     && -f "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+     && ! -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+     && "$(stat -c '%a:%u:%h' "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" 2>/dev/null || true)" \
+        == "600:$(id -u):1" ]] || return 79
+  binding_before="$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' \
+    "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" 2>/dev/null || true)"
+  binding_json="$(<"$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE")" || return 79
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_FILE_SHA256="$(sha256sum \
+    "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" 2>/dev/null | awk '{print $1}')"
+  binding_after="$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' \
+    "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" 2>/dev/null || true)"
+  [[ -n "$binding_before" && "$binding_before" == "$binding_after" \
+     && "$PARENT_BACKSTAGE_AUTHORITY_BINDING_FILE_SHA256" =~ ^[0-9a-f]{64}$ ]] || return 79
+  jq -e '
+      type == "object" and
+      (keys | sort) == ["appliedMarkerBeforeSha256","appliedMarkerBeforeStat","attemptId","authorityKind","integritySha256","kind","pendingSha256","releaseAttemptId","schemaVersion","status","targetCommit"] and
+      .schemaVersion == 1 and .kind == "BackstageParentAuthorityBinding" and
+      (.status == "ARMED" or .status == "AUTHORIZED") and
+      (.authorityKind == "DB_PROMOTION" or .authorityKind == "APPLIED_MARKER") and
+      (.targetCommit | type == "string" and test("^[0-9a-f]{40}$")) and
+      (.attemptId | type == "string" and test("^[0-9a-f]{32}$")) and
+      (.pendingSha256 | type == "string" and test("^[0-9a-f]{64}$")) and
+      (if .authorityKind == "DB_PROMOTION" then
+         (.releaseAttemptId | type == "string" and test("^[A-Za-z0-9._:-]{12,160}$")) and
+         .appliedMarkerBeforeSha256 == null and .appliedMarkerBeforeStat == null
+       else .releaseAttemptId == null and
+          ((.appliedMarkerBeforeSha256 | type == "string" and test("^[0-9a-f]{64}$")) or
+           .appliedMarkerBeforeSha256 == "ABSENT") and
+          ((.appliedMarkerBeforeStat == "ABSENT") or
+           (.appliedMarkerBeforeStat | type == "string" and
+             length >= 15 and length <= 512 and test("^[ -~]+$"))) end) and
+      (.integritySha256 | type == "string" and test("^[0-9a-f]{64}$"))
+    ' <<<"$binding_json" >/dev/null 2>&1 || return 79
+  binding_payload="$(jq -cS 'del(.integritySha256)' <<<"$binding_json")" || return 79
+  expected_integrity="$(jq -r '.integritySha256' <<<"$binding_json")" || return 79
+  actual_integrity="$(printf '%s' "$binding_payload" | sha256sum | awk '{print $1}')" || return 79
+  [[ "$actual_integrity" == "$expected_integrity" ]] || return 79
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_STATUS="$(jq -r '.status' <<<"$binding_json")"
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_KIND="$(jq -r '.authorityKind' <<<"$binding_json")"
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_TARGET="$(jq -r '.targetCommit' <<<"$binding_json")"
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_ATTEMPT_ID="$(jq -r '.attemptId' <<<"$binding_json")"
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_PENDING_SHA256="$(jq -r '.pendingSha256' <<<"$binding_json")"
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_RELEASE_ATTEMPT_ID="$(jq -r '.releaseAttemptId // empty' <<<"$binding_json")"
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_APPLIED_MARKER_BEFORE_SHA256="$(jq -r '.appliedMarkerBeforeSha256 // empty' <<<"$binding_json")"
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_APPLIED_MARKER_BEFORE_STAT="$(jq -r '.appliedMarkerBeforeStat // empty' <<<"$binding_json")"
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_FILE_STAT="$binding_before"
+  PARENT_BACKSTAGE_AUTHORITY_BINDING_JSON="$binding_json"
+  [[ -z "$exact_kind" || "$PARENT_BACKSTAGE_AUTHORITY_BINDING_KIND" == "$exact_kind" ]] || return 79
+  [[ -z "$exact_target" || "$PARENT_BACKSTAGE_AUTHORITY_BINDING_TARGET" == "$exact_target" ]] || return 79
+  [[ -z "$exact_attempt" || "$PARENT_BACKSTAGE_AUTHORITY_BINDING_ATTEMPT_ID" == "$exact_attempt" ]] || return 79
+  [[ -z "$exact_pending_sha256" \
+     || "$PARENT_BACKSTAGE_AUTHORITY_BINDING_PENDING_SHA256" == "$exact_pending_sha256" ]] || return 79
+  if [[ "$PARENT_BACKSTAGE_AUTHORITY_BINDING_KIND" == DB_PROMOTION \
+     && -n "$exact_release_attempt_id" ]]; then
+    [[ "$PARENT_BACKSTAGE_AUTHORITY_BINDING_RELEASE_ATTEMPT_ID" == "$exact_release_attempt_id" ]] || return 79
+  elif [[ "$PARENT_BACKSTAGE_AUTHORITY_BINDING_KIND" == APPLIED_MARKER ]]; then
+    [[ -z "$exact_release_attempt_id" ]] || return 79
+  fi
+  case "$PARENT_BACKSTAGE_AUTHORITY_BINDING_STATUS" in
+    AUTHORIZED) return 0 ;;
+    ARMED) return 3 ;;
+    *) return 79 ;;
+  esac
+}
+
+write_parent_backstage_authority_binding() {
+  local exact_state="$1" exact_kind="$2" exact_target="$3" exact_attempt="$4" exact_pending_sha256="$5"
+  local exact_release_attempt_id="${6:-}" binding_dir binding_logical_dir binding_resolved_dir
+  local exact_pending_schema="${7:-4}"
+  local binding_physical_dir binding_payload binding_json integrity binding_tmp="" load_status=1
+  local expected_previous_sha256="" expected_previous_stat="" expected_previous=false
+  local marker_before_sha256="" marker_before_stat="" marker_after_stat=""
+  [[ "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD" == true \
+     && "$exact_state" =~ ^(ARMED|AUTHORIZED)$ \
+     && "$exact_kind" =~ ^(DB_PROMOTION|APPLIED_MARKER)$ \
+     && "$exact_target" =~ ^[0-9a-f]{40}$ \
+     && "$exact_attempt" =~ ^[0-9a-f]{32}$ \
+     && "$exact_pending_sha256" =~ ^[0-9a-f]{64}$ \
+     && "$exact_pending_schema" =~ ^(3|4)$ ]] || return 79
+  if [[ "$exact_kind" == DB_PROMOTION ]]; then
+    [[ "$exact_release_attempt_id" =~ ^[A-Za-z0-9._:-]{12,160}$ ]] || return 79
+  else
+    [[ -z "$exact_release_attempt_id" ]] || return 79
+  fi
+  if load_parent_backstage_authority_binding; then load_status=0; else load_status=$?; fi
+  case "$load_status" in
+    0|3)
+      [[ "$PARENT_BACKSTAGE_AUTHORITY_BINDING_KIND" == "$exact_kind" \
+         && "$PARENT_BACKSTAGE_AUTHORITY_BINDING_TARGET" == "$exact_target" \
+         && "$PARENT_BACKSTAGE_AUTHORITY_BINDING_ATTEMPT_ID" == "$exact_attempt" \
+         && "$PARENT_BACKSTAGE_AUTHORITY_BINDING_PENDING_SHA256" == "$exact_pending_sha256" \
+         && "$PARENT_BACKSTAGE_AUTHORITY_BINDING_RELEASE_ATTEMPT_ID" == "$exact_release_attempt_id" ]] \
+        || return 79
+      if [[ ( "$exact_state" == ARMED \
+              && "$PARENT_BACKSTAGE_AUTHORITY_BINDING_STATUS" == ARMED ) \
+         || ( "$exact_state" == AUTHORIZED \
+              && "$PARENT_BACKSTAGE_AUTHORITY_BINDING_STATUS" == AUTHORIZED ) ]]; then
+        return 0
+      fi
+      [[ "$exact_state" == AUTHORIZED \
+         && "$PARENT_BACKSTAGE_AUTHORITY_BINDING_STATUS" == ARMED ]] || return 79
+      expected_previous=true
+      expected_previous_sha256="$PARENT_BACKSTAGE_AUTHORITY_BINDING_FILE_SHA256"
+      expected_previous_stat="$PARENT_BACKSTAGE_AUTHORITY_BINDING_FILE_STAT"
+      ;;
+    1)
+      [[ "$exact_state" == ARMED ]] || return 79
+      ;;
+    *) return 79 ;;
+  esac
+  if [[ "$exact_kind" == APPLIED_MARKER ]]; then
+    if [[ "$exact_state" == ARMED ]]; then
+      if [[ -e "$DEPLOY_STATE_FILE" || -L "$DEPLOY_STATE_FILE" ]]; then
+        [[ -f "$DEPLOY_STATE_FILE" && ! -L "$DEPLOY_STATE_FILE" ]] || return 79
+        marker_before_stat="$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' "$DEPLOY_STATE_FILE" 2>/dev/null || true)"
+        marker_before_sha256="$(sha256sum "$DEPLOY_STATE_FILE" 2>/dev/null | awk '{print $1}')"
+        marker_after_stat="$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' "$DEPLOY_STATE_FILE" 2>/dev/null || true)"
+        [[ -n "$marker_before_stat" && "$marker_before_stat" == "$marker_after_stat" \
+           && "$marker_before_sha256" =~ ^[0-9a-f]{64}$ ]] || return 79
+      else
+        marker_before_sha256=ABSENT
+        marker_before_stat=ABSENT
+      fi
+    else
+      marker_before_sha256="$PARENT_BACKSTAGE_AUTHORITY_BINDING_APPLIED_MARKER_BEFORE_SHA256"
+      marker_before_stat="$PARENT_BACKSTAGE_AUTHORITY_BINDING_APPLIED_MARKER_BEFORE_STAT"
+    fi
+  fi
+  binding_dir="$(dirname -- "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE")"
+  [[ -d "$binding_dir" && ! -L "$binding_dir" \
+     && "$(stat -c '%a:%u' "$binding_dir" 2>/dev/null || true)" == "700:$(id -u)" ]] || return 79
+  binding_logical_dir="$(realpath -m -s -- "$binding_dir" 2>/dev/null || true)"
+  binding_resolved_dir="$(readlink -m -- "$binding_dir" 2>/dev/null || true)"
+  binding_physical_dir="$(readlink -f -- "$binding_dir" 2>/dev/null || true)"
+  [[ -n "$binding_logical_dir" && "$binding_logical_dir" == "$binding_resolved_dir" \
+     && "$binding_resolved_dir" == "$binding_physical_dir" ]] || return 79
+  binding_payload="$(jq -cnS --arg authorityKind "$exact_kind" \
+    --arg targetCommit "$exact_target" --arg attemptId "$exact_attempt" \
+    --arg pendingSha256 "$exact_pending_sha256" --arg releaseAttemptId "$exact_release_attempt_id" \
+    --arg status "$exact_state" --arg markerBeforeSha256 "$marker_before_sha256" \
+    --arg markerBeforeStat "$marker_before_stat" '
+      {schemaVersion:1,kind:"BackstageParentAuthorityBinding",status:$status,
+       authorityKind:$authorityKind,targetCommit:$targetCommit,attemptId:$attemptId,
+       pendingSha256:$pendingSha256,
+       releaseAttemptId:(if $authorityKind == "DB_PROMOTION" then $releaseAttemptId else null end),
+       appliedMarkerBeforeSha256:(if $authorityKind == "APPLIED_MARKER" then $markerBeforeSha256 else null end),
+       appliedMarkerBeforeStat:(if $authorityKind == "APPLIED_MARKER" then $markerBeforeStat else null end)}
+    ')" || return 79
+  integrity="$(printf '%s' "$binding_payload" | sha256sum | awk '{print $1}')" || return 79
+  binding_json="$(jq -cS --arg integrity "$integrity" \
+    '. + {integritySha256:$integrity}' <<<"$binding_payload")" || return 79
+  binding_tmp="$(umask 077 && mktemp "$binding_dir/.parent-authority-binding.XXXXXXXX")" || return 79
+  if ! printf '%s\n' "$binding_json" >"$binding_tmp" \
+     || ! chmod 0600 "$binding_tmp" \
+     || [[ "$(stat -c '%a:%u:%h' "$binding_tmp" 2>/dev/null || true)" != "600:$(id -u):1" ]] \
+     || ! sync -f "$binding_tmp"; then
+    rm -f -- "$binding_tmp"
+    return 79
+  fi
+  if [[ "$expected_previous" == true ]]; then
+    [[ "$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" 2>/dev/null || true)" \
+          == "$expected_previous_stat" \
+       && "$(sha256sum "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" 2>/dev/null | awk '{print $1}')" \
+          == "$expected_previous_sha256" ]] || { rm -f -- "$binding_tmp"; return 79; }
+  else
+    [[ ! -e "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+       && ! -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" ]] \
+      || { rm -f -- "$binding_tmp"; return 79; }
+  fi
+  # This is the final pending CAS before ARMED publication or its exact
+  # ARMED->AUTHORIZED transition. Any A->B replacement retains mutation=0/79.
+  load_parent_backstage_handoff_binding "$exact_pending_sha256" "$exact_target" \
+    "$exact_attempt" "$exact_kind" "$exact_pending_schema" \
+    || { rm -f -- "$binding_tmp"; return 79; }
+  if ! mv -fT -- "$binding_tmp" "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE"; then
+    rm -f -- "$binding_tmp"
+    return 79
+  fi
+  binding_tmp=""
+  # After rename, retain the new receipt even if directory fsync is
+  # indeterminate. Startup accepts it only after full integrity/exact binding.
+  sync -f "$binding_dir" || return 79
+  if load_parent_backstage_authority_binding "$exact_kind" "$exact_target" \
+      "$exact_attempt" "$exact_pending_sha256" "$exact_release_attempt_id"; then
+    load_status=0
+  else
+    load_status=$?
+  fi
+  case "$exact_state:$load_status" in
+    AUTHORIZED:0|ARMED:3) return 0 ;;
+    *) return 79 ;;
+  esac
+}
+
+finalize_parent_backstage_authority_binding() {
+  local exact_kind="$1" exact_target="$2" exact_attempt="$3" exact_pending_sha256="$4"
+  local exact_release_attempt_id="${5:-}" expected_active_status="${6:-AUTHORIZED}"
+  local binding_dir active_sha active_stat load_status=1 marker_commit=""
+  [[ "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD" == true \
+     && "$expected_active_status" =~ ^(ARMED|AUTHORIZED)$ ]] || return 79
+  if load_parent_backstage_authority_binding "$exact_kind" "$exact_target" \
+      "$exact_attempt" "$exact_pending_sha256" "$exact_release_attempt_id"; then
+    load_status=0
+  else
+    load_status=$?
+  fi
+  case "$expected_active_status:$load_status" in
+    AUTHORIZED:0|ARMED:3) ;;
+    *) return 79 ;;
+  esac
+  active_sha="$PARENT_BACKSTAGE_AUTHORITY_BINDING_FILE_SHA256"
+  active_stat="$PARENT_BACKSTAGE_AUTHORITY_BINDING_FILE_STAT"
+  binding_dir="$(dirname -- "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE")"
+  [[ ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ]] || return 79
+  if [[ "$expected_active_status" == AUTHORIZED ]]; then
+    verify_backstage_runtime_identity_for_ref_under_lock "$exact_target" || return 79
+    [[ -f "$BACKSTAGE_DEPLOY_STATE_FILE" && ! -L "$BACKSTAGE_DEPLOY_STATE_FILE" ]] || return 79
+    marker_commit="$(tr -d '[:space:]' <"$BACKSTAGE_DEPLOY_STATE_FILE" 2>/dev/null || true)"
+    [[ "$marker_commit" == "$exact_target" ]] || return 79
+  fi
+  [[ "$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" 2>/dev/null || true)" \
+        == "$active_stat" \
+     && "$(sha256sum "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" 2>/dev/null | awk '{print $1}')" \
+        == "$active_sha" ]] || return 79
+  rm -f -- "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" || return 79
+  # A directory-sync failure is fail-closed status79 but never recreates the
+  # child-cleared pending candidate. Exact target identity is already proved.
+  sync -f "$binding_dir" || return 79
+  [[ ! -e "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+     && ! -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" ]] || return 79
+}
+
+parent_backstage_authority_binding_active() {
+  local binding_status=1
+  if load_parent_backstage_authority_binding; then binding_status=0; else binding_status=$?; fi
+  case "$binding_status" in
+    0|3) return 0 ;;
+    1) return 1 ;;
+    *) return 79 ;;
+  esac
+}
+
+parent_backstage_applied_marker_cut_status() {
+  local exact_target="$1" marker_before marker_after marker_sha marker_commit
+  [[ "$exact_target" =~ ^[0-9a-f]{40}$ \
+     && "$PARENT_BACKSTAGE_AUTHORITY_BINDING_KIND" == APPLIED_MARKER \
+     && -n "$PARENT_BACKSTAGE_AUTHORITY_BINDING_APPLIED_MARKER_BEFORE_SHA256" \
+     && -n "$PARENT_BACKSTAGE_AUTHORITY_BINDING_APPLIED_MARKER_BEFORE_STAT" ]] || return 2
+  if [[ ! -e "$DEPLOY_STATE_FILE" && ! -L "$DEPLOY_STATE_FILE" ]]; then
+    [[ "$PARENT_BACKSTAGE_AUTHORITY_BINDING_APPLIED_MARKER_BEFORE_SHA256" == ABSENT \
+       && "$PARENT_BACKSTAGE_AUTHORITY_BINDING_APPLIED_MARKER_BEFORE_STAT" == ABSENT ]] \
+      && return 1
+    return 2
+  fi
+  [[ -f "$DEPLOY_STATE_FILE" && ! -L "$DEPLOY_STATE_FILE" ]] || return 2
+  marker_before="$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' "$DEPLOY_STATE_FILE" 2>/dev/null || true)"
+  marker_sha="$(sha256sum "$DEPLOY_STATE_FILE" 2>/dev/null | awk '{print $1}')"
+  marker_commit="$(tr -d '[:space:]' <"$DEPLOY_STATE_FILE" 2>/dev/null || true)"
+  marker_after="$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' "$DEPLOY_STATE_FILE" 2>/dev/null || true)"
+  [[ -n "$marker_before" && "$marker_before" == "$marker_after" \
+     && "$marker_sha" =~ ^[0-9a-f]{64}$ ]] || return 2
+  if [[ "$marker_before" == "$PARENT_BACKSTAGE_AUTHORITY_BINDING_APPLIED_MARKER_BEFORE_STAT" \
+     && "$marker_sha" == "$PARENT_BACKSTAGE_AUTHORITY_BINDING_APPLIED_MARKER_BEFORE_SHA256" ]]; then
+    return 1
+  fi
+  [[ "$marker_commit" == "$exact_target" ]] && return 0
+  return 2
+}
+
+load_parent_backstage_repair_pending_binding() {
+  local expected_sha256="$1" expected_schema_version="${2:-4}"
+  local pending_before pending_after actual_sha256
+  PARENT_BACKSTAGE_REPAIR_PENDING_TARGET=""
+  PARENT_BACKSTAGE_REPAIR_PENDING_ATTEMPT_ID=""
+  PARENT_BACKSTAGE_REPAIR_PENDING_SHA256=""
+  [[ "$expected_sha256" =~ ^[0-9a-f]{64}$ \
+     && "$expected_schema_version" =~ ^(3|4)$ \
+     && -f "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && "$(stat -c '%a:%u:%h' "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)" \
+        == "600:$(id -u):1" ]] || return 79
+  pending_before="$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' \
+    "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)"
+  actual_sha256="$(sha256sum "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null | awk '{print $1}')"
+  pending_after="$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' \
+    "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)"
+  [[ -n "$pending_before" && "$pending_before" == "$pending_after" \
+     && "$actual_sha256" == "$expected_sha256" ]] || return 79
+  jq -e --argjson schema "$expected_schema_version" '
+      .schemaVersion == $schema and .phase == "CANDIDATE_READY" and
+      .finalizeMode == "deferred" and .coordinator == "auto" and
+      .authorityKind == "REPAIR_TOKEN" and
+      (.targetCommit | type == "string" and test("^[0-9a-f]{40}$")) and
+      (.attemptId | type == "string" and test("^[0-9a-f]{32}$"))
+    ' "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" >/dev/null 2>&1 || return 79
+  PARENT_BACKSTAGE_REPAIR_PENDING_TARGET="$(jq -r '.targetCommit' \
+    "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE")" || return 79
+  PARENT_BACKSTAGE_REPAIR_PENDING_ATTEMPT_ID="$(jq -r '.attemptId' \
+    "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE")" || return 79
+  PARENT_BACKSTAGE_REPAIR_PENDING_SHA256="$expected_sha256"
+}
+
+parent_backstage_repair_authority_status() {
+  local exact_target="$1" exact_attempt="$2" exact_pending_sha256="$3"
+  local authority_before authority_after authority_json authority_payload
+  local expected_integrity actual_integrity actual_sha256
+  PARENT_BACKSTAGE_REPAIR_AUTHORITY_EXISTS=false
+  PARENT_BACKSTAGE_REPAIR_AUTHORITY_STATUS=""
+  PARENT_BACKSTAGE_REPAIR_AUTHORITY_FILE_SHA256=""
+  PARENT_BACKSTAGE_REPAIR_AUTHORITY_FILE_STAT=""
+  if [[ ! -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" ]]; then
+    return 1
+  fi
+  PARENT_BACKSTAGE_REPAIR_AUTHORITY_EXISTS=true
+  [[ "$exact_target" =~ ^[0-9a-f]{40}$ \
+     && "$exact_attempt" =~ ^[0-9a-f]{32}$ \
+     && "$exact_pending_sha256" =~ ^[0-9a-f]{64}$ \
+     && -f "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+     && "$(stat -c '%a:%u:%h' "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" 2>/dev/null || true)" \
+        == "600:$(id -u):1" ]] || return 79
+  authority_before="$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' \
+    "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" 2>/dev/null || true)"
+  authority_json="$(<"$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE")" || return 79
+  actual_sha256="$(sha256sum "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" | awk '{print $1}')" || return 79
+  authority_after="$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' \
+    "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" 2>/dev/null || true)"
+  [[ -n "$authority_before" && "$authority_before" == "$authority_after" ]] || return 79
+  jq -e '
+      type == "object" and
+      (keys | sort) == ["attemptId","integritySha256","pendingSha256","schemaVersion","status","targetCommit"] and
+      .schemaVersion == 1 and
+      (.targetCommit | type == "string" and test("^[0-9a-f]{40}$")) and
+      (.attemptId | type == "string" and test("^[0-9a-f]{32}$")) and
+      (.pendingSha256 | type == "string" and test("^[0-9a-f]{64}$")) and
+      (.status == "ARMED" or .status == "AUTHORIZED") and
+      (.integritySha256 | type == "string" and test("^[0-9a-f]{64}$"))
+    ' <<<"$authority_json" >/dev/null 2>&1 || return 79
+  authority_payload="$(jq -cS 'del(.integritySha256)' <<<"$authority_json")" || return 79
+  expected_integrity="$(jq -r '.integritySha256' <<<"$authority_json")" || return 79
+  actual_integrity="$(printf '%s' "$authority_payload" | sha256sum | awk '{print $1}')" || return 79
+  [[ "$actual_integrity" == "$expected_integrity" \
+     && "$(jq -r '.targetCommit' <<<"$authority_json")" == "$exact_target" \
+     && "$(jq -r '.attemptId' <<<"$authority_json")" == "$exact_attempt" \
+     && "$(jq -r '.pendingSha256' <<<"$authority_json")" == "$exact_pending_sha256" ]] || return 79
+  PARENT_BACKSTAGE_REPAIR_AUTHORITY_STATUS="$(jq -r '.status' <<<"$authority_json")" || return 79
+  PARENT_BACKSTAGE_REPAIR_AUTHORITY_FILE_SHA256="$actual_sha256"
+  PARENT_BACKSTAGE_REPAIR_AUTHORITY_FILE_STAT="$authority_before"
+  [[ "$PARENT_BACKSTAGE_REPAIR_AUTHORITY_STATUS" == AUTHORIZED ]] && return 0
+  return 1
+}
+
+write_parent_backstage_repair_authority() {
+  local state="$1" exact_target="$2" exact_attempt="$3" exact_pending_sha256="$4"
+  local expected_previous="$5" authority_dir authority_logical_dir authority_resolved_dir
+  local authority_physical_dir authority_payload authority_json integrity authority_tmp=""
+  local current_status=1 verify_status=2 expected_authority_sha256="" expected_authority_stat=""
+  [[ "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD" == true \
+     && ( "$state" == ARMED || "$state" == AUTHORIZED ) \
+     && "$exact_target" =~ ^[0-9a-f]{40}$ \
+     && "$exact_attempt" =~ ^[0-9a-f]{32}$ \
+     && "$exact_pending_sha256" =~ ^[0-9a-f]{64}$ ]] || return 79
+  if parent_backstage_repair_authority_status \
+      "$exact_target" "$exact_attempt" "$exact_pending_sha256"; then
+    current_status=0
+  else
+    current_status=$?
+  fi
+  case "$expected_previous" in
+    ABSENT)
+      [[ "$current_status" == 1 \
+         && "$PARENT_BACKSTAGE_REPAIR_AUTHORITY_EXISTS" == false ]] || return 79
+      ;;
+    ARMED)
+      [[ "$current_status" == 1 \
+         && "$PARENT_BACKSTAGE_REPAIR_AUTHORITY_EXISTS" == true \
+         && "$PARENT_BACKSTAGE_REPAIR_AUTHORITY_STATUS" == ARMED ]] || return 79
+      expected_authority_sha256="$PARENT_BACKSTAGE_REPAIR_AUTHORITY_FILE_SHA256"
+      expected_authority_stat="$PARENT_BACKSTAGE_REPAIR_AUTHORITY_FILE_STAT"
+      ;;
+    *) return 79 ;;
+  esac
+  authority_dir="$(dirname "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE")"
+  [[ -d "$authority_dir" && ! -L "$authority_dir" \
+     && "$(stat -c '%a:%u' "$authority_dir" 2>/dev/null || true)" == "700:$(id -u)" ]] || return 79
+  # readlink -f and -m both resolve existing symlinks. Bind them to the
+  # no-symlink lexical canonicalization as well, so an ancestor symlink cannot
+  # redirect the authority token outside the verified 0700 directory path.
+  authority_logical_dir="$(realpath -m -s -- "$authority_dir" 2>/dev/null || true)"
+  authority_resolved_dir="$(readlink -m -- "$authority_dir" 2>/dev/null || true)"
+  authority_physical_dir="$(readlink -f -- "$authority_dir" 2>/dev/null || true)"
+  [[ -n "$authority_logical_dir" \
+     && "$authority_logical_dir" == "$authority_resolved_dir" \
+     && "$authority_resolved_dir" == "$authority_physical_dir" ]] || return 79
+  authority_payload="$(jq -cnS \
+    --arg targetCommit "$exact_target" --arg attemptId "$exact_attempt" \
+    --arg pendingSha256 "$exact_pending_sha256" --arg status "$state" '
+      {schemaVersion:1,targetCommit:$targetCommit,attemptId:$attemptId,pendingSha256:$pendingSha256,status:$status}
+    ')" || return 79
+  integrity="$(printf '%s' "$authority_payload" | sha256sum | awk '{print $1}')" || return 79
+  authority_json="$(jq -cS --arg integrity "$integrity" \
+    '. + {integritySha256:$integrity}' <<<"$authority_payload")" || return 79
+  authority_tmp="$(umask 077 && mktemp "$authority_dir/.repair-authority.XXXXXXXX")" || return 79
+  if ! printf '%s\n' "$authority_json" >"$authority_tmp" \
+     || ! chmod 0600 "$authority_tmp" \
+     || [[ "$(stat -c '%a:%u:%h' "$authority_tmp" 2>/dev/null || true)" != "600:$(id -u):1" ]] \
+     || ! sync -f "$authority_tmp"; then
+    rm -f -- "$authority_tmp"
+    return 79
+  fi
+  case "$expected_previous" in
+    ABSENT)
+      [[ ! -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+         && ! -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" ]] || {
+        rm -f -- "$authority_tmp"
+        return 79
+      }
+      ;;
+    ARMED)
+      [[ "$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' \
+            "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" 2>/dev/null || true)" \
+            == "$expected_authority_stat" \
+         && "$(sha256sum "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" 2>/dev/null | awk '{print $1}')" \
+            == "$expected_authority_sha256" ]] || {
+        rm -f -- "$authority_tmp"
+        return 79
+      }
+      ;;
+  esac
+  # The pending candidate and token form one attempt capability. Re-read the
+  # complete pending binding after all token preparation and previous-token
+  # CAS checks, immediately before publishing the new token.
+  if ! load_parent_backstage_repair_pending_binding "$exact_pending_sha256" \
+     || [[ "$PARENT_BACKSTAGE_REPAIR_PENDING_TARGET" != "$exact_target" \
+        || "$PARENT_BACKSTAGE_REPAIR_PENDING_ATTEMPT_ID" != "$exact_attempt" ]]; then
+    rm -f -- "$authority_tmp"
+    return 79
+  fi
+  if ! mv -fT "$authority_tmp" "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE"; then
+    rm -f -- "$authority_tmp"
+    return 79
+  fi
+  authority_tmp=""
+  # Once rename succeeds, the new authority is the only recoverable token.
+  # A directory-sync failure is indeterminate durability, so retain that token
+  # for fail-closed startup/cleanup recovery and report status 79.
+  sync -f "$authority_dir" || return 79
+  if parent_backstage_repair_authority_status \
+      "$exact_target" "$exact_attempt" "$exact_pending_sha256"; then
+    verify_status=0
+  else
+    verify_status=$?
+  fi
+  case "$state" in
+    ARMED)
+      [[ "$verify_status" == 1 \
+         && "$PARENT_BACKSTAGE_REPAIR_AUTHORITY_STATUS" == ARMED ]] || return 79
+      ;;
+    AUTHORIZED)
+      [[ "$verify_status" == 0 \
+         && "$PARENT_BACKSTAGE_REPAIR_AUTHORITY_STATUS" == AUTHORIZED ]] || return 79
+      ;;
+  esac
+}
+
+reconcile_pending_backstage_deployment_after_authority_recovery() {
+  # Every authority kind, including same-target REPAIR_TOKEN, must pass the
+  # single token/DB/marker router. Never feed an old applied marker directly to
+  # reconcile-pending, because its commit value does not identify an attempt.
+  reconcile_pending_backstage_deployment_before_runtime_recovery
+}
+
+classify_backstage_runtime_identity_after_rollback_under_lock() {
+  local exact_target="$1" identity_status=0
+  [[ "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD" == true \
+     && "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD" =~ ^[0-9]+$ \
+     && "$exact_target" =~ ^[0-9a-f]{40}$ ]] || return 79
+  if verify_backstage_runtime_identity_for_ref_under_lock "$exact_target"; then
+    identity_status=0
+  else
+    identity_status=$?
+  fi
+  case "$identity_status" in
+    0)
+      backstage_pending_reconciled_to_target=true
+      backstage_runtime_identity_repair_required=false
+      ;;
+    1)
+      backstage_pending_reconciled_to_target=false
+      backstage_runtime_identity_repair_required=true
+      ;;
+    *) return 79 ;;
+  esac
+}
+
+reconcile_pending_backstage_deployment_before_runtime_recovery() {
+  local schema_version="" pending_target="" authority_kind="" authority_status=2
+  local applied_marker="" pending_sha256="" pending_attempt="" expected_attempt_id="" repair_status=2
+  local coordinator="" finalize_mode="" binding_status=1 binding_kind="" binding_target=""
+  local binding_attempt="" binding_pending_sha256="" binding_release_attempt="" inherited_lock_fd=""
+  local artifact_active_status="" recovery_action="" child_status=0 proof_commit=""
+  local identity_absent_terminal_rollback=false
+  local missing_binding_journal="" missing_binding_candidate="" missing_binding_source=""
+  local marker_before="" marker_after=""
+  backstage_pending_reconciled_before_runtime=false
+  backstage_pending_reconciled_to_target=false
+  if [[ ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ]]; then
+    if [[ -e "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+       || -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" ]]; then
+      acquire_backstage_deployment_mutation_lock || return $?
+      inherited_lock_fd="$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD"
+      if load_parent_backstage_authority_binding; then binding_status=0; else binding_status=$?; fi
+      case "$binding_status" in
+        0|3)
+          [[ ! -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+             && ! -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" ]] || return 79
+          binding_kind="$PARENT_BACKSTAGE_AUTHORITY_BINDING_KIND"
+          binding_target="$PARENT_BACKSTAGE_AUTHORITY_BINDING_TARGET"
+          binding_attempt="$PARENT_BACKSTAGE_AUTHORITY_BINDING_ATTEMPT_ID"
+          binding_pending_sha256="$PARENT_BACKSTAGE_AUTHORITY_BINDING_PENDING_SHA256"
+          binding_release_attempt="$PARENT_BACKSTAGE_AUTHORITY_BINDING_RELEASE_ATTEMPT_ID"
+          artifact_active_status=AUTHORIZED
+          [[ "$binding_status" != 3 ]] || artifact_active_status=ARMED
+          case "$binding_kind" in
+            DB_PROMOTION)
+              if postdeploy_authoritative_promotion_status "$binding_target" "$binding_release_attempt"; then
+                authority_status=0
+              else
+                authority_status=$?
+              fi
+              ;;
+            APPLIED_MARKER)
+              if parent_backstage_applied_marker_cut_status "$binding_target"; then
+                authority_status=0
+              else
+                authority_status=$?
+              fi
+              ;;
+          esac
+          case "$artifact_active_status:$authority_status" in
+            AUTHORIZED:0|ARMED:0) proof_commit="$binding_target" ;;
+            ARMED:1)
+              if [[ ! -e "$BACKSTAGE_RUNTIME_IDENTITY_FILE" \
+                 && ! -L "$BACKSTAGE_RUNTIME_IDENTITY_FILE" ]]; then
+                # The child completed an exact pre-authority rollback and
+                # cleared pending+identity, then the parent crashed before it
+                # could retire ARMED. External DB/marker authority is still
+                # definitively absent under this FD, so only the loaded exact
+                # artifact may be removed. This is never target success.
+                identity_absent_terminal_rollback=true
+              else
+                [[ -f "$BACKSTAGE_DEPLOY_STATE_FILE" \
+                   && ! -L "$BACKSTAGE_DEPLOY_STATE_FILE" ]] || return 79
+                proof_commit="$(tr -d '[:space:]' \
+                  <"$BACKSTAGE_DEPLOY_STATE_FILE" 2>/dev/null || true)"
+                [[ "$proof_commit" =~ ^[0-9a-f]{40}$ \
+                   && "$proof_commit" != "$binding_target" ]] || return 79
+              fi
+              ;;
+            *) return 79 ;;
+          esac
+          if [[ "$identity_absent_terminal_rollback" != true ]]; then
+            BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD="$inherited_lock_fd" \
+              run_target_backstage_deploy_helper verify-runtime-identity "$proof_commit" || return 79
+          fi
+          finalize_parent_backstage_authority_binding "$binding_kind" "$binding_target" \
+            "$binding_attempt" "$binding_pending_sha256" "$binding_release_attempt" \
+            "$artifact_active_status" || return 79
+          if [[ "$artifact_active_status" == ARMED && "$authority_status" == 1 ]]; then
+            classify_backstage_runtime_identity_after_rollback_under_lock \
+              "$target_commit" || return 79
+          fi
+          release_backstage_deployment_mutation_lock
+          backstage_pending_reconciled_before_runtime=true
+          if [[ ! ( "$artifact_active_status" == ARMED && "$authority_status" == 1 ) \
+             && "$proof_commit" == "$target_commit" ]]; then
+            backstage_pending_reconciled_to_target=true
+          fi
+          echo '[auto-deploy] orphan Backstage parent authority reconciled before runtime recovery'
+          ;;
+        *) return 79 ;;
+      esac
+    fi
+    if [[ -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+       || -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" ]]; then
+      # finalize-pending publishes identity and marker before clearing pending.
+      # A crash at the final token-clear cut therefore leaves a token without a
+      # pending file. Only the target-bound child may authenticate and retire
+      # that orphan; ARMED, malformed or mismatched authority holds status 79.
+      run_target_backstage_deploy_helper reconcile-repair-authority || return $?
+      [[ ! -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+         && ! -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+         && ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+         && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ]] || return 79
+      backstage_pending_reconciled_before_runtime=true
+      if [[ -f "$BACKSTAGE_RUNTIME_IDENTITY_FILE" && ! -L "$BACKSTAGE_RUNTIME_IDENTITY_FILE" \
+         && -f "$BACKSTAGE_DEPLOY_STATE_FILE" && ! -L "$BACKSTAGE_DEPLOY_STATE_FILE" \
+         && "$(tr -d '[:space:]' <"$BACKSTAGE_DEPLOY_STATE_FILE" 2>/dev/null || true)" \
+            == "$target_commit" ]]; then
+        backstage_pending_reconciled_to_target=true
+      fi
+      echo '[auto-deploy] orphan Backstage repair authority reconciled before runtime recovery'
+    fi
+    if [[ "$backstage_pending_reconciled_before_runtime" != true \
+       && "${backstage_recovery_may_require_repair:-false}" == true ]]; then
+      acquire_backstage_deployment_mutation_lock || return $?
+      if [[ -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+         || -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+         || -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+         || -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+         || -e "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+         || -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" ]]; then
+        release_backstage_deployment_mutation_lock
+        return 79
+      fi
+      classify_backstage_runtime_identity_after_rollback_under_lock \
+        "$target_commit" || return 79
+      release_backstage_deployment_mutation_lock
+      backstage_pending_reconciled_before_runtime=true
+      echo '[auto-deploy] residue-free Backstage runtime identity classified before runtime recovery'
+    fi
+    return 0
+  fi
+  # Only route on constrained metadata here. The target-bound child re-reads
+  # the same inode under its directory lock and authenticates the complete
+  # schema, integrity digest, UID and specs before it can mutate Kubernetes.
+  [[ -f "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && "$(stat -c '%a:%u:%h' "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)" \
+        == "600:$(id -u):1" ]] || return 79
+  pending_sha256="$(sha256sum "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null | awk '{print $1}')"
+  [[ "$pending_sha256" =~ ^[0-9a-f]{64}$ ]] || return 79
+  schema_version="$(jq -r '.schemaVersion // empty' "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)"
+  if [[ "$schema_version" == 3 || "$schema_version" == 4 ]]; then
+    coordinator="$(jq -r '.coordinator // empty' "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)"
+    finalize_mode="$(jq -r '.finalizeMode // empty' "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)"
+    if [[ "$coordinator" == standalone && "$finalize_mode" == immediate ]]; then
+      [[ ! -e "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+         && ! -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" ]] || return 79
+      # A standalone child has no parent authority gap. Its target-bound
+      # recovery mode authenticates the complete current-v4 or legacy-v3 state
+      # under the child lock:
+      # pre-identity attempts roll back, while an exact same-attempt published
+      # identity+marker finalizes. Never feed commit-level DB/marker authority
+      # into this decision.
+      jq -e '
+          (.targetCommit | type == "string" and test("^[0-9a-f]{40}$")) and
+          (.attemptId | type == "string" and test("^[0-9a-f]{32}$")) and
+          .coordinator == "standalone" and .finalizeMode == "immediate"
+        ' "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" >/dev/null 2>&1 || return 79
+      BACKSTAGE_EXPECTED_PENDING_SHA256= BACKSTAGE_EXPECTED_ATTEMPT_ID= \
+        run_target_backstage_deploy_helper recover-pending || return $?
+      acquire_backstage_deployment_mutation_lock || return $?
+      if [[ -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+         || -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+         || -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+         || -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+         || -e "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+         || -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" ]]; then
+        release_backstage_deployment_mutation_lock
+        return 79
+      fi
+      backstage_pending_reconciled_before_runtime=true
+      classify_backstage_runtime_identity_after_rollback_under_lock \
+        "$target_commit" || return 79
+      release_backstage_deployment_mutation_lock
+      echo '[auto-deploy] standalone Backstage pending recovered before runtime recovery'
+      return 0
+    fi
+    [[ "$coordinator" == auto && "$finalize_mode" == deferred ]] || return 79
+  fi
+  if [[ "$schema_version" == 1 ]]; then
+    # Legacy pending files predate an external promotion authority and can
+    # represent only an incomplete child deployment.
+    BACKSTAGE_EXPECTED_PENDING_SHA256="$pending_sha256" \
+      run_target_backstage_deploy_helper recover-pending || return $?
+  elif [[ "$schema_version" == 2 || "$schema_version" == 3 \
+       || "$schema_version" == 4 ]]; then
+    pending_target="$(jq -r '.targetCommit // empty' "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)"
+    authority_kind="$(jq -r '.authorityKind // empty' "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)"
+    [[ "$pending_target" =~ ^[0-9a-f]{40}$ ]] || return 79
+    if [[ "$schema_version" == 3 || "$schema_version" == 4 ]]; then
+      jq -e '
+          .finalizeMode == "deferred" and .coordinator == "auto" and
+          (.attemptId | type == "string" and test("^[0-9a-f]{32}$"))
+        ' "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" >/dev/null 2>&1 || return 79
+      expected_attempt_id="$(jq -r '.attemptId' "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE")" || return 79
+      if [[ "$authority_kind" == DB_PROMOTION || "$authority_kind" == APPLIED_MARKER ]]; then
+        acquire_backstage_deployment_mutation_lock || return $?
+        inherited_lock_fd="$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD"
+        load_parent_backstage_handoff_binding "$pending_sha256" "$pending_target" \
+          "$expected_attempt_id" "$authority_kind" "$schema_version" || return 79
+        if load_parent_backstage_authority_binding "$authority_kind" "$pending_target" \
+            "$expected_attempt_id" "$pending_sha256"; then
+          binding_status=0
+        else
+          binding_status=$?
+        fi
+        case "$binding_status" in
+          0) artifact_active_status=AUTHORIZED ;;
+          3) artifact_active_status=ARMED ;;
+          1) artifact_active_status=ABSENT ;;
+          *)
+            echo '[auto-deploy] RECOVERY_HOLD schema-v3/v4 parent authority binding is invalid; mutation=0' >&2
+            return 79
+            ;;
+        esac
+        binding_release_attempt="$PARENT_BACKSTAGE_AUTHORITY_BINDING_RELEASE_ATTEMPT_ID"
+        case "$authority_kind" in
+          DB_PROMOTION)
+            if [[ "$artifact_active_status" == ABSENT ]]; then
+              # The only supported artifact-free v4 (or legacy-v3 recovery)
+              # window is child handoff ->
+              # ARMED publication. The full runtime path has already staged its
+              # exact release candidate in the private attempt journal. A
+              # missing/foreign journal is therefore unknown authority, never
+              # permission to infer from target-only DB state.
+              authority_status=2
+              if [[ -f "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" \
+                 && ! -L "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" ]] \
+                 && missing_binding_journal="$(python3 "$POSTDEPLOY_JOURNAL_HELPER" \
+                      --file "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" read 2>/dev/null)"; then
+                missing_binding_candidate="$(jq -r '.candidateId // empty' \
+                  <<<"$missing_binding_journal" 2>/dev/null || true)"
+                missing_binding_source="$(jq -r '.sourceCommit // empty' \
+                  <<<"$missing_binding_journal" 2>/dev/null || true)"
+                if [[ "$missing_binding_candidate" =~ ^[A-Za-z0-9._:-]{12,160}$ \
+                   && "$missing_binding_source" == "$pending_target" ]]; then
+                  binding_release_attempt="$missing_binding_candidate"
+                  if postdeploy_authoritative_promotion_status "$pending_target" \
+                      "$binding_release_attempt"; then
+                    authority_status=0
+                  else
+                    authority_status=$?
+                  fi
+                fi
+              fi
+            elif postdeploy_authoritative_promotion_status "$pending_target" \
+                "$binding_release_attempt"; then
+              authority_status=0
+            else
+              authority_status=$?
+            fi
+            ;;
+          APPLIED_MARKER)
+            if [[ "$artifact_active_status" == ABSENT ]]; then
+              # Without the ARMED pre-marker snapshot, only a definitely absent
+              # marker or a stable, well-formed different commit proves that the
+              # APPLIED authority cut has not happened. Exact target or any
+              # malformed/racy path is an authority hold with mutation=0.
+              authority_status=2
+              if [[ ! -e "$DEPLOY_STATE_FILE" && ! -L "$DEPLOY_STATE_FILE" ]]; then
+                authority_status=1
+              elif [[ -f "$DEPLOY_STATE_FILE" && ! -L "$DEPLOY_STATE_FILE" ]]; then
+                marker_before="$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' \
+                  "$DEPLOY_STATE_FILE" 2>/dev/null || true)"
+                applied_marker="$(tr -d '[:space:]' <"$DEPLOY_STATE_FILE" 2>/dev/null || true)"
+                marker_after="$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' \
+                  "$DEPLOY_STATE_FILE" 2>/dev/null || true)"
+                if [[ -n "$marker_before" && "$marker_before" == "$marker_after" \
+                   && "$applied_marker" =~ ^[0-9a-f]{40}$ ]]; then
+                  authority_status=1
+                  [[ "$applied_marker" != "$pending_target" ]] || authority_status=0
+                fi
+              fi
+            elif parent_backstage_applied_marker_cut_status "$pending_target"; then
+              authority_status=0
+            else
+              authority_status=$?
+            fi
+            ;;
+        esac
+        if [[ "$authority_kind" == DB_PROMOTION && "$authority_status" == 0 ]]; then
+          postdeploy_candidate_promoted=true
+        fi
+        case "$artifact_active_status:$authority_status" in
+          AUTHORIZED:0)
+            recovery_action=finalize
+            ;;
+          ARMED:0)
+            write_parent_backstage_authority_binding AUTHORIZED "$authority_kind" "$pending_target" \
+              "$expected_attempt_id" "$pending_sha256" "$binding_release_attempt" \
+              "$schema_version" || return 79
+            artifact_active_status=AUTHORIZED
+            recovery_action=finalize
+            ;;
+          ARMED:1)
+            recovery_action=rollback
+            ;;
+          ABSENT:1)
+            # Exact expected pending SHA+attempt and the inherited state-dir FD
+            # make this a rollback of only the handoff that preceded ARMED.
+            recovery_action=rollback
+            ;;
+          *)
+            echo '[auto-deploy] RECOVERY_HOLD schema-v3/v4 parent/external authority is contradictory or unavailable; mutation=0' >&2
+            return 79
+            ;;
+        esac
+        child_status=0
+        if [[ "$recovery_action" == finalize ]]; then
+          BACKSTAGE_EXPECTED_PENDING_SHA256="$pending_sha256" \
+          BACKSTAGE_EXPECTED_ATTEMPT_ID="$expected_attempt_id" \
+          BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD="$inherited_lock_fd" \
+            run_target_backstage_deploy_helper reconcile-pending "$pending_target" || child_status=$?
+        else
+          BACKSTAGE_EXPECTED_PENDING_SHA256="$pending_sha256" \
+          BACKSTAGE_EXPECTED_ATTEMPT_ID="$expected_attempt_id" \
+          BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD="$inherited_lock_fd" \
+            run_target_backstage_deploy_helper recover-pending || child_status=$?
+        fi
+        (( child_status == 0 )) || return "$child_status"
+        [[ ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+           && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ]] || return 79
+        if [[ "$artifact_active_status" != ABSENT ]]; then
+          if ! finalize_parent_backstage_authority_binding "$authority_kind" "$pending_target" \
+              "$expected_attempt_id" "$pending_sha256" "$binding_release_attempt" \
+              "$artifact_active_status"; then
+            return 79
+          fi
+        fi
+        if [[ "$recovery_action" == rollback ]]; then
+          classify_backstage_runtime_identity_after_rollback_under_lock \
+            "$target_commit" || return 79
+        fi
+        release_backstage_deployment_mutation_lock
+        backstage_pending_reconciled_before_runtime=true
+        [[ "$recovery_action" != finalize ]] || backstage_pending_reconciled_to_target=true
+        echo "[auto-deploy] schema-v${schema_version} Backstage parent authority reconciled before runtime recovery"
+        return 0
+      fi
+    else
+      pending_attempt="$(jq -r '.attemptId // empty' "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)"
+      [[ -z "$pending_attempt" || "$pending_attempt" =~ ^[0-9a-f]{32}$ ]] || return 79
+      expected_attempt_id="$pending_attempt"
+    fi
+    case "$authority_kind" in
+      DB_PROMOTION)
+        # This query intentionally precedes runtime physical recovery. A
+        # definite non-promotion restores Backstage first; a promotion
+        # finalizes it; and an unavailable authority performs zero mutation.
+        if postdeploy_authoritative_promotion_status "$pending_target"; then
+          authority_status=0
+        else
+          authority_status=$?
+        fi
+        case "$authority_status" in
+          0)
+            BACKSTAGE_EXPECTED_PENDING_SHA256="$pending_sha256" \
+            BACKSTAGE_EXPECTED_ATTEMPT_ID="$expected_attempt_id" \
+              run_target_backstage_deploy_helper reconcile-pending "$pending_target" || return $?
+            backstage_pending_reconciled_to_target=true
+            ;;
+          1)
+            BACKSTAGE_EXPECTED_PENDING_SHA256="$pending_sha256" \
+            BACKSTAGE_EXPECTED_ATTEMPT_ID="$expected_attempt_id" \
+              run_target_backstage_deploy_helper recover-pending || return $?
+            ;;
+          *)
+            echo '[auto-deploy] RECOVERY_HOLD startup Backstage DB authority is unavailable; runtime recovery withheld' >&2
+            return 79
+            ;;
+        esac
+        ;;
+      APPLIED_MARKER)
+        [[ -f "$DEPLOY_STATE_FILE" && ! -L "$DEPLOY_STATE_FILE" ]] || return 79
+        applied_marker="$(tr -d '[:space:]' <"$DEPLOY_STATE_FILE" 2>/dev/null || true)"
+        [[ "$applied_marker" =~ ^[0-9a-f]{40}$ ]] || return 79
+        BACKSTAGE_EXPECTED_PENDING_SHA256="$pending_sha256" \
+        BACKSTAGE_EXPECTED_ATTEMPT_ID="$expected_attempt_id" \
+          run_target_backstage_deploy_helper reconcile-pending "$applied_marker" || return $?
+        [[ "$applied_marker" != "$pending_target" ]] || backstage_pending_reconciled_to_target=true
+        ;;
+      REPAIR_TOKEN)
+        [[ ! -e "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+           && ! -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" ]] || return 79
+        pending_attempt="$(jq -r '.attemptId // empty' "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)"
+        [[ "$pending_attempt" =~ ^[0-9a-f]{32}$ ]] || return 79
+        expected_attempt_id="$pending_attempt"
+        if parent_backstage_repair_authority_status \
+            "$pending_target" "$pending_attempt" "$pending_sha256"; then
+          repair_status=0
+        else
+          repair_status=$?
+        fi
+        case "$repair_status" in
+          0)
+            BACKSTAGE_EXPECTED_PENDING_SHA256="$pending_sha256" \
+            BACKSTAGE_EXPECTED_ATTEMPT_ID="$expected_attempt_id" \
+              run_target_backstage_deploy_helper reconcile-pending "$pending_target" || return $?
+            backstage_pending_reconciled_to_target=true
+            ;;
+          1)
+            BACKSTAGE_EXPECTED_PENDING_SHA256="$pending_sha256" \
+            BACKSTAGE_EXPECTED_ATTEMPT_ID="$expected_attempt_id" \
+              run_target_backstage_deploy_helper recover-pending || return $?
+            ;;
+          *)
+            echo '[auto-deploy] RECOVERY_HOLD Backstage repair attempt authority is unsafe; mutation refused' >&2
+            return 79
+            ;;
+        esac
+        ;;
+      *) return 79 ;;
+    esac
+  else
+    return 79
+  fi
+  acquire_backstage_deployment_mutation_lock || return $?
+  if [[ -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     || -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     || -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+     || -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+     || -e "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+     || -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" ]]; then
+    release_backstage_deployment_mutation_lock
+    return 79
+  fi
+  if [[ "$backstage_pending_reconciled_to_target" != true ]]; then
+    classify_backstage_runtime_identity_after_rollback_under_lock \
+      "$target_commit" || return 79
+  fi
+  release_backstage_deployment_mutation_lock
+  backstage_deployment_handoff_active=false
+  backstage_pending_reconciled_before_runtime=true
+  echo '[auto-deploy] startup Backstage pending reconciliation PASS before runtime recovery'
 }
 
 recover_pending_backstage_deployment_after_target_merge() {
-  RESONANCE_ROOT="$ROOT_DIR" \
-    bash "$ROOT_DIR/ops/scripts/resonance-backstage-deploy.sh" recover-pending
+  reconcile_pending_backstage_deployment_after_authority_recovery
+}
+
+rollback_backstage_deployment_after_failure() {
+  local pending_sha256 expected_attempt_id="" inherited_lock_fd=""
+  [[ "${backstage_deployment_handoff_active:-false}" == true ]] || return 0
+  if [[ "${backstage_deployment_attempt_id:-}" =~ ^[0-9a-f]{32}$ ]]; then
+    acquire_backstage_deployment_mutation_lock || return $?
+    if [[ "${backstage_deployment_handoff_binding_captured:-false}" == true ]]; then
+      validate_parent_backstage_handoff_binding_locked || {
+        release_backstage_deployment_mutation_lock
+        return 79
+      }
+    else
+      pending_sha256="$(sha256sum "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null | awk '{print $1}')"
+      if ! capture_parent_backstage_handoff_binding_locked "$pending_sha256"; then
+        release_backstage_deployment_mutation_lock
+        return 79
+      fi
+    fi
+    pending_sha256="$backstage_deployment_pending_sha256"
+    expected_attempt_id="$backstage_deployment_attempt_id"
+    inherited_lock_fd="$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD"
+  else
+    pending_sha256="$(sha256sum "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null | awk '{print $1}')"
+    [[ "$pending_sha256" =~ ^[0-9a-f]{64}$ ]] || return 79
+  fi
+  BACKSTAGE_EXPECTED_PENDING_SHA256="$pending_sha256" \
+  BACKSTAGE_EXPECTED_ATTEMPT_ID="$expected_attempt_id" \
+  BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD="$inherited_lock_fd" \
+    run_target_backstage_deploy_helper recover-pending || return $?
+  [[ ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ]] || return 79
+  backstage_deployment_handoff_active=false
+  clear_parent_backstage_handoff_binding
+  if [[ -n "$inherited_lock_fd" ]]; then
+    release_backstage_deployment_mutation_lock
+    backstage_authority_finalize_lock_active=false
+  fi
+}
+
+finalize_backstage_deployment_after_release_success() {
+  local marker_commit pending_sha256 repair_attempt_id inherited_lock_fd="" authority_kind=""
+  local release_attempt_id="" binding_status=1 child_status=0
+  [[ "${backstage_deployment_handoff_active:-false}" == true ]] || return 0
+  [[ "${backstage_deployment_target_commit:-}" == "$target_commit" \
+     && "${backstage_deployment_attempt_id:-}" =~ ^[0-9a-f]{32}$ \
+     && "${backstage_deployment_pending_sha256:-}" =~ ^[0-9a-f]{64}$ \
+     && "${backstage_deployment_handoff_binding_captured:-false}" == true ]] || return 79
+  pending_sha256="$backstage_deployment_pending_sha256"
+  repair_attempt_id="$backstage_deployment_attempt_id"
+  authority_kind="$backstage_deployment_authority_kind"
+  [[ "$authority_kind" != DB_PROMOTION ]] || release_attempt_id="${postdeploy_candidate_id:-}"
+  begin_parent_backstage_authority_finalize_lock || return $?
+  inherited_lock_fd="$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD"
+  if [[ "$authority_kind" == REPAIR_TOKEN ]]; then
+    if ! write_parent_backstage_repair_authority AUTHORIZED \
+        "$target_commit" "$repair_attempt_id" "$pending_sha256" ARMED; then
+      return 79
+    fi
+    echo "[auto-deploy] same-target Backstage repair authorized after global gates id=$repair_attempt_id"
+  else
+    if load_parent_backstage_authority_binding "$authority_kind" "$target_commit" \
+        "$repair_attempt_id" "$pending_sha256" "$release_attempt_id"; then
+      binding_status=0
+    else
+      binding_status=$?
+    fi
+    [[ "$binding_status" == 0 ]] || return 79
+  fi
+  BACKSTAGE_EXPECTED_PENDING_SHA256="$pending_sha256" \
+  BACKSTAGE_EXPECTED_ATTEMPT_ID="$repair_attempt_id" \
+  BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD="$inherited_lock_fd" \
+    run_target_backstage_deploy_helper finalize-pending "$target_commit" || child_status=$?
+  (( child_status == 0 )) || return "$child_status"
+  [[ ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ]] || return 79
+  [[ -f "$BACKSTAGE_DEPLOY_STATE_FILE" && ! -L "$BACKSTAGE_DEPLOY_STATE_FILE" ]] || return 79
+  marker_commit="$(tr -d '[:space:]' <"$BACKSTAGE_DEPLOY_STATE_FILE" 2>/dev/null || true)"
+  [[ "$marker_commit" == "$target_commit" ]] || return 79
+  [[ ! -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" ]] || return 79
+  if [[ "$authority_kind" != REPAIR_TOKEN ]]; then
+    if ! finalize_parent_backstage_authority_binding "$authority_kind" "$target_commit" \
+        "$repair_attempt_id" "$pending_sha256" "$release_attempt_id"; then
+      return 79
+    fi
+  fi
+  backstage_deployment_handoff_active=false
+  clear_parent_backstage_handoff_binding
+  release_backstage_deployment_mutation_lock
+  backstage_authority_finalize_lock_active=false
+}
+
+write_applied_deploy_state_with_backstage_binding() {
+  local exact_commit="$1" write_status=0 was_active=false binding_status=1 marker_cut_status=2
+  local authority_kind="${backstage_deployment_authority_kind:-}" release_attempt_id="${postdeploy_candidate_id:-}"
+  if [[ "${backstage_deployment_handoff_active:-false}" != true ]]; then
+    write_applied_deploy_state "$exact_commit"
+    return $?
+  fi
+  [[ "$exact_commit" == "${backstage_deployment_target_commit:-}" ]] || return 79
+  was_active="${backstage_authority_finalize_lock_active:-false}"
+  begin_parent_backstage_authority_finalize_lock || return $?
+  case "$authority_kind" in
+    APPLIED_MARKER)
+      write_parent_backstage_authority_binding ARMED APPLIED_MARKER "$exact_commit" \
+        "$backstage_deployment_attempt_id" "$backstage_deployment_pending_sha256" "" || return 79
+      ;;
+    DB_PROMOTION)
+      if load_parent_backstage_authority_binding DB_PROMOTION "$exact_commit" \
+          "$backstage_deployment_attempt_id" "$backstage_deployment_pending_sha256" \
+          "$release_attempt_id"; then
+        binding_status=0
+      else
+        binding_status=$?
+      fi
+      [[ "$binding_status" == 0 ]] || return 79
+      ;;
+    REPAIR_TOKEN) ;;
+    *) return 79 ;;
+  esac
+  write_applied_deploy_state "$exact_commit" || write_status=$?
+  if [[ "$authority_kind" == APPLIED_MARKER ]]; then
+    if parent_backstage_applied_marker_cut_status "$exact_commit"; then
+      marker_cut_status=0
+    else
+      marker_cut_status=$?
+    fi
+    if [[ "$marker_cut_status" == 0 ]]; then
+      write_parent_backstage_authority_binding AUTHORIZED APPLIED_MARKER "$exact_commit" \
+        "$backstage_deployment_attempt_id" "$backstage_deployment_pending_sha256" "" || return 79
+    elif (( write_status == 0 )); then
+      return 79
+    fi
+  fi
+  if (( write_status != 0 )); then
+    # Rename may already have published commit authority even when its
+    # post-rename durability proof fails. Retain the attempt FD for EXIT
+    # reconciliation; releasing here would reopen the A-authority/B-pending gap.
+    echo '[auto-deploy] Backstage attempt lock retained after indeterminate applied-authority write' >&2
+  elif [[ "$was_active" != true ]]; then
+    echo '[auto-deploy] Backstage attempt lock retained across applied authority and child finalize'
+  fi
+  return "$write_status"
+}
+
+reconcile_backstage_deployment_during_cleanup() {
+  local authority_status=2 authoritative_commit="" marker_commit="" pending_sha256=""
+  local repair_status=2 expected_attempt_id="" inherited_lock_fd="" binding_status=1
+  local artifact_active_status="" release_attempt_id="" recovery_action="" proof_commit=""
+  [[ "${backstage_deployment_handoff_active:-false}" == true ]] || return 0
+  if [[ ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ]]; then
+    # A failure after identity/marker publication can occur after the child has
+    # already cleared pending but before it clears the final repair token or the
+    # parent disarms its in-memory handoff. The no-pending finalize mode proves
+    # exact live identity+marker and may clear only the matching orphan token.
+    [[ ! "${backstage_deployment_attempt_id:-}" =~ ^[0-9a-f]{32}$ \
+       || "${backstage_deployment_handoff_binding_captured:-false}" == true ]] || return 79
+    acquire_backstage_deployment_mutation_lock || return $?
+    inherited_lock_fd="$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD"
+    if [[ "${backstage_deployment_authority_kind:-}" == DB_PROMOTION \
+       || "${backstage_deployment_authority_kind:-}" == APPLIED_MARKER ]]; then
+      [[ "${backstage_deployment_attempt_id:-}" =~ ^[0-9a-f]{32}$ \
+         && "${backstage_deployment_pending_sha256:-}" =~ ^[0-9a-f]{64}$ ]] || return 79
+      [[ "${backstage_deployment_authority_kind:-}" != DB_PROMOTION ]] \
+        || release_attempt_id="${postdeploy_candidate_id:-}"
+      if [[ -e "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+         || -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" ]]; then
+        if load_parent_backstage_authority_binding "$backstage_deployment_authority_kind" \
+            "$target_commit" "$backstage_deployment_attempt_id" \
+            "$backstage_deployment_pending_sha256" "$release_attempt_id"; then
+          binding_status=0
+        else
+          binding_status=$?
+        fi
+        case "$binding_status" in
+          0) artifact_active_status=AUTHORIZED ;;
+          3) artifact_active_status=ARMED ;;
+          *) return 79 ;;
+        esac
+        case "$backstage_deployment_authority_kind" in
+          DB_PROMOTION)
+            if postdeploy_authoritative_promotion_status "$target_commit" "$release_attempt_id"; then
+              authority_status=0
+            else
+              authority_status=$?
+            fi
+            ;;
+          APPLIED_MARKER)
+            if parent_backstage_applied_marker_cut_status "$target_commit"; then
+              authority_status=0
+            else
+              authority_status=$?
+            fi
+            ;;
+        esac
+        if [[ "$backstage_deployment_authority_kind" == DB_PROMOTION \
+           && "$authority_status" == 0 ]]; then
+          postdeploy_candidate_promoted=true
+        fi
+        case "$artifact_active_status:$authority_status" in
+          AUTHORIZED:0|ARMED:0) proof_commit="$target_commit" ;;
+          ARMED:1)
+            [[ -f "$BACKSTAGE_DEPLOY_STATE_FILE" && ! -L "$BACKSTAGE_DEPLOY_STATE_FILE" ]] || return 79
+            proof_commit="$(tr -d '[:space:]' <"$BACKSTAGE_DEPLOY_STATE_FILE" 2>/dev/null || true)"
+            [[ "$proof_commit" =~ ^[0-9a-f]{40}$ && "$proof_commit" != "$target_commit" ]] || return 79
+            ;;
+          *) return 79 ;;
+        esac
+        BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD="$inherited_lock_fd" \
+          run_target_backstage_deploy_helper verify-runtime-identity "$proof_commit" || return 79
+        finalize_parent_backstage_authority_binding "$backstage_deployment_authority_kind" \
+          "$target_commit" "$backstage_deployment_attempt_id" \
+          "$backstage_deployment_pending_sha256" "$release_attempt_id" \
+          "$artifact_active_status" || return 79
+      else
+        BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD="$inherited_lock_fd" \
+          run_target_backstage_deploy_helper verify-runtime-identity "$target_commit" || return 79
+      fi
+    elif [[ -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+       || -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" ]]; then
+      # The orphan authority itself prevents a new deploy. Release the parent
+      # FD so the token-only child can acquire and authenticate it against the
+      # already-published identity+marker; inherited mutation requires pending.
+      release_backstage_deployment_mutation_lock
+      backstage_authority_finalize_lock_active=false
+      run_target_backstage_deploy_helper reconcile-repair-authority || return $?
+    else
+      BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD="$inherited_lock_fd" \
+        run_target_backstage_deploy_helper verify-runtime-identity "$target_commit" || return 79
+    fi
+    [[ ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+       && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+       && ! -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+       && ! -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+       && ! -e "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+       && ! -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" ]] || return 79
+    backstage_deployment_handoff_active=false
+    clear_parent_backstage_handoff_binding
+    if [[ "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD" == true ]]; then
+      release_backstage_deployment_mutation_lock
+      backstage_authority_finalize_lock_active=false
+    fi
+    return 0
+  fi
+  acquire_backstage_deployment_mutation_lock || return $?
+  inherited_lock_fd="$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD"
+  if [[ "${backstage_deployment_attempt_id:-}" =~ ^[0-9a-f]{32}$ ]]; then
+    if [[ "${backstage_deployment_handoff_binding_captured:-false}" == true ]]; then
+      validate_parent_backstage_handoff_binding_locked || {
+        release_backstage_deployment_mutation_lock
+        backstage_authority_finalize_lock_active=false
+        return 79
+      }
+    else
+      pending_sha256="$(sha256sum "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null | awk '{print $1}')"
+      if ! capture_parent_backstage_handoff_binding_locked "$pending_sha256"; then
+        release_backstage_deployment_mutation_lock
+        backstage_authority_finalize_lock_active=false
+        return 79
+      fi
+    fi
+    pending_sha256="$backstage_deployment_pending_sha256"
+    expected_attempt_id="$backstage_deployment_attempt_id"
+  else
+    pending_sha256="$(sha256sum "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null | awk '{print $1}')"
+    if [[ ! "$pending_sha256" =~ ^[0-9a-f]{64}$ ]]; then
+      release_backstage_deployment_mutation_lock
+      return 79
+    fi
+  fi
+  case "${backstage_deployment_authority_kind:-}" in
+    DB_PROMOTION|APPLIED_MARKER)
+      [[ "${backstage_deployment_authority_kind:-}" != DB_PROMOTION ]] \
+        || release_attempt_id="${postdeploy_candidate_id:-}"
+      if load_parent_backstage_authority_binding "$backstage_deployment_authority_kind" \
+          "$target_commit" "$expected_attempt_id" "$pending_sha256" "$release_attempt_id"; then
+        binding_status=0
+      else
+        binding_status=$?
+      fi
+      case "$binding_status" in
+        0) artifact_active_status=AUTHORIZED ;;
+        3) artifact_active_status=ARMED ;;
+        *)
+          echo '[auto-deploy] RECOVERY_HOLD exact Backstage parent authority binding is unavailable; mutation refused' >&2
+          return 79
+          ;;
+      esac
+      if [[ "$backstage_deployment_authority_kind" == DB_PROMOTION ]]; then
+        if postdeploy_authoritative_promotion_status "$target_commit" "$release_attempt_id"; then
+          authority_status=0
+        else
+          authority_status=$?
+        fi
+      else
+        if parent_backstage_applied_marker_cut_status "$target_commit"; then
+          authority_status=0
+        else
+          authority_status=$?
+        fi
+      fi
+      if [[ "$backstage_deployment_authority_kind" == DB_PROMOTION \
+         && "$authority_status" == 0 ]]; then
+        postdeploy_candidate_promoted=true
+      fi
+      case "$artifact_active_status:$authority_status" in
+        AUTHORIZED:0)
+          authoritative_commit="$target_commit"
+          ;;
+        ARMED:0)
+          write_parent_backstage_authority_binding AUTHORIZED \
+            "$backstage_deployment_authority_kind" "$target_commit" "$expected_attempt_id" \
+            "$pending_sha256" "$release_attempt_id" || return 79
+          artifact_active_status=AUTHORIZED
+          authoritative_commit="$target_commit"
+          ;;
+        ARMED:1)
+          BACKSTAGE_EXPECTED_PENDING_SHA256="$pending_sha256" \
+          BACKSTAGE_EXPECTED_ATTEMPT_ID="$expected_attempt_id" \
+          BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD="$inherited_lock_fd" \
+            run_target_backstage_deploy_helper recover-pending || return $?
+          [[ ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+             && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ]] || return 79
+          finalize_parent_backstage_authority_binding "$backstage_deployment_authority_kind" \
+            "$target_commit" "$expected_attempt_id" "$pending_sha256" \
+            "$release_attempt_id" ARMED || return 79
+          backstage_deployment_handoff_active=false
+          clear_parent_backstage_handoff_binding
+          release_backstage_deployment_mutation_lock
+          backstage_authority_finalize_lock_active=false
+          return 0
+          ;;
+        *)
+          postdeploy_candidate_authority_unknown=true
+          echo '[auto-deploy] RECOVERY_HOLD Backstage parent/external authority is unavailable or contradictory; mutation refused' >&2
+          return 79
+          ;;
+      esac
+      ;;
+    REPAIR_TOKEN)
+      if [[ ! -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+         && ! -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" ]]; then
+        # The child can be killed after publishing pending but before the
+        # parent binds ARMED authority. No global gate authorized that attempt.
+        BACKSTAGE_EXPECTED_PENDING_SHA256="$pending_sha256" \
+        BACKSTAGE_EXPECTED_ATTEMPT_ID="$expected_attempt_id" \
+        BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD="$inherited_lock_fd" \
+          run_target_backstage_deploy_helper recover-pending || return $?
+        [[ ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+           && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ]] || return 79
+        backstage_deployment_handoff_active=false
+        clear_parent_backstage_handoff_binding
+        release_backstage_deployment_mutation_lock
+        backstage_authority_finalize_lock_active=false
+        return 0
+      fi
+      load_parent_backstage_repair_pending_binding "$pending_sha256" || return 79
+      if parent_backstage_repair_authority_status \
+          "$PARENT_BACKSTAGE_REPAIR_PENDING_TARGET" \
+          "$PARENT_BACKSTAGE_REPAIR_PENDING_ATTEMPT_ID" "$pending_sha256"; then
+        repair_status=0
+      else
+        repair_status=$?
+      fi
+      case "$repair_status" in
+        0) authoritative_commit="$PARENT_BACKSTAGE_REPAIR_PENDING_TARGET" ;;
+        1)
+          BACKSTAGE_EXPECTED_PENDING_SHA256="$pending_sha256" \
+          BACKSTAGE_EXPECTED_ATTEMPT_ID="$expected_attempt_id" \
+          BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD="$inherited_lock_fd" \
+            run_target_backstage_deploy_helper recover-pending || return $?
+          [[ ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+             && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+             && ! -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+             && ! -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" ]] || return 79
+          backstage_deployment_handoff_active=false
+          clear_parent_backstage_handoff_binding
+          release_backstage_deployment_mutation_lock
+          backstage_authority_finalize_lock_active=false
+          return 0
+          ;;
+        *)
+          echo '[auto-deploy] RECOVERY_HOLD Backstage repair token is unsafe; mutation refused' >&2
+          release_backstage_deployment_mutation_lock
+          backstage_authority_finalize_lock_active=false
+          return 79
+          ;;
+      esac
+      ;;
+    *)
+      echo '[auto-deploy] RECOVERY_HOLD Backstage handoff authority kind is unavailable; mutation refused' >&2
+      release_backstage_deployment_mutation_lock
+      backstage_authority_finalize_lock_active=false
+      return 79
+      ;;
+  esac
+  BACKSTAGE_EXPECTED_PENDING_SHA256="$pending_sha256" \
+  BACKSTAGE_EXPECTED_ATTEMPT_ID="$expected_attempt_id" \
+  BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD="$inherited_lock_fd" \
+    run_target_backstage_deploy_helper reconcile-pending "$authoritative_commit" || return $?
+  [[ ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ]] || return 79
+  [[ ! -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" ]] || return 79
+  if [[ "$authoritative_commit" == "$target_commit" ]]; then
+    [[ -f "$BACKSTAGE_DEPLOY_STATE_FILE" && ! -L "$BACKSTAGE_DEPLOY_STATE_FILE" ]] || return 79
+    marker_commit="$(tr -d '[:space:]' <"$BACKSTAGE_DEPLOY_STATE_FILE" 2>/dev/null || true)"
+    [[ "$marker_commit" == "$target_commit" ]] || return 79
+  fi
+  if [[ "${backstage_deployment_authority_kind:-}" == DB_PROMOTION \
+     || "${backstage_deployment_authority_kind:-}" == APPLIED_MARKER ]]; then
+    finalize_parent_backstage_authority_binding "$backstage_deployment_authority_kind" \
+      "$target_commit" "$expected_attempt_id" "$pending_sha256" \
+      "$release_attempt_id" AUTHORIZED || return 79
+  fi
+  backstage_deployment_handoff_active=false
+  clear_parent_backstage_handoff_binding
+  release_backstage_deployment_mutation_lock
+  backstage_authority_finalize_lock_active=false
+}
+
+recover_runtime_after_failure_if_safe() {
+  if [[ "${backstage_startup_recovery_hold:-false}" == true ]]; then
+    echo '[auto-deploy] RECOVERY_HOLD startup Backstage authority is unresolved; runtime recovery withheld' >&2
+    return 79
+  fi
+  if [[ -s "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" && "$postdeploy_candidate_promoted" != true ]]; then
+    recover_staged_postdeploy_attempt_after_failure
+  elif [[ "$postdeploy_candidate_initialized" == true && "$postdeploy_candidate_promoted" != true ]]; then
+    reconcile_postdeploy_candidate_after_failure
+  fi
 }
 POSTDEPLOY_LEGACY_RETIRE_DIR="${CARBONET_POSTDEPLOY_LEGACY_RETIRE_DIR:-/opt/resonance-data/deploy/retired-attempts}"
 FULL_SCREEN_GATE_STATE_DIR="${CARBONET_FULL_SCREEN_GATE_STATE_DIR:-${FULL_SCREEN_GATE_STATE_DIR:-/opt/resonance-data/deploy/full-screen-deploy-gate}}"
@@ -222,6 +2250,77 @@ POSTGRES_USER="${POSTGRES_ADMIN_USER:-postgres}"
 RUNTIME_LEDGER_QUARANTINE_FILE="${CARBONET_RUNTIME_LEDGER_QUARANTINE_FILE:-${CARBONET_DEPLOY_STATE_DIR:-/opt/resonance-data/deploy}/runtime-ledger-invalidation.quarantine}"
 LEGACY_RUNTIME_LEDGER_QUARANTINE_FILE="${CARBONET_LEGACY_RUNTIME_LEDGER_QUARANTINE_FILE:-$ROOT_DIR/var/run/runtime-ledger-invalidation.quarantine}"
 POSTDEPLOY_MARKER_PENDING_FILE="${CARBONET_POSTDEPLOY_MARKER_PENDING_FILE:-${CARBONET_DEPLOY_STATE_DIR:-/opt/resonance-data/deploy}/postdeploy-marker-pending.state}"
+
+terminal_deploy_recovery_residue_absent() {
+  [[ ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && ! -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+     && ! -e "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+     && ! -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+     && ! -e "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+     && ! -L "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+     && ! -e "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" \
+     && ! -L "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" \
+     && ! -e "$POSTDEPLOY_MARKER_PENDING_FILE" \
+     && ! -L "$POSTDEPLOY_MARKER_PENDING_FILE" \
+     && ! -e "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+     && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+     && ! -e "$FULL_SCREEN_GATE_STATE_DIR/active.env" \
+     && ! -L "$FULL_SCREEN_GATE_STATE_DIR/active.env" \
+     && ! -e "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" \
+     && ! -L "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" ]]
+}
+
+retire_recovery_only_prepared_checkpoint_if_safe() {
+  [[ -e "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+     || -L "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" ]] || return 0
+  [[ -f "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+     && ! -L "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+     && "$(stat -c '%a:%u:%h' "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" 2>/dev/null || true)" \
+        == "644:$(id -u):1" ]] || return 79
+  jq -e --arg base "$runtime_deployed_commit" --arg target "$target_commit" '
+    .schemaVersion == 1 and .stage == "PREPARED"
+    and .baseCommit == $base and .targetCommit == $target
+  ' "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" >/dev/null 2>&1 || return 79
+  [[ ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && ! -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+     && ! -e "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+     && ! -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+     && ! -e "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" \
+     && ! -L "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" \
+     && ! -e "$POSTDEPLOY_MARKER_PENDING_FILE" \
+     && ! -L "$POSTDEPLOY_MARKER_PENDING_FILE" \
+     && ! -e "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+     && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+     && ! -e "$FULL_SCREEN_GATE_STATE_DIR/active.env" \
+     && ! -L "$FULL_SCREEN_GATE_STATE_DIR/active.env" \
+     && ! -e "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" \
+     && ! -L "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" ]] || return 79
+  verify_operational_usage_ledger_current_runtime_identity "$runtime_deployed_commit" proof-only || return 79
+  run_runtime_candidate_checkpoint clear-failed || return 79
+  [[ ! -e "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+     && ! -L "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" ]] || return 79
+  echo "[auto-deploy] recovery-only retired mutation-free PREPARED checkpoint target=$target_commit"
+}
+
+clear_no_change_runtime_checkpoint_if_present() {
+  if [[ ! -e "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+     && ! -L "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" ]]; then
+    return 0
+  fi
+  [[ -s "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+     && -f "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+     && ! -L "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+     && -f "$POSTDEPLOY_CHECKPOINT_SCRIPT" ]] || return 79
+  CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE="$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+  CARBONET_CHECKPOINT_TARGET_COMMIT="$target_commit" \
+    bash "$POSTDEPLOY_CHECKPOINT_SCRIPT" clear-success || return 79
+  [[ ! -e "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+     && ! -L "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" ]] || return 79
+}
 MIN_BACKUP_BYTES="${CARBONET_MIN_BACKUP_BYTES:-1048576}"
 # Full logical backups of the production database can exceed twenty minutes as
 # the data set grows. Keep the operator override, while giving the safety copy
@@ -275,6 +2374,182 @@ resolve_postdeploy_postgres_pod() {
     || return 1
   [[ "$resolved" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || return 1
   POSTGRES_POD="$resolved"
+  return 0
+}
+
+# The initial no-change branch executes before the full postdeploy verifier is
+# defined. Keep a read-only equivalent of the full operational proof available
+# here: exact runtime marker, one UP ledger row, immutable Deployment/template
+# identity, exact replica readiness, immutable Pod image digest, per-Pod health
+# and a final Deployment CAS reread. This function performs no repair or
+# derived-state write, so it is safe on the no-change fast path.
+verify_semantic_success_operational_usage_ledger_identity() {
+  local expected_commit="$1" marker_commit="" deployment_json="" deployment_uid=""
+  local annotation_commit="" template_annotation_hash="" live_template_hash=""
+  local ledger_rows="" ledger_commit="" ledger_namespace="" ledger_deployment=""
+  local ledger_uid="" ledger_generation="" ledger_observed="" ledger_desired=""
+  local ledger_image_ref="" ledger_image_id="" ledger_template_hash=""
+  local image_ref="" selector="" pods_json="" pod_image_ids="" desired=""
+  local generation="" observed="" ready_count="" pod="" pod_health=""
+  local deployment_identity_token="" final_deployment_json=""
+  local final_deployment_identity_token=""
+  local -a ready_pods=()
+  [[ "$expected_commit" =~ ^[0-9a-f]{40}$ ]] || return 79
+  [[ -f "$RUNTIME_DEPLOY_STATE_FILE" && ! -L "$RUNTIME_DEPLOY_STATE_FILE" ]] || return 79
+  marker_commit="$(tr -d '[:space:]' <"$RUNTIME_DEPLOY_STATE_FILE" 2>/dev/null || true)"
+  [[ "$marker_commit" == "$expected_commit" ]] || return 79
+  if ! deployment_json="$(timeout 5s kubectl --request-timeout=4s -n "$NAMESPACE" \
+      get "deployment/$DEPLOYMENT" -o json 2>/dev/null)"; then
+    return 79
+  fi
+  jq -e --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" '
+      (.metadata.resourceVersion|type=="string" and length>0)
+      and (.metadata.uid|type=="string" and length>0)
+      and (.metadata.generation|type=="number")
+      and (.spec.replicas|type=="number" and .>0 and floor==.)
+      and (.spec.template|type=="object")
+      and (.spec.selector.matchLabels|type=="object" and length>0)
+      and ([.spec.template.spec.containers[]?|select(.name==$container)]|length==1)
+      and (.status|type=="object")
+    ' <<<"$deployment_json" >/dev/null 2>&1 || return 79
+  annotation_commit="$(jq -r '.metadata.annotations["resonance.ai/target-commit"] // empty' \
+    <<<"$deployment_json" 2>/dev/null || true)"
+  template_annotation_hash="$(jq -r '.metadata.annotations["resonance.ai/runtime-template-sha256"] // empty' \
+    <<<"$deployment_json" 2>/dev/null || true)"
+  deployment_uid="$(jq -r '.metadata.uid // empty' <<<"$deployment_json" 2>/dev/null || true)"
+  generation="$(jq -r '.metadata.generation // empty' <<<"$deployment_json" 2>/dev/null || true)"
+  observed="$(jq -r '.status.observedGeneration // empty' <<<"$deployment_json" 2>/dev/null || true)"
+  desired="$(jq -r '.spec.replicas // 0' <<<"$deployment_json" 2>/dev/null || true)"
+  image_ref="$(jq -r --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" \
+    '[.spec.template.spec.containers[]|select(.name==$container)|.image] | if length==1 then .[0] else empty end' \
+    <<<"$deployment_json" 2>/dev/null || true)"
+  selector="$(jq -r '.spec.selector.matchLabels|to_entries|map("\(.key)=\(.value)")|join(",")' \
+    <<<"$deployment_json" 2>/dev/null || true)"
+  if ! live_template_hash="$(jq -cS '.spec.template' <<<"$deployment_json" 2>/dev/null | \
+      sha256sum | awk '{print $1}')"; then
+    return 79
+  fi
+  [[ "$annotation_commit" == "$expected_commit" \
+     && "$template_annotation_hash" =~ ^[0-9a-f]{64}$ \
+     && "$template_annotation_hash" == "$live_template_hash" \
+     && -n "$deployment_uid" && -n "$image_ref" && -n "$selector" ]] || return 79
+  resolve_postdeploy_postgres_pod || return 79
+  if ! ledger_rows="$(
+    printf '%s\n' "select coalesce(jsonb_agg(jsonb_build_object('sourceCommit',source_commit,'deploymentNamespace',deployment_namespace,'deploymentName',deployment_name,'deploymentUid',deployment_uid,'deploymentGeneration',deployment_generation,'observedGeneration',observed_generation,'desiredReplicas',desired_replicas,'imageRef',image_ref,'imageId',image_id,'podTemplateSha256',to_jsonb(framework_runtime_release_state)->>'pod_template_sha256','healthStatus',health_status)),'[]'::jsonb)::text from framework_runtime_release_state where release_key='CARBONET_RUNTIME' and health_status='UP';" |
+      timeout 8s kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" \
+        -c "$POSTGRES_CONTAINER" -- psql -h 127.0.0.1 -U "$POSTGRES_USER" \
+        -d "$POSTGRES_DB" -X -q -At -v ON_ERROR_STOP=1 2>/dev/null
+  )"; then
+    return 79
+  fi
+  jq -e '
+      type == "array" and length == 1 and
+      (.[0] |
+        (.sourceCommit|test("^[0-9a-f]{40}$")) and
+        (.deploymentNamespace|type=="string" and length>0) and
+        (.deploymentName|type=="string" and length>0) and
+        (.deploymentUid|type=="string" and length>0) and
+        (.deploymentGeneration|type=="number") and
+        (.observedGeneration|type=="number") and
+        (.desiredReplicas|type=="number" and .>0 and floor==.) and
+        (.imageRef|type=="string" and length>0) and
+        (.imageId|test("^sha256:[0-9a-f]{64}$")) and
+        (.podTemplateSha256|test("^[0-9a-f]{64}$")) and
+        .healthStatus == "UP")
+    ' <<<"$ledger_rows" >/dev/null 2>&1 || return 79
+  ledger_commit="$(jq -r '.[0].sourceCommit' <<<"$ledger_rows")"
+  ledger_namespace="$(jq -r '.[0].deploymentNamespace' <<<"$ledger_rows")"
+  ledger_deployment="$(jq -r '.[0].deploymentName' <<<"$ledger_rows")"
+  ledger_uid="$(jq -r '.[0].deploymentUid' <<<"$ledger_rows")"
+  ledger_generation="$(jq -r '.[0].deploymentGeneration' <<<"$ledger_rows")"
+  ledger_observed="$(jq -r '.[0].observedGeneration' <<<"$ledger_rows")"
+  ledger_desired="$(jq -r '.[0].desiredReplicas' <<<"$ledger_rows")"
+  ledger_image_ref="$(jq -r '.[0].imageRef' <<<"$ledger_rows")"
+  ledger_image_id="$(jq -r '.[0].imageId' <<<"$ledger_rows")"
+  ledger_template_hash="$(jq -r '.[0].podTemplateSha256' <<<"$ledger_rows")"
+  [[ "$ledger_commit" == "$expected_commit" \
+     && "$ledger_namespace" == "$NAMESPACE" \
+     && "$ledger_deployment" == "$DEPLOYMENT" \
+     && "$ledger_uid" == "$deployment_uid" \
+     && "$ledger_image_ref" == "$image_ref" \
+     && "$ledger_template_hash" == "$live_template_hash" ]] || return 79
+  [[ "$ledger_generation" =~ ^[0-9]+$ && "$ledger_observed" =~ ^[0-9]+$ \
+     && "$ledger_desired" =~ ^[1-9][0-9]*$ \
+     && "$generation" =~ ^[0-9]+$ && "$observed" =~ ^[0-9]+$ ]] || return 79
+  (( ledger_generation <= ledger_observed \
+     && ledger_generation <= generation \
+     && ledger_observed <= observed )) || return 79
+  if ! pods_json="$(timeout 5s kubectl --request-timeout=4s -n "$NAMESPACE" \
+      get pods -l "$selector" -o json 2>/dev/null)" \
+     || ! jq -e '.items|type=="array"' <<<"$pods_json" >/dev/null 2>&1; then
+    return 79
+  fi
+  ready_count="$(jq -r --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" \
+    --arg image "$image_ref" '
+      [.items[]
+        | select(.metadata.deletionTimestamp==null and .status.phase=="Running")
+        | select(any(.status.conditions[]?;.type=="Ready" and .status=="True"))
+        | select(any(.spec.containers[]?;.name==$container and .image==$image))
+        | select(any(.status.containerStatuses[]?;.name==$container and .ready==true))]
+      | length
+    ' <<<"$pods_json" 2>/dev/null || true)"
+  [[ "$desired" =~ ^[1-9][0-9]*$ && "$ready_count" == "$desired" ]] || return 79
+  jq -e --argjson desired "$desired" '
+      (.status.observedGeneration // -1) >= (.metadata.generation // 0) and
+      (.status.updatedReplicas // 0) == $desired and
+      (.status.readyReplicas // 0) == $desired and
+      (.status.availableReplicas // 0) == $desired and
+      (.status.unavailableReplicas // 0) == 0
+    ' <<<"$deployment_json" >/dev/null 2>&1 || return 79
+  pod_image_ids="$(jq -c --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" '
+      [.items[]
+        | select(.metadata.deletionTimestamp==null and .status.phase=="Running")
+        | select(any(.status.conditions[]?;.type=="Ready" and .status=="True"))
+        | .status.containerStatuses[]?
+        | select(.name==$container and .ready==true)
+        | .imageID]
+      | unique
+    ' <<<"$pods_json" 2>/dev/null || true)"
+  [[ "$(jq -r 'length' <<<"$pod_image_ids" 2>/dev/null || true)" == 1 \
+     && "$(jq -r '.[0] // empty' <<<"$pod_image_ids" 2>/dev/null || true)" == \
+        "$ledger_image_id" ]] || return 79
+  mapfile -t ready_pods < <(jq -r --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" \
+    --arg image "$image_ref" '
+      .items[]
+      | select(.metadata.deletionTimestamp==null and .status.phase=="Running")
+      | select(any(.status.conditions[]?;.type=="Ready" and .status=="True"))
+      | select(any(.spec.containers[]?;.name==$container and .image==$image))
+      | select(any(.status.containerStatuses[]?;.name==$container and .ready==true))
+      | .metadata.name
+    ' <<<"$pods_json")
+  [[ "${#ready_pods[@]}" == "$desired" ]] || return 79
+  for pod in "${ready_pods[@]}"; do
+    pod_health="$(timeout 5s kubectl --request-timeout=4s -n "$NAMESPACE" \
+      exec "$pod" -c "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" -- \
+      curl -fsS --max-time 4 http://127.0.0.1:8080/actuator/health 2>/dev/null || true)"
+    jq -e '.status=="UP"' <<<"$pod_health" >/dev/null 2>&1 || return 79
+  done
+  deployment_identity_token="$(jq -ceS --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" '
+      {resourceVersion:.metadata.resourceVersion,uid:.metadata.uid,generation:.metadata.generation,
+       observedGeneration:.status.observedGeneration,replicas:.spec.replicas,
+       targetCommit:(.metadata.annotations["resonance.ai/target-commit"]//""),
+       runtimeTemplateSha256:(.metadata.annotations["resonance.ai/runtime-template-sha256"]//""),
+       image:(.spec.template.spec.containers[]|select(.name==$container)|.image),
+       template:.spec.template}
+    ' <<<"$deployment_json" 2>/dev/null)" || return 79
+  if ! final_deployment_json="$(timeout 5s kubectl --request-timeout=4s -n "$NAMESPACE" \
+      get "deployment/$DEPLOYMENT" -o json 2>/dev/null)"; then
+    return 79
+  fi
+  final_deployment_identity_token="$(jq -ceS --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" '
+      {resourceVersion:.metadata.resourceVersion,uid:.metadata.uid,generation:.metadata.generation,
+       observedGeneration:.status.observedGeneration,replicas:.spec.replicas,
+       targetCommit:(.metadata.annotations["resonance.ai/target-commit"]//""),
+       runtimeTemplateSha256:(.metadata.annotations["resonance.ai/runtime-template-sha256"]//""),
+       image:(.spec.template.spec.containers[]|select(.name==$container)|.image),
+       template:.spec.template}
+    ' <<<"$final_deployment_json" 2>/dev/null)" || return 79
+  [[ "$final_deployment_identity_token" == "$deployment_identity_token" ]] || return 79
   return 0
 }
 
@@ -972,6 +3247,7 @@ fi
 record_deploy_phase "remote_change_detection"
 no_change_candidate=false
 no_change_recovery_hint=false
+no_change_backstage_repair_required=false
 if [[ "$deployed_commit" == "$target_commit" ]]; then
   no_change_candidate=true
   early_runtime_marker=""
@@ -980,8 +3256,17 @@ if [[ "$deployed_commit" == "$target_commit" ]]; then
   fi
   early_persistent_gate_active="$FULL_SCREEN_GATE_STATE_DIR/active.env"
   if [[ -e "$POSTDEPLOY_MARKER_PENDING_FILE" || -L "$POSTDEPLOY_MARKER_PENDING_FILE" \
-     || -s "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" \
-     || -s "$early_persistent_gate_active" ]]; then
+     || -e "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" || -L "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" \
+     || -e "$RUNTIME_LEDGER_QUARANTINE_FILE" || -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+     || -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     || -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     || -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+     || -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+     || -e "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+     || -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+     || -e "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" \
+     || -L "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" \
+     || -e "$early_persistent_gate_active" || -L "$early_persistent_gate_active" ]]; then
     no_change_recovery_hint=true
   fi
   # A power loss after finalizer promotion but before ACTIVATE can leave the
@@ -1030,17 +3315,67 @@ if [[ "$deployed_commit" == "$target_commit" ]]; then
      && "$early_kubectl_status" == 0 \
      && "$early_runtime_marker" =~ ^[0-9a-f]{40}$ \
      && "$early_runtime_annotation" == "$early_runtime_marker" ]]; then
-    no_change_elapsed_ms=$(( $(monotonic_milliseconds) - DEPLOY_STARTED_EPOCH_MILLISECONDS ))
-    echo "[auto-deploy] already deployed with coherent runtime identity: $deployed_commit (${no_change_elapsed_ms}ms)"
-    if [[ -s "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
-       && -f "$POSTDEPLOY_CHECKPOINT_SCRIPT" ]]; then
-      CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE="$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
-      CARBONET_CHECKPOINT_TARGET_COMMIT="$target_commit" \
-        bash "$POSTDEPLOY_CHECKPOINT_SCRIPT" clear-success ||
-        echo "[auto-deploy] WARN stale runtime checkpoint was retained for operator review" >&2
+    no_change_lock_status=0
+    acquire_clean_backstage_deployment_mutation_lock || no_change_lock_status=$?
+    if (( no_change_lock_status == 0 )); then
+      # Keep the shared directory FD locked through process exit. This final
+      # under-lock absence proof prevents a supported deferred writer from
+      # publishing a new pending candidate between the early hint read and the
+      # coherent-runtime success exit.
+      [[ ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+         && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+         && ! -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+         && ! -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+         && ! -e "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" && ! -L "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" \
+          && ! -e "$POSTDEPLOY_MARKER_PENDING_FILE" && ! -L "$POSTDEPLOY_MARKER_PENDING_FILE" \
+          && ! -e "$RUNTIME_LEDGER_QUARANTINE_FILE" && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+          && ! -e "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" \
+          && ! -L "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" \
+          && ! -e "$early_persistent_gate_active" && ! -L "$early_persistent_gate_active" ]] || exit 79
+      no_change_backstage_status=0
+      verify_no_change_backstage_runtime_identity || no_change_backstage_status=$?
+      case "$no_change_backstage_status" in
+        0)
+          verify_semantic_success_operational_usage_ledger_identity "$deployed_commit" || exit 79
+          no_change_elapsed_ms=$(( $(monotonic_milliseconds) - DEPLOY_STARTED_EPOCH_MILLISECONDS ))
+          echo "[auto-deploy] already deployed with coherent runtime and Backstage identity: $deployed_commit (${no_change_elapsed_ms}ms)"
+          clear_no_change_runtime_checkpoint_if_present || exit 79
+          terminal_deploy_recovery_residue_absent || exit 79
+          rm -f -- "$DEPLOY_PHASE_FILE" "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}"
+          exit 0
+          ;;
+        1)
+          # A drift repair is a new control-plane deployment, not a resume of
+          # the old runtime candidate. Disarm only an authenticated exact-target
+          # checkpoint while the shared Backstage lock still excludes writers;
+          # malformed, foreign or symlink state holds with zero mutation.
+          clear_no_change_runtime_checkpoint_if_present || exit 79
+          release_backstage_deployment_mutation_lock
+          no_change_candidate=false
+          no_change_recovery_hint=true
+          no_change_backstage_repair_required=true
+          echo '[auto-deploy] no-change Backstage identity drift detected; scheduling target-bound control-plane repair' >&2
+          ;;
+        *)
+          release_backstage_deployment_mutation_lock
+          echo '[auto-deploy] BLOCKED no-change Backstage identity proof is unavailable' >&2
+          exit 79
+          ;;
+      esac
     fi
-    rm -f -- "$DEPLOY_PHASE_FILE" "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}"
-    exit 0
+    if (( no_change_lock_status != 0 )); then
+      if [[ -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+         || -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+         || -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+         || -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+         || -e "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+         || -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" ]]; then
+        no_change_recovery_hint=true
+      else
+        echo '[auto-deploy] BLOCKED no-change success proof could not acquire the Backstage mutation lock' >&2
+        exit 79
+      fi
+    fi
   fi
   if [[ "$no_change_recovery_hint" != true ]]; then
     echo '[auto-deploy] RETRY no-change runtime identity read is temporarily unavailable; durable state unchanged' >&2
@@ -1063,8 +3398,23 @@ jq -n \
 chmod 0644 "${deploy_status_file}.tmp"
 mv "${deploy_status_file}.tmp" "$deploy_status_file"
 
+# Any startup Backstage recovery residue may authenticate as a label-less
+# rollback only after the target policy lane has run. This hint prevalidates
+# target bytes without yet forcing a Deployment mutation; exact recovery below
+# decides whether a repair is actually required.
+if [[ -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+   || -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+   || -e "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+   || -L "$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+   || -e "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+   || -L "$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+   || ( ! -e "$BACKSTAGE_RUNTIME_IDENTITY_FILE" \
+        && ! -L "$BACKSTAGE_RUNTIME_IDENTITY_FILE" ) ]]; then
+  backstage_recovery_may_require_repair=true
+fi
 eval "$(bash "$PLAN_SCRIPT" "$deployed_commit" "$target_commit" --format env)"
 PLAN_BACKSTAGE_REQUIRED="${PLAN_BACKSTAGE_REQUIRED:-false}"
+apply_no_change_backstage_repair_plan
 record_deploy_phase "incremental_plan"
 echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED backstage=$PLAN_BACKSTAGE_REQUIRED"
 echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
@@ -1653,6 +4003,11 @@ publish_private_backup_partial() {
 
 cleanup_remote_backup() {
   [[ "$backup_cleanup_required" == "true" ]] || return 0
+  local cleanup_session_count=""
+  [[ "$backup_application_name" =~ ^carbonet-auto-deploy-[1-9][0-9]*$ ]] || {
+    echo '[auto-deploy] refusing unsafe backup cleanup application identity' >&2
+    return 79
+  }
   # A terminated `kubectl exec` can leave pg_dump alive inside the pod. End
   # only sessions owned by this deploy invocation, preventing duplicate dumps
   # after a stop or retry without touching other backup jobs.
@@ -1662,6 +4017,61 @@ cleanup_remote_backup() {
     psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -q -At \
     -v ON_ERROR_STOP=1 -v app_name="$backup_application_name" \
     >/dev/null 2>&1 || true
+
+  # Closing the SQL backend is insufficient when pg_dump is blocked writing to
+  # the pipe formerly owned by kubectl. Match both the exact executable name
+  # and this invocation's NUL-delimited PGAPPNAME before signalling anything.
+  # TERM gets a bounded grace window; only a still-identical owned process is
+  # then KILLed. The final process and database zero proofs are mandatory.
+  printf '%s\n' '
+expected_app="${EXPECTED_PGAPPNAME:?}"
+case "$expected_app" in carbonet-auto-deploy-*) ;; *) exit 79 ;; esac
+expected_suffix="${expected_app#carbonet-auto-deploy-}"
+case "$expected_suffix" in ""|0*|*[!0-9]*) exit 79 ;; esac
+owned_backup_pids() {
+  for proc in /proc/[0-9]*; do
+    [ -r "$proc/comm" ] && [ -r "$proc/environ" ] || continue
+    command_name="$(cat "$proc/comm" 2>/dev/null || true)"
+    case "$command_name" in pg_dump|pg_dumpall) ;; *) continue ;; esac
+    if tr "\000" "\n" <"$proc/environ" 2>/dev/null |
+         grep -Fqx -- "PGAPPNAME=$expected_app"; then
+      printf "%s\n" "${proc##*/}"
+    fi
+  done
+}
+signal_owned_backup_pids() {
+  signal_name="$1"
+  owned_backup_pids | while IFS= read -r owned_pid; do
+    case "$owned_pid" in ""|*[!0-9]*) exit 79 ;; esac
+    kill "-$signal_name" "$owned_pid" 2>/dev/null || true
+  done
+}
+signal_owned_backup_pids TERM
+attempt=0
+while [ -n "$(owned_backup_pids)" ] && [ "$attempt" -lt 20 ]; do
+  sleep 0.1
+  attempt=$((attempt + 1))
+done
+if [ -n "$(owned_backup_pids)" ]; then
+  signal_owned_backup_pids KILL
+  attempt=0
+  while [ -n "$(owned_backup_pids)" ] && [ "$attempt" -lt 10 ]; do
+    sleep 0.1
+    attempt=$((attempt + 1))
+  done
+fi
+[ -z "$(owned_backup_pids)" ]
+' | bounded_cleanup_kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      env "EXPECTED_PGAPPNAME=$backup_application_name" sh -eu -s \
+      >/dev/null 2>&1 || return 79
+
+  cleanup_session_count="$(printf '%s\n' \
+    "select count(*) from pg_stat_activity where application_name=:'app_name';" | \
+    bounded_cleanup_kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -q -At \
+      -v ON_ERROR_STOP=1 -v app_name="$backup_application_name" 2>/dev/null)" || return 79
+  [[ "$(tr -d '[:space:]' <<<"$cleanup_session_count")" == 0 ]] || return 79
+  backup_cleanup_required=false
 }
 canonical_runtime_screen_gate_cache_root() {
   local physical_frontend_root expected_cache_root resolved_cache_root
@@ -2063,6 +4473,7 @@ recover_staged_postdeploy_attempt_after_failure() {
 
 cleanup_deploy() {
   local original_status=$? recovery_status=0 flyway_hold_active=false
+  local backstage_recovery_status=0
   local cleanup_backup_dir="${BACKUP_DIR:-}" partial_backup
   trap - EXIT INT TERM
   set +e
@@ -2094,7 +4505,17 @@ cleanup_deploy() {
     kill "$backstage_visual_e2e_pid" 2>/dev/null || true
     wait "$backstage_visual_e2e_pid" 2>/dev/null || true
   fi
-  cleanup_remote_backup
+  cleanup_remote_backup || original_status=79
+  if [[ "${backstage_deployment_handoff_active:-false}" == true ]]; then
+    # Resolve the authority again from its durable source. Neither an
+    # in-memory flag nor the process exit status can distinguish the crash
+    # windows immediately after a DB COMMIT or applied-marker rename.
+    reconcile_backstage_deployment_during_cleanup || backstage_recovery_status=$?
+    if (( backstage_recovery_status != 0 )); then
+      original_status=79
+      echo '[auto-deploy] RECOVERY_HOLD Backstage cross-plane reconciliation failed; runtime rollback is withheld' >&2
+    fi
+  fi
   cleanup_local_schema_restore_container || original_status=79
   if [[ -n "$schema_restore_database" ]]; then
     bounded_cleanup_kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
@@ -2133,10 +4554,10 @@ cleanup_deploy() {
     # The next invocation must run recover_flyway_cleanup_hold_if_present first.
     original_status=79
     echo '[auto-deploy] RECOVERY_HOLD preserved attempt/checkpoint state until Flyway Job/Pod/session zero is proven' >&2
-  elif [[ -s "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" && "$postdeploy_candidate_promoted" != true ]]; then
-    recover_staged_postdeploy_attempt_after_failure || recovery_status=$?
-  elif [[ "$postdeploy_candidate_initialized" == true && "$postdeploy_candidate_promoted" != true ]]; then
-    reconcile_postdeploy_candidate_after_failure || recovery_status=$?
+  elif (( backstage_recovery_status != 0 )); then
+    original_status=79
+  else
+    recover_runtime_after_failure_if_safe || recovery_status=$?
   fi
   (( recovery_status == 0 )) || original_status="$recovery_status"
   rm -f -- "${DEPLOY_PHASE_FILE:-}"
@@ -2521,12 +4942,11 @@ if ! git merge-base --is-ancestor "$current_commit" "$target_commit"; then
   exit 3
 fi
 
-# Validate the exact pending commit after selecting its clean worktree. The
-# bootstrap check above may legitimately run against the previously deployed
-# tree when a new policy file is introduced by the pending commit.
-if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]]; then
-  bash "$ROOT_DIR/ops/scripts/test-backstage-fast-deploy-policy.sh"
-fi
+# Validate the exact pending commit in isolated clean target clones before the
+# first merge or supported runtime writer. The expensive Backstage policy and
+# selector/static lanes run concurrently, then publish only SHA-pinned receipts
+# that later gates may reuse byte-for-byte.
+prevalidate_target_contract_lanes_before_mutation || exit $?
 
 # The React hostPath is the live runtime closure, while index.html and the Vite
 # manifest are still tracked for repository compatibility. Preserve the live
@@ -2574,41 +4994,468 @@ restore_live_frontend_overlay() {
 
 deploy_backstage_if_required() {
   [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" == "true" ]] || return 0
-  local checkpoint status
-  checkpoint="$(cat "$BACKSTAGE_DEPLOY_STATE_FILE" 2>/dev/null || true)"
-  if [[ "$checkpoint" == "$target_commit" ]]; then
-    status="$(curl -k -sS -o /dev/null -w '%{http_code}' --max-time 10 \
-      https://backstage.172.16.1.232.nip.io/.backstage/health/v1/readiness || true)"
-    if [[ "$status" == "200" ]]; then
-      echo "[auto-deploy] Backstage runtime checkpoint verified; resuming at E2E gates"
-      return 0
-    fi
-    echo "[auto-deploy] stale Backstage checkpoint ignored: readiness returned $status" >&2
-  fi
+  local status authority_kind child_status=0 clean_lock_status=0 pending_sha256=""
+  local runtime_fingerprint="" deployment_attempt_id="" release_attempt_id=""
+  validate_backstage_public_url || return 79
+  # A one-line success marker and HTTP readiness do not bind the live
+  # Deployment image or full PodTemplate. Always enter the target-bound child
+  # for a planned Backstage change; its fingerprint reuse and v2 CAS proof make
+  # an exact retry cheap without trusting a stale or externally drifted marker.
   echo "[auto-deploy] Backstage-only image build and rollout started"
-  bash ops/scripts/resonance-backstage-deploy.sh
+  authority_kind=APPLIED_MARKER
+  [[ "${PLAN_RUNTIME_REQUIRED:-false}" != true ]] || authority_kind=DB_PROMOTION
+  [[ "${no_change_backstage_repair_required:-false}" != true ]] || authority_kind=REPAIR_TOKEN
+  [[ "$authority_kind" != DB_PROMOTION ]] || release_attempt_id="$postdeploy_candidate_id"
+  runtime_fingerprint="$(backstage_runtime_fingerprint_at_ref "$target_commit")" || return $?
+  deployment_attempt_id="$(openssl rand -hex 16)" || return 79
+  [[ "$deployment_attempt_id" =~ ^[0-9a-f]{32}$ ]] || return 79
+  resolve_target_backstage_deploy_helper || return $?
+  # Every new child attempt starts without an older pending/repair/parent
+  # authority capability. The fresh capability is published after exact handoff.
+  acquire_clean_backstage_deployment_mutation_lock || return $?
+  release_backstage_deployment_mutation_lock
+  # Arm the parent before entering the child. A SIGKILL can leave the child's
+  # durable pending state without returning control to set a later flag.
+  clear_parent_backstage_handoff_binding
+  backstage_deployment_authority_kind="$authority_kind"
+  backstage_deployment_target_commit="$target_commit"
+  backstage_deployment_attempt_id="$deployment_attempt_id"
+  backstage_deployment_handoff_active=true
+  RESONANCE_ROOT="$ROOT_DIR" \
+  BACKSTAGE_DEPLOYMENT_FINALIZE_MODE=deferred \
+  BACKSTAGE_DEPLOYMENT_TARGET_COMMIT="$target_commit" \
+  BACKSTAGE_DEPLOYMENT_AUTHORITY_KIND="$authority_kind" \
+  BACKSTAGE_DEPLOYMENT_ATTEMPT_ID="$deployment_attempt_id" \
+  BACKSTAGE_DEPLOY_STATE_FILE="$BACKSTAGE_DEPLOY_STATE_FILE" \
+  BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR="$BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR" \
+  BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE="$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+  BACKSTAGE_RUNTIME_IDENTITY_FILE="$BACKSTAGE_RUNTIME_IDENTITY_FILE" \
+  BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE="$BACKSTAGE_DEPLOYMENT_REPAIR_AUTHORITY_FILE" \
+  BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE="$BACKSTAGE_PARENT_AUTHORITY_BINDING_FILE" \
+  BACKSTAGE_PUBLIC_URL="$BACKSTAGE_PUBLIC_URL" \
+  BACKSTAGE_DEPLOYMENT_RUNTIME_FINGERPRINT="$runtime_fingerprint" \
+    bash "$BACKSTAGE_DEPLOY_HELPER" || child_status=$?
+  if (( child_status != 0 )); then
+    # The child contract persists its baseline before the first Deployment
+    # mutation. If it returned normally without pending state, prove absence
+    # under the same directory lock and disarm the speculative parent handoff;
+    # runtime cleanup may then proceed. Any pending/unknown state stays armed.
+    acquire_clean_backstage_deployment_mutation_lock || clean_lock_status=$?
+    if (( clean_lock_status == 0 )); then
+      if [[ -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+         || -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ]]; then
+        release_backstage_deployment_mutation_lock
+        return 79
+      fi
+      backstage_deployment_handoff_active=false
+      clear_parent_backstage_handoff_binding
+      release_backstage_deployment_mutation_lock
+    fi
+    return "$child_status"
+  fi
+  [[ -f "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+     && "$(stat -c '%a:%u:%h' "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)" \
+        == "600:$(id -u):1" ]] || {
+    echo '[auto-deploy] refusing Backstage handoff without a private durable pending state' >&2
+    return 79
+  }
+  # Capture every authority kind, not only REPAIR_TOKEN. Commit-level DB and
+  # applied-marker authority must never be transferable from attempt A to a
+  # same-target attempt B while the global gates are running.
+  acquire_backstage_deployment_mutation_lock || return $?
+  pending_sha256="$(sha256sum "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null | awk '{print $1}')"
+  if ! capture_parent_backstage_handoff_binding_locked "$pending_sha256"; then
+    release_backstage_deployment_mutation_lock
+    echo '[auto-deploy] refusing Backstage handoff from a foreign deployment attempt' >&2
+    return 79
+  fi
+  if [[ "$authority_kind" == REPAIR_TOKEN ]]; then
+    if ! write_parent_backstage_repair_authority ARMED \
+        "$target_commit" "$deployment_attempt_id" "$pending_sha256" ABSENT; then
+      release_backstage_deployment_mutation_lock
+      return 79
+    fi
+    echo "[auto-deploy] same-target Backstage repair attempt armed id=$deployment_attempt_id"
+  else
+    if ! write_parent_backstage_authority_binding ARMED "$authority_kind" \
+        "$target_commit" "$deployment_attempt_id" "$pending_sha256" \
+        "$release_attempt_id"; then
+      release_backstage_deployment_mutation_lock
+      return 79
+    fi
+    echo "[auto-deploy] Backstage parent authority attempt armed kind=$authority_kind id=$deployment_attempt_id"
+  fi
+  release_backstage_deployment_mutation_lock
   # The ingress endpoint can briefly return 502 while its upstream switches
   # from the terminating pod to the newly ready pod. Require a stable 200, but
   # absorb only that bounded post-rollout propagation window.
   status=""
   for attempt in 1 2 3 4 5; do
-    status="$(curl -k -sS -o /dev/null -w '%{http_code}' --max-time 10 \
-      https://backstage.172.16.1.232.nip.io/.backstage/health/v1/readiness || true)"
+    status="$(curl -k -sS -o /dev/null -w '%{http_code}' --max-time 4 \
+      "$BACKSTAGE_PUBLIC_URL/.backstage/health/v1/readiness" || true)"
     [[ "$status" == "200" ]] && break
     echo "[auto-deploy] Backstage ingress readiness attempt $attempt/5 returned $status" >&2
     sleep 2
   done
   if [[ "$status" != "200" ]]; then
     echo "[auto-deploy] refusing success marker: Backstage readiness returned $status" >&2
-    exit 24
+    return 79
   fi
-  printf '%s\n' "$target_commit" > "${BACKSTAGE_DEPLOY_STATE_FILE}.tmp"
-  mv "${BACKSTAGE_DEPLOY_STATE_FILE}.tmp" "$BACKSTAGE_DEPLOY_STATE_FILE"
-  echo "[auto-deploy] Backstage runtime verified"
+  echo "[auto-deploy] Backstage runtime verified; durable handoff retained until global promotion"
+}
+
+read_secure_backstage_json_file_under_lock() {
+  local exact_file="$1" state_dir file_dir lexical_dir resolved_dir physical_dir
+  local before after json
+  [[ "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD" == true ]] || return 79
+  state_dir="$(dirname -- "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE")"
+  file_dir="$(dirname -- "$exact_file")"
+  [[ "$file_dir" == "$state_dir" && -d "$file_dir" && ! -L "$file_dir" ]] || return 79
+  lexical_dir="$(realpath -m -s -- "$file_dir" 2>/dev/null || true)"
+  resolved_dir="$(readlink -m -- "$file_dir" 2>/dev/null || true)"
+  physical_dir="$(readlink -f -- "$file_dir" 2>/dev/null || true)"
+  [[ -n "$lexical_dir" && "$lexical_dir" == "$resolved_dir" \
+     && "$resolved_dir" == "$physical_dir" \
+     && -f "$exact_file" && ! -L "$exact_file" \
+     && "$(stat -c '%a:%u:%h' -- "$exact_file" 2>/dev/null || true)" == "600:$(id -u):1" ]] \
+    || return 79
+  before="$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' -- "$exact_file" 2>/dev/null || true)"
+  json="$(<"$exact_file")" || return 79
+  after="$(stat -c '%d:%i:%a:%u:%h:%s:%y:%z' -- "$exact_file" 2>/dev/null || true)"
+  [[ -n "$before" && "$before" == "$after" ]] || return 79
+  printf '%s' "$json"
+}
+
+backstage_unchanged_serving_tuple_matches() {
+  local pending_json="$1" identity_json="$2" target_fingerprint="$3" deployed_fingerprint="$4"
+  local target_deployment_closure="$5" deployed_deployment_closure="$6"
+  local proof_mode="${7:-exact}"
+  local pending_payload identity_payload pending_integrity identity_integrity
+  local baseline_spec baseline_rollback_spec planned_spec candidate_spec
+  local baseline_spec_sha baseline_rollback_spec_sha planned_spec_sha candidate_spec_sha
+  local runtime_dependencies runtime_dependency_closure identity_dependencies identity_dependency_closure
+  local baseline_resources candidate_resources resource_closure_payload resource_closure
+  local baseline_resource_closure_payload baseline_resource_closure
+  [[ "$target_fingerprint" =~ ^[0-9a-f]{64}$ \
+     && "$deployed_fingerprint" =~ ^[0-9a-f]{64}$ \
+     && "$target_fingerprint" == "$deployed_fingerprint" \
+     && "$target_deployment_closure" =~ ^[0-9a-f]{64}$ \
+     && "$deployed_deployment_closure" =~ ^[0-9a-f]{64}$ \
+     && "$target_commit" =~ ^[0-9a-f]{40}$ \
+     && "$deployed_commit" =~ ^[0-9a-f]{40}$ \
+     && ( "$proof_mode" == exact || "$proof_mode" == tag-digest-migration ) ]] || return 1
+  pending_payload="$(jq -cS 'del(.integritySha256)' <<<"$pending_json")" || return 1
+  identity_payload="$(jq -cS 'del(.integritySha256)' <<<"$identity_json")" || return 1
+  pending_integrity="$(printf '%s' "$pending_payload" | sha256sum | awk '{print $1}')" || return 1
+  identity_integrity="$(printf '%s' "$identity_payload" | sha256sum | awk '{print $1}')" || return 1
+  [[ "$(jq -r '.integritySha256 // empty' <<<"$pending_json")" == "$pending_integrity" \
+     && "$(jq -r '.integritySha256 // empty' <<<"$identity_json")" == "$identity_integrity" ]] || return 1
+
+  baseline_spec="$(jq -cS '.baseline.spec' <<<"$pending_json")" || return 1
+  baseline_rollback_spec="$(jq -cS '.baseline.rollbackSpec' <<<"$pending_json")" || return 1
+  planned_spec="$(jq -cS '.plannedDeployment.spec' <<<"$pending_json")" || return 1
+  candidate_spec="$(jq -cS '.candidate.spec' <<<"$pending_json")" || return 1
+  baseline_spec_sha="$(printf '%s' "$baseline_spec" | sha256sum | awk '{print $1}')" || return 1
+  baseline_rollback_spec_sha="$(printf '%s' "$baseline_rollback_spec" | sha256sum | awk '{print $1}')" || return 1
+  planned_spec_sha="$(printf '%s' "$planned_spec" | sha256sum | awk '{print $1}')" || return 1
+  candidate_spec_sha="$(printf '%s' "$candidate_spec" | sha256sum | awk '{print $1}')" || return 1
+  runtime_dependencies="$(jq -cS '.runtimeDependencies' <<<"$pending_json")" || return 1
+  runtime_dependency_closure="$(printf '%s' "$runtime_dependencies" | sha256sum | awk '{print $1}')" || return 1
+  identity_dependencies="$(jq -cS '.runtimeDependencies' <<<"$identity_json")" || return 1
+  identity_dependency_closure="$(printf '%s' "$identity_dependencies" | sha256sum | awk '{print $1}')" || return 1
+  baseline_resources="$(jq -cS '.baseline.resources' <<<"$pending_json")" || return 1
+  candidate_resources="$(jq -cS '.candidate.resources' <<<"$pending_json")" || return 1
+  baseline_resource_closure_payload="$(jq -cS '
+      to_entries | map({resourceKey:.key,kind:.value.kind,name:.value.name,
+        uid:.value.uid,payloadSha256:.value.payloadSha256}) | sort_by(.resourceKey)
+    ' <<<"$baseline_resources")" || return 1
+  baseline_resource_closure="$(printf '%s' "$baseline_resource_closure_payload" | sha256sum | awk '{print $1}')" || return 1
+  resource_closure_payload="$(jq -cS '
+      to_entries | map({resourceKey:.key,kind:.value.kind,name:.value.name,
+        uid:.value.uid,payloadSha256:.value.payloadSha256}) | sort_by(.resourceKey)
+    ' <<<"$candidate_resources")" || return 1
+  resource_closure="$(printf '%s' "$resource_closure_payload" | sha256sum | awk '{print $1}')" || return 1
+
+  jq -e \
+    --arg target "$target_commit" --arg deployed "$deployed_commit" \
+    --arg targetFingerprint "$target_fingerprint" --arg deployedFingerprint "$deployed_fingerprint" \
+    --arg fingerprintTag "${target_fingerprint:0:12}" \
+    --arg targetDeploymentClosure "$target_deployment_closure" \
+    --arg deployedDeploymentClosure "$deployed_deployment_closure" \
+    --arg baselineSpecSha "$baseline_spec_sha" \
+    --arg baselineRollbackSpecSha "$baseline_rollback_spec_sha" \
+    --arg plannedSpecSha "$planned_spec_sha" \
+    --arg candidateSpecSha "$candidate_spec_sha" --arg dependencyClosure "$runtime_dependency_closure" \
+    --arg identityDependencyClosure "$identity_dependency_closure" \
+    --arg baselineResourceClosure "$baseline_resource_closure" \
+    --arg resourceClosure "$resource_closure" --arg proofMode "$proof_mode" \
+    --argjson identity "$identity_json" '
+      def hex32: type == "string" and test("^[0-9a-f]{32}$");
+      def hex40: type == "string" and test("^[0-9a-f]{40}$");
+      def hex64: type == "string" and test("^[0-9a-f]{64}$");
+      def managed_keys:
+        ["ConfigMap/resonance-backstage-catalog","ConfigMap/resonance-backstage-config",
+         "NetworkPolicy/resonance-backstage-ingress","Service/resonance-backstage",
+         "Service/resonance-backstage-catalog"];
+      def dependency_keys:
+        ["ConfigMap/resonance-internal-ca","Ingress/backstage","Ingress/preview",
+         "Secret/carbonet-prod/resonance-ops-bridge","Secret/carbonet-prod/resonance-preview-tls",
+         "Secret/resonance-backstage-auth","Secret/resonance-backstage-database",
+         "Secret/resonance-backstage-tls","Secret/resonance-ops-bridge",
+         "Secret/resonance-runtime-purge-recovery","Service/ingress-nginx-controller"];
+      def legacy_dependency_keys:
+        ["ConfigMap/resonance-internal-ca","Secret/resonance-backstage-auth",
+         "Secret/resonance-backstage-database","Secret/resonance-ops-bridge",
+         "Secret/resonance-runtime-purge-recovery"];
+      def managed_snapshot:
+        type == "object" and
+        (keys | sort) == ["exists","kind","name","payload","payloadSha256","resourceVersion","uid"] and
+        (.kind == "ConfigMap" or .kind == "Service" or .kind == "NetworkPolicy") and
+        (.name | type == "string" and length > 0 and length <= 253) and
+        if .exists == true then
+          (.uid | type == "string" and length > 0) and
+          (.resourceVersion | type == "string" and length > 0) and
+          (.payload | type == "object") and (.payloadSha256 | hex64)
+        elif .exists == false then
+          .uid == null and .resourceVersion == null and .payload == null and .payloadSha256 == null
+        else false end;
+      def managed_intent:
+        type == "object" and
+        (keys | sort) == ["exists","kind","name","payload","payloadSha256"] and
+        (.kind == "ConfigMap" or .kind == "Service" or .kind == "NetworkPolicy") and
+        (.name | type == "string" and length > 0 and length <= 253) and
+        if .exists == true then (.payload | type == "object") and (.payloadSha256 | hex64)
+        elif .exists == false then .payload == null and .payloadSha256 == null
+        else false end;
+      def dependency:
+        type == "object" and (keys | sort) == ["contentSha256","kind","name","uid"] and
+        (.kind == "Secret" or .kind == "ConfigMap" or .kind == "Service" or .kind == "Ingress") and
+        (.name | type == "string" and length > 0 and length <= 253) and
+        (.uid | type == "string" and length > 0 and length <= 253) and
+        (.contentSha256 | hex64);
+      type == "object" and
+      (keys | sort) == ["attemptId","authorityKind","baseline","candidate","coordinator",
+        "deploymentClosureSha256","deploymentName","finalizeMode","integritySha256","kind",
+        "namespace","phase","plannedDeployment","resourceIntents","runtimeDependencies",
+        "runtimeFingerprint","schemaVersion","targetCommit"] and
+      .schemaVersion == 4 and .kind == "BackstageDeploymentRollbackPending" and
+      .namespace == "resonance-ops" and .deploymentName == "resonance-backstage" and
+      .phase == "CANDIDATE_READY" and .finalizeMode == "deferred" and .coordinator == "auto" and
+      (.authorityKind == "DB_PROMOTION" or .authorityKind == "APPLIED_MARKER" or .authorityKind == "REPAIR_TOKEN") and
+      (.attemptId | hex32) and .targetCommit == $target and (.targetCommit | hex40) and
+      .runtimeFingerprint == $targetFingerprint and (.deploymentClosureSha256 | hex64) and
+      (.baseline | keys | sort) == ["resourceVersion","resources","rollbackSpec",
+        "rollbackSpecSha256","spec","specSha256","uid"] and
+      (.plannedDeployment | keys | sort) == ["spec","specSha256"] and
+      (.candidate | keys | sort) == ["baselineTagProof","image","liveResourceClosureSha256",
+        "resources","runtimeDependencyClosureSha256","spec","specSha256"] and
+      (.baseline.resources | keys | sort) == managed_keys and all(.baseline.resources[]; managed_snapshot) and
+      (.candidate.resources | keys | sort) == managed_keys and all(.candidate.resources[]; managed_snapshot) and
+      (.resourceIntents | keys | sort) == managed_keys and all(.resourceIntents[]; managed_intent) and
+      (.runtimeDependencies | keys | sort) == dependency_keys and all(.runtimeDependencies[]; dependency) and
+      (.baseline.uid | type == "string" and length > 0) and
+      (.baseline.resourceVersion | type == "string" and length > 0) and
+      (.candidate.image | type == "string" and
+        test("@sha256:[0-9a-f]{64}$") and (test("[[:space:]]") | not)) and
+      .baseline.specSha256 == $baselineSpecSha and
+      .baseline.rollbackSpecSha256 == $baselineRollbackSpecSha and
+      .plannedDeployment.specSha256 == $plannedSpecSha and
+      .candidate.specSha256 == $candidateSpecSha and
+      .plannedDeployment.spec == .candidate.spec and $plannedSpecSha == $candidateSpecSha and
+      .candidate.liveResourceClosureSha256 == $resourceClosure and
+      .candidate.runtimeDependencyClosureSha256 == $dependencyClosure and
+      .deploymentClosureSha256 == $targetDeploymentClosure and
+      ($identity | type == "object") and
+      ($identity | keys | sort) == ["attemptId","candidateImage","candidateSpecSha256",
+        "deploymentClosureSha256","deploymentUid","integritySha256","liveResourceClosureSha256",
+        "runtimeDependencies","runtimeDependencyClosureSha256","runtimeFingerprint","schemaVersion",
+        "targetCommit"] and
+      ($identity.targetCommit | hex40) and ($identity.attemptId | hex32) and
+      $identity.targetCommit == $deployed and
+      $identity.runtimeFingerprint == $deployedFingerprint and
+      all($identity.runtimeDependencies[]; dependency) and
+      $identity.deploymentClosureSha256 == $deployedDeploymentClosure and
+      $identity.runtimeDependencyClosureSha256 == $identityDependencyClosure and
+      if $proofMode == "exact" then
+        .candidate.baselineTagProof == null and
+        .baseline.rollbackSpec == .baseline.spec and
+        .baseline.spec == .plannedDeployment.spec and
+        $baselineRollbackSpecSha == $baselineSpecSha and
+        $baselineSpecSha == $plannedSpecSha and
+        $baselineResourceClosure == $resourceClosure and
+        $identity.schemaVersion == 3 and
+        ($identity.runtimeDependencies | keys | sort) == dependency_keys and
+        .runtimeDependencies == $identity.runtimeDependencies and
+        .candidate.liveResourceClosureSha256 == $identity.liveResourceClosureSha256 and
+        .candidate.runtimeDependencyClosureSha256 == $identity.runtimeDependencyClosureSha256 and
+        .candidate.image == $identity.candidateImage and
+        .baseline.uid == $identity.deploymentUid and
+        .candidate.specSha256 == $identity.candidateSpecSha256
+      elif $proofMode == "tag-digest-migration" then
+        $identity.schemaVersion == 2 and
+        ($identity.runtimeDependencies | keys | sort) == legacy_dependency_keys and
+        (.runtimeDependencies as $pendingDependencies |
+          ($identity.runtimeDependencies | to_entries |
+            all(.[]; .value == $pendingDependencies[.key]))) and
+        (.candidate.baselineTagProof | type == "object") and
+        (.candidate.baselineTagProof | keys | sort) == ["deploymentUid","digestImage","holdTag","tag"] and
+        .candidate.baselineTagProof.deploymentUid == .baseline.uid and
+        .candidate.baselineTagProof.deploymentUid == $identity.deploymentUid and
+        .candidate.baselineTagProof.digestImage == .candidate.image and
+        .candidate.baselineTagProof.tag == $identity.candidateImage and
+        (. as $pending |
+          ($pending.candidate.image | sub("@sha256:[0-9a-f]{64}$"; "")) as $repository |
+          $pending.candidate.baselineTagProof.tag == ($repository + ":" + $fingerprintTag) and
+          $pending.candidate.baselineTagProof.holdTag ==
+            ($repository + ":rollback-hold-" + $pending.attemptId)) and
+        ([.baseline.spec.template.spec.containers[]? | select(.name == "backstage") | .image] ==
+          [.candidate.baselineTagProof.tag]) and
+        ([.candidate.spec.template.spec.containers[]? | select(.name == "backstage") | .image] ==
+          [.candidate.image]) and
+        (. as $pending |
+          (($pending.baseline.spec |
+            .template.spec.containers |= map(
+              if .name == "backstage" then .image = $pending.candidate.image else . end)) ==
+           $pending.baseline.rollbackSpec)) and
+        .baseline.rollbackSpec == .candidate.spec and
+        $baselineResourceClosure == $resourceClosure and
+        $identity.liveResourceClosureSha256 == $baselineResourceClosure and
+        $identity.candidateSpecSha256 == $baselineSpecSha
+      else false end
+    ' <<<"$pending_json" >/dev/null 2>&1
+}
+
+verify_backstage_candidate_pod_image_identity_under_lock() {
+  local expected_image="$1" expected_uid="$2"
+  local namespace="${RESONANCE_BACKSTAGE_NAMESPACE:-resonance-ops}"
+  local deployment="${RESONANCE_BACKSTAGE_DEPLOYMENT:-resonance-backstage}"
+  local deployment_json pods_json desired
+  [[ "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD" == true \
+     && -n "$expected_image" && "$expected_image" != *[[:space:]]* \
+     && -n "$expected_uid" ]] || return 1
+  deployment_json="$(kubectl -n "$namespace" get deployment "$deployment" -o json)" || return 1
+  jq -e --arg namespace "$namespace" --arg deployment "$deployment" \
+      --arg uid "$expected_uid" --arg image "$expected_image" '
+        .apiVersion == "apps/v1" and .kind == "Deployment" and
+        .metadata.namespace == $namespace and .metadata.name == $deployment and .metadata.uid == $uid and
+        .spec.selector.matchLabels == {"app.kubernetes.io/name":"resonance-backstage"} and
+        ([.spec.template.spec.containers[] | select(.name == "backstage") | .image] == [$image]) and
+        ((.spec.replicas // 1) | type == "number" and . > 0)
+      ' <<<"$deployment_json" >/dev/null 2>&1 || return 1
+  desired="$(jq -r '.spec.replicas // 1' <<<"$deployment_json")" || return 1
+  pods_json="$(kubectl -n "$namespace" get pods \
+    -l app.kubernetes.io/name=resonance-backstage -o json)" || return 1
+  jq -e --argjson desired "$desired" --arg image "$expected_image" '
+      [.items[] | select(.metadata.deletionTimestamp == null)] as $pods |
+      ($pods | length) == $desired and
+      all($pods[];
+        .status.phase == "Running" and
+        .metadata.labels["app.kubernetes.io/name"] == "resonance-backstage" and
+        ([.spec.containers[] | select(.name == "backstage") | .image] == [$image]) and
+        ([.status.containerStatuses[] |
+          select(.name == "backstage" and .ready == true and
+            .image == $image and
+            (.imageID | type == "string" and length > 0))] | length) == 1) and
+      ([$pods[].status.containerStatuses[] | select(.name == "backstage") | .imageID] |
+        unique | length) == 1
+    ' <<<"$pods_json" >/dev/null 2>&1
+}
+
+prove_backstage_unchanged_serving_handoff() {
+  local target_fingerprint deployed_fingerprint pending_json identity_json expected_image expected_uid
+  local target_deployment_closure deployed_deployment_closure
+  local proof_status=1 binding_status=79 tuple_mode=""
+  [[ "${backstage_deployment_handoff_active:-false}" == true \
+     && "${backstage_deployment_handoff_binding_captured:-false}" == true \
+     && "${backstage_deployment_target_commit:-}" == "$target_commit" \
+     && "${backstage_deployment_attempt_id:-}" =~ ^[0-9a-f]{32}$ \
+     && "${backstage_deployment_pending_sha256:-}" =~ ^[0-9a-f]{64}$ ]] || return 1
+  target_fingerprint="$(backstage_runtime_fingerprint_at_ref "$target_commit")" || return 1
+  deployed_fingerprint="$(backstage_runtime_fingerprint_at_ref "$deployed_commit")" || return 1
+  [[ "$target_fingerprint" == "$deployed_fingerprint" ]] || return 1
+  target_deployment_closure="$(backstage_deployment_closure_at_ref \
+    "$target_commit" "$target_fingerprint")" || return 1
+  deployed_deployment_closure="$(backstage_deployment_closure_at_ref \
+    "$deployed_commit" "$deployed_fingerprint")" || return 1
+  acquire_backstage_deployment_mutation_lock || return 1
+  if validate_parent_backstage_handoff_binding_locked; then
+    case "$backstage_deployment_authority_kind" in
+      DB_PROMOTION|APPLIED_MARKER)
+        if load_parent_backstage_authority_binding "$backstage_deployment_authority_kind" \
+            "$target_commit" "$backstage_deployment_attempt_id" \
+            "$backstage_deployment_pending_sha256" \
+            "$([[ "$backstage_deployment_authority_kind" == DB_PROMOTION ]] && printf '%s' "${postdeploy_candidate_id:-}")"; then
+          binding_status=0
+        else
+          binding_status=$?
+        fi
+        [[ "$binding_status" == 3 && "$PARENT_BACKSTAGE_AUTHORITY_BINDING_STATUS" == ARMED ]] \
+          || binding_status=79
+        ;;
+      REPAIR_TOKEN)
+        if parent_backstage_repair_authority_status "$target_commit" \
+            "$backstage_deployment_attempt_id" "$backstage_deployment_pending_sha256"; then
+          binding_status=0
+        else
+          binding_status=$?
+        fi
+        [[ "$binding_status" == 1 && "$PARENT_BACKSTAGE_REPAIR_AUTHORITY_EXISTS" == true \
+           && "$PARENT_BACKSTAGE_REPAIR_AUTHORITY_STATUS" == ARMED ]] || binding_status=79
+        ;;
+      *) binding_status=79 ;;
+    esac
+    if [[ "$binding_status" != 79 ]]; then
+      pending_json="$(read_secure_backstage_json_file_under_lock \
+        "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE")" || binding_status=79
+      identity_json="$(read_secure_backstage_json_file_under_lock \
+        "$BACKSTAGE_RUNTIME_IDENTITY_FILE")" || binding_status=79
+    fi
+    if [[ "$binding_status" != 79 ]]; then
+      if backstage_unchanged_serving_tuple_matches \
+          "$pending_json" "$identity_json" "$target_fingerprint" "$deployed_fingerprint" \
+          "$target_deployment_closure" "$deployed_deployment_closure" exact; then
+        tuple_mode=exact
+      elif backstage_unchanged_serving_tuple_matches \
+          "$pending_json" "$identity_json" "$target_fingerprint" "$deployed_fingerprint" \
+          "$target_deployment_closure" "$deployed_deployment_closure" tag-digest-migration; then
+        tuple_mode=tag-digest-migration
+      fi
+    fi
+    if [[ "$tuple_mode" == exact ]]; then
+      expected_image="$(jq -r '.candidateImage' <<<"$identity_json")"
+      expected_uid="$(jq -r '.deploymentUid' <<<"$identity_json")"
+      if BACKSTAGE_EXPECTED_PENDING_SHA256="$backstage_deployment_pending_sha256" \
+         BACKSTAGE_EXPECTED_ATTEMPT_ID="$backstage_deployment_attempt_id" \
+         BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD="$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD" \
+           run_target_backstage_deploy_helper verify-runtime-identity "$deployed_commit" \
+         && verify_backstage_candidate_pod_image_identity_under_lock "$expected_image" "$expected_uid" \
+         && validate_parent_backstage_handoff_binding_locked; then
+        proof_status=0
+      fi
+    elif [[ "$tuple_mode" == tag-digest-migration ]]; then
+      # The child owns the registry/pending/live proof: v4 baselineTagProof is
+      # integrity-bound to the pre-mutation tag resolution, while this exact
+      # inherited FD binds its candidate proof to the same attempt and bytes.
+      expected_image="$(jq -r '.candidate.image' <<<"$pending_json")"
+      expected_uid="$(jq -r '.baseline.uid' <<<"$pending_json")"
+      if BACKSTAGE_REQUIRE_BASELINE_TAG_DIGEST_PROOF=true \
+         BACKSTAGE_EXPECTED_PENDING_SHA256="$backstage_deployment_pending_sha256" \
+         BACKSTAGE_EXPECTED_ATTEMPT_ID="$backstage_deployment_attempt_id" \
+         BACKSTAGE_DEPLOYMENT_INHERITED_LOCK_FD="$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD" \
+           run_target_backstage_deploy_helper verify-pending-candidate "$target_commit" \
+         && verify_backstage_candidate_pod_image_identity_under_lock "$expected_image" "$expected_uid" \
+         && validate_parent_backstage_handoff_binding_locked; then
+        proof_status=0
+      fi
+    fi
+  fi
+  release_backstage_deployment_mutation_lock || proof_status=1
+  return "$proof_status"
 }
 
 derive_backstage_e2e_routes() {
-  local file routes="" full=false
+  local change_status file rename_path routes="" full=false unchanged_serving_candidate=false
   add_route() {
     [[ ",$routes," == *",$1,"* ]] || routes="${routes:+$routes,}$1"
   }
@@ -2617,8 +5464,15 @@ derive_backstage_e2e_routes() {
     add_route /identity-administration
     add_route /system-operations
   }
-  while IFS= read -r file; do
-    [[ -n "$file" ]] || continue
+  while IFS=$'\t' read -r change_status file rename_path; do
+    case "$change_status" in
+      A|M) ;;
+      # A deleted or renamed contract cannot be authenticated by the target
+      # narrow-route matrix. Preserve the complete visual and actor gates.
+      D|R*|C*) full=true; continue ;;
+      *) full=true; continue ;;
+    esac
+    [[ -n "$file" && -z "$rename_path" ]] || { full=true; continue; }
     case "$file" in
       platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/ScreenDesignCatalogPage.tsx)
         add_route /ccus-screen-designs ;;
@@ -2654,24 +5508,44 @@ derive_backstage_e2e_routes() {
       platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/SystemRecoveryControlPage.tsx|\
       platform/control-plane/backstage/packages/backend/src/plugins/resonanceRecovery.ts)
         add_route /system-recovery ;;
-      deploy/k8s/control-plane/backstage.yaml|\
+      .github/workflows/carbonet-push-deploy.yml|\
+      ops/scripts/carbonet-auto-deploy-failure-handler.sh|\
+      ops/scripts/plan-incremental-work.sh|\
+      ops/scripts/test-auto-deploy-failure-handler.sh|\
+      ops/scripts/test-plan-incremental-work.sh|\
+      ops/scripts/test-push-deploy-dispatch.sh|\
+      ops/scripts/select-catalog-contract-tests.sh|\
+      ops/scripts/test-select-catalog-contract-tests.sh|\
+      ops/tests/test-flyway-job-timeout-contract.sh)
+        ;;
       ops/scripts/auto-deploy-main.sh|\
       ops/scripts/resonance-backstage-deploy.sh|\
-      ops/scripts/resonance-backstage-runtime-fingerprint.sh|\
+      ops/scripts/test-backstage-fast-deploy-policy.sh|\
+      ops/scripts/test-backstage-deployment-rollback.sh|\
+      ops/scripts/resonance-backstage-visual-e2e.sh|\
       ops/scripts/resonance-backstage-full-e2e.sh|\
+      ops/systemd/resonance-backstage-full-e2e.service)
+        unchanged_serving_candidate=true ;;
+      deploy/k8s/control-plane/backstage.yaml|\
+      ops/scripts/resonance-backstage-runtime-fingerprint.sh|\
       ops/scripts/test-backstage-runtime-fingerprint.sh|\
       ops/scripts/test-backstage-runtime-purge-recovery-secret.sh|\
-      ops/scripts/test-backstage-fast-deploy-policy.sh|\
       ops/scripts/test-catalog-identity-parallel-deploy.sh|\
-      ops/systemd/resonance-backstage-full-e2e.service|\
       ops/systemd/resonance-backstage-full-e2e.timer|\
       platform/control-plane/backstage/app-config*.yaml|\
       platform/control-plane/backstage/packages/backend/Dockerfile)
         add_core_routes ;;
       *) full=true ;;
     esac
-  done < <(git diff --name-only "$deployed_commit" "$target_commit")
+  done < <(git diff --name-status --diff-filter=ACMRD "$deployed_commit" "$target_commit")
   [[ "$full" == true ]] && return 0
+  if [[ "$unchanged_serving_candidate" == true ]]; then
+    if prove_backstage_unchanged_serving_handoff >/dev/null 2>&1; then
+      add_route /system-operations
+    else
+      return 0
+    fi
+  fi
   printf '%s\n' "$routes"
 }
 
@@ -2683,6 +5557,7 @@ run_backstage_visual_e2e_if_required() {
   fi
   local e2e_scope="${RESONANCE_BACKSTAGE_E2E_SCOPE:-full}" display_scope
   local e2e_routes="${RESONANCE_BACKSTAGE_E2E_ROUTES:-${backstage_e2e_effective_routes:-}}"
+  validate_backstage_public_url || return 79
   [[ -n "$e2e_routes" ]] || e2e_routes="$(derive_backstage_e2e_routes)"
   display_scope="$e2e_scope"
   [[ -n "$e2e_routes" ]] && display_scope=impact
@@ -2691,6 +5566,8 @@ run_backstage_visual_e2e_if_required() {
   BACKSTAGE_E2E_SECRET_NAME="${BACKSTAGE_E2E_SECRET_NAME:-resonance-keycloak-integrated-admin}" \
   RESONANCE_BACKSTAGE_E2E_SCOPE="$e2e_scope" \
   RESONANCE_BACKSTAGE_E2E_ROUTES="$e2e_routes" \
+  RESONANCE_BACKSTAGE_URL="$BACKSTAGE_PUBLIC_URL" \
+  BACKSTAGE_PUBLIC_URL="$BACKSTAGE_PUBLIC_URL" \
   RESONANCE_E2E_SKIP_IDENTITY_PREFLIGHT=true \
   RESONANCE_ROOT="$ROOT_DIR" \
     bash ops/scripts/resonance-backstage-visual-e2e.sh
@@ -2724,12 +5601,15 @@ run_backstage_identity_e2e_if_required() {
      && ",${PLAN_TESTS:-}," != *",backstage:build-deploy,"* ]]; then
     return 0
   fi
+  validate_backstage_public_url || return 79
+  BACKSTAGE_BASE_URL="$BACKSTAGE_PUBLIC_URL" \
+  BACKSTAGE_PUBLIC_URL="$BACKSTAGE_PUBLIC_URL" \
   RESONANCE_ROOT="$ROOT_DIR" \
     bash ops/scripts/resonance-identity-admin-e2e.sh
 }
 
 backstage_actor_process_readiness_status() {
-  local backstage_url="${BACKSTAGE_URL:-https://backstage.172.16.1.232.nip.io}"
+  local backstage_url="${BACKSTAGE_PUBLIC_URL:-https://backstage.172.16.1.232.nip.io:32947}"
   local ca_cert="${RESONANCE_INTERNAL_CA:-$HOME/.config/resonance/backstage-tls/ca.crt}"
   local http_timeout_seconds="${RESONANCE_BACKSTAGE_SELF_HEAL_HTTP_TIMEOUT_SECONDS:-2}"
   local status
@@ -2889,6 +5769,7 @@ run_actor_process_role_e2e_if_required() {
       return 0
     fi
   fi
+  validate_backstage_public_url || return 79
   local parallel_log_dir="$ROOT_DIR/var/logs/actor-process-parallel-${target_commit:0:10}"
   local actor_pid delivery_pid browser_pid lifecycle_pid
   local actor_status delivery_status browser_status lifecycle_status
@@ -2900,9 +5781,11 @@ run_actor_process_role_e2e_if_required() {
   rm -rf "$parallel_log_dir"
   mkdir -p "$parallel_log_dir"
 
-  (RESONANCE_ROOT="$ROOT_DIR" bash ops/scripts/resonance-actor-process-role-e2e.sh) \
+  (BACKSTAGE_URL="$BACKSTAGE_PUBLIC_URL" BACKSTAGE_PUBLIC_URL="$BACKSTAGE_PUBLIC_URL" \
+    RESONANCE_ROOT="$ROOT_DIR" bash ops/scripts/resonance-actor-process-role-e2e.sh) \
     >"$parallel_log_dir/actor-role.log" 2>&1 & actor_pid=$!
-  (RESONANCE_ROOT="$ROOT_DIR" bash ops/scripts/resonance-project-delivery-e2e.sh) \
+  (BACKSTAGE_URL="$BACKSTAGE_PUBLIC_URL" BACKSTAGE_PUBLIC_URL="$BACKSTAGE_PUBLIC_URL" \
+    RESONANCE_ROOT="$ROOT_DIR" bash ops/scripts/resonance-project-delivery-e2e.sh) \
     >"$parallel_log_dir/project-delivery.log" 2>&1 & delivery_pid=$!
   run_serialized_carbonet_actor_process_e2e_job project-task-browser \
     env RESONANCE_ROOT="$ROOT_DIR" bash ops/scripts/resonance-project-task-browser-e2e.sh \
@@ -2963,32 +5846,11 @@ run_backstage_screen_space_e2e_if_required() {
 }
 
 sync_backstage_catalog_if_required() {
-  if [[ ",$PLAN_TESTS," != *",backstage:catalog-sync,"* \
-     || "$PLAN_BACKSTAGE_REQUIRED" == "true" ]]; then
-    return
+  if [[ ",${PLAN_TESTS:-}," == *",backstage:catalog-sync,"* ]]; then
+    echo '[auto-deploy] BLOCKED legacy raw Backstage catalog mutation: catalog changes require target-bound Backstage deployment' >&2
+    return 79
   fi
-  acquire_clean_backstage_deployment_mutation_lock || return 79
-  if ! kubectl -n resonance-ops create configmap resonance-backstage-catalog \
-    --from-file="$ROOT_DIR/platform/control-plane/catalog/organization.yaml" \
-    --from-file="$ROOT_DIR/platform/control-plane/catalog/systems.yaml" \
-    --from-file="$ROOT_DIR/platform/control-plane/catalog/components.yaml" \
-    --from-file="$ROOT_DIR/platform/control-plane/catalog/apis.yaml" \
-    --from-file="$ROOT_DIR/platform/control-plane/catalog/resources.yaml" \
-    --from-file="$ROOT_DIR/platform/control-plane/catalog/environments.yaml" \
-    --dry-run=client -o yaml | kubectl apply -f -; then
-    release_backstage_deployment_mutation_lock
-    return 1
-  fi
-  if ! kubectl -n resonance-ops rollout restart deployment/resonance-backstage; then
-    release_backstage_deployment_mutation_lock
-    return 1
-  fi
-  if ! kubectl -n resonance-ops rollout status deployment/resonance-backstage \
-    --timeout=180s; then
-    release_backstage_deployment_mutation_lock
-    return 1
-  fi
-  release_backstage_deployment_mutation_lock
+  return 0
 }
 
 # The standard build updates tracked generated bundles and Gradle state. They are
@@ -3729,7 +6591,8 @@ run_parallel_contract_tests() {
 
 run_operational_usage_ledger_static_contract_if_required() {
   [[ ",${PLAN_TESTS:-}," == *",runtime:operational-usage-ledger-e2e,"* ]] || return 0
-  bash ops/scripts/test-operational-usage-ledger-e2e-contract.sh "$ROOT_DIR"
+  run_sha_pinned_catalog_contract_prevalidation \
+    ops/scripts/test-operational-usage-ledger-e2e-contract.sh
   echo "[auto-deploy] operational usage ledger static contract PASS"
 }
 
@@ -4583,7 +7446,17 @@ recover_authoritative_postdeploy_marker_pending() {
   runtime_deployed_commit="$pending_target"
   deployed_commit="$reconciled_applied"
   postdeploy_recovered_commit="$reconciled_applied"
-  [[ "$pending_present" != true ]] || clear_postdeploy_marker_pending "$pending_target"
+  if [[ "$pending_present" == true ]]; then
+    clear_postdeploy_marker_pending "$pending_target" || {
+      write_postdeploy_promotion_quarantine 'MARKER_PENDING_CLEAR_FAILED' || true
+      return 79
+    }
+    [[ ! -e "$POSTDEPLOY_MARKER_PENDING_FILE" \
+       && ! -L "$POSTDEPLOY_MARKER_PENDING_FILE" ]] || {
+      write_postdeploy_promotion_quarantine 'MARKER_PENDING_CLEAR_UNVERIFIED' || true
+      return 79
+    }
+  fi
   echo "[auto-deploy] DB-authoritative marker recovery PASS runtime=$pending_target applied=$reconciled_applied reason=$pending_reason snapshot=disarmed"
   return 0
 }
@@ -5126,8 +7999,10 @@ run_operational_usage_ledger_current_runtime_e2e_if_required() {
 
 run_postdeploy_candidate_static_contract_if_required() {
   [[ ",${PLAN_TESTS:-}," == *",runtime:postdeploy-candidate-evidence,"* ]] || return 0
-  bash ops/tests/test-postdeploy-candidate-evidence-contract.sh "$ROOT_DIR"
-  bash ops/tests/test-durable-postdeploy-rollback-reconciler.sh "$ROOT_DIR"
+  run_sha_pinned_catalog_contract_prevalidation \
+    ops/tests/test-postdeploy-candidate-evidence-contract.sh
+  run_sha_pinned_catalog_contract_prevalidation \
+    ops/scripts/test-durable-postdeploy-rollback-reconciler.sh
   echo "[auto-deploy] postdeploy candidate static contract PASS"
 }
 
@@ -5274,6 +8149,19 @@ finalize_postdeploy_candidate_release() {
   fi
   run_operational_usage_ledger_live_e2e_if_required "$target_commit"
   verify_postdeploy_candidate_staged
+  if [[ "${backstage_deployment_handoff_active:-false}" == true ]]; then
+    [[ "${backstage_deployment_authority_kind:-}" == DB_PROMOTION \
+       && "${backstage_authority_finalize_lock_active:-false}" != true ]] || return 79
+    begin_parent_backstage_authority_finalize_lock || return $?
+    # This FD remains held across the DB acceptance point, its final live proof,
+    # derived markers and the immediately-following child finalize. A direct
+    # helper cannot replace attempt A with same-target B in that authority gap.
+    backstage_authority_finalize_lock_active=true
+    write_parent_backstage_authority_binding ARMED DB_PROMOTION "$target_commit" \
+      "$backstage_deployment_attempt_id" "$backstage_deployment_pending_sha256" \
+      "$postdeploy_candidate_id" || return 79
+    echo '[auto-deploy] Backstage attempt lock retained across DB authority and child finalize'
+  fi
   if CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
      CARBONET_K8S_NAMESPACE="$NAMESPACE" \
      CARBONET_K8S_DEPLOYMENT="$DEPLOYMENT" \
@@ -5291,6 +8179,11 @@ finalize_postdeploy_candidate_release() {
   case "$authority_status" in
     0)
       postdeploy_candidate_promoted=true
+      if [[ "${backstage_deployment_handoff_active:-false}" == true ]]; then
+        write_parent_backstage_authority_binding AUTHORIZED DB_PROMOTION "$target_commit" \
+          "$backstage_deployment_attempt_id" "$backstage_deployment_pending_sha256" \
+          "$postdeploy_candidate_id" || return 79
+      fi
       runtime_hash="$(current_runtime_identity_hash "$target_commit" | tr -d '[:space:]')"
       if [[ "$POSTDEPLOY_AUTHORITY_OUTCOME" == PROMOTED_RECONCILED ]]; then
         attempt_terminal_status=ABORTED
@@ -5366,7 +8259,7 @@ finalize_postdeploy_candidate_release() {
           return 75
         fi
       fi
-      if ! write_applied_deploy_state "$target_commit"; then
+      if ! write_applied_deploy_state_with_backstage_binding "$target_commit"; then
         write_postdeploy_marker_pending 'DB_PROMOTED_APPLIED_MARKER_PENDING' \
           || write_postdeploy_promotion_quarantine 'MARKER_PENDING_STATE_WRITE_FAILED' || true
         echo '[auto-deploy] MARKER_PENDING runtime promotion is current; retry will reconcile applied marker' >&2
@@ -5378,7 +8271,13 @@ finalize_postdeploy_candidate_release() {
         return 75
       }
       runtime_deployed_commit="$target_commit"
-      clear_postdeploy_marker_pending || true
+      clear_postdeploy_marker_pending || {
+        write_postdeploy_promotion_quarantine 'PROMOTED_MARKER_PENDING_CLEAR_FAILED' || true
+        echo '[auto-deploy] FAIL promoted marker-pending evidence could not be cleared' >&2
+        return 79
+      }
+      [[ ! -e "$POSTDEPLOY_MARKER_PENDING_FILE" \
+         && ! -L "$POSTDEPLOY_MARKER_PENDING_FILE" ]] || return 79
       ;;
     1)
       postdeploy_candidate_promoted=false
@@ -5477,6 +8376,15 @@ finalize_postdeploy_candidate_release_with_composite_gate_cleanup() {
 
 # Recovery executes immediately after the required functions and DB leader are
 # available, before catalog branching, pg_dump, checkpoint work or builds.
+# Reconcile the control-plane handoff before restoring the runtime snapshot.
+# This ordering remains safe across a second SIGKILL during recovery: a
+# non-promoted release can never expose candidate Backstage over baseline
+# runtime, while a promoted release can never be rolled back from DB authority.
+backstage_startup_recovery_hold=true
+reconcile_pending_backstage_deployment_before_runtime_recovery || exit $?
+backstage_startup_recovery_hold=false
+apply_backstage_runtime_identity_repair_plan_if_required || exit $?
+record_deploy_phase "backstage_pending_pre_runtime_reconcile"
 persistent_attempt_recovery_status=1
 if recover_persistent_postdeploy_attempt; then
   persistent_attempt_recovery_status=0
@@ -5535,6 +8443,8 @@ fi
 case "$postdeploy_pending_recovery_status" in
   0)
     record_deploy_phase "postdeploy_marker_reconcile"
+    reconcile_pending_backstage_deployment_after_authority_recovery || exit $?
+    record_deploy_phase "backstage_pending_reconcile"
     recovered_attempt_json=""
     recovered_attempt_candidate=""
     recovered_attempt_source="$postdeploy_recovered_commit"
@@ -5560,7 +8470,12 @@ case "$postdeploy_pending_recovery_status" in
       write_postdeploy_promotion_quarantine 'RECOVERED_PROMOTED_JOURNAL_ARCHIVE_FAILED' || true
       exit 79
     }
-    if [[ "$postdeploy_recovered_commit" == "$target_commit" ]]; then
+    if [[ "$postdeploy_recovered_commit" == "$target_commit" \
+       && "$no_change_backstage_repair_required" != true ]]; then
+      acquire_clean_backstage_deployment_mutation_lock || exit 79
+      terminal_deploy_recovery_residue_absent || exit 79
+      verify_backstage_runtime_identity_for_ref_under_lock "$target_commit" || exit $?
+      verify_operational_usage_ledger_current_runtime_identity "$target_commit" proof-only || exit 79
       record_deploy_performance recovery || echo '[auto-deploy] WARN recovery performance telemetry failed' >&2
       rm -f -- "$DEPLOY_PHASE_FILE" "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}" || true
       if [[ "$early_composite_gate_status" == PREPARED ]]; then
@@ -5581,13 +8496,44 @@ case "$postdeploy_pending_recovery_status" in
     # markers. Reconcile A, then re-plan A..B so a helper-only B remains build0.
     eval "$(bash "$PLAN_SCRIPT" "$postdeploy_recovered_commit" "$target_commit" --format env)"
     PLAN_BACKSTAGE_REQUIRED="${PLAN_BACKSTAGE_REQUIRED:-false}"
+    apply_no_change_backstage_repair_plan
     record_deploy_phase "incremental_replan_after_marker_reconcile"
     echo "[auto-deploy] recovered promoted ancestor=$postdeploy_recovered_commit; re-planned target=$target_commit runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED"
     ;;
   1)
+    reconcile_pending_backstage_deployment_after_authority_recovery || exit $?
     if [[ "$no_change_candidate" == true ]]; then
-      if [[ "$early_composite_gate_status" == PREPARED \
-         && "$early_composite_gate_candidate" =~ ^[A-Za-z0-9._:-]{12,160}$ ]] \
+      if [[ "$backstage_pending_reconciled_before_runtime" == true \
+         && "$backstage_pending_reconciled_to_target" == true ]] \
+         && acquire_clean_backstage_deployment_mutation_lock; then
+        if [[ ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+           && ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
+           && ( "$early_composite_gate_status" == ACTIVE || "$early_composite_gate_status" == ABSENT ) \
+           && ! -e "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" && ! -L "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" \
+           && ! -e "$POSTDEPLOY_MARKER_PENDING_FILE" && ! -L "$POSTDEPLOY_MARKER_PENDING_FILE" \
+           && ! -e "$RUNTIME_LEDGER_QUARANTINE_FILE" && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+           && ! -e "$FULL_SCREEN_GATE_STATE_DIR/active.env" && ! -L "$FULL_SCREEN_GATE_STATE_DIR/active.env" \
+           && -f "$BACKSTAGE_DEPLOY_STATE_FILE" && ! -L "$BACKSTAGE_DEPLOY_STATE_FILE" \
+           && "$(tr -d '[:space:]' <"$BACKSTAGE_DEPLOY_STATE_FILE" 2>/dev/null || true)" == "$target_commit" ]] \
+           && terminal_deploy_recovery_residue_absent \
+           && verify_operational_usage_ledger_current_runtime_identity "$runtime_deployed_commit" proof-only \
+           && verify_backstage_runtime_identity_for_ref_under_lock "$target_commit"; then
+          record_deploy_performance recovery || true
+          rm -f -- "$DEPLOY_PHASE_FILE" "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}" || true
+          echo "[auto-deploy] no-change Backstage authority finalized before runtime recovery: $target_commit"
+          exit 0
+        fi
+        release_backstage_deployment_mutation_lock
+      fi
+      # PREPARED activation is a legacy runtime-only recovery path. Once this
+      # invocation has observed any Backstage pending state, only the exact
+      # target-authority proof above may return success; a v1 or non-promoted
+      # baseline rollback must not be relabeled as target convergence.
+      if no_change_prepared_composite_activation_eligible \
+         && acquire_clean_backstage_deployment_mutation_lock \
+         && terminal_deploy_recovery_residue_absent \
+         && verify_operational_usage_ledger_current_runtime_identity "$target_commit" proof-only \
+         && verify_backstage_runtime_identity_for_ref_under_lock "$target_commit" \
          && CARBONET_POSTDEPLOY_CANDIDATE_ID="$early_composite_gate_candidate" \
               RESONANCE_ROOT="$ROOT_DIR" \
               bash "$ROOT_DIR/ops/scripts/prepare-composite-autocompletion-postdeploy.sh" \
@@ -5606,10 +8552,21 @@ case "$postdeploy_pending_recovery_status" in
 esac
 
 if [[ "${CARBONET_RECOVERY_ONLY:-false}" == true ]]; then
-  [[ ! -e "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" && ! -L "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" \
-     && ! -e "$POSTDEPLOY_MARKER_PENDING_FILE" && ! -L "$POSTDEPLOY_MARKER_PENDING_FILE" \
-     && ! -e "$RUNTIME_LEDGER_QUARANTINE_FILE" && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" ]] || {
+  acquire_clean_backstage_deployment_mutation_lock || exit 79
+  retire_recovery_only_prepared_checkpoint_if_safe || {
+    write_postdeploy_promotion_quarantine 'RECOVERY_ONLY_PREPARED_CHECKPOINT_UNPROVEN' || true
+    exit 79
+  }
+  terminal_deploy_recovery_residue_absent || {
     write_postdeploy_promotion_quarantine 'RECOVERY_ONLY_OBLIGATION_REMAINS' || true
+    exit 79
+  }
+  verify_operational_usage_ledger_current_runtime_identity "$deployed_commit" proof-only || {
+    write_postdeploy_promotion_quarantine 'RECOVERY_ONLY_RUNTIME_LEDGER_IDENTITY_UNPROVEN' || true
+    exit 79
+  }
+  verify_backstage_runtime_identity_for_ref_under_lock "$deployed_commit" || {
+    write_postdeploy_promotion_quarantine 'RECOVERY_ONLY_BACKSTAGE_IDENTITY_UNPROVEN' || true
     exit 79
   }
   record_deploy_performance recovery || true
@@ -5630,7 +8587,7 @@ fi
 # Documentation, design metadata, catalog and automation-only changes do not
 # alter the running application. Fast-forward and refresh the searchable source
 # catalog without an unnecessary DB dump, JVM build, image build or rollout.
-if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
+if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]] && ! automation_only_fast_path_eligible; then
   git merge --ff-only "$target_commit"
   run_postdeploy_candidate_static_contract_if_required
   run_operational_usage_ledger_static_contract_if_required
@@ -5673,6 +8630,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     printf '%s\n' "${deploy_changed_paths[@]}" |
       bash ops/scripts/select-catalog-contract-tests.sh --paths-stdin
   )
+  filter_prevalidated_backstage_fast_policy_contract_test || exit $?
+  filter_sha_pinned_prevalidated_catalog_contract_tests || exit $?
   if (( ${#catalog_contract_tests[@]} > 0 )); then
     run_parallel_contract_tests "${catalog_contract_tests[@]}"
   else
@@ -5890,7 +8849,11 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   wait_backstage_visual_e2e
   record_deploy_phase "backstage_visual_e2e"
   run_operational_usage_ledger_current_runtime_e2e_if_required "$runtime_deployed_commit"
-  write_applied_deploy_state "$target_commit"
+  write_applied_deploy_state_with_backstage_binding "$target_commit" || exit 79
+  finalize_backstage_deployment_after_release_success || exit 79
+  prove_backstage_terminal_success "$target_commit" || exit $?
+  verify_operational_usage_ledger_current_runtime_identity "$runtime_deployed_commit" proof-only || exit 79
+  record_deploy_phase "backstage_global_finalize"
   if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]]; then
     record_deploy_performance backstage || echo '[auto-deploy] WARN backstage performance telemetry failed' >&2
   else
@@ -5905,20 +8868,7 @@ fi
 # readiness, asset, rollback and migration proof still match. Any mismatch is
 # fail-closed: replace the checkpoint with PREPARED and execute the normal path.
 runtime_candidate_checkpoint_eligible=true
-if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
-   && "$PLAN_BACKEND_REQUIRED" != "true" \
-   && "$PLAN_DATABASE_REQUIRED" != "true" ]]; then
-  runtime_candidate_checkpoint_eligible=false
-elif [[ "$PLAN_RUNTIME_REQUIRED" == "true" \
-     && "$PLAN_FRONTEND_REQUIRED" != "true" \
-     && "$PLAN_BACKEND_REQUIRED" != "true" \
-     && "$PLAN_DATABASE_REQUIRED" != "true" \
-     && ",$PLAN_TESTS," == *",runtime:startup-profile,"* ]]; then
-  runtime_candidate_checkpoint_eligible=false
-elif [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
-     && "$PLAN_BACKEND_REQUIRED" != "true" \
-     && "$PLAN_DATABASE_REQUIRED" != "true" \
-     && "$PLAN_INFRASTRUCTURE_REQUIRED" == "true" ]]; then
+if ! runtime_candidate_checkpoint_plan_eligible; then
   runtime_candidate_checkpoint_eligible=false
 fi
 
@@ -6225,9 +9175,6 @@ if [[ "$backup_required" == "true" ]]; then
     echo "[auto-deploy] refusing deployment: PostgreSQL role backup is invalid" >&2
     exit 17
   fi
-  publish_private_backup_partial "$roles_backup_partial_file" "$roles_backup_file" || {
-    echo "[auto-deploy] refusing deployment: roles backup atomic publish failed" >&2; exit 17; }
-  roles_backup_partial_file=""
   backup_partial_file="$(arm_private_backup_partial "$backup_file")" || {
     echo "[auto-deploy] refusing unsafe database backup partial path" >&2; exit 11; }
   echo "[auto-deploy] backing up database to $backup_file"
@@ -6251,6 +9198,12 @@ if [[ "$backup_required" == "true" ]]; then
   publish_private_backup_partial "$backup_partial_file" "$backup_file" || {
     echo "[auto-deploy] refusing deployment: database backup atomic publish failed" >&2; exit 11; }
   backup_partial_file=""
+  # Do not expose a roles-only final when the long database stream is stopped.
+  # Publish the already verified roles payload only after the paired database
+  # backup is durable; cleanup otherwise removes both invocation-bound partials.
+  publish_private_backup_partial "$roles_backup_partial_file" "$roles_backup_file" || {
+    echo "[auto-deploy] refusing deployment: roles backup atomic publish failed" >&2; exit 17; }
+  roles_backup_partial_file=""
   fi
   umask "$backup_previous_umask"
 else
@@ -6312,9 +9265,7 @@ fi
 # closure and the HTTP response before the deployment marker advances. This
 # avoids Java compilation, image creation and a rolling restart while keeping
 # rollback material and stale-chunk protection.
-if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
-   && "$PLAN_BACKEND_REQUIRED" != "true" \
-   && "$PLAN_DATABASE_REQUIRED" != "true" ]]; then
+if frontend_only_fast_path_eligible; then
   frontend_smoke_pattern="$(node \
     projects/carbonet-frontend/source/scripts/derive-frontend-smoke-route-pattern.mjs \
     "$deployed_commit" "$target_commit")"
@@ -6357,6 +9308,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
     'select(.sourceCommit==$target) | .rollback.podTemplateSha256 // empty')" || exit 79
   [[ "$frontend_overlay_template_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 79
   finalize_postdeploy_candidate_release "$frontend_overlay_template_sha256"
+  prove_backstage_terminal_success "$target_commit" || exit $?
   record_deploy_performance frontend || echo '[auto-deploy] WARN frontend performance telemetry failed' >&2
   echo "[auto-deploy] frontend overlay deployed without Java/image build or rollout: $target_commit"
   exit 0
@@ -6365,11 +9317,7 @@ fi
 # A measured JVM profile changes only the Deployment environment. Promote it
 # through a guarded rolling restart and the complete runtime validation suite;
 # the promoter restores the previous profile automatically on any failure.
-if [[ "$PLAN_RUNTIME_REQUIRED" == "true" \
-   && "$PLAN_FRONTEND_REQUIRED" != "true" \
-   && "$PLAN_BACKEND_REQUIRED" != "true" \
-   && "$PLAN_DATABASE_REQUIRED" != "true" \
-   && ",$PLAN_TESTS," == *",runtime:startup-profile,"* ]]; then
+if startup_profile_fast_path_eligible; then
   # JAVA_OPTS is a Deployment PodTemplate mutation. Arm the durable candidate,
   # remove the old runtime singleton with count=0 proof, and bind the candidate
   # source before the promoter changes the live template. Cleanup then owns an
@@ -6384,6 +9332,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" == "true" \
   record_deploy_phase "runtime_profile_and_verify"
   reconcile_composite_autocompletion_postdeploy
   finalize_postdeploy_candidate_release_with_composite_gate_cleanup
+  prove_backstage_terminal_success "$target_commit" || exit $?
   record_deploy_performance runtime || echo '[auto-deploy] WARN runtime-profile performance telemetry failed' >&2
   echo "[auto-deploy] JVM profile promoted without Java/frontend rebuild: $target_commit"
   exit 0
@@ -6392,10 +9341,7 @@ fi
 # Test/deployment automation changes do not alter the running application.
 # Validate their syntax and planning contract, then advance the marker without
 # rebuilding React, Java, or an immutable image.
-if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
-   && "$PLAN_BACKEND_REQUIRED" != "true" \
-   && "$PLAN_DATABASE_REQUIRED" != "true" \
-   && "$PLAN_INFRASTRUCTURE_REQUIRED" == "true" ]]; then
+if automation_only_fast_path_eligible; then
   bash -n ops/scripts/auto-deploy-main.sh
   bash -n ops/scripts/auto-deploy-main-launcher.sh
   bash -n ops/scripts/plan-incremental-work.sh
@@ -6433,7 +9379,9 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
       bash ops/scripts/resonance-full-screen-deploy-gate.sh finalize-success
   fi
   run_operational_usage_ledger_current_runtime_e2e_if_required "$runtime_deployed_commit"
-  write_applied_deploy_state "$target_commit"
+  verify_operational_usage_ledger_current_runtime_identity "$runtime_deployed_commit" proof-only || exit 79
+  write_applied_deploy_state "$target_commit" || exit 79
+  prove_backstage_terminal_success "$target_commit" || exit $?
   record_deploy_performance automation || echo '[auto-deploy] WARN automation performance telemetry failed' >&2
   echo "[auto-deploy] automation-only change validated without frontend/backend build: $target_commit"
   exit 0
@@ -6608,7 +9556,10 @@ sync_react_asset_prune_worker_if_required
 bash ops/scripts/normalize-deploy-generated-assets.sh "$ROOT_DIR"
 record_deploy_phase "postdeploy_validation"
 sudo docker image prune -a -f >/dev/null || true
-reconcile_composite_autocompletion_postdeploy
-finalize_postdeploy_candidate_release_with_composite_gate_cleanup
+  reconcile_composite_autocompletion_postdeploy
+  finalize_postdeploy_candidate_release_with_composite_gate_cleanup
+  finalize_backstage_deployment_after_release_success || exit 79
+  prove_backstage_terminal_success "$target_commit" || exit $?
+  record_deploy_phase "backstage_global_finalize"
 record_deploy_performance runtime || echo '[auto-deploy] WARN runtime performance telemetry failed' >&2
 echo "[auto-deploy] deployed $target_commit after one-shot Flyway verification; runtime migration disabled"

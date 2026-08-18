@@ -13,6 +13,10 @@ grep -q 'carbonet-main-success.commit' "$workflow"
 grep -q 'actuator/health' "$workflow"
 grep -q 'merge-base --is-ancestor' "$workflow"
 grep -q 'DEPLOY_EVENT_GATE_PASS' "$workflow"
+workflow_timeout="$(awk '$1 == "timeout-minutes:" { print $2 }' "$workflow")"
+[[ "$workflow_timeout" =~ ^[0-9]+$ ]]
+[[ "$workflow_timeout" == 45 ]]
+(( workflow_timeout >= 40 && workflow_timeout <= 60 ))
 if grep -q 'sleep 1' "$workflow"; then
   echo "push workflow must not use polling sleeps" >&2
   exit 1

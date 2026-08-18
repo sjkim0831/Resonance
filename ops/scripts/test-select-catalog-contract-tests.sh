@@ -13,6 +13,27 @@ for selector_path in \
   [[ "${#selector_self[@]}" == 35 ]]
 done
 
+for failure_handler_contract_path in \
+    ops/scripts/carbonet-auto-deploy-failure-handler.sh \
+    ops/scripts/test-auto-deploy-failure-handler.sh; do
+  mapfile -t failure_handler_contract_tests < <(
+    printf '%s\n' "$failure_handler_contract_path" | bash "$selector" --paths-stdin
+  )
+  [[ "${#failure_handler_contract_tests[@]}" == 2 ]]
+  [[ "${failure_handler_contract_tests[0]}" == ops/tests/test-flyway-job-timeout-contract.sh ]]
+  [[ "${failure_handler_contract_tests[1]}" == ops/scripts/test-auto-deploy-failure-handler.sh ]]
+done
+
+for push_dispatch_contract_path in \
+    .github/workflows/carbonet-push-deploy.yml \
+    ops/scripts/test-push-deploy-dispatch.sh; do
+  mapfile -t push_dispatch_contract_tests < <(
+    printf '%s\n' "$push_dispatch_contract_path" | bash "$selector" --paths-stdin
+  )
+  [[ "${#push_dispatch_contract_tests[@]}" == 1 ]]
+  [[ "${push_dispatch_contract_tests[0]}" == ops/scripts/test-push-deploy-dispatch.sh ]]
+done
+
 for backstage_contract_path in \
     ops/scripts/resonance-backstage-deploy.sh \
     ops/scripts/test-backstage-runtime-fingerprint.sh \

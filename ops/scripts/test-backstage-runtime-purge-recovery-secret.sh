@@ -15,6 +15,8 @@ grep -Fq 'test-backstage-runtime-purge-recovery-secret.sh" "$ROOT"' "$FAST_POLIC
 
 function_source="$(sed -n '/^ensure_runtime_purge_recovery_secret() {/,/^}$/p' "$DEPLOY")"
 [[ -n "$function_source" ]]
+secret_apply_source="$(sed -n '/^apply_backstage_secret_from_values() {/,/^}$/p' "$DEPLOY")"
+[[ -n "$secret_apply_source" ]]
 grep -Fq 'bootstrap_secret_name="resonance-keycloak-integrated-admin"' \
   <<<"$function_source"
 grep -Fq '{.data.USERNAME}' <<<"$function_source"
@@ -22,6 +24,7 @@ if grep -Fq 'PASSWORD' <<<"$function_source"; then
   echo '[backstage-runtime-purge-secret] recovery bootstrap must never read a password key' >&2
   exit 1
 fi
+eval "$secret_apply_source"
 eval "$function_source"
 
 fixture="$(mktemp -d)"
@@ -32,6 +35,7 @@ password_access="$fixture/password-access"
 stdout_log="$fixture/stdout.log"
 stderr_log="$fixture/stderr.log"
 NAMESPACE=fixture-ops
+export NAMESPACE
 
 DEDICATED_EXISTS=false
 DEDICATED_ACCOUNT=''
@@ -115,7 +119,19 @@ kubectl() {
       ;;
     apply)
       [[ "${1:-}" == -f && "${2:-}" == - ]]
-      cat >/dev/null
+      node -e '
+        const chunks = [];
+        process.stdin.on("data", chunk => chunks.push(chunk));
+        process.stdin.on("end", () => {
+          const object = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+          const data = object && object.data;
+          if (object?.kind !== "Secret" || object?.metadata?.name !== "resonance-runtime-purge-recovery" ||
+              object?.metadata?.namespace !== process.env.NAMESPACE || !data) process.exit(2);
+          const account = Buffer.from(data.RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID || "", "base64").toString("utf8");
+          const actor = Buffer.from(data.RESONANCE_RUNTIME_PURGE_RECOVERY_ACTOR_REF || "", "base64").toString("utf8");
+          process.stdout.write(`${account}\t${actor}\n`);
+        });
+      ' >"$created"
       printf 'mutation\tapply\n' >>"$record"
       ;;
     *) return 2 ;;
@@ -152,7 +168,7 @@ assert_success() {
     cat "$stdout_log" "$stderr_log" >&2
     exit 1
   fi
-  [[ "$(grep -c $'^mutation\t' "$record" || true)" == 2 ]] || {
+  [[ "$(grep -c $'^mutation\t' "$record" || true)" == 1 ]] || {
     echo "[backstage-runtime-purge-secret] unexpected mutation count: $label" >&2
     exit 1
   }

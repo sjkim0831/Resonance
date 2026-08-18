@@ -2,7 +2,11 @@
 set -Eeuo pipefail
 
 NAMESPACE="${RESONANCE_NAMESPACE:-resonance-ops}"
-BACKSTAGE_URL="${RESONANCE_BACKSTAGE_URL:-https://backstage.172.16.1.232.nip.io}"
+BACKSTAGE_URL="${RESONANCE_BACKSTAGE_URL:-https://backstage.172.16.1.232.nip.io:32947}"
+[[ "$BACKSTAGE_URL" == "https://backstage.172.16.1.232.nip.io:32947" ]] || {
+  echo '[backstage-e2e] refusing non-public Backstage URL; expected the HTTPS 32947 serving path' >&2
+  exit 2
+}
 USERNAME="${BACKSTAGE_E2E_USERNAME:-resonance-requester}"
 SECRET_NAME="${BACKSTAGE_E2E_SECRET_NAME:-resonance-keycloak-e2e-users}"
 CA_DIR="${RESONANCE_CA_DIR:-/opt/resonance-data/pki/resonance-internal-ca}"

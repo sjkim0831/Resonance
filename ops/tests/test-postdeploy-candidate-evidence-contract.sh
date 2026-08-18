@@ -1264,7 +1264,7 @@ esac
     assert "finalize-success" in after_promoter and "|| echo" in after_promoter
     assert '"$RUNTIME_DEPLOY_STATE_FILE"' in finalizer
     assert "postdeploy_authoritative_promotion_status" in after_promoter
-    assert 'write_applied_deploy_state "$target_commit"' in after_promoter
+    assert 'write_applied_deploy_state_with_backstage_binding "$target_commit"' in after_promoter
     authority = after_promoter.index("postdeploy_authoritative_promotion_status")
     snapshot_disarm = after_promoter.index("finalize-success", authority)
     runtime_marker_check = after_promoter.index('runtime_marker="$(tr -d', authority)
@@ -1315,13 +1315,17 @@ esac
     assert deploy.count("CARBONET_SCREEN_CONTRACT_PREVIEW_ONLY=1 run_screen_contract_runtime_save_gate_if_required") == 2
     # Three normal completion paths plus durable aborted-recovery and
     # same-source reconciliation each converge the monotonic applied marker.
-    assert deploy.count('write_applied_deploy_state "$target_commit"') == 5
+    assert deploy.count('write_applied_deploy_state "$target_commit"') == 3
+    assert deploy.count('write_applied_deploy_state_with_backstage_binding "$target_commit"') == 2
     assert '"${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate' in deploy[deploy.index("run_operational_usage_ledger_live_e2e_if_required()"):
                                                                                    deploy.index("verify_operational_usage_ledger_current_runtime_identity()")]
     cleanup_slice = deploy[deploy.index("cleanup_deploy()"):
                            deploy.index("run_runtime_candidate_checkpoint()")]
     assert "postdeploy_candidate_initialized=true" in deploy
-    assert "reconcile_postdeploy_candidate_after_failure" in cleanup_slice
+    assert "recover_runtime_after_failure_if_safe" in cleanup_slice
+    recovery_helper = deploy[deploy.index("recover_runtime_after_failure_if_safe() {"):
+                             deploy.index("POSTDEPLOY_LEGACY_RETIRE_DIR=")]
+    assert "reconcile_postdeploy_candidate_after_failure" in recovery_helper
     assert 'flock -n 9' in deploy and deploy.index('flock -n 9') < deploy.index('postdeploy_candidate_id="postdeploy:')
     assert 'flock -w "${CARBONET_RECOVERY_LOCK_WAIT_SECONDS:-60}"' in deploy
     assert 'CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY="$([[ "$PLAN_DATABASE_REQUIRED" == true || "$postdeploy_db_attempt_staged" != true ]]' in deploy
@@ -1403,7 +1407,10 @@ ordinary_authority = recover_persistent_body.index(
     'postdeploy_authoritative_promotion_status "$source" "$candidate"', special_recovery)
 snapshot_after_recovery = recover_persistent_body.index("finalize-success", ordinary_authority)
 assert special_recovery < ordinary_authority < snapshot_after_recovery
-assert "reconcile_postdeploy_candidate_after_failure" in cleanup_body
+failure_recovery_body = deploy[deploy.index("recover_runtime_after_failure_if_safe() {"):
+                               deploy.index("POSTDEPLOY_LEGACY_RETIRE_DIR=")]
+assert "recover_runtime_after_failure_if_safe" in cleanup_body
+assert "reconcile_postdeploy_candidate_after_failure" in failure_recovery_body
 assert "LEDGER_INVALIDATION_UNVERIFIED" in recovery_body
 assert "PROMOTION_DB_CHECK_UNAVAILABLE" in recovery_body
 assert "DB-authoritative promotion confirmed" in recovery_body

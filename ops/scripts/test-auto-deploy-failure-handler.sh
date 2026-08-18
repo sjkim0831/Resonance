@@ -284,6 +284,12 @@ SH
       --argjson allowed "$expected_retry_allowed" --argjson attempted "$expected_retry_attempted" \
       '.category==$category and .status==$status and .retryAllowed==$allowed and .retryAttempted==$attempted' \
       "$case_dir/state/deploy-status.json" >/dev/null
+    [[ -s "$case_dir/state/failure-evidence/classifier-run.log" ]]
+    if grep -Eqi 'fixture-(password|token|secret|quote|multiline)|postgres(ql)?://[^[:space:]@]+:[^[:space:]@]+@|sudo\[[0-9]+\].*COMMAND=' \
+        "$case_dir/state/failure-evidence/classifier-run.log"; then
+      echo "failure evidence leaked a secret-bearing value case=$name" >&2
+      exit 1
+    fi
     schedule_count=0
     [[ ! -e "$case_dir/systemd-run.record" ]] || schedule_count="$(wc -l <"$case_dir/systemd-run.record" | tr -d ' ')"
     [[ "$schedule_count" == "$expected_schedule_count" ]]
@@ -292,7 +298,7 @@ SH
   }
 
   run_classifier_mutant network_503 1 \
-    'readiness returned 503 while probing the candidate' \
+    $'sudo[4242]: operator : COMMAND=/usr/bin/psql postgresql://deploy:fixture-password@db/app\nAuthorization: Bearer fixture-token\nCookie: session=fixture-secret\nDB_PASSWORD=fixture-password\nreadiness returned 503 while probing the candidate' \
     NETWORK_TRANSIENT RETRY_SCHEDULED true true 1
   run_classifier_mutant backstage_secret_lookup_transient 1 \
     $'[backstage] runtime purge recovery secret lookup failed\nUnable to connect to the server: i/o timeout' \
@@ -324,6 +330,9 @@ SH
   run_classifier_mutant backstage_frontend_oidc_schema_missing 1 \
     $'[backstage] bundled OIDC frontend schema artifact is missing or invalid\ntimeout while collecting unrelated diagnostics' \
     BACKSTAGE_CONFIGURATION_DETERMINISTIC FAILED false false 0
+  run_classifier_mutant backstage_visual_e2e_timeout 26 \
+    $'[auto-deploy] refusing success marker: concurrent Backstage visual E2E failed\nError: expect(locator).toBeVisible() failed\nTimeout 30000ms exceeded while waiting for locator' \
+    E2E FAILED false false 0
   run_classifier_mutant runtime_identity_mismatch 1 \
     $'[prebuild] timed out waiting for sibling test\n[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=TEMPLATE_MISMATCH' \
     RUNTIME_IDENTITY_DETERMINISTIC FAILED false false 0
@@ -331,10 +340,19 @@ SH
     '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=READINESS_TRANSIENT' \
     NETWORK_TRANSIENT RETRY_SCHEDULED true true 1
   run_classifier_mutant flyway_p0001 79 \
-    $'error: timed out waiting for condition\nFLYWAY_JOB_FAILED\nSQL State  : P0001\nWORK_EXECUTION stage B precondition failed\nChanges successfully rolled back' \
+    $'error: timed out waiting for condition\nFLYWAY_JOB_FAILED\nERROR: role update failed\nLINE 1: ALTER ROLE backstage PASSWORD \'fixture-quote\'fixture-secret\';\nLINE 2: fixture-multiline-prefix\nSQL State  : P0001 fixture-secret-marker-spoof\nfixture-multiline-suffix-after-spoof\';\n                                      ^\nSQL State  : P0001\nWORK_EXECUTION stage B precondition failed\nChanges successfully rolled back' \
     DATABASE_DETERMINISTIC FAILED false false 0
+  run_classifier_mutant backstage_database_role_password_failure 79 \
+    '[backstage] DATABASE_ROLE_PASSWORD_UPDATE_FAILED' \
+    DATABASE_DETERMINISTIC FAILED false false 0
+  run_classifier_mutant sql_password_marker_spoof 1 \
+    $'neutral database client diagnostic\nLINE 1: ALTER ROLE backstage PASSWORD \'fixture-secret\';\nSQL State  : P0001\nFLYWAY_JOB_FAILED\nfixture-secret-after-forged-marker' \
+    UNKNOWN FAILED false false 0
   run_classifier_mutant explicit_term_79 79 \
     $'explicit TERM79 requested after operator stop\ntimed out waiting for condition' \
+    DEPLOY_TERMINATED FAILED false false 0
+  run_classifier_mutant operator_term_143 143 \
+    $'carbonet-auto-deploy.service: Main process exited, code=exited, status=143/n/a\ntimed out waiting for condition' \
     DEPLOY_TERMINATED FAILED false false 0
 
   hold_case_dir="$classifier_fixture/flyway_cleanup_hold"
@@ -353,6 +371,24 @@ SH
   chmod 0600 "$hold_case_dir/state/flyway-cleanup-hold.json" \
     "$hold_case_dir/state/carbonet-postdeploy-attempt.json"
   printf '%s\n' 'RECOVERY_HOLD cleanup remains unproven' >"$hold_case_dir/journal.log"
+  # An explicit TERM must outrank even a valid cleanup hold: stopping a unit
+  # is never authorization to wake it again automatically.
+  env \
+    FAKE_EXEC_MAIN_STATUS=143 \
+    FAKE_JOURNAL_SOURCE="$hold_case_dir/journal.log" \
+    FAKE_TARGET_COMMIT="$classifier_target" \
+    FAKE_SYSTEMD_RUN_RECORD="$hold_case_dir/systemd-run.record" \
+    PATH="$classifier_fixture/bin:$PATH" \
+    CARBONET_DEPLOY_OWNER="$(id -un)" \
+    CARBONET_DEPLOY_ROOT="$root" \
+    CARBONET_DEPLOY_STATE_DIR="$hold_case_dir/state" \
+    CARBONET_DEPLOY_NOTIFY_SCRIPT="$classifier_fixture/notify.sh" \
+      bash "$handler" >/dev/null
+  jq -e '.category=="DEPLOY_TERMINATED" and .status=="FAILED"
+    and .retryAllowed==false and .retryAttempted==false' \
+    "$hold_case_dir/state/deploy-status.json" >/dev/null
+  [[ ! -e "$hold_case_dir/systemd-run.record" ]]
+  [[ ! -e "$hold_case_dir/state/retry-${hold_target}.attempted" ]]
   # Git is a 30-second hang mutant. A valid hold binds sourceCommit from the
   # single validated JSON read, so remote lookup stays at zero and recovery is
   # still scheduled inside this 4-second outer regression cap.
@@ -750,10 +786,10 @@ terminated_line="$(grep -n 'category=DEPLOY_TERMINATED' "$handler" | head -1 | c
 network_line="$(grep -n "category=NETWORK_TRANSIENT" "$handler" | head -1 | cut -d: -f1)"
 e2e_line="$(grep -n "category=E2E" "$handler" | head -1 | cut -d: -f1)"
 database_line="$(grep -n '^[[:space:]]*category=DATABASE$' "$handler" | head -1 | cut -d: -f1)"
+[[ "$terminated_line" -lt "$cleanup_hold_line" ]]
 [[ "$cleanup_hold_line" -lt "$deterministic_database_line" ]]
 [[ "$deterministic_database_line" -lt "$deterministic_backstage_exit79_line" ]]
-[[ "$deterministic_backstage_exit79_line" -lt "$terminated_line" ]]
-[[ "$terminated_line" -lt "$deterministic_postdeploy_line" ]]
+[[ "$deterministic_backstage_exit79_line" -lt "$deterministic_postdeploy_line" ]]
 [[ "$deterministic_postdeploy_line" -lt "$network_line" ]]
 [[ "$deterministic_backstage_exit79_line" -lt "$attempt_recovery_line" ]]
 [[ "$attempt_recovery_line" -lt "$deterministic_backstage_general_line" ]]
@@ -763,7 +799,7 @@ database_line="$(grep -n '^[[:space:]]*category=DATABASE$' "$handler" | head -1 
 [[ "$promotion_pending_line" -lt "$deterministic_runtime_identity_line" ]]
 [[ "$deterministic_runtime_identity_line" -lt "$network_line" ]]
 [[ "$terminated_line" -lt "$network_line" ]]
-[[ "$network_line" -lt "$e2e_line" ]]
+[[ "$e2e_line" -lt "$network_line" ]]
 [[ "$e2e_line" -lt "$database_line" ]]
 
-echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x+promotedFinalLive identityPrecedence=attempt+promotion classifier=staleSuccess-write0+network503-retry1+backstageLookup-retry1+backstageFrontendLookup-retry3+emissionWorkflowInvalid-retry0+backstageConfig5-retry0+runtimeIdentityMismatch-retry0+runtimeIdentityReadiness-retry1+flywayP0001-retry0+term79-retry0+flywayCleanupHold-retry1+leaseBound+remote0+hangBound4s"
+echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x+promotedFinalLive identityPrecedence=attempt+promotion classifier=staleSuccess-write0+network503-retry1+backstageLookup-retry1+backstageFrontendLookup-retry3+emissionWorkflowInvalid-retry0+backstageConfig5-retry0+backstageVisualE2ETimeout-retry0+runtimeIdentityMismatch-retry0+runtimeIdentityReadiness-retry1+flywayP0001-retry0+term79-retry0+term143-retry0+flywayCleanupHold-retry1+leaseBound+remote0+hangBound4s"
