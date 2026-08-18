@@ -6,13 +6,14 @@ MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V2
 SCOPE_AUDIT_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260812033000__harden_scope_access_audit_append_only.sql"
 LIFECYCLE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260812080000__bind_postdeploy_attempt_lifecycle.sql"
 RUNTIME_TEMPLATE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817235000__bind_runtime_identity_to_pod_template.sql"
+HPA_STABLE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260818151500__make_runtime_identity_hpa_stable.sql"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 DATABASE="${POSTGRES_DB:-carbonet}"
 DATABASE_USER="${POSTGRES_ADMIN_USER:-postgres}"
 CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}"
 SOURCE_COMMIT="${POSTDEPLOY_CANDIDATE_TEST_COMMIT:-$(git -C "$ROOT" rev-parse HEAD)}"
 [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
-[[ -s "$MIGRATION" && -s "$SCOPE_AUDIT_MIGRATION" && -s "$LIFECYCLE_MIGRATION" && -s "$RUNTIME_TEMPLATE_MIGRATION" ]]
+[[ -s "$MIGRATION" && -s "$SCOPE_AUDIT_MIGRATION" && -s "$LIFECYCLE_MIGRATION" && -s "$RUNTIME_TEMPLATE_MIGRATION" && -s "$HPA_STABLE_MIGRATION" ]]
 leader="${RESONANCE_POSTGRES_LEADER_POD:-$(K8S_NAMESPACE="$NAMESPACE" bash "$ROOT/ops/scripts/resolve-patroni-primary-pod.sh")}"
 [[ -n "$leader" ]]
 
@@ -62,8 +63,33 @@ ON CONFLICT (release_key) DO UPDATE SET
   health_status=excluded.health_status,recorded_by=excluded.recorded_by,recorded_at=current_timestamp;
 SQL
 cat "$RUNTIME_TEMPLATE_MIGRATION"
+cat "$HPA_STABLE_MIGRATION"
 cat <<'SQL'
 SELECT set_config('resonance.postdeploy_test_commit',:'source_commit',false);
+
+DO $$
+DECLARE base_hash varchar(64); scaled_hash varchar(64); drift_hash varchar(64);
+BEGIN
+  base_hash:=framework_candidate_runtime_identity_hash_v2(
+    current_setting('resonance.postdeploy_test_commit'),'carbonet-prod','carbonet-runtime',
+    'hpa-stable-uid',7,7,1,'registry.invalid/runtime:target',
+    'sha256:'||repeat('a',64),repeat('b',64));
+  scaled_hash:=framework_candidate_runtime_identity_hash_v2(
+    current_setting('resonance.postdeploy_test_commit'),'carbonet-prod','carbonet-runtime',
+    'hpa-stable-uid',9,9,3,'registry.invalid/runtime:target',
+    'sha256:'||repeat('a',64),repeat('b',64));
+  drift_hash:=framework_candidate_runtime_identity_hash_v2(
+    current_setting('resonance.postdeploy_test_commit'),'carbonet-prod','carbonet-runtime',
+    'hpa-stable-uid',9,9,3,'registry.invalid/runtime:target',
+    'sha256:'||repeat('a',64),repeat('c',64));
+  IF base_hash IS NULL OR base_hash IS DISTINCT FROM scaled_hash THEN
+    RAISE EXCEPTION 'HPA scale changed immutable candidate identity';
+  END IF;
+  IF drift_hash IS NULL OR drift_hash IS NOT DISTINCT FROM base_hash THEN
+    RAISE EXCEPTION 'PodTemplate drift did not change immutable candidate identity';
+  END IF;
+END
+$$;
 
 DO $$
 DECLARE nullable_column boolean; protected boolean;
@@ -301,9 +327,9 @@ BEGIN
     RAISE EXCEPTION 'V2 runtime identity hash was not produced';
   END IF;
   SELECT encode(sha256(convert_to(jsonb_build_array(
-      'CARBONET_RUNTIME_IDENTITY_V2',source_commit,deployment_namespace,deployment_name,
-      deployment_uid,deployment_generation,observed_generation,desired_replicas,
-      image_ref,image_id,health_status,to_jsonb(runtime)->>'pod_template_sha256'
+      'CARBONET_RUNTIME_IDENTITY_V3_HPA_STABLE',source_commit,deployment_namespace,
+      deployment_name,deployment_uid,image_ref,image_id,health_status,
+      to_jsonb(runtime)->>'pod_template_sha256'
     )::text,'UTF8')),'hex')
     INTO shell_v2_hash
     FROM framework_runtime_release_state runtime WHERE release_key='CARBONET_RUNTIME';
