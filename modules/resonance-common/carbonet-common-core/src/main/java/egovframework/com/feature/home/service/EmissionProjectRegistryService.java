@@ -33,6 +33,8 @@ import java.util.Locale;
 
 @Service
 public class EmissionProjectRegistryService {
+    // Frontend report assets are packaged with this service, so PDF stylesheet
+    // changes require a runtime image rollout rather than a host-only overlay.
     private static final ObjectMapper CANONICAL_SUPPORT_JSON = new ObjectMapper();
     private static final Set<String> CANONICAL_SUPPORT_KEYS = Set.of(
             "schemaVersion", "designHash", "catalogHash", "help", "workGuide", "qa",
