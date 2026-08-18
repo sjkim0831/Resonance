@@ -22,6 +22,13 @@ function requireText(sourceKey, token) {
   }
 }
 
+function rejectText(sourceKey, token) {
+  assertionCount += 1;
+  if (sources[sourceKey].includes(token)) {
+    throw new Error(`[certificate-pdf-tamper] forbidden ${sourceKey} bypass: ${token}`);
+  }
+}
+
 function requireOrder(sourceKey, startToken, firstToken, secondToken, endToken) {
   assertionCount += 1;
   const source = sources[sourceKey];
@@ -48,8 +55,24 @@ requireText("api", '"/api/home/certificate-verify/verify-file"');
 requireText("page", 'resultTone === "danger" ? (en ? "Tampered PDF" : "변조 파일")');
 requireText("page", 'verification.status === "TAMPERED_PDF"');
 requireText("page", "QR·OCR·시각 유사도로 이 결과를 덮어쓸 수 없습니다.");
+requireText("page", "const [uploadedPdfSelected, setUploadedPdfSelected] = useState(false)");
+requireText("page", "const visibleCertificateId = findCertificateIdFromPdfText(extractedText)");
+requireText("page", "const modificationDates = await inspectPdfModificationDates(buffer)");
+requireText("page", "creationDate !== modificationDate");
+requireText("page", 'verificationMode: "PDF_METADATA_DATES"');
+requireText("page", "PDF 생성·수정 날짜 불일치를 감지했습니다.");
+requireText("page", "변조 파일입니다. PDF 생성일과 수정일이 다릅니다.");
+requireText("page", "변조 파일: PDF 생성일과 수정일이 다릅니다.");
+requireText("api", '"EXACT_PDF_BYTES" | "PDF_METADATA_DATES"');
+requireText("page", "PDF 원본성 검증 불가: OCR·시각 유사도는 참고 증거이며 진위 판정이 아닙니다.");
+requireText("page", 'uploadedPdfSelected && pdfFileVerification?.status !== "EXACT_PDF_MATCH" ? "UNVERIFIABLE"');
+requireText("page", 'uploadedPdfSelected ? "UNVERIFIABLE" : "-"');
+rejectText("page", "(!pdfFileVerification && (uploadedPayloadFound || photoVerification?.photoConsistent))");
+rejectText("page", "(!pdfFileVerification || pdfFileVerification.status === \"EXACT_PDF_MATCH\")");
 requireOrder("page", "const handleFileChange", "await verifyExactPdfFile(file, nextPayload.certificateId)",
   "await evaluatePayload(nextPayload, file.name, exactPdfVerification)", "const handleManualVerify");
+requireOrder("page", "const handleFileChange", "const visibleCertificateId = findCertificateIdFromPdfText(extractedText)",
+  "await evaluatePhotographedPages(pages, file.name, false, file, initialPdfVerification)", "const handleManualVerify");
 requireOrder("page", "const evaluatePhotographedPages", "if (rawPdfFile) {",
   "if (preserveDigitalPayload) {", "const handleFileChange");
 
@@ -59,5 +82,8 @@ console.log(JSON.stringify({
   exactByteEndpoint: true,
   tamperedResultPrecedence: true,
   legacyFailClosed: true,
+  missingExactVerdictNeverGreen: true,
+  standaloneCertificateIdVerifiedBeforeOcrSuccess: true,
+  pdfCreationModificationDateMismatchBlocked: true,
   adminOneWayBinding: true,
 }));

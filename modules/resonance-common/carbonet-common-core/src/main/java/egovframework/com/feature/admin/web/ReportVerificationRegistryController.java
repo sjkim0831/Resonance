@@ -3,7 +3,6 @@ package egovframework.com.feature.admin.web;
 import egovframework.com.feature.admin.service.ReportVerificationRegistryService;
 import egovframework.com.feature.admin.service.ReportProofreadingService;
 import egovframework.com.feature.admin.service.ReportPdfIssuanceService;
-import egovframework.com.feature.auth.service.CurrentUserContextService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpHeaders;
@@ -14,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -27,7 +28,6 @@ public class ReportVerificationRegistryController {
     private final ReportVerificationRegistryService reportVerificationRegistryService;
     private final ReportProofreadingService reportProofreadingService;
     private final ReportPdfIssuanceService reportPdfIssuanceService;
-    private final CurrentUserContextService currentUserContextService;
 
     @PostMapping({
             "/api/admin/emission-survey-report/issue",
@@ -148,8 +148,16 @@ public class ReportVerificationRegistryController {
 
     private String resolveActorId(HttpServletRequest request) {
         try {
-            String userId = currentUserContextService.resolve(request).getUserId();
-            return userId == null || userId.isBlank() ? "anonymous" : userId.trim();
+            if (request.getUserPrincipal() != null && request.getUserPrincipal().getName() != null
+                    && !request.getUserPrincipal().getName().isBlank()) {
+                return request.getUserPrincipal().getName().trim();
+            }
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.isAuthenticated() && authentication.getName() != null
+                    && !authentication.getName().isBlank() && !"anonymousUser".equals(authentication.getName())) {
+                return authentication.getName().trim();
+            }
+            return "anonymous";
         } catch (Exception exception) {
             return "anonymous";
         }

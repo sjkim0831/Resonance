@@ -430,6 +430,10 @@ function normalizePdfExtractedText(value: string) {
     .replace(/\s+/g, " ");
 }
 
+function findCertificateIdFromPdfText(raw: string) {
+  return normalizePdfExtractedText(raw).match(/CRN-\d{8}-[A-Fa-f0-9]{12}/)?.[0].toUpperCase() || "";
+}
+
 function findPayloadFromVisibleVerificationFields(raw: string): ReportVerificationPayload | null {
   const text = normalizePdfExtractedText(raw);
   const certificateId = text.match(/CRN-\d{8}-[A-Fa-f0-9]{12}/)?.[0] || "";
@@ -505,6 +509,25 @@ async function extractPdfVerificationText(buffer: ArrayBuffer) {
     searchOffset = streamEnd + "endstream".length;
   }
   return candidates.join("\n");
+}
+
+async function inspectPdfModificationDates(buffer: ArrayBuffer) {
+  await import("pdfjs-dist/build/pdf.worker.min.mjs");
+  const pdfjs = await import("pdfjs-dist");
+  const pdfDocument = await pdfjs.getDocument({ data: new Uint8Array(buffer.slice(0)) }).promise;
+  try {
+    const metadata = await pdfDocument.getMetadata();
+    const info = metadata.info as Record<string, unknown>;
+    const creationDate = typeof info.CreationDate === "string" ? info.CreationDate.trim() : "";
+    const modificationDate = typeof info.ModDate === "string" ? info.ModDate.trim() : "";
+    return {
+      creationDate,
+      modificationDate,
+      modifiedAfterCreation: Boolean(creationDate && modificationDate && creationDate !== modificationDate)
+    };
+  } finally {
+    await pdfDocument.destroy();
+  }
 }
 
 async function preprocessReportPhoto(file: Blob) {
@@ -3528,6 +3551,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
   const [selectedReportType, setSelectedReportType] = useState<ReportVerificationType>("EMISSION_SURVEY");
   const [manualBlock, setManualBlock] = useState("");
   const [fileName, setFileName] = useState("");
+  const [uploadedPdfSelected, setUploadedPdfSelected] = useState(false);
   const [uploadedVerificationText, setUploadedVerificationText] = useState("");
   const [uploadedPayloadFound, setUploadedPayloadFound] = useState(false);
   const [payload, setPayload] = useState<ReportVerificationPayload | null>(null);
@@ -3556,9 +3580,13 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     }
     if (verification.status === "TAMPERED_PDF") {
       setResultTone("danger");
-      setResultMessage(en
-        ? "Tampered PDF: the uploaded file bytes differ from the issued original. QR, OCR, and visual similarity cannot override this result."
-        : "변조 파일입니다. 업로드한 PDF 바이트가 발급 원본과 다릅니다. QR·OCR·시각 유사도로 이 결과를 덮어쓸 수 없습니다.");
+      setResultMessage(verification.verificationMode === "PDF_METADATA_DATES"
+        ? (en
+          ? "Tampered PDF: CreationDate and ModDate differ. QR, OCR, and visual similarity cannot override this modification evidence."
+          : "변조 파일입니다. PDF 생성일과 수정일이 다릅니다. QR·OCR·시각 유사도로 이 수정 흔적을 덮어쓸 수 없습니다.")
+        : (en
+          ? "Tampered PDF: the uploaded file bytes differ from the issued original. QR, OCR, and visual similarity cannot override this result."
+          : "변조 파일입니다. 업로드한 PDF 바이트가 발급 원본과 다릅니다. QR·OCR·시각 유사도로 이 결과를 덮어쓸 수 없습니다."));
       return false;
     }
     setResultTone("warning");
@@ -3765,6 +3793,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     setDatasetVerification(null);
     setPdfFileVerification(null);
     if (files.every((item) => item.type.startsWith("image/"))) {
+      setUploadedPdfSelected(false);
       photoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
       setPhotoPreviewUrls(files.map((item) => URL.createObjectURL(item)));
       await evaluatePhotographedPages(files, en ? "uploaded photos" : "업로드 사진");
@@ -3772,14 +3801,31 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     }
     photoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
     setPhotoPreviewUrls([]);
+    setUploadedPdfSelected(true);
     const buffer = await file.arrayBuffer();
     const extractedText = await extractPdfVerificationText(buffer);
+    const modificationDates = await inspectPdfModificationDates(buffer);
     appendVerificationLog("INFO", en ? "PDF embedded text scan completed." : "PDF 내장 텍스트 검색을 완료했습니다.", `characters=${extractedText.length}`);
     const nextPayload = resolveVerificationPayload(extractedText);
+    const visibleCertificateId = findCertificateIdFromPdfText(extractedText);
     setUploadedVerificationText(extractedText);
     setUploadedPayloadFound(Boolean(nextPayload));
     if (nextPayload) {
       const exactPdfVerification = await verifyExactPdfFile(file, nextPayload.certificateId);
+      if (exactPdfVerification.status !== "EXACT_PDF_MATCH" && modificationDates.modifiedAfterCreation) {
+        const metadataTamperVerdict: ReportPdfFileVerificationResponse = {
+          valid: false,
+          status: "TAMPERED_PDF",
+          verificationMode: "PDF_METADATA_DATES",
+          certificateId: nextPayload.certificateId,
+          uploadedPdfSizeBytes: file.size,
+          message: `PDF CreationDate (${modificationDates.creationDate}) and ModDate (${modificationDates.modificationDate}) differ.`
+        };
+        appendVerificationLog("ERROR", en ? "PDF modification metadata detected." : "PDF 생성·수정 날짜 불일치를 감지했습니다.", metadataTamperVerdict.message);
+        applyPdfFileVerdict(metadataTamperVerdict);
+        setOcrProgress({ busy: false, percent: 0, status: en ? "Tampered PDF blocked" : "변조 PDF 차단" });
+        return;
+      }
       await evaluatePayload(nextPayload, file.name, exactPdfVerification);
       if (exactPdfVerification.status === "TAMPERED_PDF") {
         setOcrProgress({ busy: false, percent: 0, status: en ? "Tampered PDF blocked" : "변조 PDF 차단" });
@@ -3799,12 +3845,33 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       }
       return;
     }
+    const initialPdfVerification = visibleCertificateId
+      ? await verifyExactPdfFile(file, visibleCertificateId)
+      : null;
+    if (initialPdfVerification?.status !== "EXACT_PDF_MATCH" && modificationDates.modifiedAfterCreation) {
+      const metadataTamperVerdict: ReportPdfFileVerificationResponse = {
+        valid: false,
+        status: "TAMPERED_PDF",
+        verificationMode: "PDF_METADATA_DATES",
+        certificateId: visibleCertificateId,
+        uploadedPdfSizeBytes: file.size,
+        message: `PDF CreationDate (${modificationDates.creationDate}) and ModDate (${modificationDates.modificationDate}) differ.`
+      };
+      appendVerificationLog("ERROR", en ? "PDF modification metadata detected." : "PDF 생성·수정 날짜 불일치를 감지했습니다.", metadataTamperVerdict.message);
+      applyPdfFileVerdict(metadataTamperVerdict);
+      setOcrProgress({ busy: false, percent: 0, status: en ? "Tampered PDF blocked" : "변조 PDF 차단" });
+      return;
+    }
+    if (initialPdfVerification?.status === "TAMPERED_PDF") {
+      setOcrProgress({ busy: false, percent: 0, status: en ? "Tampered PDF blocked" : "변조 PDF 차단" });
+      return;
+    }
     setOcrProgress({ busy: true, percent: 0, status: en ? "Rendering PDF pages" : "PDF 페이지 변환 중" });
     try {
       const pages = await renderReportPdfPages(file, (percent, status) => setOcrProgress({ busy: true, percent, status }));
       appendVerificationLog("OK", en ? "PDF pages rendered for visual verification." : "시각 검증용 PDF 페이지 변환을 완료했습니다.", `pages=${pages.length}`);
       setPhotoPreviewUrls(pages.map((page) => URL.createObjectURL(page)));
-      await evaluatePhotographedPages(pages, file.name, false, file);
+      await evaluatePhotographedPages(pages, file.name, false, file, initialPdfVerification);
     } catch (error) {
       setOcrProgress((current) => ({ ...current, busy: false }));
       setResultTone("warning");
@@ -3903,11 +3970,15 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
               </div>
             ) : null}
             {fileName ? (
-              <div className={`mt-3 rounded-2xl border px-4 py-3 text-sm font-bold ${pdfFileVerification?.status === "TAMPERED_PDF" ? "border-rose-300 bg-rose-50 text-rose-950" : pdfFileVerification?.status === "EXACT_PDF_MATCH" || (!pdfFileVerification && (uploadedPayloadFound || photoVerification?.photoConsistent)) ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+              <div className={`mt-3 rounded-2xl border px-4 py-3 text-sm font-bold ${pdfFileVerification?.status === "TAMPERED_PDF" ? "border-rose-300 bg-rose-50 text-rose-950" : pdfFileVerification?.status === "EXACT_PDF_MATCH" || (!uploadedPdfSelected && photoVerification?.photoConsistent) ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
                 {pdfFileVerification?.status === "TAMPERED_PDF"
-                  ? (en ? "Tampered PDF: exact issued-file bytes do not match." : "변조 파일: 발급 원본 PDF 바이트와 일치하지 않습니다.")
+                  ? pdfFileVerification.verificationMode === "PDF_METADATA_DATES"
+                    ? (en ? "Tampered PDF: CreationDate and ModDate differ." : "변조 파일: PDF 생성일과 수정일이 다릅니다.")
+                    : (en ? "Tampered PDF: exact issued-file bytes do not match." : "변조 파일: 발급 원본 PDF 바이트와 일치하지 않습니다.")
                   : pdfFileVerification?.status === "EXACT_PDF_MATCH"
                   ? (en ? "Exact issued-PDF byte match confirmed." : "발급 PDF 원본 바이트가 정확히 일치합니다.")
+                  : uploadedPdfSelected
+                  ? (en ? "PDF authenticity is unverified. OCR and visual similarity are reference evidence only." : "PDF 원본성 검증 불가: OCR·시각 유사도는 참고 증거이며 진위 판정이 아닙니다.")
                   : photoVerification
                   ? (en ? `Photo OCR comparison completed (${photoVerification.confidence}%).` : `사진 OCR 데이터셋 대조를 완료했습니다(${photoVerification.confidence}%).`)
                   : uploadedPayloadFound
@@ -4029,8 +4100,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Dataset Comparison" : "데이터셋 대조"}</p>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black">
-                <span className={`col-span-2 rounded-lg px-3 py-2 ${pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "bg-emerald-100 text-emerald-900" : pdfFileVerification?.status === "TAMPERED_PDF" ? "bg-rose-100 text-rose-900" : pdfFileVerification ? "bg-amber-50 text-amber-900" : "bg-slate-100 text-slate-500"}`}>
-                  {en ? "PDF bytes vs issued original" : "PDF 원본 바이트 ↔ 발급 원장"}: {pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "EXACT" : pdfFileVerification?.status === "TAMPERED_PDF" ? "TAMPERED" : pdfFileVerification ? "UNVERIFIABLE" : "-"}
+                <span className={`col-span-2 rounded-lg px-3 py-2 ${pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "bg-emerald-100 text-emerald-900" : pdfFileVerification?.status === "TAMPERED_PDF" ? "bg-rose-100 text-rose-900" : uploadedPdfSelected ? "bg-amber-50 text-amber-900" : "bg-slate-100 text-slate-500"}`}>
+                  {en ? "PDF bytes vs issued original" : "PDF 원본 바이트 ↔ 발급 원장"}: {pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "EXACT" : pdfFileVerification?.status === "TAMPERED_PDF" ? "TAMPERED" : uploadedPdfSelected ? "UNVERIFIABLE" : "-"}
                 </span>
                 <span className={`rounded-lg px-3 py-2 ${photoVerification || datasetVerification ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>
                   {en ? "Pre-PDF registry dataset" : "PDF 생성 전 원장 데이터셋"}: {photoVerification || datasetVerification ? "OK" : "-"}
@@ -4047,8 +4118,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                 <span className={`col-span-2 rounded-lg px-3 py-2 ${photoVerification?.qrFullyMatched ? "bg-emerald-100 text-emerald-900" : photoVerification?.qrDetected ? "bg-rose-50 text-rose-800" : "bg-slate-100 text-slate-500"}`}>
                   {en ? "Photographed QR signature vs registry" : "촬영 QR 서명 ↔ 원장"}: {photoVerification?.qrFullyMatched ? "OK" : photoVerification?.qrDetected ? "FAIL" : "-"}
                 </span>
-                <span className={`col-span-2 rounded-lg px-3 py-2 ${datasetVerification?.datasetMatch && photoVerification?.photoConsistent && (!pdfFileVerification || pdfFileVerification.status === "EXACT_PDF_MATCH") ? "bg-emerald-100 text-emerald-900" : pdfFileVerification?.status === "TAMPERED_PDF" ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-600"}`}>
-                  {en ? "Four-way equality" : "4자 데이터 일치"}: {pdfFileVerification?.status === "TAMPERED_PDF" ? "TAMPERED" : datasetVerification?.datasetMatch && photoVerification?.photoConsistent && (!pdfFileVerification || pdfFileVerification.status === "EXACT_PDF_MATCH") ? "OK" : datasetVerification ? (en ? "OCR REVIEW" : "OCR 검토") : (en ? "EMBEDDED DATA UNAVAILABLE" : "내장 데이터 없음")}
+                <span className={`col-span-2 rounded-lg px-3 py-2 ${datasetVerification?.datasetMatch && photoVerification?.photoConsistent && (!uploadedPdfSelected || pdfFileVerification?.status === "EXACT_PDF_MATCH") ? "bg-emerald-100 text-emerald-900" : pdfFileVerification?.status === "TAMPERED_PDF" ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-600"}`}>
+                  {en ? "Four-way equality" : "4자 데이터 일치"}: {pdfFileVerification?.status === "TAMPERED_PDF" ? "TAMPERED" : uploadedPdfSelected && pdfFileVerification?.status !== "EXACT_PDF_MATCH" ? "UNVERIFIABLE" : datasetVerification?.datasetMatch && photoVerification?.photoConsistent && (!uploadedPdfSelected || pdfFileVerification?.status === "EXACT_PDF_MATCH") ? "OK" : datasetVerification ? (en ? "OCR REVIEW" : "OCR 검토") : (en ? "EMBEDDED DATA UNAVAILABLE" : "내장 데이터 없음")}
                 </span>
               </div>
               <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">
