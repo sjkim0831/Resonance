@@ -116,15 +116,45 @@ async function signIn(page: Page) {
     page.waitForEvent('popup', { timeout: 20_000 }),
     signInButton.click({ timeout: 20_000 }),
   ]);
+  const popupDiagnostics: string[] = [];
+  popup.on('console', message => {
+    if (message.type() === 'error') {
+      popupDiagnostics.push(`console:${message.text()}`);
+    }
+  });
+  popup.on('pageerror', error => {
+    popupDiagnostics.push(`pageerror:${error.message}`);
+  });
+  popup.on('response', response => {
+    if (response.request().resourceType() !== 'document') return;
+    const documentUrl = new URL(response.url());
+    popupDiagnostics.push(
+      `document:${response.status()}:${documentUrl.origin}${documentUrl.pathname}`,
+    );
+  });
   await popup.waitForLoadState('domcontentloaded');
+  popupDiagnostics.push(
+    `opener-before-submit:${await popup
+      .evaluate(() => Boolean(window.opener))
+      .catch(() => false)}`,
+  );
   await popup.locator('#username').fill(username);
   await popup.locator('#password').fill(password);
   await popup.locator('#kc-login').click();
   await popup.waitForEvent('close');
 
-  await expect(
-    page.getByRole('navigation', { name: 'sidebar nav' }),
-  ).toBeAttached({ timeout: 30_000 });
+  try {
+    await expect(
+      page.getByRole('navigation', { name: 'sidebar nav' }),
+    ).toBeAttached({ timeout: 30_000 });
+  } catch (error) {
+    throw new Error(
+      `Backstage popup sign-in did not establish the authenticated sidebar; ${popupDiagnostics.join(
+        ' | ',
+      )}`,
+      { cause: error },
+    );
+  }
 }
 
 async function verifyRoute(

@@ -11,6 +11,10 @@ import pathlib
 import sys
 
 source = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+if source.count("kubectl create --dry-run=client -f - -o json") != 3:
+    raise SystemExit("target rendering must use exactly three live-independent create dry-runs")
+if "kubectl apply --dry-run=client -f - -o json" in source:
+    raise SystemExit("apply dry-run can merge live values into the exact target render")
 if 'BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR:-/opt/resonance-data/control-plane/deploy-state/backstage' not in source:
     raise SystemExit("official and direct deploys do not share the canonical default state directory")
 recover_mode = source.index('mode="${1:-deploy}"')
@@ -422,7 +426,7 @@ cat >"$fixture/bin/kubectl" <<'SH'
 set -euo pipefail
 printf '%s\n' "$*" >>"$FAKE_KUBECTL_CALLS"
 case "$*" in
-  "apply --dry-run=client -f - -o json")
+  "create --dry-run=client -f - -o json")
     cat >/dev/null
     jq -n \
       --slurpfile config "$FAKE_RESOURCE_BASELINE_DIR/ConfigMap_resonance-backstage-config.json" \

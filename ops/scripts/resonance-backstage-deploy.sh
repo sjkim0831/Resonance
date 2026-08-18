@@ -990,7 +990,7 @@ build_target_backstage_managed_resource_payloads() {
   local organization systems components apis resources environments
   is_exact_backstage_commit "$exact_target" || return 1
   manifest_json="$(git -C "$ROOT" show "$exact_target:deploy/k8s/control-plane/backstage.yaml" |
-    kubectl apply --dry-run=client -f - -o json)" || return 1
+    kubectl create --dry-run=client -f - -o json)" || return 1
   manifest_payloads="$(jq -cs --arg namespace "$NAMESPACE" '
       [ .[] | if .kind == "List" then .items[] else . end |
         select(.metadata.namespace == $namespace) ] |
@@ -2463,7 +2463,7 @@ apply_exact_target_backstage_resources() {
   local exact_target="$BACKSTAGE_PENDING_TARGET_COMMIT" manifest_json object catalog_payloads catalog_payload
   local descriptor kind name
   manifest_json="$(git -C "$ROOT" show "$exact_target:deploy/k8s/control-plane/backstage.yaml" |
-    kubectl apply --dry-run=client -f - -o json)" || return 1
+    kubectl create --dry-run=client -f - -o json)" || return 1
   jq -e 'all(.[]; .exists == true)' <<<"$BACKSTAGE_PENDING_RESOURCE_INTENTS" >/dev/null || {
     backstage_rollback_fail "target resource deletion is not transactionally reversible; mutation=0"
     return 79
@@ -2522,7 +2522,7 @@ converge_exact_backstage_deployment_spec() {
   fi
   rendered_objects="$(git -C "$ROOT" show \
       "$BACKSTAGE_PENDING_TARGET_COMMIT:deploy/k8s/control-plane/backstage.yaml" |
-    kubectl apply --dry-run=client -f - -o json)" || {
+    kubectl create --dry-run=client -f - -o json)" || {
     backstage_rollback_fail "target Deployment manifest cannot be rendered"
     return 1
   }
