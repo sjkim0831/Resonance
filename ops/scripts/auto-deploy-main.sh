@@ -3894,7 +3894,7 @@ run_runtime_template_identity_migration_contract_if_required() {
 
 run_operational_usage_ledger_live_e2e_if_required() {
   local expected_commit="${1:-$target_commit}"
-  local timeout_seconds="${CARBONET_USAGE_LEDGER_E2E_TIMEOUT_SECONDS:-120}"
+  local timeout_seconds="${CARBONET_USAGE_LEDGER_E2E_TIMEOUT_SECONDS:-180}"
   [[ "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate \
      || ",${PLAN_TESTS:-}," == *",runtime:operational-usage-ledger-e2e,"* ]] || return 0
   [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || {

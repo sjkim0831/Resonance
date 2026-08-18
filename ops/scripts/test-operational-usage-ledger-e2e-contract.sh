@@ -194,7 +194,8 @@ contains "$DEPLOY" 'framework_runtime_release_state'
 contains "$DEPLOY" 'resonance.ai/target-commit'
 contains "$DEPLOY" 'STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH'
 contains "$DEPLOY" 'run_operational_usage_ledger_current_runtime_e2e_if_required "$runtime_deployed_commit"'
-contains "$DEPLOY" 'CARBONET_USAGE_LEDGER_E2E_TIMEOUT_SECONDS:-120'
+contains "$DEPLOY" 'CARBONET_USAGE_LEDGER_E2E_TIMEOUT_SECONDS:-180'
+not_contains "$DEPLOY" 'CARBONET_USAGE_LEDGER_E2E_TIMEOUT_SECONDS:-120'
 contains "$DEPLOY" 'invalidate_runtime_release_state'
 
 pipeline_contract() {
