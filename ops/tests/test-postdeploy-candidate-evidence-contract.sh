@@ -18,6 +18,7 @@ FILE_WATCH="$ROOT/ops/scripts/resonance-file-watch.sh"
 PROJECT_CORE_DEPLOY="$ROOT/ops/scripts/resonance-project-core-deploy.sh"
 AI_FAST_DEV="$ROOT/ops/scripts/resonance-ai-fast-dev.sh"
 LEGACY_RUNTIME_HARDENER="$ROOT/ops/scripts/retire-legacy-runtime-mutation-automation.sh"
+IDENTITY_SYNC_LOCK_CONTRACT="$ROOT/ops/tests/test-postdeploy-identity-sync-lock-contract.sh"
 
 files=(
   "$STAGER" "$PROMOTER" "$DEPLOY"
@@ -52,6 +53,7 @@ files=(
   "$PROJECT_CORE_DEPLOY"
   "$AI_FAST_DEV"
   "$LEGACY_RUNTIME_HARDENER"
+  "$IDENTITY_SYNC_LOCK_CONTRACT"
   "$ROOT/ops/scripts/promote-runtime-startup-profile.sh"
   "$ROOT/ops/tests/test-postdeploy-attempt-journal.sh"
   "$ROOT/ops/tests/test-durable-postdeploy-rollback-reconciler.sh"
@@ -70,6 +72,7 @@ node --check "$ROOT/ops/scripts/validate-screen-contract-runtime-save.mjs"
 bash "$ROOT/ops/tests/test-process-runtime-evidence-isolation.sh" "$ROOT"
 bash "$ROOT/ops/scripts/test-plan-incremental-work.sh"
 bash "$ROOT/ops/scripts/test-shared-smoke-auth-state.sh"
+bash "$IDENTITY_SYNC_LOCK_CONTRACT" "$ROOT"
 
 # The first migration rollout can commit DB STAGED immediately before a crash
 # while the mutable checkout is absent. Prove that replay arms the durable

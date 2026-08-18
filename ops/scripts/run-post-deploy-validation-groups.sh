@@ -186,12 +186,64 @@ validate_identity_design_group() {
         ),'UTF8')),'hex')"
   }
   if [[ "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate ]]; then
-    local identity_before identity_after
-    identity_before="$(identity_current_digest)"
-    [[ "$identity_before" =~ ^[0-9a-f]{64}$ ]] || { echo '[identity-contracts] FAIL current identity snapshot unavailable' >&2; return 1; }
-    bash ops/scripts/validate-keycloak-carbonet-identity-sync.sh
-    identity_after="$(identity_current_digest)"
-    [[ "$identity_after" == "$identity_before" ]] || { echo '[identity-contracts] FAIL verify-only gate changed current identity state' >&2; return 1; }
+    local identity_before identity_after identity_validation_status
+    local identity_sync_lock_file identity_sync_lock_wait_seconds identity_sync_lock_fd
+    identity_sync_lock_file="${IDENTITY_SYNC_LOCK_FILE:-/tmp/resonance-keycloak-carbonet-identity-sync.lock}"
+    identity_sync_lock_wait_seconds="${IDENTITY_SYNC_LOCK_WAIT_SECONDS:-60}"
+    identity_candidate_lock_close() {
+      local close_status=0
+      flock -u "$identity_sync_lock_fd" || close_status=$?
+      exec {identity_sync_lock_fd}>&- || close_status=$?
+      return "$close_status"
+    }
+    if ! exec {identity_sync_lock_fd}>"$identity_sync_lock_file"; then
+      echo '[identity-contracts] FAIL unable to open shared identity synchronization lock' >&2
+      return 1
+    fi
+    if ! flock -w "$identity_sync_lock_wait_seconds" "$identity_sync_lock_fd"; then
+      exec {identity_sync_lock_fd}>&- || true
+      echo "[identity-contracts] FAIL shared identity synchronization lock timed out after ${identity_sync_lock_wait_seconds}s" >&2
+      return 1
+    fi
+    if ! identity_before="$(
+      exec {identity_sync_lock_fd}>&- || exit 1
+      identity_current_digest
+    )"; then
+      identity_candidate_lock_close || true
+      echo '[identity-contracts] FAIL current identity snapshot unavailable' >&2
+      return 1
+    fi
+    if [[ ! "$identity_before" =~ ^[0-9a-f]{64}$ ]]; then
+      identity_candidate_lock_close || true
+      echo '[identity-contracts] FAIL current identity snapshot unavailable' >&2
+      return 1
+    fi
+    identity_validation_status=0
+    (
+      exec {identity_sync_lock_fd}>&- || exit 1
+      bash ops/scripts/validate-keycloak-carbonet-identity-sync.sh
+    ) || identity_validation_status=$?
+    if (( identity_validation_status != 0 )); then
+      identity_candidate_lock_close || true
+      return "$identity_validation_status"
+    fi
+    if ! identity_after="$(
+      exec {identity_sync_lock_fd}>&- || exit 1
+      identity_current_digest
+    )"; then
+      identity_candidate_lock_close || true
+      echo '[identity-contracts] FAIL current identity snapshot unavailable after verify-only gate' >&2
+      return 1
+    fi
+    if [[ "$identity_after" != "$identity_before" ]]; then
+      identity_candidate_lock_close || true
+      echo '[identity-contracts] FAIL verify-only gate changed current identity state' >&2
+      return 1
+    fi
+    if ! identity_candidate_lock_close; then
+      echo '[identity-contracts] FAIL unable to release shared identity synchronization lock' >&2
+      return 1
+    fi
     echo '[identity-contracts] PASS mode=verify-only currentWrites=0'
   else
     RESONANCE_ROOT="$root" \
