@@ -79,6 +79,7 @@ if (process.argv.includes("--build")) {
   // frontend deploy latency is the longest lane, not the sum of every lane.
   run(process.execPath, ["scripts/dedupe-generated-route-family.mjs"]);
   const validationTasks = [
+    runAsync(process.execPath, ["scripts/verify-emission-report-pdf-style-contract.mjs"]),
     runAsync(process.execPath, ["scripts/check-generated-route-family-integrity.mjs"]),
     runAsync(process.execPath, ["scripts/check-generated-prototype-isolation.mjs"]),
     runAsync(process.execPath, ["scripts/check-route-registry-uniqueness.mjs"]),

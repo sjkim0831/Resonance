@@ -750,6 +750,59 @@ async function waitForReportFonts() {
   ]);
 }
 
+function escapeReportStyleAttribute(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function absolutizeReportStyleUrls(css: string, stylesheetUrl: string) {
+  return css.replace(/url\(\s*(["']?)([^"')]+)\1\s*\)/gi, (match, _quote: string, rawUrl: string) => {
+    const value = rawUrl.trim();
+    if (!value || /^(?:data:|blob:|https?:|file:|#|\/\/)/i.test(value)) {
+      return match;
+    }
+    try {
+      return `url("${new URL(value, stylesheetUrl).href.replace(/"/g, "%22")}")`;
+    } catch {
+      return match;
+    }
+  });
+}
+
+async function buildInlinedReportStyles() {
+  const nodes = Array.from(document.querySelectorAll<HTMLLinkElement | HTMLStyleElement>('link[rel="stylesheet"], style'));
+  const fragments = await Promise.all(nodes.map(async (node) => {
+    if (node instanceof HTMLStyleElement) {
+      return node.outerHTML;
+    }
+    const stylesheetUrl = node.href;
+    const response = await fetch(stylesheetUrl, {
+      credentials: "include",
+      cache: "no-store"
+    });
+    if (!response.ok) {
+      throw new Error(`PDF stylesheet could not be loaded (${response.status}): ${stylesheetUrl}`);
+    }
+    const contentType = response.headers.get("content-type")?.toLowerCase() || "";
+    if (!contentType.includes("text/css")) {
+      throw new Error(`PDF stylesheet returned an invalid content type (${contentType || "missing"}): ${stylesheetUrl}`);
+    }
+    const css = await response.text();
+    if (!css.trim()) {
+      throw new Error(`PDF stylesheet was empty: ${stylesheetUrl}`);
+    }
+    const safeCss = absolutizeReportStyleUrls(css, stylesheetUrl).replace(/<\/style/gi, "<\\/style");
+    return `<style data-carbonet-pdf-stylesheet="${escapeReportStyleAttribute(stylesheetUrl)}">${safeCss}</style>`;
+  }));
+  if (!fragments.some((fragment) => fragment.includes("data-carbonet-pdf-stylesheet="))) {
+    throw new Error("PDF stylesheet was not embedded.");
+  }
+  return fragments.join("\n");
+}
+
 type ReportPdfDesignDraft = "agency" | "summary" | "table" | "compact";
 
 const REPORT_PDF_DESIGN_DRAFTS: Array<{ id: ReportPdfDesignDraft; label: string; enLabel: string; description: string; enDescription: string; icon: string; buttonClass: string }> = [
@@ -2100,9 +2153,11 @@ export function EmissionSurveyReportPrintPage() {
       if (!article) {
         throw new Error("Report element is not ready.");
       }
-      const printableHead = Array.from(document.querySelectorAll<HTMLLinkElement | HTMLStyleElement>('link[rel="stylesheet"], style'))
-        .map((node) => node.outerHTML)
-        .join("\n");
+      // The backend renders a temporary file:// document. External stylesheet
+      // links can be unreachable from that Chromium process even though they
+      // are already loaded in the user's authenticated page. Embed the exact
+      // CSS bytes and fail closed instead of issuing an unstyled PDF.
+      const printableHead = await buildInlinedReportStyles();
       const reportHtml = [
         "<!doctype html><html lang=\"" + (en ? "en" : "ko") + "\"><head>",
         "<meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
