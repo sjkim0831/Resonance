@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: resonance-backstage
     app.kubernetes.io/part-of: resonance-control-plane
 data:
-  BACKSTAGE_BASE_URL: https://backstage.172.16.1.232.nip.io
+  BACKSTAGE_BASE_URL: https://backstage.172.16.1.232.nip.io:32947
   CARBONET_RUNTIME_BASE_URL: http://carbonet-api.carbonet-prod.svc.cluster.local:8080
   POSTGRES_HOST: postgres-haproxy.carbonet-prod.svc.cluster.local
   POSTGRES_PORT: "5432"

@@ -166,8 +166,8 @@ bootstrap_realm() {
           -s clientId="$CLIENT_ID" -s enabled=true -s publicClient=false \
           -s standardFlowEnabled=true -s directAccessGrantsEnabled=true \
           -s serviceAccountsEnabled=true \
-          -s "redirectUris=[\"https://backstage.172.16.1.232.nip.io/api/auth/oidc/handler/frame\"]" \
-          -s "webOrigins=[\"https://backstage.172.16.1.232.nip.io\"]" \
+          -s "redirectUris=[\"https://backstage.172.16.1.232.nip.io/api/auth/oidc/handler/frame\",\"https://backstage.172.16.1.232.nip.io:32947/api/auth/oidc/handler/frame\"]" \
+          -s "webOrigins=[\"https://backstage.172.16.1.232.nip.io\",\"https://backstage.172.16.1.232.nip.io:32947\"]" \
           -s secret="$CLIENT_SECRET" >/dev/null
         cid=$("$K" get clients -r "$REALM" -q clientId="$CLIENT_ID" \
           --fields id --format csv --noquotes | head -n1)
@@ -175,8 +175,8 @@ bootstrap_realm() {
         "$K" update "clients/$cid" -r "$REALM" \
           -s enabled=true -s publicClient=false -s standardFlowEnabled=true \
           -s directAccessGrantsEnabled=true -s serviceAccountsEnabled=true \
-          -s "redirectUris=[\"https://backstage.172.16.1.232.nip.io/api/auth/oidc/handler/frame\"]" \
-          -s "webOrigins=[\"https://backstage.172.16.1.232.nip.io\"]" \
+          -s "redirectUris=[\"https://backstage.172.16.1.232.nip.io/api/auth/oidc/handler/frame\",\"https://backstage.172.16.1.232.nip.io:32947/api/auth/oidc/handler/frame\"]" \
+          -s "webOrigins=[\"https://backstage.172.16.1.232.nip.io\",\"https://backstage.172.16.1.232.nip.io:32947\"]" \
           -s secret="$CLIENT_SECRET" >/dev/null
       fi
       for role in view-realm query-users view-users manage-users; do
@@ -427,7 +427,7 @@ case "$mode" in
     migrate_users
     authorization_status="$(curl --cacert "$TLS_ROOT/ca.crt" -sS -o /dev/null \
       -w '%{http_code}' \
-      "$KEYCLOAK_URL/realms/$REALM/protocol/openid-connect/auth?client_id=$CLIENT_ID&response_type=code&redirect_uri=https%3A%2F%2Fbackstage.172.16.1.232.nip.io%2Fapi%2Fauth%2Foidc%2Fhandler%2Fframe&scope=openid%20profile%20email%20groups")"
+      "$KEYCLOAK_URL/realms/$REALM/protocol/openid-connect/auth?client_id=$CLIENT_ID&response_type=code&redirect_uri=https%3A%2F%2Fbackstage.172.16.1.232.nip.io%3A32947%2Fapi%2Fauth%2Foidc%2Fhandler%2Fframe&scope=openid%20profile%20email%20groups")"
     [[ "$authorization_status" == "200" ]] || {
       echo "[keycloak] OIDC authorization request failed: HTTP $authorization_status" >&2
       exit 4

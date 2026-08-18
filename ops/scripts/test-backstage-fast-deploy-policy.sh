@@ -8,6 +8,7 @@ E2E_SPEC="$ROOT/platform/control-plane/backstage/packages/app/e2e-tests/resonanc
 E2E_RUNNER="$ROOT/ops/scripts/resonance-backstage-visual-e2e.sh"
 PLAYWRIGHT_CONFIG="$ROOT/platform/control-plane/backstage/playwright.config.ts"
 MANIFEST="$ROOT/deploy/k8s/control-plane/backstage.yaml"
+KEYCLOAK_DEPLOY="$ROOT/ops/scripts/resonance-keycloak-deploy.sh"
 FULL_E2E_RUNNER="$ROOT/ops/scripts/resonance-backstage-full-e2e.sh"
 FULL_E2E_SERVICE="$ROOT/ops/systemd/resonance-backstage-full-e2e.service"
 FULL_E2E_TIMER="$ROOT/ops/systemd/resonance-backstage-full-e2e.timer"
@@ -95,6 +96,10 @@ grep -Fq 'BACKSTAGE_PUBLIC_URL="${BACKSTAGE_PUBLIC_URL:-https://backstage.172.16
 grep -Fq '"$BACKSTAGE_PUBLIC_URL/.backstage/health/v1/readiness"' "$AUTO_DEPLOY"
 grep -Fq 'RESONANCE_BACKSTAGE_URL="$BACKSTAGE_PUBLIC_URL"' "$AUTO_DEPLOY"
 grep -Fq 'BACKSTAGE_BASE_URL="$BACKSTAGE_PUBLIC_URL"' "$AUTO_DEPLOY"
+grep -Fq 'BACKSTAGE_BASE_URL: https://backstage.172.16.1.232.nip.io:32947' "$MANIFEST"
+[[ "$(grep -Fc 'redirectUris=[\"https://backstage.172.16.1.232.nip.io/api/auth/oidc/handler/frame\",\"https://backstage.172.16.1.232.nip.io:32947/api/auth/oidc/handler/frame\"]' "$KEYCLOAK_DEPLOY")" == 2 ]]
+[[ "$(grep -Fc 'webOrigins=[\"https://backstage.172.16.1.232.nip.io\",\"https://backstage.172.16.1.232.nip.io:32947\"]' "$KEYCLOAK_DEPLOY")" == 2 ]]
+grep -Fq 'redirect_uri=https%3A%2F%2Fbackstage.172.16.1.232.nip.io%3A32947%2Fapi%2Fauth%2Foidc%2Fhandler%2Fframe' "$KEYCLOAK_DEPLOY"
 grep -Fq 'BACKSTAGE_URL="$BACKSTAGE_PUBLIC_URL" BACKSTAGE_PUBLIC_URL="$BACKSTAGE_PUBLIC_URL"' "$AUTO_DEPLOY"
 grep -Fq 'BACKSTAGE_REQUIRE_BASELINE_TAG_DIGEST_PROOF=true' "$AUTO_DEPLOY"
 grep -Fq 'run_target_backstage_deploy_helper verify-pending-candidate "$target_commit"' "$AUTO_DEPLOY"
