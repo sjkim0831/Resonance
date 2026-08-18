@@ -46,6 +46,9 @@ contains "$HARNESS" 'compact=true&page=${page}&size=${PAGE_SIZE}'
 contains "$HARNESS" 'PAGE_SIZE="${CARBONET_USAGE_LEDGER_PAGE_SIZE:-200}"'
 contains "$HARNESS" 'PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-1}"'
 contains "$HARNESS" '[[ "$PAGE_FETCH_CONCURRENCY" == "1" ]]'
+contains "$HARNESS" '"$status" == "502" || "$status" == "503" || "$status" == "504"'
+contains "$HARNESS" 'PAGE_SIZE=50'
+contains "$HARNESS" 'retrying complete ledger with production UI pageSize=${PAGE_SIZE}'
 contains "$HARNESS" 'system-test-report/step-detail'
 contains "$HARNESS" 'reviewStatus:"APPROVED"'
 contains "$HARNESS" 'framework_runtime_release_identity_hash(runtime)'
@@ -86,6 +89,9 @@ pagination_performance_contract() {
     || return 1
   pagination_body="$(sed -n '/^page_count=\$(( (TOTAL_STEPS/,/^done$/p' "$candidate")"
   [[ "$pagination_body" == *'for ((page=0; page<page_count; page+=1)); do'* ]] || return 1
+  [[ "$pagination_body" == *'"$page" == "0" && "$PAGE_SIZE" == "200"'* ]] || return 1
+  [[ "$pagination_body" == *'PAGE_SIZE=50'* ]] || return 1
+  [[ "$pagination_body" == *'page_count=$(( (TOTAL_STEPS + PAGE_SIZE - 1) / PAGE_SIZE ))'* ]] || return 1
   ! printf '%s\n' "$pagination_body" | grep -Eq '[[:space:]]&[[:space:]]*$'
 }
 
