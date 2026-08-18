@@ -89,6 +89,22 @@ case "$*" in
 {"metadata":{"uid":"runtime-uid","generation":7,"annotations":{"deployment.kubernetes.io/revision":"683","kubectl.kubernetes.io/last-applied-configuration":"managed","resonance.ai/target-commit":"1111111111111111111111111111111111111111","resonance.ai/image":"baseline"}},"spec":{"replicas":1,"minReadySeconds":5,"progressDeadlineSeconds":600,"strategy":{"type":"RollingUpdate","rollingUpdate":{"maxSurge":"25%","maxUnavailable":"25%"}},"selector":{"matchLabels":{"app":"carbonet-runtime"}},"template":{"metadata":{"labels":{"app":"carbonet-runtime","resonance.ai/release-id":"baseline"}},"spec":{"containers":[{"name":"carbonet-runtime","image":"registry.invalid/carbonet-runtime:baseline"}]}}},"status":{"observedGeneration":7,"updatedReplicas":1,"readyReplicas":1,"availableReplicas":1,"unavailableReplicas":0}}
 JSON
     )"
+    runtime_replicas="${FAKE_RUNTIME_REPLICAS:-1}"
+    runtime_ready="${FAKE_RUNTIME_READY_REPLICAS:-$runtime_replicas}"
+    runtime_json="$(jq -c --arg uid "${FAKE_RUNTIME_UID:-runtime-uid}" \
+      --arg image "${FAKE_RUNTIME_IMAGE_REF:-registry.invalid/carbonet-runtime:baseline}" \
+      --argjson replicas "$runtime_replicas" --argjson ready "$runtime_ready" '
+        .metadata.uid=$uid
+        | .spec.replicas=$replicas
+        | (.spec.template.spec.containers[]|select(.name=="carbonet-runtime")|.image)=$image
+        | .status.updatedReplicas=$replicas
+        | .status.readyReplicas=$ready
+        | .status.availableReplicas=$ready
+        | .status.unavailableReplicas=($replicas-$ready)
+      ' <<<"$runtime_json")"
+    if [[ "${FAKE_RUNTIME_TEMPLATE_DRIFT:-false}" == true ]]; then
+      runtime_json="$(jq -c '.spec.template.metadata.labels.variant="drift"' <<<"$runtime_json")"
+    fi
     case "${FAULT_CAPTURE_PHASE:-none}" in
       defaults-omitted) jq -c 'del(.spec.minReadySeconds)' <<<"$runtime_json" ;;
       runtime-null) jq -c '.spec.minReadySeconds=null' <<<"$runtime_json" ;;
@@ -117,13 +133,17 @@ JSON
   *"get configmap carbonet-web-nginx"*)
     [[ "${FAULT_CAPTURE_PHASE:-none}" == nginx-empty ]] || printf 'server { listen 8080; }\n'
     ;;
-  *"exec runtime-0"*) printf '{"status":"UP"}\n' ;;
+  *"exec runtime-"*) printf '{"status":"UP"}\n' ;;
   *"get pods -l app=carbonet-runtime"*)
-    jq -cn --arg imageId "${FAKE_RUNTIME_IMAGE_ID:-docker-pullable://registry.invalid/carbonet-runtime@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}" '
-      {items:[{metadata:{name:"runtime-0"},
-        spec:{containers:[{name:"carbonet-runtime",image:"registry.invalid/carbonet-runtime:baseline"}]},
-        status:{phase:"Running",conditions:[{type:"Ready",status:"True"}],
-          containerStatuses:[{name:"carbonet-runtime",ready:true,imageID:$imageId}]}}]}'
+    runtime_replicas="${FAKE_RUNTIME_REPLICAS:-1}"
+    runtime_ready="${FAKE_RUNTIME_READY_REPLICAS:-$runtime_replicas}"
+    jq -cn --arg imageId "${FAKE_RUNTIME_IMAGE_ID:-docker-pullable://registry.invalid/carbonet-runtime@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}" \
+      --arg image "${FAKE_RUNTIME_IMAGE_REF:-registry.invalid/carbonet-runtime:baseline}" \
+      --argjson replicas "$runtime_replicas" --argjson ready "$runtime_ready" '
+      {items:[range(0;$replicas) as $i | {metadata:{name:("runtime-"+($i|tostring))},
+        spec:{containers:[{name:"carbonet-runtime",image:$image}]},
+        status:{phase:"Running",conditions:[{type:"Ready",status:(if $i<$ready then "True" else "False" end)}],
+          containerStatuses:[{name:"carbonet-runtime",ready:($i<$ready),imageID:$imageId}]}}]}'
     ;;
   *) printf 'unexpected fake kubectl call: %s\n' "$*" >&2; exit 91 ;;
 esac
@@ -204,6 +224,21 @@ run_isolated_capture() {
     bash "$gate" capture
 }
 
+run_isolated_verify() {
+  local state="${1:-$capture_state}"
+  PATH="$tmp/bin:$PATH" \
+  FAKE_RUNTIME_REPLICAS="${FAKE_RUNTIME_REPLICAS:-1}" \
+  FAKE_RUNTIME_READY_REPLICAS="${FAKE_RUNTIME_READY_REPLICAS:-${FAKE_RUNTIME_REPLICAS:-1}}" \
+  FAKE_RUNTIME_UID="${FAKE_RUNTIME_UID:-runtime-uid}" \
+  FAKE_RUNTIME_IMAGE_REF="${FAKE_RUNTIME_IMAGE_REF:-registry.invalid/carbonet-runtime:baseline}" \
+  FAKE_RUNTIME_TEMPLATE_DRIFT="${FAKE_RUNTIME_TEMPLATE_DRIFT:-false}" \
+  ROOT_DIR="$ROOT_DIR" OVERLAY_DIR="$capture_overlay" \
+  FULL_SCREEN_GATE_STATE_DIR="$state" FULL_SCREEN_GATE_REPORT_DIR="$capture_report" \
+  CARBONET_DEPLOY_STATE_FILE="$tmp/applied.commit" \
+  CARBONET_RUNTIME_DEPLOY_STATE_FILE="$tmp/runtime.commit" \
+    bash "$gate" verify-restored-physical
+}
+
 run_isolated_capture >"$tmp/capture-valid.log"
 active_file="$capture_state/active.env"
 [[ -s "$active_file" ]]
@@ -236,6 +271,51 @@ OVERLAY_DIR="$capture_overlay" FULL_SCREEN_GATE_STATE_DIR="$omitted_state" \
 FULL_SCREEN_GATE_REPORT_DIR="$capture_report" CARBONET_DEPLOY_STATE_FILE="$tmp/applied.commit" \
 CARBONET_RUNTIME_DEPLOY_STATE_FILE="$tmp/runtime.commit" \
   bash "$gate" verify-restored-physical >"$tmp/verify-omitted-min-ready.log"
+
+# runtimeDesiredReplicas records the capture-time audit value, but HPA-owned
+# live replicas may move independently. A fully ready 2 -> 3 scale-up remains
+# valid; any disagreement between the current desired and ready coordinates is
+# rejected. Immutable UID, PodTemplate and image identity remain exact.
+hpa_state="$tmp/hpa-state"
+FAKE_RUNTIME_REPLICAS=2 FAKE_RUNTIME_READY_REPLICAS=2 \
+  run_isolated_capture "$hpa_state" >"$tmp/capture-hpa-two.log"
+hpa_snapshot_dir="$(sed -n "s/^SNAPSHOT_DIR='\(.*\)'$/\1/p" "$hpa_state/active.env")"
+jq -e '.runtimeDesiredReplicas==2' "$hpa_snapshot_dir/manifest.json" >/dev/null
+
+FAKE_RUNTIME_REPLICAS=3 FAKE_RUNTIME_READY_REPLICAS=3 \
+  run_isolated_verify "$hpa_state" >"$tmp/verify-hpa-scale-up.log"
+
+if FAKE_RUNTIME_REPLICAS=3 FAKE_RUNTIME_READY_REPLICAS=2 \
+    run_isolated_verify "$hpa_state" >"$tmp/verify-hpa-not-ready.log" 2>&1; then
+  echo 'HPA desired=3 with ready=2 was accepted' >&2
+  exit 1
+fi
+grep -Fq 'restored deployment owned annotations/template/readiness differ from baseline' \
+  "$tmp/verify-hpa-not-ready.log"
+
+if (export FAKE_RUNTIME_UID=recreated-runtime-uid; run_isolated_verify) \
+    >"$tmp/verify-runtime-uid-drift.log" 2>&1; then
+  echo 'recreated runtime Deployment UID was accepted' >&2
+  exit 1
+fi
+grep -Fq 'restored deployment owned annotations/template/readiness differ from baseline' \
+  "$tmp/verify-runtime-uid-drift.log"
+
+if (export FAKE_RUNTIME_TEMPLATE_DRIFT=true; run_isolated_verify) \
+    >"$tmp/verify-runtime-template-drift.log" 2>&1; then
+  echo 'runtime PodTemplate drift was accepted' >&2
+  exit 1
+fi
+grep -Fq 'restored deployment owned annotations/template/readiness differ from baseline' \
+  "$tmp/verify-runtime-template-drift.log"
+
+if (export FAKE_RUNTIME_IMAGE_REF=registry.invalid/carbonet-runtime:drift; run_isolated_verify) \
+    >"$tmp/verify-runtime-image-drift.log" 2>&1; then
+  echo 'runtime image drift was accepted' >&2
+  exit 1
+fi
+grep -Fq 'restored deployment owned annotations/template/readiness differ from baseline' \
+  "$tmp/verify-runtime-image-drift.log"
 
 # A kubelet/containerd transition can expose the registry manifest digest in
 # Pod imageID even though the immutable snapshot captured the config digest.
@@ -525,4 +605,4 @@ if FULL_SCREEN_GATE_EXPECTED_SNAPSHOT_ID="$retired_snapshot_id" \
   exit 1
 fi
 
-echo "[fast-overlay-snapshot-test] PASS persistentState=0700 immutableArchive=0400 manifest=imageID+ownedAnnotations+runtimePolicy+webTemplate+service+readiness+markers imageIdDomain=config-manifest-byte-bound minReadySeconds=runtime+web-missing-default0+restore-verified+null-rejected prePublishCleanup=6faults+activeHashExact+snapshotCountExact postMvTerm=active+snapshot+manifest-coherent serviceLateFailure=restored overlayOrder=copy-index-delete retiredResume=exact controllerRevision=excluded currentNginx=temp sourceClosure=verified copiedClosure=verified activeParser=strict duplicateUnknownModeOwner=rejected symlinkLoad=rejected"
+echo "[fast-overlay-snapshot-test] PASS persistentState=0700 immutableArchive=0400 manifest=imageID+ownedAnnotations+runtimePolicy+webTemplate+service+readiness+markers imageIdDomain=config-manifest-byte-bound hpaDesired=current-positive+scaleUp3-pass+ready2of3-rejected immutableRuntime=uid+template+image minReadySeconds=runtime+web-missing-default0+restore-verified+null-rejected prePublishCleanup=6faults+activeHashExact+snapshotCountExact postMvTerm=active+snapshot+manifest-coherent serviceLateFailure=restored overlayOrder=copy-index-delete retiredResume=exact controllerRevision=excluded currentNginx=temp sourceClosure=verified copiedClosure=verified activeParser=strict duplicateUnknownModeOwner=rejected symlinkLoad=rejected"

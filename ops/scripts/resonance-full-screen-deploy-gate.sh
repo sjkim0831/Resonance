@@ -541,6 +541,8 @@ verify_snapshot_manifest_files() {
     --arg service "$service_hash" --arg nginx "$nginx_hash" '
     .schemaVersion==2 and .snapshotId==$snapshot and .sourceCommit==$source
     and .runtimeImageRef==$image and .runtimeImageId==$imageId
+    and (.deploymentUid|type)=="string" and (.deploymentUid|length)>0
+    and (.deploymentGeneration|type)=="number" and .deploymentGeneration>=0
     and (.runtimeDesiredReplicas|type)=="number" and .runtimeDesiredReplicas>0
     and .deploymentAnnotationsSha256==$annotations and .podTemplateSha256==$template
     and .deploymentRolloutPolicySha256==$rolloutPolicy
@@ -621,19 +623,27 @@ runtime_image_ids_equivalent() {
 
 verify_restored_physical_loaded() {
   verify_snapshot_manifest_files
-  local overlay_hash runtime_json web_json service_json selector pods_json image_id desired ready_count current_nginx nginx_hash owned_annotations owned_service_annotations web_owned_annotations web_desired pod health_json
+  local overlay_hash runtime_json web_json service_json selector pods_json image_id desired baseline_uid ready_count current_nginx nginx_hash owned_annotations owned_service_annotations web_owned_annotations web_desired pod health_json
   local -a ready_pods=()
   overlay_hash="$(cd "$OVERLAY_DIR" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 -r sha256sum | sha256sum | awk '{print $1}')"
   [[ "$overlay_hash" == "$(jq -r '.overlaySha256' "$SNAPSHOT_DIR/manifest.json")" ]] \
     || fail "restored overlay differs from immutable baseline"
   runtime_json="$(kubectl -n "$NAMESPACE" get deployment "$RUNTIME_DEPLOYMENT" -o json)"
-  desired="$(jq -r '.runtimeDesiredReplicas' "$SNAPSHOT_DIR/manifest.json")"
+  # The HPA owns spec.replicas and may legitimately move it after capture.
+  # Treat the manifest value as capture-time audit evidence only; physical
+  # verification instead requires every current rollout/readiness coordinate
+  # and Ready pod count to agree exactly with the live positive desired value.
+  desired="$(jq -r '.spec.replicas // empty' <<<"$runtime_json")"
+  [[ "$desired" =~ ^[1-9][0-9]*$ ]] \
+    || fail "restored deployment desired replicas are invalid"
+  baseline_uid="$(jq -r '.deploymentUid // empty' "$SNAPSHOT_DIR/manifest.json")"
   owned_annotations="$(jq -cS '(.metadata.annotations//{})|with_entries(select(.key|startswith("resonance.ai/")))' <<<"$runtime_json")"
   jq -e --argjson desired "$desired" --argjson owned "$owned_annotations" --arg container "$RUNTIME_CONTAINER" \
+    --arg uid "$baseline_uid" \
     --slurpfile baselineOwned "$SNAPSHOT_DIR/deployment-annotations.json" \
     --slurpfile template "$SNAPSHOT_DIR/pod-template.json" \
     --slurpfile policy "$SNAPSHOT_DIR/deployment-rollout-policy.json" --arg image "$RUNTIME_IMAGE" '
-    $owned==$baselineOwned[0] and .spec.template==$template[0]
+    .metadata.uid==$uid and $owned==$baselineOwned[0] and .spec.template==$template[0]
     and ((.spec|{minReadySeconds:(if has("minReadySeconds") then .minReadySeconds else 0 end),progressDeadlineSeconds,strategy})==$policy[0])
     and any(.spec.template.spec.containers[]?;.name==$container and .image==$image)
     and (.status.observedGeneration // -1) >= (.metadata.generation // 0)
