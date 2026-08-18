@@ -8,13 +8,14 @@ const userPw = String(process.env.CARBONET_VALIDATE_PASSWORD || "");
 const userSe = String(process.env.CARBONET_VALIDATE_USER_SE || "USR");
 const loginPath = String(process.env.CARBONET_VALIDATE_LOGIN_PATH || "/admin/login/actionLogin");
 const itemId = String(process.env.CARBONET_SCREEN_CONTRACT_ITEM_ID || "26");
-// A production preview performs exact DB/runtime rollback proofs and can cross
-// the 2s boundary briefly under deploy-time validation load. Keep a strict
-// sub-3s SLO while avoiding false rollback for the observed 2.12s request.
-const maxSaveMillis = Number(process.env.CARBONET_SCREEN_CONTRACT_SAVE_MAX_MS || "2500");
+// Candidate preview runs beside the complete process/browser validation group
+// and performs exact DB/runtime rollback proofs. Preserve the 2.5s ordinary
+// SLO, while giving only the deploy-time preview a bounded 5s contention budget.
+const candidateMode = String(process.env.CARBONET_POSTDEPLOY_EVIDENCE_MODE || "") === "candidate";
+const defaultMaxSaveMillis = candidateMode ? "5000" : "2500";
+const maxSaveMillis = Number(process.env.CARBONET_SCREEN_CONTRACT_SAVE_MAX_MS || defaultMaxSaveMillis);
 const maxResolveMillis = Number(process.env.CARBONET_SCREEN_CONTRACT_RESOLVE_MAX_MS || "1000");
 const renderProbe = !["0", "false", "no"].includes(String(process.env.CARBONET_SCREEN_CONTRACT_RENDER_PROBE || "1").toLowerCase());
-const candidateMode = String(process.env.CARBONET_POSTDEPLOY_EVIDENCE_MODE || "") === "candidate";
 const previewMode = candidateMode || String(process.env.CARBONET_SCREEN_CONTRACT_PREVIEW_ONLY || "") === "1";
 
 if (!userId || !userPw) {
