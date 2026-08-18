@@ -143,10 +143,10 @@ class ReportVerificationRegistryServicePdfTest {
         Map<String, Object> dataset = Map.of("sectionSummaries", summaries);
 
         Map<String, Object> exact = (Map<String, Object>) scorer.invoke(service,
-                List.of("page one", "에너지 1.62 0 수계 배출물 0.36 0"),
+                List.of("page one", "에너지 1.62 kg CO2e 0% 수계 배출물 0.36 kg CO2e 0%"),
                 new ObjectMapper().valueToTree(dataset));
         Map<String, Object> tampered = (Map<String, Object>) scorer.invoke(service,
-                List.of("page one", "에너지 1.62 0 수계 배출물 0.36 1.62 0"),
+                List.of("page one", "에너지 1.62 kg CO2e 0% 수계 배출물 0.36 1.62 kg CO2e 0%"),
                 new ObjectMapper().valueToTree(dataset));
 
         assertTrue((Boolean) exact.get("sectionSummaryExactMatch"));

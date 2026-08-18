@@ -628,7 +628,8 @@ public class ReportVerificationRegistryService {
 
     private List<String> extractCanonicalNumbers(String text) {
         List<String> numbers = new ArrayList<>();
-        Matcher matcher = Pattern.compile("-?\\d+(?:\\.\\d+)?").matcher(text == null ? "" : text);
+        Matcher matcher = Pattern.compile("(?<![\\p{L}\\p{N}])-?\\d+(?:\\.\\d+)?(?![\\p{L}\\p{N}])")
+                .matcher(text == null ? "" : text);
         while (matcher.find() && numbers.size() < MAX_FIELD_COMPARISONS) {
             numbers.add(canonicalNumber(matcher.group()));
         }
