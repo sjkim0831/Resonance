@@ -4,13 +4,25 @@ set -Eeuo pipefail
 ROOT="${1:-${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}}"
 AUTO="$ROOT/ops/scripts/auto-deploy-main.sh"
 PROMOTER="$ROOT/ops/scripts/promote-postdeploy-candidate-evidence.sh"
-[[ -f "$AUTO" && -f "$PROMOTER" ]] || { echo '[postdeploy-promotion-recovery-test] missing source' >&2; exit 1; }
+GATE="$ROOT/ops/scripts/resonance-full-screen-deploy-gate.sh"
+[[ -f "$AUTO" && -f "$PROMOTER" && -f "$GATE" ]] \
+  || { echo '[postdeploy-promotion-recovery-test] missing source' >&2; exit 1; }
 
 TMP="$(mktemp -d)"
 trap 'rm -rf -- "$TMP"' EXIT
 mkdir -p "$TMP/bin" "$TMP/evidence" "$TMP/markers"
+RUNTIME_IMAGE_PROOF_TMP_DIR="$TMP"
 printf 'fixture\n' >"$TMP/kubeconfig"
 export CARBONET_KUBECONFIG="$TMP/kubeconfig"
+
+# auto-deploy self-snapshots one script, so the registry proof stays embedded
+# rather than sourcing a mutable checkout dependency.  Prevent copy drift by
+# requiring both consumers' complete helper functions to remain byte-exact.
+sed -n '/^runtime_image_ids_equivalent() {$/,/^}$/p' "$AUTO" >"$TMP/auto-image-proof.fn"
+sed -n '/^runtime_image_ids_equivalent() {$/,/^}$/p' "$GATE" >"$TMP/gate-image-proof.fn"
+[[ -s "$TMP/auto-image-proof.fn" ]] \
+  && cmp -s "$TMP/auto-image-proof.fn" "$TMP/gate-image-proof.fn" \
+  || { echo '[postdeploy-promotion-recovery-test] runtime image proof helper copy drift' >&2; exit 1; }
 
 SOURCE="76a08e672ab7054914ec3b5aecb57bc8e7a298fa"
 OLD="0000000000000000000000000000000000000000"
@@ -119,6 +131,22 @@ echo "unexpected fake kubectl call: $args" >&2
 exit 95
 SH
 chmod +x "$TMP/bin/kubectl"
+
+cat >"$TMP/bin/curl" <<'SH'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+[[ "${FAKE_REGISTRY_MODE:-available}" == available ]] || exit 28
+url="${@: -1}"
+if [[ "$url" == */manifests/"${FAKE_REGISTRY_ACTUAL_DIGEST:-missing}" ]]; then
+  cat -- "$FAKE_REGISTRY_ACTUAL_MANIFEST"
+elif [[ "$url" == */manifests/"${FAKE_REGISTRY_REFERENCE:-missing}" ]]; then
+  cat -- "$FAKE_REGISTRY_TAG_MANIFEST"
+else
+  echo "unexpected fake registry request: $url" >&2
+  exit 90
+fi
+SH
+chmod +x "$TMP/bin/curl"
 
 cat >"$TMP/bin/mv" <<'SH'
 #!/usr/bin/env bash
@@ -244,7 +272,7 @@ grep -Fxq 'reason=DB_PROMOTED_MARKER_PENDING' "$POSTDEPLOY_MARKER_PENDING_FILE"
 # the ordinary runtime identity preflight can deadlock the retry.
 eval "$(sed -n '/^write_commit_marker_exact() {$/,/^# Publish the serving release identity/p' "$AUTO" | sed '$d')"
 eval "$(sed -n '/^resolve_postdeploy_postgres_pod() {$/,/^}$/p' "$AUTO")"
-eval "$(sed -n '/^verify_operational_usage_ledger_current_runtime_identity() {$/,/^run_operational_usage_ledger_current_runtime_e2e_if_required() {$/p' "$AUTO" | sed '$d' | sed "s/3714b172fe60eed5d07658103aa5f51d6f9ef765f2cee2bd0ba304e71bfd9c1a/$FIXTURE_TEMPLATE_HASH/g")"
+eval "$(sed -n '/^runtime_image_ids_equivalent() {$/,/^run_operational_usage_ledger_current_runtime_e2e_if_required() {$/p' "$AUTO" | sed '$d' | sed "s/3714b172fe60eed5d07658103aa5f51d6f9ef765f2cee2bd0ba304e71bfd9c1a/$FIXTURE_TEMPLATE_HASH/g")"
 FULL_SCREEN_GATE_STATE_DIR="$TMP/full-screen"
 mkdir -p "$FULL_SCREEN_GATE_STATE_DIR/snapshots/fixture"
 chmod 0700 "$FULL_SCREEN_GATE_STATE_DIR"
@@ -329,7 +357,146 @@ NAMESPACE=test-ns; DEPLOYMENT=carbonet-runtime; POSTGRES_POD=postgres-0; POSTGRE
 POSTGRES_USER=postgres; POSTGRES_DB=carbonet
 runtime_marker_bootstrap_allowed=false; runtime_deployed_commit="$SOURCE"
 printf '%s\n' "$HELPER" >"$DEPLOY_STATE_FILE"; printf '%s\n' "$SOURCE" >"$RUNTIME_DEPLOY_STATE_FILE"
-PATH="$TMP/bin:$PATH" verify_operational_usage_ledger_current_runtime_identity "$runtime_deployed_commit" >/dev/null
+FAKE_REGISTRY_MODE=unavailable RUNTIME_IMAGE_PROOF_TMP_DIR="$TMP/missing-proof-parent" \
+PATH="$TMP/bin:$PATH" \
+  verify_operational_usage_ledger_current_runtime_identity "$runtime_deployed_commit" >/dev/null
+
+runtime_identity_fixture_sha256() {
+  sha256sum "$RUNTIME_DEPLOY_STATE_FILE" "$TMP/deployment.json" "$TMP/pods.json" "$TMP/ledger.json" \
+    | sha256sum | awk '{print $1}'
+}
+
+# containerd can report the registry manifest digest while the authoritative
+# ledger stores the image-config digest.  Accept that cross-domain pair only
+# through an exact registry manifest+tag+config proof; each missing binding is
+# an explicit mutant and must remain fail-closed.
+original_image_ref="$IMAGE_REF"
+bridge_source='3333333333333333333333333333333333333333'
+IMAGE_REF='registry.invalid/carbonet:official'
+printf '%s\n' "$bridge_source" >"$RUNTIME_DEPLOY_STATE_FILE"
+write_live_fixtures "$bridge_source"
+expected_config_digest="${IMAGE_ID##*@}"
+jq -cn --arg config "$expected_config_digest" '
+  {schemaVersion:2,mediaType:"application/vnd.docker.distribution.manifest.v2+json",
+   config:{mediaType:"application/vnd.docker.container.image.v1+json",size:1,digest:$config},layers:[]}' \
+  >"$TMP/runtime-registry-manifest.json"
+registry_manifest_digest="sha256:$(sha256sum "$TMP/runtime-registry-manifest.json" | awk '{print $1}')"
+jq --arg imageId "containerd://registry.invalid/carbonet@$registry_manifest_digest" \
+  '(.items[].status.containerStatuses[]|select(.name=="carbonet-runtime")|.imageID)=$imageId' \
+  "$TMP/pods.json" >"$TMP/pods-manifest-digest.json"
+/usr/bin/mv -fT -- "$TMP/pods-manifest-digest.json" "$TMP/pods.json"
+FAKE_REGISTRY_ACTUAL_DIGEST="$registry_manifest_digest" \
+FAKE_REGISTRY_REFERENCE=official \
+FAKE_REGISTRY_ACTUAL_MANIFEST="$TMP/runtime-registry-manifest.json" \
+FAKE_REGISTRY_TAG_MANIFEST="$TMP/runtime-registry-manifest.json" \
+PATH="$TMP/bin:$PATH" \
+  verify_operational_usage_ledger_current_runtime_identity "$bridge_source" >/dev/null
+
+# The ledger writer records whichever CRI digest domain was visible at publish
+# time.  A later runtime may expose the reverse domain, so M(ledger)->C(Pod)
+# must be accepted by the same exact registry proof as C(ledger)->M(Pod).
+jq --arg imageId "$registry_manifest_digest" '.imageId=$imageId' \
+  "$TMP/ledger.json" >"$TMP/ledger-manifest-digest.json"
+/usr/bin/mv -fT -- "$TMP/ledger-manifest-digest.json" "$TMP/ledger.json"
+jq --arg imageId "containerd://registry.invalid/carbonet@$expected_config_digest" \
+  '(.items[].status.containerStatuses[]|select(.name=="carbonet-runtime")|.imageID)=$imageId' \
+  "$TMP/pods.json" >"$TMP/pods-config-digest.json"
+/usr/bin/mv -fT -- "$TMP/pods-config-digest.json" "$TMP/pods.json"
+FAKE_REGISTRY_ACTUAL_DIGEST="$registry_manifest_digest" \
+FAKE_REGISTRY_REFERENCE=official \
+FAKE_REGISTRY_ACTUAL_MANIFEST="$TMP/runtime-registry-manifest.json" \
+FAKE_REGISTRY_TAG_MANIFEST="$TMP/runtime-registry-manifest.json" \
+PATH="$TMP/bin:$PATH" \
+  verify_operational_usage_ledger_current_runtime_identity "$bridge_source" >/dev/null
+jq --arg imageId "$IMAGE_ID" '.imageId=$imageId' \
+  "$TMP/ledger.json" >"$TMP/ledger-config-digest.json"
+/usr/bin/mv -fT -- "$TMP/ledger-config-digest.json" "$TMP/ledger.json"
+jq --arg imageId "containerd://registry.invalid/carbonet@$registry_manifest_digest" \
+  '(.items[].status.containerStatuses[]|select(.name=="carbonet-runtime")|.imageID)=$imageId' \
+  "$TMP/pods.json" >"$TMP/pods-manifest-digest-restored.json"
+/usr/bin/mv -fT -- "$TMP/pods-manifest-digest-restored.json" "$TMP/pods.json"
+
+jq -cn --arg config 'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd' '
+  {schemaVersion:2,mediaType:"application/vnd.docker.distribution.manifest.v2+json",
+   config:{mediaType:"application/vnd.docker.container.image.v1+json",size:1,digest:$config},layers:[]}' \
+  >"$TMP/runtime-registry-foreign-config.json"
+foreign_manifest_digest="sha256:$(sha256sum "$TMP/runtime-registry-foreign-config.json" | awk '{print $1}')"
+jq --arg imageId "containerd://registry.invalid/carbonet@$foreign_manifest_digest" \
+  '(.items[].status.containerStatuses[]|select(.name=="carbonet-runtime")|.imageID)=$imageId' \
+  "$TMP/pods.json" >"$TMP/pods-foreign-config.json"
+/usr/bin/mv -fT -- "$TMP/pods-foreign-config.json" "$TMP/pods.json"
+mutant_fixture_before="$(runtime_identity_fixture_sha256)"
+if FAKE_REGISTRY_ACTUAL_DIGEST="$foreign_manifest_digest" \
+   FAKE_REGISTRY_REFERENCE=official \
+   FAKE_REGISTRY_ACTUAL_MANIFEST="$TMP/runtime-registry-foreign-config.json" \
+   FAKE_REGISTRY_TAG_MANIFEST="$TMP/runtime-registry-foreign-config.json" \
+   PATH="$TMP/bin:$PATH" \
+     verify_operational_usage_ledger_current_runtime_identity "$bridge_source" \
+       >"$TMP/runtime-foreign-config.log" 2>&1; then
+  echo '[postdeploy-promotion-recovery-test] foreign registry config digest survived' >&2; exit 1
+fi
+grep -Fq 'source=pod-image-digest' "$TMP/runtime-foreign-config.log"
+[[ "$(runtime_identity_fixture_sha256)" == "$mutant_fixture_before" ]] \
+  || { echo '[postdeploy-promotion-recovery-test] foreign-config failure mutated runtime identity' >&2; exit 1; }
+
+jq --arg layer 'sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' \
+  '.layers=[{mediaType:"application/vnd.docker.image.rootfs.diff.tar.gzip",size:1,digest:$layer}]' \
+  "$TMP/runtime-registry-manifest.json" >"$TMP/runtime-registry-body-tamper.json"
+jq --arg imageId "containerd://registry.invalid/carbonet@$registry_manifest_digest" \
+  '(.items[].status.containerStatuses[]|select(.name=="carbonet-runtime")|.imageID)=$imageId' \
+  "$TMP/pods.json" >"$TMP/pods-body-tamper.json"
+/usr/bin/mv -fT -- "$TMP/pods-body-tamper.json" "$TMP/pods.json"
+body_tamper_digest="sha256:$(sha256sum "$TMP/runtime-registry-body-tamper.json" | awk '{print $1}')"
+mutant_fixture_before="$(runtime_identity_fixture_sha256)"
+if FAKE_REGISTRY_ACTUAL_DIGEST="$registry_manifest_digest" \
+   FAKE_REGISTRY_REFERENCE=official \
+   FAKE_REGISTRY_ACTUAL_MANIFEST="$TMP/runtime-registry-body-tamper.json" \
+   FAKE_REGISTRY_TAG_MANIFEST="$TMP/runtime-registry-manifest.json" \
+   PATH="$TMP/bin:$PATH" \
+     verify_operational_usage_ledger_current_runtime_identity "$bridge_source" \
+       >"$TMP/runtime-body-tamper.log" 2>&1; then
+  echo '[postdeploy-promotion-recovery-test] registry body/digest mismatch survived' >&2; exit 1
+fi
+grep -Fq 'source=pod-image-digest' "$TMP/runtime-body-tamper.log"
+[[ "$(runtime_identity_fixture_sha256)" == "$mutant_fixture_before" ]] \
+  || { echo '[postdeploy-promotion-recovery-test] body-tamper failure mutated runtime identity' >&2; exit 1; }
+
+mutant_fixture_before="$(runtime_identity_fixture_sha256)"
+if FAKE_REGISTRY_ACTUAL_DIGEST="$body_tamper_digest" \
+   FAKE_REGISTRY_REFERENCE=official \
+   FAKE_REGISTRY_ACTUAL_MANIFEST="$TMP/runtime-registry-body-tamper.json" \
+   FAKE_REGISTRY_TAG_MANIFEST="$TMP/runtime-registry-body-tamper.json" \
+   PATH="$TMP/bin:$PATH" \
+     verify_operational_usage_ledger_current_runtime_identity "$bridge_source" \
+       >"$TMP/runtime-tag-retarget.log" 2>&1; then
+  echo '[postdeploy-promotion-recovery-test] retargeted runtime tag survived' >&2; exit 1
+fi
+grep -Fq 'source=pod-image-digest' "$TMP/runtime-tag-retarget.log"
+[[ "$(runtime_identity_fixture_sha256)" == "$mutant_fixture_before" ]] \
+  || { echo '[postdeploy-promotion-recovery-test] tag-retarget failure mutated runtime identity' >&2; exit 1; }
+
+mutant_fixture_before="$(runtime_identity_fixture_sha256)"
+unavailable_status=0
+FAKE_REGISTRY_MODE=unavailable \
+FAKE_REGISTRY_ACTUAL_DIGEST="$registry_manifest_digest" \
+FAKE_REGISTRY_REFERENCE=official \
+FAKE_REGISTRY_ACTUAL_MANIFEST="$TMP/runtime-registry-manifest.json" \
+FAKE_REGISTRY_TAG_MANIFEST="$TMP/runtime-registry-manifest.json" \
+PATH="$TMP/bin:$PATH" \
+  verify_operational_usage_ledger_current_runtime_identity "$bridge_source" \
+    >"$TMP/runtime-registry-unavailable.log" 2>&1 || unavailable_status=$?
+[[ "$unavailable_status" == 2 ]] \
+  || { echo "[postdeploy-promotion-recovery-test] unavailable registry proof status=$unavailable_status" >&2; exit 1; }
+grep -Fq 'reason=DATA_UNAVAILABLE source=registry-image-proof' "$TMP/runtime-registry-unavailable.log"
+if grep -Fq 'source=pod-image-digest' "$TMP/runtime-registry-unavailable.log"; then
+  echo '[postdeploy-promotion-recovery-test] unavailable proof was mislabeled immutable' >&2; exit 1
+fi
+[[ "$(runtime_identity_fixture_sha256)" == "$mutant_fixture_before" ]] \
+  || { echo '[postdeploy-promotion-recovery-test] unavailable proof mutated runtime identity' >&2; exit 1; }
+IMAGE_REF="$original_image_ref"
+printf '%s\n' "$SOURCE" >"$RUNTIME_DEPLOY_STATE_FILE"
+write_live_fixtures "$SOURCE"
+
 # The old installation has no template annotation. Exact legacy proof permits
 # one strict bootstrap, then every subsequent verification is hash-bound.
 jq 'del(.metadata.annotations["resonance.ai/runtime-template-sha256"]) |
@@ -479,7 +646,14 @@ postdeploy_authoritative_promotion_status() {
 }
 current_runtime_identity_hash() { printf '%s\n' "$RUNTIME_HASH"; printf 'hash\n' >>"$FINALIZER_TRACE"; }
 transition_postdeploy_attempt_journal() { printf 'journal-promoted\n' >>"$FINALIZER_TRACE"; }
-verify_operational_usage_ledger_current_runtime_identity() { printf 'final-live-drift\n' >>"$FINALIZER_TRACE"; return 1; }
+verify_operational_usage_ledger_current_runtime_identity() {
+  if [[ "${FINAL_LIVE_VERIFY_STATUS:-1}" == 2 ]]; then
+    printf 'final-live-unavailable\n' >>"$FINALIZER_TRACE"
+    return 2
+  fi
+  printf 'final-live-drift\n' >>"$FINALIZER_TRACE"
+  return 1
+}
 invalidate_runtime_release_state() {
   printf 'ledger-count0\n' >>"$FINALIZER_TRACE"
   printf 'count=0\n' >"$TMP/finalizer-ledger-invalidated"
@@ -527,6 +701,37 @@ assert events == expected, events
 PY
 grep -Fq 'RECOVERY_PENDING DB promotion committed' "$TMP/finalizer-drift.log"
 
+# A registry transport outage after the immutable DB promotion is not runtime
+# drift. Preserve the current ledger, rollback snapshot and both old markers;
+# the PROMOTED journal is sufficient for the ordinary bounded recovery retry.
+: >"$FINALIZER_TRACE"
+printf 'SNAPSHOT_ID=finalizer-unavailable\n' >"$FULL_SCREEN_GATE_STATE_DIR/active.env"
+printf '%s\n' "$OLD" >"$RUNTIME_DEPLOY_STATE_FILE"
+printf '%s\n' "$OLD" >"$DEPLOY_STATE_FILE"
+rm -f "$POSTDEPLOY_MARKER_PENDING_FILE" "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+  "$TMP/finalizer-ledger-invalidated"
+postdeploy_candidate_promoted=false; postdeploy_candidate_authority_unknown=false
+status=0
+FINAL_LIVE_VERIFY_STATUS=2 finalize_postdeploy_candidate_release \
+  >"$TMP/finalizer-unavailable.log" 2>&1 || status=$?
+[[ "$status" == 75 && "$postdeploy_candidate_promoted" == true \
+   && ! -e "$TMP/finalizer-ledger-invalidated" \
+   && ! -e "$POSTDEPLOY_MARKER_PENDING_FILE" \
+   && ! -e "$RUNTIME_LEDGER_QUARANTINE_FILE" ]]
+[[ -s "$FULL_SCREEN_GATE_STATE_DIR/active.env" \
+   && "$(tr -d '[:space:]' <"$RUNTIME_DEPLOY_STATE_FILE")" == "$OLD" \
+   && "$(tr -d '[:space:]' <"$DEPLOY_STATE_FILE")" == "$OLD" ]]
+python3 - "$FINALIZER_TRACE" <<'PY'
+from pathlib import Path
+import sys
+events=Path(sys.argv[1]).read_text().splitlines()
+expected=['record','usage','staged','promoter-deferred','authority','hash',
+          'journal-promoted','final-live-unavailable']
+assert events == expected, events
+PY
+grep -Fq 'registry proof is unavailable' "$TMP/finalizer-unavailable.log"
+grep -Fq 'mutation=0' "$TMP/finalizer-unavailable.log"
+
 # Execute the dedicated ledger-absent PROMOTED self-heal. Only an exact DB
 # promotion/attempt/12-unit hash and stable live reproof may republish the
 # singleton; persistent mismatch performs zero writes and remains status 75.
@@ -566,6 +771,10 @@ verify_operational_usage_ledger_current_runtime_identity() {
   if [[ "${NORMAL_COMMIT_RECOVERY:-false}" == true ]]; then
     printf 'normal-full-proof\n' >>"$FINALIZER_TRACE"
     return 0
+  fi
+  if [[ "${RECOVERY_FULL_PROOF_STATUS:-0}" == 2 ]]; then
+    printf 'full-proof-unavailable\n' >>"$FINALIZER_TRACE"
+    return 2
   fi
   printf 'full-proof-restored\n' >>"$FINALIZER_TRACE"
 }
@@ -672,6 +881,25 @@ assert Path(sys.argv[1]).read_text().splitlines() == [
   'db-promotion-ledger0','live-ledgerless-proof','ledger-republished',
   'authority-restored','full-proof-restored']
 PY
+
+# Once the exact ledger has been republished, a transient registry outage in
+# its final cross-domain proof must not delete that recovered current truth.
+: >"$FINALIZER_TRACE"
+rm -f "$TMP/finalizer-ledger-invalidated"
+status=0
+RECOVERY_LIVE_MODE=exact RECOVERY_FULL_PROOF_STATUS=2 \
+  recover_promoted_final_live_verify_pending \
+    "$RECOVERY_JOURNAL" "$SOURCE" "$CANDIDATE" \
+    >"$TMP/recovery-registry-unavailable.log" 2>&1 || status=$?
+[[ "$status" == 75 && ! -e "$TMP/finalizer-ledger-invalidated" \
+   && -s "$FULL_SCREEN_GATE_STATE_DIR/active.env" \
+   && "$(tr -d '[:space:]' <"$RUNTIME_DEPLOY_STATE_FILE")" == "$OLD" \
+   && "$(tr -d '[:space:]' <"$DEPLOY_STATE_FILE")" == "$OLD" ]]
+[[ "$(cat "$FINALIZER_TRACE")" == \
+  $'db-promotion-ledger0\nlive-ledgerless-proof\nledger-republished\nauthority-restored\nfull-proof-unavailable' ]]
+grep -Fq 'ledger registry proof is unavailable' "$TMP/recovery-registry-unavailable.log"
+grep -Fq 'mutation=0' "$TMP/recovery-registry-unavailable.log"
+
 : >"$FINALIZER_TRACE"
 rm -f "$TMP/finalizer-ledger-invalidated"
 status=0
@@ -685,4 +913,4 @@ RECOVERY_LIVE_MODE=drift recover_promoted_final_live_verify_pending \
 grep -Fq 'mutation=0' "$TMP/recovery-drift.log"
 unset -f bash
 
-printf '[postdeploy-promotion-recovery-test] PASS committedMvFault=preserve+old-marker retry=ALREADY_PROMOTED+reconcile precommit=current0+invalidate dbCheckFault=quarantine0600+no-marker-inference exactTarget=directory+symlink+unsafe-path nextPreflight=pending-or-nohint-orphan+DB+K8s+markers-reconciled+active-disarmed remoteRace=A-promoted-B-helper-preserved finalizerDrift=postCommit+verifyFail+ledgerCount0+quarantine0600+pending75+snapshotArmed+markers0 normalCommitCrash=files0+ordinary-runtime-or-applied-pending+ledger1+authority+proof+disarm crashWindows=SIGKILL-after-ledger-delete+pending-rename+quarantine-rename+secondary-reconstruct selfHeal=promotion+attempt+12units+ledger0+liveStable+republish+authority mismatch=ledgerNull+snapshotArmed+markers0+mutation0 runtimeSeparation=helper-build0+template-bootstrap-exact76a+preMigrationNull+DBExactHash+unpinned-selfSign0+coupledMutation0+before-arm+autoscale-up-down-pass+ledger-attestation-stable+template-drift-fail+future-coordinate-fail+readiness-transient+immutable-digest-drift-fail+next-runtime-pass+drift-fail bootstrap=DB+K8s\n'
+printf '[postdeploy-promotion-recovery-test] PASS committedMvFault=preserve+old-marker retry=ALREADY_PROMOTED+reconcile precommit=current0+invalidate dbCheckFault=quarantine0600+no-marker-inference exactTarget=directory+symlink+unsafe-path nextPreflight=pending-or-nohint-orphan+DB+K8s+markers-reconciled+active-disarmed remoteRace=A-promoted-B-helper-preserved finalizerDrift=postCommit+verifyFail+ledgerCount0+quarantine0600+pending75+snapshotArmed+markers0 normalCommitCrash=files0+ordinary-runtime-or-applied-pending+ledger1+authority+proof+disarm crashWindows=SIGKILL-after-ledger-delete+pending-rename+quarantine-rename+secondary-reconstruct selfHeal=promotion+attempt+12units+ledger0+liveStable+republish+authority mismatch=ledgerNull+snapshotArmed+markers0+mutation0 runtimeSeparation=helper-build0+template-bootstrap-exact76a+preMigrationNull+DBExactHash+unpinned-selfSign0+coupledMutation0+before-arm+autoscale-up-down-pass+ledger-attestation-stable+template-drift-fail+future-coordinate-fail+readiness-transient+immutable-digest-drift-fail+next-runtime-pass+drift-fail imageDigestDomains=config-manifest-bridge+foreign-config0+body-tamper0+tag-retarget0+unavailable-proof0 bootstrap=DB+K8s\n'

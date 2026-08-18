@@ -2335,6 +2335,7 @@ recover_runtime_after_failure_if_safe() {
 POSTDEPLOY_LEGACY_RETIRE_DIR="${CARBONET_POSTDEPLOY_LEGACY_RETIRE_DIR:-/opt/resonance-data/deploy/retired-attempts}"
 FULL_SCREEN_GATE_STATE_DIR="${CARBONET_FULL_SCREEN_GATE_STATE_DIR:-${FULL_SCREEN_GATE_STATE_DIR:-/opt/resonance-data/deploy/full-screen-deploy-gate}}"
 LEGACY_FULL_SCREEN_GATE_STATE_DIR="${CARBONET_LEGACY_FULL_SCREEN_GATE_STATE_DIR:-$ROOT_DIR/var/run/full-screen-deploy-gate}"
+RUNTIME_IMAGE_PROOF_TMP_DIR="${CARBONET_RUNTIME_IMAGE_PROOF_TMP_DIR:-$FULL_SCREEN_GATE_STATE_DIR/runtime-image-proof}"
 export FULL_SCREEN_GATE_STATE_DIR
 BACKUP_DIR="${CARBONET_DB_BACKUP_DIR:-/opt/resonance-backups/postgresql/pre-deploy}"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
@@ -2346,6 +2347,34 @@ POSTGRES_USER="${POSTGRES_ADMIN_USER:-postgres}"
 RUNTIME_LEDGER_QUARANTINE_FILE="${CARBONET_RUNTIME_LEDGER_QUARANTINE_FILE:-${CARBONET_DEPLOY_STATE_DIR:-/opt/resonance-data/deploy}/runtime-ledger-invalidation.quarantine}"
 LEGACY_RUNTIME_LEDGER_QUARANTINE_FILE="${CARBONET_LEGACY_RUNTIME_LEDGER_QUARANTINE_FILE:-$ROOT_DIR/var/run/runtime-ledger-invalidation.quarantine}"
 POSTDEPLOY_MARKER_PENDING_FILE="${CARBONET_POSTDEPLOY_MARKER_PENDING_FILE:-${CARBONET_DEPLOY_STATE_DIR:-/opt/resonance-data/deploy}/postdeploy-marker-pending.state}"
+
+initialize_runtime_image_proof_tmp_dir() {
+  local parent parent_lex parent_resolved path_lex path_resolved
+  [[ "$RUNTIME_IMAGE_PROOF_TMP_DIR" == /* \
+     && "$RUNTIME_IMAGE_PROOF_TMP_DIR" != / \
+     && "${RUNTIME_IMAGE_PROOF_TMP_DIR##*/}" == runtime-image-proof ]] || return 79
+  parent="$(dirname -- "$RUNTIME_IMAGE_PROOF_TMP_DIR")"
+  [[ -d "$parent" && ! -L "$parent" ]] || return 79
+  parent_lex="$(realpath -m -s -- "$parent" 2>/dev/null)" || return 79
+  parent_resolved="$(readlink -e -- "$parent" 2>/dev/null)" || return 79
+  [[ "$parent_lex" == "$parent_resolved" ]] || return 79
+  if [[ "$parent_resolved" == /tmp ]]; then
+    [[ "$(stat -c '%a:%u' "$parent_resolved" 2>/dev/null || true)" == 1777:0 ]] || return 79
+  else
+    [[ "$(stat -c '%a:%u' "$parent_resolved" 2>/dev/null || true)" == "700:$(id -u)" ]] \
+      || return 79
+  fi
+  if [[ ! -e "$RUNTIME_IMAGE_PROOF_TMP_DIR" && ! -L "$RUNTIME_IMAGE_PROOF_TMP_DIR" ]]; then
+    (umask 077; mkdir -- "$RUNTIME_IMAGE_PROOF_TMP_DIR") || return 79
+  fi
+  [[ -d "$RUNTIME_IMAGE_PROOF_TMP_DIR" && ! -L "$RUNTIME_IMAGE_PROOF_TMP_DIR" ]] || return 79
+  path_lex="$(realpath -m -s -- "$RUNTIME_IMAGE_PROOF_TMP_DIR" 2>/dev/null)" || return 79
+  path_resolved="$(readlink -e -- "$RUNTIME_IMAGE_PROOF_TMP_DIR" 2>/dev/null)" || return 79
+  [[ "$path_lex" == "$path_resolved" \
+     && "$(dirname -- "$path_resolved")" == "$parent_resolved" \
+     && "$(stat -c '%a:%u' "$path_resolved" 2>/dev/null || true)" == "700:$(id -u)" ]] \
+    || return 79
+}
 
 terminal_deploy_recovery_residue_absent() {
   [[ ! -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" \
@@ -3183,6 +3212,10 @@ if [[ "${CARBONET_RECOVERY_ONLY:-false}" == true ]]; then
 else
   flock -n 9 || { echo "[auto-deploy] another deployment is running"; exit 0; }
 fi
+initialize_runtime_image_proof_tmp_dir || {
+  echo '[auto-deploy] runtime image proof temp directory is unsafe' >&2
+  exit 79
+}
 # Retire historical cron/systemd mutation paths from the exact target snapshot
 # before any cleanup recovery, checkpoint, backup, Flyway, build, or Kubernetes
 # access. Retirement is intentionally one-way: a later deploy failure must
@@ -6844,6 +6877,114 @@ run_operational_usage_ledger_live_e2e_if_required() {
   echo "[auto-deploy] operational usage ledger authenticated E2E PASS budget=${timeout_seconds}s"
 }
 
+# CRI implementations may expose either the registry manifest digest or the
+# image-config digest in Pod.status.containerStatuses[].imageID.  They identify
+# the same immutable image only when the tag and digest-addressed registry
+# manifests are byte-exact and bind the unordered manifest/config digest pair.
+# Never accept tag equality alone, and never weaken unavailable proof into
+# equivalence. Return 0 for equivalent, 1 for mismatch, and 2 for unavailable.
+runtime_image_ids_equivalent() {
+  local expected_id="$1" actual_id="$2" image_ref="$3"
+  local expected_digest actual_digest registry repository prefix leaf reference scheme
+  local manifest_tmp tag_manifest_tmp manifest_digest tag_manifest_digest
+  local config_digest tag_config_digest proof_tmp_dir proof_tmp_resolved proof_tmp_identity
+  expected_digest="${expected_id##*@}"
+  actual_digest="${actual_id##*@}"
+  [[ "$expected_digest" =~ ^sha256:[0-9a-f]{64}$ \
+     && "$actual_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || return 1
+  [[ "$expected_digest" != "$actual_digest" ]] || return 0
+  [[ "$image_ref" == */* ]] || return 1
+  registry="${image_ref%%/*}"
+  repository="${image_ref#*/}"
+  if [[ "$repository" == *@* ]]; then
+    reference="${repository##*@}"
+  else
+    leaf="${repository##*/}"
+    if [[ "$leaf" == *:* ]]; then reference="${leaf##*:}"; else reference=latest; fi
+  fi
+  repository="${repository%@*}"
+  prefix="${repository%/*}"
+  leaf="${repository##*/}"
+  leaf="${leaf%%:*}"
+  if [[ "$prefix" == "$repository" ]]; then
+    repository="$leaf"
+  else
+    repository="$prefix/$leaf"
+  fi
+  [[ "$registry" =~ ^[A-Za-z0-9.-]+(:[0-9]{1,5})?$ \
+     && "$repository" =~ ^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ \
+     && "$reference" =~ ^([A-Za-z0-9_][A-Za-z0-9._-]{0,127}|sha256:[0-9a-f]{64})$ ]] || return 1
+  case "$registry" in
+    localhost|localhost:*|127.0.0.1|127.0.0.1:*) scheme=http ;;
+    *) scheme=https ;;
+  esac
+  proof_tmp_dir="${RUNTIME_IMAGE_PROOF_TMP_DIR:-/tmp}"
+  [[ "$proof_tmp_dir" == /* && -d "$proof_tmp_dir" && ! -L "$proof_tmp_dir" ]] || return 2
+  proof_tmp_resolved="$(readlink -e -- "$proof_tmp_dir" 2>/dev/null)" || return 2
+  [[ "$(realpath -m -s -- "$proof_tmp_dir" 2>/dev/null)" == "$proof_tmp_resolved" ]] || return 2
+  proof_tmp_identity="$(stat -c '%a:%u' "$proof_tmp_resolved" 2>/dev/null || true)"
+  if [[ "$proof_tmp_resolved" == /tmp ]]; then
+    [[ "$proof_tmp_identity" == 1777:0 ]] || return 2
+  else
+    [[ "$proof_tmp_identity" == "700:$(id -u)" ]] || return 2
+  fi
+  (
+    local proof_work_dir="" proof_work_resolved="" resolved_candidate=""
+    cleanup_runtime_image_proof() {
+      local status=$?
+      trap - EXIT HUP INT TERM
+      if [[ -n "$proof_work_dir" && "$proof_work_resolved" == "$proof_work_dir" \
+         && "$(dirname -- "$proof_work_resolved")" == "$proof_tmp_resolved" \
+         && "${proof_work_resolved##*/}" == runtime-image-proof.* \
+         && -d "$proof_work_resolved" && ! -L "$proof_work_resolved" \
+         && "$(stat -c '%a:%u' "$proof_work_resolved" 2>/dev/null || true)" == "700:$(id -u)" ]]; then
+        rm -rf --one-file-system -- "$proof_work_resolved" || status=2
+      else
+        status=2
+      fi
+      exit "$status"
+    }
+    trap cleanup_runtime_image_proof EXIT
+    trap 'exit 2' HUP INT TERM
+    proof_work_dir="$(umask 077; mktemp -d "$proof_tmp_resolved/runtime-image-proof.XXXXXX")" || exit 2
+    proof_work_resolved="$proof_work_dir"
+    resolved_candidate="$(readlink -e -- "$proof_work_dir" 2>/dev/null)" || exit 2
+    proof_work_resolved="$resolved_candidate"
+    [[ "$proof_work_resolved" == "$proof_work_dir" \
+       && "$(dirname -- "$proof_work_resolved")" == "$proof_tmp_resolved" \
+       && "$(stat -c '%a:%u' "$proof_work_resolved" 2>/dev/null || true)" == "700:$(id -u)" ]] \
+      || exit 2
+    manifest_tmp="$proof_work_resolved/manifest.json"
+    tag_manifest_tmp="$proof_work_resolved/tag-manifest.json"
+    (umask 077; : >"$manifest_tmp" && : >"$tag_manifest_tmp") || exit 2
+    chmod 0600 "$manifest_tmp" "$tag_manifest_tmp" || exit 2
+    curl -fsS --max-time 15 \
+        -H 'Accept: application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json' \
+        "$scheme://$registry/v2/$repository/manifests/$reference" \
+        >"$tag_manifest_tmp" || exit 2
+    tag_manifest_digest="sha256:$(sha256sum "$tag_manifest_tmp" | awk '{print $1}')"
+    tag_config_digest="$(jq -r '.config.digest // empty' "$tag_manifest_tmp" 2>/dev/null || true)"
+    [[ "$tag_manifest_digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
+      && jq -e '.schemaVersion==2 and (.config.digest|test("^sha256:[0-9a-f]{64}$"))' \
+        "$tag_manifest_tmp" >/dev/null 2>&1 || exit 2
+    curl -fsS --max-time 15 \
+        -H 'Accept: application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json' \
+        "$scheme://$registry/v2/$repository/manifests/$tag_manifest_digest" \
+        >"$manifest_tmp" || exit 2
+    manifest_digest="sha256:$(sha256sum "$manifest_tmp" | awk '{print $1}')"
+    config_digest="$(jq -r '.config.digest // empty' "$manifest_tmp" 2>/dev/null || true)"
+    [[ "$manifest_digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
+      && jq -e '.schemaVersion==2 and (.config.digest|test("^sha256:[0-9a-f]{64}$"))' \
+        "$manifest_tmp" >/dev/null 2>&1 || exit 2
+    [[ "$manifest_digest" == "$tag_manifest_digest" \
+       && "$config_digest" == "$tag_config_digest" \
+       && ( ( "$expected_digest" == "$tag_config_digest" \
+              && "$actual_digest" == "$tag_manifest_digest" ) \
+         || ( "$expected_digest" == "$tag_manifest_digest" \
+              && "$actual_digest" == "$tag_config_digest" ) ) ]]
+  )
+}
+
 verify_operational_usage_ledger_current_runtime_identity() {
   local expected_commit="${1:-}"
   local marker_recovery_mode="${2:-strict}"
@@ -6854,7 +6995,8 @@ verify_operational_usage_ledger_current_runtime_identity() {
   local marker_matches=false annotation_matches=false ledger_matches=false image_matches=false
   local immutable_deployment_matches=false template_matches=false readiness_exact=false
   local ledger_coordinates_valid=false
-  local image_ref ledger_image_ref ledger_image_id selector pods_json pod_image_ids
+  local image_ref ledger_image_ref ledger_image_id selector pods_json pod_image_ids pod_image_id
+  local image_proof_status=1
   local ledger_namespace ledger_deployment ledger_uid ledger_generation ledger_observed ledger_desired ledger_template_hash
   local deployment_uid generation observed desired ready_count pod pod_health
   local template_annotation_hash live_template_hash annotated_json annotated_live_template_hash
@@ -6993,9 +7135,19 @@ verify_operational_usage_ledger_current_runtime_identity() {
     echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=READINESS_TRANSIENT' >&2
     return 1
   fi
-  if [[ "$(jq -r 'length' <<<"$pod_image_ids" 2>/dev/null || true)" == 1 \
-     && "$(jq -r '.[0] // empty' <<<"$pod_image_ids" 2>/dev/null || true)" == "$ledger_image_id" ]]; then
-    image_matches=true
+  if [[ "$(jq -r 'length' <<<"$pod_image_ids" 2>/dev/null || true)" == 1 ]]; then
+    pod_image_id="$(jq -r '.[0] // empty' <<<"$pod_image_ids" 2>/dev/null || true)"
+    if runtime_image_ids_equivalent "$ledger_image_id" "$pod_image_id" "$image_ref"; then
+      image_proof_status=0
+    else
+      image_proof_status=$?
+    fi
+    if (( image_proof_status == 0 )); then
+      image_matches=true
+    elif (( image_proof_status == 2 )); then
+      echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=DATA_UNAVAILABLE source=registry-image-proof' >&2
+      return 2
+    fi
   fi
   if [[ "$image_matches" != true ]]; then
     echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=IMMUTABLE_MISMATCH source=pod-image-digest' >&2
@@ -7314,6 +7466,7 @@ verify_promoted_live_identity_without_runtime_ledger() {
 
 recover_promoted_final_live_verify_pending() {
   local journal="$1" source="$2" candidate="$3" expected_hash db_hash verify_status=0
+  local authority_status=0 final_verify_status=0
   local pending_present=false quarantine_present=false
   local pending_reason="" quarantine_reason=""
   [[ "$(jq -r '.lifecycleStatus' <<<"$journal")" == PROMOTED \
@@ -7396,10 +7549,23 @@ recover_promoted_final_live_verify_pending() {
     echo '[auto-deploy] RECOVERY_PENDING exact promoted ledger republish failed' >&2
     return 75
   fi
-  if ! postdeploy_authoritative_promotion_status "$source" "$candidate" \
-     || ! verify_operational_usage_ledger_current_runtime_identity "$source" proof-only; then
+  postdeploy_authoritative_promotion_status "$source" "$candidate" || authority_status=$?
+  if (( authority_status == 2 )); then
+    echo '[auto-deploy] RECOVERY_PENDING republished ledger authority proof is unavailable; ledger preserved mutation=0' >&2
+    return 75
+  elif (( authority_status != 0 )); then
     invalidate_runtime_release_state || true
     echo '[auto-deploy] RECOVERY_PENDING republished ledger did not restore exact authority' >&2
+    return 75
+  fi
+  verify_operational_usage_ledger_current_runtime_identity "$source" proof-only \
+    || final_verify_status=$?
+  if (( final_verify_status == 2 )); then
+    echo '[auto-deploy] RECOVERY_PENDING republished ledger registry proof is unavailable; ledger preserved mutation=0' >&2
+    return 75
+  elif (( final_verify_status != 0 )); then
+    invalidate_runtime_release_state || true
+    echo '[auto-deploy] RECOVERY_PENDING republished ledger did not restore exact live identity' >&2
     return 75
   fi
   echo "[auto-deploy] promoted final-live identity self-heal PASS source=$source candidate=$candidate"
@@ -8235,6 +8401,7 @@ SQL
 finalize_postdeploy_candidate_release() {
   local externally_verified_template_sha256="${1:-}"
   local promoter_status=0 authority_status=2 applied_marker="" runtime_marker="" runtime_hash=""
+  local final_live_verify_status=0
   local attempt_terminal_status=PROMOTED transition_status=PROMOTED transition_reason=PROMOTION_COMMITTED
   local journal="" snapshot_id="" snapshot_manifest="" baseline=""
   local gate_overlay="${live_frontend_overlay:-${CARBONET_LIVE_FRONTEND_OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}}"
@@ -8298,7 +8465,19 @@ finalize_postdeploy_candidate_release() {
       # Promotion commits current evidence, but it cannot disarm rollback or
       # publish either derived marker until one complete live proof remains
       # stable across its final resourceVersion/PodTemplate reread.
-      if ! verify_operational_usage_ledger_current_runtime_identity "$target_commit" proof-only; then
+      if verify_operational_usage_ledger_current_runtime_identity "$target_commit" proof-only; then
+        final_live_verify_status=0
+      else
+        final_live_verify_status=$?
+      fi
+      if (( final_live_verify_status == 2 )); then
+        echo '[auto-deploy] RECOVERY_PENDING DB promotion committed but final live registry proof is unavailable; ledger, rollback snapshot and markers preserved mutation=0' >&2
+        # The immutable PROMOTED journal plus the still-current runtime ledger
+        # is the ordinary COMMIT->marker recovery anchor.  Do not create the
+        # ledger-absent drift state for a transport outage; a bounded retry can
+        # repeat the proof without reconstructing current runtime truth.
+        return 75
+      elif (( final_live_verify_status != 0 )); then
         if ! invalidate_runtime_release_state; then
           write_postdeploy_promotion_quarantine 'PROMOTED_FINAL_LIVE_IDENTITY_INVALIDATION_UNVERIFIED' || true
           echo '[auto-deploy] FAIL promoted final-live drift and runtime-ledger count=0 compensation is unverified' >&2

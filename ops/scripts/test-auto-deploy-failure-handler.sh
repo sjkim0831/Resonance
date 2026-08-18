@@ -339,6 +339,9 @@ SH
   run_classifier_mutant runtime_identity_readiness_transient 1 \
     '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=READINESS_TRANSIENT' \
     NETWORK_TRANSIENT RETRY_SCHEDULED true true 1
+  run_classifier_mutant runtime_identity_registry_proof_unavailable 1 \
+    '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=DATA_UNAVAILABLE source=registry-image-proof' \
+    NETWORK_TRANSIENT RETRY_SCHEDULED true true 1
   run_classifier_mutant flyway_p0001 79 \
     $'error: timed out waiting for condition\nFLYWAY_JOB_FAILED\nERROR: role update failed\nLINE 1: ALTER ROLE backstage PASSWORD \'fixture-quote\'fixture-secret\';\nLINE 2: fixture-multiline-prefix\nSQL State  : P0001 fixture-secret-marker-spoof\nfixture-multiline-suffix-after-spoof\';\n                                      ^\nSQL State  : P0001\nWORK_EXECUTION stage B precondition failed\nChanges successfully rolled back' \
     DATABASE_DETERMINISTIC FAILED false false 0
@@ -802,4 +805,4 @@ database_line="$(grep -n '^[[:space:]]*category=DATABASE$' "$handler" | head -1 
 [[ "$e2e_line" -lt "$network_line" ]]
 [[ "$e2e_line" -lt "$database_line" ]]
 
-echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x+promotedFinalLive identityPrecedence=attempt+promotion classifier=staleSuccess-write0+network503-retry1+backstageLookup-retry1+backstageFrontendLookup-retry3+emissionWorkflowInvalid-retry0+backstageConfig5-retry0+backstageVisualE2ETimeout-retry0+runtimeIdentityMismatch-retry0+runtimeIdentityReadiness-retry1+flywayP0001-retry0+term79-retry0+term143-retry0+flywayCleanupHold-retry1+leaseBound+remote0+hangBound4s"
+echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x+promotedFinalLive identityPrecedence=attempt+promotion classifier=staleSuccess-write0+network503-retry1+backstageLookup-retry1+backstageFrontendLookup-retry3+emissionWorkflowInvalid-retry0+backstageConfig5-retry0+backstageVisualE2ETimeout-retry0+runtimeIdentityMismatch-retry0+runtimeIdentityReadiness-retry1+runtimeIdentityRegistryProof-retry1+flywayP0001-retry0+term79-retry0+term143-retry0+flywayCleanupHold-retry1+leaseBound+remote0+hangBound4s"

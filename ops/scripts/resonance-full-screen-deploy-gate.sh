@@ -14,6 +14,7 @@ FRONTEND_DIR="${FRONTEND_DIR:-$ROOT_DIR/projects/carbonet-frontend/source}"
 # deployment worktree copy. Tests may override OVERLAY_DIR explicitly.
 OVERLAY_DIR="${OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}"
 STATE_DIR="${FULL_SCREEN_GATE_STATE_DIR:-/opt/resonance-data/deploy/full-screen-deploy-gate}"
+RUNTIME_IMAGE_PROOF_TMP_DIR="$STATE_DIR"
 REPORT_DIR="${FULL_SCREEN_GATE_REPORT_DIR:-$ROOT_DIR/var/reports/full-screen-deploy-gate}"
 CREDENTIAL_SECRET="${FULL_SCREEN_GATE_CREDENTIAL_SECRET:-carbonet-screen-smoke}"
 STATUS_PAGE_TEMPLATE="${FULL_SCREEN_GATE_STATUS_PAGE_TEMPLATE:-$ROOT_DIR/ops/assets/full-screen-deploy-gate-status.html}"
@@ -554,13 +555,15 @@ verify_snapshot_manifest_files() {
 
 # CRI implementations may expose either the registry manifest digest or the
 # image-config digest in Pod.status.containerStatuses[].imageID.  They identify
-# the same immutable image only when the content-addressed registry manifest is
-# byte-exact and binds the expected config digest.  Never accept tag equality
-# alone, and never weaken a mismatch when the registry proof is unavailable.
+# the same immutable image only when the tag and digest-addressed registry
+# manifests are byte-exact and bind the unordered manifest/config digest pair.
+# Never accept tag equality alone, and never weaken unavailable proof into
+# equivalence. Return 0 for equivalent, 1 for mismatch, and 2 for unavailable.
 runtime_image_ids_equivalent() {
   local expected_id="$1" actual_id="$2" image_ref="$3"
   local expected_digest actual_digest registry repository prefix leaf reference scheme
-  local manifest_tmp tag_manifest_tmp manifest_digest tag_manifest_digest config_digest
+  local manifest_tmp tag_manifest_tmp manifest_digest tag_manifest_digest
+  local config_digest tag_config_digest proof_tmp_dir proof_tmp_resolved proof_tmp_identity
   expected_digest="${expected_id##*@}"
   actual_digest="${actual_id##*@}"
   [[ "$expected_digest" =~ ^sha256:[0-9a-f]{64}$ \
@@ -591,34 +594,71 @@ runtime_image_ids_equivalent() {
     localhost|localhost:*|127.0.0.1|127.0.0.1:*) scheme=http ;;
     *) scheme=https ;;
   esac
-  manifest_tmp="$(mktemp "$STATE_DIR/runtime-manifest.XXXXXX")" || return 1
-  tag_manifest_tmp="$(mktemp "$STATE_DIR/runtime-tag-manifest.XXXXXX")" || {
-    rm -f -- "$manifest_tmp"
-    return 1
-  }
-  chmod 0600 "$manifest_tmp"
-  chmod 0600 "$tag_manifest_tmp"
-  if ! curl -fsS --max-time 15 \
-      -H 'Accept: application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json' \
-      "$scheme://$registry/v2/$repository/manifests/$actual_digest" \
-      >"$manifest_tmp"; then
-    rm -f -- "$manifest_tmp" "$tag_manifest_tmp"
-    return 1
+  proof_tmp_dir="${RUNTIME_IMAGE_PROOF_TMP_DIR:-/tmp}"
+  [[ "$proof_tmp_dir" == /* && -d "$proof_tmp_dir" && ! -L "$proof_tmp_dir" ]] || return 2
+  proof_tmp_resolved="$(readlink -e -- "$proof_tmp_dir" 2>/dev/null)" || return 2
+  [[ "$(realpath -m -s -- "$proof_tmp_dir" 2>/dev/null)" == "$proof_tmp_resolved" ]] || return 2
+  proof_tmp_identity="$(stat -c '%a:%u' "$proof_tmp_resolved" 2>/dev/null || true)"
+  if [[ "$proof_tmp_resolved" == /tmp ]]; then
+    [[ "$proof_tmp_identity" == 1777:0 ]] || return 2
+  else
+    [[ "$proof_tmp_identity" == "700:$(id -u)" ]] || return 2
   fi
-  if ! curl -fsS --max-time 15 \
-      -H 'Accept: application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json' \
-      "$scheme://$registry/v2/$repository/manifests/$reference" \
-      >"$tag_manifest_tmp"; then
-    rm -f -- "$manifest_tmp" "$tag_manifest_tmp"
-    return 1
-  fi
-  manifest_digest="sha256:$(sha256sum "$manifest_tmp" | awk '{print $1}')"
-  tag_manifest_digest="sha256:$(sha256sum "$tag_manifest_tmp" | awk '{print $1}')"
-  config_digest="$(jq -r '.config.digest // empty' "$manifest_tmp" 2>/dev/null || true)"
-  rm -f -- "$manifest_tmp" "$tag_manifest_tmp"
-  [[ "$manifest_digest" == "$actual_digest" \
-     && "$tag_manifest_digest" == "$actual_digest" \
-     && "$config_digest" == "$expected_digest" ]]
+  (
+    local proof_work_dir="" proof_work_resolved="" resolved_candidate=""
+    cleanup_runtime_image_proof() {
+      local status=$?
+      trap - EXIT HUP INT TERM
+      if [[ -n "$proof_work_dir" && "$proof_work_resolved" == "$proof_work_dir" \
+         && "$(dirname -- "$proof_work_resolved")" == "$proof_tmp_resolved" \
+         && "${proof_work_resolved##*/}" == runtime-image-proof.* \
+         && -d "$proof_work_resolved" && ! -L "$proof_work_resolved" \
+         && "$(stat -c '%a:%u' "$proof_work_resolved" 2>/dev/null || true)" == "700:$(id -u)" ]]; then
+        rm -rf --one-file-system -- "$proof_work_resolved" || status=2
+      else
+        status=2
+      fi
+      exit "$status"
+    }
+    trap cleanup_runtime_image_proof EXIT
+    trap 'exit 2' HUP INT TERM
+    proof_work_dir="$(umask 077; mktemp -d "$proof_tmp_resolved/runtime-image-proof.XXXXXX")" || exit 2
+    proof_work_resolved="$proof_work_dir"
+    resolved_candidate="$(readlink -e -- "$proof_work_dir" 2>/dev/null)" || exit 2
+    proof_work_resolved="$resolved_candidate"
+    [[ "$proof_work_resolved" == "$proof_work_dir" \
+       && "$(dirname -- "$proof_work_resolved")" == "$proof_tmp_resolved" \
+       && "$(stat -c '%a:%u' "$proof_work_resolved" 2>/dev/null || true)" == "700:$(id -u)" ]] \
+      || exit 2
+    manifest_tmp="$proof_work_resolved/manifest.json"
+    tag_manifest_tmp="$proof_work_resolved/tag-manifest.json"
+    (umask 077; : >"$manifest_tmp" && : >"$tag_manifest_tmp") || exit 2
+    chmod 0600 "$manifest_tmp" "$tag_manifest_tmp" || exit 2
+    curl -fsS --max-time 15 \
+        -H 'Accept: application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json' \
+        "$scheme://$registry/v2/$repository/manifests/$reference" \
+        >"$tag_manifest_tmp" || exit 2
+    tag_manifest_digest="sha256:$(sha256sum "$tag_manifest_tmp" | awk '{print $1}')"
+    tag_config_digest="$(jq -r '.config.digest // empty' "$tag_manifest_tmp" 2>/dev/null || true)"
+    [[ "$tag_manifest_digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
+      && jq -e '.schemaVersion==2 and (.config.digest|test("^sha256:[0-9a-f]{64}$"))' \
+        "$tag_manifest_tmp" >/dev/null 2>&1 || exit 2
+    curl -fsS --max-time 15 \
+        -H 'Accept: application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json' \
+        "$scheme://$registry/v2/$repository/manifests/$tag_manifest_digest" \
+        >"$manifest_tmp" || exit 2
+    manifest_digest="sha256:$(sha256sum "$manifest_tmp" | awk '{print $1}')"
+    config_digest="$(jq -r '.config.digest // empty' "$manifest_tmp" 2>/dev/null || true)"
+    [[ "$manifest_digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
+      && jq -e '.schemaVersion==2 and (.config.digest|test("^sha256:[0-9a-f]{64}$"))' \
+        "$manifest_tmp" >/dev/null 2>&1 || exit 2
+    [[ "$manifest_digest" == "$tag_manifest_digest" \
+       && "$config_digest" == "$tag_config_digest" \
+       && ( ( "$expected_digest" == "$tag_config_digest" \
+              && "$actual_digest" == "$tag_manifest_digest" ) \
+         || ( "$expected_digest" == "$tag_manifest_digest" \
+              && "$actual_digest" == "$tag_config_digest" ) ) ]]
+  )
 }
 
 verify_restored_physical_loaded() {

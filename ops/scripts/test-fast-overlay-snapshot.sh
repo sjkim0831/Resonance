@@ -27,9 +27,12 @@ grep -Fq 'web-service.json' "$gate"
 grep -Fq 'patch "service/$WEB_SERVICE" --type=json' "$gate"
 grep -Fq 'RUNTIME_IMAGE_ID=' "$gate"
 grep -Fq 'runtime_image_ids_equivalent "$RUNTIME_IMAGE_ID" "$image_id" "$RUNTIME_IMAGE"' "$gate"
-grep -Fq '"$manifest_digest" == "$actual_digest"' "$gate"
-grep -Fq '"$tag_manifest_digest" == "$actual_digest"' "$gate"
-grep -Fq '"$config_digest" == "$expected_digest"' "$gate"
+grep -Fq '"$manifest_digest" == "$tag_manifest_digest"' "$gate"
+grep -Fq '"$config_digest" == "$tag_config_digest"' "$gate"
+grep -Fq '"$expected_digest" == "$tag_config_digest"' "$gate"
+grep -Fq '"$actual_digest" == "$tag_manifest_digest"' "$gate"
+grep -Fq '"$expected_digest" == "$tag_manifest_digest"' "$gate"
+grep -Fq '"$actual_digest" == "$tag_config_digest"' "$gate"
 grep -Fq 'rsync -a --exclude=' "$gate"
 grep -Fq 'rsync -a --delete-after' "$gate"
 copy_line="$(grep -n 'rsync -a --exclude=' "$gate" | head -1 | cut -d: -f1)"
@@ -352,6 +355,7 @@ grep -Fq 'restored Ready pod imageID differs from immutable baseline' "$tmp/veri
 
 if FAKE_RUNTIME_IMAGE_ID="registry.invalid/carbonet-runtime@$manifest_digest" \
    FAKE_REGISTRY_MANIFEST="$tmp/registry-wrong-config.json" \
+   FAKE_REGISTRY_TAG_MANIFEST="$tmp/registry-manifest.json" \
    PATH="$tmp/bin:$PATH" ROOT_DIR="$ROOT_DIR" OVERLAY_DIR="$capture_overlay" \
    FULL_SCREEN_GATE_STATE_DIR="$capture_state" FULL_SCREEN_GATE_REPORT_DIR="$capture_report" \
    CARBONET_DEPLOY_STATE_FILE="$tmp/applied.commit" CARBONET_RUNTIME_DEPLOY_STATE_FILE="$tmp/runtime.commit" \
@@ -361,9 +365,12 @@ if FAKE_RUNTIME_IMAGE_ID="registry.invalid/carbonet-runtime@$manifest_digest" \
 fi
 grep -Fq 'restored Ready pod imageID differs from immutable baseline' "$tmp/verify-manifest-body-tamper.log"
 
+jq --arg layer 'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd' \
+  '.layers=[{mediaType:"application/vnd.docker.image.rootfs.diff.tar.gzip",size:1,digest:$layer}]' \
+  "$tmp/registry-manifest.json" >"$tmp/registry-retarget.json"
 if FAKE_RUNTIME_IMAGE_ID="registry.invalid/carbonet-runtime@$manifest_digest" \
-   FAKE_REGISTRY_MANIFEST="$tmp/registry-manifest.json" \
-   FAKE_REGISTRY_TAG_MANIFEST="$tmp/registry-wrong-config.json" \
+   FAKE_REGISTRY_MANIFEST="$tmp/registry-retarget.json" \
+   FAKE_REGISTRY_TAG_MANIFEST="$tmp/registry-retarget.json" \
    PATH="$tmp/bin:$PATH" ROOT_DIR="$ROOT_DIR" OVERLAY_DIR="$capture_overlay" \
    FULL_SCREEN_GATE_STATE_DIR="$capture_state" FULL_SCREEN_GATE_REPORT_DIR="$capture_report" \
    CARBONET_DEPLOY_STATE_FILE="$tmp/applied.commit" CARBONET_RUNTIME_DEPLOY_STATE_FILE="$tmp/runtime.commit" \
