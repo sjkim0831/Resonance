@@ -158,12 +158,13 @@ jq -cn --arg source "$stager_source" --arg image "$stager_image" --arg imageId "
 chmod 0644 "$stager_fixture_tmp/checkpoint.json"
 run_stager_payload() {
   local stager="$1" payload="$2" deployment_fixture="${3:-$stager_fixture_tmp/deployment.json}"
+  local pods_fixture="${4:-$stager_fixture_tmp/pods.json}"
   (
     kubectl() {
       local arg payload_b64=""
       if [[ "$*" == *" get deployment/"* ]]; then cat "$STAGER_FIXTURE_DEPLOYMENT"; return; fi
       if [[ "$*" == *" get pods "* ]]; then cat "$STAGER_FIXTURE_PODS"; return; fi
-      if [[ "$*" == *" exec runtime-0 "* && "$*" == *" curl "* ]]; then printf '{"status":"UP"}\n'; return; fi
+      if [[ "$*" == *" exec runtime-"* && "$*" == *" curl "* ]]; then printf '{"status":"UP"}\n'; return; fi
       cat >/dev/null
       for arg in "$@"; do
         case "$arg" in
@@ -187,7 +188,7 @@ run_stager_payload() {
       CARBONET_POSTDEPLOY_CANDIDATE_ID=stager-input-regression \
       CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE="$stager_fixture_tmp/checkpoint.json" \
       STAGER_FIXTURE_DEPLOYMENT="$deployment_fixture" \
-      STAGER_FIXTURE_PODS="$stager_fixture_tmp/pods.json" \
+      STAGER_FIXTURE_PODS="$pods_fixture" \
       RESONANCE_POSTGRES_LEADER_POD=fake-primary \
       bash "$stager" STAGER_INPUT_REGRESSION TEST_PROCESS RUNTIME \
         0000000000000000000000000000000000000000
@@ -205,6 +206,32 @@ for payload in "${producer_payloads[@]}"; do
   run_stager_payload "$STAGER" "$payload" | grep -Fq '[postdeploy-candidate] STAGED'
 done
 run_stager_payload "$STAGER" "" | grep -Fq '[postdeploy-candidate] STAGED'
+# HPA owns replicas and consequently Deployment generation. A scale event after
+# RUNTIME_CANDIDATE_READY must not invalidate the immutable UID/image/template
+# candidate identity when every current replica is Ready on the same image.
+jq '.metadata.generation=8 | .spec.replicas=2
+    | .status.observedGeneration=8 | .status.updatedReplicas=2
+    | .status.readyReplicas=2 | .status.availableReplicas=2' \
+  "$stager_fixture_tmp/deployment.json" >"$stager_fixture_tmp/deployment-scaled.json"
+jq '.items += [(.items[0] | .metadata.name="runtime-1")]' \
+  "$stager_fixture_tmp/pods.json" >"$stager_fixture_tmp/pods-scaled.json"
+run_stager_payload "$STAGER" "${producer_payloads[0]}" \
+  "$stager_fixture_tmp/deployment-scaled.json" "$stager_fixture_tmp/pods-scaled.json" \
+  | grep -Fq '[postdeploy-candidate] STAGED'
+
+# A PodTemplate mutation remains immutable even when the live Deployment is
+# otherwise fully observed and Ready.
+jq '.spec.template.spec.containers[0].env=[{"name":"FOREIGN_DRIFT","value":"1"}]' \
+  "$stager_fixture_tmp/deployment.json" >"$stager_fixture_tmp/deployment-template-drift.json"
+set +e
+run_stager_payload "$STAGER" "${producer_payloads[0]}" \
+  "$stager_fixture_tmp/deployment-template-drift.json" \
+  >"$stager_fixture_tmp/template-drift.out" 2>"$stager_fixture_tmp/template-drift.err"
+template_drift_status=$?
+set -e
+[[ "$template_drift_status" == 1 ]]
+grep -Fq 'live runtime diverged from RUNTIME_CANDIDATE_READY checkpoint' \
+  "$stager_fixture_tmp/template-drift.err"
 jq '.metadata.annotations["resonance.ai/target-commit"]="ffffffffffffffffffffffffffffffffffffffff"' \
   "$stager_fixture_tmp/deployment.json" >"$stager_fixture_tmp/deployment-wrong-source.json"
 if run_stager_payload "$STAGER" "${producer_payloads[0]}" \
@@ -424,7 +451,7 @@ assert "evidence_json=(convert_from" in stager
 for token in (
     'stage=="RUNTIME_CANDIDATE_READY"',
     '.metadata.annotations["resonance.ai/target-commit"]==$source',
-    'candidate runtime resourceVersion/template changed during snapshot',
+    'candidate runtime identity/template changed during snapshot',
     'framework_candidate_runtime_identity_hash_v2(',
     'framework_bind_postdeploy_release_attempt_runtime(',
     "jsonb_build_object('runtimeIdentityHash',:'candidate_runtime_identity_hash')",

@@ -117,29 +117,24 @@ done < <(jq -r '.[].name' <<<"$ready_runtime_pods")
 
 if [[ "$checkpoint_mode" == runtime-ready ]]; then
   jq -e --arg uid "$deployment_uid" --arg image "$image_ref" --arg imageId "$image_id" \
-    --arg template "$pod_template_sha256" --argjson generation "$deployment_generation" \
-    --argjson desired "$desired_replicas" '
-    .deploymentUid==$uid and .deploymentGeneration==$generation and .desiredReplicas==$desired
+    --arg template "$pod_template_sha256" '
+    .deploymentUid==$uid
     and .imageRef==$image and .imageIdDigest==$imageId and .podTemplateSha256==$template
   ' <<<"$checkpoint_json" >/dev/null || fail 'live runtime diverged from RUNTIME_CANDIDATE_READY checkpoint'
 fi
 
 deployment_token="$(jq -cS --arg container "$RUNTIME_CONTAINER" '
-  {resourceVersion:.metadata.resourceVersion,uid:.metadata.uid,generation:.metadata.generation,
-   observedGeneration:.status.observedGeneration,replicas:.spec.replicas,
-   targetCommit:(.metadata.annotations["resonance.ai/target-commit"]//""),
+  {uid:.metadata.uid,targetCommit:(.metadata.annotations["resonance.ai/target-commit"]//""),
    image:(.spec.template.spec.containers[]|select(.name==$container)|.image),template:.spec.template}
 ' <<<"$deployment_json")"
 final_deployment_json="$("$KUBECTL_BIN" -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json)" \
   || fail 'candidate runtime final deployment reread failed'
 final_deployment_token="$(jq -cS --arg container "$RUNTIME_CONTAINER" '
-  {resourceVersion:.metadata.resourceVersion,uid:.metadata.uid,generation:.metadata.generation,
-   observedGeneration:.status.observedGeneration,replicas:.spec.replicas,
-   targetCommit:(.metadata.annotations["resonance.ai/target-commit"]//""),
+  {uid:.metadata.uid,targetCommit:(.metadata.annotations["resonance.ai/target-commit"]//""),
    image:(.spec.template.spec.containers[]|select(.name==$container)|.image),template:.spec.template}
 ' <<<"$final_deployment_json")"
 [[ -n "$deployment_token" && "$final_deployment_token" == "$deployment_token" ]] \
-  || fail 'candidate runtime resourceVersion/template changed during snapshot'
+  || fail 'candidate runtime identity/template changed during snapshot'
 
 input="$(cat)"
 [[ -n "$input" ]] || input='{}'
