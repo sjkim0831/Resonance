@@ -12,6 +12,14 @@ FLYWAY_RUNNER="$ROOT/ops/scripts/run-flyway-migration-job.sh"
   exit 1
 }
 bash -n "$LAUNCHER" "$AUTO" "$HANDLER" "$RUNNER" "$FLYWAY_RUNNER"
+for repaired_script in \
+  ops/scripts/resonance-k8s-doctor.sh \
+  scripts/hermes-ctrl.sh; do
+  [[ "$(git -C "$ROOT" ls-tree HEAD -- "$repaired_script" | awk '{print $1}')" == 100755 ]] || {
+    echo "[bootstrap-helper-snapshot-test] repaired script is not a regular executable: $repaired_script" >&2
+    exit 1
+  }
+done
 for token in \
   'snapshot_orphan_recovery_helper=' \
   'snapshot_legacy_automation_retirement_helper=' \
@@ -20,6 +28,8 @@ for token in \
   'snapshot_postdeploy_leader_resolver_sha256=' \
   'snapshot_flyway_job_runner=' \
   'snapshot_flyway_job_runner_sha256=' \
+  'validate_target_symlink_entries || exit $?' \
+  'ls-tree -r -z --full-tree "$target_commit"' \
   'CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT="$target_commit"' \
   'CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER="$snapshot_orphan_recovery_helper"' \
   'CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256="$snapshot_orphan_recovery_helper_sha256"' \
@@ -432,6 +442,30 @@ git -C "$PUBLISHER" push -q origin HEAD:main
 EMPTY_TARGET="$(git -C "$PUBLISHER" rev-parse HEAD)"
 expect_remote_target_failure empty "$EMPTY_TARGET"
 
+# An oversized symlink target must be rejected before any target helper is
+# materialized. This is the exact Linux ENAMETOOLONG checkout failure mode.
+git -C "$PUBLISHER" switch -q --detach "$TARGET"
+MALFORMED_SYMLINK_BLOB="$(
+  python3 -c 'import sys; sys.stdout.write("x" * 4096)' |
+    git -C "$PUBLISHER" hash-object -w --stdin
+)"
+git -C "$PUBLISHER" update-index --add --cacheinfo \
+  "120000,$MALFORMED_SYMLINK_BLOB,ops/scripts/malformed-target.sh"
+git -C "$PUBLISHER" commit -qm malformed-symlink-target
+MALFORMED_SYMLINK_TARGET="$(git -C "$PUBLISHER" rev-parse HEAD)"
+git -C "$OPERATOR" fetch -q "$PUBLISHER" "$MALFORMED_SYMLINK_TARGET"
+status=0
+env "${COMMON_ENV[@]}" \
+  CARBONET_RECOVERY_ONLY=true \
+  "CARBONET_RECOVERY_TARGET_COMMIT=$MALFORMED_SYMLINK_TARGET" \
+  "CARBONET_TEST_OUTPUT=$TMP/malformed-symlink.out" \
+  "CARBONET_TEST_EXPECTED_TARGET=$MALFORMED_SYMLINK_TARGET" \
+  bash "$LAUNCHER" >"$TMP/malformed-symlink.log" 2>&1 || status=$?
+[[ "$status" == 79 && ! -e "$TMP/malformed-symlink.out" ]]
+grep -Fq '[auto-deploy-launcher] invalid target symlink blob path=ops/scripts/malformed-target.sh size=4096' \
+  "$TMP/malformed-symlink.log"
+assert_snapshot_parent_empty
+
 status=0
 env "${COMMON_ENV[@]}" CARBONET_TEST_MAKE_HELPER_NONEXEC=true \
   "CARBONET_TEST_OUTPUT=$TMP/nonexec.out" "CARBONET_TEST_EXPECTED_TARGET=$TARGET" \
@@ -440,4 +474,4 @@ env "${COMMON_ENV[@]}" CARBONET_TEST_MAKE_HELPER_NONEXEC=true \
 [[ "$status" == 79 && ! -e "$TMP/nonexec.out" ]]
 assert_snapshot_parent_empty
 
-printf '[bootstrap-helper-snapshot-test] PASS targetExact=3 staleRootExec=0 recovery=1 missingHelper=79 missingResolver=79 missingFlywayRunner=79 emptyHelper=79 emptyResolver=79 emptyFlywayRunner=79 helperNonPrivate=79 resolverNonPrivate=79 flywayRunnerNonPrivate=79 helperTampered=79 resolverTampered=79 flywayRunnerTampered=79 productionMutants=2 cleanupLaunches=14\n'
+printf '[bootstrap-helper-snapshot-test] PASS targetExact=3 staleRootExec=0 recovery=1 malformedSymlink=79 missingHelper=79 missingResolver=79 missingFlywayRunner=79 emptyHelper=79 emptyResolver=79 emptyFlywayRunner=79 helperNonPrivate=79 resolverNonPrivate=79 flywayRunnerNonPrivate=79 helperTampered=79 resolverTampered=79 flywayRunnerTampered=79 productionMutants=2 cleanupLaunches=14\n'

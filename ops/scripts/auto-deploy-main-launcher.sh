@@ -39,6 +39,36 @@ else
   git -C "$ROOT_DIR" fetch --quiet --prune "$REMOTE" "$BRANCH"
   target_commit="$(git -C "$ROOT_DIR" rev-parse "$REMOTE/$BRANCH")"
 fi
+
+validate_target_symlink_entries() {
+  local -a pipeline_status
+  git -C "$ROOT_DIR" ls-tree -r -z --full-tree "$target_commit" |
+    while IFS= read -r -d '' entry; do
+      local metadata path mode type object size target target_size
+      metadata="${entry%%$'\t'*}"
+      path="${entry#*$'\t'}"
+      read -r mode type object <<<"$metadata"
+      [[ "$mode" == 120000 ]] || continue
+      [[ "$type" == blob && "$object" =~ ^[0-9a-f]{40,64}$ ]] || return 79
+      size="$(git -C "$ROOT_DIR" cat-file -s "$object" 2>/dev/null || true)"
+      [[ "$size" =~ ^[0-9]+$ && "$size" -gt 0 && "$size" -le 4095 ]] || {
+        printf '[auto-deploy-launcher] invalid target symlink blob path=%q size=%s\n' \
+          "$path" "${size:-unknown}" >&2
+        return 79
+      }
+      target="$(git -C "$ROOT_DIR" cat-file -p "$object" 2>/dev/null)" || return 79
+      target_size="$(LC_ALL=C printf '%s' "$target" | wc -c)"
+      [[ -n "$target" && "$target_size" == "$size" \
+         && "$target" != *$'\n'* && "$target" != *$'\r'* ]] || {
+        printf '[auto-deploy-launcher] invalid target symlink content path=%q\n' "$path" >&2
+        return 79
+      }
+    done
+  pipeline_status=("${PIPESTATUS[@]}")
+  [[ "${pipeline_status[0]}" == 0 && "${pipeline_status[1]}" == 0 ]] || return 79
+}
+
+validate_target_symlink_entries || exit $?
 snapshot_dir="$(mktemp -d /tmp/carbonet-auto-deploy-main.XXXXXX)"
 snapshot_script="$snapshot_dir/auto-deploy-main.sh"
 snapshot_plan="$snapshot_dir/plan-incremental-work.sh"
