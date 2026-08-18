@@ -801,6 +801,8 @@ async function buildInlinedReportStyles() {
     if (node instanceof HTMLStyleElement) {
       return node.outerHTML;
     }
+    // The print window is isolated from the application document, so linked
+    // stylesheets must be embedded before the report markup is written.
     const stylesheetUrl = node.href;
     const response = await fetch(stylesheetUrl, {
       credentials: "include",
