@@ -49,6 +49,7 @@ if (!process.argv.includes("--build")) {
 }
 
 if (process.argv.includes("--build")) {
+  run(process.execPath, ["scripts/verify-emission-report-pdf-style-contract.mjs"]);
   run(process.execPath, ["scripts/dedupe-generated-route-family.mjs"]);
   run(process.execPath, ["scripts/check-generated-prototype-isolation.mjs"]);
   run(npm, ["run", "audit:route-registry"]);
