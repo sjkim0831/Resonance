@@ -45,10 +45,16 @@ public class ReportPdfIssuanceService {
         ReportIssuanceContractValidator.validate(record);
         String html = String.valueOf(request.getOrDefault("html", ""));
         validateHtml(html);
+        Object ocrEvidenceValue = request.get("ocrEvidence");
+        if (!(ocrEvidenceValue instanceof Map<?, ?> rawOcrEvidence)) {
+            throw new IllegalArgumentException("The complete visible-report OCR evidence is required.");
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> ocrEvidence = (Map<String, Object>) rawOcrEvidence;
 
         byte[] pdf = render(html);
         Map<String, Object> visualProfile = buildVisualProfile(pdf);
-        Map<String, Object> issuance = registryService.issuePdf(record, actorId, visualProfile, pdf);
+        Map<String, Object> issuance = registryService.issuePdf(record, actorId, visualProfile, pdf, ocrEvidence);
         return new IssuedPdf(pdf, String.valueOf(record.get("certificateId")),
                 ((List<?>) visualProfile.get("pages")).size(), String.valueOf(issuance.get("pdfSha256")));
     }

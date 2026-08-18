@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -173,7 +174,8 @@ public class ReportVerificationRegistryService {
 
     @Transactional
     public Map<String, Object> issuePdf(Map<String, Object> request, String actorId,
-                                        Map<String, Object> visualProfile, byte[] pdfBytes) {
+                                        Map<String, Object> visualProfile, byte[] pdfBytes,
+                                        Map<String, Object> ocrEvidence) {
         Map<String, Object> issued = issue(request, actorId);
         String certificateId = required(request, "certificateId");
         validatePdfBytes(pdfBytes);
@@ -185,16 +187,19 @@ public class ReportVerificationRegistryService {
         if (profileJson.length() > 2_000_000) {
             throw new IllegalArgumentException("The visual profile is too large.");
         }
+        String ocrEvidenceJson = canonicalizeOcrEvidence(request, ocrEvidence);
         Map<String, Object> fingerprint = bindIssuedPdfFingerprint(certificateId, pdfBytes, actorId);
         String pdfSha256 = text(fingerprint.get("pdfSha256"));
         int updated = jdbcTemplate.update("""
                 UPDATE carbonet_report_verification_registry
                    SET visual_profile_json = CAST(? AS jsonb), visual_profile_version = 1,
                        visual_profile_updated_at = now(),
+                       ocr_evidence_json = CAST(? AS jsonb), ocr_evidence_version = 3,
+                       ocr_evidence_registered_at = now(),
                        updated_at = now()
                  WHERE certificate_id = ? AND status_code = 'ISSUED'
                    AND pdf_sha256 = ? AND pdf_size_bytes = ?
-                """, profileJson, certificateId, pdfSha256, pdfBytes.length);
+                """, profileJson, ocrEvidenceJson, certificateId, pdfSha256, pdfBytes.length);
         if (updated != 1) {
             throw new IllegalStateException("The issued PDF fingerprint could not be finalized with its visual profile.");
         }
@@ -202,6 +207,7 @@ public class ReportVerificationRegistryService {
         response.put("pdfSha256", pdfSha256);
         response.put("pdfSizeBytes", pdfBytes.length);
         response.put("visualPageCount", profile.path("pages").size());
+        response.put("ocrEvidenceVersion", 3);
         return response;
     }
 
@@ -339,7 +345,9 @@ public class ReportVerificationRegistryService {
         if (requestedReportType.isBlank()) {
             requestedReportType = "EMISSION_SURVEY";
         }
+        boolean ocrEvidenceRequired = "EMISSION_SURVEY".equalsIgnoreCase(requestedReportType);
         String normalizedText = normalizeText(ocrText);
+        List<String> normalizedOcrPages = normalizeOcrPages(request.get("ocrPages"));
         Map<?, ?> qrEvidence = request.get("qrEvidence") instanceof Map<?, ?> value ? value : Map.of();
         String qrCertificateId = text(qrEvidence.get("certificateId"));
         String qrPayloadHash = text(qrEvidence.get("payloadHash"));
@@ -355,7 +363,7 @@ public class ReportVerificationRegistryService {
         List<Map<String, Object>> candidates = jdbcTemplate.queryForList("""
                 SELECT certificate_id, issued_at, report_title, product_name, total_emission,
                        row_count, payload_hash, integrity_code, dataset_hash, visual_profile_json::text AS visual_profile_json,
-                       dataset_json::text AS dataset_json
+                       dataset_json::text AS dataset_json, ocr_evidence_json::text AS ocr_evidence_json
                   FROM carbonet_report_verification_registry
                  WHERE status_code = 'ISSUED'
                  ORDER BY issued_at DESC, certificate_id DESC
@@ -394,6 +402,10 @@ public class ReportVerificationRegistryService {
                     && ((Number) score.get("matchedMaterialCount")).intValue() == ((Number) score.get("materialCount")).intValue()
                     && ((Number) score.get("matchedNumberCount")).intValue() == ((Number) score.get("numberCount")).intValue();
             boolean tagExactMatch = qrFullyMatched || (certificateIdMatch && payloadHashMatch && integrityCodeMatch && datasetHashMatch);
+            Map<String, Object> ocrEvidenceScore = scoreRegisteredOcrEvidence(normalizedOcrPages,
+                    readJsonNullable(candidate.get("ocr_evidence_json")));
+            boolean ocrEvidenceAvailable = Boolean.TRUE.equals(ocrEvidenceScore.get("ocrEvidenceAvailable"));
+            boolean ocrEvidenceExactMatch = Boolean.TRUE.equals(ocrEvidenceScore.get("ocrEvidenceExactMatch"));
             double combinedScore = qrFullyMatched ? 85 + (contentScore * 0.15) : contentScore;
             Map<String, Object> visualScore = scoreVisualProfile(readJsonNullable(candidate.get("visual_profile_json")), uploadedVisualProfile);
             int confidence = (int) Math.round(combinedScore);
@@ -418,7 +430,12 @@ public class ReportVerificationRegistryService {
             comparison.put("qrFullyMatched", qrFullyMatched);
             comparison.put("datasetExactMatch", datasetExactMatch);
             comparison.put("tagExactMatch", tagExactMatch);
-            comparison.put("overallExactMatch", datasetExactMatch && tagExactMatch);
+            comparison.put("ocrEvidenceAvailable", ocrEvidenceAvailable);
+            comparison.put("ocrEvidenceExactMatch", ocrEvidenceExactMatch);
+            comparison.put("ocrEvidenceRequired", ocrEvidenceRequired);
+            comparison.putAll(ocrEvidenceScore);
+            comparison.put("overallExactMatch", datasetExactMatch && tagExactMatch
+                    && (!ocrEvidenceRequired || ocrEvidenceExactMatch));
             comparison.putAll(visualScore);
             comparison.putAll(score);
             comparisons.add(comparison);
@@ -432,6 +449,9 @@ public class ReportVerificationRegistryService {
                 best.put("qrPayloadHashMatch", qrDetected && qrPayloadHash.equalsIgnoreCase(payloadHash));
                 best.put("qrIntegrityMatch", qrDetected && qrIntegrityCode.equalsIgnoreCase(integrityCode));
                 best.put("qrDatasetHashMatch", qrDetected && qrDatasetHash.equalsIgnoreCase(datasetHash));
+                best.put("datasetExactMatch", datasetExactMatch);
+                best.put("tagExactMatch", tagExactMatch);
+                best.putAll(ocrEvidenceScore);
                 best.putAll(visualScore);
             }
         }
@@ -461,9 +481,30 @@ public class ReportVerificationRegistryService {
         boolean qrFullyMatched = Boolean.TRUE.equals(best.get("qrFullyMatched"));
         boolean visualProfileAvailable = Boolean.TRUE.equals(best.get("visualProfileAvailable"));
         boolean visualMatch = "VISUAL_MATCH".equals(best.get("visualStatus"));
-        boolean photoConsistent = (qrFullyMatched ? contentConfidence >= 40 : confidence >= 75)
+        boolean tagExactMatch = Boolean.TRUE.equals(best.get("tagExactMatch"));
+        boolean datasetExactMatch = Boolean.TRUE.equals(best.get("datasetExactMatch"));
+        boolean ocrEvidenceAvailable = Boolean.TRUE.equals(best.get("ocrEvidenceAvailable"));
+        boolean ocrEvidenceExactMatch = Boolean.TRUE.equals(best.get("ocrEvidenceExactMatch"));
+        boolean basePhotoConsistent = (qrFullyMatched ? contentConfidence >= 40 : confidence >= 75)
                 && (!visualProfileAvailable || visualMatch);
-        String status = photoConsistent ? "PHOTO_CONTENT_MATCH" : confidence >= 55 ? "PHOTO_REVIEW" : "PHOTO_MISMATCH";
+        boolean photoConsistent = basePhotoConsistent
+                && (!ocrEvidenceRequired || (tagExactMatch && datasetExactMatch && ocrEvidenceExactMatch));
+        String status;
+        if (photoConsistent) {
+            status = "PHOTO_CONTENT_MATCH";
+        } else if (!ocrEvidenceRequired) {
+            status = confidence >= 55 ? "PHOTO_REVIEW" : "PHOTO_MISMATCH";
+        } else if (!ocrEvidenceAvailable) {
+            status = "OCR_EVIDENCE_UNAVAILABLE";
+        } else if (!tagExactMatch) {
+            status = "IDENTIFIER_MISMATCH";
+        } else if (!datasetExactMatch) {
+            status = "OCR_DATASET_MISMATCH";
+        } else if (!ocrEvidenceExactMatch) {
+            status = "OCR_CONTENT_MISMATCH";
+        } else {
+            status = "PHOTO_MISMATCH";
+        }
         response.put("photoConsistent", photoConsistent);
         response.put("status", status);
         response.put("confidence", confidence);
@@ -473,6 +514,18 @@ public class ReportVerificationRegistryService {
         response.put("qrPayloadHashMatch", best.get("qrPayloadHashMatch"));
         response.put("qrIntegrityMatch", best.get("qrIntegrityMatch"));
         response.put("qrDatasetHashMatch", best.get("qrDatasetHashMatch"));
+        response.put("tagExactMatch", tagExactMatch);
+        response.put("datasetExactMatch", datasetExactMatch);
+        response.put("ocrEvidenceRequired", ocrEvidenceRequired);
+        response.put("ocrEvidenceAvailable", ocrEvidenceAvailable);
+        response.put("ocrEvidenceExactMatch", ocrEvidenceExactMatch);
+        response.put("ocrEvidenceTokenCount", best.get("ocrEvidenceTokenCount"));
+        response.put("matchedOcrEvidenceTokenCount", best.get("matchedOcrEvidenceTokenCount"));
+        response.put("missingOcrEvidenceTokens", best.get("missingOcrEvidenceTokens"));
+        response.put("ocrEvidencePageCount", best.get("ocrEvidencePageCount"));
+        response.put("matchedOcrEvidencePageCount", best.get("matchedOcrEvidencePageCount"));
+        response.put("ocrEvidencePageCountMatch", best.get("ocrEvidencePageCountMatch"));
+        response.put("ocrEvidencePageComparisons", best.get("ocrEvidencePageComparisons"));
         response.put("visualProfileAvailable", best.get("visualProfileAvailable"));
         response.put("visualSimilarity", best.get("visualSimilarity"));
         response.put("damagedCellCount", best.get("damagedCellCount"));
@@ -982,6 +1035,198 @@ public class ReportVerificationRegistryService {
         response.put("message", message);
         response.put("verificationMode", "EXACT_PDF_BYTES");
         return response;
+    }
+
+    private String canonicalizeOcrEvidence(Map<String, Object> request, Map<String, Object> evidence) {
+        String certificateId = required(request, "certificateId");
+        String payloadHash = required(request, "payloadHash");
+        String integrityCode = required(request, "integrityCode");
+        String datasetHash = textOr(request.get("datasetHash"), payloadHash);
+        if (!certificateId.equals(required(evidence, "certificateId"))
+                || !payloadHash.equalsIgnoreCase(required(evidence, "payloadHash"))
+                || !integrityCode.equalsIgnoreCase(required(evidence, "integrityCode"))
+                || !datasetHash.equalsIgnoreCase(required(evidence, "datasetHash"))) {
+            throw new IllegalArgumentException("OCR evidence identifiers do not match the issued report.");
+        }
+        if (!(evidence.get("pages") instanceof List<?> evidencePages) || evidencePages.size() != 5) {
+            throw new IllegalArgumentException("Exactly five ordered visible report pages are required for OCR registration.");
+        }
+        Map<String, Object> canonical = new LinkedHashMap<>();
+        canonical.put("schemaVersion", 3);
+        canonical.put("certificateId", certificateId);
+        canonical.put("payloadHash", payloadHash);
+        canonical.put("integrityCode", integrityCode);
+        canonical.put("datasetHash", datasetHash);
+        List<Map<String, Object>> pages = new ArrayList<>();
+        int totalTokens = 0;
+        String[] expectedTypes = {"SUMMARY", "SECTION_BAR", "SECTION_PIE", "DETAIL_TABLE", "DIGITAL_VERIFICATION"};
+        for (int index = 0; index < evidencePages.size(); index++) {
+            if (!(evidencePages.get(index) instanceof Map<?, ?> page)) {
+                throw new IllegalArgumentException("OCR evidence page is invalid.");
+            }
+            int pageNumber = number(page.get("pageNumber"), 0);
+            String pageType = text(page.get("pageType"));
+            if (pageNumber != index + 1 || !expectedTypes[index].equals(pageType)) {
+                throw new IllegalArgumentException("OCR evidence page order or type is invalid.");
+            }
+            String visibleText = text(page.get("visibleText")).replaceAll("\\s+", " ").trim();
+            if (visibleText.length() < (index == 4 ? 20 : 40) || visibleText.length() > 500_000) {
+                throw new IllegalArgumentException("Visible page OCR evidence is empty or too large.");
+            }
+            List<String> tokens = extractOcrEvidenceTokens(visibleText);
+            if (tokens.size() < (index == 4 ? 3 : 8)) {
+                throw new IllegalArgumentException("Visible page OCR evidence has too few comparable fields.");
+            }
+            totalTokens += tokens.size();
+            Map<String, Object> canonicalPage = new LinkedHashMap<>();
+            canonicalPage.put("pageNumber", pageNumber);
+            canonicalPage.put("pageType", pageType);
+            canonicalPage.put("visibleTextSha256", sha256Hex(visibleText.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            canonicalPage.put("tokens", tokens);
+            JsonNode segments = objectMapper.valueToTree(page.get("segments"));
+            if (!segments.isArray() || segments.isEmpty()) {
+                throw new IllegalArgumentException("Visible page structure evidence is missing.");
+            }
+            int expectedSegmentIndex = 0;
+            for (JsonNode segment : segments) {
+                if (segment.path("segmentIndex").asInt(-1) != expectedSegmentIndex++
+                        || segment.path("text").asText().isBlank()
+                        || !segment.path("box").isObject()) {
+                    throw new IllegalArgumentException("Visible page structure evidence is invalid.");
+                }
+            }
+            canonicalPage.put("segments", segments);
+            pages.add(canonicalPage);
+        }
+        canonical.put("pageCount", pages.size());
+        canonical.put("tokenCount", totalTokens);
+        canonical.put("pages", pages);
+        return writeJson(objectMapper.valueToTree(canonical));
+    }
+
+    private List<String> extractOcrEvidenceTokens(String value) {
+        List<String> tokens = new ArrayList<>();
+        Matcher matcher = Pattern.compile("\\S+").matcher(value);
+        while (matcher.find() && tokens.size() < MAX_FIELD_COMPARISONS) {
+            String token = normalizeOcrEvidenceText(matcher.group());
+            if (!token.isBlank()) {
+                tokens.add(token);
+            }
+        }
+        return tokens;
+    }
+
+    private List<String> normalizeOcrPages(Object rawPages) {
+        if (!(rawPages instanceof List<?> pages)) {
+            return List.of();
+        }
+        List<String> normalized = new ArrayList<>();
+        for (int index = 0; index < pages.size(); index++) {
+            Object raw = pages.get(index);
+            if (!(raw instanceof Map<?, ?> page) || number(page.get("pageNumber"), 0) != index + 1) {
+                return List.of();
+            }
+            normalized.add(normalizeOcrEvidenceText(text(page.get("ocrText"))));
+        }
+        return normalized;
+    }
+
+    private String normalizeOcrEvidenceText(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT)
+                .replace('₀', '0').replace('₁', '1').replace('₂', '2').replace('₃', '3').replace('₄', '4')
+                .replace('₅', '5').replace('₆', '6').replace('₇', '7').replace('₈', '8').replace('₉', '9')
+                .replace("쳔연가스", "천연가스")
+                .replace('，', ',')
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private Map<String, Object> scoreRegisteredOcrEvidence(List<String> normalizedOcrPages, JsonNode evidence) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        boolean available = evidence != null && evidence.isObject()
+                && evidence.path("schemaVersion").asInt() == 3 && evidence.path("pages").isArray();
+        result.put("ocrEvidenceAvailable", available);
+        if (!available) {
+            result.put("ocrEvidenceExactMatch", false);
+            result.put("ocrEvidenceTokenCount", 0);
+            result.put("matchedOcrEvidenceTokenCount", 0);
+            result.put("missingOcrEvidenceTokens", List.of());
+            result.put("ocrEvidencePageCount", 0);
+            result.put("matchedOcrEvidencePageCount", 0);
+            result.put("ocrEvidencePageCountMatch", false);
+            result.put("ocrEvidencePageComparisons", List.of());
+            return result;
+        }
+        JsonNode evidencePages = evidence.path("pages");
+        boolean pageCountMatch = evidencePages.size() == normalizedOcrPages.size();
+        int total = 0;
+        int matched = 0;
+        List<String> missing = new ArrayList<>();
+        int matchedPages = 0;
+        List<Map<String, Object>> pageComparisons = new ArrayList<>();
+        for (int pageIndex = 0; pageIndex < evidencePages.size(); pageIndex++) {
+            JsonNode expectedPage = evidencePages.get(pageIndex);
+            List<String> actualTokens = pageIndex < normalizedOcrPages.size()
+                    ? extractOcrEvidenceTokens(normalizedOcrPages.get(pageIndex)) : List.of();
+            Map<String, Integer> availableCounts = new LinkedHashMap<>();
+            for (String token : actualTokens) {
+                availableCounts.merge(token, 1, Integer::sum);
+            }
+            Map<String, Integer> consumedCounts = new LinkedHashMap<>();
+            int sequenceCursor = 0;
+            boolean ordered = true;
+            int pageTotal = 0;
+            int pageMatched = 0;
+            List<String> pageMissing = new ArrayList<>();
+            for (JsonNode tokenNode : expectedPage.path("tokens")) {
+                String token = tokenNode.asText();
+                if (token.isBlank()) continue;
+                total++;
+                pageTotal++;
+                int occurrence = consumedCounts.merge(token, 1, Integer::sum);
+                boolean countMatched = availableCounts.getOrDefault(token, 0) >= occurrence;
+                int foundAt = -1;
+                for (int scan = sequenceCursor; scan < actualTokens.size(); scan++) {
+                    if (token.equals(actualTokens.get(scan))) {
+                        foundAt = scan;
+                        break;
+                    }
+                }
+                if (foundAt >= 0) {
+                    sequenceCursor = foundAt + 1;
+                } else {
+                    ordered = false;
+                }
+                if (countMatched && foundAt >= 0) {
+                    matched++;
+                    pageMatched++;
+                } else {
+                    String difference = "page=" + (pageIndex + 1) + ":" + token + "#" + occurrence;
+                    if (missing.size() < MAX_DIFFERENCES) missing.add(difference);
+                    if (pageMissing.size() < MAX_DIFFERENCES) pageMissing.add(difference);
+                }
+            }
+            boolean pageMatchedExactly = pageTotal > 0 && pageMatched == pageTotal && ordered;
+            if (pageMatchedExactly) matchedPages++;
+            Map<String, Object> pageComparison = new LinkedHashMap<>();
+            pageComparison.put("pageNumber", expectedPage.path("pageNumber").asInt(pageIndex + 1));
+            pageComparison.put("pageType", expectedPage.path("pageType").asText());
+            pageComparison.put("expectedTokenCount", pageTotal);
+            pageComparison.put("matchedTokenCount", pageMatched);
+            pageComparison.put("ordered", ordered);
+            pageComparison.put("matched", pageMatchedExactly);
+            pageComparison.put("missingTokens", pageMissing);
+            pageComparisons.add(pageComparison);
+        }
+        result.put("ocrEvidenceTokenCount", total);
+        result.put("matchedOcrEvidenceTokenCount", matched);
+        result.put("missingOcrEvidenceTokens", missing);
+        result.put("ocrEvidencePageCount", evidencePages.size());
+        result.put("matchedOcrEvidencePageCount", matchedPages);
+        result.put("ocrEvidencePageCountMatch", pageCountMatch);
+        result.put("ocrEvidencePageComparisons", pageComparisons);
+        result.put("ocrEvidenceExactMatch", pageCountMatch && total > 0 && matched == total && matchedPages == evidencePages.size());
+        return result;
     }
 
     private void validatePdfBytes(byte[] pdfBytes) {

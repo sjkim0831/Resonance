@@ -255,7 +255,7 @@ export type ReportDatasetFieldComparison = {
 export type ReportPhotoVerificationResponse = {
   reportType?: "EMISSION_SURVEY" | "LCA_SUMMARY";
   photoConsistent: boolean;
-  status: "PHOTO_CONTENT_MATCH" | "PHOTO_REVIEW" | "PHOTO_MISMATCH" | "NOT_FOUND";
+  status: "PHOTO_CONTENT_MATCH" | "PHOTO_REVIEW" | "PHOTO_MISMATCH" | "NOT_FOUND" | "OCR_EVIDENCE_UNAVAILABLE" | "IDENTIFIER_MISMATCH" | "OCR_DATASET_MISMATCH" | "OCR_CONTENT_MISMATCH";
   verificationMode: "PHOTO_OCR_DATASET";
   confidence: number;
   certificateId?: string;
@@ -270,6 +270,26 @@ export type ReportPhotoVerificationResponse = {
   qrPayloadHashMatch?: boolean;
   qrIntegrityMatch?: boolean;
   qrDatasetHashMatch?: boolean;
+  tagExactMatch?: boolean;
+  datasetExactMatch?: boolean;
+  ocrEvidenceRequired?: boolean;
+  ocrEvidenceAvailable?: boolean;
+  ocrEvidenceExactMatch?: boolean;
+  ocrEvidenceTokenCount?: number;
+  matchedOcrEvidenceTokenCount?: number;
+  missingOcrEvidenceTokens?: string[];
+  ocrEvidencePageCount?: number;
+  matchedOcrEvidencePageCount?: number;
+  ocrEvidencePageCountMatch?: boolean;
+  ocrEvidencePageComparisons?: Array<{
+    pageNumber: number;
+    pageType: string;
+    expectedTokenCount: number;
+    matchedTokenCount: number;
+    ordered: boolean;
+    matched: boolean;
+    missingTokens: string[];
+  }>;
   contentConfidence?: number;
   visualProfileAvailable?: boolean;
   visualSimilarity?: number;
@@ -357,6 +377,12 @@ export type ReportOcrComparison = {
   verificationTagMatch: boolean;
   datasetExactMatch: boolean;
   tagExactMatch: boolean;
+  ocrEvidenceRequired: boolean;
+  ocrEvidenceAvailable: boolean;
+  ocrEvidenceExactMatch: boolean;
+  ocrEvidenceTokenCount: number;
+  matchedOcrEvidenceTokenCount: number;
+  missingOcrEvidenceTokens: string[];
   overallExactMatch: boolean;
   productMatched: boolean;
   titleMatched: boolean;
@@ -413,14 +439,35 @@ export async function proofreadSurveyReportLabels(labels: string[]) {
   );
 }
 
-export async function issueSurveyReportPdf(record: ReportVerificationDatasetPayload, html: string) {
+export type ReportOcrIssuanceEvidence = {
+  schemaVersion: 3;
+  certificateId: string;
+  payloadHash: string;
+  integrityCode: string;
+  datasetHash: string;
+  pages: Array<{
+    pageNumber: number;
+    pageType: "SUMMARY" | "SECTION_BAR" | "SECTION_PIE" | "DETAIL_TABLE" | "DIGITAL_VERIFICATION";
+    visibleText: string;
+    segments: Array<{
+      segmentIndex: number;
+      text: string;
+      semanticTag: string;
+      rowIndex: number;
+      columnIndex: number;
+      box: { x: number; y: number; width: number; height: number };
+    }>;
+  }>;
+};
+
+export async function issueSurveyReportPdf(record: ReportVerificationDatasetPayload, html: string, ocrEvidence: ReportOcrIssuanceEvidence) {
   const response = await fetch(
     buildLocalizedPath("/admin/api/admin/emission-survey-report/issue-pdf", "/en/admin/api/admin/emission-survey-report/issue-pdf"),
     {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json", Accept: "application/pdf", "X-Requested-With": "XMLHttpRequest" },
-      body: JSON.stringify({ record, html })
+      body: JSON.stringify({ record, html, ocrEvidence })
     }
   );
   if (!response.ok) {
@@ -459,13 +506,13 @@ export async function verifySurveyReportPhoto(ocrText: string, qrEvidence?: {
   payloadHash: string;
   integrityCode: string;
   datasetHash: string;
-}, visualProfile?: { version: number; columns: number; rows: number; pages: Array<{ values: number[] }> }, reportType: "EMISSION_SURVEY" | "LCA_SUMMARY" = "EMISSION_SURVEY") {
+}, visualProfile?: { version: number; columns: number; rows: number; pages: Array<{ values: number[] }> }, reportType: "EMISSION_SURVEY" | "LCA_SUMMARY" = "EMISSION_SURVEY", ocrPages: string[] = []) {
   const publicHome = window.location.pathname.startsWith("/home/") || window.location.pathname.startsWith("/en/home/");
   return postJson<ReportPhotoVerificationResponse>(
     publicHome
       ? buildLocalizedPath("/api/home/certificate-verify/verify-ocr", "/api/en/home/certificate-verify/verify-ocr")
       : buildLocalizedPath("/admin/api/admin/emission-survey-report/verify-ocr", "/en/admin/api/admin/emission-survey-report/verify-ocr"),
-    { ocrText, qrEvidence, visualProfile, reportType },
+    { ocrText, ocrPages: ocrPages.map((text, index) => ({ pageNumber: index + 1, ocrText: text })), qrEvidence, visualProfile, reportType },
     { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
   );
 }

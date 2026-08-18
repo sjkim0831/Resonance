@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { logGovernanceScope } from "../../app/policy/debug";
 import {
   fetchSurveyEcoinventAiRecommendationPage,
@@ -12,7 +12,9 @@ import {
   verifySurveyReportPhoto,
   type ReportPdfFileVerificationResponse,
   type ReportPhotoVerificationResponse,
-  type ReportDatasetVerificationResponse
+  type ReportDatasetVerificationResponse,
+  type ReportOcrIssuanceEvidence,
+  type ReportVerificationDatasetPayload
 } from "../../lib/api/emission";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
@@ -329,7 +331,20 @@ function loadReportVerificationRecords() {
 
 function saveReportVerificationRecord(record: ReportVerificationRecord) {
   const records = loadReportVerificationRecords().filter((item) => item.certificateId !== record.certificateId);
-  window.localStorage.setItem(REPORT_VERIFICATION_STORAGE_KEY, JSON.stringify([record, ...records].slice(0, 100)));
+  const retained = [record, ...records].slice(0, 100);
+  while (retained.length > 0) {
+    try {
+      window.localStorage.setItem(REPORT_VERIFICATION_STORAGE_KEY, JSON.stringify(retained));
+      return true;
+    } catch (error) {
+      if (retained.length === 1) {
+        console.warn("[emission-survey-report:verification-cache]", error);
+        return false;
+      }
+      retained.pop();
+    }
+  }
+  return false;
 }
 
 function base64UrlEncode(value: string) {
@@ -589,6 +604,7 @@ async function recognizeReportPhotos(files: Blob[], onProgress: (progress: numbe
   }
   return {
     text: texts.filter(Boolean).join("\n"),
+    pageTexts: texts,
     confidence: confidences.length ? Math.max(...confidences) : 0
   };
 }
@@ -758,11 +774,71 @@ function nextAnimationFrame() {
   return new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 }
 
+function buildReportOcrIssuanceEvidence(article: HTMLElement, record: ReportVerificationDatasetPayload): ReportOcrIssuanceEvidence {
+  const pageDefinitions = [
+    ["SUMMARY", ".pdf-export-page.print-page"],
+    ["SECTION_BAR", ".pdf-chart-bar-page"],
+    ["SECTION_PIE", ".pdf-chart-pie-page"],
+    ["DETAIL_TABLE", ".pdf-table-export-page"],
+    ["DIGITAL_VERIFICATION", ".report-verification-footer"]
+  ] as const;
+  const pages = pageDefinitions.map(([pageType, selector], index) => {
+    const source = article.querySelector<HTMLElement>(selector);
+    if (!source) {
+      throw new Error(`Visible report page ${index + 1} (${pageType}) is unavailable for OCR registration.`);
+    }
+    const excluded = ".pdf-machine-readable,.lca-pdf-machine-readable,.print-hidden,.pdf-hidden,[aria-hidden='true'],button,input,select,textarea,script,style";
+    const pageBox = source.getBoundingClientRect();
+    const rows = Array.from(source.querySelectorAll("tr,.report-bar-row,.pdf-table-row"));
+    const walker = document.createTreeWalker(source, NodeFilter.SHOW_TEXT);
+    const segments: Array<{ segmentIndex: number; text: string; semanticTag: string; rowIndex: number; columnIndex: number; box: { x: number; y: number; width: number; height: number } }> = [];
+    let current = walker.nextNode();
+    while (current) {
+      const parent = current.parentElement;
+      const text = (current.textContent || "").replace(/\s+/g, " ").trim();
+      if (parent && text && !parent.closest(excluded)) {
+        const semantic = parent.closest<HTMLElement>("th,td,h1,h2,h3,p,li,span,div") || parent;
+        const row = parent.closest("tr,.report-bar-row,.pdf-table-row");
+        const cell = parent.closest<HTMLTableCellElement>("th,td");
+        const rect = semantic.getBoundingClientRect();
+        const normalize = (value: number, total: number) => total > 0 ? Math.round((value / total) * 10_000) : 0;
+        segments.push({
+          segmentIndex: segments.length,
+          text,
+          semanticTag: semantic.tagName.toLowerCase(),
+          rowIndex: row ? rows.indexOf(row) : -1,
+          columnIndex: cell ? cell.cellIndex : -1,
+          box: {
+            x: normalize(rect.left - pageBox.left, pageBox.width),
+            y: normalize(rect.top - pageBox.top, pageBox.height),
+            width: normalize(rect.width, pageBox.width),
+            height: normalize(rect.height, pageBox.height)
+          }
+        });
+      }
+      current = walker.nextNode();
+    }
+    const visibleText = segments.map((segment) => segment.text).join(" ").replace(/\s+/g, " ").trim();
+    if (visibleText.length < (pageType === "DIGITAL_VERIFICATION" ? 20 : 40)) {
+      throw new Error(`Visible report page ${index + 1} (${pageType}) has too few OCR fields.`);
+    }
+    return { pageNumber: index + 1, pageType, visibleText, segments };
+  });
+  return {
+    schemaVersion: 3,
+    certificateId: record.certificateId,
+    payloadHash: record.payloadHash,
+    integrityCode: record.integrityCode,
+    datasetHash: String(record.datasetHash || record.payloadHash),
+    pages
+  };
+}
+
 async function waitForReportFonts() {
   if (!document.fonts) {
     return;
   }
-  await Promise.all([
+  const fontLoads = [
     document.fonts.load('400 16px "Pretendard GOV"'),
     document.fonts.load('500 16px "Pretendard GOV"'),
     document.fonts.load('600 16px "Pretendard GOV"'),
@@ -770,7 +846,14 @@ async function waitForReportFonts() {
     document.fonts.load('800 16px "Pretendard GOV"'),
     document.fonts.load('900 16px "Pretendard GOV"'),
     document.fonts.ready
-  ]);
+  ];
+  const timeout = new Promise<void>((resolve) => {
+    window.setTimeout(resolve, 3_000);
+  });
+  // A missing optional font must not block issuance. Chromium can render the
+  // report with the configured fallback stack, so wait only for a bounded
+  // best-effort font settlement and continue on individual load failures.
+  await Promise.race([Promise.allSettled(fontLoads).then(() => undefined), timeout]);
 }
 
 function escapeReportStyleAttribute(value: string) {
@@ -804,7 +887,14 @@ async function buildInlinedReportStyles() {
     // The print window is isolated from the application document, so linked
     // stylesheets must be embedded before the report markup is written.
     const stylesheetUrl = node.href;
-    const response = await fetch(stylesheetUrl, {
+    const parsedStylesheetUrl = new URL(stylesheetUrl, window.location.href);
+    if (parsedStylesheetUrl.origin !== window.location.origin) {
+      // External font stylesheets are optional and can be blocked by CORS or
+      // an isolated production network. The same-origin application CSS below
+      // remains mandatory, and Chromium uses the report fallback font stack.
+      return "";
+    }
+    const response = await fetch(parsedStylesheetUrl.href, {
       credentials: "include",
       cache: "no-store"
     });
@@ -2160,24 +2250,32 @@ export function EmissionSurveyReportPrintPage() {
     if (!validateBeforePdfIssuance()) return;
     setVerificationBusy(true);
     setVerificationMessage("");
+    let issuanceStage = "PROOFREAD";
     try {
       const proofreading = await proofreadReportForIssuance(effectiveReport);
       const issuedReport = proofreading.report;
       setDraftReport(issuedReport);
+      issuanceStage = "LOCAL_SESSION";
       saveEmissionSurveyReportSession(issuedReport);
+      issuanceStage = "VERIFICATION_RECORD";
       const record = await buildReportVerificationRecord(issuedReport, { byproductAllocation });
       saveReportVerificationRecord(record);
       setVerificationRecord(record);
+      issuanceStage = "QR_EVIDENCE";
       setVerificationQrDataUrl(await createReportQrDataUrl(record));
       setPdfDesignDraft(draft);
       setPdfDownloadMode(false);
+      issuanceStage = "REPORT_RENDER:FRAMES";
       await nextAnimationFrame();
       await nextAnimationFrame();
+      issuanceStage = "REPORT_RENDER:FONTS";
       await waitForReportFonts();
+      issuanceStage = "REPORT_RENDER:ARTICLE";
       const article = reportArticleRef.current;
       if (!article) {
         throw new Error("Report element is not ready.");
       }
+      issuanceStage = "REPORT_RENDER:HTML";
       // The backend renders a temporary file:// document. External stylesheet
       // links can be unreachable from that Chromium process even though they
       // are already loaded in the user's authenticated page. Embed the exact
@@ -2193,7 +2291,9 @@ export function EmissionSurveyReportPrintPage() {
         article.outerHTML,
         "</body></html>"
       ].join("");
-      const issuedPdf = await issueSurveyReportPdf(record, reportHtml);
+      issuanceStage = "PDF_API";
+      const issuedPdf = await issueSurveyReportPdf(record, reportHtml, buildReportOcrIssuanceEvidence(article, record));
+      issuanceStage = "DOWNLOAD";
       const downloadUrl = URL.createObjectURL(issuedPdf);
       const download = document.createElement("a");
       download.href = downloadUrl;
@@ -2205,10 +2305,12 @@ export function EmissionSurveyReportPrintPage() {
       setVerificationMessage(en
         ? `The verified PDF was downloaded. Its dataset, OCR source, and ${proofreading.changedCount} text correction(s) were registered from the final PDF.`
         : `검증 PDF를 다운로드했습니다. 최종 PDF 기준 시각 지문·OCR 원문·데이터셋과 오탈자 ${proofreading.changedCount}건을 함께 등록했습니다.`);
-    } catch (error) {
-      console.error(error);
-      setVerificationMessage(en ? "PDF issuance failed. Please try again." : "PDF 발급에 실패했습니다. 다시 시도하세요.");
-    } finally {
+      } catch (error) {
+        console.error(`[emission-survey-report:${issuanceStage}]`, error);
+        setVerificationMessage(en
+          ? `PDF issuance failed at ${issuanceStage}. Please try again.`
+          : `PDF 발급에 실패했습니다. 실패 단계: ${issuanceStage}. 다시 시도하세요.`);
+      } finally {
       setVerificationBusy(false);
     }
   };
@@ -3730,7 +3832,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       const recognized = await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
       appendVerificationLog("OK", en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다.", `characters=${recognized.text.length}, engineConfidence=${Math.round(recognized.confidence)}%`);
       setUploadedVerificationText(recognized.text);
-      const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType);
+      const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType, recognized.pageTexts);
       appendVerificationLog(verification.photoConsistent ? "OK" : "WARN", en ? "Issued-report candidate comparison completed." : "발급 리포트 후보 대조를 완료했습니다.", `certificate=${verification.certificateId || "-"}, candidates=${verification.comparisons?.length || 0}, exact=${verification.comparisons?.filter((item) => item.overallExactMatch).length || 0}, confidence=${verification.confidence}%, visual=${verification.visualSimilarity ?? 0}%, mismatches=${verification.fieldMismatches?.length || 0}`);
       setPhotoVerification(verification);
       if (rawPdfFile && !exactPdfVerification && verification.certificateId) {
@@ -4053,6 +4155,20 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                     <span className="col-span-2">{en ? "Numeric cells" : "수치 셀"}: {photoVerification.matchedNumberCount || 0}/{photoVerification.numberCount || 0}</span>
                   </>}
                 </div>
+                {selectedReportType === "EMISSION_SURVEY" && photoVerification.ocrEvidencePageComparisons?.length ? (
+                  <div className="mt-4 border-t border-slate-200 pt-3">
+                    <p className="text-xs font-black text-slate-900">{en ? "Ordered page evidence" : "페이지별 전체 항목·순서·중복 검증"}</p>
+                    <div className="mt-2 grid gap-2">
+                      {photoVerification.ocrEvidencePageComparisons.map((page) => (
+                        <div className={`rounded-lg border px-3 py-2 text-xs ${page.matched ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900"}`} key={`${page.pageNumber}-${page.pageType}`}>
+                          <strong>P{page.pageNumber} {page.pageType}</strong>
+                          <span className="ml-2">{page.matchedTokenCount}/{page.expectedTokenCount}</span>
+                          <span className="ml-2">{page.ordered ? "ORDER OK" : "ORDER FAIL"}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 {selectedReportType === "LCA_SUMMARY" && photoVerification.lcaFieldComparisons?.length ? (
                   <div className="mt-4 grid gap-2 sm:grid-cols-2">
                     {photoVerification.lcaFieldComparisons.map((field) => (
@@ -4101,6 +4217,13 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Dataset Comparison" : "데이터셋 대조"}</p>
+              {selectedReportType === "EMISSION_SURVEY" ? (
+                <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-950">
+                  {en
+                    ? "New emission survey reports are accepted only when all 5 pages match independently: page count, every visible field, top-to-bottom order, duplicate occurrence count, four QR identifiers, dataset, PDF bytes, dates, and visual fingerprint. Legacy OCR evidence requires reissuance."
+                    : "신규 배출 설문 리포트는 5개 페이지를 각각 독립 검증합니다. 페이지 수·모든 표시 항목·위→아래 순서·중복 횟수·QR 4식별자·데이터셋·PDF 바이트·생성/수정일·시각 지문이 모두 일치해야 정상이며, 기존 OCR 증거는 재발급이 필요합니다."}
+                </div>
+              ) : null}
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black">
                 <span className={`col-span-2 rounded-lg px-3 py-2 ${pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "bg-emerald-100 text-emerald-900" : pdfFileVerification?.status === "TAMPERED_PDF" ? "bg-rose-100 text-rose-900" : uploadedPdfSelected ? "bg-amber-50 text-amber-900" : "bg-slate-100 text-slate-500"}`}>
                   {en ? "PDF bytes vs issued original" : "PDF 원본 바이트 ↔ 발급 원장"}: {pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "EXACT" : pdfFileVerification?.status === "TAMPERED_PDF" ? "TAMPERED" : uploadedPdfSelected ? "UNVERIFIABLE" : "-"}
@@ -4120,6 +4243,14 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                 <span className={`col-span-2 rounded-lg px-3 py-2 ${photoVerification?.qrFullyMatched ? "bg-emerald-100 text-emerald-900" : photoVerification?.qrDetected ? "bg-rose-50 text-rose-800" : "bg-slate-100 text-slate-500"}`}>
                   {en ? "Photographed QR signature vs registry" : "촬영 QR 서명 ↔ 원장"}: {photoVerification?.qrFullyMatched ? "OK" : photoVerification?.qrDetected ? "FAIL" : "-"}
                 </span>
+                <span className={`col-span-2 rounded-lg px-3 py-2 ${photoVerification?.tagExactMatch ? "bg-emerald-100 text-emerald-900" : photoVerification ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-500"}`}>
+                  {en ? "Certificate ID + SHA-256 fingerprint + integrity code + dataset hash" : "인증서 ID + SHA-256 리포트 지문 + 무결성 코드 + 데이터셋 해시"}: {photoVerification?.tagExactMatch ? "OK" : photoVerification ? "FAIL" : "-"}
+                </span>
+                {selectedReportType === "EMISSION_SURVEY" ? (
+                  <span className={`col-span-2 rounded-lg px-3 py-2 ${photoVerification?.ocrEvidenceExactMatch ? "bg-emerald-100 text-emerald-900" : photoVerification ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-500"}`}>
+                    {en ? "All issued visible fields vs OCR" : "발급 화면 전체 항목 ↔ OCR"}: {photoVerification?.ocrEvidenceExactMatch ? `OK (${photoVerification.matchedOcrEvidenceTokenCount || 0}/${photoVerification.ocrEvidenceTokenCount || 0})` : photoVerification?.ocrEvidenceAvailable ? `FAIL (${photoVerification.matchedOcrEvidenceTokenCount || 0}/${photoVerification.ocrEvidenceTokenCount || 0})` : photoVerification ? (en ? "REISSUE REQUIRED" : "재발급 필요") : "-"}
+                  </span>
+                ) : null}
                 <span className={`col-span-2 rounded-lg px-3 py-2 ${datasetVerification?.datasetMatch && photoVerification?.photoConsistent && (!uploadedPdfSelected || pdfFileVerification?.status === "EXACT_PDF_MATCH") ? "bg-emerald-100 text-emerald-900" : pdfFileVerification?.status === "TAMPERED_PDF" ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-600"}`}>
                   {en ? "Four-way equality" : "4자 데이터 일치"}: {pdfFileVerification?.status === "TAMPERED_PDF" ? "TAMPERED" : uploadedPdfSelected && pdfFileVerification?.status !== "EXACT_PDF_MATCH" ? "UNVERIFIABLE" : datasetVerification?.datasetMatch && photoVerification?.photoConsistent && (!uploadedPdfSelected || pdfFileVerification?.status === "EXACT_PDF_MATCH") ? "OK" : datasetVerification ? (en ? "OCR REVIEW" : "OCR 검토") : (en ? "EMBEDDED DATA UNAVAILABLE" : "내장 데이터 없음")}
                 </span>

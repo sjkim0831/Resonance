@@ -10,6 +10,7 @@ const paths = {
   service: path.join(repoRoot, "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/service/ReportVerificationRegistryService.java"),
   controller: path.join(repoRoot, "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/web/ReportVerificationRegistryController.java"),
   migration: path.join(repoRoot, "apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260818090000__bind_issued_pdf_bytes_to_verification_registry.sql"),
+  ocrMigration: path.join(repoRoot, "apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260818173000__register_report_ocr_evidence.sql"),
 };
 
 const sources = Object.fromEntries(await Promise.all(Object.entries(paths).map(async ([key, value]) => [key, await readFile(value, "utf8")])));
@@ -43,15 +44,29 @@ function requireOrder(sourceKey, startToken, firstToken, secondToken, endToken) 
 
 requireText("migration", "pdf_sha256 CHAR(64)");
 requireText("migration", "CHECK ((pdf_sha256 IS NULL) = (pdf_size_bytes IS NULL))");
+requireText("ocrMigration", "ocr_evidence_json jsonb");
+requireText("ocrMigration", "ocr_evidence_version integer");
+requireText("ocrMigration", "conrelid = 'carbonet_report_verification_registry'::regclass");
 requireText("service", "MessageDigest.isEqual");
 requireText("service", '"EXACT_PDF_MATCH"');
 requireText("service", '"TAMPERED_PDF"');
 requireText("service", '"PDF_FINGERPRINT_UNAVAILABLE"');
 requireText("service", "bindIssuedPdfFingerprint");
+requireText("service", "canonicalizeOcrEvidence");
+requireText("service", 'boolean ocrEvidenceRequired = "EMISSION_SURVEY".equalsIgnoreCase(requestedReportType)');
+requireText("service", "tagExactMatch && datasetExactMatch && ocrEvidenceExactMatch");
+requireText("service", "!ocrEvidenceRequired || ocrEvidenceExactMatch");
+requireText("service", 'status = confidence >= 55 ? "PHOTO_REVIEW" : "PHOTO_MISMATCH"');
+requireText("service", '"IDENTIFIER_MISMATCH"');
+requireText("service", '"OCR_EVIDENCE_UNAVAILABLE"');
+requireText("service", '"OCR_CONTENT_MISMATCH"');
 requireText("controller", '"/api/home/certificate-verify/verify-file"');
 requireText("controller", '@RequestPart("file") MultipartFile file');
 requireText("api", 'form.append("file", file, file.name)');
 requireText("api", '"/api/home/certificate-verify/verify-file"');
+requireText("api", "body: JSON.stringify({ record, html, ocrEvidence })");
+requireText("page", "buildReportOcrIssuanceEvidence(article, record)");
+requireText("page", 'selectedReportType === "EMISSION_SURVEY" && photoVerification.ocrEvidencePageComparisons?.length');
 requireText("page", 'resultTone === "danger" ? (en ? "Tampered PDF" : "변조 파일")');
 requireText("page", 'verification.status === "TAMPERED_PDF"');
 requireText("page", "QR·OCR·시각 유사도로 이 결과를 덮어쓸 수 없습니다.");
@@ -86,4 +101,7 @@ console.log(JSON.stringify({
   standaloneCertificateIdVerifiedBeforeOcrSuccess: true,
   pdfCreationModificationDateMismatchBlocked: true,
   adminOneWayBinding: true,
+  identifiersFailClosed: true,
+  completeOcrEvidenceRequired: true,
+  lcaCompatibilityPreserved: true,
 }));
