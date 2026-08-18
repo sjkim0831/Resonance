@@ -3390,10 +3390,64 @@ set -e
 grep -Fq 'rollback runtime dependencies differ from pre-attempt snapshot; mutation=0' \
   "$fixture/dependency-drift-normalization.err"
 
+# 127. The production checkpoint function must derive its key from arguments,
+# not accidentally inherited globals. The actual extracted function succeeds
+# with both globals unset; a dynamic mutant that restores the old one-command
+# local declaration must die under set -u before publishing candidate state.
+checkpoint_scope_mutant="$fixture/checkpoint-scope-mutant.sh"
+python3 - "$functions" "$checkpoint_scope_mutant" <<'PY'
+import pathlib
+import sys
+
+source_path = pathlib.Path(sys.argv[1])
+mutant_path = pathlib.Path(sys.argv[2])
+source = source_path.read_text(encoding="utf-8")
+fixed = '''checkpoint_backstage_managed_resource_candidate() {
+  local kind="$1" name="$2"
+  local key="$kind/$name" snapshot expected expected_payload snapshot_payload state_payload'''
+mutant = '''checkpoint_backstage_managed_resource_candidate() {
+  local kind="$1" name="$2" key="$kind/$name" snapshot expected expected_payload snapshot_payload state_payload'''
+if source.count(fixed) != 1:
+    raise SystemExit("checkpoint scope fix is not present exactly once in extracted production functions")
+mutant_path.write_text(source.replace(fixed, mutant, 1), encoding="utf-8")
+PY
+
+reset_fixture
+create_armed_pending_state
+NAMESPACE=resonance-ops bash -c '
+  set -Eeuo pipefail
+  source "$1"
+  unset kind name
+  checkpoint_backstage_managed_resource_candidate ConfigMap resonance-backstage-config
+' _ "$functions" >"$fixture/checkpoint-scope-fixed.out" \
+  2>"$fixture/checkpoint-scope-fixed.err"
+jq -e '.phase == "MUTATION_ARMED" and
+  (.candidate.resources["ConfigMap/resonance-backstage-config"].exists == true)' \
+  "$pending" >/dev/null
+grep -Fq 'managed resource candidate checkpointed key=ConfigMap/resonance-backstage-config' \
+  "$fixture/checkpoint-scope-fixed.out"
+
+reset_fixture
+create_armed_pending_state
+checkpoint_scope_pending_hash="$(sha256sum "$pending" | awk '{print $1}')"
+set +e
+NAMESPACE=resonance-ops bash -c '
+  set -Eeuo pipefail
+  source "$1"
+  unset kind name
+  checkpoint_backstage_managed_resource_candidate ConfigMap resonance-backstage-config
+' _ "$checkpoint_scope_mutant" >"$fixture/checkpoint-scope-mutant.out" \
+  2>"$fixture/checkpoint-scope-mutant.err"
+status="$?"
+set -e
+[[ "$status" != 0 ]]
+[[ "$(sha256sum "$pending" | awk '{print $1}')" == "$checkpoint_scope_pending_hash" ]]
+grep -Eq 'kind: unbound variable' "$fixture/checkpoint-scope-mutant.err"
+
 if grep -R -Fq -- "$secret_value" \
     "$fixture"/*.out "$fixture"/*.err "$fixture/state" 2>/dev/null; then
   echo '[backstage-rollback-test] secret value leaked into state or logs' >&2
   exit 1
 fi
 
-echo 'BACKSTAGE_DEPLOYMENT_ROLLBACK_PASS cases=126 failureStatus=37 rollbackFailure=79 sigkillResume=9 mutationPointMutants=8 casMutation=0 successPending=0 securityFailClosed=4 contentionStatus=79 contentionMutation=0 officialDirectShared=1 controlGroupKill=2 recoverPresent=1 recoverAbsent=2 deferredHandoff=1 markerThenClear=7 finalizeRetry=7 postMvSyncNoRollback=2 clearFailureNoRollback=1 clearSigkillNoRollback=1 missingMarkerStatus=79 markerFailureRetained=1 reconcileFinalize=1 reconcileRollback=2 invalidCliMutation0=3 foreignMutation0=3 legacyRecover=3 legacyFinalize=1 legacyFinalizeMutation0=2 standaloneImmediate=1 standaloneAttemptUnique=2 stagingPush=2 canonicalPush0=2 expectedBindingPass=2 expectedReplacementMutation0=2 expectedHashMutation0=2 expectedInodeRaceMutation0=2 expectedInvalidMutation0=2 expectedAbsentMutation0=2 identityPublish=2 identityVerifyExact=2 identityUnsafe=3 fullSpecDrift=3 identityPublicationCuts=3 identityAuthorityNoRollback=1 staleIdentityRemoved=2 baselineIdentityPreserved=1 managedExactRollback=5 managedCandidateRollback=1 managedForeignMutation0=5 aggregatePreflightMutation0=2 databasePasswordSecret0=4 servingDrift=7 readyPodImageIdDrift=1 registryReuse=1 registryReject=2 parentAuthorityBlock=5 inheritedLock=2 v4BaselineProof=1 v4TamperMutation0=2 mutableTagDigestRollback=1 verifyPendingExact=1 verifyPendingProofReject=2 verifyPendingBindingReject=2 holdCreationFailureMutation0=1 tagSwapBeforeCaptureMutation0=1 rollbackIdentityLabelLessRetired=1 rollbackDependencyDriftRetained=1 secretValues=0'
+echo 'BACKSTAGE_DEPLOYMENT_ROLLBACK_PASS cases=127 failureStatus=37 rollbackFailure=79 sigkillResume=9 mutationPointMutants=8 casMutation=0 successPending=0 securityFailClosed=4 contentionStatus=79 contentionMutation=0 officialDirectShared=1 controlGroupKill=2 recoverPresent=1 recoverAbsent=2 deferredHandoff=1 markerThenClear=7 finalizeRetry=7 postMvSyncNoRollback=2 clearFailureNoRollback=1 clearSigkillNoRollback=1 missingMarkerStatus=79 markerFailureRetained=1 reconcileFinalize=1 reconcileRollback=2 invalidCliMutation0=3 foreignMutation0=3 legacyRecover=3 legacyFinalize=1 legacyFinalizeMutation0=2 standaloneImmediate=1 standaloneAttemptUnique=2 stagingPush=2 canonicalPush0=2 expectedBindingPass=2 expectedReplacementMutation0=2 expectedHashMutation0=2 expectedInodeRaceMutation0=2 expectedInvalidMutation0=2 expectedAbsentMutation0=2 identityPublish=2 identityVerifyExact=2 identityUnsafe=3 fullSpecDrift=3 identityPublicationCuts=3 identityAuthorityNoRollback=1 staleIdentityRemoved=2 baselineIdentityPreserved=1 managedExactRollback=5 managedCandidateRollback=1 managedForeignMutation0=5 aggregatePreflightMutation0=2 databasePasswordSecret0=4 servingDrift=7 readyPodImageIdDrift=1 registryReuse=1 registryReject=2 parentAuthorityBlock=5 inheritedLock=2 v4BaselineProof=1 v4TamperMutation0=2 mutableTagDigestRollback=1 verifyPendingExact=1 verifyPendingProofReject=2 verifyPendingBindingReject=2 holdCreationFailureMutation0=1 tagSwapBeforeCaptureMutation0=1 rollbackIdentityLabelLessRetired=1 rollbackDependencyDriftRetained=1 checkpointScopeFixed=1 checkpointScopeMutantKilled=1 secretValues=0'

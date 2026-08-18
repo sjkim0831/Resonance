@@ -2431,7 +2431,8 @@ arm_backstage_deployment_mutations() {
 }
 
 checkpoint_backstage_managed_resource_candidate() {
-  local kind="$1" name="$2" key="$kind/$name" snapshot expected expected_payload snapshot_payload state_payload
+  local kind="$1" name="$2"
+  local key="$kind/$name" snapshot expected expected_payload snapshot_payload state_payload
   local expected_attempt expected_pending_target
   load_backstage_pending_state || return 1
   [[ "$BACKSTAGE_PENDING_SCHEMA_VERSION" == 4 &&
