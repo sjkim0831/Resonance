@@ -232,7 +232,8 @@ printf '%s\n' "$finalizer_body" | awk '
   END { exit !(ledger>0 && usage>ledger && staged>usage && promoter>staged) }
 ' || fail "candidate finalizer must publish ledger, run usage, precheck 12 units, then promote marker"
 wrapper_body="$(sed -n '/^finalize_postdeploy_candidate_release_with_composite_gate_cleanup() {/,/^}/p' "$DEPLOY")"
-[[ "$(grep -Ec '^[[:space:]]*finalize_postdeploy_candidate_release$' "$DEPLOY")" == 1 \
+[[ "$(grep -Ec '^[[:space:]]*finalize_postdeploy_candidate_release$' "$DEPLOY")" == 0 \
+   && "$(grep -Ec '^[[:space:]]*finalize_postdeploy_candidate_release "\$frontend_overlay_template_sha256"$' "$DEPLOY")" == 1 \
    && "$(grep -Ec '^[[:space:]]*finalize_postdeploy_candidate_release_with_composite_gate_cleanup$' "$DEPLOY")" == 2 \
    && "$(grep -Ec '^[[:space:]]*if finalize_postdeploy_candidate_release; then$' <<<"$wrapper_body")" == 1 ]] \
   || fail "each of the three runtime release paths must use the candidate finalizer directly or through exact composite cleanup"
