@@ -123,7 +123,7 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
     }
 
     private boolean isLocallyGuardedAdminOperation(HttpServletRequest request, String normalizedMenuUrl) {
-        if (request == null || "GET".equalsIgnoreCase(request.getMethod())) {
+        if (request == null) {
             return false;
         }
         String path = safeString(normalizedMenuUrl).toLowerCase(Locale.ROOT);
@@ -132,6 +132,14 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
             return false;
         }
         String endpoint = path.substring(prefix.length());
+        if ("GET".equalsIgnoreCase(request.getMethod())) {
+            // These read endpoints perform the stricter SYSTEM_ADMIN family
+            // check in ActorProcessGovernanceApiController. Let that local
+            // guard return the stable JSON denial contract instead of the
+            // menu-feature interceptor's legacy HTML alert.
+            return endpoint.equals("/system-test-report")
+                    || endpoint.startsWith("/system-test-report/");
+        }
         return endpoint.equals("/process-closing/audit")
                 || endpoint.equals("/assets/refresh")
                 || endpoint.equals("/process-archetypes/bind-screen")

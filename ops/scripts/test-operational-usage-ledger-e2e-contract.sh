@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 HARNESS="$ROOT/ops/scripts/validate-operational-usage-ledger-e2e.sh"
 CONTROLLER="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/web/ActorProcessGovernanceApiController.java"
+INTERCEPTOR="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/common/interceptor/AdminMainAuthInterceptor.java"
 SERVICE="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/ActorProcessGovernanceService.java"
 SERVICE_TEST="$ROOT/modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/platform/governance/service/ActorProcessGovernanceServiceSecurityTest.java"
 CONTROLLER_TEST="$ROOT/modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/platform/governance/web/ActorProcessGovernanceApiControllerAssignmentTest.java"
@@ -26,7 +27,7 @@ fail(){ printf '[operational-usage-ledger-e2e-contract] FAIL: %s\n' "$*" >&2; ex
 contains(){ local file="$1" needle="$2"; grep -Fq -- "$needle" "$file" || fail "missing contract in ${file#$ROOT/}: $needle"; }
 not_contains(){ local file="$1" needle="$2"; ! grep -Fq -- "$needle" "$file" || fail "forbidden contract in ${file#$ROOT/}: $needle"; }
 
-for file in "$HARNESS" "$CONTROLLER" "$SERVICE" "$SERVICE_TEST" "$CONTROLLER_TEST" "$MIGRATION" "$PANEL" "$FRONTEND_AUDIT" "$FRONTEND_PIPELINE" "$FRONTEND_PACKAGE" "$PLANNER" "$DEPLOY" "$AUTH_LOGOUT_LIVE" "$AUTH_LOGOUT_LEADER_CONTRACT" "$PROVISION_CONTRACT" "$PROVISION" "$DB_POSTCONDITION"; do [[ -f "$file" ]] || fail "required file missing: ${file#$ROOT/}"; done
+for file in "$HARNESS" "$CONTROLLER" "$INTERCEPTOR" "$SERVICE" "$SERVICE_TEST" "$CONTROLLER_TEST" "$MIGRATION" "$PANEL" "$FRONTEND_AUDIT" "$FRONTEND_PIPELINE" "$FRONTEND_PACKAGE" "$PLANNER" "$DEPLOY" "$AUTH_LOGOUT_LIVE" "$AUTH_LOGOUT_LEADER_CONTRACT" "$PROVISION_CONTRACT" "$PROVISION" "$DB_POSTCONDITION"; do [[ -f "$file" ]] || fail "required file missing: ${file#$ROOT/}"; done
 bash -n "$HARNESS" "$AUTH_LOGOUT_LIVE" "$AUTH_LOGOUT_LEADER_CONTRACT"
 bash "$HARNESS" --self-test >/dev/null
 bash "$AUTH_LOGOUT_LEADER_CONTRACT" >/dev/null
@@ -127,6 +128,10 @@ contains "$CONTROLLER" '@PostMapping("/system-test-report/audit")'
 contains "$CONTROLLER" '@PostMapping("/system-test-report/reviews")'
 contains "$CONTROLLER" 'context.getUserId()'
 contains "$CONTROLLER" 'Set.of("ROLE_SYSTEM_MASTER","ROLE_SYSTEM_ADMIN")'
+contains "$INTERCEPTOR" 'return endpoint.equals("/system-test-report")'
+contains "$INTERCEPTOR" '|| endpoint.startsWith("/system-test-report/");'
+contains "$HARNESS" 'ordinary system-report denial response contract mismatch'
+contains "$HARNESS" 'ordinary governance denial body is empty'
 contains "$CONTROLLER_TEST" 'stepDetailRequiresPlatformAdministrationAndReturnsOnlyTheFullSelectedStep'
 contains "$CONTROLLER_TEST" 'reviewIdempotencyReuseMismatchIs409WhileOrdinaryValidationRemains400'
 contains "$SERVICE" 'detail.put("detailMode","SELECTED_STEP_FULL")'
