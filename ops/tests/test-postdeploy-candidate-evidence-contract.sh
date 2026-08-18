@@ -690,6 +690,9 @@ runtime_service_test = (root / "modules/resonance-common/carbonet-common-core/sr
 preview_bundle_migration = (root / "apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260814173000__project_professional_screen_preview_bundle.sql").read_text(encoding="utf-8")
 assert "SCREEN_CONTRACT_RUNTIME_SAVE_PREVIEW" in screen_wrapper and "previewMode==true" in screen_wrapper
 assert "/professional-screen-contracts/preview" in screen_mjs and "previewCount: previewMode ? saves.length : 0" in screen_mjs
+assert 'CARBONET_SCREEN_CONTRACT_SAVE_MAX_MS || "2500"' in screen_mjs
+assert 'saved.elapsedMs <= maxSaveMillis' in screen_mjs
+assert 2000 < int(re.search(r'SAVE_MAX_MS \|\| "([0-9]+)"', screen_mjs).group(1)) < 3000
 assert "/signin/actionLogout" in screen_mjs
 assert 'publication?.predicted === true' in screen_mjs and 'publication?.applied === false' in screen_mjs
 assert 'publication?.published === false' in screen_mjs and "wouldPublishMatchesReason" in screen_mjs
