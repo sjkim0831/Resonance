@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.nio.charset.StandardCharsets;
+import java.lang.reflect.Method;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HexFormat;
@@ -95,6 +96,73 @@ class ReportVerificationRegistryServicePdfTest {
 
         assertThrows(IllegalStateException.class,
                 () -> service(jdbc).verifyPdfFile(CERTIFICATE_ID, ORIGINAL_PDF));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void ocrEvidenceRejectsAnOverlaidDuplicateValueEvenWhenEveryIssuedTokenRemains() throws Exception {
+        ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+        Method scorer = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "scoreRegisteredOcrEvidence", List.class, com.fasterxml.jackson.databind.JsonNode.class);
+        scorer.setAccessible(true);
+
+        Map<String, Object> issuedPage = new LinkedHashMap<>();
+        issuedPage.put("pageNumber", 2);
+        issuedPage.put("pageType", "SECTION_BAR");
+        issuedPage.put("tokens", List.of("에너지", "1.62", "kg", "co2e",
+                "수계", "배출물", "0.36", "kg", "co2e"));
+        Map<String, Object> evidence = new LinkedHashMap<>();
+        evidence.put("schemaVersion", 3);
+        evidence.put("pages", List.of(issuedPage));
+
+        Map<String, Object> exact = (Map<String, Object>) scorer.invoke(service,
+                List.of("에너지 1.62 kg CO2e 수계 배출물 0.36 kg CO2e"),
+                new ObjectMapper().valueToTree(evidence));
+        Map<String, Object> overlaid = (Map<String, Object>) scorer.invoke(service,
+                List.of("에너지 1.62 kg CO2e 수계 배출물 1.62 0.36 kg CO2e"),
+                new ObjectMapper().valueToTree(evidence));
+
+        assertTrue((Boolean) exact.get("ocrEvidenceExactMatch"));
+        assertFalse((Boolean) overlaid.get("ocrEvidenceExactMatch"));
+        Map<String, Object> comparison = (Map<String, Object>)
+                ((List<?>) overlaid.get("ocrEvidencePageComparisons")).get(0);
+        assertFalse((Boolean) comparison.get("tokenSequenceExact"));
+        assertFalse(((List<?>) comparison.get("unexpectedTokens")).isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void sectionSummaryRejectsAnExtraOverlaidNumberThatExistsInAnotherSection() throws Exception {
+        ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+        Method scorer = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "scoreSectionSummaryPage", List.class, com.fasterxml.jackson.databind.JsonNode.class);
+        scorer.setAccessible(true);
+        List<Map<String, Object>> summaries = new ArrayList<>();
+        summaries.add(section("INPUT_ENERGY", "에너지", 1.62, 0, 3));
+        summaries.add(section("OUTPUT_WATER", "수계 배출물", 0.36, 0, 2));
+        Map<String, Object> dataset = Map.of("sectionSummaries", summaries);
+
+        Map<String, Object> exact = (Map<String, Object>) scorer.invoke(service,
+                List.of("page one", "에너지 1.62 0 수계 배출물 0.36 0"),
+                new ObjectMapper().valueToTree(dataset));
+        Map<String, Object> tampered = (Map<String, Object>) scorer.invoke(service,
+                List.of("page one", "에너지 1.62 0 수계 배출물 0.36 1.62 0"),
+                new ObjectMapper().valueToTree(dataset));
+
+        assertTrue((Boolean) exact.get("sectionSummaryExactMatch"));
+        assertFalse((Boolean) tampered.get("sectionSummaryExactMatch"));
+        assertEquals(List.of("1.62"), tampered.get("unexpectedSectionSummaryNumbers"));
+    }
+
+    private static Map<String, Object> section(String code, String label, double total,
+                                                double share, int rowCount) {
+        Map<String, Object> section = new LinkedHashMap<>();
+        section.put("sectionCode", code);
+        section.put("sectionLabel", label);
+        section.put("totalEmission", total);
+        section.put("sharePercent", share);
+        section.put("calculatedRowCount", rowCount);
+        return section;
     }
 
     private static ReportVerificationRegistryService service(FingerprintJdbcTemplate jdbc) {
