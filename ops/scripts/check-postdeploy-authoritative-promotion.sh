@@ -37,34 +37,7 @@ status="$(cat <<'SQL' | "$KUBECTL_BIN" -n "$NAMESPACE" exec -i "$leader" -c "$DB
     -v source_commit="$SOURCE_COMMIT" -v candidate_id="$CANDIDATE_ID" -v exact_mode="$exact_mode" 2>/dev/null
 WITH current_runtime AS (
   SELECT source_commit,health_status,
-         CASE
-           WHEN NOT (to_jsonb(runtime) ? 'pod_template_sha256') THEN
-             encode(sha256(convert_to(concat_ws('|',
-               source_commit,deployment_namespace,deployment_name,deployment_uid,
-               deployment_generation,observed_generation,desired_replicas,
-               image_ref,image_id,health_status
-             ),'UTF8')),'hex')
-           WHEN release_key='CARBONET_RUNTIME'
-            AND source_commit='76a08e672ab7054914ec3b5aecb57bc8e7a298fa'
-            AND deployment_namespace='carbonet-prod' AND deployment_name='carbonet-runtime'
-            AND deployment_uid='5a9323d6-446c-49d2-ad3e-c300c18f5803'
-            AND image_ref='localhost:5000/carbonet-runtime:2026.08.14-202346-gradle'
-            AND image_id='sha256:48311ffbb0396684021efc84811c73432263850ce18c4d4412eb81151749e160'
-            AND health_status='UP'
-            AND to_jsonb(runtime)->>'pod_template_sha256'='3714b172fe60eed5d07658103aa5f51d6f9ef765f2cee2bd0ba304e71bfd9c1a' THEN
-             encode(sha256(convert_to(concat_ws('|',
-               source_commit,deployment_namespace,deployment_name,deployment_uid,
-               deployment_generation,observed_generation,desired_replicas,
-               image_ref,image_id,health_status
-             ),'UTF8')),'hex')
-           WHEN to_jsonb(runtime)->>'pod_template_sha256' ~ '^[0-9a-f]{64}$' THEN
-             encode(sha256(convert_to(jsonb_build_array(
-               'CARBONET_RUNTIME_IDENTITY_V2',source_commit,deployment_namespace,deployment_name,
-               deployment_uid,deployment_generation,observed_generation,desired_replicas,
-               image_ref,image_id,health_status,to_jsonb(runtime)->>'pod_template_sha256'
-             )::text,'UTF8')),'hex')
-           ELSE NULL
-         END AS runtime_identity_hash
+         framework_runtime_release_identity_hash(runtime) AS runtime_identity_hash
   FROM framework_runtime_release_state runtime
   WHERE release_key='CARBONET_RUNTIME' AND source_commit=:'source_commit'
 ), promotion AS (
@@ -173,34 +146,7 @@ WITH promotion AS (
   SELECT * FROM framework_postdeploy_evidence_promotion WHERE source_commit=:'source_commit'
 ), current_runtime AS (
   SELECT source_commit,health_status,
-         CASE
-           WHEN NOT (to_jsonb(runtime) ? 'pod_template_sha256') THEN
-             encode(sha256(convert_to(concat_ws('|',
-               source_commit,deployment_namespace,deployment_name,deployment_uid,
-               deployment_generation,observed_generation,desired_replicas,
-               image_ref,image_id,health_status
-             ),'UTF8')),'hex')
-           WHEN release_key='CARBONET_RUNTIME'
-            AND source_commit='76a08e672ab7054914ec3b5aecb57bc8e7a298fa'
-            AND deployment_namespace='carbonet-prod' AND deployment_name='carbonet-runtime'
-            AND deployment_uid='5a9323d6-446c-49d2-ad3e-c300c18f5803'
-            AND image_ref='localhost:5000/carbonet-runtime:2026.08.14-202346-gradle'
-            AND image_id='sha256:48311ffbb0396684021efc84811c73432263850ce18c4d4412eb81151749e160'
-            AND health_status='UP'
-            AND to_jsonb(runtime)->>'pod_template_sha256'='3714b172fe60eed5d07658103aa5f51d6f9ef765f2cee2bd0ba304e71bfd9c1a' THEN
-             encode(sha256(convert_to(concat_ws('|',
-               source_commit,deployment_namespace,deployment_name,deployment_uid,
-               deployment_generation,observed_generation,desired_replicas,
-               image_ref,image_id,health_status
-             ),'UTF8')),'hex')
-           WHEN to_jsonb(runtime)->>'pod_template_sha256' ~ '^[0-9a-f]{64}$' THEN
-             encode(sha256(convert_to(jsonb_build_array(
-               'CARBONET_RUNTIME_IDENTITY_V2',source_commit,deployment_namespace,deployment_name,
-               deployment_uid,deployment_generation,observed_generation,desired_replicas,
-               image_ref,image_id,health_status,to_jsonb(runtime)->>'pod_template_sha256'
-             )::text,'UTF8')),'hex')
-           ELSE NULL
-         END AS runtime_identity_hash
+         framework_runtime_release_identity_hash(runtime) AS runtime_identity_hash
   FROM framework_runtime_release_state runtime
   WHERE release_key='CARBONET_RUNTIME' AND source_commit=:'source_commit'
 ), facts AS (

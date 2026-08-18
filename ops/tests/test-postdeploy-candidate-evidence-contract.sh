@@ -604,11 +604,8 @@ for token in ("CARBONET_RUNTIME_EXPECTED_TEMPLATE_SHA256", "pod_template_sha256=
     assert token in record_runtime, f"runtime recorder DB template binding missing {token}"
 assert "framework_runtime_release_identity_hash(runtime)" in promoter
 assert "'podTemplateSha256',pod_template_sha256" in promoter
-assert "NOT (to_jsonb(runtime) ? 'pod_template_sha256')" in authority_check
-assert authority_check.count("CARBONET_RUNTIME_IDENTITY_V2") == 2
-assert "ELSE NULL" in authority_check
-assert "NOT (to_jsonb(runtime) ? 'pod_template_sha256')" in deploy
-assert "CARBONET_RUNTIME_IDENTITY_V2" in deploy and "ELSE NULL" in deploy
+assert authority_check.count("framework_runtime_release_identity_hash(runtime)") == 2
+assert "SELECT framework_runtime_release_identity_hash(runtime)" in deploy
 assert "to_jsonb(runtime)->>'pod_template_sha256' AS pod_template_sha256" in account_audit
 assert '($runtime.deployment_generation // -1) <= ($deployment.metadata.generation // -2)' in account_audit
 assert '($runtime.pod_template_sha256 // "") == $livePodTemplateSha256' in account_audit
@@ -662,8 +659,10 @@ hash_helper = runtime_template_migration[
 auto_hash = deploy[deploy.index("current_runtime_identity_hash() {"):
                    deploy.index("transition_postdeploy_attempt_journal() {")]
 assert v2_sequences(hash_helper) == [expected_v2_fields]
-assert v2_sequences(auto_hash) == [expected_v2_fields]
-assert v2_sequences(authority_check) == [expected_v2_fields,expected_v2_fields]
+assert v2_sequences(auto_hash) == []
+assert v2_sequences(authority_check) == []
+assert "framework_runtime_release_identity_hash(runtime)" in auto_hash
+assert authority_check.count("framework_runtime_release_identity_hash(runtime)") == 2
 v2_order_mutant=list(expected_v2_fields)
 v2_order_mutant[7],v2_order_mutant[8]=v2_order_mutant[8],v2_order_mutant[7]
 assert tuple(v2_order_mutant) != expected_v2_fields
@@ -690,8 +689,8 @@ assert tuple(field for field,_ in legacy_expected) == (
     "release_key","source_commit","deployment_namespace","deployment_name","deployment_uid",
     "image_ref","image_id","health_status","pod_template_sha256",
 )
-assert legacy_predicates(auto_hash) == [legacy_expected]
-assert legacy_predicates(authority_check) == [legacy_expected,legacy_expected]
+assert legacy_predicates(auto_hash) == []
+assert legacy_predicates(authority_check) == []
 legacy_drop_uid=tuple(pair for pair in legacy_expected if pair[0] != "deployment_uid")
 assert legacy_drop_uid != legacy_expected
 assert "p_reduced_hash" in candidate_pg and "candidate-test-reduced-hash" in candidate_pg

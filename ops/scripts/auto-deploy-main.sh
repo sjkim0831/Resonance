@@ -2271,34 +2271,7 @@ current_runtime_identity_hash() {
   cat <<'SQL' | kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
     psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -qAt -v ON_ERROR_STOP=1 \
       -v source_commit="$1"
-SELECT CASE
-  WHEN NOT (to_jsonb(runtime) ? 'pod_template_sha256') THEN
-    encode(sha256(convert_to(concat_ws('|',
-      source_commit,deployment_namespace,deployment_name,deployment_uid,
-      deployment_generation,observed_generation,desired_replicas,
-      image_ref,image_id,health_status
-    ),'UTF8')),'hex')
-  WHEN release_key='CARBONET_RUNTIME'
-   AND source_commit='76a08e672ab7054914ec3b5aecb57bc8e7a298fa'
-   AND deployment_namespace='carbonet-prod' AND deployment_name='carbonet-runtime'
-   AND deployment_uid='5a9323d6-446c-49d2-ad3e-c300c18f5803'
-   AND image_ref='localhost:5000/carbonet-runtime:2026.08.14-202346-gradle'
-   AND image_id='sha256:48311ffbb0396684021efc84811c73432263850ce18c4d4412eb81151749e160'
-   AND health_status='UP'
-   AND to_jsonb(runtime)->>'pod_template_sha256'='3714b172fe60eed5d07658103aa5f51d6f9ef765f2cee2bd0ba304e71bfd9c1a' THEN
-    encode(sha256(convert_to(concat_ws('|',
-      source_commit,deployment_namespace,deployment_name,deployment_uid,
-      deployment_generation,observed_generation,desired_replicas,
-      image_ref,image_id,health_status
-    ),'UTF8')),'hex')
-  WHEN to_jsonb(runtime)->>'pod_template_sha256' ~ '^[0-9a-f]{64}$' THEN
-    encode(sha256(convert_to(jsonb_build_array(
-      'CARBONET_RUNTIME_IDENTITY_V2',source_commit,deployment_namespace,deployment_name,deployment_uid,
-      deployment_generation,observed_generation,desired_replicas,
-      image_ref,image_id,health_status,to_jsonb(runtime)->>'pod_template_sha256'
-    )::text,'UTF8')),'hex')
-  ELSE NULL
-END
+SELECT framework_runtime_release_identity_hash(runtime)
 FROM framework_runtime_release_state runtime
 WHERE release_key='CARBONET_RUNTIME' AND source_commit=:'source_commit' AND health_status='UP';
 SQL
