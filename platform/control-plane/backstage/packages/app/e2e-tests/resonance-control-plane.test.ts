@@ -190,7 +190,11 @@ async function verifyRoute(
   if (route === '/system-recovery') {
     await expect(page.getByText('외부 백업 전체 복원 검증')).toBeVisible();
     await expect(page.getByText('복구 관리자 작업')).toBeVisible();
-    await expect(page.getByText(/carbonet_\d{8}_\d{6}\.dump/)).toBeVisible();
+    await expect(
+      page.getByText(
+        /carbonet-\d{8}T\d{6}Z-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.dump\.rsbk/i,
+      ),
+    ).toBeVisible();
     await expect(
       page.getByText(/등록된 복구 작업이 없습니다.|조치 필요|해결/).first(),
     ).toBeVisible();
