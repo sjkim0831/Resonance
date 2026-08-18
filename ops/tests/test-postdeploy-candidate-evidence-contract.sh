@@ -1251,6 +1251,11 @@ esac
                          deploy.index("enable_postdeploy_candidate_mode() {")]
     assert '--resource-version="$resource_version"' in bind_source
     assert 'resonance.ai/target-commit=$target_commit' in bind_source
+    assert "selector:.spec.selector,template:.spec.template" in bind_source
+    assert "replicas:.spec.replicas" not in bind_source, \
+        "HPA-owned replicas must not invalidate the source annotation CAS"
+    assert "generation:.metadata.generation" not in bind_source, \
+        "HPA replica scaling advances generation and must not invalidate the CAS"
     enable_body = deploy[deploy.index("enable_postdeploy_candidate_mode() {"):
                          deploy.index("run_postdeploy_candidate_validation_groups() {")]
     assert enable_body.index("invalidate_runtime_release_state") < enable_body.index("bind_postdeploy_candidate_live_source")

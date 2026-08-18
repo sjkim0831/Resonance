@@ -5166,8 +5166,12 @@ bind_postdeploy_candidate_live_source() {
     and (.metadata.resourceVersion|type=="string" and length>0)
     and (.metadata.uid|type=="string" and length>0) and .spec.template
   ' <<<"$before" >/dev/null || return 1
-  before_immutable="$(jq -cS '{uid:.metadata.uid,generation:.metadata.generation,
-    replicas:.spec.replicas,selector:.spec.selector,template:.spec.template}' <<<"$before")" || return 1
+  # The HPA owns spec.replicas and changes it through the scale subresource,
+  # which also advances metadata.generation. Neither value is an immutable
+  # deployment identity field, so including them here creates a false CAS
+  # failure while an otherwise unchanged PodTemplate is scaling normally.
+  before_immutable="$(jq -cS '{uid:.metadata.uid,
+    selector:.spec.selector,template:.spec.template}' <<<"$before")" || return 1
   if [[ "$(jq -r '.metadata.annotations["resonance.ai/target-commit"]//empty' <<<"$before")" != "$target_commit" ]]; then
     resource_version="$(jq -r '.metadata.resourceVersion' <<<"$before")"
     after="$(kubectl -n "$NAMESPACE" annotate "deployment/$DEPLOYMENT" \
@@ -5176,16 +5180,15 @@ bind_postdeploy_candidate_live_source() {
   else
     after="$before"
   fi
-  after_immutable="$(jq -cS '{uid:.metadata.uid,generation:.metadata.generation,
-    replicas:.spec.replicas,selector:.spec.selector,template:.spec.template}' <<<"$after")" || return 1
+  after_immutable="$(jq -cS '{uid:.metadata.uid,
+    selector:.spec.selector,template:.spec.template}' <<<"$after")" || return 1
   [[ "$after_immutable" == "$before_immutable" ]] || return 1
   final="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json)" || return 1
   jq -e --arg source "$target_commit" \
-    --argjson expected "$(jq -cS '{uid:.metadata.uid,generation:.metadata.generation,
-      replicas:.spec.replicas,selector:.spec.selector,template:.spec.template}' <<<"$after")" '
+    --argjson expected "$(jq -cS '{uid:.metadata.uid,
+      selector:.spec.selector,template:.spec.template}' <<<"$after")" '
     .metadata.annotations["resonance.ai/target-commit"]==$source
-    and {uid:.metadata.uid,generation:.metadata.generation,replicas:.spec.replicas,
-         selector:.spec.selector,template:.spec.template}==$expected
+    and {uid:.metadata.uid,selector:.spec.selector,template:.spec.template}==$expected
   ' <<<"$final" >/dev/null
 }
 
