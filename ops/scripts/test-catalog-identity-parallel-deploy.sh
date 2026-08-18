@@ -231,6 +231,14 @@ kubectl() {
 export -f curl kubectl
 export RESONANCE_BACKSTAGE_SELF_HEAL_READINESS_ATTEMPTS=3
 export RESONANCE_BACKSTAGE_SELF_HEAL_RETRY_DELAY_SECONDS=0
+export BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_WAIT_SECONDS=1
+acquire_clean_backstage_deployment_mutation_lock() {
+  return 0
+}
+release_backstage_deployment_mutation_lock() {
+  return 0
+}
+export -f acquire_clean_backstage_deployment_mutation_lock release_backstage_deployment_mutation_lock
 
 reset_backstage_readiness_case() {
   local statuses="$1"
@@ -252,7 +260,7 @@ ensure_backstage_actor_process_e2e_ready >"$auth_test_tmp/readiness-transient.lo
 [[ ! -s "$BACKSTAGE_READINESS_TEST_DIR/kubectl.calls" ]]
 grep -q 'selfHealRestarts=0 precheckAttempts=2' "$auth_test_tmp/readiness-transient.log"
 
-reset_backstage_readiness_case $'503\n503\n503\n200'
+reset_backstage_readiness_case $'503\n503\n503\n503\n200'
 ensure_backstage_actor_process_e2e_ready >"$auth_test_tmp/readiness-recovered.log" 2>&1
 [[ "$(grep -c 'rollout restart deployment/resonance-backstage' "$BACKSTAGE_READINESS_TEST_DIR/kubectl.calls")" == 1 ]]
 grep -q 'selfHealRestarts=1 attempts=1' "$auth_test_tmp/readiness-recovered.log"
