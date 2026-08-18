@@ -30,7 +30,12 @@ const issuance = source.slice(issuanceStart, legacyStart);
 if (issuance.includes('.map((node) => node.outerHTML)')) {
   throw new Error("[report-pdf-style-contract] external stylesheet links can still bypass embedding");
 }
-if (issuance.indexOf("await buildInlinedReportStyles()") > issuance.indexOf("issueSurveyReportPdf(record, reportHtml)")) {
+const embeddedStylesIndex = issuance.indexOf("await buildInlinedReportStyles()");
+const issuePdfIndex = issuance.indexOf("issueSurveyReportPdf(record, reportHtml");
+if (embeddedStylesIndex < 0 || issuePdfIndex < 0) {
+  throw new Error("[report-pdf-style-contract] PDF issuance or embedded stylesheet boundary is missing");
+}
+if (embeddedStylesIndex > issuePdfIndex) {
   throw new Error("[report-pdf-style-contract] PDF is issued before styles are embedded");
 }
 
