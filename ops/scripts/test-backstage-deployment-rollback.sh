@@ -15,6 +15,10 @@ if source.count("kubectl create --dry-run=client -f - -o json") != 3:
     raise SystemExit("target rendering must use exactly three live-independent create dry-runs")
 if "kubectl apply --dry-run=client -f - -o json" in source:
     raise SystemExit("apply dry-run can merge live values into the exact target render")
+if source.count('ports:[($item.spec.ports // [])[] | . + {protocol:(.protocol // "TCP")}]') != 1:
+    raise SystemExit("target Service rendering does not normalize the API-default TCP protocol")
+if source.count('ports:[(.spec.ports // [])[] | . + {protocol:(.protocol // "TCP")}]') != 1:
+    raise SystemExit("live Service rendering does not normalize the API-default TCP protocol")
 if 'BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR:-/opt/resonance-data/control-plane/deploy-state/backstage' not in source:
     raise SystemExit("official and direct deploys do not share the canonical default state directory")
 recover_mode = source.index('mode="${1:-deploy}"')

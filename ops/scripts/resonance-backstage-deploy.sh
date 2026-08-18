@@ -745,7 +745,8 @@ normalize_backstage_managed_resource_payload() {
           with_entries(select(.key != "kubectl.kubernetes.io/last-applied-configuration")))}' <<<"$resource_json"
       ;;
     Service)
-      jq -cS '{type:(.spec.type // "ClusterIP"),selector:(.spec.selector // {}),ports:(.spec.ports // []),
+      jq -cS '{type:(.spec.type // "ClusterIP"),selector:(.spec.selector // {}),
+        ports:[(.spec.ports // [])[] | . + {protocol:(.protocol // "TCP")}],
         sessionAffinity:(.spec.sessionAffinity // "None"),sessionAffinityConfig:(.spec.sessionAffinityConfig // null),
         externalTrafficPolicy:(.spec.externalTrafficPolicy // "Cluster"),
         internalTrafficPolicy:(.spec.internalTrafficPolicy // "Cluster"),
@@ -1011,7 +1012,8 @@ build_target_backstage_managed_resource_payloads() {
              ($item.metadata.name == "resonance-backstage" or $item.metadata.name == "resonance-backstage-catalog") then
           . + {("Service/" + $item.metadata.name):
             {kind:"Service",name:$item.metadata.name,exists:true,
-             payload:{type:($item.spec.type // "ClusterIP"),selector:($item.spec.selector // {}),ports:($item.spec.ports // []),
+             payload:{type:($item.spec.type // "ClusterIP"),selector:($item.spec.selector // {}),
+               ports:[($item.spec.ports // [])[] | . + {protocol:(.protocol // "TCP")}],
                sessionAffinity:($item.spec.sessionAffinity // "None"),
                sessionAffinityConfig:($item.spec.sessionAffinityConfig // null),
                externalTrafficPolicy:($item.spec.externalTrafficPolicy // "Cluster"),
