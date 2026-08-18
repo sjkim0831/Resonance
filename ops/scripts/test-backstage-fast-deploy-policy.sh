@@ -116,6 +116,12 @@ grep -Fq 'BACKSTAGE_E2E_STORAGE_STATE="$auth_state"' "$E2E_RUNNER"
 grep -Fq 'RESONANCE_E2E_SKIP_IDENTITY_PREFLIGHT=true' "$AUTO_DEPLOY"
 grep -Fq 'identity preflight covered by deployment authentication gates' "$E2E_RUNNER"
 grep -Fq './node_modules/.bin/playwright test' "$E2E_RUNNER"
+grep -Fq 'auth_state_origin_hash="$(printf '\''%s'\'' "$BACKSTAGE_URL" | sha256sum | awk '\''{print substr($1, 1, 16)}'\'')"' "$E2E_RUNNER"
+grep -Fq 'auth_state_name="${USERNAME//[^a-zA-Z0-9_.-]/_}.${auth_state_origin_hash}.json"' "$E2E_RUNNER"
+auth_state_443_hash="$(printf '%s' 'https://backstage.172.16.1.232.nip.io' | sha256sum | awk '{print substr($1, 1, 16)}')"
+auth_state_32947_hash="$(printf '%s' 'https://backstage.172.16.1.232.nip.io:32947' | sha256sum | awk '{print substr($1, 1, 16)}')"
+[[ "$auth_state_443_hash" != "$auth_state_32947_hash" ]]
+[[ "sjkim.${auth_state_443_hash}.json" != "sjkim.${auth_state_32947_hash}.json" ]]
 grep -Fq 'chmod 0600 "$auth_state"' "$E2E_RUNNER"
 grep -Fq 'storageState: process.env.BACKSTAGE_E2E_STORAGE_STATE' "$PLAYWRIGHT_CONFIG"
 grep -Fq 'Backstage visual E2E running concurrently' "$AUTO_DEPLOY"
