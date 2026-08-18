@@ -83,6 +83,9 @@ oidc = (root / oidc_path).read_text(encoding="utf-8")
 assert "umask 077" in oidc and 'BACKSTAGE_E2E_PASSWORD_FILE' in oidc
 assert '--data-binary @"$form_path"' in oidc and 'chmod 0600 "$form_path"' in oidc
 assert not re.search(r'--data-urlencode[^\n]*(?:password|username)=\$', oidc, re.I)
+identity_admin = (root / "ops/scripts/resonance-identity-admin-e2e.sh").read_text(encoding="utf-8")
+assert 'BACKSTAGE_URL="$BASE_URL"' in identity_admin
+assert 'https://backstage.172.16.1.232.nip.io:32947' in identity_admin
 
 file_backed_bearer_consumers = {
     actor_role_path: ('--header @"$run_dir/reviewer.header"', 'rm -f -- "$token_path"'),

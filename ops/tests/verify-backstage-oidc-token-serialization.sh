@@ -8,6 +8,7 @@ grep -Fq 'OIDC_TOKEN_LOCK_WAIT_SECONDS:-60' "$SCRIPT"
 grep -Fq 'token issuance lock timeout' "$SCRIPT"
 grep -Fq 'encodeURIComponent(url.origin)' "$SCRIPT"
 grep -Fq 'origin=$BACKSTAGE_ORIGIN_ENCODED' "$SCRIPT"
+grep -Fq 'BACKSTAGE_URL="${BACKSTAGE_URL:-https://backstage.172.16.1.232.nip.io:32947}"' "$SCRIPT"
 if grep -Fq 'origin=https%3A%2F%2Fbackstage.172.16.1.232.nip.io' "$SCRIPT"; then
   echo '[backstage-oidc-token-serialization] fixed portless origin is forbidden' >&2
   exit 1

@@ -4,7 +4,7 @@ umask 077
 
 USERNAME="${1:-resonance-requester}"
 NAMESPACE="${KEYCLOAK_NAMESPACE:-resonance-ops}"
-BACKSTAGE_URL="${BACKSTAGE_URL:-https://backstage.172.16.1.232.nip.io}"
+BACKSTAGE_URL="${BACKSTAGE_URL:-https://backstage.172.16.1.232.nip.io:32947}"
 KEYCLOAK_URL="${KEYCLOAK_URL:-https://identity.172.16.1.232.nip.io}"
 CA_CERT="${RESONANCE_INTERNAL_CA:-$HOME/.config/resonance/backstage-tls/ca.crt}"
 WORK_ROOT="${OIDC_TOKEN_WORK_ROOT:-$HOME/.cache/resonance/oidc-token}"

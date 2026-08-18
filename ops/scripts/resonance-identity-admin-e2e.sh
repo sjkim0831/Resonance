@@ -5,7 +5,7 @@ ROOT="${RESONANCE_ROOT:-/opt/Resonance}"
 NAMESPACE="${NAMESPACE:-resonance-ops}"
 SECRET_NAME="${BACKSTAGE_E2E_SECRET_NAME:-resonance-keycloak-integrated-admin}"
 USERNAME="${BACKSTAGE_E2E_USERNAME:-sjkim}"
-BASE_URL="${BACKSTAGE_BASE_URL:-https://backstage.172.16.1.232.nip.io}"
+BASE_URL="${BACKSTAGE_BASE_URL:-https://backstage.172.16.1.232.nip.io:32947}"
 CA_CERT="${RESONANCE_INTERNAL_CA:-/opt/resonance-data/pki/resonance-internal-ca/ca.crt}"
 
 password="$(
@@ -14,6 +14,7 @@ password="$(
 )"
 token="$(
   BACKSTAGE_E2E_PASSWORD="$password" \
+  BACKSTAGE_URL="$BASE_URL" \
   RESONANCE_INTERNAL_CA="$CA_CERT" \
     bash "$ROOT/ops/scripts/resonance-backstage-oidc-token.sh" "$USERNAME"
 )"
