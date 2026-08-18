@@ -115,12 +115,12 @@ const release = finalizer.indexOf('record_runtime_release_state "$target_commit"
 const promoter = finalizer.indexOf('promote-postdeploy-candidate-evidence.sh');
 const runtimeMarker = finalizer.indexOf('"$RUNTIME_DEPLOY_STATE_FILE"', promoter);
 const authority = finalizer.indexOf('postdeploy_authoritative_promotion_status', promoter);
-const appliedMarker = finalizer.indexOf('write_applied_deploy_state "$target_commit"', authority);
+const appliedMarker = finalizer.indexOf('write_applied_deploy_state_with_backstage_binding "$target_commit"', authority);
 if (!(release >= 0 && promoter > release && runtimeMarker > promoter && authority > runtimeMarker && appliedMarker > authority)) {
   throw new Error('runtime publication must promote DB/runtime marker before the overall applied marker');
 }
 const allAppliedMarkers = (deploy.match(/write_applied_deploy_state "\$target_commit"/g) || []).length;
-const finalizerAppliedMarkers = (finalizer.match(/write_applied_deploy_state "\$target_commit"/g) || []).length;
+const finalizerAppliedMarkers = (finalizer.match(/write_applied_deploy_state_with_backstage_binding "\$target_commit"/g) || []).length;
 if (finalizerAppliedMarkers !== 1 || allAppliedMarkers < 3) {
   throw new Error('expected exactly one runtime-finalizer marker and retained non-runtime/recovery marker paths');
 }

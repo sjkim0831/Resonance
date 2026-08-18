@@ -312,6 +312,7 @@ drop_before="$(grep -c '^drop$' "$FAKE_CALL_LOG")"
   terminate_runtime_screen_gate_group() { :; }
   cleanup_remote_backup() { :; }
   cleanup_local_schema_restore_container() { :; }
+  recover_runtime_after_failure_if_safe() { :; }
   bounded_cleanup_kubectl() { kubectl "$@"; }
   runtime_asset_sync_pid=""; catalog_identity_sync_pid=""; backstage_visual_e2e_pid=""
   schema_restore_database=carbonet_schema_verify_empty; schema_backup_dir=""
