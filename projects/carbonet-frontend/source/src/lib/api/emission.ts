@@ -235,7 +235,7 @@ export type ReportDatasetVerificationResponse = {
 export type ReportPdfFileVerificationResponse = {
   valid: boolean;
   status: "EXACT_PDF_MATCH" | "TAMPERED_PDF" | "PDF_FINGERPRINT_UNAVAILABLE" | "NOT_FOUND" | "INVALID_PDF" | "VERIFICATION_ERROR";
-  verificationMode: "EXACT_PDF_BYTES";
+  verificationMode: "EXACT_PDF_BYTES" | "PDF_METADATA_DATES";
   certificateId: string;
   uploadedPdfSizeBytes?: number;
   registeredPdfSizeBytes?: number;
