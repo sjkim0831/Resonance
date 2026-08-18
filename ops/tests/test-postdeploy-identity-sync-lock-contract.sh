@@ -9,12 +9,13 @@ WRITER="$ROOT/ops/scripts/resonance-keycloak-carbonet-identity-sync.sh"
 bash -n "$GROUP_SCRIPT"
 bash -n "$WRITER"
 
-python3 - "$GROUP_SCRIPT" "$WRITER" <<'PY'
+python3 - "$GROUP_SCRIPT" "$WRITER" "$0" <<'PY'
 from pathlib import Path
 import sys
 
 groups=Path(sys.argv[1]).read_text(encoding="utf-8")
 writer=Path(sys.argv[2]).read_text(encoding="utf-8")
+contract=Path(sys.argv[3]).read_text(encoding="utf-8")
 candidate=groups[groups.index('if [[ "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate ]]'):
                  groups.index("  else",groups.index('if [[ "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate ]]'))]
 shared_default="/tmp/resonance-keycloak-carbonet-identity-sync.lock"
@@ -49,6 +50,12 @@ assert_lock_contract(candidate)
 assert f'IDENTITY_SYNC_LOCK_FILE:-{shared_default}' in writer
 assert 'exec 9>"$LOCK_FILE"' in writer and 'flock -w 60 9' in writer
 assert "jsonb_agg(to_jsonb(a) order by a.sync_id)" in groups
+monotonic_token="time.monotonic_ns()"+" // 1_000_000"
+wall_clock_token="date +"+"%s%3N"
+reacquire_bound_token='flock -w 0.8 '+ '"$probe_fd"'
+assert contract.count(monotonic_token) == 1
+assert wall_clock_token not in contract
+assert contract.count(reacquire_bound_token) == 1
 for token in (
     f'IDENTITY_SYNC_LOCK_FILE:-{shared_default}',
     'if ! exec {identity_sync_lock_fd}>',
@@ -167,12 +174,19 @@ run_candidate_fixture() (
   validate_identity_design_group
 )
 
+monotonic_ms() {
+  python3 - <<'PY'
+import time
+print(time.monotonic_ns() // 1_000_000)
+PY
+}
+
 probe_canonical_writer_lock() {
   local lock_file="$1" probe_fd started_ms elapsed_ms
   exec {probe_fd}>"$lock_file"
-  started_ms="$(date +%s%3N)"
-  flock -w 1 "$probe_fd"
-  elapsed_ms=$(( $(date +%s%3N) - started_ms ))
+  started_ms="$(monotonic_ms)"
+  flock -w 0.8 "$probe_fd"
+  elapsed_ms=$(( $(monotonic_ms) - started_ms ))
   flock -u "$probe_fd"
   exec {probe_fd}>&-
   if (( elapsed_ms >= 800 )); then
@@ -295,13 +309,13 @@ timeout_case="$tmp/timeout"
 timeout_lock="$timeout_case/identity.lock"
 timeout_trace="$timeout_case/trace"
 start_writer "$timeout_lock" "$timeout_case"
-timeout_started_ms="$(date +%s%3N)"
+timeout_started_ms="$(monotonic_ms)"
 set +e
 run_candidate_fixture "$timeout_trace" "$timeout_lock" 1 \
   >"$timeout_case/candidate.log" 2>&1
 timeout_status=$?
 set -e
-timeout_elapsed_ms=$(( $(date +%s%3N) - timeout_started_ms ))
+timeout_elapsed_ms=$(( $(monotonic_ms) - timeout_started_ms ))
 [[ "$timeout_status" -ne 0 && ! -s "$timeout_trace" ]]
 [[ "$timeout_elapsed_ms" -ge 900 && "$timeout_elapsed_ms" -lt 3000 ]]
 grep -Fq 'shared identity synchronization lock timed out after 1s' "$timeout_case/candidate.log"
