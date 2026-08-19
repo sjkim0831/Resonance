@@ -599,6 +599,19 @@ lock_before_promoter = runtime_release.index("begin_parent_backstage_authority_f
 promoter = runtime_release.index("promote-postdeploy-candidate-evidence.sh")
 if lock_before_promoter >= promoter:
     raise SystemExit("runtime Backstage attempt lock does not precede DB authority publication")
+for repair_finalize_token in (
+    '"${backstage_deployment_authority_kind:-}" =~ ^(DB_PROMOTION|REPAIR_TOKEN)$',
+    'if [[ "$backstage_deployment_authority_kind" == DB_PROMOTION ]]; then',
+    '&& "${backstage_deployment_authority_kind:-}" == DB_PROMOTION',
+):
+    if repair_finalize_token not in runtime_release:
+        raise SystemExit(f"runtime REPAIR_TOKEN finalization contract missing: {repair_finalize_token}")
+if runtime_release.count(
+    'write_parent_backstage_authority_binding ARMED DB_PROMOTION'
+) != 1 or runtime_release.count(
+    'write_parent_backstage_authority_binding AUTHORIZED DB_PROMOTION'
+) != 1:
+    raise SystemExit("DB promotion binding writes are not uniquely authority-gated")
 
 artifact_load = body(
     auto, "load_parent_backstage_authority_binding", "write_parent_backstage_authority_binding"

@@ -8420,16 +8420,18 @@ finalize_postdeploy_candidate_release() {
   run_operational_usage_ledger_live_e2e_if_required "$target_commit"
   verify_postdeploy_candidate_staged
   if [[ "${backstage_deployment_handoff_active:-false}" == true ]]; then
-    [[ "${backstage_deployment_authority_kind:-}" == DB_PROMOTION \
+    [[ "${backstage_deployment_authority_kind:-}" =~ ^(DB_PROMOTION|REPAIR_TOKEN)$ \
        && "${backstage_authority_finalize_lock_active:-false}" != true ]] || return 79
     begin_parent_backstage_authority_finalize_lock || return $?
     # This FD remains held across the DB acceptance point, its final live proof,
     # derived markers and the immediately-following child finalize. A direct
     # helper cannot replace attempt A with same-target B in that authority gap.
     backstage_authority_finalize_lock_active=true
-    write_parent_backstage_authority_binding ARMED DB_PROMOTION "$target_commit" \
-      "$backstage_deployment_attempt_id" "$backstage_deployment_pending_sha256" \
-      "$postdeploy_candidate_id" || return 79
+    if [[ "$backstage_deployment_authority_kind" == DB_PROMOTION ]]; then
+      write_parent_backstage_authority_binding ARMED DB_PROMOTION "$target_commit" \
+        "$backstage_deployment_attempt_id" "$backstage_deployment_pending_sha256" \
+        "$postdeploy_candidate_id" || return 79
+    fi
     echo '[auto-deploy] Backstage attempt lock retained across DB authority and child finalize'
   fi
   if CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
@@ -8449,7 +8451,8 @@ finalize_postdeploy_candidate_release() {
   case "$authority_status" in
     0)
       postdeploy_candidate_promoted=true
-      if [[ "${backstage_deployment_handoff_active:-false}" == true ]]; then
+      if [[ "${backstage_deployment_handoff_active:-false}" == true \
+         && "${backstage_deployment_authority_kind:-}" == DB_PROMOTION ]]; then
         write_parent_backstage_authority_binding AUTHORIZED DB_PROMOTION "$target_commit" \
           "$backstage_deployment_attempt_id" "$backstage_deployment_pending_sha256" \
           "$postdeploy_candidate_id" || return 79
