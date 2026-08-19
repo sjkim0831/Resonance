@@ -2547,7 +2547,7 @@ export function EmissionSurveyReportPrintPage() {
         const issuedPdf = pdf.output("blob");
         try {
           const issuedPages = await renderReportPdfPages(new File([issuedPdf], `${record.certificateId}.pdf`, { type: "application/pdf" }), () => undefined);
-          await registerSurveyReportVisualProfile(record.certificateId, await buildReportVisualProfile(issuedPages));
+          await registerSurveyReportVisualProfile(record.certificateId, await buildReportVisualProfile(issuedPages.pages));
         } catch (error) {
           console.warn("Report visual profile registration failed; continuing PDF download.", error);
         }
@@ -4814,7 +4814,7 @@ export function EmissionSurveyLcaSummaryPrintPage() {
         });
         const issuedPdf = pdf.output("blob");
         return renderReportPdfPages(new File([issuedPdf], buildLcaSummaryPdfFileName(report, lcaDocumentTitle), { type: "application/pdf" }), () => undefined)
-          .then(buildReportVisualProfile)
+          .then(({ pages }) => buildReportVisualProfile(pages))
           .then((visualProfile) => registerSurveyReportVisualProfile(record.certificateId, visualProfile))
           .catch((error) => {
             console.warn("LCA visual profile registration failed; continuing PDF download.", error);
