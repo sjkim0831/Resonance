@@ -715,10 +715,18 @@ customer = (root / "ops/scripts/validate-customer-work-journey.sh").read_text(en
 assert "candidate mode is read-only" in customer and "EXISTING_ACCEPTED_READ_ONLY" in customer
 assert customer.index('if [[ "$EVIDENCE_MODE" == candidate ]]') < customer.index("deadline=\"$(date -d '+30 days' +%F)\"")
 assert "carbonet_qa_logout" in customer and "CARBONET_QA_AUTH_SESSION_ACTIVE=1" in customer
+assert "seq 1 20 | xargs -r -n1 -P4" in customer
+assert 'curl -sS -b "$COOKIE" -o /dev/null' in customer
 for validator_name in ("validate-activity-data-runtime.sh", "validate-emission-calculation-runtime.sh"):
     validator=(root / "ops/scripts" / validator_name).read_text(encoding="utf-8")
     assert "carbonet_qa_logout" in validator and "CARBONET_QA_AUTH_SESSION_ACTIVE=1" in validator
     assert "%{http_code} %{time_total}" in validator
+    assert "seq 1 20 | xargs -r -n1 -P4" in validator
+    assert 'curl -sS -b "$COOKIE_JAR" -o /dev/null' in validator
+
+report_validator = (root / "ops/scripts/validate-report-certification-runtime.sh").read_text(encoding="utf-8")
+assert "seq 1 20 | xargs -r -n1 -P4" in report_validator
+assert '[[ "$sample_status" == 200 ]]' in report_validator
 
 screen_wrapper = (root / "ops/scripts/validate-screen-contract-runtime-save.sh").read_text(encoding="utf-8")
 screen_mjs = (root / "ops/scripts/validate-screen-contract-runtime-save.mjs").read_text(encoding="utf-8")
