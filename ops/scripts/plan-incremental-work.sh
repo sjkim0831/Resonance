@@ -87,6 +87,18 @@ while IFS= read -r path; do
       ;;
   esac
   case "$path" in
+    ops/scripts/validate-customer-work-journey.sh|\
+    ops/scripts/validate-activity-data-runtime.sh|\
+    ops/scripts/validate-emission-calculation-runtime.sh|\
+    ops/scripts/validate-report-certification-runtime.sh)
+      # These scripts define promotable live runtime evidence. A change must
+      # execute the candidate lifecycle against the real runtime; syntax-only
+      # automation validation cannot prove the changed verifier.
+      runtime_required=true; infrastructure_required=true; catalog_only=false
+      add_test "runtime:operational-usage-ledger-e2e"
+      add_test "runtime:postdeploy-candidate-evidence"
+      add_reason "runtime-evidence-validator"
+      ;;
     ops/scripts/resonance-frontend-overlay-guard.sh)
       # A guard hash-policy change cannot reuse a marker written by the old
       # algorithm. Force one real frontend build so this release writes the

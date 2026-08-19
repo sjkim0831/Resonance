@@ -45,6 +45,19 @@ eval "$(bash "$PLANNER" "$base" "$docs" --format env)"
 [[ "$PLAN_CATALOG_ONLY" == true ]]
 [[ "$PLAN_TESTS" == *"runtime:postdeploy-candidate-evidence"* ]]
 
+printf '#!/usr/bin/env bash\n# runtime evidence validator\n' > ops/scripts/validate-customer-work-journey.sh
+git add . && git commit -qm runtime-evidence-validator
+runtime_evidence_validator="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$docs" "$runtime_evidence_validator" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == true ]]
+[[ "$PLAN_FRONTEND_REQUIRED" == false ]]
+[[ "$PLAN_BACKEND_REQUIRED" == false ]]
+[[ "$PLAN_DATABASE_REQUIRED" == false ]]
+[[ "$PLAN_CATALOG_ONLY" == false ]]
+[[ "$PLAN_TESTS" == *"runtime:operational-usage-ledger-e2e"* ]]
+[[ "$PLAN_TESTS" == *"runtime:postdeploy-candidate-evidence"* ]]
+[[ "$PLAN_REASONS" == *"runtime-evidence-validator"* ]]
+
 printf 'export const page = 1;\n' > projects/carbonet-frontend/source/src/page.tsx
 git add . && git commit -qm frontend
 frontend="$(git rev-parse HEAD)"
