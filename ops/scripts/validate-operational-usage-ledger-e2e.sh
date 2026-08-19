@@ -25,16 +25,16 @@ info() {
   printf '[operational-usage-ledger-e2e] %s\n' "$*"
 }
 
-PAGE_SIZE="${CARBONET_USAGE_LEDGER_PAGE_SIZE:-200}"
+PAGE_SIZE="${CARBONET_USAGE_LEDGER_PAGE_SIZE:-100}"
 PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-1}"
 
 assert_pagination_performance_mutations() {
   local total=572 legacy_page_size=50 page_count legacy_page_count page active=0 max_active=0 covered=0 expected_count
-  [[ "$PAGE_SIZE" == "200" ]] || fail "page-size regression mutation survived"
+  [[ "$PAGE_SIZE" == "100" ]] || fail "page-size regression mutation survived"
   [[ "$PAGE_FETCH_CONCURRENCY" == "1" ]] || fail "shared-cookie concurrency mutation survived"
   page_count=$(( (total + PAGE_SIZE - 1) / PAGE_SIZE ))
   legacy_page_count=$(( (total + legacy_page_size - 1) / legacy_page_size ))
-  [[ "$page_count" == "3" && "$legacy_page_count" == "12" ]] \
+  [[ "$page_count" == "6" && "$legacy_page_count" == "12" ]] \
     || fail "pagination request reduction contract mismatch"
   for ((page=0; page<page_count; page+=1)); do
     active=$((active+1)); (( active > max_active )) && max_active="$active"
@@ -44,7 +44,7 @@ assert_pagination_performance_mutations() {
   done
   [[ "$covered" == "$total" && "$max_active" == "1" && "$active" == "0" ]] \
     || fail "sequential pagination coverage/concurrency mutation survived"
-  info "pagination self-test PASS total=${total} pageSize=${PAGE_SIZE} calls=${page_count} legacyCalls=${legacy_page_count} requestReduction=75% maxConcurrency=${max_active}"
+  info "pagination self-test PASS total=${total} pageSize=${PAGE_SIZE} calls=${page_count} legacyCalls=${legacy_page_count} requestReduction=50% maxConcurrency=${max_active}"
 }
 
 assert_local_mutations() {

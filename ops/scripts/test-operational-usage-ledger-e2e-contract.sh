@@ -44,7 +44,7 @@ contains "$HARNESS" 'anonymous_api_status'
 contains "$HARNESS" '/admin/api/system/actor-process/dashboard/core'
 contains "$HARNESS" '/admin/api/system/actor-process/design-assets'
 contains "$HARNESS" 'compact=true&page=${page}&size=${PAGE_SIZE}'
-contains "$HARNESS" 'PAGE_SIZE="${CARBONET_USAGE_LEDGER_PAGE_SIZE:-200}"'
+contains "$HARNESS" 'PAGE_SIZE="${CARBONET_USAGE_LEDGER_PAGE_SIZE:-100}"'
 contains "$HARNESS" 'PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-1}"'
 contains "$HARNESS" '[[ "$PAGE_FETCH_CONCURRENCY" == "1" ]]'
 contains "$HARNESS" '"$status" == "502" || "$status" == "503" || "$status" == "504"'
@@ -83,7 +83,7 @@ not_contains "$HARNESS" 'set -x'
 
 pagination_performance_contract() {
   local candidate="$1" pagination_body
-  grep -Fq 'PAGE_SIZE="${CARBONET_USAGE_LEDGER_PAGE_SIZE:-200}"' "$candidate" &&
+  grep -Fq 'PAGE_SIZE="${CARBONET_USAGE_LEDGER_PAGE_SIZE:-100}"' "$candidate" &&
     grep -Fq 'PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-1}"' "$candidate" &&
     grep -Fq '[[ "$PAGE_FETCH_CONCURRENCY" == "1" ]]' "$candidate" &&
     grep -Fq 'status="$(api_status "$page_file" GET "/admin/api/system/actor-process/system-test-report?compact=true&page=${page}&size=${PAGE_SIZE}${scope_query}")"' "$candidate" \
@@ -98,8 +98,8 @@ pagination_performance_contract() {
 
 pagination_self_test="$(env -u CARBONET_USAGE_LEDGER_PAGE_SIZE -u CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY \
   bash "$HARNESS" --self-test-pagination)"
-[[ "$pagination_self_test" == *'pageSize=200'* && "$pagination_self_test" == *'calls=3'* \
-   && "$pagination_self_test" == *'legacyCalls=12'* && "$pagination_self_test" == *'requestReduction=75%'* \
+[[ "$pagination_self_test" == *'pageSize=100'* && "$pagination_self_test" == *'calls=6'* \
+   && "$pagination_self_test" == *'legacyCalls=12'* && "$pagination_self_test" == *'requestReduction=50%'* \
    && "$pagination_self_test" == *'maxConcurrency=1'* ]] \
   || fail "dynamic pagination performance self-test contract mismatch"
 pagination_performance_contract "$HARNESS" || fail "production pagination performance contract is incomplete"
@@ -109,7 +109,7 @@ contains "$HARNESS" 'GLOBAL_TOTAL_STEPS'
 contains "$HARNESS" 'processCode=${SCOPE_PROCESS}'
 contains "$ROOT/ops/scripts/auto-deploy-main.sh" 'releaseInvariantScope=${release_invariant_scope}'
 
-sed 's/CARBONET_USAGE_LEDGER_PAGE_SIZE:-200/CARBONET_USAGE_LEDGER_PAGE_SIZE:-50/' \
+sed 's/CARBONET_USAGE_LEDGER_PAGE_SIZE:-100/CARBONET_USAGE_LEDGER_PAGE_SIZE:-50/' \
   "$HARNESS" > "$TMP_DIR/page-size-regression-mutation.sh"
 if env -u CARBONET_USAGE_LEDGER_PAGE_SIZE -u CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY \
   bash "$TMP_DIR/page-size-regression-mutation.sh" --self-test-pagination >/dev/null 2>&1; then
@@ -278,4 +278,4 @@ grep -Fq 'runtime identity marker bootstrapped from DB+K8s' "$DEPLOY" \
 ! sed -n '/^verify_operational_usage_ledger_current_runtime_identity() {/,/^}/p' "$DEPLOY" | grep -Fq '$DEPLOY_STATE_FILE' \
   || fail "runtime identity verifier references the overall applied marker"
 
-printf '[operational-usage-ledger-e2e-contract] PASS auth=allowed+anonymous2+denied7+logoutLeaderExact1 pagination=dynamic+pageSize200+sequential1+requestReduction75pct orderContract=5keys+stepCodeTieMutation detail=full redactionMutations=7 branchTruth=actors+dualRoutes review=create-reload-idempotent-mismatch409-runtimeIdentity-cleanup pipeline=planner+frontend-pipeline+package+static+identity3+healthy-release-live pipelineRemovalMutations=4 paginationMutations=3 browser=desktop+390 helpAnchors=5 forbiddenChangeRequest=1\n'
+printf '[operational-usage-ledger-e2e-contract] PASS auth=allowed+anonymous2+denied7+logoutLeaderExact1 pagination=dynamic+pageSize100+sequential1+requestReduction50pct orderContract=5keys+stepCodeTieMutation detail=full redactionMutations=7 branchTruth=actors+dualRoutes review=create-reload-idempotent-mismatch409-runtimeIdentity-cleanup pipeline=planner+frontend-pipeline+package+static+identity3+healthy-release-live pipelineRemovalMutations=4 paginationMutations=3 browser=desktop+390 helpAnchors=5 forbiddenChangeRequest=1\n'
