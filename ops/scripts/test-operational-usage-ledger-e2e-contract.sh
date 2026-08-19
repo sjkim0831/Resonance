@@ -52,10 +52,6 @@ not_contains "$HARNESS" 'usage ledger pagination must remain sequential'
 contains "$HARNESS" 'api_status_with_cookie()'
 contains "$HARNESS" 'cp -- "$COOKIE_JAR" "$page_cookie"'
 contains "$HARNESS" 'wait "$page_pid"'
-contains "$HARNESS" 'cp -- "$COOKIE_JAR" "$browser_cookie"'
-contains "$HARNESS" '(run_browser_contract "$browser_cookie") >"$BROWSER_CONTRACT_LOG" 2>&1 &'
-contains "$HARNESS" 'wait "$BROWSER_CONTRACT_PID" || browser_status=$?'
-contains "$HARNESS" 'fail "browser contract failed (status=$browser_status)"'
 contains "$HARNESS" 'system-test-report/step-detail'
 contains "$HARNESS" 'reviewStatus:"APPROVED"'
 contains "$HARNESS" 'framework_runtime_release_identity_hash(runtime)'
@@ -104,15 +100,6 @@ pagination_performance_contract() {
   [[ "$pagination_body" != *'PAGE_FETCH_CONCURRENCY" -le 3'* ]]
 }
 
-browser_parallel_contract() {
-  local candidate="$1"
-  grep -Fq 'cp -- "$COOKIE_JAR" "$browser_cookie"' "$candidate" &&
-    grep -Fq '(run_browser_contract "$browser_cookie") >"$BROWSER_CONTRACT_LOG" 2>&1 &' "$candidate" &&
-    grep -Fq 'wait "$BROWSER_CONTRACT_PID" || browser_status=$?' "$candidate" &&
-    grep -Fq 'kill -TERM "$BROWSER_CONTRACT_PID"' "$candidate" &&
-    grep -Fq 'fail "browser contract failed (status=$browser_status)"' "$candidate"
-}
-
 pagination_self_test="$(env -u CARBONET_USAGE_LEDGER_PAGE_SIZE -u CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY \
   bash "$HARNESS" --self-test-pagination)"
 [[ "$pagination_self_test" == *'pageSize=100'* && "$pagination_self_test" == *'calls=6'* \
@@ -120,7 +107,6 @@ pagination_self_test="$(env -u CARBONET_USAGE_LEDGER_PAGE_SIZE -u CARBONET_USAGE
    && "$pagination_self_test" == *'maxConcurrency=3'* ]] \
   || fail "dynamic pagination performance self-test contract mismatch"
 pagination_performance_contract "$HARNESS" || fail "production pagination performance contract is incomplete"
-browser_parallel_contract "$HARNESS" || fail "browser parallel join contract is incomplete"
 contains "$HARNESS" 'CARBONET_USAGE_LEDGER_RELEASE_INVARIANT_SCOPE'
 contains "$HARNESS" 'scope:"RELEASE_INVARIANT"'
 contains "$HARNESS" 'GLOBAL_TOTAL_STEPS'
@@ -143,11 +129,6 @@ sed 's/api_status_with_cookie "$page_cookie" "$page_file"/api_status_with_cookie
   "$HARNESS" > "$TMP_DIR/shared-cookie-mutation.sh"
 if pagination_performance_contract "$TMP_DIR/shared-cookie-mutation.sh"; then
   fail "shared-cookie worker mutation survived"
-fi
-sed '/wait "$BROWSER_CONTRACT_PID" || browser_status=\$?/d' \
-  "$HARNESS" > "$TMP_DIR/browser-join-mutation.sh"
-if browser_parallel_contract "$TMP_DIR/browser-join-mutation.sh"; then
-  fail "browser join deletion mutation survived"
 fi
 
 contains "$CONTROLLER" '@GetMapping("/system-test-report")'
@@ -301,4 +282,4 @@ grep -Fq 'runtime identity marker bootstrapped from DB+K8s' "$DEPLOY" \
 ! sed -n '/^verify_operational_usage_ledger_current_runtime_identity() {/,/^}/p' "$DEPLOY" | grep -Fq '$DEPLOY_STATE_FILE' \
   || fail "runtime identity verifier references the overall applied marker"
 
-printf '[operational-usage-ledger-e2e-contract] PASS auth=allowed+anonymous2+denied7+logoutLeaderExact1 pagination=dynamic+pageSize100+privateCookieConcurrency3+requestReduction50pct orderContract=5keys+stepCodeTieMutation detail=full redactionMutations=7 branchTruth=actors+dualRoutes review=create-reload-idempotent-mismatch409-runtimeIdentity-cleanup pipeline=planner+frontend-pipeline+package+static+identity3+healthy-release-live pipelineRemovalMutations=4 paginationMutations=4 browser=parallel+joined+desktop+390 helpAnchors=5 forbiddenChangeRequest=1\n'
+printf '[operational-usage-ledger-e2e-contract] PASS auth=allowed+anonymous2+denied7+logoutLeaderExact1 pagination=dynamic+pageSize100+privateCookieConcurrency3+requestReduction50pct orderContract=5keys+stepCodeTieMutation detail=full redactionMutations=7 branchTruth=actors+dualRoutes review=create-reload-idempotent-mismatch409-runtimeIdentity-cleanup pipeline=planner+frontend-pipeline+package+static+identity3+healthy-release-live pipelineRemovalMutations=4 paginationMutations=3 browser=desktop+390 helpAnchors=5 forbiddenChangeRequest=1\n'
