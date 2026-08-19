@@ -75,6 +75,10 @@ requireText("service", 'boolean ocrEvidenceRequired = "EMISSION_SURVEY".equalsIg
 requireText("service", "tagExactMatch && datasetExactMatch && ocrEvidenceExactMatch");
 requireText("service", "!ocrEvidenceRequired || ocrEvidenceExactMatch");
 requireText("service", 'status = confidence >= 55 ? "PHOTO_REVIEW" : "PHOTO_MISMATCH"');
+requireText("service", '!detectedCertificateId.equalsIgnoreCase(certificateId)');
+requireOrder("service", 'for (Map<String, Object> candidate : candidates)',
+  '!detectedCertificateId.equalsIgnoreCase(certificateId)', 'comparisons.add(comparison)',
+  'comparisons.sort((left, right)');
 requireText("service", '"IDENTIFIER_MISMATCH"');
 requireText("service", '"OCR_EVIDENCE_UNAVAILABLE"');
 requireText("service", '"OCR_CONTENT_MISMATCH"');

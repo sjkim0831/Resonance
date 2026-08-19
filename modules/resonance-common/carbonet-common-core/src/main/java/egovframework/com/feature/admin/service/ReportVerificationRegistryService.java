@@ -378,6 +378,11 @@ public class ReportVerificationRegistryService {
         List<Map<String, Object>> comparisons = new ArrayList<>();
         JsonNode uploadedVisualProfile = objectMapper.valueToTree(request.get("visualProfile"));
         for (Map<String, Object> candidate : candidates) {
+            String certificateId = text(candidate.get("certificate_id"));
+            if (!detectedCertificateId.isBlank()
+                    && !detectedCertificateId.equalsIgnoreCase(certificateId)) {
+                continue;
+            }
             JsonNode dataset = readJson(candidate.get("dataset_json"));
             String candidateReportType = dataset.path("reportType").asText("EMISSION_SURVEY");
             if (!requestedReportType.equalsIgnoreCase(candidateReportType)) {
@@ -390,7 +395,6 @@ public class ReportVerificationRegistryService {
             score.putAll(sectionSummaryScore);
             appendUnifiedComparisonDetails(score);
             double contentScore = ((Number) score.get("score")).doubleValue();
-            String certificateId = text(candidate.get("certificate_id"));
             String payloadHash = text(candidate.get("payload_hash"));
             String integrityCode = text(candidate.get("integrity_code"));
             String datasetHash = text(candidate.get("dataset_hash"));
