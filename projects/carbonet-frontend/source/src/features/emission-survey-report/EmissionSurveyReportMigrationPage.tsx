@@ -633,21 +633,21 @@ async function renderReportPdfPages(file: File, onProgress: (progress: number, s
         sourceIndex,
         text: "str" in item ? item.str : "",
         x: "transform" in item ? Number(item.transform[4] || 0) : 0,
-        y: "transform" in item ? Number(item.transform[5] || 0) : 0,
-        hasEol: "hasEOL" in item && Boolean(item.hasEOL)
+        y: "transform" in item ? Number(item.transform[5] || 0) : 0
       }))
       .filter((item) => item.text.trim());
     const visibleTextLines: Array<{ y: number; items: typeof visibleTextItems }> = [];
-    visibleTextItems.forEach((item) => {
+    visibleTextItems.forEach((item, index) => {
       const currentLine = visibleTextLines[visibleTextLines.length - 1];
-      if (!currentLine) {
+      const previousItem = visibleTextItems[index - 1];
+      const startsNewVisualLine = previousItem && (
+        item.x + 2 < previousItem.x || Math.abs(item.y - previousItem.y) > 8
+      );
+      if (!currentLine || startsNewVisualLine) {
         visibleTextLines.push({ y: item.y, items: [item] });
         return;
       }
       currentLine.items.push(item);
-      if (item.hasEol) {
-        visibleTextLines.push({ y: Number.NaN, items: [] });
-      }
     });
     const visibleText = visibleTextLines
       .map((line) => line.items
