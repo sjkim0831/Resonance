@@ -83,6 +83,10 @@ requireText("controller", '"INVALID_VERIFICATION_REQUEST"');
 requireText("controller", 'ReportVerificationRegistryService.MAX_VERIFICATION_PAGES');
 requireText("security", '"/api/home/certificate-verify/verify-file"');
 requireText("security", '"/api/en/home/certificate-verify/verify-file"');
+requireText("security", '"/api/home/certificate-verify/verify"');
+requireText("security", '"/api/home/certificate-verify/verify-ocr"');
+requireText("security", '"/api/en/home/certificate-verify/verify"');
+requireText("security", '"/api/en/home/certificate-verify/verify-ocr"');
 requireText("controller", '@RequestPart("file") MultipartFile file');
 requireText("api", 'form.append("file", file, file.name)');
 requireText("api", '"/api/home/certificate-verify/verify-file"');
@@ -103,21 +107,28 @@ requireText("page", 'page.tokenSequenceExact ? "SEQUENCE EXACT" : "SEQUENCE MISM
 requireText("page", 'page.unexpectedTokens.join(", ")');
 requireText("api", "sectionSummaryComparisons?: Array<{");
 requireText("api", "actualTotalEmission: string");
-requireText("page", 'en ? "Graph data verification in report order" : "레포트 순서 그래프 데이터 일치·불일치"');
+requireText("page", 'en ? "Pages 2–3 · Graph data in report section order" : "2–3페이지 · 레포트 섹션 순서 그래프 데이터 일치·불일치"');
 requireText("page", 'section.totalEmissionMatched ? "MATCH" : "MISMATCH"');
-requireText("page", 'item.sectionSummaryComparisons.map((section)');
+requireText("page", 'item.sectionSummaryComparisons.map((section, sectionIndex)');
 requireText("page", 'item.unexpectedSectionSummaryNumbers.join(", ")');
 requireText("page", 'item.comparisonDetails.filter((detail) => detail.category !== "CHART")');
 rejectText("page", 'photoVerification.sectionSummaryComparisons.map((section)');
-requireOrder("page", 'en ? "Show detailed comparison" : "상세 일치·불일치 내역"',
-  'en ? "Graph data verification in report order" : "레포트 순서 그래프 데이터 일치·불일치"',
-  'en ? "Detailed table and identifier comparison" : "상세표·식별자 일치·불일치"',
-  'selectedReportType !== "LCA_SUMMARY" && item.reportSummaryComparisons?.length');
+requireText("page", 'className="order-1 border-t border-slate-200 pt-3"');
+requireText("page", 'className="order-2 mt-4 border border-slate-300 bg-slate-50 p-3"');
+requireText("page", 'className="order-3 mt-4 border border-slate-300 bg-slate-50 p-3"');
+requireText("page", 'className="order-5 mt-4 overflow-auto border border-slate-200"');
+requireText("page", 'en ? "Page 1 · Report totals and GWP" : "1페이지 · 레포트 총계·GWP 대조"');
+requireText("page", 'en ? "Page 4 · Detailed table comparison" : "4페이지 · 상세표 일치·불일치"');
+requireText("page", 'en ? "Page 5 · Digital verification identifiers" : "5페이지 · 디지털 검증 식별 정보"');
 requireText("page", "payload?.certificateId || photoVerification?.certificateId");
 requireText("page", "payload?.payloadHash || photoVerification?.payloadHash");
 requireText("page", "payload?.integrityCode || photoVerification?.integrityCode");
 requireText("api", "comparisonDetails?: ReportVisibleFieldComparison[]");
-requireText("page", 'en ? "Detailed table and identifier comparison" : "상세표·식별자 일치·불일치"');
+requireText("page", 'const textContent = await page.getTextContent()');
+requireText("page", 'throw new Error(`Report page ${pageNumber} has no readable text layer. Reissue the PDF before verification.`)');
+requireText("page", 'digitalTextPages: string[] | null = null');
+requireText("page", 'digitalTextPages.join("\\n")');
+requireText("page", 'PDF 전 페이지 텍스트 레이어를 누락 없이 추출했습니다.');
 requireText("page", 'detail.actual || (en ? "MISSING" : "누락")');
 requireText("page", 'token.matched ? "MATCH" : "MISMATCH"');
 requireText("page", 'token.actual || (en ? "MISSING" : "누락")');
@@ -149,7 +160,7 @@ rejectText("page", 'status: en ? "Tampered PDF blocked" : "변조 PDF 차단"');
 requireOrder("page", "const handleFileChange", "await verifyExactPdfFile(file, nextPayload.certificateId)",
   "await evaluatePayload(nextPayload, file.name, exactPdfVerification)", "const handleManualVerify");
 requireOrder("page", "const handleFileChange", "const visibleCertificateId = findCertificateIdFromPdfText(extractedText)",
-  "await evaluatePhotographedPages(pages, file.name, false, file, initialPdfVerification)", "const handleManualVerify");
+  "await evaluatePhotographedPages(rendered.pages, file.name, false, file, initialPdfVerification, rendered.textPages)", "const handleManualVerify");
 requireOrder("page", "const evaluatePhotographedPages", "if (rawPdfFile) {",
   "if (preserveDigitalPayload) {", "const handleFileChange");
 

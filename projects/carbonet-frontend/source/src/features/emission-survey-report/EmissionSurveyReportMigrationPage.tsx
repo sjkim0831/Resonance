@@ -623,9 +623,21 @@ async function renderReportPdfPages(file: File, onProgress: (progress: number, s
     throw new Error(`Report verification supports up to ${MAX_REPORT_VERIFICATION_PAGES} pages.`);
   }
   const pages: Blob[] = [];
+  const textPages: string[] = [];
   for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
     onProgress(Math.round((pageNumber / pdfDocument.numPages) * 8), `PDF ${pageNumber}/${pdfDocument.numPages}`);
     const page = await pdfDocument.getPage(pageNumber);
+    const textContent = await page.getTextContent();
+    const visibleText = textContent.items
+      .map((item) => ("str" in item ? item.str : ""))
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!visibleText) {
+      await pdfDocument.destroy();
+      throw new Error(`Report page ${pageNumber} has no readable text layer. Reissue the PDF before verification.`);
+    }
+    textPages.push(visibleText);
     const viewport = page.getViewport({ scale: 2 });
     const canvas = document.createElement("canvas");
     canvas.width = Math.ceil(viewport.width);
@@ -645,7 +657,7 @@ async function renderReportPdfPages(file: File, onProgress: (progress: number, s
     page.cleanup();
   }
   await pdfDocument.destroy();
-  return pages;
+  return { pages, textPages };
 }
 
 async function buildReportVisualProfile(pages: Blob[]) {
@@ -3817,7 +3829,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
 
   const evaluatePhotographedPages = async (pages: Blob[], sourceLabel: string, preserveDigitalPayload = false,
                                             rawPdfFile: File | null = null,
-                                            initialPdfVerification: ReportPdfFileVerificationResponse | null = null) => {
+                                            initialPdfVerification: ReportPdfFileVerificationResponse | null = null,
+                                            digitalTextPages: string[] | null = null) => {
     appendVerificationLog("INFO", en ? "Photographed-page verification started." : "촬영 페이지 검증을 시작했습니다.", `${sourceLabel}, pages=${pages.length}`);
     if (!preserveDigitalPayload) {
       setUploadedPayloadFound(false);
@@ -3835,8 +3848,18 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       }
       const visualProfile = await buildReportVisualProfile(pages);
       appendVerificationLog("OK", en ? "Uploaded visual fingerprint generated." : "업로드 문서 시각 지문을 생성했습니다.", `grid=${visualProfile.columns}x${visualProfile.rows}, pages=${visualProfile.pages.length}`);
-      const recognized = await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
-      appendVerificationLog("OK", en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다.", `characters=${recognized.text.length}, engineConfidence=${Math.round(recognized.confidence)}%`);
+      const recognized = digitalTextPages
+        ? {
+            text: digitalTextPages.join("\n"),
+            pageTexts: digitalTextPages,
+            confidence: 100
+          }
+        : await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
+      appendVerificationLog("OK",
+        digitalTextPages
+          ? (en ? "Every PDF text-layer page was extracted without omission." : "PDF 전 페이지 텍스트 레이어를 누락 없이 추출했습니다.")
+          : (en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다."),
+        `pages=${recognized.pageTexts.length}, characters=${recognized.text.length}, engineConfidence=${Math.round(recognized.confidence)}%`);
       setUploadedVerificationText(recognized.text);
       const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType, recognized.pageTexts);
       const orderedEvidenceMismatchCount = verification.ocrEvidencePageComparisons
@@ -3956,10 +3979,10 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       }
       setOcrProgress({ busy: true, percent: 0, status: en ? "Cross-checking visible PDF data" : "PDF 화면 데이터 교차 검증 중" });
       try {
-        const pages = await renderReportPdfPages(file, (percent, status) => setOcrProgress({ busy: true, percent, status }));
-        appendVerificationLog("OK", en ? "PDF pages rendered for OCR cross-check." : "OCR 교차 검증용 PDF 페이지 변환을 완료했습니다.", `pages=${pages.length}`);
-        setPhotoPreviewUrls(pages.map((page) => URL.createObjectURL(page)));
-        await evaluatePhotographedPages(pages, file.name, true, file, exactPdfVerification);
+        const rendered = await renderReportPdfPages(file, (percent, status) => setOcrProgress({ busy: true, percent, status }));
+        appendVerificationLog("OK", en ? "PDF pages rendered for text and visual cross-check." : "텍스트·시각 교차 검증용 PDF 페이지 변환을 완료했습니다.", `pages=${rendered.pages.length}, textPages=${rendered.textPages.length}`);
+        setPhotoPreviewUrls(rendered.pages.map((page) => URL.createObjectURL(page)));
+        await evaluatePhotographedPages(rendered.pages, file.name, true, file, exactPdfVerification, rendered.textPages);
       } catch (error) {
         appendVerificationLog("ERROR", en ? "Visible PDF OCR cross-check failed." : "PDF 화면 OCR 교차 검증에 실패했습니다.", error instanceof Error ? error.message : String(error));
         setOcrProgress((current) => ({ ...current, busy: false }));
@@ -3990,10 +4013,10 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     }
     setOcrProgress({ busy: true, percent: 0, status: en ? "Rendering PDF pages" : "PDF 페이지 변환 중" });
     try {
-      const pages = await renderReportPdfPages(file, (percent, status) => setOcrProgress({ busy: true, percent, status }));
-      appendVerificationLog("OK", en ? "PDF pages rendered for visual verification." : "시각 검증용 PDF 페이지 변환을 완료했습니다.", `pages=${pages.length}`);
-      setPhotoPreviewUrls(pages.map((page) => URL.createObjectURL(page)));
-      await evaluatePhotographedPages(pages, file.name, false, file, initialPdfVerification);
+      const rendered = await renderReportPdfPages(file, (percent, status) => setOcrProgress({ busy: true, percent, status }));
+      appendVerificationLog("OK", en ? "PDF pages rendered for text and visual verification." : "텍스트·시각 검증용 PDF 페이지 변환을 완료했습니다.", `pages=${rendered.pages.length}, textPages=${rendered.textPages.length}`);
+      setPhotoPreviewUrls(rendered.pages.map((page) => URL.createObjectURL(page)));
+      await evaluatePhotographedPages(rendered.pages, file.name, false, file, initialPdfVerification, rendered.textPages);
     } catch (error) {
       setOcrProgress((current) => ({ ...current, busy: false }));
       setResultTone("warning");
@@ -4414,27 +4437,10 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                           <summary className="cursor-pointer select-none px-3 py-2 font-black text-slate-800 hover:bg-slate-50">
                             {en ? "Show detailed comparison" : "상세 일치·불일치 내역"}
                           </summary>
-                          <div className="border-t border-slate-200 p-3">
-                            {selectedReportType === "EMISSION_SURVEY" && item.sectionSummaryComparisons?.length ? (
-                              <div className="mb-4 border border-slate-300 bg-slate-50 p-3">
-                                <p className="font-black text-slate-950">{en ? "Graph data verification in report order" : "레포트 순서 그래프 데이터 일치·불일치"}</p>
-                                <div className="mt-2 space-y-2">
-                                  {item.sectionSummaryComparisons.map((section) => (
-                                    <div className={`border p-3 text-xs ${section.matched ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-300 bg-rose-50 text-rose-900"}`} key={`${item.certificateId}-graph-${section.sectionCode}`}>
-                                      <p className="font-black">{section.sectionLabel}</p>
-                                      <p className="mt-1">{en ? "Emission" : "배출량"}: {section.expectedTotalEmission} ↔ {section.actualTotalEmission || (en ? "MISSING" : "누락")} <strong>{section.totalEmissionMatched ? "MATCH" : "MISMATCH"}</strong></p>
-                                      <p>{en ? "Share" : "비율"}: {section.expectedSharePercent}% ↔ {section.actualSharePercent ? `${section.actualSharePercent}%` : (en ? "MISSING" : "누락")} <strong>{section.sharePercentMatched ? "MATCH" : "MISMATCH"}</strong></p>
-                                    </div>
-                                  ))}
-                                </div>
-                                {item.unexpectedSectionSummaryNumbers?.length ? (
-                                  <p className="mt-2 break-words text-xs font-black text-rose-900">{en ? "Unexpected graph values" : "예상하지 않은 그래프 값"}: {item.unexpectedSectionSummaryNumbers.join(", ")}</p>
-                                ) : null}
-                              </div>
-                            ) : null}
-                            {item.comparisonDetails?.some((detail) => detail.category !== "CHART") ? <div className="mb-4 border border-slate-300 bg-slate-50 p-3">
+                          <div className="flex flex-col border-t border-slate-200 p-3">
+                            {item.comparisonDetails?.some((detail) => detail.category !== "CHART") ? <div className="order-3 mt-4 border border-slate-300 bg-slate-50 p-3">
                               <p className="font-black text-slate-950">
-                                {en ? "Detailed table and identifier comparison" : "상세표·식별자 일치·불일치"}
+                                {en ? "Page 4 · Detailed table comparison" : "4페이지 · 상세표 일치·불일치"}
                               </p>
                               <div className="mt-2 max-h-[32rem] overflow-auto border border-slate-200 bg-white">
                                 <table className="w-full min-w-[840px] border-collapse text-left text-[11px]">
@@ -4454,7 +4460,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                 </table>
                               </div>
                             </div> : null}
-                            <div className="overflow-auto border border-slate-200">
+                            <div className="order-5 mt-4 overflow-auto border border-slate-200">
+                              <p className="border-b border-slate-200 bg-slate-50 px-3 py-2 font-black text-slate-900">{en ? "Page 5 · Digital verification identifiers" : "5페이지 · 디지털 검증 식별 정보"}</p>
                               <table className="w-full min-w-[720px] border-collapse text-left text-[11px]">
                                 <thead className="bg-slate-100 text-slate-700"><tr>
                                   <th className="px-3 py-2">{en ? "Field" : "항목"}</th><th className="px-3 py-2">{en ? "Stored value" : "DB 저장값"}</th>
@@ -4477,14 +4484,31 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                 </tbody>
                               </table>
                             </div>
-                            {selectedReportType !== "LCA_SUMMARY" && item.reportSummaryComparisons?.length ? <div className="mt-4 border-t border-slate-200 pt-3">
-                              <p className="font-black text-slate-900">{en ? "Report totals and GWP" : "레포트 총계·GWP 대조"}</p>
+                            {selectedReportType !== "LCA_SUMMARY" && item.reportSummaryComparisons?.length ? <div className="order-1 border-t border-slate-200 pt-3">
+                              <p className="font-black text-slate-900">{en ? "Page 1 · Report totals and GWP" : "1페이지 · 레포트 총계·GWP 대조"}</p>
                               <div className="mt-2 overflow-auto border border-slate-200"><table className="w-full min-w-[640px] border-collapse text-left text-[11px]">
                                 <thead className="bg-slate-100 text-slate-700"><tr><th className="px-3 py-2">{en ? "Field" : "항목"}</th><th className="px-3 py-2">{en ? "Stored value" : "DB 저장값"}</th><th className="px-3 py-2">{en ? "Uploaded PDF value" : "업로드 PDF값"}</th><th className="px-3 py-2">{en ? "Result" : "판정"}</th></tr></thead>
                                 <tbody className="divide-y divide-slate-100">{item.reportSummaryComparisons.map((field) => <tr className={field.matched ? "bg-white" : "bg-rose-50"} key={`${item.certificateId}-summary-${field.field}`}><td className="px-3 py-2 font-bold">{field.label}</td><td className="px-3 py-2 font-semibold">{field.expected || "-"}</td><td className="px-3 py-2 font-semibold">{field.matched ? (field.expected || "-") : (en ? "Not confirmed in uploaded PDF" : "업로드 PDF에서 확인되지 않음")}</td><td className={`px-3 py-2 font-black ${field.matched ? "text-emerald-700" : "text-rose-700"}`}>{field.matched ? "MATCH" : "MISMATCH"}</td></tr>)}</tbody>
                               </table></div>
                             </div> : null}
-                            {selectedReportType !== "LCA_SUMMARY" && item.outputFieldComparisons?.length ? <div className="mt-4 border-t border-slate-200 pt-3">
+                            {selectedReportType === "EMISSION_SURVEY" && item.sectionSummaryComparisons?.length ? (
+                              <div className="order-2 mt-4 border border-slate-300 bg-slate-50 p-3">
+                                <p className="font-black text-slate-950">{en ? "Pages 2–3 · Graph data in report section order" : "2–3페이지 · 레포트 섹션 순서 그래프 데이터 일치·불일치"}</p>
+                                <div className="mt-2 space-y-2">
+                                  {item.sectionSummaryComparisons.map((section, sectionIndex) => (
+                                    <div className={`border p-3 text-xs ${section.matched ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-300 bg-rose-50 text-rose-900"}`} key={`${item.certificateId}-graph-${section.sectionCode}`}>
+                                      <p className="font-black">{sectionIndex + 1}. {section.sectionLabel}</p>
+                                      <p className="mt-1">{en ? "Emission" : "배출량"}: {section.expectedTotalEmission} ↔ {section.actualTotalEmission || (en ? "MISSING" : "누락")} <strong>{section.totalEmissionMatched ? "MATCH" : "MISMATCH"}</strong></p>
+                                      <p>{en ? "Share" : "비율"}: {section.expectedSharePercent}% ↔ {section.actualSharePercent ? `${section.actualSharePercent}%` : (en ? "MISSING" : "누락")} <strong>{section.sharePercentMatched ? "MATCH" : "MISMATCH"}</strong></p>
+                                    </div>
+                                  ))}
+                                </div>
+                                {item.unexpectedSectionSummaryNumbers?.length ? (
+                                  <p className="mt-2 break-words text-xs font-black text-rose-900">{en ? "Unexpected graph values" : "예상하지 않은 그래프 값"}: {item.unexpectedSectionSummaryNumbers.join(", ")}</p>
+                                ) : null}
+                              </div>
+                            ) : null}
+                            {selectedReportType !== "LCA_SUMMARY" && item.outputFieldComparisons?.length ? <div className="order-4 mt-4 border-t border-slate-200 pt-3">
                               <p className="font-black text-slate-900">{en ? "Product and byproduct allocation" : "제품·부산물 질량 및 배출량 대조"}</p>
                               <div className="mt-2 max-h-96 overflow-auto border border-slate-200"><table className="w-full min-w-[760px] border-collapse text-left text-[11px]">
                                 <thead className="sticky top-0 bg-slate-100 text-slate-700"><tr><th className="px-3 py-2">{en ? "Output" : "산출물"}</th><th className="px-3 py-2">{en ? "Field" : "항목"}</th><th className="px-3 py-2">{en ? "Stored value" : "DB 저장값"}</th><th className="px-3 py-2">{en ? "Uploaded PDF value" : "업로드 PDF값"}</th><th className="px-3 py-2">{en ? "Result" : "판정"}</th></tr></thead>
@@ -4498,7 +4522,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                               </table></div>
                             </div> : null}
                             {selectedReportType === "LCA_SUMMARY" && item.lcaFieldComparisons?.length ? (
-                              <div className="mt-3 space-y-4">
+                              <div className="order-3 mt-3 space-y-4">
                                 <div>
                                   <p className="font-black text-emerald-800">{en ? "Matched LCA fields" : "LCA 일치 내역"} ({item.lcaFieldComparisons.filter((field) => field.matched).length})</p>
                                   <div className="mt-2 grid grid-cols-2 gap-2">
@@ -4521,12 +4545,12 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                 </div>
                               </div>
                             ) : selectedReportType === "LCA_SUMMARY" ? (
-                              <p className="mt-3 border border-amber-200 bg-amber-50 p-3 font-bold text-amber-900">
+                              <p className="order-3 mt-3 border border-amber-200 bg-amber-50 p-3 font-bold text-amber-900">
                                 {en ? "This issued PDF does not contain the LCA-specific dataset. Download it again from the LCA report page." : "이 발급 PDF에는 LCA 전용 데이터셋이 없습니다. LCA 보고서 화면에서 새로 다운로드하세요."}
                               </p>
                             ) : null}
-                            {selectedReportType !== "LCA_SUMMARY" && item.fieldComparisons?.length ? <div className="mt-4 border-t border-slate-200 pt-3">
-                              <p className="font-black text-slate-900">{en ? "Stored values vs uploaded OCR values" : "DB 저장값 ↔ 업로드 OCR값"} ({item.fieldComparisons.filter((field) => field.rowMatched).length}/{item.fieldComparisons.length} {en ? "rows matched" : "행 일치"})</p>
+                            {selectedReportType !== "LCA_SUMMARY" && item.fieldComparisons?.length ? <div className="order-4 mt-4 border-t border-slate-200 pt-3">
+                              <p className="font-black text-slate-900">{en ? "Page 4 · Stored values vs uploaded document values" : "4페이지 · DB 저장값 ↔ 업로드 문서값"} ({item.fieldComparisons.filter((field) => field.rowMatched).length}/{item.fieldComparisons.length} {en ? "rows matched" : "행 일치"})</p>
                               <div className="mt-2 max-h-96 overflow-auto border border-slate-200">
                                 <table className="w-full min-w-[760px] border-collapse text-left text-[11px]">
                                   <thead className="sticky top-0 bg-slate-100 text-slate-700"><tr>
