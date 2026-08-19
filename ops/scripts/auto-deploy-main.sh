@@ -6887,6 +6887,7 @@ run_runtime_template_identity_migration_contract_if_required() {
 run_operational_usage_ledger_live_e2e_if_required() {
   local expected_commit="${1:-$target_commit}"
   local timeout_seconds="${CARBONET_USAGE_LEDGER_E2E_TIMEOUT_SECONDS:-600}"
+  local release_invariant_scope=false
   [[ "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate \
      || ",${PLAN_TESTS:-}," == *",runtime:operational-usage-ledger-e2e,"* ]] || return 0
   [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || {
@@ -6894,14 +6895,19 @@ run_operational_usage_ledger_live_e2e_if_required() {
     invalidate_runtime_release_state
     return 1
   }
-  if ! timeout --signal=TERM --kill-after=10s "$timeout_seconds" \
+  if [[ "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate \
+     && ",${PLAN_TESTS:-}," != *",runtime:operational-usage-ledger-e2e,"* ]]; then
+    release_invariant_scope=true
+  fi
+  if ! CARBONET_USAGE_LEDGER_RELEASE_INVARIANT_SCOPE="$release_invariant_scope" \
+      timeout --signal=TERM --kill-after=10s "$timeout_seconds" \
       bash ops/scripts/validate-operational-usage-ledger-e2e.sh \
         "$ROOT_DIR" "$expected_commit" "${CARBONET_PUBLIC_BASE_URL:-http://127.0.0.1}"; then
     echo "[auto-deploy] operational usage ledger authenticated E2E failed or exceeded ${timeout_seconds}s" >&2
     invalidate_runtime_release_state
     return 1
   fi
-  echo "[auto-deploy] operational usage ledger authenticated E2E PASS budget=${timeout_seconds}s"
+  echo "[auto-deploy] operational usage ledger authenticated E2E PASS budget=${timeout_seconds}s releaseInvariantScope=${release_invariant_scope}"
 }
 
 # CRI implementations may expose either the registry manifest digest or the

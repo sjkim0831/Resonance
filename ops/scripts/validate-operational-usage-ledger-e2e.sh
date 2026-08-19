@@ -126,6 +126,9 @@ ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 EXPECTED_COMMIT="${2:-$(git -C "$ROOT" rev-parse HEAD)}"
 SOURCE_COMMIT="${CARBONET_POSTDEPLOY_SOURCE_COMMIT:-$EXPECTED_COMMIT}"
 EVIDENCE_MODE="${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-legacy}"
+RELEASE_INVARIANT_SCOPE="${CARBONET_USAGE_LEDGER_RELEASE_INVARIANT_SCOPE:-false}"
+[[ "$RELEASE_INVARIANT_SCOPE" == true || "$RELEASE_INVARIANT_SCOPE" == false ]] \
+  || fail "release invariant scope must be true or false"
 cd "$ROOT"
 
 # shellcheck source=ops/scripts/runtime-url-common.sh
@@ -395,8 +398,17 @@ IFS='|' read -r runtime_commit RUNTIME_IDENTITY_HASH POD_TEMPLATE_SHA256 <<<"$ru
 [[ "$RUNTIME_IDENTITY_HASH" =~ ^[0-9a-f]{64}$ ]] || fail "healthy runtime release has no canonical runtime identity"
 [[ "$POD_TEMPLATE_SHA256" =~ ^[0-9a-f]{64}$ ]] || fail "healthy runtime release has no bound PodTemplate identity"
 
-TOTAL_STEPS="$(db_scalar "select count(*) from framework_process_definition p join framework_process_step s using(process_code)")"
-[[ "$TOTAL_STEPS" =~ ^[1-9][0-9]*$ ]] || fail "current structural step total is invalid"
+GLOBAL_TOTAL_STEPS="$(db_scalar "select count(*) from framework_process_definition p join framework_process_step s using(process_code)")"
+[[ "$GLOBAL_TOTAL_STEPS" =~ ^[1-9][0-9]*$ ]] || fail "current structural step total is invalid"
+SCOPE_PROCESS=""
+if [[ "$RELEASE_INVARIANT_SCOPE" == true ]]; then
+  SCOPE_PROCESS="$(db_scalar "select p.process_code from framework_process_definition p join framework_process_step s using(process_code) join framework_process_step_screen_binding b using(process_code,step_code) where b.binding_status='ACTIVE' group by p.process_code order by p.process_code limit 1")"
+  [[ "$SCOPE_PROCESS" =~ ^[A-Z][A-Z0-9_:-]{1,79}$ ]] || fail "no safe representative process exists"
+  TOTAL_STEPS="$(db_scalar "select count(*) from framework_process_step where process_code='${SCOPE_PROCESS}'")"
+else
+  TOTAL_STEPS="$GLOBAL_TOTAL_STEPS"
+fi
+[[ "$TOTAL_STEPS" =~ ^[1-9][0-9]*$ ]] || fail "scoped structural step total is invalid"
 HELP_SELECTORS_FILE="$TMP_DIR/help-selectors.txt"
 db_scalar "select anchor_selector from ui_help_item where page_id='actor-process-governance' and active_yn='Y' order by display_order,item_id" > "$HELP_SELECTORS_FILE"
 mapfile -t HELP_SELECTORS < <(sed '/^[[:space:]]*$/d' "$HELP_SELECTORS_FILE")
@@ -422,7 +434,9 @@ page_count=$(( (TOTAL_STEPS + PAGE_SIZE - 1) / PAGE_SIZE ))
 # ordered validation boundary without a concurrent database burst.
 for ((page=0; page<page_count; page+=1)); do
   page_file="$TMP_DIR/page-${page}.json"
-  status="$(api_status "$page_file" GET "/admin/api/system/actor-process/system-test-report?compact=true&page=${page}&size=${PAGE_SIZE}")"
+  scope_query=""
+  [[ -z "$SCOPE_PROCESS" ]] || scope_query="&processCode=${SCOPE_PROCESS}"
+  status="$(api_status "$page_file" GET "/admin/api/system/actor-process/system-test-report?compact=true&page=${page}&size=${PAGE_SIZE}${scope_query}")"
   # Keep the 200-row fast path to reduce requests. When the first query exceeds
   # the gateway budget, halve the page size so the complete ordered ledger can
   # still finish within the bounded deploy gate without a database burst.
@@ -431,7 +445,7 @@ for ((page=0; page<page_count; page+=1)); do
     PAGE_SIZE=100
     page_count=$(( (TOTAL_STEPS + PAGE_SIZE - 1) / PAGE_SIZE ))
     info "compact page 0 gateway timeout http=${status}; retrying complete ledger with bounded pageSize=${PAGE_SIZE}"
-    status="$(api_status "$page_file" GET "/admin/api/system/actor-process/system-test-report?compact=true&page=${page}&size=${PAGE_SIZE}")"
+    status="$(api_status "$page_file" GET "/admin/api/system/actor-process/system-test-report?compact=true&page=${page}&size=${PAGE_SIZE}${scope_query}")"
   fi
   [[ "$status" == "200" ]] || fail "compact page ${page} failed (http=$status)"
   expected_count=$(( TOTAL_STEPS - page * PAGE_SIZE )); (( expected_count > PAGE_SIZE )) && expected_count=$PAGE_SIZE
@@ -461,8 +475,8 @@ awk -F '\t' '
   { pd=$1; pw=$2; pp=$3; ps=$4; pc=$5 }
 ' "$ORDER_FILE" || fail "global 5-key WORK_TYPE_PROCESS_STEP order regressed across pages"
 db_total_after="$(db_scalar "select count(*) from framework_process_definition p join framework_process_step s using(process_code)")"
-[[ "$db_total_after" == "$TOTAL_STEPS" ]] || fail "structural catalogue changed during pagination; retry after design writes settle"
-info "pagination PASS totalSteps=${TOTAL_STEPS} pages=${page_count} pageSize=${PAGE_SIZE} concurrency=${PAGE_FETCH_CONCURRENCY} duplicates=0 orderRegressions=0"
+[[ "$db_total_after" == "$GLOBAL_TOTAL_STEPS" ]] || fail "structural catalogue changed during pagination; retry after design writes settle"
+info "pagination PASS totalSteps=${TOTAL_STEPS} globalSteps=${GLOBAL_TOTAL_STEPS} scopeProcess=${SCOPE_PROCESS:-ALL} pages=${page_count} pageSize=${PAGE_SIZE} concurrency=${PAGE_FETCH_CONCURRENCY} duplicates=0 orderRegressions=0"
 
 selected="$(for ((page=0; page<page_count; page+=1)); do jq -r '.items[] | select((.screenCount // 0)>0) | [.processCode,.stepCode] | @tsv' "$TMP_DIR/page-${page}.json"; done | sed -n '1p')"
 IFS=$'\t' read -r SELECTED_PROCESS SELECTED_STEP <<< "$selected"
@@ -517,7 +531,9 @@ cleanup_owned_review || fail "exact review cleanup failed"
 [[ "$(db_scalar "select count(*) from framework_system_usage_review where idempotency_key='${REVIEW_KEY}'")" == "0" ]] || fail "review cleanup after-count is not zero"
 info "review PASS before=0 persisted=1 idempotent=1 mismatch409=1 rowsAfterMismatch=1 linkedJobs=0 runtimeIdentity=exact podTemplate=exact after=0"
 
-run_browser_contract "$COOKIE_JAR"
+if [[ "$RELEASE_INVARIANT_SCOPE" != true ]]; then
+  run_browser_contract "$COOKIE_JAR"
+fi
 carbonet_qa_logout "$COOKIE_JAR" "$BASE_URL" || fail "system administrator logout failed"
 
 anonymous_review_body="$TMP_DIR/anonymous-review.json"
@@ -537,6 +553,19 @@ for spec in \
 done
 [[ "$(db_scalar "select count(*) from framework_system_usage_review where idempotency_key='${REVIEW_KEY}-anonymous'")" == "0" ]] || fail "anonymous review unexpectedly persisted"
 info "anonymous authorization PASS status=401 endpoints=2 persistedReviews=0"
+
+if [[ "$RELEASE_INVARIANT_SCOPE" == true ]]; then
+  elapsed=$(( $(date +%s) - started_at ))
+  if [[ "$EVIDENCE_MODE" == candidate ]]; then
+    jq -cn --arg selectedProcess "$SELECTED_PROCESS" --arg selectedStep "$SELECTED_STEP" \
+      --argjson totalSteps "$GLOBAL_TOTAL_STEPS" --argjson scopedSteps "$TOTAL_STEPS" --argjson durationSeconds "$elapsed" \
+      '{selectedProcess:$selectedProcess,selectedStep:$selectedStep,totalSteps:$totalSteps,scopedSteps:$scopedSteps,durationSeconds:$durationSeconds,scope:"RELEASE_INVARIANT",allowedRole:"SYSTEM_ADMIN_FAMILY",anonymousDenied:2,ordinaryDenied:0,browserViewports:0,persistentFixtures:0,reviewCreateReloadIdempotencyCleanup:true}' |
+      bash "$ROOT/ops/scripts/stage-postdeploy-evidence-candidate.sh" \
+        OPERATIONAL_USAGE_LEDGER_GATE __RELEASE__ RELEASE_GATE "$SOURCE_COMMIT"
+  fi
+  info "PASS scope=RELEASE_INVARIANT allowedRole=SYSTEM_ADMIN_FAMILY anonymous401=2 totalSteps=${GLOBAL_TOTAL_STEPS} scopedSteps=${TOTAL_STEPS} browserViewports=0 persistentFixtures=0 duration=${elapsed}s"
+  exit 0
+fi
 
 # A second existing isolated account is used only for denied calls. If it is
 # absent or cannot authenticate, report BLOCKED and fail closed instead of

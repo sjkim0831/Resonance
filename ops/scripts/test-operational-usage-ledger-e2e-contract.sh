@@ -86,7 +86,7 @@ pagination_performance_contract() {
   grep -Fq 'PAGE_SIZE="${CARBONET_USAGE_LEDGER_PAGE_SIZE:-200}"' "$candidate" &&
     grep -Fq 'PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-1}"' "$candidate" &&
     grep -Fq '[[ "$PAGE_FETCH_CONCURRENCY" == "1" ]]' "$candidate" &&
-    grep -Fq 'status="$(api_status "$page_file" GET "/admin/api/system/actor-process/system-test-report?compact=true&page=${page}&size=${PAGE_SIZE}")"' "$candidate" \
+    grep -Fq 'status="$(api_status "$page_file" GET "/admin/api/system/actor-process/system-test-report?compact=true&page=${page}&size=${PAGE_SIZE}${scope_query}")"' "$candidate" \
     || return 1
   pagination_body="$(sed -n '/^page_count=\$(( (TOTAL_STEPS/,/^done$/p' "$candidate")"
   [[ "$pagination_body" == *'for ((page=0; page<page_count; page+=1)); do'* ]] || return 1
@@ -103,6 +103,11 @@ pagination_self_test="$(env -u CARBONET_USAGE_LEDGER_PAGE_SIZE -u CARBONET_USAGE
    && "$pagination_self_test" == *'maxConcurrency=1'* ]] \
   || fail "dynamic pagination performance self-test contract mismatch"
 pagination_performance_contract "$HARNESS" || fail "production pagination performance contract is incomplete"
+contains "$HARNESS" 'CARBONET_USAGE_LEDGER_RELEASE_INVARIANT_SCOPE'
+contains "$HARNESS" 'scope:"RELEASE_INVARIANT"'
+contains "$HARNESS" 'GLOBAL_TOTAL_STEPS'
+contains "$HARNESS" 'processCode=${SCOPE_PROCESS}'
+contains "$ROOT/ops/scripts/auto-deploy-main.sh" 'releaseInvariantScope=${release_invariant_scope}'
 
 sed 's/CARBONET_USAGE_LEDGER_PAGE_SIZE:-200/CARBONET_USAGE_LEDGER_PAGE_SIZE:-50/' \
   "$HARNESS" > "$TMP_DIR/page-size-regression-mutation.sh"
