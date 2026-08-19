@@ -103,15 +103,21 @@ requireText("page", 'page.tokenSequenceExact ? "SEQUENCE EXACT" : "SEQUENCE MISM
 requireText("page", 'page.unexpectedTokens.join(", ")');
 requireText("api", "sectionSummaryComparisons?: Array<{");
 requireText("api", "actualTotalEmission: string");
-requireText("page", 'en ? "Graph data verification" : "그래프 데이터 개별 검증"');
+requireText("page", 'en ? "Graph data verification in report order" : "레포트 순서 그래프 데이터 일치·불일치"');
 requireText("page", 'section.totalEmissionMatched ? "MATCH" : "MISMATCH"');
-requireText("page", 'photoVerification.unexpectedSectionSummaryNumbers.join(", ")');
+requireText("page", 'item.sectionSummaryComparisons.map((section)');
+requireText("page", 'item.unexpectedSectionSummaryNumbers.join(", ")');
+requireText("page", 'item.comparisonDetails.filter((detail) => detail.category !== "CHART")');
+rejectText("page", 'photoVerification.sectionSummaryComparisons.map((section)');
+requireOrder("page", 'en ? "Show detailed comparison" : "상세 일치·불일치 내역"',
+  'en ? "Graph data verification in report order" : "레포트 순서 그래프 데이터 일치·불일치"',
+  'en ? "Detailed table and identifier comparison" : "상세표·식별자 일치·불일치"',
+  'selectedReportType !== "LCA_SUMMARY" && item.reportSummaryComparisons?.length');
 requireText("page", "payload?.certificateId || photoVerification?.certificateId");
 requireText("page", "payload?.payloadHash || photoVerification?.payloadHash");
 requireText("page", "payload?.integrityCode || photoVerification?.integrityCode");
 requireText("api", "comparisonDetails?: ReportVisibleFieldComparison[]");
-requireText("page", 'en ? "Complete visible-data comparison" : "전체 표시 데이터 일치·불일치 상세"');
-requireText("page", 'detail.category === "CHART"');
+requireText("page", 'en ? "Detailed table and identifier comparison" : "상세표·식별자 일치·불일치"');
 requireText("page", 'detail.actual || (en ? "MISSING" : "누락")');
 requireText("page", 'token.matched ? "MATCH" : "MISMATCH"');
 requireText("page", 'token.actual || (en ? "MISSING" : "누락")');

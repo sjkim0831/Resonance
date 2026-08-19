@@ -4173,23 +4173,6 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                     <span className="col-span-2">{en ? "Numeric cells" : "수치 셀"}: {photoVerification.matchedNumberCount || 0}/{photoVerification.numberCount || 0}</span>
                   </>}
                 </div>
-                {selectedReportType === "EMISSION_SURVEY" && photoVerification.sectionSummaryComparisons?.length ? (
-                  <div className="mt-4 border-t border-slate-200 pt-3">
-                    <p className="text-xs font-black text-slate-900">{en ? "Graph data verification" : "그래프 데이터 개별 검증"}</p>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                      {photoVerification.sectionSummaryComparisons.map((section) => (
-                        <div className={`border p-3 text-xs ${section.matched ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-300 bg-rose-50 text-rose-900"}`} key={section.sectionCode}>
-                          <p className="font-black">{section.sectionLabel}</p>
-                          <p className="mt-1">{en ? "Emission" : "배출량"}: {section.expectedTotalEmission} ↔ {section.actualTotalEmission || (en ? "MISSING" : "누락")} <strong>{section.totalEmissionMatched ? "MATCH" : "MISMATCH"}</strong></p>
-                          <p>{en ? "Share" : "비율"}: {section.expectedSharePercent}% ↔ {section.actualSharePercent || (en ? "MISSING" : "누락")}% <strong>{section.sharePercentMatched ? "MATCH" : "MISMATCH"}</strong></p>
-                        </div>
-                      ))}
-                    </div>
-                    {photoVerification.unexpectedSectionSummaryNumbers?.length ? (
-                      <p className="mt-2 break-words text-xs font-black text-rose-900">{en ? "Unexpected graph values" : "예상하지 않은 그래프 값"}: {photoVerification.unexpectedSectionSummaryNumbers.join(", ")}</p>
-                    ) : null}
-                  </div>
-                ) : null}
                 {selectedReportType === "EMISSION_SURVEY" && photoVerification.ocrEvidencePageComparisons?.length ? (
                   <div className="mt-4 border-t border-slate-200 pt-3">
                     <p className="text-xs font-black text-slate-900">{en ? "Ordered page evidence" : "페이지별 전체 항목·순서·중복 검증"}</p>
@@ -4432,9 +4415,26 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                             {en ? "Show detailed comparison" : "상세 일치·불일치 내역"}
                           </summary>
                           <div className="border-t border-slate-200 p-3">
-                            {item.comparisonDetails?.length ? <div className="mb-4 border border-slate-300 bg-slate-50 p-3">
+                            {selectedReportType === "EMISSION_SURVEY" && item.sectionSummaryComparisons?.length ? (
+                              <div className="mb-4 border border-slate-300 bg-slate-50 p-3">
+                                <p className="font-black text-slate-950">{en ? "Graph data verification in report order" : "레포트 순서 그래프 데이터 일치·불일치"}</p>
+                                <div className="mt-2 space-y-2">
+                                  {item.sectionSummaryComparisons.map((section) => (
+                                    <div className={`border p-3 text-xs ${section.matched ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-300 bg-rose-50 text-rose-900"}`} key={`${item.certificateId}-graph-${section.sectionCode}`}>
+                                      <p className="font-black">{section.sectionLabel}</p>
+                                      <p className="mt-1">{en ? "Emission" : "배출량"}: {section.expectedTotalEmission} ↔ {section.actualTotalEmission || (en ? "MISSING" : "누락")} <strong>{section.totalEmissionMatched ? "MATCH" : "MISMATCH"}</strong></p>
+                                      <p>{en ? "Share" : "비율"}: {section.expectedSharePercent}% ↔ {section.actualSharePercent ? `${section.actualSharePercent}%` : (en ? "MISSING" : "누락")} <strong>{section.sharePercentMatched ? "MATCH" : "MISMATCH"}</strong></p>
+                                    </div>
+                                  ))}
+                                </div>
+                                {item.unexpectedSectionSummaryNumbers?.length ? (
+                                  <p className="mt-2 break-words text-xs font-black text-rose-900">{en ? "Unexpected graph values" : "예상하지 않은 그래프 값"}: {item.unexpectedSectionSummaryNumbers.join(", ")}</p>
+                                ) : null}
+                              </div>
+                            ) : null}
+                            {item.comparisonDetails?.some((detail) => detail.category !== "CHART") ? <div className="mb-4 border border-slate-300 bg-slate-50 p-3">
                               <p className="font-black text-slate-950">
-                                {en ? "Complete visible-data comparison" : "전체 표시 데이터 일치·불일치 상세"} ({item.matchedComparisonItemCount ?? 0}/{item.comparisonItemCount ?? item.comparisonDetails.length})
+                                {en ? "Detailed table and identifier comparison" : "상세표·식별자 일치·불일치"}
                               </p>
                               <div className="mt-2 max-h-[32rem] overflow-auto border border-slate-200 bg-white">
                                 <table className="w-full min-w-[840px] border-collapse text-left text-[11px]">
@@ -4444,8 +4444,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                     <th className="px-3 py-2">{en ? "Actual" : "실제값"}</th><th className="px-3 py-2">{en ? "Result" : "판정"}</th>
                                   </tr></thead>
                                   <tbody className="divide-y divide-slate-100">
-                                    {item.comparisonDetails.map((detail, detailIndex) => <tr className={detail.matched ? "bg-white" : "bg-rose-50"} key={`${item.certificateId}-${detail.category}-${detail.group}-${detail.field}-${detailIndex}`}>
-                                      <td className="px-3 py-2 font-black">{detail.category === "CHART" ? (en ? "CHART" : "차트") : (en ? "DETAIL" : "상세표")}</td>
+                                    {item.comparisonDetails.filter((detail) => detail.category !== "CHART").map((detail, detailIndex) => <tr className={detail.matched ? "bg-white" : "bg-rose-50"} key={`${item.certificateId}-${detail.category}-${detail.group}-${detail.field}-${detailIndex}`}>
+                                      <td className="px-3 py-2 font-black">{en ? "DETAIL" : "상세표"}</td>
                                       <td className="px-3 py-2 font-semibold">{detail.group}</td><td className="px-3 py-2 font-bold">{detail.field}</td>
                                       <td className="px-3 py-2 font-semibold">{detail.expected || "-"}</td><td className="px-3 py-2 font-semibold">{detail.actual || (en ? "MISSING" : "누락")}</td>
                                       <td className={`px-3 py-2 font-black ${detail.matched ? "text-emerald-700" : "text-rose-700"}`}>{detail.matched ? "MATCH" : "MISMATCH"}</td>
