@@ -6890,6 +6890,13 @@ run_operational_usage_ledger_live_e2e_if_required() {
   local expected_commit="${1:-$target_commit}"
   local timeout_seconds="${CARBONET_USAGE_LEDGER_E2E_TIMEOUT_SECONDS:-600}"
   local release_invariant_scope=false
+  if [[ "${operational_usage_ledger_live_e2e_precompleted:-false}" == true ]]; then
+    [[ "$expected_commit" == "$target_commit" \
+       && "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate ]] || return 79
+    verify_operational_usage_ledger_current_runtime_identity "$expected_commit" proof-only || return 79
+    echo "[auto-deploy] operational usage ledger authenticated E2E reused from current candidate lane target=$expected_commit"
+    return 0
+  fi
   [[ "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate \
      || ",${PLAN_TESTS:-}," == *",runtime:operational-usage-ledger-e2e,"* ]] || return 0
   [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || {
@@ -9620,6 +9627,12 @@ fi
 # avoids Java compilation, image creation and a rolling restart while keeping
 # rollback material and stale-chunk protection.
 if frontend_only_fast_path_eligible; then
+  frontend_validation_log=""
+  frontend_operational_log=""
+  frontend_validation_pid=""
+  frontend_operational_pid=""
+  frontend_validation_status=0
+  frontend_operational_status=0
   frontend_smoke_pattern="$(node \
     projects/carbonet-frontend/source/scripts/derive-frontend-smoke-route-pattern.mjs \
     "$deployed_commit" "$target_commit")"
@@ -9653,8 +9666,24 @@ if frontend_only_fast_path_eligible; then
   bash ops/scripts/cleanup-failed-frontend-generated-changes.sh "$ROOT_DIR"
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   enable_postdeploy_candidate_mode
-  run_postdeploy_candidate_validation_groups true
+  frontend_validation_log="$(mktemp "$ROOT_DIR/var/run/frontend-validation-groups.XXXXXX.log")"
+  frontend_operational_log="$(mktemp "$ROOT_DIR/var/run/frontend-operational-ledger.XXXXXX.log")"
+  (run_postdeploy_candidate_validation_groups true) >"$frontend_validation_log" 2>&1 &
+  frontend_validation_pid="$!"
+  (run_operational_usage_ledger_live_e2e_if_required "$target_commit") \
+    >"$frontend_operational_log" 2>&1 &
+  frontend_operational_pid="$!"
   run_screen_contract_runtime_save_gate_if_required
+  wait "$frontend_validation_pid" || frontend_validation_status=$?
+  wait "$frontend_operational_pid" || frontend_operational_status=$?
+  cat "$frontend_validation_log"
+  cat "$frontend_operational_log"
+  rm -f -- "$frontend_validation_log" "$frontend_operational_log"
+  if (( frontend_validation_status != 0 || frontend_operational_status != 0 )); then
+    echo "[auto-deploy] refusing frontend promotion: parallel validation failed groups=$frontend_validation_status operational=$frontend_operational_status" >&2
+    exit 79
+  fi
+  operational_usage_ledger_live_e2e_precompleted=true
   record_deploy_phase "frontend_build_and_verify"
   frontend_overlay_template_sha256="$(python3 "$POSTDEPLOY_JOURNAL_HELPER" \
     --file "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" read | jq -r \
