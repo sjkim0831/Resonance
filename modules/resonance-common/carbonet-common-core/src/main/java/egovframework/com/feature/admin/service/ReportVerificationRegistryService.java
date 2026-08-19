@@ -651,10 +651,21 @@ public class ReportVerificationRegistryService {
             String sectionText = sectionStart >= 0 ? pageText.substring(sectionStart, sectionEnd) : "";
             List<String> sectionNumbers = extractCanonicalNumbers(sectionText.replace(",", ""));
             String actualTotal = sectionNumbers.isEmpty() ? "" : sectionNumbers.get(0);
-            String actualShare = sectionNumbers.size() < 2 ? "" : sectionNumbers.get(sectionNumbers.size() - 1);
-            List<String> unexpectedNumbers = sectionNumbers.size() <= 2
-                    ? List.of()
-                    : new ArrayList<>(sectionNumbers.subList(1, sectionNumbers.size() - 1));
+            int actualShareIndex = -1;
+            for (int numberIndex = 1; numberIndex < sectionNumbers.size(); numberIndex++) {
+                if (share.equals(sectionNumbers.get(numberIndex))) {
+                    actualShareIndex = numberIndex;
+                    break;
+                }
+            }
+            if (actualShareIndex < 0 && sectionNumbers.size() >= 2) {
+                actualShareIndex = sectionNumbers.size() - 1;
+            }
+            String actualShare = actualShareIndex < 0 ? "" : sectionNumbers.get(actualShareIndex);
+            List<String> unexpectedNumbers = new ArrayList<>();
+            for (int numberIndex = 1; numberIndex < sectionNumbers.size(); numberIndex++) {
+                if (numberIndex != actualShareIndex) unexpectedNumbers.add(sectionNumbers.get(numberIndex));
+            }
             boolean labelMatched = sectionStart >= 0 && containsText(normalizedPageText, label);
             boolean totalMatched = total.equals(actualTotal);
             boolean shareMatched = share.equals(actualShare);

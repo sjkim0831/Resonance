@@ -165,6 +165,15 @@ class ReportVerificationRegistryServicePdfTest {
         assertTrue((Boolean) comparisons.get(0).get("matched"));
         assertEquals(List.of("1.62"), comparisons.get(1).get("unexpectedNumbers"));
         assertFalse((Boolean) comparisons.get(1).get("matched"));
+
+        Map<String, Object> trailingOverlay = (Map<String, Object>) scorer.invoke(service,
+                List.of("page one", "에너지 1.62 kg CO2e 0% 수계 배출물 0.36 kg CO2e 0% 1.62"),
+                new ObjectMapper().valueToTree(dataset));
+        List<Map<String, Object>> trailingComparisons =
+                (List<Map<String, Object>>) trailingOverlay.get("sectionSummaryComparisons");
+        assertEquals("0", trailingComparisons.get(1).get("actualSharePercent"));
+        assertEquals(List.of("1.62"), trailingComparisons.get(1).get("unexpectedNumbers"));
+        assertFalse((Boolean) trailingComparisons.get(1).get("matched"));
     }
 
     @Test
