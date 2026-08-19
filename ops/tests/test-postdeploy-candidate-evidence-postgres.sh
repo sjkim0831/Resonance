@@ -7,13 +7,14 @@ SCOPE_AUDIT_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/p
 LIFECYCLE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260812080000__bind_postdeploy_attempt_lifecycle.sql"
 RUNTIME_TEMPLATE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817235000__bind_runtime_identity_to_pod_template.sql"
 HPA_STABLE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260818151500__make_runtime_identity_hpa_stable.sql"
+DEPLOY_IDENTITY_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260819231000__allow_deploy_identity_only_operational_gate.sql"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 DATABASE="${POSTGRES_DB:-carbonet}"
 DATABASE_USER="${POSTGRES_ADMIN_USER:-postgres}"
 CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}"
 SOURCE_COMMIT="${POSTDEPLOY_CANDIDATE_TEST_COMMIT:-$(git -C "$ROOT" rev-parse HEAD)}"
 [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
-[[ -s "$MIGRATION" && -s "$SCOPE_AUDIT_MIGRATION" && -s "$LIFECYCLE_MIGRATION" && -s "$RUNTIME_TEMPLATE_MIGRATION" && -s "$HPA_STABLE_MIGRATION" ]]
+[[ -s "$MIGRATION" && -s "$SCOPE_AUDIT_MIGRATION" && -s "$LIFECYCLE_MIGRATION" && -s "$RUNTIME_TEMPLATE_MIGRATION" && -s "$HPA_STABLE_MIGRATION" && -s "$DEPLOY_IDENTITY_MIGRATION" ]]
 leader="${RESONANCE_POSTGRES_LEADER_POD:-$(K8S_NAMESPACE="$NAMESPACE" bash "$ROOT/ops/scripts/resolve-patroni-primary-pod.sh")}"
 [[ -n "$leader" ]]
 
@@ -64,6 +65,7 @@ ON CONFLICT (release_key) DO UPDATE SET
 SQL
 cat "$RUNTIME_TEMPLATE_MIGRATION"
 cat "$HPA_STABLE_MIGRATION"
+cat "$DEPLOY_IDENTITY_MIGRATION"
 cat <<'SQL'
 SELECT set_config('resonance.postdeploy_test_commit',:'source_commit',false);
 
@@ -600,8 +602,8 @@ SELECT jsonb_build_object(
       'runtimeHashBefore',repeat('5',64),'runtimeHashAfter',repeat('5',64)
     )
     WHEN 'OPERATIONAL_USAGE_LEDGER_GATE' THEN jsonb_build_object(
-      'allowedRole','SYSTEM_ADMIN_FAMILY','anonymousDenied',2,'ordinaryDenied',7,'browserViewports',2,
-      'persistentFixtures',0,'reviewCreateReloadIdempotencyCleanup',true,'totalSteps',572,'pages',3,'durationSeconds',1
+      'scope','DEPLOY_RUNTIME_IDENTITY_ONLY','runtimeIdentityExact',true,
+      'fullProcessAuthorizationE2e','DEFERRED_TO_DESIGN_QA','persistentFixtures',0
     )
     ELSE '{}'::jsonb
   END

@@ -7,6 +7,7 @@ SCOPE_AUDIT_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/p
 LIFECYCLE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260812080000__bind_postdeploy_attempt_lifecycle.sql"
 RUNTIME_TEMPLATE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817235000__bind_runtime_identity_to_pod_template.sql"
 HPA_STABLE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260818151500__make_runtime_identity_hpa_stable.sql"
+DEPLOY_IDENTITY_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260819231000__allow_deploy_identity_only_operational_gate.sql"
 STAGER="$ROOT/ops/scripts/stage-postdeploy-evidence-candidate.sh"
 PROMOTER="$ROOT/ops/scripts/promote-postdeploy-candidate-evidence.sh"
 DEPLOY="$ROOT/ops/scripts/auto-deploy-main.sh"
@@ -65,7 +66,13 @@ files=(
   "$ROOT/ops/scripts/test-auto-deploy-failure-handler.sh"
   "$ROOT/ops/tests/test-runtime-release-state.sh"
 )
-for file in "$MIGRATION" "$SCOPE_AUDIT_MIGRATION" "$LIFECYCLE_MIGRATION" "$RUNTIME_TEMPLATE_MIGRATION" "$HPA_STABLE_MIGRATION" "$JOURNAL_HELPER" "${files[@]}"; do [[ -s "$file" ]] || { echo "missing: $file" >&2; exit 1; }; done
+for file in "$MIGRATION" "$SCOPE_AUDIT_MIGRATION" "$LIFECYCLE_MIGRATION" "$RUNTIME_TEMPLATE_MIGRATION" "$HPA_STABLE_MIGRATION" "$DEPLOY_IDENTITY_MIGRATION" "$JOURNAL_HELPER" "${files[@]}"; do [[ -s "$file" ]] || { echo "missing: $file" >&2; exit 1; }; done
+
+grep -Fq "usage_gate->>'scope' = 'DEPLOY_RUNTIME_IDENTITY_ONLY'" "$DEPLOY_IDENTITY_MIGRATION"
+grep -Fq "usage_gate->>'runtimeIdentityExact' IS DISTINCT FROM 'true'" "$DEPLOY_IDENTITY_MIGRATION"
+grep -Fq "usage_gate->>'fullProcessAuthorizationE2e' IS DISTINCT FROM 'DEFERRED_TO_DESIGN_QA'" "$DEPLOY_IDENTITY_MIGRATION"
+grep -Fq "postdeploy promoter predecessor contract mismatch" "$DEPLOY_IDENTITY_MIGRATION"
+grep -Fq "position(new_contract IN function_body)" "$DEPLOY_IDENTITY_MIGRATION"
 for file in "${files[@]}"; do bash -n "$file"; done
 python3 "$JOURNAL_HELPER" --help >/dev/null
 node --check "$ROOT/ops/scripts/validate-screen-contract-runtime-save.mjs"
