@@ -9672,6 +9672,7 @@ if frontend_only_fast_path_eligible; then
   [[ "$frontend_overlay_template_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 79
   record_runtime_release_state "$target_commit" frontend-overlay "$frontend_overlay_template_sha256"
   runtime_release_state_precompleted=true
+  record_deploy_phase "frontend_overlay_ready"
   frontend_validation_log="$(mktemp "$ROOT_DIR/var/run/frontend-validation-groups.XXXXXX.log")"
   frontend_operational_log="$(mktemp "$ROOT_DIR/var/run/frontend-operational-ledger.XXXXXX.log")"
   frontend_browser_log="$(mktemp "$ROOT_DIR/var/run/frontend-browser-gate.XXXXXX.log")"
@@ -9705,9 +9706,10 @@ if frontend_only_fast_path_eligible; then
     exit 79
   fi
   operational_usage_ledger_live_e2e_precompleted=true
-  record_deploy_phase "frontend_build_and_verify"
+  record_deploy_phase "frontend_parallel_validation"
   finalize_postdeploy_candidate_release "$frontend_overlay_template_sha256"
   prove_backstage_terminal_success "$target_commit" || exit $?
+  record_deploy_phase "frontend_candidate_finalize"
   record_deploy_performance frontend || echo '[auto-deploy] WARN frontend performance telemetry failed' >&2
   echo "[auto-deploy] frontend overlay deployed without Java/image build or rollout: $target_commit"
   exit 0

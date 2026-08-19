@@ -986,6 +986,8 @@ if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") != "true":
         frontend_fast.index("frontend_operational_pid=\"$!\"")
     assert frontend_fast.index('runtime_release_state_precompleted=true') < \
         frontend_fast.index("frontend_operational_pid=\"$!\"")
+    assert frontend_fast.index('record_deploy_phase "frontend_overlay_ready"') < \
+        frontend_fast.index("frontend_validation_pid=\"$!\"")
     assert frontend_fast.index('wait "$frontend_validation_pid"') < \
         frontend_fast.index('operational_usage_ledger_live_e2e_precompleted=true') < \
         frontend_fast.index('finalize_postdeploy_candidate_release "$frontend_overlay_template_sha256"')
@@ -993,6 +995,11 @@ if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") != "true":
         frontend_fast.index('operational_usage_ledger_live_e2e_precompleted=true')
     assert frontend_fast.index('wait "$frontend_browser_pid"') < \
         frontend_fast.index('operational_usage_ledger_live_e2e_precompleted=true')
+    assert frontend_fast.index('operational_usage_ledger_live_e2e_precompleted=true') < \
+        frontend_fast.index('record_deploy_phase "frontend_parallel_validation"') < \
+        frontend_fast.index('finalize_postdeploy_candidate_release "$frontend_overlay_template_sha256"') < \
+        frontend_fast.index('record_deploy_phase "frontend_candidate_finalize"') < \
+        frontend_fast.index('record_deploy_performance frontend')
     assert 'frontend_browser_status != 0' in frontend_fast
     operational_live = deploy[deploy.index("run_operational_usage_ledger_live_e2e_if_required() {"):
                               deploy.index("verify_operational_usage_ledger_current_runtime_identity()")]
