@@ -9212,6 +9212,11 @@ activity_backup_only=false
 identity_backup_only=false
 schema_backup_only=false
 flyway_delta_only=false
+predeploy_backup_mode="${CARBONET_PREDEPLOY_BACKUP_MODE:-flyway-only}"
+case "$predeploy_backup_mode" in
+  flyway-only|full) ;;
+  *) echo "[auto-deploy] invalid CARBONET_PREDEPLOY_BACKUP_MODE=$predeploy_backup_mode" >&2; exit 79 ;;
+esac
 if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:-false}" != "true" ]]; then
   database_change_files="$(git diff --name-only "$deployed_commit" "$target_commit" -- \
     apps/carbonet-api/src/main/resources/db/migration/postgresql)"
@@ -9244,6 +9249,22 @@ if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:
     backup_required=false
     backup_scope="flyway-forward-only"
     echo "[auto-deploy] forward-only Flyway delta verified; pre-deploy database dump skipped"
+  fi
+  if [[ "$predeploy_backup_mode" == "flyway-only" ]]; then
+    if [[ -z "$database_change_files" ]] \
+      || grep -Ev '^A[[:space:]]+apps/carbonet-api/src/main/resources/db/migration/postgresql/V[0-9]+__[^[:space:]]+\.sql$' <<<"$database_change_statuses" | grep -q .; then
+      echo "[auto-deploy] refusing database change outside a newly added versioned Flyway migration while backup mode is flyway-only" >&2
+      exit 79
+    fi
+    backup_required=false
+    schema_backup_only=false
+    menu_backup_only=false
+    governance_backup_only=false
+    activity_backup_only=false
+    identity_backup_only=false
+    flyway_delta_only=true
+    backup_scope="flyway-transaction-only"
+    echo "[auto-deploy] Flyway-only mode: full and targeted pre-deploy dumps skipped; migration transaction is authoritative"
   fi
   echo "[auto-deploy] database backup scope: $backup_scope"
 fi
