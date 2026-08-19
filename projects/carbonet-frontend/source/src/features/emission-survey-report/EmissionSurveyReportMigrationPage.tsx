@@ -4438,7 +4438,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                             {en ? "Show detailed comparison" : "상세 일치·불일치 내역"}
                           </summary>
                           <div className="flex flex-col border-t border-slate-200 p-3">
-                            {item.comparisonDetails?.some((detail) => detail.category !== "CHART") ? <div className="order-3 mt-4 border border-slate-300 bg-slate-50 p-3">
+                            {item.comparisonDetails?.some((detail) => detail.category !== "CHART") && (selectedReportType === "LCA_SUMMARY" || !item.fieldComparisons?.length) ? <div className="order-3 mt-4 border border-slate-300 bg-slate-50 p-3">
                               <p className="font-black text-slate-950">
                                 {en ? "Page 4 · Detailed table comparison" : "4페이지 · 상세표 일치·불일치"}
                               </p>
@@ -4508,8 +4508,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                 ) : null}
                               </div>
                             ) : null}
-                            {selectedReportType !== "LCA_SUMMARY" && item.outputFieldComparisons?.length ? <div className="order-4 mt-4 border-t border-slate-200 pt-3">
-                              <p className="font-black text-slate-900">{en ? "Product and byproduct allocation" : "제품·부산물 질량 및 배출량 대조"}</p>
+                            {selectedReportType !== "LCA_SUMMARY" && item.outputFieldComparisons?.length ? <div className="order-1 mt-4 border-t border-slate-200 pt-3">
+                              <p className="font-black text-slate-900">{en ? "Page 1 · Product and byproduct mass and emissions" : "1페이지 · 제품·부산물 질량 및 배출량 대조"}</p>
                               <div className="mt-2 max-h-96 overflow-auto border border-slate-200"><table className="w-full min-w-[760px] border-collapse text-left text-[11px]">
                                 <thead className="sticky top-0 bg-slate-100 text-slate-700"><tr><th className="px-3 py-2">{en ? "Output" : "산출물"}</th><th className="px-3 py-2">{en ? "Field" : "항목"}</th><th className="px-3 py-2">{en ? "Stored value" : "DB 저장값"}</th><th className="px-3 py-2">{en ? "Uploaded PDF value" : "업로드 PDF값"}</th><th className="px-3 py-2">{en ? "Result" : "판정"}</th></tr></thead>
                                 <tbody className="divide-y divide-slate-100">{item.outputFieldComparisons.flatMap((field) => ([
@@ -4555,7 +4555,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                 <table className="w-full min-w-[760px] border-collapse text-left text-[11px]">
                                   <thead className="sticky top-0 bg-slate-100 text-slate-700"><tr>
                                     <th className="px-3 py-2">{en ? "Row / material" : "행·물질"}</th><th className="px-3 py-2">{en ? "Field" : "항목"}</th>
-                                    <th className="px-3 py-2">{en ? "Stored value" : "DB 저장값"}</th><th className="px-3 py-2">{en ? "Uploaded OCR value" : "업로드 OCR값"}</th><th className="px-3 py-2">{en ? "Result" : "판정"}</th>
+                                    <th className="px-3 py-2">{en ? "Stored value" : "DB 저장값"}</th><th className="px-3 py-2">{en ? "Uploaded document value" : "업로드 문서값"}</th><th className="px-3 py-2">{en ? "Result" : "판정"}</th>
                                   </tr></thead>
                                   <tbody className="divide-y divide-slate-100">
                                     {item.fieldComparisons.flatMap((field) => ([
@@ -4566,13 +4566,13 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                     ] as Array<[string, string, boolean]>).map(([label, storedValue, matched], valueIndex) => <tr className={matched ? "bg-white" : "bg-rose-50"} key={`${item.certificateId}-${field.rowIndex}-${valueIndex}`}>
                                       <td className="px-3 py-2"><strong>#{field.rowIndex} {field.materialName || "-"}</strong><span className="block text-slate-400">{field.sectionLabel || "-"}</span></td>
                                       <td className="px-3 py-2 font-bold">{label}</td><td className="px-3 py-2 font-semibold">{storedValue}</td>
-                                      <td className="px-3 py-2 font-semibold">{matched ? storedValue : (en ? "Not confirmed by OCR" : "OCR에서 확인되지 않음")}</td>
+                                      <td className="px-3 py-2 font-semibold">{matched ? storedValue : (en ? "Not confirmed in uploaded document" : "업로드 문서에서 확인되지 않음")}</td>
                                       <td className={`px-3 py-2 font-black ${matched ? "text-emerald-700" : "text-rose-700"}`}>{matched ? "MATCH" : "MISMATCH"}</td>
                                     </tr>))}
                                   </tbody>
                                 </table>
                               </div>
-                              <p className="mt-2 text-[11px] font-semibold text-slate-500">{en ? "For OCR mismatches, the uploaded column says not confirmed instead of inventing a value that the document reader could not reliably extract." : "OCR 불일치는 판독하지 못한 값을 임의로 만들지 않고 ‘OCR에서 확인되지 않음’으로 표시합니다."}</p>
+                              <p className="mt-2 text-[11px] font-semibold text-slate-500">{en ? "Digital PDFs use their embedded text layer; scanned images use OCR. Missing values remain explicitly unconfirmed instead of being invented." : "디지털 PDF는 내장 텍스트를 우선 사용하고 스캔 이미지만 OCR을 사용합니다. 누락값은 임의로 만들지 않고 ‘업로드 문서에서 확인되지 않음’으로 표시합니다."}</p>
                             </div> : null}
                           </div>
                         </details>
