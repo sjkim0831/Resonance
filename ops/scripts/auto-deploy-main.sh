@@ -9211,6 +9211,7 @@ governance_backup_only=false
 activity_backup_only=false
 identity_backup_only=false
 schema_backup_only=false
+flyway_delta_only=false
 if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:-false}" != "true" ]]; then
   database_change_files="$(git diff --name-only "$deployed_commit" "$target_commit" -- \
     apps/carbonet-api/src/main/resources/db/migration/postgresql)"
@@ -9230,6 +9231,19 @@ if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:
     activity_backup_only=false
     identity_backup_only=false
     backup_scope="safe-additive-schema"
+  fi
+  if [[ -n "$database_change_files" ]] \
+    && ! grep -Ev '^A[[:space:]]' <<<"$database_change_statuses" | grep -q . \
+    && python3 ops/scripts/classify-safe-additive-ddl.py --flyway-forward-only $database_change_files; then
+    flyway_delta_only=true
+    schema_backup_only=false
+    menu_backup_only=false
+    governance_backup_only=false
+    activity_backup_only=false
+    identity_backup_only=false
+    backup_required=false
+    backup_scope="flyway-forward-only"
+    echo "[auto-deploy] forward-only Flyway delta verified; pre-deploy database dump skipped"
   fi
   echo "[auto-deploy] database backup scope: $backup_scope"
 fi

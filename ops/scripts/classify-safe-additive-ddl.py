@@ -113,7 +113,9 @@ def classify_pinned_schema_reversible_bundle(
     )
 
 
-def classify(paths: list[Path], schema_reversible: bool = False) -> tuple[bool, str]:
+def classify(
+    paths: list[Path], schema_reversible: bool = False, flyway_forward_only: bool = False
+) -> tuple[bool, str]:
     created_tables: set[str] = set()
     created_functions: set[str] = set()
     statements: list[tuple[Path, str]] = []
@@ -150,7 +152,7 @@ def classify(paths: list[Path], schema_reversible: bool = False) -> tuple[bool, 
         )
         if index_match:
             table = normalized_name(index_match.group(1))
-            if table in created_tables:
+            if table in created_tables or flyway_forward_only:
                 continue
             return False, f"index-on-existing-table:{path}:{table}"
         insert_match = re.match(
@@ -159,7 +161,9 @@ def classify(paths: list[Path], schema_reversible: bool = False) -> tuple[bool, 
         )
         if insert_match:
             table = normalized_name(insert_match.group(1))
-            if table in created_tables:
+            if table in created_tables or (
+                flyway_forward_only and re.search(r"(?is)\bON\s+CONFLICT\b", statement)
+            ):
                 continue
             return False, f"insert-on-existing-table:{path}:{table}"
         function_match = re.match(
@@ -186,7 +190,11 @@ def classify(paths: list[Path], schema_reversible: bool = False) -> tuple[bool, 
                 return False, f"function-writes-existing-table:{path}:{function_name}:{','.join(foreign_targets)}"
             created_functions.add(function_name)
             continue
-        if schema_reversible and re.match(r"(?is)^DO\s+\$[A-Za-z0-9_]*\$", statement):
+        if (schema_reversible or flyway_forward_only) and re.match(r"(?is)^DO\s+\$[A-Za-z0-9_]*\$", statement):
+            if flyway_forward_only:
+                if re.search(r"(?is)\b(?:UPDATE|DELETE\s+FROM|TRUNCATE(?:\s+TABLE)?|DROP|ALTER)\b", statement):
+                    return False, f"destructive-write-in-do-block:{path}"
+                continue
             if re.search(r"(?is)\bEXECUTE\s+(FORMAT\s*\(|[^F])", statement):
                 return False, f"dynamic-sql-in-do-block:{path}"
             if re.search(r"(?is)\b(DROP|ALTER|CREATE|TRUNCATE)\s+(TABLE|SCHEMA|DATABASE|FUNCTION|TRIGGER)\b", statement):
@@ -217,14 +225,20 @@ def classify(paths: list[Path], schema_reversible: bool = False) -> tuple[bool, 
 
     if not created_tables and not (schema_reversible and created_functions):
         return False, "no-new-table-or-reversible-function"
-    return True, f"new-tables={len(created_tables)},new-functions={len(created_functions)},statements={len(statements)}"
+    mode = "flyway-forward-only" if flyway_forward_only else "safe-additive"
+    return True, f"mode={mode},new-tables={len(created_tables)},new-functions={len(created_functions)},statements={len(statements)}"
 
 
 def main() -> int:
     args = sys.argv[1:]
     schema_reversible = "--schema-reversible" in args
-    paths = [Path(value) for value in args if value != "--schema-reversible"]
-    safe, reason = classify(paths, schema_reversible=schema_reversible)
+    flyway_forward_only = "--flyway-forward-only" in args
+    paths = [Path(value) for value in args if value not in {"--schema-reversible", "--flyway-forward-only"}]
+    safe, reason = classify(
+        paths,
+        schema_reversible=schema_reversible,
+        flyway_forward_only=flyway_forward_only,
+    )
     print(("safe-additive " if safe else "full-backup ") + reason)
     return 0 if safe else 1
 

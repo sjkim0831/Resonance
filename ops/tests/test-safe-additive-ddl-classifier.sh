@@ -69,6 +69,29 @@ FOR EACH ROW EXECUTE FUNCTION record_framework_safe_example_history();
 SQL
 python3 "$CLASSIFIER" "$tmp_dir/safe.sql" | grep -q '^safe-additive '
 
+cat >"$tmp_dir/flyway-forward.sql" <<'SQL'
+INSERT INTO framework_actor_definition(actor_code,actor_name)
+VALUES ('LCA_REVIEWER','LCA reviewer')
+ON CONFLICT(actor_code) DO UPDATE SET actor_name=excluded.actor_name;
+CREATE TABLE IF NOT EXISTS framework_flyway_delta (id bigint PRIMARY KEY);
+CREATE INDEX IF NOT EXISTS idx_framework_flyway_delta_actor
+  ON framework_actor_definition(actor_code);
+DO $$ BEGIN IF false THEN EXECUTE 'grant select on framework_flyway_delta to carbonet_app'; END IF; END $$;
+SQL
+python3 "$CLASSIFIER" --flyway-forward-only "$tmp_dir/flyway-forward.sql" | grep -q 'mode=flyway-forward-only'
+for sql in \
+  'UPDATE framework_actor_definition SET actor_name='"'"'unsafe'"'"';' \
+  'DELETE FROM framework_actor_definition;' \
+  'DROP TABLE framework_actor_definition;' \
+  'ALTER TABLE framework_actor_definition DROP COLUMN actor_name;' \
+  'TRUNCATE TABLE framework_actor_definition;'; do
+  printf '%s\nCREATE TABLE framework_flyway_guard(id bigint);\n' "$sql" >"$tmp_dir/flyway-destructive.sql"
+  if python3 "$CLASSIFIER" --flyway-forward-only "$tmp_dir/flyway-destructive.sql" >/dev/null 2>&1; then
+    echo "destructive Flyway delta was accepted: $sql" >&2
+    exit 1
+  fi
+done
+
 cat >"$tmp_dir/reversible_function.sql" <<'SQL'
 CREATE OR REPLACE FUNCTION framework_safe_selector(payload jsonb)
 RETURNS jsonb LANGUAGE sql IMMUTABLE AS $$ SELECT payload $$;
@@ -111,6 +134,8 @@ for fixture in drop update alter existing_index insert do_block replace_function
 done
 
 grep -q 'backup_scope="safe-additive-schema"' "$DEPLOY_SCRIPT"
+grep -q 'backup_scope="flyway-forward-only"' "$DEPLOY_SCRIPT"
+grep -q 'backup_required=false' "$DEPLOY_SCRIPT"
 grep -q -- '--schema-reversible' "$DEPLOY_SCRIPT"
 grep -q 'pg_dump -U' "$DEPLOY_SCRIPT"
 grep -q -- '--format=custom' "$DEPLOY_SCRIPT"
