@@ -3890,10 +3890,22 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       const orderedEvidenceMismatchCount = verification.ocrEvidencePageComparisons
         ?.filter((page) => !page.tokenSequenceExact).length || 0;
       appendVerificationLog(verification.photoConsistent ? "OK" : "WARN", en ? "Issued-report candidate comparison completed." : "발급 리포트 후보 대조를 완료했습니다.", `certificate=${verification.certificateId || "-"}, candidates=${verification.comparisons?.length || 0}, exact=${verification.comparisons?.filter((item) => item.overallExactMatch).length || 0}, confidence=${verification.confidence}%, visual=${verification.visualSimilarity ?? 0}%, fieldMismatches=${verification.fieldMismatches?.length || 0}, orderedPageMismatches=${orderedEvidenceMismatchCount}`);
-      setPhotoVerification(verification);
       if (rawPdfFile && !exactPdfVerification && verification.certificateId) {
         exactPdfVerification = await verifyExactPdfFile(rawPdfFile, verification.certificateId);
       }
+      const exactIssuedSemanticMatch = exactPdfVerification?.status === "EXACT_PDF_MATCH"
+        && verification.numericDataExactMatch === true
+        && verification.chartDataExactMatch === true
+        && verification.tagExactMatch === true;
+      const effectiveVerification = exactIssuedSemanticMatch
+        ? {
+            ...verification,
+            chartVisualExactMatch: true,
+            chartExactMatch: true,
+            semanticStatus: "CONTENT_EXACT" as const
+          }
+        : verification;
+      setPhotoVerification(effectiveVerification);
       if (rawPdfFile) {
         if (!exactPdfVerification) {
           setResultTone("warning");
@@ -3907,11 +3919,11 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
           return;
         }
         const bytesExact = exactPdfVerification.status === "EXACT_PDF_MATCH";
-        const semanticExact = verification.semanticStatus === "CONTENT_EXACT";
+        const semanticExact = effectiveVerification.semanticStatus === "CONTENT_EXACT";
         setResultTone(bytesExact && semanticExact ? "success" : "danger");
-        setResultMessage(verification.semanticStatus === "DATA_TAMPERED"
+        setResultMessage(effectiveVerification.semanticStatus === "DATA_TAMPERED"
           ? (en ? "Data tampering detected: at least one report value differs from the issued dataset." : "데이터 변조를 감지했습니다. 리포트 개별 값 중 하나 이상이 발급 데이터와 다릅니다.")
-          : verification.semanticStatus === "CHART_TAMPERED"
+          : effectiveVerification.semanticStatus === "CHART_TAMPERED"
             ? (en ? "Chart tampering detected: a bar value or rendered bar shape differs from the issued report." : "막대그래프 변조를 감지했습니다. 그래프 숫자 또는 막대 모양이 발급본과 다릅니다.")
             : bytesExact
               ? (en ? `Exact issued PDF and semantic content match (${verification.confidence}%).` : `발급 PDF 바이트와 데이터·그래프가 모두 일치합니다(${verification.confidence}%).`)
@@ -4338,7 +4350,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                 </span>
                 {selectedReportType === "EMISSION_SURVEY" ? (
                   <span className={`col-span-2 rounded-lg px-3 py-2 ${photoVerification?.ocrEvidenceExactMatch ? "bg-emerald-100 text-emerald-900" : photoVerification ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-500"}`}>
-                    {en ? "All issued visible fields vs OCR" : "발급 화면 전체 항목 ↔ OCR"}: {photoVerification?.ocrEvidenceExactMatch ? `OK (${photoVerification.matchedOcrEvidenceTokenCount || 0}/${photoVerification.ocrEvidenceTokenCount || 0})` : photoVerification?.ocrEvidenceAvailable ? `FAIL (${photoVerification.matchedOcrEvidenceTokenCount || 0}/${photoVerification.ocrEvidenceTokenCount || 0})` : photoVerification ? (en ? "REISSUE REQUIRED" : "재발급 필요") : "-"}
+                  {en ? "All issued visible fields vs OCR" : "발급 화면 전체 항목 ↔ OCR"}: {pdfFileVerification?.status === "EXACT_PDF_MATCH" ? (en ? "CONFIRMED BY ORIGINAL PDF" : "원본 PDF로 확인") : photoVerification?.ocrEvidenceExactMatch ? `OK (${photoVerification.matchedOcrEvidenceTokenCount || 0}/${photoVerification.ocrEvidenceTokenCount || 0})` : photoVerification?.ocrEvidenceAvailable ? `FAIL (${photoVerification.matchedOcrEvidenceTokenCount || 0}/${photoVerification.ocrEvidenceTokenCount || 0})` : photoVerification ? (en ? "REISSUE REQUIRED" : "재발급 필요") : "-"}
                   </span>
                 ) : null}
                 <span className={`col-span-2 rounded-lg px-3 py-2 ${photoVerification?.semanticStatus === "CONTENT_EXACT" ? "bg-emerald-100 text-emerald-900" : photoVerification ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-600"}`}>
