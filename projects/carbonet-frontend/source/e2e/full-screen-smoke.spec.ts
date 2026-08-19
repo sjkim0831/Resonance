@@ -53,7 +53,7 @@ const routesById = new Map(manifest.routes.map((route) => [route.id, route]));
 const carbonMenuCodes = ["A1030102", "A1030103", "A1030104", "A1030105", "A1030106", "A1030110", "A1030201", "A1030202", "A1030203", "A1030204", "A1030205", "A1030301", "A1030302", "A1030303", "A1030304", "A1030305", "A10304", "A1030401", "A1030402", "A1030404", "A1030405"];
 const lcaMenuCodes = ["A104", "A10401", "A1040101", "A1040102", "A1040103", "A1040104", "A1040201", "A1040202", "A1040203", "A1040204", "A1040205", "A1040206", "A1040301", "A1040302", "A1040303", "A1040304", "A1040305", "A1040306", "A1040307"];
 const lcaSurveyDataCodes = new Set(["A1040103", "A1040201", "A1040202", "A1040307"]);
-const allowedWorkspaceActionPaths = new Set(["/admin/emission/project-operations", "/admin/emission/validate", "/admin/emission/result_list", "/admin/emission/survey-report", "/admin/emission/survey-report-verify", "/admin/emission/evidence-management", "/admin/emission/data_history", "/admin/emission/lci-classification", "/admin/emission/ecoinvent", "/admin/emission/survey-admin", "/admin/emission/survey-admin-data"]);
+const allowedWorkspaceActionPaths = new Set(["/admin/emission/project-operations", "/admin/emission/validate", "/admin/emission/result_list", "/admin/emission/survey-report", "/admin/emission/survey-report-verify", "/admin/emission/evidence-management", "/admin/emission/data_history", "/admin/emission/lci-classification", "/admin/emission/ecoinvent", "/admin/emission/survey-admin", "/admin/emission/survey-admin-data", "/admin/emission/report-template"]);
 
 test.use({ viewport: { width: 1440, height: 1000 } });
 test.describe.configure({ mode: "parallel" });

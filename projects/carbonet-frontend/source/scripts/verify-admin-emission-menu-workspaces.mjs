@@ -37,4 +37,4 @@ for (const route of ["/admin/emission/project-operations", "/admin/emission/vali
 for (const menuCode of menuCodes) assert.ok(smoke.includes(`\"${menuCode}\"`), `authenticated browser relay is missing menu: ${menuCode}`);
 for (const token of ["inspectAdminEmissionMenuModes", "adminEmissionMenuModeCount", "data-feature-index", "SURVEY_GRID", "allowedWorkspaceActionPaths"]) assert.ok(smoke.includes(token), `missing browser relay contract: ${token}`);
 
-console.log(`ADMIN_EMISSION_MENU_WORKSPACE_PASS menus=${menuCodes.length} carbon=21 lca=19 processes=${new Set(processCodes).size} cards=4 specializedSplit=1 realRoutes=10 fakeInputs=0 browserRelay=40`);
+console.log(`ADMIN_EMISSION_MENU_WORKSPACE_PASS menus=${menuCodes.length} carbon=21 lca=19 processes=${new Set(processCodes).size} cards=4 specializedSplit=1 realRoutes=11 fakeInputs=0 browserRelay=40`);
