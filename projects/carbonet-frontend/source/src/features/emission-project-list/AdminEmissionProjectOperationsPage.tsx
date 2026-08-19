@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
+import { AdminMenuWorkspaceContractPanel, currentAdminMenuCode, resolveAdminMenuWorkspace } from "../emission-common/adminMenuWorkspaceContracts";
 
 type Project = {
   id: string;
@@ -28,6 +29,8 @@ const empty: Payload = { items: [], total: 0, page: 1, size: 10, summary: [], si
 
 export function AdminEmissionProjectOperationsPage() {
   const en = isEnglish();
+  const menuCode = currentAdminMenuCode("A1030110");
+  const workspace = resolveAdminMenuWorkspace(menuCode, "A1030110");
   const [data, setData] = useState<Payload>(empty);
   const [keyword, setKeyword] = useState("");
   const [appliedKeyword, setAppliedKeyword] = useState("");
@@ -97,17 +100,16 @@ export function AdminEmissionProjectOperationsPage() {
       breadcrumbs={[
         { label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
         { label: en ? "Emission Operations" : "탄소배출 운영" },
-        { label: en ? "Project Operations" : "프로젝트 운영" },
+        { label: en ? workspace.titleEn : workspace.title },
       ]}
-      title={en ? "Emission Project Operations" : "배출량 프로젝트 운영"}
+      title={en ? workspace.titleEn : workspace.title}
     >
-      <div className="space-y-5" data-testid="admin-emission-project-operations">
+      <div className="space-y-5" data-testid="admin-emission-project-operations" data-active-menu-code={workspace.menuCode}>
+        <AdminMenuWorkspaceContractPanel contract={workspace} />
         <section className="rounded-2xl bg-gradient-to-r from-[#052b57] to-[#174ea6] p-6 text-white">
           <p className="text-sm font-bold text-blue-200">EMISSION PROJECT CONTROL</p>
           <h2 className="mt-1 text-2xl font-black">
-            {en
-              ? "Control scope, actors, deadlines, and readiness from one workspace."
-              : "프로젝트 범위·담당자·마감·업무 준비도를 한 화면에서 통제합니다."}
+            {en ? workspace.objectiveEn : workspace.objective}
           </h2>
           <p className="mt-2 text-sm text-blue-50">
             {en

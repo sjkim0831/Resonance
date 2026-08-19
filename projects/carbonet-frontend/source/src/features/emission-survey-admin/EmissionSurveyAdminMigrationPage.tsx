@@ -27,6 +27,7 @@ import type {
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { normalizeUnitValue, resolveUnitCategory } from "../emission-common/unitOptions";
 import { UnitCategorySelectPair } from "../emission-common/UnitCategorySelectPair";
+import { AdminMenuSpecializedWorkspace, AdminMenuWorkspaceContractPanel, currentAdminMenuCode, resolveAdminMenuWorkspace } from "../emission-common/adminMenuWorkspaceContracts";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { PageStatusNotice } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -1489,6 +1490,8 @@ function SectionEditor({
 
 export function EmissionSurveyAdminMigrationPage() {
   const en = isEnglish();
+  const menuCode = currentAdminMenuCode("A1040307");
+  const workspace = resolveAdminMenuWorkspace(menuCode, "A1040307");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const restoredReturnState = useMemo(() => loadSurveyAdminReturnState(), []);
   const [message, setMessage] = useState("");
@@ -2687,14 +2690,15 @@ export function EmissionSurveyAdminMigrationPage() {
       breadcrumbs={[
         { label: en ? "Home" : "홈" },
         { label: en ? "Emissions & Certification" : "배출/인증" },
-        { label: en ? "Emission Survey Management" : "배출 설문 관리" }
+        { label: en ? workspace.titleEn : workspace.title }
       ]}
-      title={stringOf(page as Record<string, unknown>, "pageTitle") || "배출 설문 관리"}
+      title={workspace.title || stringOf(page as Record<string, unknown>, "pageTitle") || "배출 설문 관리"}
       subtitle=""
       loading={false}
       loadingLabel={en ? "Loading the emission survey workspace..." : "배출 설문 작업공간을 불러오는 중입니다."}
     >
       <AdminWorkspacePageFrame>
+        <AdminMenuWorkspaceContractPanel contract={workspace} />
         {pageState.loading && !page && !pageState.error ? (
           <PageStatusNotice tone="warning">기본 화면을 먼저 표시하고 있습니다. 설문 데이터는 로딩이 끝나는 대로 이어서 표시됩니다.</PageStatusNotice>
         ) : null}
@@ -2704,6 +2708,7 @@ export function EmissionSurveyAdminMigrationPage() {
           <PageStatusNotice tone="warning">ecoinvent 자동 추천 배출계수가 있습니다. 각 행의 `확인` 버튼에서 Product / Activity / Geography를 확인하고 매핑을 확정하세요.</PageStatusNotice>
         ) : null}
 
+        {workspace.surface === "SURVEY_DATA" ? <>
         <section className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-5 shadow-sm" data-help-id="emission-survey-admin-classification">
           <MemberSectionToolbar
             title={<span>분류 선택 및 편집 시작</span>}
@@ -3004,6 +3009,7 @@ export function EmissionSurveyAdminMigrationPage() {
             totalCount={ecoinventMappingTotalCount}
           />
         ) : null}
+        </> : <AdminMenuSpecializedWorkspace contract={workspace} />}
       </AdminWorkspacePageFrame>
     </AdminPageShell>
   );
