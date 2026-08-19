@@ -440,6 +440,9 @@ assert 'projectName, { timeout: 20_000 }' in source
 assert 'start.waitFor({ state: "visible", timeout: 10_000 })' in source
 mutated_render_timeout = source.replace('projectName, { timeout: 20_000 }', 'projectName, { timeout: 8_000 }', 1)
 assert 'projectName, { timeout: 20_000 }' not in mutated_render_timeout
+assert '}, undefined, { timeout: 15_000 });' in source
+mutated_route_timeout = source.replace('}, undefined, { timeout: 15_000 });', '}, undefined, { timeout: 8_000 });', 1)
+assert '}, undefined, { timeout: 15_000 });' not in mutated_route_timeout
 print("PROJECT_TASK_BROWSER_ANONYMOUS_FAIL_CLOSED_PASS api=401 cookies=empty route=redirected evidence=truthful")
 PY
 

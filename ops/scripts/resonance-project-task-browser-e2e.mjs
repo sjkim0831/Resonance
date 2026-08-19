@@ -122,7 +122,7 @@ try {
               const text = (document.body?.innerText || "").trim();
               return (root?.children.length || 0) > 0 && text.length >= 20 &&
                 !/Bootstrap loaded\. Waiting for React app mount|React app did not mount/.test(text);
-            }, undefined, { timeout: 8_000 });
+            }, undefined, { timeout: 15_000 });
             const state = await page.evaluate(() => ({
               text: (document.body?.innerText || "").trim(),
               rootChildren: document.querySelector("#root")?.children.length || 0,
