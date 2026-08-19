@@ -45,11 +45,11 @@ contains "$HARNESS" '/admin/api/system/actor-process/dashboard/core'
 contains "$HARNESS" '/admin/api/system/actor-process/design-assets'
 contains "$HARNESS" 'compact=true&page=${page}&size=${PAGE_SIZE}'
 contains "$HARNESS" 'PAGE_SIZE="${CARBONET_USAGE_LEDGER_PAGE_SIZE:-100}"'
-contains "$HARNESS" 'PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-1}"'
-contains "$HARNESS" '[[ "$PAGE_FETCH_CONCURRENCY" == "1" ]]'
-contains "$HARNESS" '"$status" == "502" || "$status" == "503" || "$status" == "504"'
-contains "$HARNESS" 'PAGE_SIZE=100'
-contains "$HARNESS" 'retrying complete ledger with bounded pageSize=${PAGE_SIZE}'
+contains "$HARNESS" 'PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-3}"'
+contains "$HARNESS" '[[ "$PAGE_FETCH_CONCURRENCY" == "3" ]]'
+contains "$HARNESS" 'api_status_with_cookie()'
+contains "$HARNESS" 'cp -- "$COOKIE_JAR" "$page_cookie"'
+contains "$HARNESS" 'wait "$page_pid"'
 contains "$HARNESS" 'system-test-report/step-detail'
 contains "$HARNESS" 'reviewStatus:"APPROVED"'
 contains "$HARNESS" 'framework_runtime_release_identity_hash(runtime)'
@@ -84,23 +84,24 @@ not_contains "$HARNESS" 'set -x'
 pagination_performance_contract() {
   local candidate="$1" pagination_body
   grep -Fq 'PAGE_SIZE="${CARBONET_USAGE_LEDGER_PAGE_SIZE:-100}"' "$candidate" &&
-    grep -Fq 'PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-1}"' "$candidate" &&
-    grep -Fq '[[ "$PAGE_FETCH_CONCURRENCY" == "1" ]]' "$candidate" &&
-    grep -Fq 'status="$(api_status "$page_file" GET "/admin/api/system/actor-process/system-test-report?compact=true&page=${page}&size=${PAGE_SIZE}${scope_query}")"' "$candidate" \
+    grep -Fq 'PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-3}"' "$candidate" &&
+    grep -Fq '[[ "$PAGE_FETCH_CONCURRENCY" == "3" ]]' "$candidate" &&
+    grep -Fq 'api_status_with_cookie "$page_cookie" "$page_file"' "$candidate" &&
+    grep -Fq 'cp -- "$COOKIE_JAR" "$page_cookie"' "$candidate" &&
+    grep -Fq 'wait "$page_pid" || fail "compact page worker failed"' "$candidate" \
     || return 1
-  pagination_body="$(sed -n '/^page_count=\$(( (TOTAL_STEPS/,/^done$/p' "$candidate")"
-  [[ "$pagination_body" == *'for ((page=0; page<page_count; page+=1)); do'* ]] || return 1
-  [[ "$pagination_body" == *'"$page" == "0" && "$PAGE_SIZE" == "200"'* ]] || return 1
-  [[ "$pagination_body" == *'PAGE_SIZE=100'* ]] || return 1
-  [[ "$pagination_body" == *'page_count=$(( (TOTAL_STEPS + PAGE_SIZE - 1) / PAGE_SIZE ))'* ]] || return 1
-  ! printf '%s\n' "$pagination_body" | grep -Eq '[[:space:]]&[[:space:]]*$'
+  pagination_body="$(sed -n '/^page_count=\$(( (TOTAL_STEPS/,/^for ((page=0; page<page_count; page+=1)); do/p' "$candidate")"
+  [[ "$pagination_body" == *'for ((batch=0; batch<page_count; batch+=PAGE_FETCH_CONCURRENCY)); do'* ]] || return 1
+  [[ "$pagination_body" == *'page_cookie="$TMP_DIR/page-${page}.cookies"'* ]] || return 1
+  [[ "$pagination_body" == *'page_pids+=("$!")'* ]] || return 1
+  [[ "$pagination_body" == *'PAGE_FETCH_CONCURRENCY" -le 3'* ]]
 }
 
 pagination_self_test="$(env -u CARBONET_USAGE_LEDGER_PAGE_SIZE -u CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY \
   bash "$HARNESS" --self-test-pagination)"
 [[ "$pagination_self_test" == *'pageSize=100'* && "$pagination_self_test" == *'calls=6'* \
    && "$pagination_self_test" == *'legacyCalls=12'* && "$pagination_self_test" == *'requestReduction=50%'* \
-   && "$pagination_self_test" == *'maxConcurrency=1'* ]] \
+   && "$pagination_self_test" == *'maxConcurrency=3'* ]] \
   || fail "dynamic pagination performance self-test contract mismatch"
 pagination_performance_contract "$HARNESS" || fail "production pagination performance contract is incomplete"
 contains "$HARNESS" 'CARBONET_USAGE_LEDGER_RELEASE_INVARIANT_SCOPE'
@@ -115,16 +116,16 @@ if env -u CARBONET_USAGE_LEDGER_PAGE_SIZE -u CARBONET_USAGE_LEDGER_PAGE_CONCURRE
   bash "$TMP_DIR/page-size-regression-mutation.sh" --self-test-pagination >/dev/null 2>&1; then
   fail "page-size regression mutation survived"
 fi
-sed 's/CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-1/CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-2/' \
-  "$HARNESS" > "$TMP_DIR/shared-cookie-concurrency-mutation.sh"
+sed 's/CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-3/CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-4/' \
+  "$HARNESS" > "$TMP_DIR/unbounded-concurrency-mutation.sh"
 if env -u CARBONET_USAGE_LEDGER_PAGE_SIZE -u CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY \
-  bash "$TMP_DIR/shared-cookie-concurrency-mutation.sh" --self-test-pagination >/dev/null 2>&1; then
-  fail "shared-cookie concurrency mutation survived"
+  bash "$TMP_DIR/unbounded-concurrency-mutation.sh" --self-test-pagination >/dev/null 2>&1; then
+  fail "unbounded concurrency mutation survived"
 fi
-sed '/status=.*api_status.*system-test-report?compact=true/ s/$/ \&/' \
-  "$HARNESS" > "$TMP_DIR/background-fetch-mutation.sh"
-if pagination_performance_contract "$TMP_DIR/background-fetch-mutation.sh"; then
-  fail "background shared-cookie fetch mutation survived"
+sed 's/api_status_with_cookie "$page_cookie" "$page_file"/api_status_with_cookie "$COOKIE_JAR" "$page_file"/' \
+  "$HARNESS" > "$TMP_DIR/shared-cookie-mutation.sh"
+if pagination_performance_contract "$TMP_DIR/shared-cookie-mutation.sh"; then
+  fail "shared-cookie worker mutation survived"
 fi
 
 contains "$CONTROLLER" '@GetMapping("/system-test-report")'
@@ -278,4 +279,4 @@ grep -Fq 'runtime identity marker bootstrapped from DB+K8s' "$DEPLOY" \
 ! sed -n '/^verify_operational_usage_ledger_current_runtime_identity() {/,/^}/p' "$DEPLOY" | grep -Fq '$DEPLOY_STATE_FILE' \
   || fail "runtime identity verifier references the overall applied marker"
 
-printf '[operational-usage-ledger-e2e-contract] PASS auth=allowed+anonymous2+denied7+logoutLeaderExact1 pagination=dynamic+pageSize100+sequential1+requestReduction50pct orderContract=5keys+stepCodeTieMutation detail=full redactionMutations=7 branchTruth=actors+dualRoutes review=create-reload-idempotent-mismatch409-runtimeIdentity-cleanup pipeline=planner+frontend-pipeline+package+static+identity3+healthy-release-live pipelineRemovalMutations=4 paginationMutations=3 browser=desktop+390 helpAnchors=5 forbiddenChangeRequest=1\n'
+printf '[operational-usage-ledger-e2e-contract] PASS auth=allowed+anonymous2+denied7+logoutLeaderExact1 pagination=dynamic+pageSize100+privateCookieConcurrency3+requestReduction50pct orderContract=5keys+stepCodeTieMutation detail=full redactionMutations=7 branchTruth=actors+dualRoutes review=create-reload-idempotent-mismatch409-runtimeIdentity-cleanup pipeline=planner+frontend-pipeline+package+static+identity3+healthy-release-live pipelineRemovalMutations=4 paginationMutations=3 browser=desktop+390 helpAnchors=5 forbiddenChangeRequest=1\n'

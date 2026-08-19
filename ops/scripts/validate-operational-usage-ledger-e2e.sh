@@ -26,12 +26,12 @@ info() {
 }
 
 PAGE_SIZE="${CARBONET_USAGE_LEDGER_PAGE_SIZE:-100}"
-PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-1}"
+PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-3}"
 
 assert_pagination_performance_mutations() {
   local total=572 legacy_page_size=50 page_count legacy_page_count page active=0 max_active=0 covered=0 expected_count
   [[ "$PAGE_SIZE" == "100" ]] || fail "page-size regression mutation survived"
-  [[ "$PAGE_FETCH_CONCURRENCY" == "1" ]] || fail "shared-cookie concurrency mutation survived"
+  [[ "$PAGE_FETCH_CONCURRENCY" == "3" ]] || fail "bounded page concurrency mutation survived"
   page_count=$(( (total + PAGE_SIZE - 1) / PAGE_SIZE ))
   legacy_page_count=$(( (total + legacy_page_size - 1) / legacy_page_size ))
   [[ "$page_count" == "6" && "$legacy_page_count" == "12" ]] \
@@ -40,10 +40,10 @@ assert_pagination_performance_mutations() {
     active=$((active+1)); (( active > max_active )) && max_active="$active"
     expected_count=$(( total - page * PAGE_SIZE )); (( expected_count > PAGE_SIZE )) && expected_count="$PAGE_SIZE"
     covered=$((covered+expected_count))
-    active=$((active-1))
+    (( active == PAGE_FETCH_CONCURRENCY || page + 1 == page_count )) && active=0
   done
-  [[ "$covered" == "$total" && "$max_active" == "1" && "$active" == "0" ]] \
-    || fail "sequential pagination coverage/concurrency mutation survived"
+  [[ "$covered" == "$total" && "$max_active" == "$PAGE_FETCH_CONCURRENCY" && "$active" == "0" ]] \
+    || fail "bounded pagination coverage/concurrency mutation survived"
   info "pagination self-test PASS total=${total} pageSize=${PAGE_SIZE} calls=${page_count} legacyCalls=${legacy_page_count} requestReduction=50% maxConcurrency=${max_active}"
 }
 
@@ -227,6 +227,13 @@ api_status() {
       -H 'Content-Type: application/json' -X "$method" --data-binary "@$body_file" \
       -o "$output_file" -w '%{http_code}' "$BASE_URL$path")" || status=000
   fi
+  printf '%s\n' "$status"
+}
+
+api_status_with_cookie() {
+  local cookie_file="$1" output_file="$2" path="$3" status
+  status="$(curl "${CARBONET_CURL_ARGS[@]}" -sS -b "$cookie_file" -c "$cookie_file" \
+    -o "$output_file" -w '%{http_code}' "$BASE_URL$path")" || status=000
   printf '%s\n' "$status"
 }
 
@@ -429,24 +436,36 @@ jq -e --arg user "$CARBONET_QA_AUTH_EFFECTIVE_USER" '.authenticated==true and ((
 
 page_count=$(( (TOTAL_STEPS + PAGE_SIZE - 1) / PAGE_SIZE ))
 : > "$ORDER_FILE"; : > "$IDS_FILE"
-# This loop intentionally remains sequential: api_status reads and writes the
-# same authenticated cookie jar, and each complex page query needs a stable,
-# ordered validation boundary without a concurrent database burst.
+[[ "$PAGE_FETCH_CONCURRENCY" =~ ^[1-9][0-9]*$ && "$PAGE_FETCH_CONCURRENCY" -le 3 ]] \
+  || fail "page concurrency must be between 1 and 3"
+scope_query=""
+[[ -z "$SCOPE_PROCESS" ]] || scope_query="&processCode=${SCOPE_PROCESS}"
+
+# Each worker receives a private copy of the already-authenticated cookie jar.
+# This permits bounded read-only fetch concurrency without concurrent writes to
+# shared authentication state. Responses are validated and merged below in
+# deterministic page order.
+for ((batch=0; batch<page_count; batch+=PAGE_FETCH_CONCURRENCY)); do
+  page_pids=()
+  for ((offset=0; offset<PAGE_FETCH_CONCURRENCY && batch+offset<page_count; offset+=1)); do
+    page=$((batch+offset))
+    page_file="$TMP_DIR/page-${page}.json"
+    page_cookie="$TMP_DIR/page-${page}.cookies"
+    page_status="$TMP_DIR/page-${page}.status"
+    cp -- "$COOKIE_JAR" "$page_cookie"
+    (api_status_with_cookie "$page_cookie" "$page_file" \
+      "/admin/api/system/actor-process/system-test-report?compact=true&page=${page}&size=${PAGE_SIZE}${scope_query}" \
+      >"$page_status") &
+    page_pids+=("$!")
+  done
+  for page_pid in "${page_pids[@]}"; do
+    wait "$page_pid" || fail "compact page worker failed"
+  done
+done
+
 for ((page=0; page<page_count; page+=1)); do
   page_file="$TMP_DIR/page-${page}.json"
-  scope_query=""
-  [[ -z "$SCOPE_PROCESS" ]] || scope_query="&processCode=${SCOPE_PROCESS}"
-  status="$(api_status "$page_file" GET "/admin/api/system/actor-process/system-test-report?compact=true&page=${page}&size=${PAGE_SIZE}${scope_query}")"
-  # Keep the 200-row fast path to reduce requests. When the first query exceeds
-  # the gateway budget, halve the page size so the complete ordered ledger can
-  # still finish within the bounded deploy gate without a database burst.
-  if [[ "$page" == "0" && "$PAGE_SIZE" == "200" \
-     && ( "$status" == "502" || "$status" == "503" || "$status" == "504" ) ]]; then
-    PAGE_SIZE=100
-    page_count=$(( (TOTAL_STEPS + PAGE_SIZE - 1) / PAGE_SIZE ))
-    info "compact page 0 gateway timeout http=${status}; retrying complete ledger with bounded pageSize=${PAGE_SIZE}"
-    status="$(api_status "$page_file" GET "/admin/api/system/actor-process/system-test-report?compact=true&page=${page}&size=${PAGE_SIZE}${scope_query}")"
-  fi
+  status="$(<"$TMP_DIR/page-${page}.status")"
   [[ "$status" == "200" ]] || fail "compact page ${page} failed (http=$status)"
   expected_count=$(( TOTAL_STEPS - page * PAGE_SIZE )); (( expected_count > PAGE_SIZE )) && expected_count=$PAGE_SIZE
   jq -e --argjson page "$page" --argjson size "$PAGE_SIZE" --argjson total "$TOTAL_STEPS" --argjson returned "$expected_count" '
