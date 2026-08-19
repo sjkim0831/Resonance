@@ -4500,6 +4500,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                       <p className="font-black">{sectionIndex + 1}. {section.sectionLabel}</p>
                                       <p className="mt-1">{en ? "Emission" : "배출량"}: {section.expectedTotalEmission} ↔ {section.actualTotalEmission || (en ? "MISSING" : "누락")} <strong>{section.totalEmissionMatched ? "MATCH" : "MISMATCH"}</strong></p>
                                       <p>{en ? "Share" : "비율"}: {section.expectedSharePercent}% ↔ {section.actualSharePercent ? `${section.actualSharePercent}%` : (en ? "MISSING" : "누락")} <strong>{section.sharePercentMatched ? "MATCH" : "MISMATCH"}</strong></p>
+                                      {section.unexpectedNumbers?.length ? <p className="mt-1 font-black text-rose-800">{en ? "Unexpected added values" : "예상하지 않은 추가값"}: {section.unexpectedNumbers.join(", ")} <strong>MISMATCH</strong></p> : null}
                                     </div>
                                   ))}
                                 </div>

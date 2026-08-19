@@ -652,6 +652,9 @@ public class ReportVerificationRegistryService {
             List<String> sectionNumbers = extractCanonicalNumbers(sectionText.replace(",", ""));
             String actualTotal = sectionNumbers.isEmpty() ? "" : sectionNumbers.get(0);
             String actualShare = sectionNumbers.size() < 2 ? "" : sectionNumbers.get(sectionNumbers.size() - 1);
+            List<String> unexpectedNumbers = sectionNumbers.size() <= 2
+                    ? List.of()
+                    : new ArrayList<>(sectionNumbers.subList(1, sectionNumbers.size() - 1));
             boolean labelMatched = sectionStart >= 0 && containsText(normalizedPageText, label);
             boolean totalMatched = total.equals(actualTotal);
             boolean shareMatched = share.equals(actualShare);
@@ -665,7 +668,8 @@ public class ReportVerificationRegistryService {
             comparison.put("labelMatched", labelMatched);
             comparison.put("totalEmissionMatched", totalMatched);
             comparison.put("sharePercentMatched", shareMatched);
-            comparison.put("matched", labelMatched && totalMatched && shareMatched);
+            comparison.put("unexpectedNumbers", unexpectedNumbers);
+            comparison.put("matched", labelMatched && totalMatched && shareMatched && unexpectedNumbers.isEmpty());
             comparisons.add(comparison);
         }
 

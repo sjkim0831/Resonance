@@ -58,6 +58,7 @@ requireText("service", "expectedTokens.equals(actualTokens)");
 requireText("service", 'pageComparison.put("unexpectedTokens", pageUnexpected)');
 requireText("service", 'Boolean.TRUE.equals(score.get("sectionSummaryExactMatch"))');
 requireText("service", 'result.put("unexpectedSectionSummaryNumbers", unexpected)');
+requireText("service", 'comparison.put("unexpectedNumbers", unexpectedNumbers)');
 requireText("service", "scoreDetailTablePage(normalizedOcrPages, dataset)");
 requireText("service", "MAX_VERIFICATION_PAGES = 10");
 requireText("service", "selectSectionSummaryPage(normalizedOcrPages, summaries)");
@@ -111,6 +112,8 @@ requireText("page", 'en ? "Pages 2–3 · Graph data in report section order" : 
 requireText("page", 'section.totalEmissionMatched ? "MATCH" : "MISMATCH"');
 requireText("page", 'item.sectionSummaryComparisons.map((section, sectionIndex)');
 requireText("page", 'item.unexpectedSectionSummaryNumbers.join(", ")');
+requireText("page", 'section.unexpectedNumbers.join(", ")');
+requireText("page", "예상하지 않은 추가값");
 requireText("page", 'item.comparisonDetails.filter((detail) => detail.category !== "CHART")');
 rejectText("page", 'photoVerification.sectionSummaryComparisons.map((section)');
 requireText("page", 'className="order-1 border-t border-slate-200 pt-3"');

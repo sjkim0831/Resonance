@@ -160,6 +160,11 @@ class ReportVerificationRegistryServicePdfTest {
         assertTrue((Boolean) exact.get("sectionSummaryExactMatch"));
         assertFalse((Boolean) tampered.get("sectionSummaryExactMatch"));
         assertEquals(List.of("1.62"), tampered.get("unexpectedSectionSummaryNumbers"));
+        List<Map<String, Object>> comparisons =
+                (List<Map<String, Object>>) tampered.get("sectionSummaryComparisons");
+        assertTrue((Boolean) comparisons.get(0).get("matched"));
+        assertEquals(List.of("1.62"), comparisons.get(1).get("unexpectedNumbers"));
+        assertFalse((Boolean) comparisons.get(1).get("matched"));
     }
 
     @Test

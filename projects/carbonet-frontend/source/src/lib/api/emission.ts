@@ -320,6 +320,7 @@ export type ReportPhotoVerificationResponse = {
     labelMatched: boolean;
     totalEmissionMatched: boolean;
     sharePercentMatched: boolean;
+    unexpectedNumbers: string[];
     matched: boolean;
   }>;
   unexpectedSectionSummaryNumbers?: string[];
@@ -456,6 +457,7 @@ export type ReportOcrComparison = {
     labelMatched: boolean;
     totalEmissionMatched: boolean;
     sharePercentMatched: boolean;
+    unexpectedNumbers: string[];
     matched: boolean;
   }>;
   unexpectedSectionSummaryNumbers?: string[];
