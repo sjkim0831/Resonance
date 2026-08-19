@@ -152,6 +152,8 @@ REVIEW_CREATED=0
 POSTGRES_LEADER="${RESONANCE_POSTGRES_LEADER_POD:-}"
 RUNTIME_IDENTITY_HASH=""
 POD_TEMPLATE_SHA256=""
+BROWSER_CONTRACT_PID=""
+BROWSER_CONTRACT_LOG="$TMP_DIR/browser-contract.log"
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || fail "required command not found: $1"
@@ -206,6 +208,10 @@ finalize() {
   local original_status=$? cleanup_status=0 logout_status=0
   trap - EXIT INT TERM
   set +e
+  if [[ -n "$BROWSER_CONTRACT_PID" ]] && kill -0 "$BROWSER_CONTRACT_PID" 2>/dev/null; then
+    kill -TERM "$BROWSER_CONTRACT_PID" 2>/dev/null || true
+    wait "$BROWSER_CONTRACT_PID" 2>/dev/null || true
+  fi
   cleanup_owned_review || cleanup_status=$?
   if [[ "${CARBONET_QA_AUTH_SESSION_ACTIVE:-}" == "1" ]]; then
     if [[ -f "$ORDINARY_COOKIE_JAR" ]]; then carbonet_qa_logout "$ORDINARY_COOKIE_JAR" "$BASE_URL" || logout_status=$?;
@@ -434,6 +440,13 @@ status="$(api_status "$session_file" GET '/api/frontend/session')"
 jq -e --arg user "$CARBONET_QA_AUTH_EFFECTIVE_USER" '.authenticated==true and ((.actualUserId // .userId // "")|ascii_downcase)==($user|ascii_downcase) and ((.authorCode // "") as $role | ($role=="ROLE_SYSTEM_MASTER" or $role=="ROLE_SYSTEM_ADMIN"))' "$session_file" >/dev/null \
   || fail "allowed QA account is not SYSTEM_MASTER or SYSTEM_ADMIN"
 
+if [[ "$RELEASE_INVARIANT_SCOPE" != true ]]; then
+  browser_cookie="$TMP_DIR/browser.cookies"
+  cp -- "$COOKIE_JAR" "$browser_cookie"
+  (run_browser_contract "$browser_cookie") >"$BROWSER_CONTRACT_LOG" 2>&1 &
+  BROWSER_CONTRACT_PID="$!"
+fi
+
 page_count=$(( (TOTAL_STEPS + PAGE_SIZE - 1) / PAGE_SIZE ))
 : > "$ORDER_FILE"; : > "$IDS_FILE"
 scope_query=""
@@ -548,8 +561,14 @@ cleanup_owned_review || fail "exact review cleanup failed"
 [[ "$(db_scalar "select count(*) from framework_system_usage_review where idempotency_key='${REVIEW_KEY}'")" == "0" ]] || fail "review cleanup after-count is not zero"
 info "review PASS before=0 persisted=1 idempotent=1 mismatch409=1 rowsAfterMismatch=1 linkedJobs=0 runtimeIdentity=exact podTemplate=exact after=0"
 
-if [[ "$RELEASE_INVARIANT_SCOPE" != true ]]; then
-  run_browser_contract "$COOKIE_JAR"
+if [[ -n "$BROWSER_CONTRACT_PID" ]]; then
+  browser_status=0
+  wait "$BROWSER_CONTRACT_PID" || browser_status=$?
+  if (( browser_status != 0 )); then
+    cat "$BROWSER_CONTRACT_LOG" >&2
+    fail "browser contract failed (status=$browser_status)"
+  fi
+  cat "$BROWSER_CONTRACT_LOG"
 fi
 carbonet_qa_logout "$COOKIE_JAR" "$BASE_URL" || fail "system administrator logout failed"
 
