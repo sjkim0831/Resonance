@@ -120,6 +120,7 @@ requireText("page", 'className="order-5 mt-4 overflow-auto border border-slate-2
 requireText("page", 'en ? "Page 1 · Report totals and GWP" : "1페이지 · 레포트 총계·GWP 대조"');
 requireText("page", 'en ? "Page 1 · Product and byproduct mass and emissions" : "1페이지 · 제품·부산물 질량 및 배출량 대조"');
 requireText("page", 'en ? "Page 4 · Detailed table comparison" : "4페이지 · 상세표 일치·불일치"');
+requireText("page", 'en ? "Page 4 · Detailed calculation results table" : "4페이지 · 상세 계산 결과표"');
 requireText("page", 'selectedReportType === "LCA_SUMMARY" || !item.fieldComparisons?.length');
 requireText("page", 'en ? "Uploaded document value" : "업로드 문서값"');
 requireText("page", '디지털 PDF는 내장 텍스트를 우선 사용하고 스캔 이미지만 OCR을 사용합니다.');

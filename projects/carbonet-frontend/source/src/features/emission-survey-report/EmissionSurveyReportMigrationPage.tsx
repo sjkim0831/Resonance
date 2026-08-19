@@ -4550,7 +4550,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                               </p>
                             ) : null}
                             {selectedReportType !== "LCA_SUMMARY" && item.fieldComparisons?.length ? <div className="order-4 mt-4 border-t border-slate-200 pt-3">
-                              <p className="font-black text-slate-900">{en ? "Page 4 · Stored values vs uploaded document values" : "4페이지 · DB 저장값 ↔ 업로드 문서값"} ({item.fieldComparisons.filter((field) => field.rowMatched).length}/{item.fieldComparisons.length} {en ? "rows matched" : "행 일치"})</p>
+                              <p className="font-black text-slate-900">{en ? "Page 4 · Detailed calculation results table" : "4페이지 · 상세 계산 결과표"} ({item.fieldComparisons.filter((field) => field.rowMatched).length}/{item.fieldComparisons.length} {en ? "rows matched" : "행 일치"})</p>
                               <div className="mt-2 max-h-96 overflow-auto border border-slate-200">
                                 <table className="w-full min-w-[760px] border-collapse text-left text-[11px]">
                                   <thead className="sticky top-0 bg-slate-100 text-slate-700"><tr>
