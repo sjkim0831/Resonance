@@ -423,15 +423,14 @@ page_count=$(( (TOTAL_STEPS + PAGE_SIZE - 1) / PAGE_SIZE ))
 for ((page=0; page<page_count; page+=1)); do
   page_file="$TMP_DIR/page-${page}.json"
   status="$(api_status "$page_file" GET "/admin/api/system/actor-process/system-test-report?compact=true&page=${page}&size=${PAGE_SIZE}")"
-  # The interactive production page intentionally uses 50 rows. Keep the
-  # 200-row fast path to reduce requests, but fall back to the real UI page
-  # size when an ingress/backend gateway times out before any page is
-  # accepted. The complete ordered ledger is still verified sequentially.
+  # Keep the 200-row fast path to reduce requests. When the first query exceeds
+  # the gateway budget, halve the page size so the complete ordered ledger can
+  # still finish within the bounded deploy gate without a database burst.
   if [[ "$page" == "0" && "$PAGE_SIZE" == "200" \
      && ( "$status" == "502" || "$status" == "503" || "$status" == "504" ) ]]; then
-    PAGE_SIZE=50
+    PAGE_SIZE=100
     page_count=$(( (TOTAL_STEPS + PAGE_SIZE - 1) / PAGE_SIZE ))
-    info "compact page 0 gateway timeout http=${status}; retrying complete ledger with production UI pageSize=${PAGE_SIZE}"
+    info "compact page 0 gateway timeout http=${status}; retrying complete ledger with bounded pageSize=${PAGE_SIZE}"
     status="$(api_status "$page_file" GET "/admin/api/system/actor-process/system-test-report?compact=true&page=${page}&size=${PAGE_SIZE}")"
   fi
   [[ "$status" == "200" ]] || fail "compact page ${page} failed (http=$status)"
