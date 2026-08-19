@@ -436,6 +436,10 @@ assert '["accessToken", "refreshToken"]' in anonymous
 assert "await page.waitForURL" in anonymous
 assert "artifacts=5" not in source
 assert "certificate=valid" not in source
+assert 'projectName, { timeout: 20_000 }' in source
+assert 'start.waitFor({ state: "visible", timeout: 10_000 })' in source
+mutated_render_timeout = source.replace('projectName, { timeout: 20_000 }', 'projectName, { timeout: 8_000 }', 1)
+assert 'projectName, { timeout: 20_000 }' not in mutated_render_timeout
 print("PROJECT_TASK_BROWSER_ANONYMOUS_FAIL_CLOSED_PASS api=401 cookies=empty route=redirected evidence=truthful")
 PY
 

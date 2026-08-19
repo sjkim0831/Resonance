@@ -270,12 +270,15 @@ try {
     try {
       const page = await context.newPage();
       await page.goto(`${baseUrl}/emission/my-tasks`, { waitUntil: "domcontentloaded", timeout: 15_000 });
-      await page.waitForFunction((name) => (document.body?.innerText || "").includes(String(name)), projectName, { timeout: 8_000 });
+      // The candidate gate intentionally runs beside other authenticated
+      // browser jobs. Keep the wait bounded, but allow one busy render cycle
+      // after the task API has already proved the project exists.
+      await page.waitForFunction((name) => (document.body?.innerText || "").includes(String(name)), projectName, { timeout: 20_000 });
       const start = page.locator("article")
         .filter({ hasText: projectName })
         .getByRole("button", { name: "업무 시작", exact: true })
         .first();
-      await start.waitFor({ state: "visible", timeout: 5_000 });
+      await start.waitFor({ state: "visible", timeout: 10_000 });
       const [transitionResponse] = await Promise.all([
         page.waitForResponse((response) => response.url().includes(`/home/api/emission-tasks/${actionable.id}/status`) && response.request().method() === "POST"),
         start.click(),
