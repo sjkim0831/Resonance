@@ -65,4 +65,4 @@ for token in (
 PY
 
 bash -n "$AUTO"
-printf '[automation-only-deploy-contract] PASS prevalidation=clean+sha-bound serving=health+asset+public-provenance authority=runtime-ledger+backstage longE2E=runtime-or-frontend-only\n'
+printf '[automation-only-deploy-contract] PASS prevalidation=clean+sha-bound serving=health+asset+public-provenance authority=runtime-ledger+backstage screenPreview=runtime-or-frontend-only longE2E=runtime-or-frontend-only\n'
