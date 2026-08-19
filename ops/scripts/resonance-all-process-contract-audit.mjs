@@ -651,8 +651,8 @@ async function loadLiveReport() {
     // aggregation. Production normally completes near 30 seconds, so using
     // that same value as the abort boundary caused healthy catalog-only
     // deployments to fail nondeterministically. Keep the ordinary audit
-    // budget unchanged and give deployment preflight one explicit 60s bound.
-    signal: AbortSignal.timeout(Math.max(smokeTimeoutMs, deploymentPreflight ? 60_000 : 30_000)),
+    // budget unchanged and give deployment preflight one explicit 90s bound.
+    signal: AbortSignal.timeout(Math.max(smokeTimeoutMs, deploymentPreflight ? 90_000 : 30_000)),
   });
   if (!reportResponse.ok) throw new Error(`system-test-report failed with HTTP ${reportResponse.status}`);
   const contentType = reportResponse.headers.get("content-type") || "";
