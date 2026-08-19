@@ -169,6 +169,34 @@ grep -Fq 'targetRows=0/0/0 liveLedger=1 health=UP' "$TMP/happy.log"
 run_helper >"$TMP/no-quarantine.log"
 [[ ! -s "$TMP/no-quarantine.log" && "$(sha256sum "$ARCHIVE" | awk '{print $1}')" == "$SOURCE_HASH" ]]
 
+# The auto-deploy parent already owns the deployment flock. Its child must
+# validate and reuse that exact inherited descriptor instead of deadlocking on
+# a second open-file-description lock. Unlocked and foreign descriptors remain
+# fail-closed and cannot retire evidence.
+write_case
+exec {parent_lock_fd}>"$LOCK"
+flock -n "$parent_lock_fd"
+CARBONET_DEPLOY_INHERITED_LOCK_FD="$parent_lock_fd" run_helper >"$TMP/inherited-lock.log"
+[[ ! -e "$QUARANTINE" && -f "$RETIRED/${CANDIDATE}.legacy-orphan-runtime-quarantine.state" ]]
+flock -u "$parent_lock_fd"
+exec {parent_lock_fd}>&-
+
+write_case
+exec {unlocked_fd}>"$LOCK"
+status=0
+CARBONET_DEPLOY_INHERITED_LOCK_FD="$unlocked_fd" run_helper >/dev/null 2>&1 || status=$?
+[[ "$status" == 79 && -f "$QUARANTINE" && ! -e "$RETIRED" ]]
+exec {unlocked_fd}>&-
+
+write_case
+exec {foreign_fd}>"$TMP/foreign.lock"
+flock -n "$foreign_fd"
+status=0
+CARBONET_DEPLOY_INHERITED_LOCK_FD="$foreign_fd" run_helper >/dev/null 2>&1 || status=$?
+[[ "$status" == 79 && -f "$QUARANTINE" && ! -e "$RETIRED" ]]
+flock -u "$foreign_fd"
+exec {foreign_fd}>&-
+
 # Same-image PodTemplate changes cannot be hidden by retaining or rewriting the
 # mutable Deployment annotation; the independent DB digest remains authority.
 write_case

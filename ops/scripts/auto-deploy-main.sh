@@ -3266,9 +3266,11 @@ verify_bootstrap_orphan_recovery_helper || exit $?
 orphan_recovery_target_commit="${CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT:-${CARBONET_RECOVERY_TARGET_COMMIT:-}}"
 if [[ -n "$orphan_recovery_target_commit" ]]; then
   CARBONET_ORPHAN_RECOVERY_TARGET_COMMIT="$orphan_recovery_target_commit" \
+    CARBONET_DEPLOY_INHERITED_LOCK_FD=9 \
     bash "$ORPHAN_RECOVERY_HELPER" "$ROOT_DIR"
 else
-  bash "$ORPHAN_RECOVERY_HELPER" "$ROOT_DIR"
+  CARBONET_DEPLOY_INHERITED_LOCK_FD=9 \
+    bash "$ORPHAN_RECOVERY_HELPER" "$ROOT_DIR"
 fi
 if [[ -s "$RUNTIME_LEDGER_QUARANTINE_FILE" \
    && ( "${CARBONET_RECOVERY_ONLY:-false}" != true \

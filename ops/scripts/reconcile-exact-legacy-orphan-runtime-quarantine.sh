@@ -211,8 +211,26 @@ stable_proof() {
 read_exact_contract || exit 0
 
 mkdir -p "$(dirname "$LOCK_FILE")"
-exec 9>"$LOCK_FILE"
-flock -n 9 || { log 'RETRY deployment lock is held; evidence unchanged' >&2; exit 75; }
+inherited_lock_fd="${CARBONET_DEPLOY_INHERITED_LOCK_FD:-}"
+if [[ -n "$inherited_lock_fd" ]]; then
+  [[ "$inherited_lock_fd" =~ ^[0-9]+$ && -e "/proc/$$/fd/$inherited_lock_fd" ]] \
+    || fail 'inherited deployment lock descriptor is unavailable'
+  inherited_lock_path="$(readlink -f "/proc/$$/fd/$inherited_lock_fd" 2>/dev/null || true)"
+  expected_lock_path="$(readlink -f "$LOCK_FILE" 2>/dev/null || true)"
+  [[ -n "$inherited_lock_path" && "$inherited_lock_path" == "$expected_lock_path" ]] \
+    || fail 'inherited deployment lock descriptor targets a foreign path'
+  exec {lock_probe_fd}>"$LOCK_FILE" \
+    || fail 'deployment lock ownership probe could not be opened'
+  if flock -n "$lock_probe_fd"; then
+    flock -u "$lock_probe_fd" 2>/dev/null || true
+    exec {lock_probe_fd}>&-
+    fail 'inherited deployment lock descriptor is not locked'
+  fi
+  exec {lock_probe_fd}>&-
+else
+  exec 9>"$LOCK_FILE"
+  flock -n 9 || { log 'RETRY deployment lock is held; evidence unchanged' >&2; exit 75; }
+fi
 
 read_exact_contract || fail 'exact quarantine contract drifted while acquiring lock'
 pin_markers_and_obligations || fail 'markers, ownership, runtime candidate checkpoint, or pending obligations are not the pinned baseline'
