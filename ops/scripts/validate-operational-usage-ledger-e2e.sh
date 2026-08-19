@@ -165,8 +165,8 @@ for command_name in curl jq node kubectl git awk sort uniq; do require_cmd "$com
 [[ "$REVIEW_KEY" =~ ^[A-Za-z0-9._:-]+$ ]] || fail "generated review ownership key is unsafe"
 [[ "$PAGE_SIZE" =~ ^[1-9][0-9]*$ ]] && (( PAGE_SIZE <= 200 )) \
   || fail "usage ledger page size must be an integer from 1 to 200"
-[[ "$PAGE_FETCH_CONCURRENCY" == "1" ]] \
-  || fail "usage ledger pagination must remain sequential for cookie and database snapshot safety"
+[[ "$PAGE_FETCH_CONCURRENCY" =~ ^[1-3]$ ]] \
+  || fail "usage ledger page concurrency must be an integer from 1 to 3"
 
 resolve_postgres_leader() {
   local pod recovery
@@ -436,8 +436,6 @@ jq -e --arg user "$CARBONET_QA_AUTH_EFFECTIVE_USER" '.authenticated==true and ((
 
 page_count=$(( (TOTAL_STEPS + PAGE_SIZE - 1) / PAGE_SIZE ))
 : > "$ORDER_FILE"; : > "$IDS_FILE"
-[[ "$PAGE_FETCH_CONCURRENCY" =~ ^[1-9][0-9]*$ && "$PAGE_FETCH_CONCURRENCY" -le 3 ]] \
-  || fail "page concurrency must be between 1 and 3"
 scope_query=""
 [[ -z "$SCOPE_PROCESS" ]] || scope_query="&processCode=${SCOPE_PROCESS}"
 

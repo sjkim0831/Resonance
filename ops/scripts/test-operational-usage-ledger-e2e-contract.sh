@@ -47,6 +47,8 @@ contains "$HARNESS" 'compact=true&page=${page}&size=${PAGE_SIZE}'
 contains "$HARNESS" 'PAGE_SIZE="${CARBONET_USAGE_LEDGER_PAGE_SIZE:-100}"'
 contains "$HARNESS" 'PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-3}"'
 contains "$HARNESS" '[[ "$PAGE_FETCH_CONCURRENCY" == "3" ]]'
+contains "$HARNESS" '[[ "$PAGE_FETCH_CONCURRENCY" =~ ^[1-3]$ ]]'
+not_contains "$HARNESS" 'usage ledger pagination must remain sequential'
 contains "$HARNESS" 'api_status_with_cookie()'
 contains "$HARNESS" 'cp -- "$COOKIE_JAR" "$page_cookie"'
 contains "$HARNESS" 'wait "$page_pid"'
@@ -86,6 +88,7 @@ pagination_performance_contract() {
   grep -Fq 'PAGE_SIZE="${CARBONET_USAGE_LEDGER_PAGE_SIZE:-100}"' "$candidate" &&
     grep -Fq 'PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-3}"' "$candidate" &&
     grep -Fq '[[ "$PAGE_FETCH_CONCURRENCY" == "3" ]]' "$candidate" &&
+    grep -Fq '[[ "$PAGE_FETCH_CONCURRENCY" =~ ^[1-3]$ ]]' "$candidate" &&
     grep -Fq 'api_status_with_cookie "$page_cookie" "$page_file"' "$candidate" &&
     grep -Fq 'cp -- "$COOKIE_JAR" "$page_cookie"' "$candidate" &&
     grep -Fq 'wait "$page_pid" || fail "compact page worker failed"' "$candidate" \
@@ -94,7 +97,7 @@ pagination_performance_contract() {
   [[ "$pagination_body" == *'for ((batch=0; batch<page_count; batch+=PAGE_FETCH_CONCURRENCY)); do'* ]] || return 1
   [[ "$pagination_body" == *'page_cookie="$TMP_DIR/page-${page}.cookies"'* ]] || return 1
   [[ "$pagination_body" == *'page_pids+=("$!")'* ]] || return 1
-  [[ "$pagination_body" == *'PAGE_FETCH_CONCURRENCY" -le 3'* ]]
+  [[ "$pagination_body" != *'PAGE_FETCH_CONCURRENCY" -le 3'* ]]
 }
 
 pagination_self_test="$(env -u CARBONET_USAGE_LEDGER_PAGE_SIZE -u CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY \
