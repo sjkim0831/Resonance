@@ -446,6 +446,19 @@ export type ReportOcrComparison = {
   lcaFieldComparisons?: ReportLcaFieldComparison[];
   reportSummaryComparisons?: ReportSummaryFieldComparison[];
   outputFieldComparisons?: ReportOutputFieldComparison[];
+  sectionSummaryComparisons?: Array<{
+    sectionCode: string;
+    sectionLabel: string;
+    expectedTotalEmission: string;
+    actualTotalEmission: string;
+    expectedSharePercent: string;
+    actualSharePercent: string;
+    labelMatched: boolean;
+    totalEmissionMatched: boolean;
+    sharePercentMatched: boolean;
+    matched: boolean;
+  }>;
+  unexpectedSectionSummaryNumbers?: string[];
   fieldComparisons?: Array<{
     rowIndex: number;
     sectionLabel?: string;
