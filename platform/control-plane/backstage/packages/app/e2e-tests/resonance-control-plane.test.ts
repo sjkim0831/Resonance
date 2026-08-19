@@ -132,16 +132,29 @@ async function signIn(page: Page) {
       `document:${response.status()}:${documentUrl.origin}${documentUrl.pathname}`,
     );
   });
-  await popup.waitForLoadState('domcontentloaded');
+  await popup.waitForLoadState('domcontentloaded').catch(error => {
+    if (!popup.isClosed()) throw error;
+  });
   popupDiagnostics.push(
     `opener-before-submit:${await popup
       .evaluate(() => Boolean(window.opener))
       .catch(() => false)}`,
   );
-  await popup.locator('#username').fill(username);
-  await popup.locator('#password').fill(password);
-  await popup.locator('#kc-login').click();
-  await popup.waitForEvent('close');
+  const popupState = await Promise.race([
+    popup
+      .locator('#username')
+      .waitFor({ state: 'visible', timeout: 20_000 })
+      .then(() => 'credentials' as const),
+    popup.waitForEvent('close').then(() => 'closed' as const),
+  ]);
+  if (popupState === 'credentials') {
+    await popup.locator('#username').fill(username);
+    await popup.locator('#password').fill(password);
+    await popup.locator('#kc-login').click();
+    await popup.waitForEvent('close');
+  } else {
+    popupDiagnostics.push('popup-closed-before-credentials');
+  }
 
   try {
     await expect(
