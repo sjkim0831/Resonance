@@ -8447,7 +8447,11 @@ finalize_postdeploy_candidate_release() {
   local attempt_terminal_status=PROMOTED transition_status=PROMOTED transition_reason=PROMOTION_COMMITTED
   local journal="" snapshot_id="" snapshot_manifest="" baseline=""
   local gate_overlay="${live_frontend_overlay:-${CARBONET_LIVE_FRONTEND_OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}}"
-  if [[ -n "$externally_verified_template_sha256" ]]; then
+  if [[ "${runtime_release_state_precompleted:-false}" == true ]]; then
+    [[ -n "$externally_verified_template_sha256" ]] || return 79
+    verify_operational_usage_ledger_current_runtime_identity "$target_commit" proof-only || return $?
+    echo "[auto-deploy] runtime release state reused from current candidate lane target=$target_commit"
+  elif [[ -n "$externally_verified_template_sha256" ]]; then
     record_runtime_release_state "$target_commit" frontend-overlay "$externally_verified_template_sha256"
   else
     record_runtime_release_state "$target_commit"
@@ -9661,6 +9665,13 @@ if frontend_only_fast_path_eligible; then
   bash ops/scripts/cleanup-failed-frontend-generated-changes.sh "$ROOT_DIR"
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   enable_postdeploy_candidate_mode
+  frontend_overlay_template_sha256="$(python3 "$POSTDEPLOY_JOURNAL_HELPER" \
+    --file "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" read | jq -r \
+    --arg target "$target_commit" \
+    'select(.sourceCommit==$target) | .rollback.podTemplateSha256 // empty')" || exit 79
+  [[ "$frontend_overlay_template_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 79
+  record_runtime_release_state "$target_commit" frontend-overlay "$frontend_overlay_template_sha256"
+  runtime_release_state_precompleted=true
   frontend_validation_log="$(mktemp "$ROOT_DIR/var/run/frontend-validation-groups.XXXXXX.log")"
   frontend_operational_log="$(mktemp "$ROOT_DIR/var/run/frontend-operational-ledger.XXXXXX.log")"
   frontend_browser_log="$(mktemp "$ROOT_DIR/var/run/frontend-browser-gate.XXXXXX.log")"
@@ -9693,11 +9704,6 @@ if frontend_only_fast_path_eligible; then
   fi
   operational_usage_ledger_live_e2e_precompleted=true
   record_deploy_phase "frontend_build_and_verify"
-  frontend_overlay_template_sha256="$(python3 "$POSTDEPLOY_JOURNAL_HELPER" \
-    --file "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" read | jq -r \
-    --arg target "$target_commit" \
-    'select(.sourceCommit==$target) | .rollback.podTemplateSha256 // empty')" || exit 79
-  [[ "$frontend_overlay_template_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 79
   finalize_postdeploy_candidate_release "$frontend_overlay_template_sha256"
   prove_backstage_terminal_success "$target_commit" || exit $?
   record_deploy_performance frontend || echo '[auto-deploy] WARN frontend performance telemetry failed' >&2

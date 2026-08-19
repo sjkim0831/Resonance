@@ -980,6 +980,10 @@ if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") != "true":
     assert '(run_serialized_carbonet_auth_lifecycle runtime-screen-gate' in frontend_fast
     assert frontend_fast.index("enable_postdeploy_candidate_mode") < \
         frontend_fast.index("frontend_browser_pid=\"$!\"")
+    assert frontend_fast.index('record_runtime_release_state "$target_commit" frontend-overlay') < \
+        frontend_fast.index("frontend_operational_pid=\"$!\"")
+    assert frontend_fast.index('runtime_release_state_precompleted=true') < \
+        frontend_fast.index("frontend_operational_pid=\"$!\"")
     assert frontend_fast.index('wait "$frontend_validation_pid"') < \
         frontend_fast.index('operational_usage_ledger_live_e2e_precompleted=true') < \
         frontend_fast.index('finalize_postdeploy_candidate_release "$frontend_overlay_template_sha256"')
@@ -993,6 +997,11 @@ if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") != "true":
     assert '"$expected_commit" == "$target_commit"' in operational_live
     assert 'verify_operational_usage_ledger_current_runtime_identity "$expected_commit" proof-only' in operational_live
     assert 'operational usage ledger authenticated E2E reused from current candidate lane' in operational_live
+    finalizer = deploy[deploy.index("finalize_postdeploy_candidate_release() {"):
+                       deploy.index("finalize_postdeploy_candidate_release_with_composite_gate_cleanup()")]
+    assert '"${runtime_release_state_precompleted:-false}" == true' in finalizer
+    assert 'verify_operational_usage_ledger_current_runtime_identity "$target_commit" proof-only' in finalizer
+    assert 'runtime release state reused from current candidate lane' in finalizer
     for parallel_mutant in (
         frontend_fast.replace('wait "$frontend_validation_pid" || frontend_validation_status=$?\n', '', 1),
         frontend_fast.replace('wait "$frontend_operational_pid" || frontend_operational_status=$?\n', '', 1),
