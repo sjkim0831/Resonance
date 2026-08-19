@@ -522,11 +522,15 @@ reconcile_composite_autocompletion_postdeploy
 # attempted and the timer is disabled before returning success.
 reconcile_status=2; sudo_actions=(); : >"$reconcile_calls"
 composite_autocompletion_gate_prepared=true
+err_trap_calls=0
+trap 'err_trap_calls=$((err_trap_calls+1))' ERR
 reconcile_composite_autocompletion_postdeploy
+trap - ERR
 [[ "$composite_autocompletion_gate_prepared" == false \
    && "$(paste -sd' ' "$reconcile_calls")" == 'reconcile revoke-candidate' \
-   && "${sudo_actions[*]}" == *'disable --now resonance-composite-live-smoke.timer'* ]] || {
-  echo "failed reconcile did not degrade safely: $(paste -sd' ' "$reconcile_calls") ${sudo_actions[*]}" >&2
+   && "${sudo_actions[*]}" == *'disable --now resonance-composite-live-smoke.timer'* \
+   && "$err_trap_calls" == 0 ]] || {
+  echo "failed reconcile did not degrade safely: $(paste -sd' ' "$reconcile_calls") ${sudo_actions[*]} errTrap=$err_trap_calls" >&2
   exit 1
 }
 unset -f bash sudo reconcile_composite_autocompletion_postdeploy

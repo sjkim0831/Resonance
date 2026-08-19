@@ -6539,9 +6539,16 @@ reconcile_composite_autocompletion_postdeploy(){
   # PREPARED database CAS; workers require ACTIVE and therefore remain write-zero.
   # The guarded finalizer activates the exact revision only after all finalization passes.
   local reconcile_output
-  if reconcile_output="$(CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" \
-      RESONANCE_ROOT="$ROOT_DIR" \
-      bash ops/scripts/prepare-composite-autocompletion-postdeploy.sh reconcile)"; then
+  if reconcile_output="$(
+      # `set -E` propagates the deployment ERR rollback trap into command
+      # substitutions.  This optional helper is explicitly handled by the
+      # surrounding if, so prevent its nonzero status from invoking the global
+      # rollback inside the subshell before that handler can run.
+      trap - ERR
+      CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" \
+        RESONANCE_ROOT="$ROOT_DIR" \
+        bash ops/scripts/prepare-composite-autocompletion-postdeploy.sh reconcile
+    )"; then
     printf '%s\n' "$reconcile_output"
     composite_autocompletion_gate_prepared=false
     if [[ "$reconcile_output" == *' gate=PREPARED prepared=true '* ]]; then
