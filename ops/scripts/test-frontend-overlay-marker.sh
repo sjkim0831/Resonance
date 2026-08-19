@@ -235,6 +235,9 @@ grep -F 'export CARBONET_FRONTEND_OVERLAY_LOCK_FD=9' "$SCREEN_APPLY" >/dev/null
 grep -F 'export CARBONET_FRONTEND_OVERLAY_LOCK_FD=8' "$BUILD_DEPLOY" >/dev/null
 grep -F 'export CARBONET_FRONTEND_OVERLAY_LOCK_FILE="$LOCK_FILE"' "$SCREEN_APPLY" >/dev/null
 grep -F 'export CARBONET_FRONTEND_OVERLAY_LOCK_FILE="$FRONTEND_OVERLAY_LOCK_FILE"' "$BUILD_DEPLOY" >/dev/null
+grep -F '"$BASE_URL/assets/react/.resonance-build.json"' "$GUARD" >/dev/null
+grep -F 'HTTP overlay provenance differs from the deployed source marker' "$GUARD" >/dev/null
+grep -F 'public_marker_hash' "$GUARD" >/dev/null
 python3 - "$SCREEN_APPLY" <<'PY'
 import sys
 from pathlib import Path

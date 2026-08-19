@@ -943,7 +943,7 @@ verify_local() {
 
 verify_http() {
   verify_local >/dev/null
-  local ref url status failed=0
+  local ref url status failed=0 public_marker local_marker public_marker_hash local_marker_hash
   while IFS= read -r ref; do
     [[ -n "$ref" ]] || continue
     if [[ "$ref" == /* ]]; then
@@ -958,7 +958,27 @@ verify_http() {
     fi
   done < <(asset_refs)
   [[ "$failed" -eq 0 ]] || exit 20
-  echo "[guard] HTTP hashed assets OK ($BASE_URL)"
+  # A 200 response for every hashed asset is insufficient when an ingress or
+  # stale volume serves a different, internally consistent overlay. Bind the
+  # public route to the exact local build provenance (Git commit/tree, source,
+  # manifest and entry/public closure hashes) before deployment can succeed.
+  public_marker="$(curl -skfL --max-time 15 --max-filesize 65536 \
+    "$BASE_URL/assets/react/.resonance-build.json" 2>/dev/null)" || {
+    echo "[guard] HTTP build provenance is unavailable: $BASE_URL/assets/react/.resonance-build.json" >&2
+    exit 20
+  }
+  local_marker="$(jq -cS . "$MARKER_FILE" 2>/dev/null)" || exit 20
+  public_marker="$(jq -cS . <<<"$public_marker" 2>/dev/null)" || {
+    echo "[guard] HTTP build provenance is malformed" >&2
+    exit 20
+  }
+  local_marker_hash="$(printf '%s' "$local_marker" | sha256sum | awk '{print $1}')"
+  public_marker_hash="$(printf '%s' "$public_marker" | sha256sum | awk '{print $1}')"
+  [[ "$public_marker_hash" == "$local_marker_hash" ]] || {
+    echo "[guard] HTTP overlay provenance differs from the deployed source marker" >&2
+    exit 20
+  }
+  echo "[guard] HTTP hashed assets and build provenance OK ($BASE_URL)"
 }
 
 cmd="${1:-}"
