@@ -317,7 +317,7 @@ cleanup_revoke=cleanup.index("revoke-prepared")
 assert prepared_guard < cleanup_revoke
 assert 'CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id"' in cleanup
 assert not re.search(r'prepare-composite-autocompletion-postdeploy\.sh"?\s*\\?\s*revoke(?!-)',cleanup)
-recovery=source.split('if [[ "$postdeploy_recovered_commit" == "$target_commit" ]]; then',1)[1]
+recovery=source.split('if [[ "$postdeploy_recovered_commit" == "$target_commit"',1)[1]
 recovery=recovery.split('# Remote B may arrive',1)[0]
 prepared=recovery.index('if [[ "$early_composite_gate_status" == PREPARED ]]')
 candidate=recovery.index('[[ "$early_composite_gate_candidate" =~',prepared)
@@ -423,15 +423,16 @@ finalize_postdeploy_candidate_release_with_composite_gate_cleanup
   echo 'PREPARED success launched a duplicate asynchronous campaign' >&2; exit 1
 }
 
-# If the ACTIVATE HTTP CAS fails, the wrapper must return its deployment-level
-# failure and perform only the candidate-fenced PREPARED cleanup.
+# If the optional ACTIVATE HTTP CAS fails, the wrapper must preserve the
+# already-authoritative release, revoke only the candidate-fenced PREPARED
+# gate, and leave bulk work disabled.
 gate_state=PREPARED; finalizer_observed_gate=''; helper_actions=(); helper_candidates=()
 finalizer_status=0; helper_activate_status=41; composite_autocompletion_gate_prepared=true
 activation_failure_status=0
 finalize_postdeploy_candidate_release_with_composite_gate_cleanup ||
   activation_failure_status=$?
-[[ "$activation_failure_status" == 79 ]] || {
-  echo "activation failure did not return deployment status 79: $activation_failure_status" >&2; exit 1
+[[ "$activation_failure_status" == 0 ]] || {
+  echo "optional activation failure rolled back the release: $activation_failure_status" >&2; exit 1
 }
 [[ "${helper_actions[*]}" == 'activate revoke-prepared' && "$gate_state" == REVOKED ]] || {
   echo "activation failure did not revoke only PREPARED: ${helper_actions[*]} $gate_state" >&2; exit 1

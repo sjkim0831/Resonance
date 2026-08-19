@@ -8636,7 +8636,13 @@ finalize_postdeploy_candidate_release_with_composite_gate_cleanup() {
       composite_autocompletion_gate_prepared=false
       return 0
     fi
-    finalize_status=79
+    # Composite autocompletion is an independent, optional post-release
+    # campaign.  If its exact PREPARED revision cannot be activated, revoke it
+    # and keep the already-authoritative release gate-disabled.  Turning this
+    # delivery failure into a deployment rollback contradicts the reconcile
+    # path above and needlessly discards every completed release proof.
+    echo '[auto-deploy] WARN composite autocompletion activation failed; release continues gate-disabled' >&2
+    finalize_status=0
   else
     finalize_status=$?
   fi
