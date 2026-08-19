@@ -628,7 +628,7 @@ async function renderReportPdfPages(file: File, onProgress: (progress: number, s
     onProgress(Math.round((pageNumber / pdfDocument.numPages) * 8), `PDF ${pageNumber}/${pdfDocument.numPages}`);
     const page = await pdfDocument.getPage(pageNumber);
     const textContent = await page.getTextContent();
-    const visibleText = textContent.items
+    const visibleTextItems = textContent.items
       .map((item, sourceIndex) => ({
         sourceIndex,
         text: "str" in item ? item.str : "",
@@ -636,15 +636,26 @@ async function renderReportPdfPages(file: File, onProgress: (progress: number, s
         y: "transform" in item ? Number(item.transform[5] || 0) : 0
       }))
       .filter((item) => item.text.trim())
-      .sort((left, right) => (
-        Math.abs(left.y - right.y) > 2
-          ? right.y - left.y
-          : left.x - right.x || left.sourceIndex - right.sourceIndex
-      ))
-      .map((item) => item.text)
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
+      .sort((left, right) => right.y - left.y || left.x - right.x || left.sourceIndex - right.sourceIndex);
+    const visibleTextLines: Array<{ y: number; items: typeof visibleTextItems }> = [];
+    visibleTextItems.forEach((item) => {
+      const currentLine = visibleTextLines.at(-1);
+      if (!currentLine || Math.abs(currentLine.y - item.y) > 2) {
+        visibleTextLines.push({ y: item.y, items: [item] });
+        return;
+      }
+      currentLine.items.push(item);
+    });
+    const visibleText = visibleTextLines
+      .map((line) => line.items
+        .sort((left, right) => left.x - right.x || left.sourceIndex - right.sourceIndex)
+        .map((item) => item.text.trim())
+        .filter(Boolean)
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim())
+      .filter(Boolean)
+      .join("\n");
     if (!visibleText) {
       await pdfDocument.destroy();
       throw new Error(`Report page ${pageNumber} has no readable text layer. Reissue the PDF before verification.`);
