@@ -3490,6 +3490,7 @@ export default createBackendPlugin({
             assetType,
             search,
             limit: String(limit),
+            includeDependents: 'false',
           });
           const runtimeResponse = await fetch(
             `${runtimeBaseUrl}/api/internal/actor-process/design-assets/source-heads?${parameters}`,

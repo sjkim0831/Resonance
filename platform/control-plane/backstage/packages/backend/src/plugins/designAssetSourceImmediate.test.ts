@@ -571,6 +571,16 @@ describe('source-immediate common design mutation', () => {
     expect(route).not.toContain('dependencyRows');
     expect(route).not.toContain("'resonance_projects__task'");
     expect(routeSource).not.toContain('DESIGN_ASSET_PROMOTION');
+    const readRouteStart = routeSource.indexOf(
+      "router.get('/design-assets/:projectId'",
+    );
+    const readRouteEnd = routeSource.indexOf(
+      'const retiredDesignAssetMutation',
+      readRouteStart,
+    );
+    const readRoute = routeSource.slice(readRouteStart, readRouteEnd);
+    expect(readRouteStart).toBeGreaterThan(0);
+    expect(readRoute).toContain("includeDependents: 'false'");
     const replayStart = routeSource.indexOf('const replayDesignAssetSource');
     const replayEnd = routeSource.indexOf(
       'const cancelDesignSnapshotSyncClaim',
