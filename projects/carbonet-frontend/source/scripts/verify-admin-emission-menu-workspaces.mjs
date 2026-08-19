@@ -7,9 +7,11 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const contractPath = path.join(root, "src/features/emission-common/adminMenuWorkspaceContracts.tsx");
 const projectPath = path.join(root, "src/features/emission-project-list/AdminEmissionProjectOperationsPage.tsx");
 const surveyPath = path.join(root, "src/features/emission-survey-admin/EmissionSurveyAdminMigrationPage.tsx");
+const smokePath = path.join(root, "e2e/full-screen-smoke.spec.ts");
 const contract = fs.readFileSync(contractPath, "utf8");
 const project = fs.readFileSync(projectPath, "utf8");
 const survey = fs.readFileSync(surveyPath, "utf8");
+const smoke = fs.readFileSync(smokePath, "utf8");
 
 const codes = [...contract.matchAll(/^\s+\["(A10[34][0-9]*)",\s*"[^"]+",\s*"([A-Z0-9_]+)"/gm)];
 const menuCodes = codes.map((match) => match[1]);
@@ -32,5 +34,7 @@ assert.ok(survey.includes('workspace.surface === "SURVEY_DATA"'), "LCA specializ
 assert.ok(survey.includes("AdminMenuSpecializedWorkspace"), "LCA specialized workspace missing");
 assert.ok(!contract.includes("<input className=\"mt-2 w-full"), "workspace must not expose fake non-persistent inputs");
 for (const route of ["/admin/emission/project-operations", "/admin/emission/validate", "/admin/emission/result_list", "/admin/emission/survey-report", "/admin/emission/survey-report-verify", "/admin/emission/evidence-management", "/admin/emission/data_history", "/admin/emission/lci-classification", "/admin/emission/ecoinvent", "/admin/emission/survey-admin-data"]) assert.ok(contract.includes(route), `missing real business route: ${route}`);
+for (const menuCode of menuCodes) assert.ok(smoke.includes(`\"${menuCode}\"`), `authenticated browser relay is missing menu: ${menuCode}`);
+for (const token of ["inspectAdminEmissionMenuModes", "adminEmissionMenuModeCount", "data-feature-index", "SURVEY_GRID", "allowedWorkspaceActionPaths"]) assert.ok(smoke.includes(token), `missing browser relay contract: ${token}`);
 
-console.log(`ADMIN_EMISSION_MENU_WORKSPACE_PASS menus=${menuCodes.length} carbon=21 lca=19 processes=${new Set(processCodes).size} cards=4 specializedSplit=1 realRoutes=10 fakeInputs=0`);
+console.log(`ADMIN_EMISSION_MENU_WORKSPACE_PASS menus=${menuCodes.length} carbon=21 lca=19 processes=${new Set(processCodes).size} cards=4 specializedSplit=1 realRoutes=10 fakeInputs=0 browserRelay=40`);

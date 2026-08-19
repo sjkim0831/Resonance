@@ -39,6 +39,7 @@ type RouteResult = {
   apiFailures: string[];
   errors: string[];
   durationMs: number;
+  adminEmissionMenuModeCount: number;
 };
 
 const manifestPath = path.resolve(process.env.FULL_SCREEN_SMOKE_MANIFEST || ".cache/full-screen-smoke/manifest.json");
@@ -49,6 +50,10 @@ const password = String(process.env.FULL_SCREEN_SMOKE_ADMIN_PASSWORD || "");
 const requireSharedPreauth = process.env.FULL_SCREEN_SMOKE_REQUIRE_PREAUTH === "true";
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as SmokeManifest;
 const routesById = new Map(manifest.routes.map((route) => [route.id, route]));
+const carbonMenuCodes = ["A1030102", "A1030103", "A1030104", "A1030105", "A1030106", "A1030110", "A1030201", "A1030202", "A1030203", "A1030204", "A1030205", "A1030301", "A1030302", "A1030303", "A1030304", "A1030305", "A10304", "A1030401", "A1030402", "A1030404", "A1030405"];
+const lcaMenuCodes = ["A104", "A10401", "A1040101", "A1040102", "A1040103", "A1040104", "A1040201", "A1040202", "A1040203", "A1040204", "A1040205", "A1040206", "A1040301", "A1040302", "A1040303", "A1040304", "A1040305", "A1040306", "A1040307"];
+const lcaSurveyDataCodes = new Set(["A1040103", "A1040201", "A1040202", "A1040307"]);
+const allowedWorkspaceActionPaths = new Set(["/admin/emission/project-operations", "/admin/emission/validate", "/admin/emission/result_list", "/admin/emission/survey-report", "/admin/emission/survey-report-verify", "/admin/emission/evidence-management", "/admin/emission/data_history", "/admin/emission/lci-classification", "/admin/emission/ecoinvent", "/admin/emission/survey-admin", "/admin/emission/survey-admin-data"]);
 
 test.use({ viewport: { width: 1440, height: 1000 } });
 test.describe.configure({ mode: "parallel" });
@@ -87,6 +92,45 @@ async function ensureAdminSession(page: Page) {
     page.getByRole("button", { name: /로그인/ }).click()
   ]);
   await waitForAdminMount(page);
+}
+
+async function inspectAdminEmissionMenuModes(page: Page) {
+  const errors: string[] = [];
+  let inspected = 0;
+  for (const [basePath, menuCodes] of [["/admin/emission/project-operations", carbonMenuCodes], ["/admin/emission/survey-admin", lcaMenuCodes]] as const) {
+    await page.goto(`${baseUrl}${basePath}?menuCode=${menuCodes[0]}`, { waitUntil: "domcontentloaded", timeout: 12_000 });
+    await waitForAdminMount(page);
+    for (const menuCode of menuCodes) {
+      await page.evaluate(({ pathName, code }) => {
+        window.history.pushState({}, "", `${pathName}?menuCode=${code}`);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      }, { pathName: basePath, code: menuCode });
+      await page.waitForFunction((code) => Boolean(document.querySelector(`[data-testid="menu-workspace-${code}"]`)), menuCode, { polling: 50, timeout: 1_500 }).catch(() => undefined);
+      const mode = await page.evaluate(({ code, surveyData }) => {
+        const root = document.querySelector(`[data-testid="menu-workspace-${code}"]`);
+        const actionLinks = [...(root?.querySelectorAll<HTMLAnchorElement>("a[data-feature-index]") || [])];
+        return {
+          mounted: Boolean(root),
+          processCode: root?.getAttribute("data-process-code") || "",
+          cards: root?.querySelectorAll("[data-card-kind]").length || 0,
+          actions: actionLinks.length,
+          actionPaths: actionLinks.map((link) => new URL(link.href).pathname),
+          specialized: Boolean(document.querySelector(`[data-specialized-workspace="${code}"]`)),
+          surveyGrid: Boolean(document.querySelector('[data-help-id="emission-survey-admin-classification"]')),
+          expectsSurveyData: surveyData.includes(code),
+        };
+      }, { code: menuCode, surveyData: [...lcaSurveyDataCodes] });
+      if (!mode.mounted) errors.push(`${menuCode}:MOUNT`);
+      if (!mode.processCode) errors.push(`${menuCode}:PROCESS`);
+      if (mode.cards !== 4) errors.push(`${menuCode}:CARDS_${mode.cards}`);
+      if (mode.actions !== 4) errors.push(`${menuCode}:ACTIONS_${mode.actions}`);
+      for (const actionPath of mode.actionPaths) if (!allowedWorkspaceActionPaths.has(actionPath)) errors.push(`${menuCode}:ROUTE_${actionPath}`);
+      if (basePath.includes("survey-admin") && mode.specialized === mode.expectsSurveyData) errors.push(`${menuCode}:SURFACE`);
+      if (basePath.includes("survey-admin") && mode.surveyGrid !== mode.expectsSurveyData) errors.push(`${menuCode}:SURVEY_GRID`);
+      inspected += 1;
+    }
+  }
+  return { inspected, errors };
 }
 
 async function inspectRoute(page: Page, route: SmokeRoute, testInfo: TestInfo, attempt: number) {
@@ -199,7 +243,14 @@ async function inspectRoute(page: Page, route: SmokeRoute, testInfo: TestInfo, a
   page.off("pageerror", onPageError);
   page.off("response", onResponse);
 
-  const errors = [navigationError, ...pageErrors, ...consoleErrors].filter(Boolean);
+  let adminEmissionMenuModeCount = 0;
+  const adminEmissionErrors: string[] = [];
+  if (route.routePath === "/admin/emission/survey-admin") {
+    const menuModes = await inspectAdminEmissionMenuModes(page);
+    adminEmissionMenuModeCount = menuModes.inspected;
+    adminEmissionErrors.push(...menuModes.errors);
+  }
+  const errors = [navigationError, ...pageErrors, ...consoleErrors, ...adminEmissionErrors].filter(Boolean);
   if (status >= 400) errors.push(`HTTP_${status}`);
   if (metrics.bodyTextLength < 20 || metrics.rootChildren === 0) errors.push("BLANK_SCREEN");
   if (metrics.bootstrapStuck) errors.push("BOOTSTRAP_STUCK");
@@ -230,7 +281,8 @@ async function inspectRoute(page: Page, route: SmokeRoute, testInfo: TestInfo, a
     apiFailureCount: apiFailures.length,
     apiFailures: [...new Set(apiFailures)].slice(0, 20),
     errors: [...new Set(errors)].map((error) => String(error).slice(0, 500)),
-    durationMs: Date.now() - startedAt
+    durationMs: Date.now() - startedAt,
+    adminEmissionMenuModeCount
   } satisfies RouteResult;
 }
 
