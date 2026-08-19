@@ -640,12 +640,13 @@ public class ReportVerificationRegistryService {
             expectedNumbers.add(total);
             expectedNumbers.add(share);
             String normalizedLabel = normalizeOcrEvidenceText(label);
-            int sectionStart = pageText.indexOf(normalizedLabel);
+            int sectionStart = findWhitespaceTolerantTextStart(pageText, normalizedLabel, 0);
             int sectionEnd = pageText.length();
             if (sectionStart >= 0 && summaryIndex + 1 < comparableSummaries.size()) {
                 String nextLabel = normalizeOcrEvidenceText(
                         comparableSummaries.get(summaryIndex + 1).path("sectionLabel").asText());
-                int nextStart = pageText.indexOf(nextLabel, sectionStart + normalizedLabel.length());
+                int nextStart = findWhitespaceTolerantTextStart(pageText, nextLabel,
+                        sectionStart + normalizedLabel.length());
                 if (nextStart >= 0) sectionEnd = nextStart;
             }
             String sectionText = sectionStart >= 0 ? pageText.substring(sectionStart, sectionEnd) : "";
@@ -793,6 +794,11 @@ public class ReportVerificationRegistryService {
                     .append("\\s*");
         });
         return java.util.regex.Pattern.compile(expression.toString());
+    }
+
+    private int findWhitespaceTolerantTextStart(String text, String value, int from) {
+        java.util.regex.Matcher matcher = whitespaceTolerantTextPattern(value).matcher(text);
+        return matcher.find(Math.max(0, from)) ? matcher.start() : -1;
     }
 
     private int findUnusedPatternStart(java.util.regex.Pattern pattern, String text, int from,
