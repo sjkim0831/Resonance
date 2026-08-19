@@ -667,7 +667,7 @@ public class ReportVerificationRegistryService {
             for (int numberIndex = 1; numberIndex < sectionNumbers.size(); numberIndex++) {
                 if (numberIndex != actualShareIndex) unexpectedNumbers.add(sectionNumbers.get(numberIndex));
             }
-            boolean labelMatched = sectionStart >= 0 && containsText(normalizedPageText, label);
+            boolean labelMatched = sectionStart >= 0;
             boolean totalMatched = total.equals(actualTotal);
             boolean shareMatched = share.equals(actualShare);
             Map<String, Object> comparison = new LinkedHashMap<>();
@@ -1483,10 +1483,11 @@ public class ReportVerificationRegistryService {
         int bestScore = -1;
         for (int index = 0; index < pages.size(); index++) {
             String page = pages.get(index);
-            int score = page.contains("섹션별 탄소배출 기여 그래프") ? 1_000 : 0;
+            int score = findWhitespaceTolerantTextStart(
+                    page, normalizeOcrEvidenceText("섹션별 탄소배출 기여 그래프"), 0) >= 0 ? 1_000 : 0;
             for (JsonNode summary : summaries) {
                 String label = normalizeOcrEvidenceText(summary.path("sectionLabel").asText());
-                if (!label.isBlank() && page.contains(label)) score++;
+                if (!label.isBlank() && findWhitespaceTolerantTextStart(page, label, 0) >= 0) score++;
             }
             if (score > bestScore) {
                 bestIndex = index;

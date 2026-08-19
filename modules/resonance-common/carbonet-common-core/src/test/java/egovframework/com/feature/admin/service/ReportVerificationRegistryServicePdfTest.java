@@ -234,7 +234,7 @@ class ReportVerificationRegistryServicePdfTest {
         assertTrue((Boolean) exact.get("detailRowsExactMatch"));
         assertTrue((Boolean) splitGlyphs.get("detailRowsExactMatch"));
         Map<String, Object> splitChart = (Map<String, Object>) chartScorer.invoke(service, List.of(
-                "p1", "섹션별 탄소배출 기여 그래프 에 너 지 0 . 4 kg CO2e 100%", "p3", "p4"), datasetNode);
+                "p1", "섹 션 별 탄 소 배 출 기 여 그 래 프 에 너 지 0 . 4 kg CO2e 100%", "p3", "p4"), datasetNode);
         assertTrue((Boolean) splitChart.get("sectionSummaryExactMatch"));
         assertFalse((Boolean) changed.get("detailRowsExactMatch"));
         List<Map<String, Object>> changedRows = (List<Map<String, Object>>) changed.get("fieldComparisons");
