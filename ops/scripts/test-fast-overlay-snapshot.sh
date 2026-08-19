@@ -51,6 +51,11 @@ if grep -Fq 'for snapshot in "${stale_snapshots[@]:-}"; do' "$gate"; then
 fi
 grep -Fq 'sudo -n rm -rf -- "$snapshot"' "$gate"
 grep -Fq 'stale snapshot cleanup deferred' "$gate"
+grep -Fq 'WARN preserved source changes remain after verified physical restore' "$gate"
+if grep -Fq '    bash "$ROOT_DIR/ops/scripts/cleanup-failed-frontend-generated-changes.sh" "$ROOT_DIR"' "$gate"; then
+  echo "preserved source changes must not invalidate a verified physical rollback" >&2
+  exit 1
+fi
 grep -Fq 'os.replace(tmp, path)' "$guard"
 
 if grep -Fq 'tar -C "$OVERLAY_DIR" -czf' "$gate"; then

@@ -883,7 +883,12 @@ restore_physical() {
   # persistent worktree. The helper is allowlist-only and preserves all other
   # source modifications.
   if [[ "${CARBONET_RECOVERY_ONLY:-false}" != true ]]; then
-    bash "$ROOT_DIR/ops/scripts/cleanup-failed-frontend-generated-changes.sh" "$ROOT_DIR"
+    if ! bash "$ROOT_DIR/ops/scripts/cleanup-failed-frontend-generated-changes.sh" "$ROOT_DIR"; then
+      # Preserved non-generated source is intentionally never deleted. It may
+      # block the next clean build, but cannot invalidate a physical rollback
+      # whose overlay, Deployments, Services and health already verified.
+      log "WARN preserved source changes remain after verified physical restore"
+    fi
   fi
   log "restored physical snapshot=$SNAPSHOT_ID"
 }

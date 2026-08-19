@@ -319,12 +319,27 @@ eval "$(bash "$PLANNER" "$backstage_secret_contract" "$backstage_rollback_contra
 [[ "$PLAN_TESTS" == *"backstage:build-deploy"* ]]
 [[ "$PLAN_REASONS" == *"backstage-deploy-contract"* ]]
 
+# The aggregate policy test changes no Backstage serving byte. It is executed
+# in the target prevalidation lane and must not trigger an image build/rollout.
+printf '# Backstage policy expectation only\n' \
+  > ops/scripts/test-backstage-fast-deploy-policy.sh
+git add . && git commit -qm backstage-policy-test-only
+backstage_policy_test_only="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$backstage_rollback_contract" "$backstage_policy_test_only" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == false ]]
+[[ "$PLAN_FRONTEND_REQUIRED" == false ]]
+[[ "$PLAN_BACKEND_REQUIRED" == false ]]
+[[ "$PLAN_DATABASE_REQUIRED" == false ]]
+[[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
+[[ "$PLAN_BACKSTAGE_REQUIRED" == false ]]
+[[ "$PLAN_TESTS" == *"automation:shell-syntax"* ]]
+
 mkdir -p platform/control-plane/backstage/packages/app/e2e-tests
 printf 'test(\"live\", async () => {});\n' \
   > platform/control-plane/backstage/packages/app/e2e-tests/live.test.ts
 git add . && git commit -qm backstage-test
 backstage_test="$(git rev-parse HEAD)"
-eval "$(bash "$PLANNER" "$backstage_rollback_contract" "$backstage_test" --format env)"
+eval "$(bash "$PLANNER" "$backstage_policy_test_only" "$backstage_test" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == false ]]
 [[ "$PLAN_BACKSTAGE_REQUIRED" == false ]]
 [[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
