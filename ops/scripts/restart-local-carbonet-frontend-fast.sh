@@ -40,26 +40,30 @@ REACT_BUILD_DIR="$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/
 started_at="$(date +%s)"
 
 echo "[frontend-fast] board=context $(kubectl config current-context)"
-echo "[frontend-fast] move=find-pod namespace=$NAMESPACE deployment=$DEPLOYMENT"
-POD="$(kubectl -n "$NAMESPACE" get pod -l "app=$DEPLOYMENT" -o jsonpath='{.items[0].metadata.name}')"
-if [[ -z "$POD" ]]; then
-  echo "[frontend-fast] ERROR no pod found for app=$DEPLOYMENT in namespace=$NAMESPACE" >&2
+echo "[frontend-fast] move=find-ready-pods namespace=$NAMESPACE deployment=$DEPLOYMENT"
+deployment_json="$(kubectl -n "$NAMESPACE" get deployment "$DEPLOYMENT" -o json)"
+desired="$(jq -r '.spec.replicas // 0' <<<"$deployment_json")"
+mapfile -t ready_pods < <(kubectl -n "$NAMESPACE" get pod -l "app=$DEPLOYMENT" -o json | jq -r '.items[] | select(.metadata.deletionTimestamp == null) | select(any(.status.conditions[]?; .type == "Ready" and .status == "True")) | .metadata.name' | sort)
+if [[ ! "$desired" =~ ^[1-9][0-9]*$ || "${#ready_pods[@]}" -ne "$desired" ]]; then
+  echo "[frontend-fast] ERROR ready pod count mismatch desired=$desired ready=${#ready_pods[@]}" >&2
   exit 1
 fi
 
-echo "[frontend-fast] move=check-override pod=$POD"
-override_enabled="$(kubectl -n "$NAMESPACE" exec "$POD" -c "$CONTAINER" -- sh -lc 'printf "%s" "${CARBONET_REACT_APP_FS_OVERRIDE_ENABLED:-}"')"
-override_path="$(kubectl -n "$NAMESPACE" exec "$POD" -c "$CONTAINER" -- sh -lc 'printf "%s" "${CARBONET_REACT_APP_FS_OVERRIDE_PATH:-}"')"
-if [[ "$override_enabled" != "true" || "$override_path" != "$OVERLAY_PATH" ]]; then
-  cat >&2 <<EOF
+for pod in "${ready_pods[@]}"; do
+  echo "[frontend-fast] move=check-override pod=$pod"
+  override_enabled="$(kubectl -n "$NAMESPACE" exec "$pod" -c "$CONTAINER" -- sh -lc 'printf "%s" "${CARBONET_REACT_APP_FS_OVERRIDE_ENABLED:-}"')"
+  override_path="$(kubectl -n "$NAMESPACE" exec "$pod" -c "$CONTAINER" -- sh -lc 'printf "%s" "${CARBONET_REACT_APP_FS_OVERRIDE_PATH:-}"')"
+  if [[ "$override_enabled" != "true" || "$override_path" != "$OVERLAY_PATH" ]]; then
+    cat >&2 <<EOF
 [frontend-fast] ERROR filesystem override is not active in the running pod.
-[frontend-fast] current enabled='$override_enabled' path='$override_path'
+[frontend-fast] pod='$pod' current enabled='$override_enabled' path='$override_path'
 [frontend-fast] expected enabled='true' path='$OVERLAY_PATH'
 [frontend-fast] Run once:
 [frontend-fast]   APPLY_CONFIG=true SKIP_FRONTEND=true SKIP_MAVEN_CLEAN=true bash ops/scripts/restart-local-carbonet-k8s.sh
 EOF
-  exit 1
-fi
+    exit 1
+  fi
+done
 
 if [[ "${SKIP_FRONTEND_BUILD:-false}" != "true" ]]; then
   echo "[frontend-fast] move=frontend-build"
@@ -74,18 +78,26 @@ if [[ ! -f "$REACT_BUILD_DIR/index.html" || ! -f "$REACT_BUILD_DIR/.vite/manifes
 fi
 
 tmp_overlay="${OVERLAY_PATH}.tmp.$$"
-echo "[frontend-fast] move=copy-assets source=$REACT_BUILD_DIR target=$OVERLAY_PATH"
-kubectl -n "$NAMESPACE" exec "$POD" -c "$CONTAINER" -- sh -lc "rm -rf '$tmp_overlay'; mkdir -p '$tmp_overlay'"
-tar -C "$REACT_BUILD_DIR" -cf - . | kubectl -n "$NAMESPACE" exec -i "$POD" -c "$CONTAINER" -- tar -C "$tmp_overlay" -xf -
-kubectl -n "$NAMESPACE" exec "$POD" -c "$CONTAINER" -- sh -lc "rm -rf '${OVERLAY_PATH}.prev'; if [ -d '$OVERLAY_PATH' ]; then mv '$OVERLAY_PATH' '${OVERLAY_PATH}.prev'; fi; mv '$tmp_overlay' '$OVERLAY_PATH'; rm -rf '${OVERLAY_PATH}.prev'"
+echo "[frontend-fast] move=copy-assets source=$REACT_BUILD_DIR target=$OVERLAY_PATH pods=${#ready_pods[@]}"
+for pod in "${ready_pods[@]}"; do
+  kubectl -n "$NAMESPACE" exec "$pod" -c "$CONTAINER" -- sh -lc "rm -rf '$tmp_overlay'; mkdir -p '$tmp_overlay'"
+  tar -C "$REACT_BUILD_DIR" -cf - . | kubectl -n "$NAMESPACE" exec -i "$pod" -c "$CONTAINER" -- tar -C "$tmp_overlay" -xf -
+done
+for pod in "${ready_pods[@]}"; do
+  kubectl -n "$NAMESPACE" exec "$pod" -c "$CONTAINER" -- sh -lc "rm -rf '${OVERLAY_PATH}.prev'; if [ -d '$OVERLAY_PATH' ]; then mv '$OVERLAY_PATH' '${OVERLAY_PATH}.prev'; fi; mv '$tmp_overlay' '$OVERLAY_PATH'"
+done
 
 echo "[frontend-fast] move=verify"
 manifest_file="$(mktemp)"
 curl -fsS --max-time 10 "http://127.0.0.1:$LOCAL_PORT/assets/react/.vite/manifest.json" >"$manifest_file"
-if grep -q "EmissionSurveyReportMigrationPage" "$manifest_file"; then
+if grep -q "HomeCertificateVerifyPage" "$manifest_file"; then
   rm -f "$manifest_file"
+  for pod in "${ready_pods[@]}"; do
+    kubectl -n "$NAMESPACE" exec "$pod" -c "$CONTAINER" -- test -s "$OVERLAY_PATH/.vite/manifest.json"
+    kubectl -n "$NAMESPACE" exec "$pod" -c "$CONTAINER" -- rm -rf "${OVERLAY_PATH}.prev"
+  done
   elapsed="$(( $(date +%s) - started_at ))"
-  echo "[frontend-fast] CHECKMATE React overlay is served on :$LOCAL_PORT elapsed=${elapsed}s"
+  echo "[frontend-fast] CHECKMATE certificate overlay is served on :$LOCAL_PORT pods=${#ready_pods[@]} elapsed=${elapsed}s"
 else
   rm -f "$manifest_file"
   echo "[frontend-fast] WARN report bundle marker not found on :$LOCAL_PORT" >&2

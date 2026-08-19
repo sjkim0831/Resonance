@@ -42,6 +42,7 @@ all_tests=(
   ops/scripts/test-retire-legacy-runtime-mutation-automation.sh
   ops/scripts/test-prune-predeploy-backups.sh
   ops/scripts/test-backstage-fast-deploy-policy.sh
+  ops/tests/test-certificate-verify-fast-lane.sh
 )
 
 add_test() {
@@ -106,6 +107,8 @@ select_for_path() {
     ops/scripts/resonance-full-screen-deploy-gate.sh|ops/scripts/test-fast-overlay-snapshot.sh)
       add_test ops/scripts/test-fast-overlay-snapshot.sh
       add_test ops/tests/test-durable-postdeploy-rollback-reconciler.sh ;;
+    ops/scripts/deploy-certificate-verify-fast.sh|ops/scripts/restart-local-carbonet-frontend-fast.sh|ops/tests/test-certificate-verify-fast-lane.sh)
+      add_test ops/tests/test-certificate-verify-fast-lane.sh ;;
     ops/scripts/resonance-backstage-deploy.sh|\
     ops/scripts/test-backstage-runtime-fingerprint.sh|\
     ops/scripts/test-backstage-runtime-purge-recovery-secret.sh|\
