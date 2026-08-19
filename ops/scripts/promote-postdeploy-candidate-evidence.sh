@@ -179,8 +179,15 @@ jq -e --arg commit "$SOURCE_COMMIT" --arg namespace "$NAMESPACE" \
   --argjson ready "$ready" --argjson available "$available" '
   .releaseKey=="CARBONET_RUNTIME" and .sourceCommit==$commit
   and .deploymentNamespace==$namespace and .deploymentName==$deployment
-  and .deploymentUid==$uid and .deploymentGeneration==$generation
-  and .observedGeneration==$observed and .desiredReplicas==$desired
+  and .deploymentUid==$uid
+  # HPA is an authorized writer of spec.replicas. Its scale operation advances
+  # generation/observedGeneration and desired replicas without changing the
+  # immutable release identity. Require the recorded coordinates to be a
+  # monotonic ancestor, then prove current readiness against the live desired
+  # count while retaining exact UID/image/imageID/PodTemplate bindings.
+  and (.deploymentGeneration|type)=="number" and .deploymentGeneration<=$generation
+  and (.observedGeneration|type)=="number" and .observedGeneration<=$observed
+  and (.desiredReplicas|type)=="number" and .desiredReplicas>=1
   and $updated==$desired and $ready==$desired and $available==$desired
   and .imageRef==$image and .imageId==$imageId and .healthStatus=="UP"
   and .podTemplateSha256==$podTemplateSha256

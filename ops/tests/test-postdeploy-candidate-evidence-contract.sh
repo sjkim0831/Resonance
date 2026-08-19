@@ -488,6 +488,15 @@ for token in (
     'prepared marker changed before promotion', '.unitCount==12',
 ):
     assert token in promoter, f"promoter runtime identity contract missing {token}"
+for hpa_mutable_token in (
+    '.deploymentGeneration<=$generation',
+    '.observedGeneration<=$observed',
+    '.desiredReplicas>=1',
+    '$updated==$desired and $ready==$desired and $available==$desired',
+):
+    assert hpa_mutable_token in promoter, f"promoter HPA mutable-coordinate contract missing {hpa_mutable_token}"
+assert '.deploymentGeneration==$generation' not in promoter
+assert '.desiredReplicas==$desired' not in promoter
 
 runtime_smoke = (root / "ops/scripts/run-process-runtime-smoke.sh").read_text(encoding="utf-8")
 assert "candidate mode forbids current simulation/job promotion" in runtime_smoke
