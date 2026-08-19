@@ -639,7 +639,7 @@ async function renderReportPdfPages(file: File, onProgress: (progress: number, s
       .sort((left, right) => right.y - left.y || left.x - right.x || left.sourceIndex - right.sourceIndex);
     const visibleTextLines: Array<{ y: number; items: typeof visibleTextItems }> = [];
     visibleTextItems.forEach((item) => {
-      const currentLine = visibleTextLines.at(-1);
+      const currentLine = visibleTextLines[visibleTextLines.length - 1];
       if (!currentLine || Math.abs(currentLine.y - item.y) > 2) {
         visibleTextLines.push({ y: item.y, items: [item] });
         return;
