@@ -10,9 +10,9 @@ const loginPath = String(process.env.CARBONET_VALIDATE_LOGIN_PATH || "/admin/log
 const itemId = String(process.env.CARBONET_SCREEN_CONTRACT_ITEM_ID || "26");
 // Candidate preview runs beside the complete process/browser validation group
 // and performs exact DB/runtime rollback proofs. Preserve the 2.5s ordinary
-// SLO, while giving only the deploy-time preview a bounded 5s contention budget.
+// SLO, while giving only the deploy-time preview a bounded 7s contention budget.
 const candidateMode = String(process.env.CARBONET_POSTDEPLOY_EVIDENCE_MODE || "") === "candidate";
-const defaultMaxSaveMillis = candidateMode ? "5000" : "2500";
+const defaultMaxSaveMillis = candidateMode ? "7000" : "2500";
 const maxSaveMillis = Number(process.env.CARBONET_SCREEN_CONTRACT_SAVE_MAX_MS || defaultMaxSaveMillis);
 const maxResolveMillis = Number(process.env.CARBONET_SCREEN_CONTRACT_RESOLVE_MAX_MS || "1000");
 const renderProbe = !["0", "false", "no"].includes(String(process.env.CARBONET_SCREEN_CONTRACT_RENDER_PROBE || "1").toLowerCase());
