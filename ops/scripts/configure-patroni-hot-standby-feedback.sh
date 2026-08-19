@@ -101,7 +101,10 @@ validate_runtime_safety() {
     sql_health="$(sql "$pod" 'select 1')" || return 1
     [[ "$sql_health" == "1" ]] || return 1
   done
-  replication="$(sql "$leader" "select count(*)||'|'||count(*) filter(where state='streaming')||'|'||coalesce(max(pg_wal_lsn_diff(pg_current_wal_lsn(),replay_lsn)),0)::bigint||'|'||coalesce(max(age(backend_xmin)) filter(where backend_xmin is not null),0)::bigint from pg_stat_replication")" || return 1
+  # pg_basebackup also appears in pg_stat_replication as a walsender, but it is
+  # not a Patroni replica. Count and measure only streaming standbys so a
+  # concurrent physical backup cannot create a false four-member topology.
+  replication="$(sql "$leader" "select count(*) filter(where state='streaming')||'|'||count(*) filter(where state='streaming')||'|'||coalesce(max(pg_wal_lsn_diff(pg_current_wal_lsn(),replay_lsn)) filter(where state='streaming'),0)::bigint||'|'||coalesce(max(age(backend_xmin)) filter(where state='streaming' and backend_xmin is not null),0)::bigint from pg_stat_replication")" || return 1
   IFS='|' read -r total streaming lag xmin_age <<<"$replication"
   [[ "$total" == "2" && "$streaming" == "2" ]] || return 1
   [[ "$lag" =~ ^[0-9]+$ && "$xmin_age" =~ ^[0-9]+$ ]] || return 1

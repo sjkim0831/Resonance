@@ -97,6 +97,12 @@ export CARBONET_PATRONI_FEEDBACK_POLL_SECONDS=1
 export CARBONET_PATRONI_KUBECTL_TIMEOUT_SECONDS=3
 
 bash -n "$SCRIPT"
+[[ "$(grep -oF "count(*) filter(where state='streaming')" "$SCRIPT" | wc -l | tr -d '[:space:]')" == 2 ]] ||
+  fail 'replica cardinality must exclude non-streaming pg_basebackup walsenders'
+grep -Fq "max(pg_wal_lsn_diff(pg_current_wal_lsn(),replay_lsn)) filter(where state='streaming')" "$SCRIPT" ||
+  fail 'replay lag must be scoped to streaming Patroni replicas'
+grep -Fq "filter(where state='streaming' and backend_xmin is not null)" "$SCRIPT" ||
+  fail 'feedback xmin age must be scoped to streaming Patroni replicas'
 
 # Drift is changed once through Patroni DCS and converges without a restart.
 printf 'off\n' >"$MOCK_STATE"
