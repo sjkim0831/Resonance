@@ -62,7 +62,16 @@ for token in (
 ):
     if token not in proof:
         raise SystemExit(f"post-merge exact SHA proof missing: {token}")
+
+usage = text.split("run_operational_usage_ledger_live_e2e_if_required() {", 1)[1].split("\n}", 1)[0]
+for token in (
+    'release_invariant_scope=false',
+    'runtime:operational-usage-ledger-e2e',
+    'CARBONET_USAGE_LEDGER_RELEASE_INVARIANT_SCOPE="$release_invariant_scope"',
+):
+    if token not in usage:
+        raise SystemExit(f"release-invariant usage-ledger scope missing: {token}")
 PY
 
 bash -n "$AUTO"
-printf '[automation-only-deploy-contract] PASS prevalidation=clean+sha-bound serving=health+asset+public-provenance authority=runtime-ledger+backstage screenPreview=runtime-or-frontend-only longE2E=runtime-or-frontend-only\n'
+printf '[automation-only-deploy-contract] PASS prevalidation=clean+sha-bound serving=health+asset+public-provenance authority=runtime-ledger+backstage screenPreview=runtime-or-frontend-only usageLedger=release-invariant-or-full longE2E=runtime-or-frontend-only\n'
