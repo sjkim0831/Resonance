@@ -976,7 +976,8 @@ if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") != "true":
         frontend_fast.index("frontend_validation_pid=\"$!\"") < \
         frontend_fast.index("frontend_operational_pid=\"$!\"")
     assert '(run_postdeploy_candidate_validation_groups true)' in frontend_fast
-    assert '(run_operational_usage_ledger_live_e2e_if_required "$target_commit")' in frontend_fast
+    assert 'CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS="${CARBONET_USAGE_LEDGER_AUTH_LOCK_TIMEOUT_SECONDS:-300}"' in frontend_fast
+    assert 'run_operational_usage_ledger_live_e2e_if_required "$target_commit")' in frontend_fast
     assert '(run_serialized_carbonet_auth_lifecycle runtime-screen-gate' in frontend_fast
     assert frontend_fast.index("enable_postdeploy_candidate_mode") < \
         frontend_fast.index("frontend_browser_pid=\"$!\"")
