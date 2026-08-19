@@ -9670,7 +9670,6 @@ if automation_only_fast_path_eligible; then
     OVERLAY_DIR="$live_frontend_overlay" \
     bash ops/scripts/resonance-frontend-overlay-guard.sh verify-http
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
-  CARBONET_SCREEN_CONTRACT_PREVIEW_ONLY=1 run_screen_contract_runtime_save_gate_if_required
   record_deploy_phase "automation_validation"
   if [[ -s "$FULL_SCREEN_GATE_STATE_DIR/active.env" ]]; then
     OVERLAY_DIR="$live_frontend_overlay" FULL_SCREEN_GATE_DEFER_ACCEPT=true \

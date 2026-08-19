@@ -29,6 +29,7 @@ for token in required:
 for forbidden in (
     'run_operational_usage_ledger_current_runtime_e2e_if_required',
     'run_actor_process_role_e2e_if_required',
+    'run_screen_contract_runtime_save_gate_if_required',
     'test-plan-incremental-work.sh',
     'test-postdeploy-candidate-evidence-contract.sh',
 ):
