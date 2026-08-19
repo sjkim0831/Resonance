@@ -17,6 +17,7 @@ required = (
     "require_prevalidated_automation_only_contract || exit 79",
     'curl -fsS --max-time 10 http://127.0.0.1/actuator/health',
     'verify-react-asset-closure.mjs',
+    'BASE_URL="${CARBONET_PUBLIC_BASE_URL:-http://127.0.0.1}"',
     'resonance-frontend-overlay-guard.sh verify-http',
     'verify_operational_usage_ledger_current_runtime_identity "$runtime_deployed_commit" proof-only',
     'write_applied_deploy_state "$target_commit" || exit 79',
