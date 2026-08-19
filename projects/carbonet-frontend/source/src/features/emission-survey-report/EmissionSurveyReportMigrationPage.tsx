@@ -629,7 +629,19 @@ async function renderReportPdfPages(file: File, onProgress: (progress: number, s
     const page = await pdfDocument.getPage(pageNumber);
     const textContent = await page.getTextContent();
     const visibleText = textContent.items
-      .map((item) => ("str" in item ? item.str : ""))
+      .map((item, sourceIndex) => ({
+        sourceIndex,
+        text: "str" in item ? item.str : "",
+        x: "transform" in item ? Number(item.transform[4] || 0) : 0,
+        y: "transform" in item ? Number(item.transform[5] || 0) : 0
+      }))
+      .filter((item) => item.text.trim())
+      .sort((left, right) => (
+        Math.abs(left.y - right.y) > 2
+          ? right.y - left.y
+          : left.x - right.x || left.sourceIndex - right.sourceIndex
+      ))
+      .map((item) => item.text)
       .join(" ")
       .replace(/\s+/g, " ")
       .trim();
