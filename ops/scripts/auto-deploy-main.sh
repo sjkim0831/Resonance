@@ -9629,10 +9629,13 @@ fi
 if frontend_only_fast_path_eligible; then
   frontend_validation_log=""
   frontend_operational_log=""
+  frontend_browser_log=""
   frontend_validation_pid=""
   frontend_operational_pid=""
+  frontend_browser_pid=""
   frontend_validation_status=0
   frontend_operational_status=0
+  frontend_browser_status=0
   frontend_smoke_pattern="$(node \
     projects/carbonet-frontend/source/scripts/derive-frontend-smoke-route-pattern.mjs \
     "$deployed_commit" "$target_commit")"
@@ -9653,14 +9656,6 @@ if frontend_only_fast_path_eligible; then
   # fingerprints. Always exercise a bounded cross-domain canary set here so a
   # common bundle regression can never result in a zero-screen deploy gate.
   # The scheduled nightly sweep remains the global 1,000-screen safety net.
-  run_serialized_carbonet_auth_lifecycle runtime-screen-gate \
-    env FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
-    FULL_SCREEN_SMOKE_ROUTE_PATTERN="$frontend_smoke_pattern" \
-    FULL_SCREEN_SMOKE_REQUIRE_PREAUTH=true \
-    FULL_SCREEN_GATE_DEFER_ACCEPT=true \
-    FULL_SCREEN_GATE_AUTO_ROLLBACK=false \
-    OVERLAY_DIR="$live_frontend_overlay" \
-    bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
   # Successful prebuilds may also refresh tracked generated inventories. Keep
   # the persistent deployment worktree clean for the next incremental run.
   bash ops/scripts/cleanup-failed-frontend-generated-changes.sh "$ROOT_DIR"
@@ -9668,19 +9663,32 @@ if frontend_only_fast_path_eligible; then
   enable_postdeploy_candidate_mode
   frontend_validation_log="$(mktemp "$ROOT_DIR/var/run/frontend-validation-groups.XXXXXX.log")"
   frontend_operational_log="$(mktemp "$ROOT_DIR/var/run/frontend-operational-ledger.XXXXXX.log")"
+  frontend_browser_log="$(mktemp "$ROOT_DIR/var/run/frontend-browser-gate.XXXXXX.log")"
   (run_postdeploy_candidate_validation_groups true) >"$frontend_validation_log" 2>&1 &
   frontend_validation_pid="$!"
   (run_operational_usage_ledger_live_e2e_if_required "$target_commit") \
     >"$frontend_operational_log" 2>&1 &
   frontend_operational_pid="$!"
+  (run_serialized_carbonet_auth_lifecycle runtime-screen-gate \
+    env FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
+    FULL_SCREEN_SMOKE_ROUTE_PATTERN="$frontend_smoke_pattern" \
+    FULL_SCREEN_SMOKE_REQUIRE_PREAUTH=true \
+    FULL_SCREEN_GATE_DEFER_ACCEPT=true \
+    FULL_SCREEN_GATE_AUTO_ROLLBACK=false \
+    OVERLAY_DIR="$live_frontend_overlay" \
+    bash ops/scripts/resonance-full-screen-deploy-gate.sh verify) \
+    >"$frontend_browser_log" 2>&1 &
+  frontend_browser_pid="$!"
   run_screen_contract_runtime_save_gate_if_required
   wait "$frontend_validation_pid" || frontend_validation_status=$?
   wait "$frontend_operational_pid" || frontend_operational_status=$?
+  wait "$frontend_browser_pid" || frontend_browser_status=$?
   cat "$frontend_validation_log"
   cat "$frontend_operational_log"
-  rm -f -- "$frontend_validation_log" "$frontend_operational_log"
-  if (( frontend_validation_status != 0 || frontend_operational_status != 0 )); then
-    echo "[auto-deploy] refusing frontend promotion: parallel validation failed groups=$frontend_validation_status operational=$frontend_operational_status" >&2
+  cat "$frontend_browser_log"
+  rm -f -- "$frontend_validation_log" "$frontend_operational_log" "$frontend_browser_log"
+  if (( frontend_validation_status != 0 || frontend_operational_status != 0 || frontend_browser_status != 0 )); then
+    echo "[auto-deploy] refusing frontend promotion: parallel validation failed groups=$frontend_validation_status operational=$frontend_operational_status browser=$frontend_browser_status" >&2
     exit 79
   fi
   operational_usage_ledger_live_e2e_precompleted=true

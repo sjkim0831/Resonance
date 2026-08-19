@@ -977,11 +977,17 @@ if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") != "true":
         frontend_fast.index("frontend_operational_pid=\"$!\"")
     assert '(run_postdeploy_candidate_validation_groups true)' in frontend_fast
     assert '(run_operational_usage_ledger_live_e2e_if_required "$target_commit")' in frontend_fast
+    assert '(run_serialized_carbonet_auth_lifecycle runtime-screen-gate' in frontend_fast
+    assert frontend_fast.index("enable_postdeploy_candidate_mode") < \
+        frontend_fast.index("frontend_browser_pid=\"$!\"")
     assert frontend_fast.index('wait "$frontend_validation_pid"') < \
         frontend_fast.index('operational_usage_ledger_live_e2e_precompleted=true') < \
         frontend_fast.index('finalize_postdeploy_candidate_release "$frontend_overlay_template_sha256"')
     assert frontend_fast.index('wait "$frontend_operational_pid"') < \
         frontend_fast.index('operational_usage_ledger_live_e2e_precompleted=true')
+    assert frontend_fast.index('wait "$frontend_browser_pid"') < \
+        frontend_fast.index('operational_usage_ledger_live_e2e_precompleted=true')
+    assert 'frontend_browser_status != 0' in frontend_fast
     operational_live = deploy[deploy.index("run_operational_usage_ledger_live_e2e_if_required() {"):
                               deploy.index("verify_operational_usage_ledger_current_runtime_identity()")]
     assert '"$expected_commit" == "$target_commit"' in operational_live
@@ -990,10 +996,12 @@ if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") != "true":
     for parallel_mutant in (
         frontend_fast.replace('wait "$frontend_validation_pid" || frontend_validation_status=$?\n', '', 1),
         frontend_fast.replace('wait "$frontend_operational_pid" || frontend_operational_status=$?\n', '', 1),
+        frontend_fast.replace('wait "$frontend_browser_pid" || frontend_browser_status=$?\n', '', 1),
         frontend_fast.replace('operational_usage_ledger_live_e2e_precompleted=true\n', '', 1),
     ):
         assert 'wait "$frontend_validation_pid"' not in parallel_mutant or \
             'wait "$frontend_operational_pid"' not in parallel_mutant or \
+            'wait "$frontend_browser_pid"' not in parallel_mutant or \
             'operational_usage_ledger_live_e2e_precompleted=true' not in parallel_mutant
     assert 'FULL_SCREEN_GATE_STATE_DIR="${CARBONET_FULL_SCREEN_GATE_STATE_DIR:-${FULL_SCREEN_GATE_STATE_DIR:-/opt/resonance-data/deploy/full-screen-deploy-gate}}"' in deploy
     assert "source \"$ACTIVE_FILE\"" not in gate
