@@ -9611,7 +9611,10 @@ if startup_profile_fast_path_eligible; then
   run_screen_contract_runtime_save_gate_if_required
   run_actor_process_role_e2e_if_required
   record_deploy_phase "runtime_profile_and_verify"
-  reconcile_composite_autocompletion_postdeploy
+  reconcile_composite_autocompletion_postdeploy || {
+    composite_autocompletion_gate_prepared=false
+    echo '[auto-deploy] WARN optional composite reconcile returned nonzero; release continues gate-disabled' >&2
+  }
   finalize_postdeploy_candidate_release_with_composite_gate_cleanup
   prove_backstage_terminal_success "$target_commit" || exit $?
   record_deploy_performance runtime || echo '[auto-deploy] WARN runtime-profile performance telemetry failed' >&2
@@ -9837,7 +9840,10 @@ sync_react_asset_prune_worker_if_required
 bash ops/scripts/normalize-deploy-generated-assets.sh "$ROOT_DIR"
 record_deploy_phase "postdeploy_validation"
 sudo docker image prune -a -f >/dev/null || true
-  reconcile_composite_autocompletion_postdeploy
+  reconcile_composite_autocompletion_postdeploy || {
+    composite_autocompletion_gate_prepared=false
+    echo '[auto-deploy] WARN optional composite reconcile returned nonzero; release continues gate-disabled' >&2
+  }
   finalize_postdeploy_candidate_release_with_composite_gate_cleanup
   finalize_backstage_deployment_after_release_success || exit 79
   prove_backstage_terminal_success "$target_commit" || exit $?

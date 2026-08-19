@@ -273,11 +273,13 @@ PY
 python3 - "$ROOT/ops/scripts/auto-deploy-main.sh" <<'PY' || {
 import pathlib,re,sys
 lines=pathlib.Path(sys.argv[1]).read_text().splitlines()
-calls=[i for i,line in enumerate(lines) if line.strip()=="reconcile_composite_autocompletion_postdeploy"]
+calls=[i for i,line in enumerate(lines) if line.strip().startswith("reconcile_composite_autocompletion_postdeploy || {")]
 assert len(calls)==2
 for index in calls:
     following=[line.strip() for line in lines[index+1:] if line.strip() and
-               not line.lstrip().startswith("#")]
+               not line.lstrip().startswith("#") and line.strip() != "}" and
+               "composite_autocompletion_gate_prepared=false" not in line and
+               "optional composite reconcile returned nonzero" not in line]
     assert following and following[0]=="finalize_postdeploy_candidate_release_with_composite_gate_cleanup"
 source="\n".join(lines)
 wrapper=source.split("finalize_postdeploy_candidate_release_with_composite_gate_cleanup() {",1)[1]
@@ -311,6 +313,8 @@ failure=reconcile.split('else',1)[-1]
 assert 'prepare-composite-autocompletion-postdeploy.sh revoke-candidate' in failure
 assert 'disable --now resonance-composite-live-smoke.timer' in failure
 assert 'return 0' in failure
+assert source.count('reconcile_composite_autocompletion_postdeploy || {') == 2
+assert source.count('optional composite reconcile returned nonzero; release continues gate-disabled') == 2
 cleanup=source.split("cleanup_deploy() {",1)[1].split("\n}",1)[0]
 prepared_guard=cleanup.index('if [[ "${composite_autocompletion_gate_prepared:-false}" == true ]]')
 cleanup_revoke=cleanup.index("revoke-prepared")
