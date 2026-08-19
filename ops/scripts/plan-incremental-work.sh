@@ -66,7 +66,8 @@ while IFS= read -r path; do
   esac
   case "$path" in
     apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817235000__bind_runtime_identity_to_pod_template.sql|\
-    apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260818151500__make_runtime_identity_hpa_stable.sql)
+    apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260818151500__make_runtime_identity_hpa_stable.sql|\
+    apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260819231000__allow_deploy_identity_only_operational_gate.sql)
       # This migration binds the deployment PodTemplate hash to the durable
       # runtime-release ledger. It is guarded by the database transaction,
       # durable postdeploy attempt, candidate evidence, and rollback contracts;

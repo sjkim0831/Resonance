@@ -229,10 +229,23 @@ eval "$(bash "$PLANNER" "$runtime_release_identity" "$hpa_stable_runtime_identit
 [[ "$PLAN_REASONS" == *"runtime-release-identity-candidate-contract"* ]]
 
 printf 'select 1;\n' \
+  > apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260819231000__allow_deploy_identity_only_operational_gate.sql
+git add . && git commit -qm deploy-identity-only-operational-gate
+deploy_identity_only_gate="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$hpa_stable_runtime_identity" "$deploy_identity_only_gate" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == true ]]
+[[ "$PLAN_BACKEND_REQUIRED" == true ]]
+[[ "$PLAN_DATABASE_REQUIRED" == true ]]
+[[ "$PLAN_TESTS" == *"runtime:postdeploy-candidate-evidence"* ]]
+[[ ",$PLAN_TESTS," != *",runtime:identity-staged-reconcile-required,"* ]]
+[[ "$PLAN_REASONS" == *"runtime-release-identity-candidate-contract"* ]]
+[[ "$PLAN_REASONS" != *"identity-design-requires-staged-reconcile"* ]]
+
+printf 'select 1;\n' \
   > apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817235100__identity_policy.sql
 git add . && git commit -qm database-identity-design
 database_identity_design="$(git rev-parse HEAD)"
-eval "$(bash "$PLANNER" "$hpa_stable_runtime_identity" "$database_identity_design" --format env)"
+eval "$(bash "$PLANNER" "$deploy_identity_only_gate" "$database_identity_design" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == true ]]
 [[ "$PLAN_DATABASE_REQUIRED" == true ]]
 [[ "$PLAN_TESTS" == *"runtime:identity-staged-reconcile-required"* ]]
