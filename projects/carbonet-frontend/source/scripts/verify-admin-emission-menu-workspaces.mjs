@@ -20,7 +20,7 @@ assert.equal(new Set(processCodes).size, 40, "every menu must have a distinct pr
 assert.equal(menuCodes.filter((code) => code.startsWith("A103")).length, 21, "carbon menu count drift");
 assert.equal(menuCodes.filter((code) => code.startsWith("A104")).length, 19, "LCA menu count drift");
 
-for (const token of ["data-menu-code", "data-process-code", "data-card-kind", "data-work-input", "data-work-output", "data-work-action"]) {
+for (const token of ["data-menu-code", "data-process-code", "data-card-kind", "data-work-input", "data-work-output", "data-work-action", "functionRoutes", "workspaceAction"]) {
   assert.ok(contract.includes(token), `missing machine-readable UI contract: ${token}`);
 }
 for (const card of ["help", "design", "qa", "guide"]) assert.ok(contract.includes(`\"${card}\"`), `missing floating card: ${card}`);
@@ -30,5 +30,7 @@ for (const source of [project, survey]) {
 }
 assert.ok(survey.includes('workspace.surface === "SURVEY_DATA"'), "LCA specialized menus must not render the shared survey form");
 assert.ok(survey.includes("AdminMenuSpecializedWorkspace"), "LCA specialized workspace missing");
+assert.ok(!contract.includes("<input className=\"mt-2 w-full"), "workspace must not expose fake non-persistent inputs");
+for (const route of ["/admin/emission/project-operations", "/admin/emission/validate", "/admin/emission/result_list", "/admin/emission/survey-report", "/admin/emission/survey-report-verify", "/admin/emission/evidence-management", "/admin/emission/data_history", "/admin/emission/lci-classification", "/admin/emission/ecoinvent", "/admin/emission/survey-admin-data"]) assert.ok(contract.includes(route), `missing real business route: ${route}`);
 
-console.log(`ADMIN_EMISSION_MENU_WORKSPACE_PASS menus=${menuCodes.length} carbon=21 lca=19 processes=${new Set(processCodes).size} cards=4 specializedSplit=1`);
+console.log(`ADMIN_EMISSION_MENU_WORKSPACE_PASS menus=${menuCodes.length} carbon=21 lca=19 processes=${new Set(processCodes).size} cards=4 specializedSplit=1 realRoutes=10 fakeInputs=0`);

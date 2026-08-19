@@ -9,6 +9,7 @@ export type AdminMenuWorkspaceContract = {
   objective: string;
   objectiveEn: string;
   functions: string[];
+  functionRoutes: string[];
   inputs: string[];
   outputs: string[];
   nextLabel: string;
@@ -66,6 +67,18 @@ const lcaSeeds: Seed[] = [
 
 function contract([menuCode, title, processCode, objective]: Seed, domain: "CARBON" | "LCA"): AdminMenuWorkspaceContract {
   const surveyCodes = new Set(["A1040103", "A1040201", "A1040202", "A1040307"]);
+  const primaryRoute = (() => {
+    if (/VERIFICATION/.test(processCode)) return "/admin/emission/survey-report-verify";
+    if (/REPORT_TEMPLATE/.test(processCode)) return "/admin/emission/report-template";
+    if (/REPORT/.test(processCode)) return "/admin/emission/survey-report";
+    if (/RESULT|CALCULATION|IMPACT/.test(processCode)) return "/admin/emission/result_list";
+    if (/EVIDENCE/.test(processCode)) return "/admin/emission/evidence-management";
+    if (/HISTORY/.test(processCode)) return "/admin/emission/data_history";
+    if (/LCI_CLASSIFICATION/.test(processCode)) return "/admin/emission/lci-classification";
+    if (/MATERIAL_MAPPING|LCI_DATABASE/.test(processCode)) return "/admin/emission/ecoinvent";
+    if (/DATASET_IMPORT|DATA_COLLECTION|SURVEY_DATA/.test(processCode)) return "/admin/emission/survey-admin-data";
+    return domain === "CARBON" ? "/admin/emission/project-operations" : "/admin/emission/survey-admin";
+  })();
   return {
     menuCode,
     title,
@@ -75,6 +88,7 @@ function contract([menuCode, title, processCode, objective]: Seed, domain: "CARB
     objective,
     objectiveEn: objective,
     functions: [`${title} 조회`, `${title} 검증`, `${title} 저장`, `${title} 이력·증거 확인`],
+    functionRoutes: [primaryRoute, "/admin/emission/validate", primaryRoute, "/admin/emission/data_history"],
     inputs: ["프로젝트·제품 식별자", "담당 액터와 권한", "업무 입력값·첨부 증거"],
     outputs: ["처리 상태", "검증 결과", "다음 단계 인계 데이터"],
     nextLabel: domain === "CARBON" ? "다음 탄소배출 업무" : "다음 LCA 업무",
@@ -115,7 +129,7 @@ export function AdminMenuWorkspaceContractPanel({ contract }: { contract: AdminM
         <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white">{contract.actor}</span>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">{cards.map(([title, body, kind]) => <article className="rounded-xl border bg-white p-4" data-card-kind={kind} key={kind}><strong className="text-sm text-[#052b57]">{title}</strong><p className="mt-2 text-xs font-semibold leading-5 text-slate-600">{body}</p></article>)}</div>
-      <div className="mt-4 flex flex-wrap gap-2">{contract.functions.map((feature, index) => <button className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-black text-blue-800" data-feature-index={index + 1} key={feature} type="button">{feature}</button>)}</div>
+      <div className="mt-4 flex flex-wrap gap-2">{contract.functions.map((feature, index) => <a className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-black text-blue-800" data-feature-index={index + 1} href={`${buildLocalizedPath(contract.functionRoutes[index], `/en${contract.functionRoutes[index]}`)}?menuCode=${encodeURIComponent(contract.menuCode)}&workspaceAction=${index + 1}`} key={feature}>{feature}</a>)}</div>
       <a className="mt-4 inline-flex rounded-lg bg-[#246beb] px-4 py-2 text-sm font-black text-white" href={buildLocalizedPath(contract.nextRoute, `/en${contract.nextRoute}`)}>{contract.nextLabel}</a>
     </section>
   );
@@ -129,10 +143,7 @@ export function AdminMenuSpecializedWorkspace({ contract }: { contract: AdminMen
           <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-700">업무 입력</p>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             {contract.inputs.map((input, index) => (
-              <label className="text-sm font-black text-slate-800" key={input}>
-                {index + 1}. {input}
-                <input className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-medium" data-work-input={index + 1} placeholder={`${input} 입력 또는 선택`} />
-              </label>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-black text-slate-800" data-work-input={index + 1} key={input}>{index + 1}. {input}<span className="mt-2 block text-xs font-semibold text-slate-500">실제 업무 화면에서 입력·선택</span></div>
             ))}
           </div>
         </article>
@@ -147,7 +158,7 @@ export function AdminMenuSpecializedWorkspace({ contract }: { contract: AdminMen
         <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-blue-700">프로세스 실행</p><h3 className="mt-1 text-xl font-black text-slate-950">{contract.title} 업무 기능</h3></div><span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-800">actor · {contract.actor}</span></div>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {contract.functions.map((feature, index) => (
-            <button className="min-h-24 rounded-xl border border-blue-200 bg-blue-50 p-4 text-left text-sm font-black text-blue-950 hover:bg-blue-100" data-work-action={index + 1} key={feature} type="button"><span className="block text-xs text-blue-600">STEP {index + 1}</span><span className="mt-2 block">{feature}</span></button>
+            <a className="min-h-24 rounded-xl border border-blue-200 bg-blue-50 p-4 text-left text-sm font-black text-blue-950 hover:bg-blue-100" data-work-action={index + 1} href={`${buildLocalizedPath(contract.functionRoutes[index], `/en${contract.functionRoutes[index]}`)}?menuCode=${encodeURIComponent(contract.menuCode)}&workspaceAction=${index + 1}`} key={feature}><span className="block text-xs text-blue-600">STEP {index + 1}</span><span className="mt-2 block">{feature}</span><span className="mt-2 block text-xs text-blue-700">실제 기능 화면 열기 →</span></a>
           ))}
         </div>
       </article>
