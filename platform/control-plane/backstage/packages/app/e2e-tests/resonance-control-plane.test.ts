@@ -12,17 +12,19 @@ const requestedRoutes = (process.env.RESONANCE_BACKSTAGE_E2E_ROUTES ?? '')
   .filter(Boolean);
 const storageStatePath = process.env.BACKSTAGE_E2E_STORAGE_STATE;
 // Visual-only changes must exercise the deployed runtime without rebuilding it.
+// Each value is an anchored accessible-name pattern. The navigation and data
+// transfer axes retain both registered Korean labels across live workspaces.
 const designDocumentTitles = [
   '업무·요구사항',
   '액터·RACI',
   '권한·데이터 범위',
   '프로세스·분기',
   '상태 전이',
-  '화면 흐름·라우팅',
+  '화면 흐름·라우(?:트|팅)',
   '액티브 UI·레이아웃',
   '테마·섹션·컴포넌트',
   '필드·데이터 사전',
-  '입출력·데이터 인계',
+  '입출력·데이터 (?:인계|연계)',
   'DB·스키마',
   'API·이벤트',
   '업무 규칙·계산식',
