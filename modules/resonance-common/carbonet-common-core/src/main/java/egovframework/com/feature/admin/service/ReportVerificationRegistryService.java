@@ -622,7 +622,7 @@ public class ReportVerificationRegistryService {
 
         String pageText = selectSectionSummaryPage(normalizedOcrPages, summaries);
         String normalizedPageText = normalizeText(pageText);
-        List<String> actualNumbers = extractCanonicalNumbers(pageText.replace(",", ""));
+        List<String> actualNumbers = extractCanonicalNumbers(pageText);
         List<String> expectedNumbers = new ArrayList<>();
         List<Map<String, Object>> comparisons = new ArrayList<>();
         List<JsonNode> comparableSummaries = new ArrayList<>();
@@ -649,7 +649,7 @@ public class ReportVerificationRegistryService {
                 if (nextStart >= 0) sectionEnd = nextStart;
             }
             String sectionText = sectionStart >= 0 ? pageText.substring(sectionStart, sectionEnd) : "";
-            List<String> sectionNumbers = extractCanonicalNumbers(sectionText.replace(",", ""));
+            List<String> sectionNumbers = extractCanonicalNumbers(sectionText);
             String actualTotal = sectionNumbers.isEmpty() ? "" : sectionNumbers.get(0);
             int actualShareIndex = -1;
             for (int numberIndex = 1; numberIndex < sectionNumbers.size(); numberIndex++) {
@@ -738,7 +738,7 @@ public class ReportVerificationRegistryService {
                 if (nextStart > start && nextStart < end) end = nextStart;
             }
             String rowText = start >= 0 ? pageText.substring(start, end) : "";
-            List<String> actualNumbers = extractCanonicalNumbers(rowText.replace(",", ""));
+            List<String> actualNumbers = extractCanonicalNumbers(rowText);
             Map<String, Object> comparison = new LinkedHashMap<>();
             comparison.put("rowIndex", rowIndex + 1);
             comparison.put("sectionLabel", sectionLabel(dataset, row));
@@ -877,8 +877,11 @@ public class ReportVerificationRegistryService {
 
     private List<String> extractCanonicalNumbers(String text) {
         List<String> numbers = new ArrayList<>();
+        String normalizedNumericText = (text == null ? "" : text)
+                .replaceAll("(?<=\\d)\\s*([.,])\\s*(?=\\d)", "$1")
+                .replace(",", "");
         Matcher matcher = Pattern.compile("(?<![\\p{L}\\p{N}.])-?\\d+(?:\\.\\d+)?(?![\\d.])")
-                .matcher(text == null ? "" : text);
+                .matcher(normalizedNumericText);
         while (matcher.find() && numbers.size() < MAX_FIELD_COMPARISONS) {
             numbers.add(canonicalNumber(matcher.group()));
         }
