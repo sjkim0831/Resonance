@@ -6895,10 +6895,10 @@ run_operational_usage_ledger_live_e2e_if_required() {
     invalidate_runtime_release_state
     return 1
   }
-  if [[ "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate \
-     && ",${PLAN_TESTS:-}," != *",runtime:operational-usage-ledger-e2e,"* ]]; then
-    release_invariant_scope=true
-  fi
+  # Promotion requires the complete live authorization/browser evidence
+  # contract (ordinaryDenied=7, browserViewports=2).  The release-invariant
+  # shortcut emits a deliberately smaller payload and therefore cannot be
+  # used for a promotable candidate.
   if ! CARBONET_USAGE_LEDGER_RELEASE_INVARIANT_SCOPE="$release_invariant_scope" \
       timeout --signal=TERM --kill-after=10s "$timeout_seconds" \
       bash ops/scripts/validate-operational-usage-ledger-e2e.sh \
