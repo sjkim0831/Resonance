@@ -9677,7 +9677,8 @@ if frontend_only_fast_path_eligible; then
   frontend_browser_log="$(mktemp "$ROOT_DIR/var/run/frontend-browser-gate.XXXXXX.log")"
   (run_postdeploy_candidate_validation_groups true) >"$frontend_validation_log" 2>&1 &
   frontend_validation_pid="$!"
-  (CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS="${CARBONET_USAGE_LEDGER_AUTH_LOCK_TIMEOUT_SECONDS:-300}" \
+  (CARBONET_QA_AUTH_LOCK_FILE="${CARBONET_USAGE_LEDGER_AUTH_LOCK_FILE:-/tmp/carbonet-qa-auth-usage-ledger-session.lock}" \
+    CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS="${CARBONET_USAGE_LEDGER_AUTH_LOCK_TIMEOUT_SECONDS:-300}" \
     run_operational_usage_ledger_live_e2e_if_required "$target_commit") \
     >"$frontend_operational_log" 2>&1 &
   frontend_operational_pid="$!"
