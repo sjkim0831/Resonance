@@ -633,22 +633,24 @@ async function renderReportPdfPages(file: File, onProgress: (progress: number, s
         sourceIndex,
         text: "str" in item ? item.str : "",
         x: "transform" in item ? Number(item.transform[4] || 0) : 0,
-        y: "transform" in item ? Number(item.transform[5] || 0) : 0
+        y: "transform" in item ? Number(item.transform[5] || 0) : 0,
+        hasEol: "hasEOL" in item && Boolean(item.hasEOL)
       }))
-      .filter((item) => item.text.trim())
-      .sort((left, right) => right.y - left.y || left.x - right.x || left.sourceIndex - right.sourceIndex);
+      .filter((item) => item.text.trim());
     const visibleTextLines: Array<{ y: number; items: typeof visibleTextItems }> = [];
     visibleTextItems.forEach((item) => {
       const currentLine = visibleTextLines[visibleTextLines.length - 1];
-      if (!currentLine || Math.abs(currentLine.y - item.y) > 2) {
+      if (!currentLine) {
         visibleTextLines.push({ y: item.y, items: [item] });
         return;
       }
       currentLine.items.push(item);
+      if (item.hasEol) {
+        visibleTextLines.push({ y: Number.NaN, items: [] });
+      }
     });
     const visibleText = visibleTextLines
       .map((line) => line.items
-        .sort((left, right) => left.x - right.x || left.sourceIndex - right.sourceIndex)
         .map((item) => item.text.trim())
         .filter(Boolean)
         .join(" ")
