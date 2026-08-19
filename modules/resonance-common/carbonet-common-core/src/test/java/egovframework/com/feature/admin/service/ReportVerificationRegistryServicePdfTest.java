@@ -227,8 +227,12 @@ class ReportVerificationRegistryServicePdfTest {
                 "상세 계산 결과표 에너지 전력 9t 0.26 0.26 재생전력 1t 0.14 0.14");
 
         Map<String, Object> exact = (Map<String, Object>) detailScorer.invoke(service, exactPages, datasetNode);
+        Map<String, Object> splitGlyphs = (Map<String, Object>) detailScorer.invoke(service, List.of(
+                "p1", "에너지 0.4 kg CO2e 100%", "p3",
+                "상세 계산 결과표 에 너 지 전 력 1t 0.26 0.26 재 생 전 력 1t 0.14 0.14"), datasetNode);
         Map<String, Object> changed = (Map<String, Object>) detailScorer.invoke(service, changedPages, datasetNode);
         assertTrue((Boolean) exact.get("detailRowsExactMatch"));
+        assertTrue((Boolean) splitGlyphs.get("detailRowsExactMatch"));
         assertFalse((Boolean) changed.get("detailRowsExactMatch"));
         List<Map<String, Object>> changedRows = (List<Map<String, Object>>) changed.get("fieldComparisons");
         assertFalse((Boolean) changedRows.get(0).get("amountMatched"));

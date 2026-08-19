@@ -780,16 +780,29 @@ public class ReportVerificationRegistryService {
     private int findUnusedMaterialStart(String pageText, String material, int cursor,
                                         java.util.Set<Integer> usedStarts) {
         if (material.isBlank()) return -1;
-        int start = pageText.indexOf(material, Math.max(0, cursor));
-        while (start >= 0 && usedStarts.contains(start)) {
-            start = pageText.indexOf(material, start + material.length());
-        }
+        java.util.regex.Pattern pattern = whitespaceTolerantTextPattern(material);
+        int start = findUnusedPatternStart(pattern, pageText, Math.max(0, cursor), usedStarts);
         if (start >= 0) return start;
-        start = pageText.indexOf(material);
-        while (start >= 0 && usedStarts.contains(start)) {
-            start = pageText.indexOf(material, start + material.length());
+        return findUnusedPatternStart(pattern, pageText, 0, usedStarts);
+    }
+
+    private java.util.regex.Pattern whitespaceTolerantTextPattern(String value) {
+        StringBuilder expression = new StringBuilder();
+        value.codePoints().filter(codePoint -> !Character.isWhitespace(codePoint)).forEach(codePoint -> {
+            expression.append(java.util.regex.Pattern.quote(new String(Character.toChars(codePoint))))
+                    .append("\\s*");
+        });
+        return java.util.regex.Pattern.compile(expression.toString());
+    }
+
+    private int findUnusedPatternStart(java.util.regex.Pattern pattern, String text, int from,
+                                       java.util.Set<Integer> usedStarts) {
+        java.util.regex.Matcher matcher = pattern.matcher(text);
+        while (matcher.find(Math.max(0, from))) {
+            if (!usedStarts.contains(matcher.start())) return matcher.start();
+            from = Math.max(matcher.end(), matcher.start() + 1);
         }
-        return start;
+        return -1;
     }
 
     @SuppressWarnings("unchecked")
