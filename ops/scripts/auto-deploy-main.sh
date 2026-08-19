@@ -6889,6 +6889,7 @@ run_runtime_template_identity_migration_contract_if_required() {
 run_operational_usage_ledger_live_e2e_if_required() {
   local expected_commit="${1:-$target_commit}"
   local timeout_seconds="${CARBONET_USAGE_LEDGER_E2E_TIMEOUT_SECONDS:-600}"
+  local run_full_e2e="${CARBONET_RUN_FULL_PROCESS_AUTH_E2E_ON_DEPLOY:-false}"
   local release_invariant_scope=false
   if [[ "${operational_usage_ledger_live_e2e_precompleted:-false}" == true ]]; then
     [[ "$expected_commit" == "$target_commit" \
@@ -6899,6 +6900,24 @@ run_operational_usage_ledger_live_e2e_if_required() {
   fi
   [[ "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate \
      || ",${PLAN_TESTS:-}," == *",runtime:operational-usage-ledger-e2e,"* ]] || return 0
+  [[ "$run_full_e2e" == true || "$run_full_e2e" == false ]] || {
+    echo "[auto-deploy] invalid CARBONET_RUN_FULL_PROCESS_AUTH_E2E_ON_DEPLOY (expected true|false)" >&2
+    return 79
+  }
+  if [[ "$run_full_e2e" != true ]]; then
+    verify_operational_usage_ledger_current_runtime_identity "$expected_commit" proof-only || return 79
+    if [[ "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate ]]; then
+      jq -cn \
+        --arg scope DEPLOY_RUNTIME_IDENTITY_ONLY \
+        --arg fullProcessAuthorizationE2e DEFERRED_TO_DESIGN_QA \
+        '{scope:$scope,fullProcessAuthorizationE2e:$fullProcessAuthorizationE2e,
+          runtimeIdentityExact:true,persistentFixtures:0}' |
+        bash ops/scripts/stage-postdeploy-evidence-candidate.sh \
+          OPERATIONAL_USAGE_LEDGER_GATE __RELEASE__ RELEASE_GATE "$expected_commit"
+    fi
+    echo "[auto-deploy] operational usage ledger deploy identity PASS fullProcessAuthorizationE2e=deferred"
+    return 0
+  fi
   [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || {
     echo "[auto-deploy] invalid operational usage ledger E2E timeout" >&2
     invalidate_runtime_release_state

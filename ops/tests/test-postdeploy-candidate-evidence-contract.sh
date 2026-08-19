@@ -1006,6 +1006,22 @@ if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") != "true":
     assert '"$expected_commit" == "$target_commit"' in operational_live
     assert 'verify_operational_usage_ledger_current_runtime_identity "$expected_commit" proof-only' in operational_live
     assert 'operational usage ledger authenticated E2E reused from current candidate lane' in operational_live
+    assert 'CARBONET_RUN_FULL_PROCESS_AUTH_E2E_ON_DEPLOY:-false' in operational_live
+    assert 'DEPLOY_RUNTIME_IDENTITY_ONLY' in operational_live
+    assert 'DEFERRED_TO_DESIGN_QA' in operational_live
+    assert 'OPERATIONAL_USAGE_LEDGER_GATE __RELEASE__ RELEASE_GATE "$expected_commit"' in operational_live
+    assert operational_live.index('if [[ "$run_full_e2e" != true ]]') < \
+        operational_live.index('validate-operational-usage-ledger-e2e.sh')
+    for deploy_scope_mutant in (
+        operational_live.replace('CARBONET_RUN_FULL_PROCESS_AUTH_E2E_ON_DEPLOY:-false',
+                                 'CARBONET_RUN_FULL_PROCESS_AUTH_E2E_ON_DEPLOY:-true', 1),
+        operational_live.replace('DEPLOY_RUNTIME_IDENTITY_ONLY', 'FULL_PROCESS_AUTH_E2E', 1),
+        operational_live.replace('verify_operational_usage_ledger_current_runtime_identity "$expected_commit" proof-only',
+                                 'true'),
+    ):
+        assert 'CARBONET_RUN_FULL_PROCESS_AUTH_E2E_ON_DEPLOY:-false' not in deploy_scope_mutant or \
+            'DEPLOY_RUNTIME_IDENTITY_ONLY' not in deploy_scope_mutant or \
+            'verify_operational_usage_ledger_current_runtime_identity "$expected_commit" proof-only' not in deploy_scope_mutant
     finalizer = deploy[deploy.index("finalize_postdeploy_candidate_release() {"):
                        deploy.index("finalize_postdeploy_candidate_release_with_composite_gate_cleanup()")]
     assert '"${runtime_release_state_precompleted:-false}" == true' in finalizer
