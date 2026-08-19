@@ -143,7 +143,15 @@ public class ReportVerificationRegistryController {
             "/en/admin/api/admin/emission-survey-report/verify-ocr"
     })
     public ResponseEntity<Map<String, Object>> verifyOcr(@RequestBody Map<String, Object> payload) {
-        return ResponseEntity.ok(reportVerificationRegistryService.verifyOcr(payload));
+        try {
+            return ResponseEntity.ok(reportVerificationRegistryService.verifyOcr(payload));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "status", "INVALID_VERIFICATION_REQUEST",
+                    "message", exception.getMessage(),
+                    "maxPageCount", ReportVerificationRegistryService.MAX_VERIFICATION_PAGES
+            ));
+        }
     }
 
     private String resolveActorId(HttpServletRequest request) {

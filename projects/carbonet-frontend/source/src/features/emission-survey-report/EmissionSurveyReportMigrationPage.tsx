@@ -30,6 +30,8 @@ import {
   type EmissionSurveyReportSectionSummary
 } from "./reportSession";
 
+const MAX_REPORT_VERIFICATION_PAGES = 10;
+
 function toEnglishTitleCase(value: string) {
   return value.replace(/[A-Za-z]+(?:'[A-Za-z]+)?/g, (word) => {
     const lower = word.toLocaleLowerCase("en-US");
@@ -616,6 +618,10 @@ async function renderReportPdfPages(file: File, onProgress: (progress: number, s
   await import("pdfjs-dist/build/pdf.worker.min.mjs");
   const pdfjs = await import("pdfjs-dist");
   const pdfDocument = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  if (pdfDocument.numPages > MAX_REPORT_VERIFICATION_PAGES) {
+    await pdfDocument.destroy();
+    throw new Error(`Report verification supports up to ${MAX_REPORT_VERIFICATION_PAGES} pages.`);
+  }
   const pages: Blob[] = [];
   for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
     onProgress(Math.round((pageNumber / pdfDocument.numPages) * 8), `PDF ${pageNumber}/${pdfDocument.numPages}`);
@@ -3691,7 +3697,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
         : (en
           ? "Tampered PDF: the uploaded file bytes differ from the issued original. QR, OCR, and visual similarity cannot override this result."
           : "변조 파일입니다. 업로드한 PDF 바이트가 발급 원본과 다릅니다. QR·OCR·시각 유사도로 이 결과를 덮어쓸 수 없습니다."));
-      return false;
+      return true;
     }
     setResultTone("warning");
     setResultMessage(verification.status === "PDF_FINGERPRINT_UNAVAILABLE"
@@ -3747,7 +3753,10 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
         : `${sourceLabel}에서 Carbonet 검증 블록을 찾지 못했습니다. 브라우저가 PDF 텍스트를 압축했다면 마지막 페이지의 검증 블록을 붙여넣으세요.`);
       return;
     }
-    if (exactPdfVerification && !applyPdfFileVerdict(exactPdfVerification)) {
+    if (exactPdfVerification) {
+      applyPdfFileVerdict(exactPdfVerification);
+    }
+    if (exactPdfVerification?.status === "INVALID_PDF") {
       setPayload(nextPayload);
       return;
     }
@@ -3822,10 +3831,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       appendVerificationLog(qrEvidence ? "OK" : "WARN", qrEvidence ? (en ? "Verification QR decoded." : "검증 QR을 판독했습니다.") : (en ? "Verification QR was not found." : "검증 QR을 찾지 못했습니다."), qrEvidence?.certificateId);
       if (rawPdfFile && !exactPdfVerification && qrEvidence?.certificateId) {
         exactPdfVerification = await verifyExactPdfFile(rawPdfFile, qrEvidence.certificateId);
-        if (exactPdfVerification.status === "TAMPERED_PDF") {
-          applyPdfFileVerdict(exactPdfVerification);
-          return;
-        }
+        applyPdfFileVerdict(exactPdfVerification);
       }
       const visualProfile = await buildReportVisualProfile(pages);
       appendVerificationLog("OK", en ? "Uploaded visual fingerprint generated." : "업로드 문서 시각 지문을 생성했습니다.", `grid=${visualProfile.columns}x${visualProfile.rows}, pages=${visualProfile.pages.length}`);
@@ -3833,7 +3839,9 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       appendVerificationLog("OK", en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다.", `characters=${recognized.text.length}, engineConfidence=${Math.round(recognized.confidence)}%`);
       setUploadedVerificationText(recognized.text);
       const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType, recognized.pageTexts);
-      appendVerificationLog(verification.photoConsistent ? "OK" : "WARN", en ? "Issued-report candidate comparison completed." : "발급 리포트 후보 대조를 완료했습니다.", `certificate=${verification.certificateId || "-"}, candidates=${verification.comparisons?.length || 0}, exact=${verification.comparisons?.filter((item) => item.overallExactMatch).length || 0}, confidence=${verification.confidence}%, visual=${verification.visualSimilarity ?? 0}%, mismatches=${verification.fieldMismatches?.length || 0}`);
+      const orderedEvidenceMismatchCount = verification.ocrEvidencePageComparisons
+        ?.filter((page) => !page.tokenSequenceExact).length || 0;
+      appendVerificationLog(verification.photoConsistent ? "OK" : "WARN", en ? "Issued-report candidate comparison completed." : "발급 리포트 후보 대조를 완료했습니다.", `certificate=${verification.certificateId || "-"}, candidates=${verification.comparisons?.length || 0}, exact=${verification.comparisons?.filter((item) => item.overallExactMatch).length || 0}, confidence=${verification.confidence}%, visual=${verification.visualSimilarity ?? 0}%, fieldMismatches=${verification.fieldMismatches?.length || 0}, orderedPageMismatches=${orderedEvidenceMismatchCount}`);
       setPhotoVerification(verification);
       if (rawPdfFile && !exactPdfVerification && verification.certificateId) {
         exactPdfVerification = await verifyExactPdfFile(rawPdfFile, verification.certificateId);
@@ -3846,13 +3854,20 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
             : "PDF 인증서 ID를 발급 바이트 지문과 결박하지 못했습니다. OCR 유사도만으로는 진위를 증명할 수 없습니다.");
           return;
         }
-        if (!applyPdfFileVerdict(exactPdfVerification)) {
+        if (exactPdfVerification.status === "INVALID_PDF") {
+          applyPdfFileVerdict(exactPdfVerification);
           return;
         }
-        setResultTone(verification.photoConsistent ? "success" : "warning");
-        setResultMessage(verification.photoConsistent
-          ? (en ? `Exact issued PDF match confirmed; visible OCR also matched (${verification.confidence}%).` : `발급 PDF 원본 바이트가 정확히 일치하고 화면 OCR도 일치했습니다(${verification.confidence}%).`)
-          : (en ? `Exact PDF bytes match, but visible OCR requires review (${verification.confidence}%).` : `PDF 원본 바이트는 일치하지만 화면 OCR 결과는 검토가 필요합니다(${verification.confidence}%).`));
+        const bytesExact = exactPdfVerification.status === "EXACT_PDF_MATCH";
+        const semanticExact = verification.semanticStatus === "CONTENT_EXACT";
+        setResultTone(bytesExact && semanticExact ? "success" : "danger");
+        setResultMessage(verification.semanticStatus === "DATA_TAMPERED"
+          ? (en ? "Data tampering detected: at least one report value differs from the issued dataset." : "데이터 변조를 감지했습니다. 리포트 개별 값 중 하나 이상이 발급 데이터와 다릅니다.")
+          : verification.semanticStatus === "CHART_TAMPERED"
+            ? (en ? "Chart tampering detected: a bar value or rendered bar shape differs from the issued report." : "막대그래프 변조를 감지했습니다. 그래프 숫자 또는 막대 모양이 발급본과 다릅니다.")
+            : bytesExact
+              ? (en ? `Exact issued PDF and semantic content match (${verification.confidence}%).` : `발급 PDF 바이트와 데이터·그래프가 모두 일치합니다(${verification.confidence}%).`)
+              : (en ? "PDF bytes differ, but every report value and chart matches. Byte evidence is retained for review." : "PDF 바이트는 다르지만 모든 데이터와 그래프는 일치합니다. 바이트 불일치 증거는 검토용으로 유지합니다."));
         return;
       }
       if (preserveDigitalPayload) {
@@ -3897,6 +3912,11 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     setDatasetVerification(null);
     setPdfFileVerification(null);
     if (files.every((item) => item.type.startsWith("image/"))) {
+      if (files.length > MAX_REPORT_VERIFICATION_PAGES) {
+        setResultTone("warning");
+        setResultMessage(en ? "Upload no more than 10 report pages." : "리포트 페이지는 최대 10개까지 업로드할 수 있습니다.");
+        return;
+      }
       setUploadedPdfSelected(false);
       photoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
       setPhotoPreviewUrls(files.map((item) => URL.createObjectURL(item)));
@@ -3915,7 +3935,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     setUploadedVerificationText(extractedText);
     setUploadedPayloadFound(Boolean(nextPayload));
     if (nextPayload) {
-      const exactPdfVerification = await verifyExactPdfFile(file, nextPayload.certificateId);
+      let exactPdfVerification = await verifyExactPdfFile(file, nextPayload.certificateId);
       if (exactPdfVerification.status !== "EXACT_PDF_MATCH" && modificationDates.modifiedAfterCreation) {
         const metadataTamperVerdict: ReportPdfFileVerificationResponse = {
           valid: false,
@@ -3927,13 +3947,12 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
         };
         appendVerificationLog("ERROR", en ? "PDF modification metadata detected." : "PDF 생성·수정 날짜 불일치를 감지했습니다.", metadataTamperVerdict.message);
         applyPdfFileVerdict(metadataTamperVerdict);
-        setOcrProgress({ busy: false, percent: 0, status: en ? "Tampered PDF blocked" : "변조 PDF 차단" });
-        return;
+        exactPdfVerification = metadataTamperVerdict;
+        setOcrProgress({ busy: true, percent: 0, status: en ? "Metadata mismatch recorded; continuing semantic checks" : "수정 이력 기록 후 데이터·그래프 검증 계속" });
       }
       await evaluatePayload(nextPayload, file.name, exactPdfVerification);
       if (exactPdfVerification.status === "TAMPERED_PDF") {
-        setOcrProgress({ busy: false, percent: 0, status: en ? "Tampered PDF blocked" : "변조 PDF 차단" });
-        return;
+        setOcrProgress({ busy: true, percent: 0, status: en ? "Byte mismatch recorded; continuing semantic checks" : "바이트 불일치 기록 후 데이터·그래프 검증 계속" });
       }
       setOcrProgress({ busy: true, percent: 0, status: en ? "Cross-checking visible PDF data" : "PDF 화면 데이터 교차 검증 중" });
       try {
@@ -3949,7 +3968,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       }
       return;
     }
-    const initialPdfVerification = visibleCertificateId
+    let initialPdfVerification = visibleCertificateId
       ? await verifyExactPdfFile(file, visibleCertificateId)
       : null;
     if (initialPdfVerification?.status !== "EXACT_PDF_MATCH" && modificationDates.modifiedAfterCreation) {
@@ -3963,12 +3982,11 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       };
       appendVerificationLog("ERROR", en ? "PDF modification metadata detected." : "PDF 생성·수정 날짜 불일치를 감지했습니다.", metadataTamperVerdict.message);
       applyPdfFileVerdict(metadataTamperVerdict);
-      setOcrProgress({ busy: false, percent: 0, status: en ? "Tampered PDF blocked" : "변조 PDF 차단" });
-      return;
+      initialPdfVerification = metadataTamperVerdict;
+      setOcrProgress({ busy: true, percent: 0, status: en ? "Metadata mismatch recorded; continuing semantic checks" : "수정 이력 기록 후 데이터·그래프 검증 계속" });
     }
     if (initialPdfVerification?.status === "TAMPERED_PDF") {
-      setOcrProgress({ busy: false, percent: 0, status: en ? "Tampered PDF blocked" : "변조 PDF 차단" });
-      return;
+      setOcrProgress({ busy: true, percent: 0, status: en ? "Byte mismatch recorded; continuing semantic checks" : "바이트 불일치 기록 후 데이터·그래프 검증 계속" });
     }
     setOcrProgress({ busy: true, percent: 0, status: en ? "Rendering PDF pages" : "PDF 페이지 변환 중" });
     try {
@@ -4123,9 +4141,9 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Three Verification Signals" : "3가지 식별 방식"}</p>
               <div className="mt-4 space-y-3">
                 {[
-                  [en ? "Certificate ID" : "인증서 ID", payload?.certificateId || "-"],
-                  [en ? "SHA-256 Fingerprint" : "SHA-256 리포트 지문", payload?.payloadHash || "-"],
-                  [en ? "Integrity Code" : "무결성 코드", payload?.integrityCode || "-"]
+                  [en ? "Certificate ID" : "인증서 ID", payload?.certificateId || photoVerification?.certificateId || "-"],
+                  [en ? "SHA-256 Fingerprint" : "SHA-256 리포트 지문", payload?.payloadHash || photoVerification?.payloadHash || "-"],
+                  [en ? "Integrity Code" : "무결성 코드", payload?.integrityCode || photoVerification?.integrityCode || "-"]
                 ].map(([label, value]) => (
                   <div className="rounded-xl border border-slate-100 bg-slate-50 p-3" key={label}>
                     <p className="text-[11px] font-black text-slate-500">{label}</p>
@@ -4155,6 +4173,23 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                     <span className="col-span-2">{en ? "Numeric cells" : "수치 셀"}: {photoVerification.matchedNumberCount || 0}/{photoVerification.numberCount || 0}</span>
                   </>}
                 </div>
+                {selectedReportType === "EMISSION_SURVEY" && photoVerification.sectionSummaryComparisons?.length ? (
+                  <div className="mt-4 border-t border-slate-200 pt-3">
+                    <p className="text-xs font-black text-slate-900">{en ? "Graph data verification" : "그래프 데이터 개별 검증"}</p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      {photoVerification.sectionSummaryComparisons.map((section) => (
+                        <div className={`border p-3 text-xs ${section.matched ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-300 bg-rose-50 text-rose-900"}`} key={section.sectionCode}>
+                          <p className="font-black">{section.sectionLabel}</p>
+                          <p className="mt-1">{en ? "Emission" : "배출량"}: {section.expectedTotalEmission} ↔ {section.actualTotalEmission || (en ? "MISSING" : "누락")} <strong>{section.totalEmissionMatched ? "MATCH" : "MISMATCH"}</strong></p>
+                          <p>{en ? "Share" : "비율"}: {section.expectedSharePercent}% ↔ {section.actualSharePercent || (en ? "MISSING" : "누락")}% <strong>{section.sharePercentMatched ? "MATCH" : "MISMATCH"}</strong></p>
+                        </div>
+                      ))}
+                    </div>
+                    {photoVerification.unexpectedSectionSummaryNumbers?.length ? (
+                      <p className="mt-2 break-words text-xs font-black text-rose-900">{en ? "Unexpected graph values" : "예상하지 않은 그래프 값"}: {photoVerification.unexpectedSectionSummaryNumbers.join(", ")}</p>
+                    ) : null}
+                  </div>
+                ) : null}
                 {selectedReportType === "EMISSION_SURVEY" && photoVerification.ocrEvidencePageComparisons?.length ? (
                   <div className="mt-4 border-t border-slate-200 pt-3">
                     <p className="text-xs font-black text-slate-900">{en ? "Ordered page evidence" : "페이지별 전체 항목·순서·중복 검증"}</p>
@@ -4162,8 +4197,26 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                       {photoVerification.ocrEvidencePageComparisons.map((page) => (
                         <div className={`rounded-lg border px-3 py-2 text-xs ${page.matched ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900"}`} key={`${page.pageNumber}-${page.pageType}`}>
                           <strong>P{page.pageNumber} {page.pageType}</strong>
-                          <span className="ml-2">{page.matchedTokenCount}/{page.expectedTokenCount}</span>
-                          <span className="ml-2">{page.ordered ? "ORDER OK" : "ORDER FAIL"}</span>
+                          <span className="ml-2">{en ? "expected" : "기대"} {page.expectedTokenCount} / {en ? "uploaded" : "업로드"} {page.actualTokenCount}</span>
+                          <span className="ml-2">{page.tokenSequenceExact ? "SEQUENCE EXACT" : "SEQUENCE MISMATCH"}</span>
+                          {page.missingTokens?.length ? (
+                            <p className="mt-2 break-words font-semibold">{en ? "Missing" : "누락"}: {page.missingTokens.join(", ")}</p>
+                          ) : null}
+                          {page.unexpectedTokens?.length ? (
+                            <p className="mt-2 break-words font-black">{en ? "Unexpected or displaced" : "추가·위치 불일치"}: {page.unexpectedTokens.join(", ")}</p>
+                          ) : null}
+                          {page.tokenComparisons?.length ? (
+                            <div className="mt-3 max-h-72 overflow-y-auto border border-current/20 bg-white/70">
+                              {page.tokenComparisons.map((token) => (
+                                <div className={`grid grid-cols-[3.5rem_1fr_1fr_5rem] gap-2 border-b border-current/10 px-2 py-1 last:border-b-0 ${token.matched ? "text-emerald-800" : "bg-rose-100 font-black text-rose-900"}`} key={`${page.pageNumber}-${token.position}-${token.expectedOccurrence}`}>
+                                  <span>#{token.position}</span>
+                                  <span className="break-all">{en ? "Expected" : "기대"}: {token.expected}</span>
+                                  <span className="break-all">{en ? "Uploaded" : "업로드"}: {token.actual || (en ? "MISSING" : "누락")}</span>
+                                  <span>{token.matched ? "MATCH" : "MISMATCH"}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
                       ))}
                     </div>
@@ -4220,8 +4273,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
               {selectedReportType === "EMISSION_SURVEY" ? (
                 <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-950">
                   {en
-                    ? "New emission survey reports are accepted only when all 5 pages match independently: page count, every visible field, top-to-bottom order, duplicate occurrence count, four QR identifiers, dataset, PDF bytes, dates, and visual fingerprint. Legacy OCR evidence requires reissuance."
-                    : "신규 배출 설문 리포트는 5개 페이지를 각각 독립 검증합니다. 페이지 수·모든 표시 항목·위→아래 순서·중복 횟수·QR 4식별자·데이터셋·PDF 바이트·생성/수정일·시각 지문이 모두 일치해야 정상이며, 기존 OCR 증거는 재발급이 필요합니다."}
+                    ? "Up to 10 pages are detected and checked independently. Byte and date differences remain authenticity evidence, but never stop field-by-field data, totals, chart labels, bar shapes, QR, dataset, and visual checks."
+                    : "최대 10페이지의 유형을 자동 식별하여 각각 검증합니다. 바이트·생성/수정일 불일치는 원본성 증거로 유지하되, 개별 데이터·합계·그래프 숫자·막대 모양·QR·데이터셋·시각 검증은 중단하지 않습니다."}
                 </div>
               ) : null}
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black">
@@ -4240,6 +4293,12 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                 <span className={`rounded-lg px-3 py-2 ${photoVerification?.photoConsistent ? "bg-emerald-50 text-emerald-800" : photoVerification ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-500"}`}>
                   {en ? "Visible OCR vs registry" : "화면 OCR ↔ 원장"}: {photoVerification?.photoConsistent ? `${photoVerification.confidence}%` : photoVerification ? `${photoVerification.confidence}%` : "-"}
                 </span>
+                <span className={`rounded-lg px-3 py-2 ${photoVerification?.numericDataExactMatch ? "bg-emerald-100 text-emerald-900" : photoVerification ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-500"}`}>
+                  {en ? "Every numeric field" : "개별 숫자 전체"}: {photoVerification?.numericDataExactMatch ? "EXACT" : photoVerification ? "DATA_TAMPERED" : "-"}
+                </span>
+                <span className={`rounded-lg px-3 py-2 ${photoVerification?.chartExactMatch ? "bg-emerald-100 text-emerald-900" : photoVerification ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-500"}`}>
+                  {en ? "Chart values + bar shapes" : "그래프 숫자 + 막대 모양"}: {photoVerification?.chartExactMatch ? "EXACT" : photoVerification ? "CHART_TAMPERED" : "-"}
+                </span>
                 <span className={`col-span-2 rounded-lg px-3 py-2 ${photoVerification?.qrFullyMatched ? "bg-emerald-100 text-emerald-900" : photoVerification?.qrDetected ? "bg-rose-50 text-rose-800" : "bg-slate-100 text-slate-500"}`}>
                   {en ? "Photographed QR signature vs registry" : "촬영 QR 서명 ↔ 원장"}: {photoVerification?.qrFullyMatched ? "OK" : photoVerification?.qrDetected ? "FAIL" : "-"}
                 </span>
@@ -4251,8 +4310,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                     {en ? "All issued visible fields vs OCR" : "발급 화면 전체 항목 ↔ OCR"}: {photoVerification?.ocrEvidenceExactMatch ? `OK (${photoVerification.matchedOcrEvidenceTokenCount || 0}/${photoVerification.ocrEvidenceTokenCount || 0})` : photoVerification?.ocrEvidenceAvailable ? `FAIL (${photoVerification.matchedOcrEvidenceTokenCount || 0}/${photoVerification.ocrEvidenceTokenCount || 0})` : photoVerification ? (en ? "REISSUE REQUIRED" : "재발급 필요") : "-"}
                   </span>
                 ) : null}
-                <span className={`col-span-2 rounded-lg px-3 py-2 ${datasetVerification?.datasetMatch && photoVerification?.photoConsistent && (!uploadedPdfSelected || pdfFileVerification?.status === "EXACT_PDF_MATCH") ? "bg-emerald-100 text-emerald-900" : pdfFileVerification?.status === "TAMPERED_PDF" ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-600"}`}>
-                  {en ? "Four-way equality" : "4자 데이터 일치"}: {pdfFileVerification?.status === "TAMPERED_PDF" ? "TAMPERED" : uploadedPdfSelected && pdfFileVerification?.status !== "EXACT_PDF_MATCH" ? "UNVERIFIABLE" : datasetVerification?.datasetMatch && photoVerification?.photoConsistent && (!uploadedPdfSelected || pdfFileVerification?.status === "EXACT_PDF_MATCH") ? "OK" : datasetVerification ? (en ? "OCR REVIEW" : "OCR 검토") : (en ? "EMBEDDED DATA UNAVAILABLE" : "내장 데이터 없음")}
+                <span className={`col-span-2 rounded-lg px-3 py-2 ${photoVerification?.semanticStatus === "CONTENT_EXACT" ? "bg-emerald-100 text-emerald-900" : photoVerification ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-600"}`}>
+                  {en ? "Semantic verification" : "내용 검증 최종 판정"}: {photoVerification?.semanticStatus || (datasetVerification ? (en ? "OCR REVIEW" : "OCR 검토") : (en ? "EMBEDDED DATA UNAVAILABLE" : "내장 데이터 없음"))}
                 </span>
               </div>
               <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">
@@ -4362,6 +4421,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                           <p>{en ? "Total" : "총량"}: {item.totalEmissionMatched ? "OK" : "-"}</p>
                           <p>{en ? "Materials" : "물질"}: {item.matchedMaterialCount}/{item.materialCount}</p>
                           <p>{en ? "Numbers" : "수치"}: {item.matchedNumberCount}/{item.numberCount}</p>
+                          <p>{en ? "All visible fields including charts" : "차트 포함 전체 표시 항목"}: {item.matchedComparisonItemCount ?? 0}/{item.comparisonItemCount ?? 0}</p>
                         </>}
                         <div className="mt-3 flex flex-wrap gap-2">
                           <span className={`px-2 py-1 font-black ${item.tagExactMatch ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>{en ? "Verification tags" : "검증 태그"}: {item.tagExactMatch ? "EXACT" : "MISMATCH"}</span>
@@ -4372,6 +4432,28 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                             {en ? "Show detailed comparison" : "상세 일치·불일치 내역"}
                           </summary>
                           <div className="border-t border-slate-200 p-3">
+                            {item.comparisonDetails?.length ? <div className="mb-4 border border-slate-300 bg-slate-50 p-3">
+                              <p className="font-black text-slate-950">
+                                {en ? "Complete visible-data comparison" : "전체 표시 데이터 일치·불일치 상세"} ({item.matchedComparisonItemCount ?? 0}/{item.comparisonItemCount ?? item.comparisonDetails.length})
+                              </p>
+                              <div className="mt-2 max-h-[32rem] overflow-auto border border-slate-200 bg-white">
+                                <table className="w-full min-w-[840px] border-collapse text-left text-[11px]">
+                                  <thead className="sticky top-0 bg-slate-100 text-slate-700"><tr>
+                                    <th className="px-3 py-2">{en ? "Type" : "종류"}</th><th className="px-3 py-2">{en ? "Group" : "행·차트 항목"}</th>
+                                    <th className="px-3 py-2">{en ? "Field" : "필드"}</th><th className="px-3 py-2">{en ? "Expected" : "예상값"}</th>
+                                    <th className="px-3 py-2">{en ? "Actual" : "실제값"}</th><th className="px-3 py-2">{en ? "Result" : "판정"}</th>
+                                  </tr></thead>
+                                  <tbody className="divide-y divide-slate-100">
+                                    {item.comparisonDetails.map((detail, detailIndex) => <tr className={detail.matched ? "bg-white" : "bg-rose-50"} key={`${item.certificateId}-${detail.category}-${detail.group}-${detail.field}-${detailIndex}`}>
+                                      <td className="px-3 py-2 font-black">{detail.category === "CHART" ? (en ? "CHART" : "차트") : (en ? "DETAIL" : "상세표")}</td>
+                                      <td className="px-3 py-2 font-semibold">{detail.group}</td><td className="px-3 py-2 font-bold">{detail.field}</td>
+                                      <td className="px-3 py-2 font-semibold">{detail.expected || "-"}</td><td className="px-3 py-2 font-semibold">{detail.actual || (en ? "MISSING" : "누락")}</td>
+                                      <td className={`px-3 py-2 font-black ${detail.matched ? "text-emerald-700" : "text-rose-700"}`}>{detail.matched ? "MATCH" : "MISMATCH"}</td>
+                                    </tr>)}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div> : null}
                             <div className="overflow-auto border border-slate-200">
                               <table className="w-full min-w-[720px] border-collapse text-left text-[11px]">
                                 <thead className="bg-slate-100 text-slate-700"><tr>

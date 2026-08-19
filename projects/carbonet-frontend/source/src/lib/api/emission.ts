@@ -259,6 +259,8 @@ export type ReportPhotoVerificationResponse = {
   verificationMode: "PHOTO_OCR_DATASET";
   confidence: number;
   certificateId?: string;
+  payloadHash?: string;
+  integrityCode?: string;
   reportTitle?: string;
   productName?: string;
   issuedAt?: string;
@@ -272,6 +274,11 @@ export type ReportPhotoVerificationResponse = {
   qrDatasetHashMatch?: boolean;
   tagExactMatch?: boolean;
   datasetExactMatch?: boolean;
+  numericDataExactMatch?: boolean;
+  chartDataExactMatch?: boolean;
+  chartVisualExactMatch?: boolean;
+  chartExactMatch?: boolean;
+  semanticStatus?: "CONTENT_EXACT" | "DATA_TAMPERED" | "CHART_TAMPERED";
   ocrEvidenceRequired?: boolean;
   ocrEvidenceAvailable?: boolean;
   ocrEvidenceExactMatch?: boolean;
@@ -286,10 +293,36 @@ export type ReportPhotoVerificationResponse = {
     pageType: string;
     expectedTokenCount: number;
     matchedTokenCount: number;
+    actualTokenCount: number;
     ordered: boolean;
+    tokenSequenceExact: boolean;
     matched: boolean;
     missingTokens: string[];
+    unexpectedTokens: string[];
+    tokenComparisons: Array<{
+      position: number;
+      expected: string;
+      actual: string;
+      expectedOccurrence: number;
+      actualOccurrenceCount: number;
+      matched: boolean;
+    }>;
   }>;
+  sectionSummaryAvailable?: boolean;
+  sectionSummaryExactMatch?: boolean;
+  sectionSummaryComparisons?: Array<{
+    sectionCode: string;
+    sectionLabel: string;
+    expectedTotalEmission: string;
+    actualTotalEmission: string;
+    expectedSharePercent: string;
+    actualSharePercent: string;
+    labelMatched: boolean;
+    totalEmissionMatched: boolean;
+    sharePercentMatched: boolean;
+    matched: boolean;
+  }>;
+  unexpectedSectionSummaryNumbers?: string[];
   contentConfidence?: number;
   visualProfileAvailable?: boolean;
   visualSimilarity?: number;
@@ -311,6 +344,10 @@ export type ReportPhotoVerificationResponse = {
     totalEmissionDisplay?: string;
     totalEmissionMatched: boolean;
   }>;
+  detailRowsExactMatch?: boolean;
+  comparisonItemCount?: number;
+  matchedComparisonItemCount?: number;
+  comparisonDetails?: ReportVisibleFieldComparison[];
   damagedRegions?: Array<{ page: number; row: number; column: number; difference: number }>;
   detectedCertificateId?: string;
   productMatched?: boolean;
@@ -339,6 +376,15 @@ export type ReportSummaryFieldComparison = {
   field: string;
   label: string;
   expected: string;
+  matched: boolean;
+};
+
+export type ReportVisibleFieldComparison = {
+  category: "DETAIL" | "CHART";
+  group: string;
+  field: string;
+  expected: string;
+  actual: string;
   matched: boolean;
 };
 
@@ -376,6 +422,10 @@ export type ReportOcrComparison = {
   datasetHashMatch: boolean;
   verificationTagMatch: boolean;
   datasetExactMatch: boolean;
+  numericDataExactMatch?: boolean;
+  chartDataExactMatch?: boolean;
+  chartVisualExactMatch?: boolean;
+  chartExactMatch?: boolean;
   tagExactMatch: boolean;
   ocrEvidenceRequired: boolean;
   ocrEvidenceAvailable: boolean;
@@ -402,11 +452,15 @@ export type ReportOcrComparison = {
     materialName?: string;
     rowMatched: boolean;
     materialMatched: boolean;
+    actualMaterialName?: string;
     amountDisplay?: string;
+    amountActual?: string;
     amountMatched: boolean;
     emissionFactorDisplay?: string;
+    emissionFactorActual?: string;
     emissionFactorMatched: boolean;
     totalEmissionDisplay?: string;
+    totalEmissionActual?: string;
     totalEmissionMatched: boolean;
   }>;
   fieldMismatches?: Array<{
@@ -421,6 +475,10 @@ export type ReportOcrComparison = {
     totalEmissionDisplay?: string;
     totalEmissionMatched: boolean;
   }>;
+  detailRowsExactMatch?: boolean;
+  comparisonItemCount?: number;
+  matchedComparisonItemCount?: number;
+  comparisonDetails?: ReportVisibleFieldComparison[];
 };
 
 export async function issueSurveyReportVerification(payload: ReportVerificationDatasetPayload) {

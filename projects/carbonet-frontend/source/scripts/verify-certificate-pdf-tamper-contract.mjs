@@ -9,6 +9,7 @@ const paths = {
   api: path.join(frontendRoot, "src/lib/api/emission.ts"),
   service: path.join(repoRoot, "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/service/ReportVerificationRegistryService.java"),
   controller: path.join(repoRoot, "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/web/ReportVerificationRegistryController.java"),
+  security: path.join(repoRoot, "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/config/security/CarbonetSecurityOverrideConfig.java"),
   migration: path.join(repoRoot, "apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260818090000__bind_issued_pdf_bytes_to_verification_registry.sql"),
   ocrMigration: path.join(repoRoot, "apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260818173000__register_report_ocr_evidence.sql"),
 };
@@ -57,6 +58,19 @@ requireText("service", "expectedTokens.equals(actualTokens)");
 requireText("service", 'pageComparison.put("unexpectedTokens", pageUnexpected)');
 requireText("service", 'Boolean.TRUE.equals(score.get("sectionSummaryExactMatch"))');
 requireText("service", 'result.put("unexpectedSectionSummaryNumbers", unexpected)');
+requireText("service", "scoreDetailTablePage(normalizedOcrPages, dataset)");
+requireText("service", "MAX_VERIFICATION_PAGES = 10");
+requireText("service", "selectSectionSummaryPage(normalizedOcrPages, summaries)");
+requireText("service", "selectDetailTablePages(normalizedOcrPages, rows)");
+requireText("service", 'score.put("comparisonItemCount", details.size())');
+requireText("service", 'detail.put("category", category)');
+requireText("service", 'comparison.put("numericDataExactMatch", numericDataExactMatch)');
+requireText("service", 'comparison.put("chartExactMatch", chartExactMatch)');
+requireText("service", 'response.put("payloadHash", best.get("payload_hash"))');
+requireText("service", 'response.put("integrityCode", best.get("integrity_code"))');
+requireText("service", '"DATA_TAMPERED"');
+requireText("service", '"CHART_TAMPERED"');
+requireText("service", "classifySemanticStatus(datasetExactMatch");
 requireText("service", 'boolean ocrEvidenceRequired = "EMISSION_SURVEY".equalsIgnoreCase(requestedReportType)');
 requireText("service", "tagExactMatch && datasetExactMatch && ocrEvidenceExactMatch");
 requireText("service", "!ocrEvidenceRequired || ocrEvidenceExactMatch");
@@ -65,15 +79,53 @@ requireText("service", '"IDENTIFIER_MISMATCH"');
 requireText("service", '"OCR_EVIDENCE_UNAVAILABLE"');
 requireText("service", '"OCR_CONTENT_MISMATCH"');
 requireText("controller", '"/api/home/certificate-verify/verify-file"');
+requireText("controller", '"INVALID_VERIFICATION_REQUEST"');
+requireText("controller", 'ReportVerificationRegistryService.MAX_VERIFICATION_PAGES');
+requireText("security", '"/api/home/certificate-verify/verify-file"');
+requireText("security", '"/api/en/home/certificate-verify/verify-file"');
 requireText("controller", '@RequestPart("file") MultipartFile file');
 requireText("api", 'form.append("file", file, file.name)');
 requireText("api", '"/api/home/certificate-verify/verify-file"');
 requireText("api", "body: JSON.stringify({ record, html, ocrEvidence })");
 requireText("page", "buildReportOcrIssuanceEvidence(article, record)");
+requireText("page", "MAX_REPORT_VERIFICATION_PAGES = 10");
+requireText("page", "pdfDocument.numPages > MAX_REPORT_VERIFICATION_PAGES");
+requireText("page", "files.length > MAX_REPORT_VERIFICATION_PAGES");
+requireText("page", "최대 10페이지의 유형을 자동 식별하여 각각 검증합니다.");
 requireText("page", 'selectedReportType === "EMISSION_SURVEY" && photoVerification.ocrEvidencePageComparisons?.length');
+requireText("api", "actualTokenCount: number");
+requireText("api", "tokenSequenceExact: boolean");
+requireText("api", "unexpectedTokens: string[]");
+requireText("api", "tokenComparisons: Array<{");
+requireText("api", "expectedOccurrence: number");
+requireText("api", "actualOccurrenceCount: number");
+requireText("page", 'page.tokenSequenceExact ? "SEQUENCE EXACT" : "SEQUENCE MISMATCH"');
+requireText("page", 'page.unexpectedTokens.join(", ")');
+requireText("api", "sectionSummaryComparisons?: Array<{");
+requireText("api", "actualTotalEmission: string");
+requireText("page", 'en ? "Graph data verification" : "그래프 데이터 개별 검증"');
+requireText("page", 'section.totalEmissionMatched ? "MATCH" : "MISMATCH"');
+requireText("page", 'photoVerification.unexpectedSectionSummaryNumbers.join(", ")');
+requireText("page", "payload?.certificateId || photoVerification?.certificateId");
+requireText("page", "payload?.payloadHash || photoVerification?.payloadHash");
+requireText("page", "payload?.integrityCode || photoVerification?.integrityCode");
+requireText("api", "comparisonDetails?: ReportVisibleFieldComparison[]");
+requireText("page", 'en ? "Complete visible-data comparison" : "전체 표시 데이터 일치·불일치 상세"');
+requireText("page", 'detail.category === "CHART"');
+requireText("page", 'detail.actual || (en ? "MISSING" : "누락")');
+requireText("page", 'token.matched ? "MATCH" : "MISMATCH"');
+requireText("page", 'token.actual || (en ? "MISSING" : "누락")');
+requireText("page", "orderedPageMismatches=${orderedEvidenceMismatchCount}");
 requireText("page", 'resultTone === "danger" ? (en ? "Tampered PDF" : "변조 파일")');
 requireText("page", 'verification.status === "TAMPERED_PDF"');
-requireText("page", "QR·OCR·시각 유사도로 이 결과를 덮어쓸 수 없습니다.");
+requireText("page", "바이트 불일치 기록 후 데이터·그래프 검증 계속");
+requireText("page", "수정 이력 기록 후 데이터·그래프 검증 계속");
+requireText("page", "PDF 바이트는 다르지만 모든 데이터와 그래프는 일치합니다.");
+requireText("page", "데이터 변조를 감지했습니다.");
+requireText("page", "막대그래프 변조를 감지했습니다.");
+requireText("page", 'en ? "Every numeric field" : "개별 숫자 전체"');
+requireText("page", 'en ? "Chart values + bar shapes" : "그래프 숫자 + 막대 모양"');
+requireText("page", 'en ? "Semantic verification" : "내용 검증 최종 판정"');
 requireText("page", "const [uploadedPdfSelected, setUploadedPdfSelected] = useState(false)");
 requireText("page", "const visibleCertificateId = findCertificateIdFromPdfText(extractedText)");
 requireText("page", "const modificationDates = await inspectPdfModificationDates(buffer)");
@@ -84,10 +136,10 @@ requireText("page", "변조 파일입니다. PDF 생성일과 수정일이 다�
 requireText("page", "변조 파일: PDF 생성일과 수정일이 다릅니다.");
 requireText("api", '"EXACT_PDF_BYTES" | "PDF_METADATA_DATES"');
 requireText("page", "PDF 원본성 검증 불가: OCR·시각 유사도는 참고 증거이며 진위 판정이 아닙니다.");
-requireText("page", 'uploadedPdfSelected && pdfFileVerification?.status !== "EXACT_PDF_MATCH" ? "UNVERIFIABLE"');
-requireText("page", 'uploadedPdfSelected ? "UNVERIFIABLE" : "-"');
+requireText("page", 'photoVerification?.semanticStatus === "CONTENT_EXACT"');
 rejectText("page", "(!pdfFileVerification && (uploadedPayloadFound || photoVerification?.photoConsistent))");
 rejectText("page", "(!pdfFileVerification || pdfFileVerification.status === \"EXACT_PDF_MATCH\")");
+rejectText("page", 'status: en ? "Tampered PDF blocked" : "변조 PDF 차단"');
 requireOrder("page", "const handleFileChange", "await verifyExactPdfFile(file, nextPayload.certificateId)",
   "await evaluatePayload(nextPayload, file.name, exactPdfVerification)", "const handleManualVerify");
 requireOrder("page", "const handleFileChange", "const visibleCertificateId = findCertificateIdFromPdfText(extractedText)",
@@ -100,6 +152,8 @@ console.log(JSON.stringify({
   assertionCount,
   exactByteEndpoint: true,
   tamperedResultPrecedence: true,
+  byteMismatchDoesNotBlockSemanticChecks: true,
+  numericAndChartTamperingSeparated: true,
   legacyFailClosed: true,
   missingExactVerdictNeverGreen: true,
   standaloneCertificateIdVerifiedBeforeOcrSuccess: true,
