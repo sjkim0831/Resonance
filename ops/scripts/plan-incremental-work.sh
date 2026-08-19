@@ -126,6 +126,7 @@ while IFS= read -r path; do
     projects/carbonet-frontend/source/scripts/export-full-screen-quality-context.sh|\
     projects/carbonet-frontend/source/scripts/build-full-screen-quality-queue.mjs|\
     projects/carbonet-frontend/source/scripts/run-contract-typecheck.sh|\
+    projects/carbonet-frontend/source/scripts/verify-admin-emission-menu-workspaces.mjs|\
     projects/carbonet-frontend/source/scripts/derive-frontend-smoke-route-pattern.mjs|\
     projects/carbonet-frontend/source/e2e/full-screen-smoke.spec.ts)
       infrastructure_required=true

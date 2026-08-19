@@ -29,7 +29,7 @@ cd "$TMP_DIR"
 git init -q
 git config user.name planner-test
 git config user.email planner-test@example.invalid
-mkdir -p docs tests ops/scripts ops/tests projects/carbonet-frontend/source/src projects/carbonet-frontend/source/scripts apps/carbonet-api/src/main/java/example \
+mkdir -p docs tests ops/scripts ops/tests projects/carbonet-frontend/source/src projects/carbonet-frontend/source/scripts projects/carbonet-frontend/source/e2e apps/carbonet-api/src/main/java/example \
   apps/carbonet-api/src/main/resources/db/migration projects/carbonet-backend-metadata/process-runtime/generated \
   projects/carbonet-backend-metadata/process-runtime/generated-endpoints/PROCESS_A/src/main/java/example \
   platform/control-plane/catalog platform/control-plane/backstage/packages/app/src deploy/k8s/control-plane
@@ -64,11 +64,26 @@ eval "$(bash "$PLANNER" "$frontend" "$frontend_test_automation" --format env)"
 [[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
 [[ "$PLAN_TESTS" == *"automation:full-screen-smoke"* ]]
 
+printf 'export const adminEmissionRelayContract = true;\n' > projects/carbonet-frontend/source/scripts/verify-admin-emission-menu-workspaces.mjs
+printf 'export const adminEmissionRelayBrowser = true;\n' > projects/carbonet-frontend/source/e2e/full-screen-smoke.spec.ts
+git add . && git commit -qm admin-emission-relay-automation
+admin_emission_relay_automation="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$frontend_test_automation" "$admin_emission_relay_automation" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == false ]]
+[[ "$PLAN_FRONTEND_REQUIRED" == false ]]
+[[ "$PLAN_BACKEND_REQUIRED" == false ]]
+[[ "$PLAN_DATABASE_REQUIRED" == false ]]
+[[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
+[[ "$PLAN_TESTS" == *"automation:full-screen-smoke"* ]]
+[[ ",$PLAN_TESTS," != *",frontend:build,"* ]]
+[[ ",$PLAN_TESTS," != *",runtime:operational-usage-ledger-e2e,"* ]]
+[[ "$PLAN_REASONS" == *"smoke-automation-only"* ]]
+
 printf 'export const prepare = true;\n' > projects/carbonet-frontend/source/scripts/prepare-full-screen-auth-state.mjs
 printf 'export const logout = true;\n' > projects/carbonet-frontend/source/scripts/logout-full-screen-auth-state.mjs
 git add . && git commit -qm full-screen-auth-helper-automation
 full_screen_auth_helpers="$(git rev-parse HEAD)"
-eval "$(bash "$PLANNER" "$frontend_test_automation" "$full_screen_auth_helpers" --format env)"
+eval "$(bash "$PLANNER" "$admin_emission_relay_automation" "$full_screen_auth_helpers" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == false ]]
 [[ "$PLAN_FRONTEND_REQUIRED" == false ]]
 [[ "$PLAN_BACKEND_REQUIRED" == false ]]
