@@ -157,7 +157,16 @@ requireText("page", 'const exactIssuedSemanticMatch = exactPdfVerification?.stat
 requireText("page", 'verification.chartDataExactMatch === true');
 requireText("page", 'chartVisualExactMatch: true');
 requireText("page", 'semanticStatus: "CONTENT_EXACT" as const');
-requireText("page", 'en ? "CONFIRMED BY ORIGINAL PDF" : "원본 PDF로 확인"');
+requireText("page", 'en ? "All issued fields verification: ORIGINAL PDF EXACT" : "발급 화면 전체 항목 검증: 원본 PDF 전체 일치"');
+requireText("page", 'en ? "CONTENT MATCH RATE" : "내용 일치율"');
+requireText("page", 'en ? "Match rate" : "내용 일치율"');
+requireText("page", "const isCurrentUploadComparisonExact");
+requireText("page", "photoVerification.comparisons?.filter(isCurrentUploadComparisonExact)");
+requireText("page", 'aria-modal="true"');
+requireText("page", "setSelectedDamageRegion(region)");
+requireText("page", "빨간 표시는 비교 격자의 근사 위치입니다");
+rejectText("page", 'en ? "Manual verification block" : "수동 검증 블록"');
+rejectText("page", 'htmlFor="manual-verification-block"');
 requireText("page", "const [uploadedPdfSelected, setUploadedPdfSelected] = useState(false)");
 requireText("page", "const visibleCertificateId = findCertificateIdFromPdfText(extractedText)");
 requireText("page", "const modificationDates = await inspectPdfModificationDates(buffer)");
@@ -173,9 +182,9 @@ rejectText("page", "(!pdfFileVerification && (uploadedPayloadFound || photoVerif
 rejectText("page", "(!pdfFileVerification || pdfFileVerification.status === \"EXACT_PDF_MATCH\")");
 rejectText("page", 'status: en ? "Tampered PDF blocked" : "변조 PDF 차단"');
 requireOrder("page", "const handleFileChange", "await verifyExactPdfFile(file, nextPayload.certificateId)",
-  "await evaluatePayload(nextPayload, file.name, exactPdfVerification)", "const handleManualVerify");
+  "await evaluatePayload(nextPayload, file.name, exactPdfVerification)", "const toneClass");
 requireOrder("page", "const handleFileChange", "const visibleCertificateId = findCertificateIdFromPdfText(extractedText)",
-  "await evaluatePhotographedPages(rendered.pages, file.name, false, file, initialPdfVerification, rendered.textPages)", "const handleManualVerify");
+  "await evaluatePhotographedPages(rendered.pages, file.name, false, file, initialPdfVerification, rendered.textPages)", "const toneClass");
 requireOrder("page", "const evaluatePhotographedPages", "if (rawPdfFile) {",
   "if (preserveDigitalPayload) {", "const handleFileChange");
 

@@ -161,6 +161,8 @@ type ReportVerificationPayload = {
 };
 
 type ReportVerificationType = "EMISSION_SURVEY" | "LCA_SUMMARY";
+type ReportDamageRegion = NonNullable<ReportPhotoVerificationResponse["damagedRegions"]>[number];
+type ReportCandidateComparison = NonNullable<ReportPhotoVerificationResponse["comparisons"]>[number];
 
 type ReportVerificationRecord = ReportVerificationPayload & {
   source: "browser-print";
@@ -3696,10 +3698,8 @@ export function EmissionSurveyReportPrintPage() {
 export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?: boolean } = {}) {
   const en = isEnglish();
   const [selectedReportType, setSelectedReportType] = useState<ReportVerificationType>("EMISSION_SURVEY");
-  const [manualBlock, setManualBlock] = useState("");
   const [fileName, setFileName] = useState("");
   const [uploadedPdfSelected, setUploadedPdfSelected] = useState(false);
-  const [uploadedVerificationText, setUploadedVerificationText] = useState("");
   const [uploadedPayloadFound, setUploadedPayloadFound] = useState(false);
   const [payload, setPayload] = useState<ReportVerificationPayload | null>(null);
   const [datasetVerification, setDatasetVerification] = useState<ReportDatasetVerificationResponse | null>(null);
@@ -3708,7 +3708,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
   const [ocrProgress, setOcrProgress] = useState<{ busy: boolean; percent: number; status: string }>({ busy: false, percent: 0, status: "" });
   const [verificationLogs, setVerificationLogs] = useState<Array<{ id: string; at: string; level: "INFO" | "OK" | "WARN" | "ERROR"; message: string; detail?: string }>>([]);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
-  const [resultMessage, setResultMessage] = useState(en ? "Upload the certificate PDF or paste the verification block." : "인증서 PDF를 업로드하거나 검증 블록을 붙여넣으세요.");
+  const [selectedDamageRegion, setSelectedDamageRegion] = useState<ReportDamageRegion | null>(null);
+  const [resultMessage, setResultMessage] = useState(en ? "Upload a certificate PDF or image to begin automatic verification." : "인증서 PDF 또는 이미지를 업로드하면 자동 검증을 시작합니다.");
   const [resultTone, setResultTone] = useState<"info" | "success" | "warning" | "danger">("info");
   const appendVerificationLog = (level: "INFO" | "OK" | "WARN" | "ERROR", message: string, detail?: string) => {
     setVerificationLogs((current) => [...current, {
@@ -3885,7 +3886,6 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
           ? (en ? "Every PDF text-layer page was extracted without omission." : "PDF 전 페이지 텍스트 레이어를 누락 없이 추출했습니다.")
           : (en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다."),
         `pages=${recognized.pageTexts.length}, characters=${recognized.text.length}, engineConfidence=${Math.round(recognized.confidence)}%`);
-      setUploadedVerificationText(recognized.text);
       const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType, recognized.pageTexts);
       const orderedEvidenceMismatchCount = verification.ocrEvidencePageComparisons
         ?.filter((page) => !page.tokenSequenceExact).length || 0;
@@ -3967,7 +3967,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     setFileName(files.map((item) => item.name).join(", "));
     setPayload(null);
     setUploadedPayloadFound(false);
-    setUploadedVerificationText("");
+    setSelectedDamageRegion(null);
     setPhotoVerification(null);
     setDatasetVerification(null);
     setPdfFileVerification(null);
@@ -3992,7 +3992,6 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     appendVerificationLog("INFO", en ? "PDF embedded text scan completed." : "PDF 내장 텍스트 검색을 완료했습니다.", `characters=${extractedText.length}`);
     const nextPayload = resolveVerificationPayload(extractedText);
     const visibleCertificateId = findCertificateIdFromPdfText(extractedText);
-    setUploadedVerificationText(extractedText);
     setUploadedPayloadFound(Boolean(nextPayload));
     if (nextPayload) {
       let exactPdfVerification = await verifyExactPdfFile(file, nextPayload.certificateId);
@@ -4061,24 +4060,6 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     }
   };
 
-  const handleManualVerify = () => {
-    if (pdfFileVerification && !applyPdfFileVerdict(pdfFileVerification)) {
-      return;
-    }
-    if (photoVerification) {
-      setResultTone(photoVerification.photoConsistent ? "success" : "warning");
-      setResultMessage(photoVerification.photoConsistent
-        ? (en ? `Photo content matches an issued dataset with ${photoVerification.confidence}% confidence.` : `촬영본 내용이 발급 데이터셋과 ${photoVerification.confidence}% 신뢰도로 일치합니다.`)
-        : (en ? "The photo OCR result requires review." : "사진 OCR 결과에 대한 검토가 필요합니다."));
-      return;
-    }
-    const sourceText = manualBlock.trim() || uploadedVerificationText;
-    const sourceLabel = manualBlock.trim()
-      ? (en ? "manual input" : "수동 입력값")
-      : (fileName || (en ? "uploaded PDF" : "업로드 PDF"));
-    void evaluatePayload(resolveVerificationPayload(sourceText), sourceLabel);
-  };
-
   const toneClass = resultTone === "success"
     ? "border-emerald-200 bg-emerald-50 text-emerald-950"
     : resultTone === "danger"
@@ -4086,6 +4067,14 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     : resultTone === "warning"
       ? "border-amber-200 bg-amber-50 text-amber-950"
       : "border-sky-200 bg-sky-50 text-sky-950";
+
+  const isCurrentUploadComparisonExact = (item: ReportCandidateComparison) => item.overallExactMatch || (
+    pdfFileVerification?.status === "EXACT_PDF_MATCH"
+    && photoVerification?.semanticStatus === "CONTENT_EXACT"
+    && item.certificateId === photoVerification.certificateId
+    && item.datasetExactMatch
+    && item.tagExactMatch
+  );
 
   const verificationContent = (
       <AdminWorkspacePageFrame>
@@ -4141,7 +4130,15 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
             </label>
             {photoPreviewUrls.length ? (
               <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-3">
-                {photoPreviewUrls.map((url, index) => <img alt={`${en ? "Uploaded report page" : "업로드 리포트 페이지"} ${index + 1}`} className="aspect-[3/4] w-full rounded-xl border border-slate-200 bg-slate-50 object-contain" key={url} src={url} />)}
+                {photoPreviewUrls.map((url, index) => (
+                  <button className="group relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50" key={url} onClick={() => {
+                    const firstRegion = photoVerification?.damagedRegions?.find((region) => region.page === index + 1);
+                    if (firstRegion) setSelectedDamageRegion(firstRegion);
+                  }} type="button">
+                    <img alt={`${en ? "Uploaded report page" : "업로드 리포트 페이지"} ${index + 1}`} className="aspect-[3/4] w-full object-contain" src={url} />
+                    {photoVerification?.damagedRegions?.some((region) => region.page === index + 1) ? <span className="absolute bottom-2 right-2 rounded-full bg-rose-600 px-3 py-1 text-xs font-black text-white shadow-lg">{en ? "Inspect damage" : "훼손 위치 확대"}</span> : null}
+                  </button>
+                ))}
               </div>
             ) : null}
             {ocrProgress.busy ? (
@@ -4164,28 +4161,11 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                   : photoVerification
                   ? (en ? `Photo OCR comparison completed (${photoVerification.confidence}%).` : `사진 OCR 데이터셋 대조를 완료했습니다(${photoVerification.confidence}%).`)
                   : uploadedPayloadFound
-                  ? (en ? "Verification data was found in the uploaded PDF. The button below can verify it again." : "업로드한 PDF에서 검증 데이터를 찾았습니다. 아래 버튼으로 다시 확인할 수 있습니다.")
+                  ? (en ? "Verification data was found in the uploaded PDF and verified automatically." : "업로드한 PDF에서 검증 데이터를 찾아 자동으로 확인했습니다.")
                   : (en ? "The uploaded PDF was read, but hidden Carbonet verification data was not found." : "업로드한 PDF는 읽었지만 숨김 Carbonet 검증 정보를 찾지 못했습니다.")}
               </div>
             ) : null}
 
-            <div className="mt-5">
-              <label className="text-sm font-black text-slate-800" htmlFor="manual-verification-block">
-                {en ? "Manual verification block" : "수동 검증 블록"}
-              </label>
-              <textarea
-                className="mt-2 min-h-36 w-full rounded-2xl border border-slate-300 bg-white p-4 font-mono text-xs text-slate-800 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-                id="manual-verification-block"
-                onChange={(event) => setManualBlock(event.target.value)}
-                placeholder={`${REPORT_VERIFY_BEGIN}\n...\n${REPORT_VERIFY_END}`}
-                value={manualBlock}
-              />
-              <div className="mt-3 flex justify-end">
-                <MemberButton onClick={handleManualVerify} type="button">
-                  {en ? "Verify Uploaded PDF / Block" : "업로드 PDF / 검증 블록 확인"}
-                </MemberButton>
-              </div>
-            </div>
           </section>
 
           <aside className="space-y-4">
@@ -4216,7 +4196,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
             {photoVerification ? (
               <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Photo OCR Evidence" : "사진 OCR 대조 근거"}</p>
-                <div className="mt-3 flex items-end justify-between"><strong className="text-3xl text-slate-950">{photoVerification.confidence}%</strong><span className="text-xs font-black text-slate-500">{en ? "CONTENT CONFIDENCE" : "내용 일치 신뢰도"}</span></div>
+                <div className="mt-3 flex items-end justify-between"><strong className="text-3xl text-slate-950">{photoVerification.confidence}%</strong><span className="text-xs font-black text-slate-500">{en ? "CONTENT MATCH RATE" : "내용 일치율"}</span></div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-bold text-slate-700">
                   <span className="col-span-2">QR: {photoVerification.qrFullyMatched ? "VERIFIED" : photoVerification.qrDetected ? "MISMATCH" : "NOT FOUND"}</span>
                   <span className="col-span-2">{en ? "OCR-only confidence" : "OCR 단독 일치도"}: {photoVerification.contentConfidence ?? photoVerification.confidence}%</span>
@@ -4300,11 +4280,12 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                     <p className="text-xs font-black text-amber-900">{en ? "Suspected visual damage locations" : "시각 훼손 의심 위치"}</p>
                     <div className="mt-2 flex flex-wrap gap-1">
                       {photoVerification.damagedRegions.slice(0, 16).map((region, index) => (
-                        <span className="bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-900" key={`${region.page}-${region.row}-${region.column}-${index}`}>
+                        <button className="bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-900 hover:bg-rose-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-500" key={`${region.page}-${region.row}-${region.column}-${index}`} onClick={() => setSelectedDamageRegion(region)} title={en ? "Open the page and highlight this location" : "해당 페이지를 확대하고 위치 표시"} type="button">
                           P{region.page} R{region.row} C{region.column} ({region.difference})
-                        </span>
+                        </button>
                       ))}
                     </div>
+                    <p className="mt-2 text-[11px] font-semibold text-amber-800">{en ? "Select a location to enlarge the page and display the suspected area." : "위치를 누르면 해당 페이지를 확대하고 의심 영역을 빨간색으로 표시합니다."}</p>
                   </div>
                 ) : null}
                 <p className="mt-3 text-xs font-semibold leading-5 text-amber-800">{en ? "A photo verifies visible-content consistency, not the hidden digital signature. Use the original PDF for cryptographic authenticity." : "사진은 보이는 내용의 일치도를 검증하며 숨김 디지털 서명 자체를 증명하지는 않습니다. 완전한 진위 확인은 원본 PDF를 사용하세요."}</p>
@@ -4333,7 +4314,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                 <span className={`rounded-lg px-3 py-2 ${datasetVerification?.datasetMatch ? "bg-emerald-50 text-emerald-800" : datasetVerification ? "bg-rose-50 text-rose-800" : "bg-slate-100 text-slate-500"}`}>
                   {en ? "Embedded vs registry" : "내장 ↔ 원장"}: {datasetVerification?.datasetMatch ? "OK" : datasetVerification ? "FAIL" : "-"}
                 </span>
-                <span className={`rounded-lg px-3 py-2 ${photoVerification?.photoConsistent ? "bg-emerald-50 text-emerald-800" : photoVerification ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-500"}`}>
+                <span className={`rounded-lg px-3 py-2 ${photoVerification?.photoConsistent || pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "bg-emerald-50 text-emerald-800" : photoVerification ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-500"}`}>
                   {en ? "Visible OCR vs registry" : "화면 OCR ↔ 원장"}: {photoVerification?.photoConsistent ? `${photoVerification.confidence}%` : photoVerification ? `${photoVerification.confidence}%` : "-"}
                 </span>
                 <span className={`rounded-lg px-3 py-2 ${photoVerification?.numericDataExactMatch ? "bg-emerald-100 text-emerald-900" : photoVerification ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-500"}`}>
@@ -4349,8 +4330,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                   {en ? "Certificate ID + SHA-256 fingerprint + integrity code + dataset hash" : "인증서 ID + SHA-256 리포트 지문 + 무결성 코드 + 데이터셋 해시"}: {photoVerification?.tagExactMatch ? "OK" : photoVerification ? "FAIL" : "-"}
                 </span>
                 {selectedReportType === "EMISSION_SURVEY" ? (
-                  <span className={`col-span-2 rounded-lg px-3 py-2 ${photoVerification?.ocrEvidenceExactMatch ? "bg-emerald-100 text-emerald-900" : photoVerification ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-500"}`}>
-                  {en ? "All issued visible fields vs OCR" : "발급 화면 전체 항목 ↔ OCR"}: {pdfFileVerification?.status === "EXACT_PDF_MATCH" ? (en ? "CONFIRMED BY ORIGINAL PDF" : "원본 PDF로 확인") : photoVerification?.ocrEvidenceExactMatch ? `OK (${photoVerification.matchedOcrEvidenceTokenCount || 0}/${photoVerification.ocrEvidenceTokenCount || 0})` : photoVerification?.ocrEvidenceAvailable ? `FAIL (${photoVerification.matchedOcrEvidenceTokenCount || 0}/${photoVerification.ocrEvidenceTokenCount || 0})` : photoVerification ? (en ? "REISSUE REQUIRED" : "재발급 필요") : "-"}
+                  <span className={`col-span-2 rounded-lg px-3 py-2 ${pdfFileVerification?.status === "EXACT_PDF_MATCH" || photoVerification?.ocrEvidenceExactMatch ? "bg-emerald-100 text-emerald-900" : photoVerification ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-500"}`}>
+                  {pdfFileVerification?.status === "EXACT_PDF_MATCH" ? (en ? "All issued fields verification: ORIGINAL PDF EXACT" : "발급 화면 전체 항목 검증: 원본 PDF 전체 일치") : `${en ? "All issued visible fields vs OCR" : "발급 화면 전체 항목 ↔ OCR"}: ${photoVerification?.ocrEvidenceExactMatch ? `OK (${photoVerification.matchedOcrEvidenceTokenCount || 0}/${photoVerification.ocrEvidenceTokenCount || 0})` : photoVerification?.ocrEvidenceAvailable ? `FAIL (${photoVerification.matchedOcrEvidenceTokenCount || 0}/${photoVerification.ocrEvidenceTokenCount || 0})` : photoVerification ? (en ? "REISSUE REQUIRED" : "재발급 필요") : "-"}`}
                   </span>
                 ) : null}
                 <span className={`col-span-2 rounded-lg px-3 py-2 ${photoVerification?.semanticStatus === "CONTENT_EXACT" ? "bg-emerald-100 text-emerald-900" : photoVerification ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-600"}`}>
@@ -4423,7 +4404,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                 <span className="bg-sky-50 px-3 py-2 text-sky-800">{en ? "Tag match" : "태그 일치"}: {photoVerification.comparisons?.filter((item) => item.verificationTagMatch).length || 0}</span>
                 <span className="bg-blue-50 px-3 py-2 text-blue-800">{en ? "Dataset exact" : "데이터셋 완전 일치"}: {photoVerification.comparisons?.filter((item) => item.datasetExactMatch).length || 0}</span>
                 <span className="bg-violet-50 px-3 py-2 text-violet-800">{en ? "Tag exact" : "태그 완전 일치"}: {photoVerification.comparisons?.filter((item) => item.tagExactMatch).length || 0}</span>
-                <span className="bg-slate-950 px-3 py-2 text-white">{en ? "Final exact" : "최종 완전 일치"}: {photoVerification.comparisons?.filter((item) => item.overallExactMatch).length || 0}</span>
+                <span className="bg-slate-950 px-3 py-2 text-white">{en ? "Final exact" : "최종 완전 일치"}: {photoVerification.comparisons?.filter(isCurrentUploadComparisonExact).length || 0}</span>
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -4431,7 +4412,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                 <thead className="bg-slate-100 text-slate-700">
                   <tr>
                     <th className="px-4 py-3 font-black">{en ? "Issued report" : "발급 리포트"}</th>
-                    <th className="px-4 py-3 font-black">{en ? "Confidence" : "내용 신뢰도"}</th>
+                    <th className="px-4 py-3 font-black">{en ? "Match rate" : "내용 일치율"}</th>
                     <th className="px-4 py-3 font-black">{en ? "Dataset fields" : "데이터 항목"}</th>
                     <th className="px-4 py-3 font-black">{en ? "Certificate ID" : "인증서 ID"}</th>
                     <th className="px-4 py-3 font-black">{en ? "Payload hash" : "리포트 해시"}</th>
@@ -4468,7 +4449,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                         </>}
                         <div className="mt-3 flex flex-wrap gap-2">
                           <span className={`px-2 py-1 font-black ${item.tagExactMatch ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>{en ? "Verification tags" : "검증 태그"}: {item.tagExactMatch ? "EXACT" : "MISMATCH"}</span>
-                          <span className={`px-2 py-1 font-black ${item.overallExactMatch ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>{en ? "Final result" : "최종 판정"}: {item.overallExactMatch ? (en ? "EXACT MATCH" : "일치") : (en ? "MISMATCH" : "불일치")}</span>
+                          <span className={`px-2 py-1 font-black ${isCurrentUploadComparisonExact(item) ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>{en ? "Final result" : "최종 판정"}: {isCurrentUploadComparisonExact(item) ? (en ? "EXACT MATCH" : "일치") : (en ? "MISMATCH" : "불일치")}</span>
                         </div>
                         <details className="mt-3 min-w-72 border border-slate-200 bg-white">
                           <summary className="cursor-pointer select-none px-3 py-2 font-black text-slate-800 hover:bg-slate-50">
@@ -4642,6 +4623,22 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
             )) : <p className="py-4 text-center text-slate-500">{en ? "Select a PDF or image to begin logging." : "PDF 또는 이미지를 선택하면 처리 로그가 기록됩니다."}</p>}
           </div>
         </section>
+        {selectedDamageRegion && photoPreviewUrls[selectedDamageRegion.page - 1] ? (
+          <div aria-label={en ? "Suspected visual damage enlarged preview" : "시각 훼손 의심 위치 확대 보기"} aria-modal="true" className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 p-4" onClick={() => setSelectedDamageRegion(null)} role="dialog">
+            <div className="flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
+              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
+                <div><strong className="text-slate-950">{en ? "Suspected visual damage" : "시각 훼손 의심 위치"}</strong><p className="text-xs font-semibold text-slate-500">P{selectedDamageRegion.page} R{selectedDamageRegion.row} C{selectedDamageRegion.column} · {en ? "red marker shows the approximate comparison cell" : "빨간 표시는 비교 격자의 근사 위치입니다"}</p></div>
+                <button aria-label={en ? "Close" : "닫기"} className="rounded-full bg-slate-100 px-4 py-2 font-black text-slate-700 hover:bg-slate-200" onClick={() => setSelectedDamageRegion(null)} type="button">{en ? "Close" : "닫기"}</button>
+              </div>
+              <div className="overflow-auto bg-slate-200 p-4">
+                <div className="relative mx-auto w-fit max-w-full">
+                  <img alt={`${en ? "Enlarged uploaded report page" : "업로드 리포트 확대 페이지"} ${selectedDamageRegion.page}`} className="max-h-[82vh] max-w-full bg-white object-contain shadow-xl" src={photoPreviewUrls[selectedDamageRegion.page - 1]} />
+                  <span className="pointer-events-none absolute h-10 w-10 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-md border-4 border-rose-600 bg-rose-500/20 shadow-[0_0_0_4px_rgba(255,255,255,0.9)]" style={{ left: `${((selectedDamageRegion.column - 0.5) / 48) * 100}%`, top: `${((selectedDamageRegion.row - 0.5) / 68) * 100}%` }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </AdminWorkspacePageFrame>
   );
   if (embedded) {
