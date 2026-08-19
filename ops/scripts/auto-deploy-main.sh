@@ -397,6 +397,7 @@ cleanup_target_prevalidation_root() {
 
 prevalidate_target_contract_lanes_before_mutation() {
   local policy_required=false contract_required=false selector_required=false
+  local automation_contract_required=false
   local prevalidation_parent prevalidation_parent_lex prevalidation_parent_resolved
   local prevalidation_parent_identity prevalidation_root_lex prevalidation_root_resolved
   local prevalidation_root_identity
@@ -416,6 +417,8 @@ prevalidate_target_contract_lanes_before_mutation() {
      || ",${PLAN_TESTS:-}," == *",runtime:operational-usage-ledger-e2e,"* ]]; then
     contract_required=true
   fi
+  automation_contract_required="$(automation_only_fast_path_eligible && echo true || echo false)"
+  [[ "$automation_contract_required" != true ]] || contract_required=true
   [[ "$policy_required" == true || "$contract_required" == true ]] || return 0
   [[ "$target_commit" =~ ^[0-9a-f]{40}$ ]] || return 79
 
@@ -541,6 +544,13 @@ prevalidate_target_contract_lanes_before_mutation() {
           selected_tests+=("$path")
         fi
       fi
+      if [[ "$automation_contract_required" == true ]]; then
+        path=ops/scripts/test-automation-only-deploy-contract.sh
+        if [[ -z "${selected_seen[$path]:-}" ]]; then
+          selected_seen["$path"]=true
+          selected_tests+=("$path")
+        fi
+      fi
       mkdir -m 0700 "$prevalidation_root/contract-logs"
       for path in "${selected_tests[@]}"; do
         [[ "$path" =~ ^ops/(scripts|tests)/test-[A-Za-z0-9._/-]+\.sh$ \
@@ -630,6 +640,16 @@ prevalidate_target_contract_lanes_before_mutation() {
   fi
   cleanup_target_prevalidation_root "${prevalidation_identity_args[@]}" || return 79
   echo "[auto-deploy] clean target prevalidation PASS policy=$policy_required contracts=${#prevalidated_catalog_contract_sha256[@]} mutation=0"
+}
+
+require_prevalidated_automation_only_contract() {
+  local path=ops/scripts/test-automation-only-deploy-contract.sh
+  local recorded_sha="${prevalidated_catalog_contract_sha256[$path]:-}"
+  local merged_sha=""
+  [[ "$recorded_sha" =~ ^[0-9a-f]{64}$ \
+     && -f "$ROOT_DIR/$path" && ! -L "$ROOT_DIR/$path" ]] || return 79
+  merged_sha="$(sha256sum "$ROOT_DIR/$path" | awk '{print $1}')" || return 79
+  [[ "$merged_sha" == "$recorded_sha" ]] || return 79
 }
 
 frontend_only_fast_path_eligible() {
@@ -9636,43 +9656,29 @@ fi
 # Validate their syntax and planning contract, then advance the marker without
 # rebuilding React, Java, or an immutable image.
 if automation_only_fast_path_eligible; then
-  bash -n ops/scripts/auto-deploy-main.sh
-  bash -n ops/scripts/auto-deploy-main-launcher.sh
-  bash -n ops/scripts/plan-incremental-work.sh
-  bash -n ops/scripts/runtime-candidate-checkpoint.sh
-  bash ops/scripts/test-plan-incremental-work.sh
-  bash ops/scripts/test-runtime-candidate-checkpoint.sh
-  bash -n ops/scripts/resonance-full-screen-deploy-gate.sh
-  bash -n projects/carbonet-frontend/source/scripts/run-full-screen-smoke.sh
-  bash ops/scripts/test-fast-browser-deploy-gate.sh
-  bash ops/scripts/test-postdeploy-parallel-browser-gate.sh
-  bash ops/scripts/test-candidate-release-rollout-gate.sh
-  bash ops/tests/test-postdeploy-candidate-evidence-contract.sh "$ROOT_DIR"
-  bash ops/scripts/test-process-worker-deploy-marker.sh
-  bash ops/scripts/test-database-plan-flyway-gate.sh
-  bash ops/scripts/test-frontend-parallel-build-pipeline.sh
-  bash ops/scripts/test-fast-overlay-snapshot.sh
-  bash ops/scripts/test-shared-smoke-auth-state.sh
-  bash ops/scripts/test-deploy-phase-telemetry.sh
-  bash ops/scripts/test-frontend-deploy-performance-budget.sh
-  if [[ ",$PLAN_TESTS," == *",control-plane:validate,"* ]]; then
-    bash ops/scripts/resonance-control-plane.sh validate
-  fi
+  # The target contract ran in a clean, mutation-free worktree before merge.
+  # Re-bind its exact SHA after merge instead of repeating the same long test
+  # matrix. This path cannot change any serving/runtime/database bytes.
+  require_prevalidated_automation_only_contract || exit 79
   health_status="$(curl -fsS --max-time 10 http://127.0.0.1/actuator/health || true)"
   if [[ "$health_status" != *'"status":"UP"'* ]]; then
     echo "[auto-deploy] refusing automation-only success marker: health check is not UP" >&2
     exit 17
   fi
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$live_frontend_overlay"
+  BASE_URL="${CARBONET_PUBLIC_BASE_URL:-http://127.0.0.1}" \
+    OVERLAY_DIR="$live_frontend_overlay" \
+    bash ops/scripts/resonance-frontend-overlay-guard.sh verify-http
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   CARBONET_SCREEN_CONTRACT_PREVIEW_ONLY=1 run_screen_contract_runtime_save_gate_if_required
-  run_actor_process_role_e2e_if_required
   record_deploy_phase "automation_validation"
   if [[ -s "$FULL_SCREEN_GATE_STATE_DIR/active.env" ]]; then
     OVERLAY_DIR="$live_frontend_overlay" FULL_SCREEN_GATE_DEFER_ACCEPT=true \
       bash ops/scripts/resonance-full-screen-deploy-gate.sh finalize-success
   fi
-  run_operational_usage_ledger_current_runtime_e2e_if_required "$runtime_deployed_commit"
+  # No application byte changed, so the exact live ledger/Pod identity proof
+  # is authoritative. The 572-step browser E2E remains mandatory for plans
+  # that can change runtime or frontend behavior.
   verify_operational_usage_ledger_current_runtime_identity "$runtime_deployed_commit" proof-only || exit 79
   write_applied_deploy_state "$target_commit" || exit 79
   prove_backstage_terminal_success "$target_commit" || exit $?

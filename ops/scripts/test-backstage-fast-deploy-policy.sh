@@ -690,16 +690,15 @@ for token in (
 automation_terminal = auto.split("if automation_only_fast_path_eligible; then", 1)[1].split(
     "\nfi\n\n# Source catalog closure", 1
 )[0]
-automation_conditional_ledger = automation_terminal.index(
-    'run_operational_usage_ledger_current_runtime_e2e_if_required "$runtime_deployed_commit"'
-)
+if 'run_operational_usage_ledger_current_runtime_e2e_if_required "$runtime_deployed_commit"' in automation_terminal:
+    raise SystemExit("automation-only path repeats the full live usage-ledger E2E")
 automation_terminal_ledger = automation_terminal.index(
     'verify_operational_usage_ledger_current_runtime_identity "$runtime_deployed_commit" proof-only'
 )
 automation_marker = automation_terminal.index(
     'write_applied_deploy_state "$target_commit" || exit 79'
 )
-if not automation_conditional_ledger < automation_terminal_ledger < automation_marker:
+if not automation_terminal_ledger < automation_marker:
     raise SystemExit("automation success marker is not guarded by terminal exact runtime ledger proof")
 checkpoint_policy = body(
     auto, "runtime_candidate_checkpoint_plan_eligible", "no_change_prepared_composite_activation_eligible"
@@ -3554,6 +3553,7 @@ for automation_ledger_case in ledger0 uid-drift normal; do
     target_commit=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     mkdir -p "$live_frontend_overlay" "$FULL_SCREEN_GATE_STATE_DIR"
     automation_only_fast_path_eligible() { return 0; }
+    require_prevalidated_automation_only_contract() { return 0; }
     bash() { return 0; }
     node() { return 0; }
     curl() { printf '%s' '{"status":"UP"}'; }

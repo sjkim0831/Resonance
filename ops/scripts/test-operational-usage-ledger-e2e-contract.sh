@@ -213,7 +213,7 @@ pipeline_contract() {
     grep -Fq 'runAsync(process.execPath, ["scripts/verify-operational-usage-ledger.mjs"])' "$frontend_pipeline" &&
     grep -Fq '"audit:operational-usage-ledger": "node scripts/verify-operational-usage-ledger.mjs"' "$frontend_package" &&
     [[ "$(grep -Ec '^[[:space:]]*run_operational_usage_ledger_static_contract_if_required$' "$deploy")" == "2" ]] &&
-    [[ "$(grep -Ec '^[[:space:]]*run_operational_usage_ledger_current_runtime_e2e_if_required "\$runtime_deployed_commit"$' "$deploy")" == "2" ]]
+    [[ "$(grep -Ec '^[[:space:]]*run_operational_usage_ledger_current_runtime_e2e_if_required "\$runtime_deployed_commit"$' "$deploy")" == "1" ]]
 }
 pipeline_contract "$PLANNER" "$DEPLOY" "$FRONTEND_PIPELINE" "$FRONTEND_PACKAGE" || fail "usage-ledger pipeline wiring contract is incomplete"
 sed 's/runtime:operational-usage-ledger-e2e/runtime:REMOVED/g' "$PLANNER" >"$TMP_DIR/planner-token-removed.sh"
