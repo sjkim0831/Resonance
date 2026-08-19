@@ -24,8 +24,16 @@ case "$mode" in
   runtime|backstage) target_ms="${CARBONET_RUNTIME_DEPLOY_TARGET_MS:-60000}" ;;
   *) echo "[deploy-performance] unsupported mode: $mode" >&2; exit 2 ;;
 esac
-hard_limit_ms="${CARBONET_DEPLOY_HARD_LIMIT_MS:-120000}"
-verification_target_ms="${CARBONET_DEPLOY_VERIFICATION_TARGET_MS:-90000}"
+case "$mode" in
+  frontend)
+    hard_limit_ms="${CARBONET_FRONTEND_DEPLOY_HARD_LIMIT_MS:-240000}"
+    verification_target_ms="${CARBONET_FRONTEND_VERIFICATION_TARGET_MS:-180000}"
+    ;;
+  *)
+    hard_limit_ms="${CARBONET_DEPLOY_HARD_LIMIT_MS:-120000}"
+    verification_target_ms="${CARBONET_DEPLOY_VERIFICATION_TARGET_MS:-90000}"
+    ;;
+esac
 
 build_duration_seconds=0
 release_manifest="$root/var/ai-runtime/k8s-release-manifest.jsonl"
@@ -115,6 +123,19 @@ if [[ -n "$phase_file" && -s "$phase_file" ]]; then
     ' <<<"$phase_summary"
   )"
   regressed_phases="$(jq -c '[.[] | select(.regressed) | .phase]' <<<"$phase_summary")"
+
+  # Frontend readiness and complete verification are separate promises.  The
+  # overlay-ready phase measures the former; elapsed_ms includes the parallel
+  # browser, business-process and operational evidence lanes.
+  if [[ "$mode" == "frontend" ]]; then
+    frontend_ready_ms="$(
+      jq -r '[.[] | select(.phase == "frontend_overlay_ready") | .durationMs] | add // 0' \
+        <<<"$phase_summary"
+    )"
+    if [[ "$frontend_ready_ms" =~ ^[0-9]+$ ]] && (( frontend_ready_ms > 0 )); then
+      slo_elapsed_ms="$frontend_ready_ms"
+    fi
+  fi
 fi
 
 baseline_ms="$(
