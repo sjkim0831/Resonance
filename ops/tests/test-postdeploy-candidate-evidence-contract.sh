@@ -1324,7 +1324,9 @@ esac
     )) == 1
     assert len(re.findall(r"(?m)^\s*finalize_postdeploy_candidate_release_with_composite_gate_cleanup\s*$", deploy)) == 2
     assert deploy.count("run_postdeploy_candidate_validation_groups") == 4
-    assert deploy.count("CARBONET_SCREEN_CONTRACT_PREVIEW_ONLY=1 run_screen_contract_runtime_save_gate_if_required") == 2
+    # Runtime/frontend paths still stage a screen preview. Automation-only
+    # changes prove the unchanged public overlay instead of repeating it.
+    assert deploy.count("CARBONET_SCREEN_CONTRACT_PREVIEW_ONLY=1 run_screen_contract_runtime_save_gate_if_required") == 1
     # Three normal completion paths plus durable aborted-recovery and
     # same-source reconciliation each converge the monotonic applied marker.
     assert deploy.count('write_applied_deploy_state "$target_commit"') == 3
