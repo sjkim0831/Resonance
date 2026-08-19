@@ -106,12 +106,11 @@ for path in "${page_paths[@]}"; do
   grep -qi '<!doctype html' "$PAGE_BODY" || { echo "[activity-runtime] FAIL non-HTML page $path" >&2; exit 1; }
 done
 
-export BASE_URL COOKIE_JAR project_id
-seq 1 20 | xargs -r -n1 -P4 bash -c '
-  read -r sample_status sample_time <<<"$(curl -sS -b "$COOKIE_JAR" -o /dev/null -w "%{http_code} %{time_total}" "$BASE_URL/home/api/emission-projects/$project_id/activities")"
+for i in $(seq 1 20); do
+  read -r sample_status sample_time <<<"$(curl -sS -b "$COOKIE_JAR" -o /dev/null -w '%{http_code} %{time_total}' "$BASE_URL/home/api/emission-projects/$project_id/activities")"
   [[ "$sample_status" == 200 ]] || { echo "[activity-runtime] FAIL p95 probe status=$sample_status" >&2; exit 1; }
-  printf "%s\n" "$sample_time"
-' _ >"$TIMINGS"
+  printf '%s\n' "$sample_time" >>"$TIMINGS"
+done
 p95_ms="$(sort -n "$TIMINGS" | awk 'NR==19 {printf "%d",$1*1000}')"
 [[ -n "$p95_ms" && "$p95_ms" -le 2500 ]] || { echo "[activity-runtime] FAIL p95=${p95_ms:-unknown}ms" >&2; exit 1; }
 

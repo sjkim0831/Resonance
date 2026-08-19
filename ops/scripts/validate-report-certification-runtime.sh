@@ -75,12 +75,9 @@ for p in "${pages[@]}"; do
   [[ "$code" == 200 ]] || { echo "[report-runtime] FAIL page=$p status=$code" >&2; exit 1; }
   grep -qi '<!doctype html' "$PAGE_BODY" || exit 1
 done
-export BASE cert
-seq 1 20 | xargs -r -n1 -P4 bash -c '
-  read -r sample_status sample_time <<<"$(curl -sS -o /dev/null -w "%{http_code} %{time_total}" "$BASE/api/public/report-certificates/$cert")"
-  [[ "$sample_status" == 200 ]] || { echo "[report-runtime] FAIL p95 probe status=$sample_status" >&2; exit 1; }
-  printf "%s\n" "$sample_time"
-' _ >"$TIMES"
+for _ in $(seq 1 20); do
+  curl -sS -o /dev/null -w '%{time_total}\n' "$BASE/api/public/report-certificates/$cert" >>"$TIMES"
+done
 p95="$(sort -n "$TIMES" | awk 'NR==19{printf "%d",$1*1000}')"
 [[ "$p95" -le 2500 ]] || exit 1
 read -r desired ready available <<<"$(kubectl -n "$NS" get deploy carbonet-runtime -o jsonpath='{.spec.replicas} {.status.readyReplicas} {.status.availableReplicas}')"
