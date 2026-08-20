@@ -790,6 +790,7 @@ public class ReportVerificationRegistryService {
                 previousExpectedCanonical = expectedCanonical;
                 previousActual = actual;
             }
+            reuseSingleVisibleDuplicateValue(actualNumbers, comparison);
             comparison.put("rowMatched", rowMatched);
             comparisons.add(comparison);
         }
@@ -1692,6 +1693,26 @@ public class ReportVerificationRegistryService {
         result.put("fieldMismatches", comparisons.stream()
                 .filter(row -> !Boolean.TRUE.equals(row.get("rowMatched"))).toList());
         return result;
+    }
+
+    private void reuseSingleVisibleDuplicateValue(List<String> actualNumbers, Map<String, Object> row) {
+        String amountExpected = canonicalNumber(text(row.get("amountDisplay")));
+        String factorExpected = canonicalNumber(text(row.get("emissionFactorDisplay")));
+        String emissionExpected = canonicalNumber(text(row.get("totalEmissionDisplay")));
+        if (factorExpected.isBlank() || !factorExpected.equals(emissionExpected)
+                || !Boolean.TRUE.equals(row.get("amountMatched"))) return;
+        long duplicateCount = actualNumbers.stream()
+                .map(this::canonicalNumber)
+                .filter(factorExpected::equals)
+                .count();
+        boolean hasUnexpectedNumber = actualNumbers.stream()
+                .map(this::canonicalNumber)
+                .anyMatch(actual -> !actual.equals(amountExpected) && !actual.equals(factorExpected));
+        if (duplicateCount != 1 || hasUnexpectedNumber) return;
+        row.put("emissionFactorActual", factorExpected);
+        row.put("emissionFactorMatched", true);
+        row.put("totalEmissionActual", emissionExpected);
+        row.put("totalEmissionMatched", true);
     }
 
     private void reuseIdenticalDuplicateRowEvidence(List<Map<String, Object>> comparisons) {
