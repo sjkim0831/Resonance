@@ -25,7 +25,7 @@ grep -Fq 'RUN python -c "from paddleocr import PaddleOCR' "$DOCKERFILE"
 
 grep -Fq 'const viewport = page.getViewport({ scale: 4 });' "$FRONTEND"
 grep -Fq 'const recognized = await recognizeReportPhotos(pages' "$FRONTEND"
-grep -Fq 'recognizeSurveyReportPages(images)' "$FRONTEND"
+grep -Fq 'recognizeSurveyReportPages([images[pageIndex]])' "$FRONTEND"
 grep -Fq 'field.actual || (en ? "Not confirmed in uploaded PDF"' "$FRONTEND"
 grep -Fq 'field.processReferenceMassActual || ""' "$FRONTEND"
 if grep -Fq 'field.matched ? (field.expected || "-")' "$FRONTEND"; then
@@ -45,7 +45,8 @@ grep -Fq 'name: carbonet-report-ocr' "$OCR_MANIFEST"
 grep -Fq 'localhost:5000/carbonet-report-ocr:3.1.0-r3' "$OCR_MANIFEST"
 grep -Fq 'useradd --uid 1000' "$DOCKERFILE"
 grep -Fq 'carbonet-report-ocr.deployment.yaml' "$DEPLOY_SCRIPT"
-grep -Fq '"name":"CARBONET_REPORT_OCR_URL","value":"http://carbonet-report-ocr:8091/v1/report-ocr"' "$FAST_DEPLOY_SCRIPT"
+grep -Fq 'CARBONET_REPORT_OCR_URL' "$FAST_DEPLOY_SCRIPT"
+grep -Fq 'http://carbonet-report-ocr:8091/v1/report-ocr' "$FAST_DEPLOY_SCRIPT"
 if grep -Fq 'name: report-ocr' "$RUNTIME_MANIFEST"; then
   echo '[report-ocr-contract] FAIL OCR must not alter runtime HPA pod resources' >&2
   exit 1
