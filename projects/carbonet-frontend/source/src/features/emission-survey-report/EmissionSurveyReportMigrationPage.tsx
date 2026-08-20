@@ -574,7 +574,15 @@ async function preprocessReportPhoto(file: Blob) {
     imageData.data[index + 2] = contrasted;
   }
   context.putImageData(imageData, 0, 0);
-  return await new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Image preprocessing failed.")), "image/png"));
+  // Preserve the 2,400 px OCR working width, but avoid sending a lossless
+  // grayscale PNG whose multipart body can exceed the production ingress
+  // limit for a single report page. Quality 0.94 keeps small decimal glyphs
+  // legible while bounding each page request to a few megabytes.
+  return await new Promise<Blob>((resolve, reject) => canvas.toBlob(
+    (blob) => blob ? resolve(blob) : reject(new Error("Image preprocessing failed.")),
+    "image/jpeg",
+    0.94
+  ));
 }
 
 async function recognizeReportPhotos(files: Blob[], onProgress: (progress: number, status: string) => void) {
