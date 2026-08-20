@@ -1722,8 +1722,14 @@ public class ReportVerificationRegistryService {
             String factorExpected = canonicalNumber(text(row.get("emissionFactorDisplay")));
             String emissionExpected = canonicalNumber(text(row.get("totalEmissionDisplay")));
             if (factorExpected.equals(emissionExpected)) {
+                String amountExpected = canonicalNumber(text(row.get("amountDisplay")));
+                String amountActual = canonicalNumber(text(row.get("amountActual")));
+                String factorActual = canonicalNumber(text(row.get("emissionFactorActual")));
+                boolean shiftedAmountDuplicate = Boolean.TRUE.equals(row.get("amountMatched"))
+                        && !factorExpected.equals(amountExpected)
+                        && factorActual.equals(amountActual);
                 if (!Boolean.TRUE.equals(row.get("emissionFactorMatched"))
-                        && text(row.get("emissionFactorActual")).isBlank()
+                        && (text(row.get("emissionFactorActual")).isBlank() || shiftedAmountDuplicate)
                         && Boolean.TRUE.equals(row.get("totalEmissionMatched"))) {
                     row.put("emissionFactorActual", row.get("totalEmissionActual"));
                     row.put("emissionFactorMatched", true);
