@@ -311,6 +311,7 @@ export type ReportPhotoVerificationResponse = {
   sectionSummaryAvailable?: boolean;
   sectionSummaryExactMatch?: boolean;
   sectionSummaryComparisons?: Array<{
+    pageNumber?: number;
     sectionCode: string;
     sectionLabel: string;
     expectedTotalEmission: string;
@@ -462,6 +463,7 @@ export type ReportOcrComparison = {
   reportSummaryComparisons?: ReportSummaryFieldComparison[];
   outputFieldComparisons?: ReportOutputFieldComparison[];
   sectionSummaryComparisons?: Array<{
+    pageNumber?: number;
     sectionCode: string;
     sectionLabel: string;
     expectedTotalEmission: string;

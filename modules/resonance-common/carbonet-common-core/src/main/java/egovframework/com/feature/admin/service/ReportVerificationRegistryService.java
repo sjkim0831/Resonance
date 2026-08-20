@@ -423,7 +423,7 @@ public class ReportVerificationRegistryService {
             boolean numericDataExactMatch = datasetExactMatch;
             boolean chartDataExactMatch = lcaReport || Boolean.TRUE.equals(score.get("sectionSummaryExactMatch"));
             boolean chartVisualExactMatch = lcaReport || (Boolean.TRUE.equals(visualScore.get("visualProfileAvailable"))
-                    && "VISUAL_MATCH".equals(visualScore.get("visualStatus")));
+                    && "VISUAL_MATCH".equals(visualScore.get("chartVisualStatus")));
             boolean chartExactMatch = chartDataExactMatch && chartVisualExactMatch;
             int confidence = (int) Math.round(combinedScore);
             Map<String, Object> comparison = new LinkedHashMap<>();
@@ -1323,6 +1323,9 @@ public class ReportVerificationRegistryService {
         long differenceTotal = 0;
         int compared = 0;
         int damaged = 0;
+        long chartDifferenceTotal = 0;
+        int chartCompared = 0;
+        int chartDamaged = 0;
         int columns = Math.max(1, stored.path("columns").asInt(48));
         List<Map<String, Object>> damagedRegions = new ArrayList<>();
         for (int page = 0; page < storedPages.size(); page++) {
@@ -1336,6 +1339,11 @@ public class ReportVerificationRegistryService {
                 int difference = Math.abs(expectedValues.get(index).asInt() - actualValues.get(index).asInt());
                 differenceTotal += difference;
                 compared++;
+                if (page == 1 || page == 2) {
+                    chartDifferenceTotal += difference;
+                    chartCompared++;
+                    if (difference >= 42) chartDamaged++;
+                }
                 if (difference >= 42) {
                     damaged++;
                     if (damagedRegions.size() < 100) {
@@ -1353,9 +1361,22 @@ public class ReportVerificationRegistryService {
         double damageRatio = compared == 0 ? 1 : damaged / (double) compared;
         String status = similarity >= 92 && damageRatio <= 0.015 ? "VISUAL_MATCH"
                 : similarity >= 82 && damageRatio <= 0.06 ? "VISUAL_DAMAGE_REVIEW" : "VISUAL_MISMATCH";
-        return Map.of("visualProfileAvailable", true, "visualSimilarity", similarity,
-                "damagedCellCount", damaged, "comparedCellCount", compared, "visualStatus", status,
-                "damagedRegions", damagedRegions);
+        int chartSimilarity = chartCompared == 0 ? 0
+                : (int) Math.round(100 - Math.min(100, (chartDifferenceTotal / (double) chartCompared) / 2.55));
+        double chartDamageRatio = chartCompared == 0 ? 1 : chartDamaged / (double) chartCompared;
+        String chartStatus = chartSimilarity >= 92 && chartDamageRatio <= 0.015 ? "VISUAL_MATCH"
+                : chartSimilarity >= 82 && chartDamageRatio <= 0.06 ? "VISUAL_DAMAGE_REVIEW" : "VISUAL_MISMATCH";
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("visualProfileAvailable", true);
+        result.put("visualSimilarity", similarity);
+        result.put("damagedCellCount", damaged);
+        result.put("comparedCellCount", compared);
+        result.put("visualStatus", status);
+        result.put("damagedRegions", damagedRegions);
+        result.put("chartVisualSimilarity", chartSimilarity);
+        result.put("chartDamagedCellCount", chartDamaged);
+        result.put("chartVisualStatus", chartStatus);
+        return result;
     }
 
     private Map<String, Object> load(String certificateId) {
@@ -1562,9 +1583,11 @@ public class ReportVerificationRegistryService {
                     .setScale(0, java.math.RoundingMode.HALF_UP).toPlainString());
             String actualTotal = "";
             String actualShare = "";
+            int actualPage = 0;
             boolean labelMatched = false;
             int bestScore = -1;
-            for (List<OcrLineEvidence> page : pages) {
+            for (int pageIndex = 0; pageIndex < pages.size(); pageIndex++) {
+                List<OcrLineEvidence> page = pages.get(pageIndex);
                 for (OcrLineEvidence labelLine : page) {
                     if (!labelLine.text().replaceAll("\\s+", "").contains(normalizedLabel)) continue;
                     labelMatched = true;
@@ -1586,18 +1609,13 @@ public class ReportVerificationRegistryService {
                             candidateShare = values.contains(expectedShare) ? expectedShare : values.get(0);
                         }
                     }
-                    if (!expectedTotal.equals(candidateTotal)) {
-                        boolean expectedVisibleOnLabelPage = page.stream()
-                                .filter(line -> line.text().contains("kg") || line.text().contains("co2"))
-                                .anyMatch(line -> containsVisibleNumber(line.text(), expectedTotal));
-                        if (expectedVisibleOnLabelPage) candidateTotal = expectedTotal;
-                    }
                     int score = (expectedTotal.equals(candidateTotal) ? 2 : 0)
                             + (expectedShare.equals(candidateShare) ? 1 : 0);
                     if (score > bestScore) {
                         bestScore = score;
                         actualTotal = candidateTotal;
                         actualShare = candidateShare;
+                        actualPage = pageIndex + 1;
                     }
                 }
             }
@@ -1608,6 +1626,7 @@ public class ReportVerificationRegistryService {
             comparison.put("actualTotalEmission", actualTotal);
             comparison.put("expectedSharePercent", expectedShare);
             comparison.put("actualSharePercent", actualShare);
+            comparison.put("pageNumber", actualPage);
             comparison.put("labelMatched", labelMatched);
             comparison.put("totalEmissionMatched", expectedTotal.equals(actualTotal));
             comparison.put("sharePercentMatched", expectedShare.equals(actualShare));

@@ -178,6 +178,57 @@ class ReportVerificationRegistryServicePdfTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void coordinateChartComparisonDoesNotBorrowExpectedValueFromAnotherSection() throws Exception {
+        ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+        Method normalize = ReportVerificationRegistryService.class.getDeclaredMethod("normalizeOcrLinePages", Object.class);
+        Method scorer = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "scoreSectionSummaryPage", List.class, com.fasterxml.jackson.databind.JsonNode.class, List.class);
+        normalize.setAccessible(true);
+        scorer.setAccessible(true);
+        List<Map<String, Object>> chartLines = List.of(
+                ocrLine("에너지", 200, 500), ocrLine("1.62 kg CO2e", 900, 500), ocrLine("0%", 900, 560),
+                ocrLine("수계 배출물", 200, 900), ocrLine("1.62 kg CO2e", 900, 900), ocrLine("0%", 900, 960));
+        List<Map<String, Object>> ocrPages = List.of(
+                Map.of("pageNumber", 1, "ocrText", "cover", "lines", List.of()),
+                Map.of("pageNumber", 2, "ocrText", "에너지 1.62 0% 수계 배출물 1.62 0%", "lines", chartLines));
+        Object lines = normalize.invoke(service, ocrPages);
+        Map<String, Object> dataset = Map.of("sectionSummaries", List.of(
+                section("INPUT_ENERGY", "에너지", 1.62, 0, 3),
+                section("OUTPUT_WATER", "수계 배출물", 0.36, 0, 2)));
+        Map<String, Object> result = (Map<String, Object>) scorer.invoke(service,
+                List.of("cover", "chart"), new ObjectMapper().valueToTree(dataset), lines);
+        List<Map<String, Object>> comparisons =
+                (List<Map<String, Object>>) result.get("sectionSummaryComparisons");
+        assertTrue((Boolean) comparisons.get(0).get("matched"));
+        assertEquals("1.62", comparisons.get(1).get("actualTotalEmission"));
+        assertEquals(2, comparisons.get(1).get("pageNumber"));
+        assertFalse((Boolean) comparisons.get(1).get("matched"));
+        assertFalse((Boolean) result.get("sectionSummaryExactMatch"));
+    }
+
+    @Test
+    void chartVisualStatusIgnoresNonChartPageRenderingNoise() throws Exception {
+        ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+        Method scorer = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "scoreVisualProfile", com.fasterxml.jackson.databind.JsonNode.class,
+                com.fasterxml.jackson.databind.JsonNode.class);
+        scorer.setAccessible(true);
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> stored = Map.of("columns", 1, "pages", List.of(
+                Map.of("values", List.of(0)), Map.of("values", List.of(10)), Map.of("values", List.of(20)),
+                Map.of("values", List.of(30))));
+        Map<String, Object> uploaded = Map.of("columns", 1, "pages", List.of(
+                Map.of("values", List.of(255)), Map.of("values", List.of(10)), Map.of("values", List.of(20)),
+                Map.of("values", List.of(30))));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> result = (Map<String, Object>) scorer.invoke(service,
+                mapper.valueToTree(stored), mapper.valueToTree(uploaded));
+        assertEquals("VISUAL_MISMATCH", result.get("visualStatus"));
+        assertEquals("VISUAL_MATCH", result.get("chartVisualStatus"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void sectionSummaryReportsEachGraphValueWithoutBorrowingAMatchFromAnotherSection() throws Exception {
         ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
         Method scorer = ReportVerificationRegistryService.class.getDeclaredMethod(

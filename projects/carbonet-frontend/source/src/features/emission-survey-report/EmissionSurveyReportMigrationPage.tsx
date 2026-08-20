@@ -4523,6 +4523,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                   <table className="w-full min-w-[760px] border-collapse text-left text-[11px]">
                                     <thead className="sticky top-0 bg-slate-100 text-slate-700">
                                       <tr>
+                                        <th className="px-3 py-2">{en ? "Page" : "페이지"}</th>
                                         <th className="px-3 py-2">{en ? "Order" : "순서"}</th>
                                         <th className="px-3 py-2">{en ? "Section" : "섹션"}</th>
                                         <th className="px-3 py-2">{en ? "Field" : "항목"}</th>
@@ -4537,6 +4538,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                         [en ? "Share" : "비율", `${section.expectedSharePercent}%`, section.actualSharePercent !== null && section.actualSharePercent !== undefined && section.actualSharePercent !== "" ? `${section.actualSharePercent}%` : "", section.sharePercentMatched],
                                       ] as Array<[string, string, string, boolean]>).map(([label, storedValue, uploadedValue, matched], fieldIndex) => (
                                         <tr className={matched ? "bg-white" : "bg-rose-50 text-rose-900"} key={`${item.certificateId}-graph-${section.sectionCode}-${fieldIndex}`}>
+                                          <td className="px-3 py-2 font-black">{section.pageNumber || "-"}</td>
                                           <td className="px-3 py-2 font-black">{sectionIndex + 1}</td>
                                           <td className="px-3 py-2 font-black">{section.sectionLabel}</td>
                                           <td className="px-3 py-2">{label}</td>
@@ -4547,7 +4549,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                       )))}
                                       {item.unexpectedSectionSummaryNumbers?.length ? (
                                         <tr className="bg-rose-50 text-rose-900">
-                                          <td className="px-3 py-2 font-black" colSpan={2}>-</td>
+                                          <td className="px-3 py-2 font-black" colSpan={3}>-</td>
                                           <td className="px-3 py-2 font-black">{en ? "Unexpected graph values" : "예상하지 않은 그래프 값"}</td>
                                           <td className="px-3 py-2" colSpan={2}>{item.unexpectedSectionSummaryNumbers.join(", ")}</td>
                                           <td className="px-3 py-2 font-black">MISMATCH</td>
