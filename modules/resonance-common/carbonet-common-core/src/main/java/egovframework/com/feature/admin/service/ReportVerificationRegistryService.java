@@ -384,7 +384,7 @@ public class ReportVerificationRegistryService {
             if (!requestedReportType.equalsIgnoreCase(candidateReportType)) {
                 continue;
             }
-            Map<String, Object> score = scoreOcrCandidate(normalizedText, dataset);
+            Map<String, Object> score = scoreOcrCandidate(normalizedText, ocrText, dataset);
             Map<String, Object> detailTableScore = scoreDetailTablePage(normalizedOcrPages, dataset, ocrLinePages);
             score.putAll(detailTableScore);
             Map<String, Object> sectionSummaryScore = scoreSectionSummaryPage(normalizedOcrPages, dataset, ocrLinePages);
@@ -434,7 +434,7 @@ public class ReportVerificationRegistryService {
             comparison.put("productName", candidate.get("product_name"));
             comparison.put("productNameActual", Boolean.TRUE.equals(score.get("productMatched")) ? candidate.get("product_name") : "");
             comparison.put("totalEmission", candidate.get("total_emission"));
-            comparison.put("totalEmissionActual", findObservedNumber(normalizedText, objectMapper.valueToTree(candidate.get("total_emission"))));
+            comparison.put("totalEmissionActual", findObservedNumber(ocrText, objectMapper.valueToTree(candidate.get("total_emission"))));
             comparison.put("rowCount", candidate.get("row_count"));
             comparison.put("payloadHash", payloadHash);
             comparison.put("integrityCode", integrityCode);
@@ -934,7 +934,7 @@ public class ReportVerificationRegistryService {
         }
     }
 
-    private Map<String, Object> scoreOcrCandidate(String normalizedText, JsonNode dataset) {
+    private Map<String, Object> scoreOcrCandidate(String normalizedText, String numericText, JsonNode dataset) {
         boolean lcaReport = "LCA_SUMMARY".equalsIgnoreCase(dataset.path("reportType").asText());
         JsonNode lcaSummary = dataset.path("lcaSummary");
         boolean productMatched = containsText(normalizedText, dataset.path("productName").asText());
@@ -944,7 +944,7 @@ public class ReportVerificationRegistryService {
                 || containsText(normalizedText, dataset.path("pageTitle").asText())
                 || containsText(normalizedText, "제품/부산물 배출계수 리포트")
                 || containsText(normalizedText, "탄소배출량 리포트");
-        boolean totalMatched = containsNumber(normalizedText, dataset.path("summary").path("totalEmission"));
+        boolean totalMatched = containsNumber(numericText, dataset.path("summary").path("totalEmission"));
         JsonNode rows = dataset.path("rows");
         int materialCount = 0;
         int matchedMaterialCount = 0;
@@ -969,7 +969,7 @@ public class ReportVerificationRegistryService {
                             ? row.path("originalAmount") : row.path(field);
                     if (value.isNumber() && Math.abs(value.asDouble()) > 0.0000001) {
                         numberCount++;
-                        boolean matched = containsDisplayedNumber(normalizedText, row, field, value);
+                        boolean matched = containsDisplayedNumber(numericText, row, field, value);
                         fieldMatches.put(field, matched);
                         if (matched) {
                             matchedNumberCount++;
@@ -1039,7 +1039,7 @@ public class ReportVerificationRegistryService {
                 JsonNode value = verificationSummary.path(entry.getKey());
                 if (!value.isNumber() && legacySummaryValues.containsKey(entry.getKey())) value = objectMapper.valueToTree(legacySummaryValues.get(entry.getKey()));
                 if (!value.isNumber()) continue;
-                String actual = findObservedDisplayedNumber(normalizedText, verificationSummary, entry.getKey(), value);
+                String actual = findObservedDisplayedNumber(numericText, verificationSummary, entry.getKey(), value);
                 boolean matched = !actual.isBlank();
                 numberCount++;
                 if (matched) matchedNumberCount++;
@@ -1080,7 +1080,7 @@ public class ReportVerificationRegistryService {
                             };
                             value = objectMapper.valueToTree(derivedValue);
                         }
-                        String actual = value.isNumber() ? findObservedDisplayedNumber(normalizedText, row, field, value) : "";
+                        String actual = value.isNumber() ? findObservedDisplayedNumber(numericText, row, field, value) : "";
                         boolean matched = !value.isNumber() || !actual.isBlank();
                         comparison.put(field + "Display", displayValue(row, field, value));
                         comparison.put(field + "Actual", actual);
@@ -1135,7 +1135,7 @@ public class ReportVerificationRegistryService {
             for (Map.Entry<String, String> entry : numericLabels.entrySet()) {
                 JsonNode expectedNode = lcaSummary.path(entry.getKey());
                 if (!expectedNode.isNumber()) continue;
-                String actual = findObservedNumber(normalizedText, expectedNode);
+                String actual = findObservedNumber(numericText, expectedNode);
                 boolean matched = !actual.isBlank();
                 numberCount++;
                 lcaFieldCount++;
@@ -1237,8 +1237,8 @@ public class ReportVerificationRegistryService {
             return "";
         }
         java.math.BigDecimal number = value.decimalValue().stripTrailingZeros();
-        String numericText = normalizedText.replace('o', '0').replace('l', '1');
-        Matcher matcher = Pattern.compile("[0-9]+(?:\\.[0-9]+)?").matcher(numericText);
+        String readableNumberText = normalizedText.replace('o', '0').replace('l', '1');
+        Matcher matcher = Pattern.compile("[0-9][0-9,，]*(?:\\.[0-9]+)?").matcher(readableNumberText);
         java.math.BigDecimal tolerance = number.abs().multiply(new java.math.BigDecimal("0.001"))
                 .max(new java.math.BigDecimal("0.01"));
         java.math.BigDecimal closest = null;
@@ -1246,13 +1246,14 @@ public class ReportVerificationRegistryService {
         String closestToken = "";
         while (matcher.find()) {
             try {
-                java.math.BigDecimal candidate = new java.math.BigDecimal(matcher.group());
+                String observedToken = matcher.group();
+                java.math.BigDecimal candidate = new java.math.BigDecimal(observedToken.replace(",", "").replace("，", ""));
                 java.math.BigDecimal difference = candidate.subtract(number).abs();
                 if (difference.compareTo(tolerance) <= 0
                         && (closestDifference == null || difference.compareTo(closestDifference) < 0)) {
                     closest = candidate;
                     closestDifference = difference;
-                    closestToken = matcher.group();
+                    closestToken = observedToken;
                 }
             } catch (NumberFormatException ignored) {
                 // Continue with the remaining OCR number tokens.
@@ -1266,11 +1267,6 @@ public class ReportVerificationRegistryService {
     }
 
     private String findObservedDisplayedNumber(String normalizedText, JsonNode row, String field, JsonNode value) {
-        String display = displayValue(row, field, value);
-        String normalizedDisplay = normalizeText(display);
-        if (!normalizedDisplay.isBlank() && normalizedText.contains(normalizedDisplay)) {
-            return display;
-        }
         return findObservedNumber(normalizedText, value);
     }
 
