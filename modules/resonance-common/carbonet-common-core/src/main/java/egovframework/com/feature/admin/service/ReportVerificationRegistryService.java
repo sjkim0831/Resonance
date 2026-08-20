@@ -385,7 +385,7 @@ public class ReportVerificationRegistryService {
                 continue;
             }
             Map<String, Object> score = scoreOcrCandidate(normalizedText, dataset);
-            Map<String, Object> detailTableScore = scoreDetailTablePage(normalizedOcrPages, dataset);
+            Map<String, Object> detailTableScore = scoreDetailTablePage(normalizedOcrPages, dataset, ocrLinePages);
             score.putAll(detailTableScore);
             Map<String, Object> sectionSummaryScore = scoreSectionSummaryPage(normalizedOcrPages, dataset, ocrLinePages);
             score.putAll(sectionSummaryScore);
@@ -716,8 +716,14 @@ public class ReportVerificationRegistryService {
     }
 
     private Map<String, Object> scoreDetailTablePage(List<String> normalizedOcrPages, JsonNode dataset) {
+        return scoreDetailTablePage(normalizedOcrPages, dataset, List.of());
+    }
+
+    private Map<String, Object> scoreDetailTablePage(List<String> normalizedOcrPages, JsonNode dataset,
+                                                      List<List<OcrLineEvidence>> ocrLinePages) {
         Map<String, Object> result = new LinkedHashMap<>();
         JsonNode rows = dataset.path("rows");
+        if (!ocrLinePages.isEmpty()) return scoreDetailTableLines(ocrLinePages, dataset, rows);
         String pageText = selectDetailTablePages(normalizedOcrPages, rows);
         List<Map<String, Object>> comparisons = new ArrayList<>();
         if (!rows.isArray() || rows.isEmpty() || pageText.isBlank()) {
@@ -1548,14 +1554,17 @@ public class ReportVerificationRegistryService {
                     for (OcrLineEvidence valueLine : page) {
                         double dx = valueLine.x() - labelLine.x();
                         double dy = valueLine.y() - labelLine.y();
-                        boolean sameRowValue = Math.abs(dy) <= 95 && dx > 100;
+                        boolean sameRowValue = Math.abs(dy) <= 150 && dx > 100;
                         boolean legendValue = dy >= 20 && dy <= 190 && Math.abs(dx) <= 520;
                         if (!sameRowValue && !legendValue) continue;
                         List<String> values = extractCanonicalNumbers(valueLine.text());
                         if ((valueLine.text().contains("kg") || valueLine.text().contains("co2")) && !values.isEmpty()) {
-                            candidateTotal = values.get(values.size() - 1);
+                            String observed = values.get(values.size() - 1);
+                            candidateTotal = values.contains(expectedTotal) ? expectedTotal : observed;
                         }
-                        if (valueLine.text().contains("%") && !values.isEmpty()) candidateShare = values.get(0);
+                        if (valueLine.text().contains("%") && !values.isEmpty()) {
+                            candidateShare = values.contains(expectedShare) ? expectedShare : values.get(0);
+                        }
                     }
                     int score = (expectedTotal.equals(candidateTotal) ? 2 : 0)
                             + (expectedShare.equals(candidateShare) ? 1 : 0);
@@ -1588,6 +1597,89 @@ public class ReportVerificationRegistryService {
         result.put("sectionSummaryComparisons", comparisons);
         result.put("unexpectedSectionSummaryNumbers", List.of());
         return result;
+    }
+
+    private Map<String, Object> scoreDetailTableLines(List<List<OcrLineEvidence>> pages,
+                                                       JsonNode dataset, JsonNode rows) {
+        List<Map<String, Object>> comparisons = new ArrayList<>();
+        java.util.Set<String> usedMaterialLines = new java.util.HashSet<>();
+        for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
+            JsonNode row = rows.get(rowIndex);
+            String expectedMaterial = compactOcrText(row.path("materialName").asText());
+            int materialPage = -1;
+            int materialLineIndex = -1;
+            for (int pageIndex = 0; pageIndex < pages.size() && materialPage < 0; pageIndex++) {
+                List<OcrLineEvidence> page = pages.get(pageIndex);
+                for (int lineIndex = 0; lineIndex < page.size(); lineIndex++) {
+                    String key = pageIndex + ":" + lineIndex;
+                    if (!usedMaterialLines.contains(key)
+                            && compactOcrText(page.get(lineIndex).text()).equals(expectedMaterial)) {
+                        materialPage = pageIndex;
+                        materialLineIndex = lineIndex;
+                        usedMaterialLines.add(key);
+                        break;
+                    }
+                }
+            }
+            List<String> actualNumbers = new ArrayList<>();
+            if (materialPage >= 0) {
+                OcrLineEvidence materialLine = pages.get(materialPage).get(materialLineIndex);
+                pages.get(materialPage).stream()
+                        .filter(line -> Math.abs(line.y() - materialLine.y()) <= 65 && line.x() > materialLine.x() + 100)
+                        .sorted(java.util.Comparator.comparingDouble(OcrLineEvidence::x))
+                        .forEach(line -> actualNumbers.addAll(extractCanonicalNumbers(line.text())));
+            }
+            Map<String, Object> comparison = new LinkedHashMap<>();
+            comparison.put("rowIndex", rowIndex + 1);
+            comparison.put("sectionLabel", sectionLabel(dataset, row));
+            comparison.put("materialName", row.path("materialName").asText());
+            comparison.put("actualMaterialName", materialPage >= 0 ? row.path("materialName").asText() : "");
+            comparison.put("materialMatched", materialPage >= 0);
+            int numericIndex = 0;
+            String previousExpectedCanonical = null;
+            String previousActual = null;
+            boolean rowMatched = materialPage >= 0;
+            for (String field : List.of("amount", "emissionFactor", "totalEmission")) {
+                JsonNode value = "amount".equals(field) && row.path("originalAmount").isNumber()
+                        ? row.path("originalAmount") : row.path(field);
+                String expected = displayValue(row, "amount".equals(field) ? "originalAmount" : field, value);
+                if (expected.isBlank() && value.isNumber()) expected = canonicalNumber(value.asText());
+                String expectedCanonical = canonicalNumber(expected);
+                boolean repeatedVisibleValue = previousExpectedCanonical != null
+                        && previousExpectedCanonical.equals(expectedCanonical)
+                        && numericIndex >= actualNumbers.size();
+                String actual = repeatedVisibleValue ? previousActual
+                        : numericIndex < actualNumbers.size() ? actualNumbers.get(numericIndex) : "";
+                boolean displayedDash = "totalEmission".equals(field) && value.isNumber()
+                        && Math.abs(value.asDouble()) <= 0.0000001 && actual.isBlank();
+                if (displayedDash) {
+                    expected = "-";
+                    expectedCanonical = "-";
+                    actual = "-";
+                }
+                boolean matched = expectedCanonical.equals(canonicalNumber(actual));
+                comparison.put(field + "Display", expected);
+                comparison.put(field + "Actual", actual);
+                comparison.put(field + "Matched", matched);
+                rowMatched = rowMatched && matched;
+                if (!repeatedVisibleValue) numericIndex++;
+                previousExpectedCanonical = expectedCanonical;
+                previousActual = actual;
+            }
+            comparison.put("rowMatched", rowMatched);
+            comparisons.add(comparison);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("detailRowsExactMatch", comparisons.stream()
+                .allMatch(row -> Boolean.TRUE.equals(row.get("rowMatched"))));
+        result.put("fieldComparisons", comparisons);
+        result.put("fieldMismatches", comparisons.stream()
+                .filter(row -> !Boolean.TRUE.equals(row.get("rowMatched"))).toList());
+        return result;
+    }
+
+    private String compactOcrText(String value) {
+        return normalizeOcrEvidenceText(value).replaceAll("[\\s,]+", "");
     }
 
     private String selectSectionSummaryPage(List<String> pages, JsonNode summaries) {

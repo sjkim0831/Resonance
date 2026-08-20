@@ -387,6 +387,30 @@ class ReportVerificationRegistryServicePdfTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void detailCoordinatesKeepEachVisibleValueOnItsOwnMaterialRow() throws Exception {
+        ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+        Method normalize = ReportVerificationRegistryService.class.getDeclaredMethod("normalizeOcrLinePages", Object.class);
+        Method scorer = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "scoreDetailTablePage", List.class, com.fasterxml.jackson.databind.JsonNode.class, List.class);
+        normalize.setAccessible(true);
+        scorer.setAccessible(true);
+        List<Map<String, Object>> pageLines = List.of(
+                ocrLine("CO", 240, 2050), ocrLine("1t", 1400, 2050), ocrLine("0.03", 1660, 2050),
+                ocrLine("촉매 폐기물", 300, 2730), ocrLine("1t", 1400, 2730), ocrLine("0.01", 1660, 2730),
+                ocrLine("최종 합계", 300, 3040), ocrLine("79,262.29", 1900, 3040));
+        Object lines = normalize.invoke(service, List.of(
+                Map.of("pageNumber", 1, "ocrText", "상세 계산 결과표", "lines", pageLines)));
+        Map<String, Object> dataset = Map.of("rows", List.of(
+                detailRow("OUTPUT_AIR", "CO", 1, 0.03, 0.03),
+                detailRow("OUTPUT_WASTE", "촉매 폐기물", 1, 0.01, 0.01)));
+        Map<String, Object> result = (Map<String, Object>) scorer.invoke(service,
+                List.of("상세 계산 결과표"), new ObjectMapper().valueToTree(dataset), lines);
+        assertTrue((Boolean) result.get("detailRowsExactMatch"));
+        assertTrue(((List<?>) result.get("fieldMismatches")).isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void detailRowsMatchByVisibleMaterialWhenOcrOrderDiffersFromDatasetOrder() throws Exception {
         ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
         Method detailScorer = ReportVerificationRegistryService.class.getDeclaredMethod(
