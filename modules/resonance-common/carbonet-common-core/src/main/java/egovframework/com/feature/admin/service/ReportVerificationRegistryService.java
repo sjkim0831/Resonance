@@ -1560,7 +1560,8 @@ public class ReportVerificationRegistryService {
                         List<String> values = extractCanonicalNumbers(valueLine.text());
                         if ((valueLine.text().contains("kg") || valueLine.text().contains("co2")) && !values.isEmpty()) {
                             String observed = values.get(values.size() - 1);
-                            candidateTotal = values.contains(expectedTotal) ? expectedTotal : observed;
+                            candidateTotal = values.contains(expectedTotal)
+                                    || containsVisibleNumber(valueLine.text(), expectedTotal) ? expectedTotal : observed;
                         }
                         if (valueLine.text().contains("%") && !values.isEmpty()) {
                             candidateShare = values.contains(expectedShare) ? expectedShare : values.get(0);
@@ -1603,12 +1604,19 @@ public class ReportVerificationRegistryService {
                                                        JsonNode dataset, JsonNode rows) {
         List<Map<String, Object>> comparisons = new ArrayList<>();
         java.util.Set<String> usedMaterialLines = new java.util.HashSet<>();
+        int detailStartPage = -1;
+        for (int pageIndex = 0; pageIndex < pages.size() && detailStartPage < 0; pageIndex++) {
+            if (pages.get(pageIndex).stream().map(OcrLineEvidence::text).map(this::compactOcrText)
+                    .anyMatch(text -> text.contains(compactOcrText("상세 계산 결과표")))) {
+                detailStartPage = pageIndex;
+            }
+        }
         for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
             JsonNode row = rows.get(rowIndex);
             String expectedMaterial = compactOcrText(row.path("materialName").asText());
             int materialPage = -1;
             int materialLineIndex = -1;
-            for (int pageIndex = 0; pageIndex < pages.size() && materialPage < 0; pageIndex++) {
+            for (int pageIndex = Math.max(0, detailStartPage); pageIndex < pages.size() && materialPage < 0; pageIndex++) {
                 List<OcrLineEvidence> page = pages.get(pageIndex);
                 for (int lineIndex = 0; lineIndex < page.size(); lineIndex++) {
                     String key = pageIndex + ":" + lineIndex;
@@ -1680,6 +1688,15 @@ public class ReportVerificationRegistryService {
 
     private String compactOcrText(String value) {
         return normalizeOcrEvidenceText(value).replaceAll("[\\s,]+", "");
+    }
+
+    private boolean containsVisibleNumber(String text, String canonical) {
+        if (canonical == null || canonical.isBlank()) return false;
+        String token = java.util.Arrays.stream(canonical.split("\\.", -1))
+                .map(java.util.regex.Pattern::quote)
+                .collect(java.util.stream.Collectors.joining("[.,]"));
+        return java.util.regex.Pattern.compile("(?<!\\d)" + token + "(?!\\d)")
+                .matcher(text.replaceAll("\\s+", "")).find();
     }
 
     private String selectSectionSummaryPage(List<String> pages, JsonNode summaries) {

@@ -372,8 +372,8 @@ class ReportVerificationRegistryServicePdfTest {
                 Map.of("pageNumber", 2, "ocrText", "수계 배출물 1.62 kg co2e 0%", "lines", List.of(
                         ocrLine("수계 배출물", 350, 1300), ocrLine("1.62 kg co2e", 1900, 1300),
                         ocrLine("0%", 2050, 1410))),
-                Map.of("pageNumber", 3, "ocrText", "수계 배출물 0% 0.36 kg co2e", "lines", List.of(
-                        ocrLine("수계 배출물", 420, 2020), ocrLine("0% 0.36 kg co2e", 470, 2090))));
+                Map.of("pageNumber", 3, "ocrText", "수계 배출물 0%·0.36 kg c02e", "lines", List.of(
+                        ocrLine("수계 배출물", 420, 2020), ocrLine("0%·0.36 kg c02e", 470, 2090))));
         Object lines = normalize.invoke(service, rawPages);
         Map<String, Object> result = (Map<String, Object>) scorer.invoke(service,
                 List.of("", "수계 배출물 1.62 kg co2e 0%", "수계 배출물 0% 0.36 kg co2e"),
@@ -399,12 +399,15 @@ class ReportVerificationRegistryServicePdfTest {
                 ocrLine("촉매 폐기물", 300, 2730), ocrLine("1t", 1400, 2730), ocrLine("0.01", 1660, 2730),
                 ocrLine("최종 합계", 300, 3040), ocrLine("79,262.29", 1900, 3040));
         Object lines = normalize.invoke(service, List.of(
-                Map.of("pageNumber", 1, "ocrText", "상세 계산 결과표", "lines", pageLines)));
+                Map.of("pageNumber", 1, "ocrText", "e-케로신 79,262.29", "lines", List.of(
+                        ocrLine("e-케로신", 300, 300), ocrLine("79,262.29", 1900, 300))),
+                Map.of("pageNumber", 2, "ocrText", "상세 계산 결과표", "lines", pageLines)));
         Map<String, Object> dataset = Map.of("rows", List.of(
                 detailRow("OUTPUT_AIR", "CO", 1, 0.03, 0.03),
                 detailRow("OUTPUT_WASTE", "촉매 폐기물", 1, 0.01, 0.01)));
         Map<String, Object> result = (Map<String, Object>) scorer.invoke(service,
-                List.of("상세 계산 결과표"), new ObjectMapper().valueToTree(dataset), lines);
+                List.of("e-케로신 79,262.29", "상세 계산 결과표"),
+                new ObjectMapper().valueToTree(dataset), lines);
         assertTrue((Boolean) result.get("detailRowsExactMatch"));
         assertTrue(((List<?>) result.get("fieldMismatches")).isEmpty());
     }
