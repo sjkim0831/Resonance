@@ -75,11 +75,15 @@ for p in root.rglob("*"):
 h = hashlib.sha256()
 for p in sorted(set(include_files), key=lambda x: str(x.relative_to(root))):
     rel = str(p.relative_to(root)).replace(os.sep, "/")
+    content = p.read_bytes()
+    if (rel.startswith("public/assets/fonts/")
+            and p.name.endswith(("-LICENSE.txt", "-PROVENANCE.txt"))):
+        content = content.replace(b"\r\n", b"\n")
     h.update(rel.encode())
     h.update(b"\0")
     h.update(f"{p.stat().st_mode & 0o777:03o}".encode("ascii"))
     h.update(b"\0")
-    h.update(p.read_bytes())
+    h.update(content)
     h.update(b"\0")
 print(h.hexdigest())
 PY
