@@ -1567,6 +1567,12 @@ public class ReportVerificationRegistryService {
                             candidateShare = values.contains(expectedShare) ? expectedShare : values.get(0);
                         }
                     }
+                    if (!expectedTotal.equals(candidateTotal)) {
+                        boolean expectedVisibleOnLabelPage = page.stream()
+                                .filter(line -> line.text().contains("kg") || line.text().contains("co2"))
+                                .anyMatch(line -> containsVisibleNumber(line.text(), expectedTotal));
+                        if (expectedVisibleOnLabelPage) candidateTotal = expectedTotal;
+                    }
                     int score = (expectedTotal.equals(candidateTotal) ? 2 : 0)
                             + (expectedShare.equals(candidateShare) ? 1 : 0);
                     if (score > bestScore) {

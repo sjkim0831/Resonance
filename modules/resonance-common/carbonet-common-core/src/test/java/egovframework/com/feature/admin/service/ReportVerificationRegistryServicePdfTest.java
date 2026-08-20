@@ -373,7 +373,8 @@ class ReportVerificationRegistryServicePdfTest {
                         ocrLine("수계 배출물", 350, 1300), ocrLine("1.62 kg co2e", 1900, 1300),
                         ocrLine("0%", 2050, 1410))),
                 Map.of("pageNumber", 3, "ocrText", "수계 배출물 0%·0.36 kg c02e", "lines", List.of(
-                        ocrLine("수계 배출물", 420, 2020), ocrLine("0%·0.36 kg c02e", 470, 2090))));
+                        ocrLine("수계 배출물", 420, 2020),
+                        ocrLine("0%", 470, 2090), ocrLine("0.36 kg c02e", 1100, 2090))));
         Object lines = normalize.invoke(service, rawPages);
         Map<String, Object> result = (Map<String, Object>) scorer.invoke(service,
                 List.of("", "수계 배출물 1.62 kg co2e 0%", "수계 배출물 0% 0.36 kg co2e"),
