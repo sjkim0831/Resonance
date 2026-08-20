@@ -308,7 +308,16 @@ for rel, source_path in sorted(files, key=lambda item: item[0].as_posix()):
         raise SystemExit(f"missing public overlay asset: {rel.as_posix()}")
     source_bytes = source_path.read_bytes()
     target_bytes = target.read_bytes()
-    if source_bytes != target_bytes:
+    eol_normalized_assets = {
+        "assets/fonts/MaterialSymbolsOutlined-LICENSE.txt",
+        "assets/fonts/MaterialSymbolsOutlined-PROVENANCE.txt",
+    }
+    comparable_source = source_bytes
+    comparable_target = target_bytes
+    if rel.as_posix() in eol_normalized_assets:
+        comparable_source = source_bytes.replace(b"\r\n", b"\n")
+        comparable_target = target_bytes.replace(b"\r\n", b"\n")
+    if comparable_source != comparable_target:
         raise SystemExit(f"public overlay asset differs from source: {rel.as_posix()}")
     h.update(rel.as_posix().encode("utf-8"))
     h.update(b"\0")

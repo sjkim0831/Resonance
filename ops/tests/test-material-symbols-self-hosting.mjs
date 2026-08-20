@@ -21,7 +21,7 @@ const taskQuestPath = path.join(sourceRoot, "features/task-quest/TaskQuestPanel.
 const fontPath = path.join(frontendRoot, "public/assets/fonts/MaterialSymbolsOutlined-0.46.0.woff2");
 const fontLicensePath = path.join(frontendRoot, "public/assets/fonts/MaterialSymbolsOutlined-LICENSE.txt");
 const provenancePath = path.join(frontendRoot, "public/assets/fonts/MaterialSymbolsOutlined-PROVENANCE.txt");
-const deployScriptPath = path.join(root, "ops/scripts/auto-deploy-main.sh");
+const overlayGuardPath = path.join(root, "ops/scripts/resonance-frontend-overlay-guard.sh");
 const nodeModules = path.resolve(
   process.env.CARBONET_FRONTEND_NODE_MODULES || path.join(frontendRoot, "node_modules"),
 );
@@ -29,7 +29,7 @@ const styles = readFileSync(stylesPath, "utf8");
 const taskQuest = readFileSync(taskQuestPath, "utf8");
 const provenance = readFileSync(provenancePath, "utf8");
 const license = readFileSync(fontLicensePath, "utf8");
-const deployScript = readFileSync(deployScriptPath, "utf8");
+const overlayGuard = readFileSync(overlayGuardPath, "utf8");
 const font = readFileSync(fontPath);
 
 assert.equal(statSync(fontPath).size, 3_960_036, "pinned Material Symbols font size drifted");
@@ -42,9 +42,9 @@ assert.match(license, /Apache License\s+Version 2\.0/);
 assert.match(provenance, /material-symbols@0\.46\.0/);
 assert.match(provenance, /Runtime network dependency: none/);
 assert.match(
-  deployScript,
-  /git -C "\$clean_worktree" cat-file blob "\$target_commit:\$lf_asset" >"\$lf_asset_tmp"/,
-  "persistent deployment worktree must materialize the target license blob without checkout filters",
+  overlayGuard,
+  /eol_normalized_assets = \{[\s\S]*MaterialSymbolsOutlined-LICENSE\.txt[\s\S]*MaterialSymbolsOutlined-PROVENANCE\.txt[\s\S]*\}/,
+  "license and provenance text assets must tolerate checkout-only EOL conversion",
 );
 
 const fontFace = /@font-face\s*\{(?<rules>[\s\S]*?MaterialSymbolsOutlined-0\.46\.0\.woff2[\s\S]*?)\}/.exec(styles)?.groups?.rules || "";
