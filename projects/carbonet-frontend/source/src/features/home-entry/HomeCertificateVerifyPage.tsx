@@ -40,7 +40,6 @@ export function HomeCertificateVerifyPage() {
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">PUBLIC VERIFICATION</p>
                   <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 lg:text-4xl">{en ? "Certificate Authenticity Verification" : "인증서 진위여부 확인"}</h1>
-                  <p className="mt-3 max-w-3xl text-base font-semibold leading-7 text-slate-600">{en ? "Upload a Carbonet report or certificate to compare its identifiers and complete dataset with the issued registry." : "Carbonet에서 발급한 리포트 또는 인증서를 업로드하여 식별 정보와 전체 데이터셋을 발급 원장과 대조합니다."}</p>
                 </div>
               </div>
             </div>

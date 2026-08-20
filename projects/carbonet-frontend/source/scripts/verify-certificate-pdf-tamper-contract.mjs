@@ -6,6 +6,7 @@ const frontendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 
 const repoRoot = path.resolve(frontendRoot, "../../..");
 const paths = {
   page: path.join(frontendRoot, "src/features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx"),
+  home: path.join(frontendRoot, "src/features/home-entry/HomeCertificateVerifyPage.tsx"),
   api: path.join(frontendRoot, "src/lib/api/emission.ts"),
   service: path.join(repoRoot, "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/service/ReportVerificationRegistryService.java"),
   controller: path.join(repoRoot, "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/web/ReportVerificationRegistryController.java"),
@@ -96,7 +97,11 @@ requireText("page", "buildReportOcrIssuanceEvidence(article, record)");
 requireText("page", "MAX_REPORT_VERIFICATION_PAGES = 10");
 requireText("page", "pdfDocument.numPages > MAX_REPORT_VERIFICATION_PAGES");
 requireText("page", "files.length > MAX_REPORT_VERIFICATION_PAGES");
-requireText("page", "최대 10페이지의 유형을 자동 식별하여 각각 검증합니다.");
+rejectText("page", "최대 10페이지의 유형을 자동 식별하여 각각 검증합니다.");
+rejectText("page", "내장 데이터셋 대조를 위해 새로 발급한 리포트를 업로드하세요.");
+rejectText("page", "version 2 PDF에는 숨김 인증 정보와 정규화 데이터셋이 포함되며 업로드 시 자동으로 읽어 대조합니다.");
+rejectText("page", "PDF 다운로드 화면 열기");
+rejectText("home", "Carbonet에서 발급한 리포트 또는 인증서를 업로드하여 식별 정보와 전체 데이터셋을 발급 원장과 대조합니다.");
 requireText("page", 'selectedReportType === "EMISSION_SURVEY" && photoVerification.ocrEvidencePageComparisons?.length');
 requireText("api", "actualTokenCount: number");
 requireText("api", "tokenSequenceExact: boolean");
@@ -108,16 +113,15 @@ requireText("page", 'page.tokenSequenceExact ? "SEQUENCE EXACT" : "SEQUENCE MISM
 requireText("page", 'page.unexpectedTokens.join(", ")');
 requireText("api", "sectionSummaryComparisons?: Array<{");
 requireText("api", "actualTotalEmission: string");
-requireText("page", 'en ? "Pages 2–3 · Graph data in report section order" : "2–3페이지 · 레포트 섹션 순서 그래프 데이터 일치·불일치"');
-requireText("page", 'section.totalEmissionMatched ? "MATCH" : "MISMATCH"');
-requireText("page", 'item.sectionSummaryComparisons.map((section, sectionIndex)');
+requireText("page", 'en ? "Pages 2–3 · Graph data comparison" : "2–3페이지 · 그래프 데이터 대조"');
+requireText("page", 'matched ? "MATCH" : "MISMATCH"');
+requireText("page", 'item.sectionSummaryComparisons.flatMap((section, sectionIndex)');
+requireText("page", 'en ? "Uploaded PDF value" : "업로드 PDF값"');
 requireText("page", 'item.unexpectedSectionSummaryNumbers.join(", ")');
-requireText("page", 'section.unexpectedNumbers.join(", ")');
-requireText("page", "예상하지 않은 추가값");
 requireText("page", 'item.comparisonDetails.filter((detail) => detail.category !== "CHART")');
 rejectText("page", 'photoVerification.sectionSummaryComparisons.map((section)');
 requireText("page", 'className="order-1 border-t border-slate-200 pt-3"');
-requireText("page", 'className="order-2 mt-4 border border-slate-300 bg-slate-50 p-3"');
+requireText("page", 'className="order-2 mt-4 border-t border-slate-200 pt-3"');
 requireText("page", 'className="order-3 mt-4 border border-slate-300 bg-slate-50 p-3"');
 requireText("page", 'className="order-5 mt-4 overflow-auto border border-slate-200"');
 requireText("page", 'en ? "Page 1 · Report totals and GWP" : "1페이지 · 레포트 총계·GWP 대조"');

@@ -4111,17 +4111,9 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                 ))}
               </div>
             </fieldset>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">{en ? "PDF Verification" : "PDF 검증"}</p>
-                <h2 className="mt-1 text-2xl font-black text-slate-950">{en ? "Upload Certificate PDF" : "인증서 PDF 업로드"}</h2>
-                <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-                  {en ? "Version 2 PDFs contain hidden certificate data and the canonical report dataset. They are read and compared automatically." : "version 2 PDF에는 숨김 인증 정보와 정규화 데이터셋이 포함되며 업로드 시 자동으로 읽어 대조합니다."}
-                </p>
-              </div>
-              <MemberButton onClick={() => navigate(buildLocalizedPath("/admin/emission/survey-report-print?lang=ko", "/en/admin/emission/survey-report-print?lang=en"))} type="button" variant="secondary">
-                {en ? "Open PDF Download" : "PDF 다운로드 화면 열기"}
-              </MemberButton>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">{en ? "PDF Verification" : "PDF 검증"}</p>
+              <h2 className="mt-1 text-2xl font-black text-slate-950">{en ? "Upload Certificate PDF" : "인증서 PDF 업로드"}</h2>
             </div>
             <label className="mt-5 flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center hover:border-emerald-400 hover:bg-emerald-50">
               <span className="text-base font-black text-slate-900">{fileName || (en ? "Choose PDF file" : "PDF 파일 선택")}</span>
@@ -4294,13 +4286,6 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Dataset Comparison" : "데이터셋 대조"}</p>
-              {selectedReportType === "EMISSION_SURVEY" ? (
-                <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-950">
-                  {en
-                    ? "Up to 10 pages are detected and checked independently. Byte and date differences remain authenticity evidence, but never stop field-by-field data, totals, chart labels, bar shapes, QR, dataset, and visual checks."
-                    : "최대 10페이지의 유형을 자동 식별하여 각각 검증합니다. 바이트·생성/수정일 불일치는 원본성 증거로 유지하되, 개별 데이터·합계·그래프 숫자·막대 모양·QR·데이터셋·시각 검증은 중단하지 않습니다."}
-                </div>
-              ) : null}
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black">
                 <span className={`col-span-2 rounded-lg px-3 py-2 ${pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "bg-emerald-100 text-emerald-900" : pdfFileVerification?.status === "TAMPERED_PDF" ? "bg-rose-100 text-rose-900" : uploadedPdfSelected ? "bg-amber-50 text-amber-900" : "bg-slate-100 text-slate-500"}`}>
                   {en ? "PDF bytes vs issued original" : "PDF 원본 바이트 ↔ 발급 원장"}: {pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "EXACT" : pdfFileVerification?.status === "TAMPERED_PDF" ? "TAMPERED" : uploadedPdfSelected ? "UNVERIFIABLE" : "-"}
@@ -4338,11 +4323,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                   {en ? "Semantic verification" : "내용 검증 최종 판정"}: {photoVerification?.semanticStatus || (datasetVerification ? (en ? "OCR REVIEW" : "OCR 검토") : (en ? "EMBEDDED DATA UNAVAILABLE" : "내장 데이터 없음"))}
                 </span>
               </div>
-              <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">
-                {datasetVerification?.datasetMatch
-                  ? (en ? "The embedded report dataset matches the issued registry. Visible report fields are listed in the detailed OCR comparison." : "PDF 내장 데이터셋이 발급 원장과 일치합니다. 눈에 보이는 레포트 항목은 OCR 상세 대조에서 확인할 수 있습니다.")
-                  : (en ? "Upload a newly issued report to compare its embedded dataset." : "내장 데이터셋 대조를 위해 새로 발급한 리포트를 업로드하세요.")}
-              </p>
+              {datasetVerification?.datasetMatch ? <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">{en ? "The embedded report dataset matches the issued registry." : "PDF 내장 데이터셋이 발급 원장과 일치합니다."}</p> : null}
               {datasetVerification?.fieldComparisons?.length ? (
                 <details className="mt-4 overflow-hidden border border-slate-200 bg-white" open={!datasetVerification.datasetMatch}>
                   <summary className="cursor-pointer bg-slate-50 px-4 py-3 text-sm font-black text-slate-900">
@@ -4510,21 +4491,45 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                               </table></div>
                             </div> : null}
                             {selectedReportType === "EMISSION_SURVEY" && item.sectionSummaryComparisons?.length ? (
-                              <div className="order-2 mt-4 border border-slate-300 bg-slate-50 p-3">
-                                <p className="font-black text-slate-950">{en ? "Pages 2–3 · Graph data in report section order" : "2–3페이지 · 레포트 섹션 순서 그래프 데이터 일치·불일치"}</p>
-                                <div className="mt-2 space-y-2">
-                                  {item.sectionSummaryComparisons.map((section, sectionIndex) => (
-                                    <div className={`border p-3 text-xs ${section.matched ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-300 bg-rose-50 text-rose-900"}`} key={`${item.certificateId}-graph-${section.sectionCode}`}>
-                                      <p className="font-black">{sectionIndex + 1}. {section.sectionLabel}</p>
-                                      <p className="mt-1">{en ? "Emission" : "배출량"}: {section.expectedTotalEmission} ↔ {section.actualTotalEmission || (en ? "MISSING" : "누락")} <strong>{section.totalEmissionMatched ? "MATCH" : "MISMATCH"}</strong></p>
-                                      <p>{en ? "Share" : "비율"}: {section.expectedSharePercent}% ↔ {section.actualSharePercent ? `${section.actualSharePercent}%` : (en ? "MISSING" : "누락")} <strong>{section.sharePercentMatched ? "MATCH" : "MISMATCH"}</strong></p>
-                                      {section.unexpectedNumbers?.length ? <p className="mt-1 font-black text-rose-800">{en ? "Unexpected added values" : "예상하지 않은 추가값"}: {section.unexpectedNumbers.join(", ")} <strong>MISMATCH</strong></p> : null}
-                                    </div>
-                                  ))}
+                              <div className="order-2 mt-4 border-t border-slate-200 pt-3">
+                                <p className="font-black text-slate-900">{en ? "Pages 2–3 · Graph data comparison" : "2–3페이지 · 그래프 데이터 대조"}</p>
+                                <div className="mt-2 max-h-96 overflow-auto border border-slate-200">
+                                  <table className="w-full min-w-[760px] border-collapse text-left text-[11px]">
+                                    <thead className="sticky top-0 bg-slate-100 text-slate-700">
+                                      <tr>
+                                        <th className="px-3 py-2">{en ? "Order" : "순서"}</th>
+                                        <th className="px-3 py-2">{en ? "Section" : "섹션"}</th>
+                                        <th className="px-3 py-2">{en ? "Field" : "항목"}</th>
+                                        <th className="px-3 py-2">{en ? "Stored value" : "DB 저장값"}</th>
+                                        <th className="px-3 py-2">{en ? "Uploaded PDF value" : "업로드 PDF값"}</th>
+                                        <th className="px-3 py-2">{en ? "Result" : "판정"}</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                      {item.sectionSummaryComparisons.flatMap((section, sectionIndex) => ([
+                                        [en ? "Emission" : "배출량", section.expectedTotalEmission, section.actualTotalEmission, section.totalEmissionMatched],
+                                        [en ? "Share" : "비율", `${section.expectedSharePercent}%`, section.actualSharePercent !== null && section.actualSharePercent !== undefined && section.actualSharePercent !== "" ? `${section.actualSharePercent}%` : "", section.sharePercentMatched],
+                                      ] as Array<[string, string, string, boolean]>).map(([label, storedValue, uploadedValue, matched], fieldIndex) => (
+                                        <tr className={matched ? "bg-white" : "bg-rose-50 text-rose-900"} key={`${item.certificateId}-graph-${section.sectionCode}-${fieldIndex}`}>
+                                          <td className="px-3 py-2 font-black">{sectionIndex + 1}</td>
+                                          <td className="px-3 py-2 font-black">{section.sectionLabel}</td>
+                                          <td className="px-3 py-2">{label}</td>
+                                          <td className="px-3 py-2">{storedValue}</td>
+                                          <td className="px-3 py-2">{uploadedValue || (en ? "MISSING" : "누락")}</td>
+                                          <td className={`px-3 py-2 font-black ${matched ? "text-emerald-700" : "text-rose-700"}`}>{matched ? "MATCH" : "MISMATCH"}</td>
+                                        </tr>
+                                      )))}
+                                      {item.unexpectedSectionSummaryNumbers?.length ? (
+                                        <tr className="bg-rose-50 text-rose-900">
+                                          <td className="px-3 py-2 font-black" colSpan={2}>-</td>
+                                          <td className="px-3 py-2 font-black">{en ? "Unexpected graph values" : "예상하지 않은 그래프 값"}</td>
+                                          <td className="px-3 py-2" colSpan={2}>{item.unexpectedSectionSummaryNumbers.join(", ")}</td>
+                                          <td className="px-3 py-2 font-black">MISMATCH</td>
+                                        </tr>
+                                      ) : null}
+                                    </tbody>
+                                  </table>
                                 </div>
-                                {item.unexpectedSectionSummaryNumbers?.length ? (
-                                  <p className="mt-2 break-words text-xs font-black text-rose-900">{en ? "Unexpected graph values" : "예상하지 않은 그래프 값"}: {item.unexpectedSectionSummaryNumbers.join(", ")}</p>
-                                ) : null}
                               </div>
                             ) : null}
                             {selectedReportType !== "LCA_SUMMARY" && item.outputFieldComparisons?.length ? <div className="order-1 mt-4 border-t border-slate-200 pt-3">
