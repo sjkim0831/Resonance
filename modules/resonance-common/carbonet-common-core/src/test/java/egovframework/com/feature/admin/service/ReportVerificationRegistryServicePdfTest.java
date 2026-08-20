@@ -187,7 +187,8 @@ class ReportVerificationRegistryServicePdfTest {
         scorer.setAccessible(true);
         List<Map<String, Object>> chartLines = List.of(
                 ocrLine("에너지", 200, 500), ocrLine("1.62 kg CO2e", 900, 500), ocrLine("0%", 900, 560),
-                ocrLine("수계 배출물", 200, 900), ocrLine("1.62 kg CO2e", 900, 900), ocrLine("0%", 900, 960));
+                ocrLine("수계 배출물", 200, 900), ocrLine("1.62", 900, 900), ocrLine("kg CO2e", 990, 900),
+                ocrLine("0%", 900, 960));
         List<Map<String, Object>> ocrPages = List.of(
                 Map.of("pageNumber", 1, "ocrText", "cover", "lines", List.of()),
                 Map.of("pageNumber", 2, "ocrText", "에너지 1.62 0% 수계 배출물 1.62 0%", "lines", chartLines));

@@ -420,7 +420,12 @@ public class ReportVerificationRegistryService {
             boolean ocrEvidenceExactMatch = Boolean.TRUE.equals(ocrEvidenceScore.get("ocrEvidenceExactMatch"));
             double combinedScore = qrFullyMatched ? 85 + (contentScore * 0.15) : contentScore;
             Map<String, Object> visualScore = scoreVisualProfile(readJsonNullable(candidate.get("visual_profile_json")), uploadedVisualProfile);
-            boolean numericDataExactMatch = datasetExactMatch;
+            boolean numericDataExactMatch = lcaReport ? datasetExactMatch
+                    : Boolean.TRUE.equals(score.get("productMatched"))
+                    && Boolean.TRUE.equals(score.get("totalEmissionMatched"))
+                    && ((Number) score.get("matchedMaterialCount")).intValue() == ((Number) score.get("materialCount")).intValue()
+                    && ((Number) score.get("matchedNumberCount")).intValue() == ((Number) score.get("numberCount")).intValue()
+                    && Boolean.TRUE.equals(score.get("detailRowsExactMatch"));
             boolean chartDataExactMatch = lcaReport || Boolean.TRUE.equals(score.get("sectionSummaryExactMatch"));
             boolean chartVisualExactMatch = lcaReport || (Boolean.TRUE.equals(visualScore.get("visualProfileAvailable"))
                     && "VISUAL_MATCH".equals(visualScore.get("chartVisualStatus")));
@@ -1600,7 +1605,7 @@ public class ReportVerificationRegistryService {
                         boolean legendValue = dy >= 20 && dy <= 190 && Math.abs(dx) <= 520;
                         if (!sameRowValue && !legendValue) continue;
                         List<String> values = extractCanonicalNumbers(valueLine.text());
-                        if ((valueLine.text().contains("kg") || valueLine.text().contains("co2")) && !values.isEmpty()) {
+                        if (sameRowValue && !valueLine.text().contains("%") && !values.isEmpty()) {
                             String observed = values.get(values.size() - 1);
                             candidateTotal = values.contains(expectedTotal)
                                     || containsVisibleNumber(valueLine.text(), expectedTotal) ? expectedTotal : observed;
