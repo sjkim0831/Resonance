@@ -4609,14 +4609,14 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                   </tr></thead>
                                   <tbody className="divide-y divide-slate-100">
                                     {item.fieldComparisons.flatMap((field) => ([
-                                      [en ? "Material" : "물질명", field.materialName || "-", field.materialMatched],
-                                      [en ? "Amount" : "사용량", field.amountDisplay || "-", field.amountMatched],
-                                      [en ? "Factor" : "배출계수", field.emissionFactorDisplay || "-", field.emissionFactorMatched],
-                                      [en ? "Emission" : "배출량", field.totalEmissionDisplay || "-", field.totalEmissionMatched]
-                                    ] as Array<[string, string, boolean]>).map(([label, storedValue, matched], valueIndex) => <tr className={matched ? "bg-white" : "bg-rose-50"} key={`${item.certificateId}-${field.rowIndex}-${valueIndex}`}>
+                                      [en ? "Material" : "물질명", field.materialName || "-", field.actualMaterialName || "", field.materialMatched],
+                                      [en ? "Amount" : "사용량", field.amountDisplay || "-", field.amountActual || "", field.amountMatched],
+                                      [en ? "Factor" : "배출계수", field.emissionFactorDisplay || "-", field.emissionFactorActual || "", field.emissionFactorMatched],
+                                      [en ? "Emission" : "배출량", field.totalEmissionDisplay || "-", field.totalEmissionActual || "", field.totalEmissionMatched]
+                                    ] as Array<[string, string, string, boolean]>).map(([label, storedValue, actualValue, matched], valueIndex) => <tr className={matched ? "bg-white" : "bg-rose-50"} key={`${item.certificateId}-${field.rowIndex}-${valueIndex}`}>
                                       <td className="px-3 py-2"><strong>#{field.rowIndex} {field.materialName || "-"}</strong><span className="block text-slate-400">{field.sectionLabel || "-"}</span></td>
                                       <td className="px-3 py-2 font-bold">{label}</td><td className="px-3 py-2 font-semibold">{storedValue}</td>
-                                      <td className="px-3 py-2 font-semibold">{matched ? storedValue : (en ? "Not confirmed in uploaded document" : "업로드 문서에서 확인되지 않음")}</td>
+                                      <td className="px-3 py-2 font-semibold">{actualValue || (en ? "Not confirmed in uploaded document" : "업로드 문서에서 확인되지 않음")}</td>
                                       <td className={`px-3 py-2 font-black ${matched ? "text-emerald-700" : "text-rose-700"}`}>{matched ? "MATCH" : "MISMATCH"}</td>
                                     </tr>))}
                                   </tbody>
