@@ -1136,7 +1136,7 @@ rollout_image() {
   fi
   log_cmd "kubectl patch deployment/$DEPLOYMENT image=$IMAGE_NAME release-id=$candidate_release_id"
   if ! kubectl -n "$NAMESPACE" patch "deployment/$DEPLOYMENT" --type='strategic' \
-    -p="{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"resonance.ai/release-id\":\"$candidate_release_id\"}},\"spec\":{\"containers\":[{\"name\":\"$CONTAINER\",\"image\":\"$IMAGE_NAME\",\"env\":[{\"name\":\"CARBONET_TEST_ACCOUNT_SWITCH_ENABLED\",\"value\":\"true\"},{\"name\":\"CARBONET_TEST_ACCOUNT_SWITCH_PASSWORD\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"carbonet-test-account-switch\",\"key\":\"password\",\"optional\":true}}},{\"name\":\"SPRING_FLYWAY_PASSWORD\",\"value\":null,\"valueFrom\":{\"secretKeyRef\":{\"name\":\"$MIGRATION_SECRET_NAME\",\"key\":\"$MIGRATION_PASSWORD_KEY\"}}}]}]}}}}" \
+    -p="{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"resonance.ai/release-id\":\"$candidate_release_id\"}},\"spec\":{\"containers\":[{\"name\":\"$CONTAINER\",\"image\":\"$IMAGE_NAME\",\"env\":[{\"name\":\"CARBONET_REPORT_OCR_URL\",\"value\":\"http://carbonet-report-ocr:8091/v1/report-ocr\"},{\"name\":\"CARBONET_TEST_ACCOUNT_SWITCH_ENABLED\",\"value\":\"true\"},{\"name\":\"CARBONET_TEST_ACCOUNT_SWITCH_PASSWORD\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"carbonet-test-account-switch\",\"key\":\"password\",\"optional\":true}}},{\"name\":\"SPRING_FLYWAY_PASSWORD\",\"value\":null,\"valueFrom\":{\"secretKeyRef\":{\"name\":\"$MIGRATION_SECRET_NAME\",\"key\":\"$MIGRATION_PASSWORD_KEY\"}}}]}]}}}}" \
     2>"$KUBECTL_ERROR_LOG" >/dev/null; then
     log_error "kubectl candidate patch failed:"
     tail -20 "$KUBECTL_ERROR_LOG"

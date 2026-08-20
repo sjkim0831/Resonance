@@ -10,6 +10,7 @@ GATEWAY="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovf
 RUNTIME_MANIFEST="$ROOT/deploy/k8s/projects/carbonet/carbonet-runtime.deployment.yaml"
 OCR_MANIFEST="$ROOT/deploy/k8s/projects/carbonet/carbonet-report-ocr.deployment.yaml"
 DEPLOY_SCRIPT="$ROOT/deploy/deploy-resonance-k8s.sh"
+FAST_DEPLOY_SCRIPT="$ROOT/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
 
 python3 -m py_compile "$APP"
 bash -n "$ROOT/ops/scripts/build-report-ocr-image.sh"
@@ -38,6 +39,7 @@ grep -Fq 'name: carbonet-report-ocr' "$OCR_MANIFEST"
 grep -Fq 'localhost:5000/carbonet-report-ocr:3.1.0-r3' "$OCR_MANIFEST"
 grep -Fq 'useradd --uid 1000' "$DOCKERFILE"
 grep -Fq 'carbonet-report-ocr.deployment.yaml' "$DEPLOY_SCRIPT"
+grep -Fq '"name":"CARBONET_REPORT_OCR_URL","value":"http://carbonet-report-ocr:8091/v1/report-ocr"' "$FAST_DEPLOY_SCRIPT"
 if grep -Fq 'name: report-ocr' "$RUNTIME_MANIFEST"; then
   echo '[report-ocr-contract] FAIL OCR must not alter runtime HPA pod resources' >&2
   exit 1
