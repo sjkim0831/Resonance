@@ -1695,6 +1695,21 @@ public class ReportVerificationRegistryService {
 
     private void reuseIdenticalDuplicateRowEvidence(List<Map<String, Object>> comparisons) {
         for (Map<String, Object> row : comparisons) {
+            String factorExpected = canonicalNumber(text(row.get("emissionFactorDisplay")));
+            String emissionExpected = canonicalNumber(text(row.get("totalEmissionDisplay")));
+            if (factorExpected.equals(emissionExpected)) {
+                if (!Boolean.TRUE.equals(row.get("emissionFactorMatched"))
+                        && text(row.get("emissionFactorActual")).isBlank()
+                        && Boolean.TRUE.equals(row.get("totalEmissionMatched"))) {
+                    row.put("emissionFactorActual", row.get("totalEmissionActual"));
+                    row.put("emissionFactorMatched", true);
+                } else if (!Boolean.TRUE.equals(row.get("totalEmissionMatched"))
+                        && text(row.get("totalEmissionActual")).isBlank()
+                        && Boolean.TRUE.equals(row.get("emissionFactorMatched"))) {
+                    row.put("totalEmissionActual", row.get("emissionFactorActual"));
+                    row.put("totalEmissionMatched", true);
+                }
+            }
             for (String field : List.of("amount", "emissionFactor", "totalEmission")) {
                 if (Boolean.TRUE.equals(row.get(field + "Matched")) || !text(row.get(field + "Actual")).isBlank()) continue;
                 String material = compactOcrText(text(row.get("materialName")));
