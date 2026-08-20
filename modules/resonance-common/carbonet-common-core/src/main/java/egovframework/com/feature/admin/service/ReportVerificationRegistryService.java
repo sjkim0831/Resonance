@@ -558,7 +558,7 @@ public class ReportVerificationRegistryService {
         response.put("chartDataExactMatch", best.get("chartDataExactMatch"));
         response.put("chartVisualExactMatch", best.get("chartVisualExactMatch"));
         response.put("chartExactMatch", best.get("chartExactMatch"));
-        response.put("semanticStatus", classifySemanticStatus(datasetExactMatch,
+        response.put("semanticStatus", classifySemanticStatus(Boolean.TRUE.equals(best.get("numericDataExactMatch")),
                 Boolean.TRUE.equals(best.get("chartExactMatch"))));
         response.put("ocrEvidenceRequired", ocrEvidenceRequired);
         response.put("ocrEvidenceAvailable", ocrEvidenceAvailable);
