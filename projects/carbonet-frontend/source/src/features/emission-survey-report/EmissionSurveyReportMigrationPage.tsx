@@ -11,6 +11,7 @@ import {
   verifySurveyReportPdfFile,
   verifySurveyReportPhoto,
   recognizeSurveyReportPages,
+  type ReportPageOcrResponse,
   type ReportPdfFileVerificationResponse,
   type ReportPhotoVerificationResponse,
   type ReportDatasetVerificationResponse,
@@ -585,19 +586,41 @@ async function recognizeReportPhotos(files: Blob[], onProgress: (progress: numbe
   }
   try {
     onProgress(10, `PADDLEOCR 0/${files.length}`);
-    const serverResult = await recognizeSurveyReportPages(images);
-    const pageTexts = serverResult.pages
-      .slice()
-      .sort((left, right) => left.pageNumber - right.pageNumber)
-      .map((page) => page.text || "");
+    // A 288-DPI, multi-page PDF can exceed the ingress request-size limit when
+    // every rendered page is posted in one multipart body. Keep each request
+    // page-scoped so coordinate evidence remains available for cell matching,
+    // and bound concurrency so the OCR worker is not memory-spiked by 10 pages.
+    const pageResults: ReportPageOcrResponse["pages"] = new Array(images.length);
+    const confidences: number[] = new Array(images.length).fill(0);
+    const engines: string[] = new Array(images.length).fill("");
+    let nextPageIndex = 0;
+    const recognizeNextPage = async () => {
+      while (nextPageIndex < images.length) {
+        const pageIndex = nextPageIndex++;
+        const pageResult = await recognizeSurveyReportPages([images[pageIndex]]);
+        const recognizedPage = pageResult.pages[0];
+        if (!recognizedPage) {
+          throw new Error(`PaddleOCR returned no evidence for page ${pageIndex + 1}.`);
+        }
+        pageResults[pageIndex] = { ...recognizedPage, pageNumber: pageIndex + 1 };
+        confidences[pageIndex] = pageResult.confidence || recognizedPage.confidence || 0;
+        engines[pageIndex] = pageResult.engine || "PaddleOCR";
+        onProgress(10 + Math.round(((pageIndex + 1) / images.length) * 90),
+          `PADDLEOCR ${pageIndex + 1}/${images.length}`);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(2, images.length) }, () => recognizeNextPage()));
+    const pageTexts = pageResults.map((page) => page.text || "");
     if (pageTexts.some((text) => text.trim())) {
       onProgress(100, `PADDLEOCR ${files.length}/${files.length}`);
       return {
         text: pageTexts.filter(Boolean).join("\n"),
         pageTexts,
-        pages: serverResult.pages,
-        confidence: serverResult.confidence,
-        engine: serverResult.engine
+        pages: pageResults,
+        confidence: confidences.length
+          ? confidences.reduce((sum, confidence) => sum + confidence, 0) / confidences.length
+          : 0,
+        engine: Array.from(new Set(engines.filter(Boolean))).join(" + ") || "PaddleOCR"
       };
     }
   } catch (error) {
