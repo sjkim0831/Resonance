@@ -5026,11 +5026,14 @@ if [[ -n "$tracked_source_changes" ]]; then
     worktree_advanced=true
   fi
   # A persistent worktree may inherit core.autocrlf=true from a Windows-created
-  # operator checkout. Re-materialize this LF-pinned public text asset from the
-  # target index so source-to-overlay byte proofs remain deterministic even
-  # when an attributes-only commit advances an already populated worktree.
-  git -c core.autocrlf=false -C "$clean_worktree" checkout-index --force --index -- \
-    projects/carbonet-frontend/source/public/assets/fonts/MaterialSymbolsOutlined-LICENSE.txt
+  # operator checkout. Materialize this LF-pinned public text asset directly
+  # from the verified target blob; checkout filters can otherwise reintroduce
+  # CRLF even when an attributes-only commit advances the populated worktree.
+  lf_asset="projects/carbonet-frontend/source/public/assets/fonts/MaterialSymbolsOutlined-LICENSE.txt"
+  lf_asset_tmp="$(mktemp "$clean_worktree/${lf_asset}.XXXXXX")"
+  git -C "$clean_worktree" cat-file blob "$target_commit:$lf_asset" >"$lf_asset_tmp"
+  chmod 0644 "$lf_asset_tmp"
+  mv -fT -- "$lf_asset_tmp" "$clean_worktree/$lf_asset"
   if [[ "$(git -C "$clean_worktree" rev-parse HEAD)" != "$target_commit" ]]; then
     echo "[auto-deploy] refusing deployment: isolated worktree commit mismatch" >&2
     exit 21

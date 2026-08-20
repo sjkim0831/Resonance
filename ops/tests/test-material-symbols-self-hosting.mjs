@@ -43,8 +43,8 @@ assert.match(provenance, /material-symbols@0\.46\.0/);
 assert.match(provenance, /Runtime network dependency: none/);
 assert.match(
   deployScript,
-  /git -c core\.autocrlf=false -C "\$clean_worktree" checkout-index --force --index --\s*\\\s*projects\/carbonet-frontend\/source\/public\/assets\/fonts\/MaterialSymbolsOutlined-LICENSE\.txt/,
-  "persistent deployment worktree must re-materialize the LF-pinned license asset",
+  /git -C "\$clean_worktree" cat-file blob "\$target_commit:\$lf_asset" >"\$lf_asset_tmp"/,
+  "persistent deployment worktree must materialize the target license blob without checkout filters",
 );
 
 const fontFace = /@font-face\s*\{(?<rules>[\s\S]*?MaterialSymbolsOutlined-0\.46\.0\.woff2[\s\S]*?)\}/.exec(styles)?.groups?.rules || "";
