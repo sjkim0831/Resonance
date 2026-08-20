@@ -21,6 +21,7 @@ const taskQuestPath = path.join(sourceRoot, "features/task-quest/TaskQuestPanel.
 const fontPath = path.join(frontendRoot, "public/assets/fonts/MaterialSymbolsOutlined-0.46.0.woff2");
 const fontLicensePath = path.join(frontendRoot, "public/assets/fonts/MaterialSymbolsOutlined-LICENSE.txt");
 const provenancePath = path.join(frontendRoot, "public/assets/fonts/MaterialSymbolsOutlined-PROVENANCE.txt");
+const deployScriptPath = path.join(root, "ops/scripts/auto-deploy-main.sh");
 const nodeModules = path.resolve(
   process.env.CARBONET_FRONTEND_NODE_MODULES || path.join(frontendRoot, "node_modules"),
 );
@@ -28,6 +29,7 @@ const styles = readFileSync(stylesPath, "utf8");
 const taskQuest = readFileSync(taskQuestPath, "utf8");
 const provenance = readFileSync(provenancePath, "utf8");
 const license = readFileSync(fontLicensePath, "utf8");
+const deployScript = readFileSync(deployScriptPath, "utf8");
 const font = readFileSync(fontPath);
 
 assert.equal(statSync(fontPath).size, 3_960_036, "pinned Material Symbols font size drifted");
@@ -39,6 +41,11 @@ assert.equal(
 assert.match(license, /Apache License\s+Version 2\.0/);
 assert.match(provenance, /material-symbols@0\.46\.0/);
 assert.match(provenance, /Runtime network dependency: none/);
+assert.match(
+  deployScript,
+  /git -c core\.autocrlf=false -C "\$clean_worktree" checkout-index --force --update --\s*\\\s*projects\/carbonet-frontend\/source\/public\/assets\/fonts\/MaterialSymbolsOutlined-LICENSE\.txt/,
+  "persistent deployment worktree must re-materialize the LF-pinned license asset",
+);
 
 const fontFace = /@font-face\s*\{(?<rules>[\s\S]*?MaterialSymbolsOutlined-0\.46\.0\.woff2[\s\S]*?)\}/.exec(styles)?.groups?.rules || "";
 const symbolRules = /\.material-symbols-outlined\s*\{(?<rules>[\s\S]*?)\}/.exec(styles)?.groups?.rules || "";

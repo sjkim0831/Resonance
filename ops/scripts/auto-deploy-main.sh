@@ -5022,9 +5022,15 @@ if [[ -n "$tracked_source_changes" ]]; then
       printf '%s\n' "$unexpected_build_changes" >&2
       exit 24
     fi
-    git -C "$clean_worktree" merge --ff-only "$target_commit"
+    git -c core.autocrlf=false -C "$clean_worktree" merge --ff-only "$target_commit"
     worktree_advanced=true
   fi
+  # A persistent worktree may inherit core.autocrlf=true from a Windows-created
+  # operator checkout. Re-materialize this LF-pinned public text asset from the
+  # target index so source-to-overlay byte proofs remain deterministic even
+  # when an attributes-only commit advances an already populated worktree.
+  git -c core.autocrlf=false -C "$clean_worktree" checkout-index --force --update -- \
+    projects/carbonet-frontend/source/public/assets/fonts/MaterialSymbolsOutlined-LICENSE.txt
   if [[ "$(git -C "$clean_worktree" rev-parse HEAD)" != "$target_commit" ]]; then
     echo "[auto-deploy] refusing deployment: isolated worktree commit mismatch" >&2
     exit 21
