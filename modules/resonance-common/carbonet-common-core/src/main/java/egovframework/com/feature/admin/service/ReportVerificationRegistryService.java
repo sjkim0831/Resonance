@@ -1697,7 +1697,7 @@ public class ReportVerificationRegistryService {
 
     private void reuseSingleVisibleDuplicateValue(List<String> actualNumbers, Map<String, Object> row) {
         // A single printed value may represent two equal adjacent fields; any
-        // third numeric value keeps the row in mismatch state as tamper evidence.
+        // third numeric value keeps the row in mismatch state as explicit tamper evidence.
         String amountExpected = canonicalNumber(text(row.get("amountDisplay")));
         String factorExpected = canonicalNumber(text(row.get("emissionFactorDisplay")));
         String emissionExpected = canonicalNumber(text(row.get("totalEmissionDisplay")));
