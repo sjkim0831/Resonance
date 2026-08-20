@@ -599,8 +599,10 @@ async function recognizeReportPhotos(files: Blob[], onProgress: (progress: numbe
         engine: serverResult.engine
       };
     }
-  } catch {
-    onProgress(12, "PADDLEOCR FALLBACK");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error || "unknown error");
+    console.error("[report-verification] PaddleOCR request failed", error);
+    onProgress(12, `PADDLEOCR FALLBACK: ${message.slice(0, 160)}`);
   }
   const { createWorker, OEM } = await import("tesseract.js");
   const texts: string[] = [];
