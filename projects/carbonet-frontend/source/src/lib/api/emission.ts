@@ -618,10 +618,20 @@ export async function recognizeSurveyReportPages(files: Blob[]) {
   const publicHome = window.location.pathname.startsWith("/home/") || window.location.pathname.startsWith("/en/home/");
   const form = new FormData();
   files.forEach((file, index) => form.append("files", file, `page-${index + 1}.png`));
+  if (publicHome) {
+    const response = await apiFetch(
+      buildLocalizedPath("/api/home/certificate-verify/recognize-pages", "/api/en/home/certificate-verify/recognize-pages"),
+      {
+        method: "POST",
+        credentials: "include",
+        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+        body: form
+      }
+    );
+    return readJsonResponse<ReportPageOcrResponse>(response);
+  }
   return postFormData<ReportPageOcrResponse>(
-    publicHome
-      ? buildLocalizedPath("/api/home/certificate-verify/recognize-pages", "/api/en/home/certificate-verify/recognize-pages")
-      : buildLocalizedPath("/admin/api/admin/emission-survey-report/recognize-pages", "/en/admin/api/admin/emission-survey-report/recognize-pages"),
+    buildLocalizedPath("/admin/api/admin/emission-survey-report/recognize-pages", "/en/admin/api/admin/emission-survey-report/recognize-pages"),
     form
   );
 }
