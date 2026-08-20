@@ -578,6 +578,7 @@ async function preprocessReportPhoto(file: Blob) {
 
 async function recognizeReportPhotos(files: Blob[], onProgress: (progress: number, status: string) => void) {
   const images: Blob[] = [];
+  let paddleError = "";
   for (let index = 0; index < files.length; index += 1) {
     onProgress(Math.round((index / Math.max(1, files.length)) * 10), `IMAGE ${index + 1}/${files.length}`);
     images.push(await preprocessReportPhoto(files[index]));
@@ -601,6 +602,7 @@ async function recognizeReportPhotos(files: Blob[], onProgress: (progress: numbe
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error || "unknown error");
+    paddleError = message.slice(0, 160);
     console.error("[report-verification] PaddleOCR request failed", error);
     onProgress(12, `PADDLEOCR FALLBACK: ${message.slice(0, 160)}`);
   }
@@ -634,7 +636,7 @@ async function recognizeReportPhotos(files: Blob[], onProgress: (progress: numbe
     pageTexts: texts,
     pages: [],
     confidence: confidences.length ? Math.max(...confidences) : 0,
-    engine: "Tesseract.js-7"
+    engine: paddleError ? `Tesseract.js-7 (PaddleOCR: ${paddleError})` : "Tesseract.js-7"
   };
 }
 
