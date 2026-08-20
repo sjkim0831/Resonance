@@ -43,7 +43,7 @@ assert.match(provenance, /material-symbols@0\.46\.0/);
 assert.match(provenance, /Runtime network dependency: none/);
 assert.match(
   deployScript,
-  /git -c core\.autocrlf=false -C "\$clean_worktree" checkout-index --force --update --\s*\\\s*projects\/carbonet-frontend\/source\/public\/assets\/fonts\/MaterialSymbolsOutlined-LICENSE\.txt/,
+  /git -c core\.autocrlf=false -C "\$clean_worktree" checkout-index --force --index --\s*\\\s*projects\/carbonet-frontend\/source\/public\/assets\/fonts\/MaterialSymbolsOutlined-LICENSE\.txt/,
   "persistent deployment worktree must re-materialize the LF-pinned license asset",
 );
 
