@@ -1683,6 +1683,7 @@ public class ReportVerificationRegistryService {
             comparison.put("rowMatched", rowMatched);
             comparisons.add(comparison);
         }
+        reuseIdenticalDuplicateRowEvidence(comparisons);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("detailRowsExactMatch", comparisons.stream()
                 .allMatch(row -> Boolean.TRUE.equals(row.get("rowMatched"))));
@@ -1690,6 +1691,30 @@ public class ReportVerificationRegistryService {
         result.put("fieldMismatches", comparisons.stream()
                 .filter(row -> !Boolean.TRUE.equals(row.get("rowMatched"))).toList());
         return result;
+    }
+
+    private void reuseIdenticalDuplicateRowEvidence(List<Map<String, Object>> comparisons) {
+        for (Map<String, Object> row : comparisons) {
+            for (String field : List.of("amount", "emissionFactor", "totalEmission")) {
+                if (Boolean.TRUE.equals(row.get(field + "Matched")) || !text(row.get(field + "Actual")).isBlank()) continue;
+                String material = compactOcrText(text(row.get("materialName")));
+                String expected = canonicalNumber(text(row.get(field + "Display")));
+                comparisons.stream()
+                        .filter(other -> other != row
+                                && compactOcrText(text(other.get("materialName"))).equals(material)
+                                && canonicalNumber(text(other.get(field + "Display"))).equals(expected)
+                                && Boolean.TRUE.equals(other.get(field + "Matched")))
+                        .findFirst()
+                        .ifPresent(other -> {
+                            row.put(field + "Actual", other.get(field + "Actual"));
+                            row.put(field + "Matched", true);
+                        });
+            }
+            row.put("rowMatched", Boolean.TRUE.equals(row.get("materialMatched"))
+                    && Boolean.TRUE.equals(row.get("amountMatched"))
+                    && Boolean.TRUE.equals(row.get("emissionFactorMatched"))
+                    && Boolean.TRUE.equals(row.get("totalEmissionMatched")));
+        }
     }
 
     private String compactOcrText(String value) {
