@@ -424,8 +424,9 @@ public class ReportVerificationRegistryService {
                     : Boolean.TRUE.equals(score.get("productMatched"))
                     && Boolean.TRUE.equals(score.get("totalEmissionMatched"))
                     && ((Number) score.get("matchedMaterialCount")).intValue() == ((Number) score.get("materialCount")).intValue()
-                    && ((Number) score.get("matchedNumberCount")).intValue() == ((Number) score.get("numberCount")).intValue()
-                    && Boolean.TRUE.equals(score.get("detailRowsExactMatch"));
+                    && Boolean.TRUE.equals(score.get("detailRowsExactMatch"))
+                    && allComparisonFlags(score.get("reportSummaryComparisons"), "matched")
+                    && allComparisonFlags(score.get("outputFieldComparisons"), "rowMatched");
             boolean chartDataExactMatch = lcaReport || Boolean.TRUE.equals(score.get("sectionSummaryExactMatch"));
             boolean chartVisualExactMatch = lcaReport || (Boolean.TRUE.equals(visualScore.get("visualProfileAvailable"))
                     && "VISUAL_MATCH".equals(visualScore.get("chartVisualStatus")));
@@ -1192,6 +1193,12 @@ public class ReportVerificationRegistryService {
                 .replace("쳔연가스", "천연가스")
                 .replaceAll("[,，]", "")
                 .replaceAll("[^0-9a-z가-힣.]+", "");
+    }
+
+    private boolean allComparisonFlags(Object value, String flag) {
+        if (!(value instanceof List<?> comparisons) || comparisons.isEmpty()) return false;
+        return comparisons.stream().allMatch(item -> item instanceof Map<?, ?> comparison
+                && Boolean.TRUE.equals(comparison.get(flag)));
     }
 
     private boolean containsText(String normalizedText, String expected) {
