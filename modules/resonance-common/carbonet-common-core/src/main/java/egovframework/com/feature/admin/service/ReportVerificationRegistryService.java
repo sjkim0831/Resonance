@@ -793,6 +793,7 @@ public class ReportVerificationRegistryService {
             comparison.put("rowMatched", rowMatched);
             comparisons.add(comparison);
         }
+        reuseIdenticalDuplicateRowEvidence(comparisons);
         result.put("detailRowsExactMatch", comparisons.stream()
                 .allMatch(row -> Boolean.TRUE.equals(row.get("rowMatched"))));
         result.put("fieldComparisons", comparisons);
