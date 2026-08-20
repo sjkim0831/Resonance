@@ -51,6 +51,11 @@ assert.match(
   /rel\.startswith\("public\/assets\/fonts\/"\)[\s\S]*p\.name\.endswith\(\("-LICENSE\.txt", "-PROVENANCE\.txt"\)\)[\s\S]*content = content\.replace\(b"\\r\\n", b"\\n"\)/,
   "frontend source identity must use the same font metadata EOL normalization",
 );
+assert.match(
+  overlayGuard,
+  /h\.update\(comparable_target\)/,
+  "public closure identity must hash the normalized metadata bytes used for comparison",
+);
 
 const fontFace = /@font-face\s*\{(?<rules>[\s\S]*?MaterialSymbolsOutlined-0\.46\.0\.woff2[\s\S]*?)\}/.exec(styles)?.groups?.rules || "";
 const symbolRules = /\.material-symbols-outlined\s*\{(?<rules>[\s\S]*?)\}/.exec(styles)?.groups?.rules || "";

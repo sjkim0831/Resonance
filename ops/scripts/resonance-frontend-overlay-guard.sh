@@ -326,7 +326,7 @@ for rel, source_path in sorted(files, key=lambda item: item[0].as_posix()):
         raise SystemExit(f"public overlay asset differs from source: {rel.as_posix()}")
     h.update(rel.as_posix().encode("utf-8"))
     h.update(b"\0")
-    h.update(target_bytes)
+    h.update(comparable_target)
     h.update(b"\0")
 print(len(files))
 print(h.hexdigest())
