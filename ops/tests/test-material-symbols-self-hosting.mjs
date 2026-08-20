@@ -43,8 +43,8 @@ assert.match(provenance, /material-symbols@0\.46\.0/);
 assert.match(provenance, /Runtime network dependency: none/);
 assert.match(
   overlayGuard,
-  /eol_normalized_assets = \{[\s\S]*MaterialSymbolsOutlined-LICENSE\.txt[\s\S]*MaterialSymbolsOutlined-PROVENANCE\.txt[\s\S]*\}/,
-  "license and provenance text assets must tolerate checkout-only EOL conversion",
+  /rel_text\.startswith\("assets\/fonts\/"\)[\s\S]*rel\.name\.endswith\(\("-LICENSE\.txt", "-PROVENANCE\.txt"\)\)/,
+  "font license and provenance text assets must tolerate checkout-only EOL conversion",
 );
 
 const fontFace = /@font-face\s*\{(?<rules>[\s\S]*?MaterialSymbolsOutlined-0\.46\.0\.woff2[\s\S]*?)\}/.exec(styles)?.groups?.rules || "";
