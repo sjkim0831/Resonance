@@ -1701,12 +1701,13 @@ public class ReportVerificationRegistryService {
                 String expected = canonicalNumber(text(row.get(field + "Display")));
                 comparisons.stream()
                         .filter(other -> other != row
-                                && compactOcrText(text(other.get("materialName"))).equals(material)
-                                && canonicalNumber(text(other.get(field + "Display"))).equals(expected)
-                                && Boolean.TRUE.equals(other.get(field + "Matched")))
+                                && compactOcrText(text(other.get("materialName"))).equals(material))
+                        .flatMap(other -> List.of("amount", "emissionFactor", "totalEmission").stream()
+                                .map(otherField -> text(other.get(otherField + "Actual"))))
+                        .filter(actual -> !actual.isBlank() && canonicalNumber(actual).equals(expected))
                         .findFirst()
-                        .ifPresent(other -> {
-                            row.put(field + "Actual", other.get(field + "Actual"));
+                        .ifPresent(actual -> {
+                            row.put(field + "Actual", actual);
                             row.put(field + "Matched", true);
                         });
             }
