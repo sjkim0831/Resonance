@@ -352,6 +352,7 @@ public class ReportVerificationRegistryService {
             throw new IllegalArgumentException("Report verification supports up to 10 pages.");
         }
         List<String> normalizedOcrPages = normalizeOcrPages(request.get("ocrPages"));
+        List<List<OcrLineEvidence>> ocrLinePages = normalizeOcrLinePages(request.get("ocrPages"));
         Map<?, ?> qrEvidence = request.get("qrEvidence") instanceof Map<?, ?> value ? value : Map.of();
         String qrCertificateId = text(qrEvidence.get("certificateId"));
         String qrPayloadHash = text(qrEvidence.get("payloadHash"));
@@ -386,7 +387,7 @@ public class ReportVerificationRegistryService {
             Map<String, Object> score = scoreOcrCandidate(normalizedText, dataset);
             Map<String, Object> detailTableScore = scoreDetailTablePage(normalizedOcrPages, dataset);
             score.putAll(detailTableScore);
-            Map<String, Object> sectionSummaryScore = scoreSectionSummaryPage(normalizedOcrPages, dataset);
+            Map<String, Object> sectionSummaryScore = scoreSectionSummaryPage(normalizedOcrPages, dataset, ocrLinePages);
             score.putAll(sectionSummaryScore);
             appendUnifiedComparisonDetails(score);
             double contentScore = ((Number) score.get("score")).doubleValue();
@@ -609,6 +610,11 @@ public class ReportVerificationRegistryService {
     }
 
     private Map<String, Object> scoreSectionSummaryPage(List<String> normalizedOcrPages, JsonNode dataset) {
+        return scoreSectionSummaryPage(normalizedOcrPages, dataset, List.of());
+    }
+
+    private Map<String, Object> scoreSectionSummaryPage(List<String> normalizedOcrPages, JsonNode dataset,
+                                                         List<List<OcrLineEvidence>> ocrLinePages) {
         Map<String, Object> result = new LinkedHashMap<>();
         JsonNode summaries = dataset.path("sectionSummaries");
         boolean available = summaries.isArray() && !summaries.isEmpty();
@@ -620,6 +626,9 @@ public class ReportVerificationRegistryService {
             return result;
         }
 
+        if (!ocrLinePages.isEmpty()) {
+            return scoreSectionSummaryLines(ocrLinePages, summaries);
+        }
         String pageText = selectSectionSummaryPage(normalizedOcrPages, summaries);
         String normalizedPageText = normalizeText(pageText);
         List<String> actualNumbers = extractCanonicalNumbers(pageText);
@@ -748,6 +757,8 @@ public class ReportVerificationRegistryService {
             comparison.put("materialMatched", start >= 0);
 
             int numericIndex = 0;
+            String previousExpectedCanonical = null;
+            String previousActual = null;
             boolean rowMatched = start >= 0;
             for (String field : List.of("amount", "emissionFactor", "totalEmission")) {
                 JsonNode value = "amount".equals(field) && row.path("originalAmount").isNumber()
@@ -758,14 +769,20 @@ public class ReportVerificationRegistryService {
                         && Math.abs(value.asDouble()) <= 0.0000001 && rowText.contains("-");
                 if (displayedDash) expected = "-";
                 String expectedCanonical = canonicalNumber(expected);
-                String actual = numericIndex < actualNumbers.size() ? actualNumbers.get(numericIndex) : "";
+                boolean repeatedVisibleValue = previousExpectedCanonical != null
+                        && previousExpectedCanonical.equals(expectedCanonical)
+                        && numericIndex >= actualNumbers.size();
+                String actual = repeatedVisibleValue ? previousActual
+                        : numericIndex < actualNumbers.size() ? actualNumbers.get(numericIndex) : "";
                 if (displayedDash) actual = "-";
                 boolean matched = expectedCanonical.equals(canonicalNumber(actual));
                 comparison.put(field + "Display", expected);
                 comparison.put(field + "Actual", actual);
                 comparison.put(field + "Matched", matched);
                 rowMatched = rowMatched && matched;
-                numericIndex++;
+                if (!repeatedVisibleValue) numericIndex++;
+                previousExpectedCanonical = expectedCanonical;
+                previousActual = actual;
             }
             comparison.put("rowMatched", rowMatched);
             comparisons.add(comparison);
@@ -1476,6 +1493,101 @@ public class ReportVerificationRegistryService {
             normalized.add(normalizeOcrEvidenceText(text(page.get("ocrText"))));
         }
         return normalized;
+    }
+
+    private record OcrLineEvidence(String text, double x, double y) {}
+
+    private List<List<OcrLineEvidence>> normalizeOcrLinePages(Object rawPages) {
+        if (!(rawPages instanceof List<?> pages) || pages.size() > MAX_VERIFICATION_PAGES) return List.of();
+        List<List<OcrLineEvidence>> result = new ArrayList<>();
+        for (int pageIndex = 0; pageIndex < pages.size(); pageIndex++) {
+            if (!(pages.get(pageIndex) instanceof Map<?, ?> page)
+                    || number(page.get("pageNumber"), 0) != pageIndex + 1
+                    || !(page.get("lines") instanceof List<?> lines)) return List.of();
+            List<OcrLineEvidence> pageLines = new ArrayList<>();
+            if (lines.size() > 500) return List.of();
+            for (Object rawLine : lines) {
+                if (!(rawLine instanceof Map<?, ?> line) || !(line.get("polygon") instanceof List<?> polygon)) continue;
+                if (polygon.size() > 16) return List.of();
+                double x = 0, y = 0;
+                int points = 0;
+                for (Object rawPoint : polygon) {
+                    if (!(rawPoint instanceof List<?> point) || point.size() < 2
+                            || !(point.get(0) instanceof Number px) || !(point.get(1) instanceof Number py)) continue;
+                    x += px.doubleValue();
+                    y += py.doubleValue();
+                    points++;
+                }
+                String lineText = normalizeOcrEvidenceText(text(line.get("text")));
+                if (points > 0 && !lineText.isBlank()) pageLines.add(new OcrLineEvidence(lineText, x / points, y / points));
+            }
+            result.add(pageLines);
+        }
+        return result.stream().anyMatch(page -> !page.isEmpty()) ? result : List.of();
+    }
+
+    private Map<String, Object> scoreSectionSummaryLines(List<List<OcrLineEvidence>> pages, JsonNode summaries) {
+        List<Map<String, Object>> comparisons = new ArrayList<>();
+        for (JsonNode summary : summaries) {
+            if (summary.path("calculatedRowCount").asInt(summary.path("rowCount").asInt()) <= 0) continue;
+            String label = summary.path("sectionLabel").asText();
+            String normalizedLabel = normalizeOcrEvidenceText(label).replaceAll("\\s+", "");
+            String expectedTotal = canonicalNumber(displayValue(summary, "totalEmission", summary.path("totalEmission")));
+            String expectedShare = canonicalNumber(summary.path("sharePercent").decimalValue()
+                    .setScale(0, java.math.RoundingMode.HALF_UP).toPlainString());
+            String actualTotal = "";
+            String actualShare = "";
+            boolean labelMatched = false;
+            int bestScore = -1;
+            for (List<OcrLineEvidence> page : pages) {
+                for (OcrLineEvidence labelLine : page) {
+                    if (!labelLine.text().replaceAll("\\s+", "").contains(normalizedLabel)) continue;
+                    labelMatched = true;
+                    String candidateTotal = "";
+                    String candidateShare = "";
+                    for (OcrLineEvidence valueLine : page) {
+                        double dx = valueLine.x() - labelLine.x();
+                        double dy = valueLine.y() - labelLine.y();
+                        boolean sameRowValue = Math.abs(dy) <= 95 && dx > 100;
+                        boolean legendValue = dy >= 20 && dy <= 190 && Math.abs(dx) <= 520;
+                        if (!sameRowValue && !legendValue) continue;
+                        List<String> values = extractCanonicalNumbers(valueLine.text());
+                        if ((valueLine.text().contains("kg") || valueLine.text().contains("co2")) && !values.isEmpty()) {
+                            candidateTotal = values.get(values.size() - 1);
+                        }
+                        if (valueLine.text().contains("%") && !values.isEmpty()) candidateShare = values.get(0);
+                    }
+                    int score = (expectedTotal.equals(candidateTotal) ? 2 : 0)
+                            + (expectedShare.equals(candidateShare) ? 1 : 0);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        actualTotal = candidateTotal;
+                        actualShare = candidateShare;
+                    }
+                }
+            }
+            Map<String, Object> comparison = new LinkedHashMap<>();
+            comparison.put("sectionCode", summary.path("sectionCode").asText());
+            comparison.put("sectionLabel", label);
+            comparison.put("expectedTotalEmission", expectedTotal);
+            comparison.put("actualTotalEmission", actualTotal);
+            comparison.put("expectedSharePercent", expectedShare);
+            comparison.put("actualSharePercent", actualShare);
+            comparison.put("labelMatched", labelMatched);
+            comparison.put("totalEmissionMatched", expectedTotal.equals(actualTotal));
+            comparison.put("sharePercentMatched", expectedShare.equals(actualShare));
+            comparison.put("unexpectedNumbers", List.of());
+            comparison.put("matched", labelMatched && expectedTotal.equals(actualTotal) && expectedShare.equals(actualShare));
+            comparisons.add(comparison);
+        }
+        boolean exact = !comparisons.isEmpty() && comparisons.stream()
+                .allMatch(value -> Boolean.TRUE.equals(value.get("matched")));
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("sectionSummaryAvailable", true);
+        result.put("sectionSummaryExactMatch", exact);
+        result.put("sectionSummaryComparisons", comparisons);
+        result.put("unexpectedSectionSummaryNumbers", List.of());
+        return result;
     }
 
     private String selectSectionSummaryPage(List<String> pages, JsonNode summaries) {

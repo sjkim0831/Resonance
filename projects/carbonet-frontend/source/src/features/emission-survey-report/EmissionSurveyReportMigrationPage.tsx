@@ -594,6 +594,7 @@ async function recognizeReportPhotos(files: Blob[], onProgress: (progress: numbe
       return {
         text: pageTexts.filter(Boolean).join("\n"),
         pageTexts,
+        pages: serverResult.pages,
         confidence: serverResult.confidence,
         engine: serverResult.engine
       };
@@ -629,6 +630,7 @@ async function recognizeReportPhotos(files: Blob[], onProgress: (progress: numbe
   return {
     text: texts.filter(Boolean).join("\n"),
     pageTexts: texts,
+    pages: [],
     confidence: confidences.length ? Math.max(...confidences) : 0,
     engine: "Tesseract.js-7"
   };
@@ -3906,7 +3908,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
           ? (en ? "Visible PDF pixels were OCR-read independently from the text layer." : "PDF 화면 픽셀을 텍스트 레이어와 독립적으로 OCR 판독했습니다.")
           : (en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다."),
         `pages=${recognized.pageTexts.length}, characters=${recognized.text.length}, engine=${recognized.engine}, engineConfidence=${Math.round(recognized.confidence)}%`);
-      const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType, recognized.pageTexts);
+      const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType, recognized.pageTexts, recognized.pages);
       const orderedEvidenceMismatchCount = verification.ocrEvidencePageComparisons
         ?.filter((page) => !page.tokenSequenceExact).length || 0;
       appendVerificationLog(verification.photoConsistent ? "OK" : "WARN", en ? "Issued-report candidate comparison completed." : "발급 리포트 후보 대조를 완료했습니다.", `certificate=${verification.certificateId || "-"}, candidates=${verification.comparisons?.length || 0}, exact=${verification.comparisons?.filter((item) => item.overallExactMatch).length || 0}, confidence=${verification.confidence}%, visual=${verification.visualSimilarity ?? 0}%, fieldMismatches=${verification.fieldMismatches?.length || 0}, orderedPageMismatches=${orderedEvidenceMismatchCount}`);

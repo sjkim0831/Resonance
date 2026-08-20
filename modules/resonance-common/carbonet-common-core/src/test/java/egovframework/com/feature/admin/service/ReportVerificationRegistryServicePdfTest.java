@@ -341,6 +341,52 @@ class ReportVerificationRegistryServicePdfTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void repeatedFactorAndEmissionUseTheSingleVisibleTableValue() throws Exception {
+        ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+        Method scorer = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "scoreDetailTablePage", List.class, com.fasterxml.jackson.databind.JsonNode.class);
+        scorer.setAccessible(true);
+        Map<String, Object> dataset = Map.of("rows", List.of(
+                detailRow("OUTPUT_AIR", "CO", 1, 0.03, 0.03),
+                detailRow("OUTPUT_WASTE", "촉매 폐기물", 1, 0.01, 0.01)));
+        Map<String, Object> result = (Map<String, Object>) scorer.invoke(service,
+                List.of("상세 계산 결과표 co 1t 0.03 촉매 폐기물 1t 0.01"),
+                new ObjectMapper().valueToTree(dataset));
+        assertTrue((Boolean) result.get("detailRowsExactMatch"));
+        List<Map<String, Object>> rows = (List<Map<String, Object>>) result.get("fieldComparisons");
+        assertEquals("0.03", rows.get(0).get("emissionFactorActual"));
+        assertEquals("0.03", rows.get(0).get("totalEmissionActual"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void chartCoordinatesUseTheExactLegendInsteadOfANearbyRepeatedBarValue() throws Exception {
+        ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+        Method normalize = ReportVerificationRegistryService.class.getDeclaredMethod("normalizeOcrLinePages", Object.class);
+        Method scorer = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "scoreSectionSummaryPage", List.class, com.fasterxml.jackson.databind.JsonNode.class, List.class);
+        normalize.setAccessible(true);
+        scorer.setAccessible(true);
+        List<Map<String, Object>> rawPages = List.of(
+                Map.of("pageNumber", 1, "ocrText", "", "lines", List.of()),
+                Map.of("pageNumber", 2, "ocrText", "수계 배출물 1.62 kg co2e 0%", "lines", List.of(
+                        ocrLine("수계 배출물", 350, 1300), ocrLine("1.62 kg co2e", 1900, 1300),
+                        ocrLine("0%", 2050, 1410))),
+                Map.of("pageNumber", 3, "ocrText", "수계 배출물 0% 0.36 kg co2e", "lines", List.of(
+                        ocrLine("수계 배출물", 420, 2020), ocrLine("0% 0.36 kg co2e", 470, 2090))));
+        Object lines = normalize.invoke(service, rawPages);
+        Map<String, Object> result = (Map<String, Object>) scorer.invoke(service,
+                List.of("", "수계 배출물 1.62 kg co2e 0%", "수계 배출물 0% 0.36 kg co2e"),
+                new ObjectMapper().valueToTree(Map.of("sectionSummaries",
+                        List.of(section("OUTPUT_WATER", "수계 배출물", 0.36, 0, 2)))), lines);
+        assertTrue((Boolean) result.get("sectionSummaryExactMatch"));
+        List<Map<String, Object>> comparisons = (List<Map<String, Object>>) result.get("sectionSummaryComparisons");
+        assertEquals("0.36", comparisons.get(0).get("actualTotalEmission"));
+        assertEquals("0", comparisons.get(0).get("actualSharePercent"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void detailRowsMatchByVisibleMaterialWhenOcrOrderDiffersFromDatasetOrder() throws Exception {
         ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
         Method detailScorer = ReportVerificationRegistryService.class.getDeclaredMethod(
@@ -472,6 +518,12 @@ class ReportVerificationRegistryServicePdfTest {
                     .append(total).append("kg CO2e ").append(percent).append("% ");
         }
         return text.toString();
+    }
+
+    private static Map<String, Object> ocrLine(String text, double x, double y) {
+        return Map.of("text", text, "polygon", List.of(
+                List.of(x - 10, y - 10), List.of(x + 10, y - 10),
+                List.of(x + 10, y + 10), List.of(x - 10, y + 10)));
     }
 
     private static ReportVerificationRegistryService service(FingerprintJdbcTemplate jdbc) {

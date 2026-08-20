@@ -579,13 +579,23 @@ export async function verifySurveyReportPhoto(ocrText: string, qrEvidence?: {
   payloadHash: string;
   integrityCode: string;
   datasetHash: string;
-}, visualProfile?: { version: number; columns: number; rows: number; pages: Array<{ values: number[] }> }, reportType: "EMISSION_SURVEY" | "LCA_SUMMARY" = "EMISSION_SURVEY", ocrPages: string[] = []) {
+}, visualProfile?: { version: number; columns: number; rows: number; pages: Array<{ values: number[] }> }, reportType: "EMISSION_SURVEY" | "LCA_SUMMARY" = "EMISSION_SURVEY", ocrPages: string[] = [], ocrPageEvidence: ReportPageOcrResponse["pages"] = []) {
   const publicHome = window.location.pathname.startsWith("/home/") || window.location.pathname.startsWith("/en/home/");
   return postJson<ReportPhotoVerificationResponse>(
     publicHome
       ? buildLocalizedPath("/api/home/certificate-verify/verify-ocr", "/api/en/home/certificate-verify/verify-ocr")
       : buildLocalizedPath("/admin/api/admin/emission-survey-report/verify-ocr", "/en/admin/api/admin/emission-survey-report/verify-ocr"),
-    { ocrText, ocrPages: ocrPages.map((text, index) => ({ pageNumber: index + 1, ocrText: text })), qrEvidence, visualProfile, reportType },
+    {
+      ocrText,
+      ocrPages: ocrPages.map((text, index) => ({
+        pageNumber: index + 1,
+        ocrText: text,
+        lines: ocrPageEvidence.find((page) => page.pageNumber === index + 1)?.lines || []
+      })),
+      qrEvidence,
+      visualProfile,
+      reportType
+    },
     { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
   );
 }
