@@ -10,6 +10,7 @@ import {
   verifySurveyReportDataset,
   verifySurveyReportPdfFile,
   verifySurveyReportPhoto,
+  recognizeSurveyReportPages,
   type ReportPdfFileVerificationResponse,
   type ReportPhotoVerificationResponse,
   type ReportDatasetVerificationResponse,
@@ -581,6 +582,25 @@ async function recognizeReportPhotos(files: Blob[], onProgress: (progress: numbe
     onProgress(Math.round((index / Math.max(1, files.length)) * 10), `IMAGE ${index + 1}/${files.length}`);
     images.push(await preprocessReportPhoto(files[index]));
   }
+  try {
+    onProgress(10, `PADDLEOCR 0/${files.length}`);
+    const serverResult = await recognizeSurveyReportPages(images);
+    const pageTexts = serverResult.pages
+      .slice()
+      .sort((left, right) => left.pageNumber - right.pageNumber)
+      .map((page) => page.text || "");
+    if (pageTexts.some((text) => text.trim())) {
+      onProgress(100, `PADDLEOCR ${files.length}/${files.length}`);
+      return {
+        text: pageTexts.filter(Boolean).join("\n"),
+        pageTexts,
+        confidence: serverResult.confidence,
+        engine: serverResult.engine
+      };
+    }
+  } catch {
+    onProgress(12, "PADDLEOCR FALLBACK");
+  }
   const { createWorker, OEM } = await import("tesseract.js");
   const texts: string[] = [];
   const confidences: number[] = [];
@@ -609,7 +629,8 @@ async function recognizeReportPhotos(files: Blob[], onProgress: (progress: numbe
   return {
     text: texts.filter(Boolean).join("\n"),
     pageTexts: texts,
-    confidence: confidences.length ? Math.max(...confidences) : 0
+    confidence: confidences.length ? Math.max(...confidences) : 0,
+    engine: "Tesseract.js-7"
   };
 }
 
@@ -665,7 +686,9 @@ async function renderReportPdfPages(file: File, onProgress: (progress: number, s
       throw new Error(`Report page ${pageNumber} has no readable text layer. Reissue the PDF before verification.`);
     }
     textPages.push(visibleText);
-    const viewport = page.getViewport({ scale: 2 });
+    // 288 DPI equivalent rendering keeps small table decimals legible for the
+    // server-side zone OCR while remaining bounded by the 10-page limit.
+    const viewport = page.getViewport({ scale: 4 });
     const canvas = document.createElement("canvas");
     canvas.width = Math.ceil(viewport.width);
     canvas.height = Math.ceil(viewport.height);
@@ -3874,18 +3897,15 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       }
       const visualProfile = await buildReportVisualProfile(pages);
       appendVerificationLog("OK", en ? "Uploaded visual fingerprint generated." : "업로드 문서 시각 지문을 생성했습니다.", `grid=${visualProfile.columns}x${visualProfile.rows}, pages=${visualProfile.pages.length}`);
-      const recognized = digitalTextPages
-        ? {
-            text: digitalTextPages.join("\n"),
-            pageTexts: digitalTextPages,
-            confidence: 100
-          }
-        : await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
+      // Visible pixels are authoritative for tamper detection. A digital PDF's
+      // hidden text layer can retain the original number after a bitmap overlay,
+      // so every upload is OCR-read from the rendered pages as well.
+      const recognized = await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
       appendVerificationLog("OK",
         digitalTextPages
-          ? (en ? "Every PDF text-layer page was extracted without omission." : "PDF 전 페이지 텍스트 레이어를 누락 없이 추출했습니다.")
+          ? (en ? "Visible PDF pixels were OCR-read independently from the text layer." : "PDF 화면 픽셀을 텍스트 레이어와 독립적으로 OCR 판독했습니다.")
           : (en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다."),
-        `pages=${recognized.pageTexts.length}, characters=${recognized.text.length}, engineConfidence=${Math.round(recognized.confidence)}%`);
+        `pages=${recognized.pageTexts.length}, characters=${recognized.text.length}, engine=${recognized.engine}, engineConfidence=${Math.round(recognized.confidence)}%`);
       const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType, recognized.pageTexts);
       const orderedEvidenceMismatchCount = verification.ocrEvidencePageComparisons
         ?.filter((page) => !page.tokenSequenceExact).length || 0;

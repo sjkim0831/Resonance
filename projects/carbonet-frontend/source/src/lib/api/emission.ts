@@ -590,6 +590,32 @@ export async function verifySurveyReportPhoto(ocrText: string, qrEvidence?: {
   );
 }
 
+export type ReportPageOcrResponse = {
+  engine: string;
+  license: string;
+  pageCount: number;
+  confidence: number;
+  text: string;
+  pages: Array<{
+    pageNumber: number;
+    text: string;
+    confidence: number;
+    lines: Array<{ text: string; confidence: number; polygon: number[][] }>;
+  }>;
+};
+
+export async function recognizeSurveyReportPages(files: Blob[]) {
+  const publicHome = window.location.pathname.startsWith("/home/") || window.location.pathname.startsWith("/en/home/");
+  const form = new FormData();
+  files.forEach((file, index) => form.append("files", file, `page-${index + 1}.png`));
+  return postFormData<ReportPageOcrResponse>(
+    publicHome
+      ? buildLocalizedPath("/api/home/certificate-verify/recognize-pages", "/api/en/home/certificate-verify/recognize-pages")
+      : buildLocalizedPath("/admin/api/admin/emission-survey-report/recognize-pages", "/en/admin/api/admin/emission-survey-report/recognize-pages"),
+    form
+  );
+}
+
 export async function registerSurveyReportVisualProfile(certificateId: string, visualProfile: { version: number; columns: number; rows: number; pages: Array<{ values: number[] }> }) {
   return postJson<{ success: boolean; certificateId: string; pageCount: number; profileVersion: number }>(
     buildLocalizedPath("/admin/api/admin/emission-survey-report/visual-profile", "/en/admin/api/admin/emission-survey-report/visual-profile"),

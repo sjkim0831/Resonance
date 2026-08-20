@@ -174,6 +174,10 @@ deploy_project() {
     fi
 
     ensure_migration_secret
+
+    if [ -f "${DEPLOY_DIR}/projects/carbonet/carbonet-report-ocr.deployment.yaml" ]; then
+        kubectl apply -f "${DEPLOY_DIR}/projects/carbonet/carbonet-report-ocr.deployment.yaml"
+    fi
     
     # Deploy the main application
     kubectl apply -f "${DEPLOY_DIR}/projects/carbonet/carbonet-runtime.deployment.yaml"

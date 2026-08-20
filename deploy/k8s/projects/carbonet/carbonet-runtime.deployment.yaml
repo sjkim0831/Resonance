@@ -70,6 +70,8 @@ spec:
                 secretKeyRef:
                   name: carbonet-migration-secret
                   key: SPRING_FLYWAY_PASSWORD
+            - name: CARBONET_REPORT_OCR_URL
+              value: "http://carbonet-report-ocr:8091/v1/report-ocr"
             - name: JAVA_OPTS
               value: "-XX:+UseContainerSupport -XX:InitialRAMPercentage=30 -XX:MaxRAMPercentage=50 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -Dfile.encoding=UTF-8"
           securityContext:

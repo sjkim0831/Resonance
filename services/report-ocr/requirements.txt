@@ -1,0 +1,10 @@
+paddlepaddle==3.1.0
+paddleocr==3.1.0
+paddlex==3.1.0
+langchain==0.3.27
+langchain-community==0.3.27
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+python-multipart==0.0.20
+opencv-python-headless==4.11.0.86
+numpy==2.2.6

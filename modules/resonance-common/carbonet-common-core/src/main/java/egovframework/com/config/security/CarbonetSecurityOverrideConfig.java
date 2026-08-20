@@ -54,9 +54,11 @@ public class CarbonetSecurityOverrideConfig {
                 "/api/home/certificate-verify/verify",
                 "/api/home/certificate-verify/verify-file",
                 "/api/home/certificate-verify/verify-ocr",
+                "/api/home/certificate-verify/recognize-pages",
                 "/api/en/home/certificate-verify/verify",
                 "/api/en/home/certificate-verify/verify-file",
                 "/api/en/home/certificate-verify/verify-ocr",
+                "/api/en/home/certificate-verify/recognize-pages",
                 "/api/public/report-certificates/**",
                 "/en/api/public/report-certificates/**",
                 
