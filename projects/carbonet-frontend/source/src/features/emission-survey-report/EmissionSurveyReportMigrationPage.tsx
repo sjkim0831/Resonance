@@ -4494,16 +4494,16 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                 </tr></thead>
                                 <tbody className="divide-y divide-slate-100">
                                   {([
-                                    [en ? "Product" : "제품명", item.productName || "-", item.productMatched],
-                                    ...(selectedReportType === "LCA_SUMMARY" ? [[en ? "Title" : "제목", item.reportTitle || "-", item.titleMatched] as [string, string, boolean]] : []),
-                                    [en ? "Total emission" : "총 배출량", String(item.totalEmission ?? "-"), item.totalEmissionMatched],
-                                    [en ? "Certificate ID" : "인증서 ID", item.certificateId || "-", item.certificateIdMatch],
-                                    [en ? "Report hash" : "리포트 해시", item.payloadHash || "-", item.payloadHashMatch],
-                                    [en ? "Integrity code" : "무결성 코드", item.integrityCode || "-", item.integrityCodeMatch],
-                                    [en ? "Dataset hash" : "데이터셋 해시", item.datasetHash || "-", item.datasetHashMatch]
-                                  ] as Array<[string, string, boolean]>).map(([label, storedValue, matched]) => <tr className={matched ? "bg-white" : "bg-rose-50"} key={label}>
+                                    [en ? "Product" : "제품명", item.productName || "-", item.productNameActual || "", item.productMatched],
+                                    ...(selectedReportType === "LCA_SUMMARY" ? [[en ? "Title" : "제목", item.reportTitle || "-", item.reportTitleActual || "", item.titleMatched] as [string, string, string, boolean]] : []),
+                                    [en ? "Total emission" : "총 배출량", String(item.totalEmission ?? "-"), item.totalEmissionActual || "", item.totalEmissionMatched],
+                                    [en ? "Certificate ID" : "인증서 ID", item.certificateId || "-", item.certificateIdActual || "", item.certificateIdMatch],
+                                    [en ? "Report hash" : "리포트 해시", item.payloadHash || "-", item.payloadHashActual || "", item.payloadHashMatch],
+                                    [en ? "Integrity code" : "무결성 코드", item.integrityCode || "-", item.integrityCodeActual || "", item.integrityCodeMatch],
+                                    [en ? "Dataset hash" : "데이터셋 해시", item.datasetHash || "-", item.datasetHashActual || "", item.datasetHashMatch]
+                                  ] as Array<[string, string, string, boolean]>).map(([label, storedValue, actualValue, matched]) => <tr className={matched ? "bg-white" : "bg-rose-50"} key={label}>
                                     <td className="px-3 py-2 font-bold">{label}</td><td className="max-w-64 break-all px-3 py-2 font-semibold">{storedValue}</td>
-                                    <td className="max-w-64 break-all px-3 py-2 font-semibold">{matched ? storedValue : (en ? "Not confirmed in uploaded PDF" : "업로드 PDF에서 확인되지 않음")}</td>
+                                    <td className="max-w-64 break-all px-3 py-2 font-semibold">{actualValue || (en ? "Not confirmed in uploaded PDF" : "업로드 PDF에서 확인되지 않음")}</td>
                                     <td className={`px-3 py-2 font-black ${matched ? "text-emerald-700" : "text-rose-700"}`}>{matched ? "MATCH" : "MISMATCH"}</td>
                                   </tr>)}
                                 </tbody>
@@ -4513,7 +4513,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                               <p className="font-black text-slate-900">{en ? "Page 1 · Report totals and GWP" : "1페이지 · 레포트 총계·GWP 대조"}</p>
                               <div className="mt-2 overflow-auto border border-slate-200"><table className="w-full min-w-[640px] border-collapse text-left text-[11px]">
                                 <thead className="bg-slate-100 text-slate-700"><tr><th className="px-3 py-2">{en ? "Field" : "항목"}</th><th className="px-3 py-2">{en ? "Stored value" : "DB 저장값"}</th><th className="px-3 py-2">{en ? "Uploaded PDF value" : "업로드 PDF값"}</th><th className="px-3 py-2">{en ? "Result" : "판정"}</th></tr></thead>
-                                <tbody className="divide-y divide-slate-100">{item.reportSummaryComparisons.map((field) => <tr className={field.matched ? "bg-white" : "bg-rose-50"} key={`${item.certificateId}-summary-${field.field}`}><td className="px-3 py-2 font-bold">{field.label}</td><td className="px-3 py-2 font-semibold">{field.expected || "-"}</td><td className="px-3 py-2 font-semibold">{field.matched ? (field.expected || "-") : (en ? "Not confirmed in uploaded PDF" : "업로드 PDF에서 확인되지 않음")}</td><td className={`px-3 py-2 font-black ${field.matched ? "text-emerald-700" : "text-rose-700"}`}>{field.matched ? "MATCH" : "MISMATCH"}</td></tr>)}</tbody>
+                                <tbody className="divide-y divide-slate-100">{item.reportSummaryComparisons.map((field) => <tr className={field.matched ? "bg-white" : "bg-rose-50"} key={`${item.certificateId}-summary-${field.field}`}><td className="px-3 py-2 font-bold">{field.label}</td><td className="px-3 py-2 font-semibold">{field.expected || "-"}</td><td className="px-3 py-2 font-semibold">{field.actual || (en ? "Not confirmed in uploaded PDF" : "업로드 PDF에서 확인되지 않음")}</td><td className={`px-3 py-2 font-black ${field.matched ? "text-emerald-700" : "text-rose-700"}`}>{field.matched ? "MATCH" : "MISMATCH"}</td></tr>)}</tbody>
                               </table></div>
                             </div> : null}
                             {selectedReportType === "EMISSION_SURVEY" && item.sectionSummaryComparisons?.length ? (
@@ -4563,12 +4563,12 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                               <div className="mt-2 max-h-96 overflow-auto border border-slate-200"><table className="w-full min-w-[760px] border-collapse text-left text-[11px]">
                                 <thead className="sticky top-0 bg-slate-100 text-slate-700"><tr><th className="px-3 py-2">{en ? "Output" : "산출물"}</th><th className="px-3 py-2">{en ? "Field" : "항목"}</th><th className="px-3 py-2">{en ? "Stored value" : "DB 저장값"}</th><th className="px-3 py-2">{en ? "Uploaded PDF value" : "업로드 PDF값"}</th><th className="px-3 py-2">{en ? "Result" : "판정"}</th></tr></thead>
                                 <tbody className="divide-y divide-slate-100">{item.outputFieldComparisons.flatMap((field) => ([
-                                  [en ? "Name" : "물질명", field.materialName || "-", field.materialMatched],
-                                  [en ? "Process standard mass" : "공정 기준 질량", field.processReferenceMassDisplay || "-", field.processReferenceMassMatched],
-                                  [en ? "Mass share" : "질량 비율", `${field.massSharePercentDisplay || "-"}%`, field.massSharePercentMatched],
-                                  [en ? "Allocated emission" : "질량 비율 배출량", field.allocatedEmissionDisplay || "-", field.allocatedEmissionMatched],
-                                  [en ? "Emission per ton" : "배출량(1톤 기준)", field.emissionPerTonDisplay || "-", field.emissionPerTonMatched]
-                                ] as Array<[string, string, boolean]>).map(([label, storedValue, matched], valueIndex) => <tr className={matched ? "bg-white" : "bg-rose-50"} key={`${item.certificateId}-output-${field.rowIndex}-${valueIndex}`}><td className="px-3 py-2 font-black">{field.outputType === "BYPRODUCT" ? (en ? "Byproduct" : "부산물") : (en ? "Product" : "제품")}<span className="block font-semibold text-slate-500">{field.materialName || "-"}</span></td><td className="px-3 py-2 font-bold">{label}</td><td className="px-3 py-2 font-semibold">{storedValue}</td><td className="px-3 py-2 font-semibold">{matched ? storedValue : (en ? "Not confirmed in uploaded PDF" : "업로드 PDF에서 확인되지 않음")}</td><td className={`px-3 py-2 font-black ${matched ? "text-emerald-700" : "text-rose-700"}`}>{matched ? "MATCH" : "MISMATCH"}</td></tr>))}</tbody>
+                                  [en ? "Name" : "물질명", field.materialName || "-", field.materialActual || "", field.materialMatched],
+                                  [en ? "Process standard mass" : "공정 기준 질량", field.processReferenceMassDisplay || "-", field.processReferenceMassActual || "", field.processReferenceMassMatched],
+                                  [en ? "Mass share" : "질량 비율", `${field.massSharePercentDisplay || "-"}%`, field.massSharePercentActual ? `${field.massSharePercentActual}%` : "", field.massSharePercentMatched],
+                                  [en ? "Allocated emission" : "질량 비율 배출량", field.allocatedEmissionDisplay || "-", field.allocatedEmissionActual || "", field.allocatedEmissionMatched],
+                                  [en ? "Emission per ton" : "배출량(1톤 기준)", field.emissionPerTonDisplay || "-", field.emissionPerTonActual || "", field.emissionPerTonMatched]
+                                ] as Array<[string, string, string, boolean]>).map(([label, storedValue, actualValue, matched], valueIndex) => <tr className={matched ? "bg-white" : "bg-rose-50"} key={`${item.certificateId}-output-${field.rowIndex}-${valueIndex}`}><td className="px-3 py-2 font-black">{field.outputType === "BYPRODUCT" ? (en ? "Byproduct" : "부산물") : (en ? "Product" : "제품")}<span className="block font-semibold text-slate-500">{field.materialName || "-"}</span></td><td className="px-3 py-2 font-bold">{label}</td><td className="px-3 py-2 font-semibold">{storedValue}</td><td className="px-3 py-2 font-semibold">{actualValue || (en ? "Not confirmed in uploaded PDF" : "업로드 PDF에서 확인되지 않음")}</td><td className={`px-3 py-2 font-black ${matched ? "text-emerald-700" : "text-rose-700"}`}>{matched ? "MATCH" : "MISMATCH"}</td></tr>))}</tbody>
                               </table></div>
                             </div> : null}
                             {selectedReportType === "LCA_SUMMARY" && item.lcaFieldComparisons?.length ? (
@@ -4578,7 +4578,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                   <div className="mt-2 grid grid-cols-2 gap-2">
                                     {item.lcaFieldComparisons.filter((field) => field.matched).map((field) => (
                                       <span className="bg-emerald-50 px-2 py-1 font-bold text-emerald-800" key={`matched-${field.field}`}>
-                                        {field.label}: {field.expected || "-"}
+                                        {field.label}: {field.expected || "-"} ↔ {field.actual || (en ? "MISSING" : "누락")}
                                       </span>
                                     ))}
                                   </div>
@@ -4588,7 +4588,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                   <div className="mt-2 grid grid-cols-2 gap-2">
                                     {item.lcaFieldComparisons.filter((field) => !field.matched).map((field) => (
                                       <span className="bg-rose-50 px-2 py-1 font-bold text-rose-800" key={`mismatched-${field.field}`}>
-                                        {field.label}: {field.expected || "-"}
+                                        {field.label}: {field.expected || "-"} ↔ {field.actual || (en ? "MISSING" : "누락")}
                                       </span>
                                     ))}
                                   </div>

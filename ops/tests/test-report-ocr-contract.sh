@@ -26,6 +26,12 @@ grep -Fq 'RUN python -c "from paddleocr import PaddleOCR' "$DOCKERFILE"
 grep -Fq 'const viewport = page.getViewport({ scale: 4 });' "$FRONTEND"
 grep -Fq 'const recognized = await recognizeReportPhotos(pages' "$FRONTEND"
 grep -Fq 'recognizeSurveyReportPages(images)' "$FRONTEND"
+grep -Fq 'field.actual || (en ? "Not confirmed in uploaded PDF"' "$FRONTEND"
+grep -Fq 'field.processReferenceMassActual || ""' "$FRONTEND"
+if grep -Fq 'field.matched ? (field.expected || "-")' "$FRONTEND"; then
+  echo '[report-ocr-contract] FAIL matched rows must display observed PDF values, not copied DB values' >&2
+  exit 1
+fi
 if grep -Fq 'const recognized = digitalTextPages' "$FRONTEND"; then
   echo '[report-ocr-contract] FAIL digital text layer still bypasses visible OCR' >&2
   exit 1

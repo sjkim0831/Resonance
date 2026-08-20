@@ -370,6 +370,7 @@ export type ReportLcaFieldComparison = {
   field: string;
   label: string;
   expected: string;
+  actual: string;
   matched: boolean;
 };
 
@@ -377,6 +378,7 @@ export type ReportSummaryFieldComparison = {
   field: string;
   label: string;
   expected: string;
+  actual: string;
   matched: boolean;
 };
 
@@ -393,14 +395,19 @@ export type ReportOutputFieldComparison = {
   rowIndex: number;
   outputType: "PRODUCT" | "BYPRODUCT";
   materialName: string;
+  materialActual?: string;
   materialMatched: boolean;
   processReferenceMassDisplay?: string;
+  processReferenceMassActual?: string;
   processReferenceMassMatched: boolean;
   massSharePercentDisplay?: string;
+  massSharePercentActual?: string;
   massSharePercentMatched: boolean;
   allocatedEmissionDisplay?: string;
+  allocatedEmissionActual?: string;
   allocatedEmissionMatched: boolean;
   emissionPerTonDisplay?: string;
+  emissionPerTonActual?: string;
   emissionPerTonMatched: boolean;
   rowMatched: boolean;
 };
@@ -409,12 +416,19 @@ export type ReportOcrComparison = {
   certificateId: string;
   issuedAt?: string;
   reportTitle?: string;
+  reportTitleActual?: string;
   productName?: string;
+  productNameActual?: string;
   totalEmission?: number;
+  totalEmissionActual?: string;
   rowCount?: number;
   payloadHash?: string;
   integrityCode?: string;
   datasetHash?: string;
+  certificateIdActual?: string;
+  payloadHashActual?: string;
+  integrityCodeActual?: string;
+  datasetHashActual?: string;
   confidence: number;
   contentMatch: boolean;
   certificateIdMatch: boolean;

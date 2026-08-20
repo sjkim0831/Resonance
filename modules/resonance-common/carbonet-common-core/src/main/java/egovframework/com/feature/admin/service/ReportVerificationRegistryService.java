@@ -430,12 +430,19 @@ public class ReportVerificationRegistryService {
             comparison.put("certificateId", certificateId);
             comparison.put("issuedAt", candidate.get("issued_at"));
             comparison.put("reportTitle", candidate.get("report_title"));
+            comparison.put("reportTitleActual", Boolean.TRUE.equals(score.get("titleMatched")) ? candidate.get("report_title") : "");
             comparison.put("productName", candidate.get("product_name"));
+            comparison.put("productNameActual", Boolean.TRUE.equals(score.get("productMatched")) ? candidate.get("product_name") : "");
             comparison.put("totalEmission", candidate.get("total_emission"));
+            comparison.put("totalEmissionActual", findObservedNumber(normalizedText, objectMapper.valueToTree(candidate.get("total_emission"))));
             comparison.put("rowCount", candidate.get("row_count"));
             comparison.put("payloadHash", payloadHash);
             comparison.put("integrityCode", integrityCode);
             comparison.put("datasetHash", datasetHash);
+            comparison.put("certificateIdActual", certificateIdMatch ? (qrCertificateId.isBlank() ? certificateId : qrCertificateId) : "");
+            comparison.put("payloadHashActual", payloadHashMatch ? (qrPayloadHash.isBlank() ? payloadHash : qrPayloadHash) : "");
+            comparison.put("integrityCodeActual", integrityCodeMatch ? (qrIntegrityCode.isBlank() ? integrityCode : qrIntegrityCode) : "");
+            comparison.put("datasetHashActual", datasetHashMatch ? (qrDatasetHash.isBlank() ? datasetHash : qrDatasetHash) : "");
             comparison.put("confidence", confidence);
             comparison.put("contentConfidence", (int) Math.round(contentScore));
             comparison.put("contentMatch", contentScore >= 75 || (qrFullyMatched && contentScore >= 40));
@@ -1032,13 +1039,15 @@ public class ReportVerificationRegistryService {
                 JsonNode value = verificationSummary.path(entry.getKey());
                 if (!value.isNumber() && legacySummaryValues.containsKey(entry.getKey())) value = objectMapper.valueToTree(legacySummaryValues.get(entry.getKey()));
                 if (!value.isNumber()) continue;
-                boolean matched = containsDisplayedNumber(normalizedText, verificationSummary, entry.getKey(), value);
+                String actual = findObservedDisplayedNumber(normalizedText, verificationSummary, entry.getKey(), value);
+                boolean matched = !actual.isBlank();
                 numberCount++;
                 if (matched) matchedNumberCount++;
                 Map<String, Object> comparison = new LinkedHashMap<>();
                 comparison.put("field", entry.getKey());
                 comparison.put("label", entry.getValue());
                 comparison.put("expected", displayValue(verificationSummary, entry.getKey(), value));
+                comparison.put("actual", actual);
                 comparison.put("matched", matched);
                 reportSummaryComparisons.add(comparison);
             }
@@ -1055,6 +1064,7 @@ public class ReportVerificationRegistryService {
                     comparison.put("outputType", legacyRow ? (rowIndex == 0 ? "PRODUCT" : "BYPRODUCT") : row.path("outputType").asText());
                     comparison.put("materialName", materialName);
                     comparison.put("materialMatched", materialMatched);
+                    comparison.put("materialActual", materialMatched ? materialName : "");
                     boolean rowMatched = materialMatched;
                     for (String field : List.of("processReferenceMass", "massSharePercent", "allocatedEmission", "emissionPerTon")) {
                         JsonNode value = row.path(field);
@@ -1070,8 +1080,10 @@ public class ReportVerificationRegistryService {
                             };
                             value = objectMapper.valueToTree(derivedValue);
                         }
-                        boolean matched = !value.isNumber() || containsDisplayedNumber(normalizedText, row, field, value);
+                        String actual = value.isNumber() ? findObservedDisplayedNumber(normalizedText, row, field, value) : "";
+                        boolean matched = !value.isNumber() || !actual.isBlank();
                         comparison.put(field + "Display", displayValue(row, field, value));
+                        comparison.put(field + "Actual", actual);
                         comparison.put(field + "Matched", matched);
                         if (value.isNumber()) {
                             numberCount++;
@@ -1110,6 +1122,7 @@ public class ReportVerificationRegistryService {
                 field.put("field", entry.getKey());
                 field.put("label", entry.getValue());
                 field.put("expected", expected);
+                field.put("actual", matched ? expected : "");
                 field.put("matched", matched);
                 lcaFieldComparisons.add(field);
             }
@@ -1122,7 +1135,8 @@ public class ReportVerificationRegistryService {
             for (Map.Entry<String, String> entry : numericLabels.entrySet()) {
                 JsonNode expectedNode = lcaSummary.path(entry.getKey());
                 if (!expectedNode.isNumber()) continue;
-                boolean matched = containsNumber(normalizedText, expectedNode);
+                String actual = findObservedNumber(normalizedText, expectedNode);
+                boolean matched = !actual.isBlank();
                 numberCount++;
                 lcaFieldCount++;
                 if (matched) {
@@ -1133,6 +1147,7 @@ public class ReportVerificationRegistryService {
                 field.put("field", entry.getKey());
                 field.put("label", entry.getValue());
                 field.put("expected", expectedNode.asText());
+                field.put("actual", actual);
                 field.put("matched", matched);
                 lcaFieldComparisons.add(field);
             }
@@ -1214,43 +1229,49 @@ public class ReportVerificationRegistryService {
     }
 
     private boolean containsNumber(String normalizedText, JsonNode value) {
+        return !findObservedNumber(normalizedText, value).isBlank();
+    }
+
+    private String findObservedNumber(String normalizedText, JsonNode value) {
         if (value == null || !value.isNumber()) {
-            return false;
+            return "";
         }
         java.math.BigDecimal number = value.decimalValue().stripTrailingZeros();
-        String plain = number.toPlainString();
-        if (normalizedText.contains(plain)) {
-            return true;
-        }
-        String roundedTwo = number.setScale(Math.min(2, Math.max(0, number.scale())), java.math.RoundingMode.HALF_UP)
-                .stripTrailingZeros().toPlainString();
-        if (roundedTwo.length() >= 2 && normalizedText.contains(roundedTwo)) {
-            return true;
-        }
         String numericText = normalizedText.replace('o', '0').replace('l', '1');
         Matcher matcher = Pattern.compile("[0-9]+(?:\\.[0-9]+)?").matcher(numericText);
         java.math.BigDecimal tolerance = number.abs().multiply(new java.math.BigDecimal("0.001"))
                 .max(new java.math.BigDecimal("0.01"));
+        java.math.BigDecimal closest = null;
+        java.math.BigDecimal closestDifference = null;
+        String closestToken = "";
         while (matcher.find()) {
             try {
                 java.math.BigDecimal candidate = new java.math.BigDecimal(matcher.group());
-                if (candidate.subtract(number).abs().compareTo(tolerance) <= 0) {
-                    return true;
+                java.math.BigDecimal difference = candidate.subtract(number).abs();
+                if (difference.compareTo(tolerance) <= 0
+                        && (closestDifference == null || difference.compareTo(closestDifference) < 0)) {
+                    closest = candidate;
+                    closestDifference = difference;
+                    closestToken = matcher.group();
                 }
             } catch (NumberFormatException ignored) {
                 // Continue with the remaining OCR number tokens.
             }
         }
-        return false;
+        return closest == null ? "" : closestToken;
     }
 
     private boolean containsDisplayedNumber(String normalizedText, JsonNode row, String field, JsonNode value) {
+        return !findObservedDisplayedNumber(normalizedText, row, field, value).isBlank();
+    }
+
+    private String findObservedDisplayedNumber(String normalizedText, JsonNode row, String field, JsonNode value) {
         String display = displayValue(row, field, value);
         String normalizedDisplay = normalizeText(display);
         if (!normalizedDisplay.isBlank() && normalizedText.contains(normalizedDisplay)) {
-            return true;
+            return display;
         }
-        return containsNumber(normalizedText, value);
+        return findObservedNumber(normalizedText, value);
     }
 
     private String displayValue(JsonNode row, String field, JsonNode value) {
