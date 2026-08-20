@@ -245,6 +245,8 @@ validate_identity_design_group() {
       return 1
     fi
     echo '[identity-contracts] PASS mode=verify-only currentWrites=0'
+    echo '[identity-contracts] deferred full design/process E2E to explicit AI design validation'
+    return 0
   else
     RESONANCE_ROOT="$root" \
       bash ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh
