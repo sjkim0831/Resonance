@@ -782,7 +782,15 @@ prepare_immutable_frontend() {
     # Invalidate only migration resources; compiled classes stay incremental.
     root_cmd rm -rf "$MAVEN_DIR/build/resources/main/db/migration"
     root_cmd find "$MAVEN_DIR/build/libs" -maxdepth 1 -type f -name '*.jar' -delete 2>/dev/null || true
-    log "Invalidated React/Flyway resources and JAR only (compiled classes preserved)"
+    # The persistent deployment worktree can otherwise retain a stale
+    # first-party dependency JAR even when its Java source changed. The
+    # application bootJar then receives the old common-core bytecode while the
+    # deployed source marker points at the new commit. Recompile only this
+    # small shared module; external dependencies and the remaining project
+    # outputs stay incremental.
+    local common_core_build="$ROOT_DIR/modules/resonance-common/carbonet-common-core/build"
+    root_cmd rm -rf "$common_core_build/classes/java/main" "$common_core_build/libs"
+    log "Invalidated React/Flyway resources, application JAR, and common-core bytecode"
   fi
 }
 
