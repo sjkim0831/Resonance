@@ -4,6 +4,30 @@
   var TARGET_ROUTE = "/admin/system/consent-history";
   var observer;
   var queued = false;
+  var nativeFetch = window.fetch.bind(window);
+
+  function normalizeLegacyLoginRequest(input) {
+    var raw = typeof input === "string" || input instanceof URL ? String(input) : input && input.url;
+    if (!raw) return input;
+    var url;
+    try {
+      url = new URL(raw, window.location.origin);
+    } catch (_) {
+      return input;
+    }
+    if (url.origin !== window.location.origin) return input;
+    var normalized = url.pathname
+      .replace(/^\/home\/signin\/actionLogin$/, "/signin/actionLogin")
+      .replace(/^\/en\/home\/signin\/actionLogin$/, "/en/signin/actionLogin");
+    if (normalized === url.pathname) return input;
+    url.pathname = normalized;
+    console.warn("[runtime-self-heal] normalized legacy login endpoint", normalized);
+    return input instanceof Request ? new Request(url.toString(), input) : url.toString();
+  }
+
+  window.fetch = function (input, init) {
+    return nativeFetch(normalizeLegacyLoginRequest(input), init);
+  };
 
   function mark(element, component, section, classSet) {
     if (!element) return;
