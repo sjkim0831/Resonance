@@ -1148,6 +1148,11 @@ public class ReportVerificationRegistryService {
                 }
             }
         }
+        if (!lcaReport && !totalMatched) {
+            totalMatched = reportSummaryComparisons.stream().anyMatch(field ->
+                    "totalCarbonEmission".equals(text(field.get("field")))
+                            && Boolean.TRUE.equals(field.get("matched")));
+        }
         List<Map<String, Object>> lcaFieldComparisons = new ArrayList<>();
         int lcaFieldCount = 0;
         int matchedLcaFieldCount = 0;
