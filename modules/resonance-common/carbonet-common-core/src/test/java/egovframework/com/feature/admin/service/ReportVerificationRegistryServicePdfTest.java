@@ -539,6 +539,19 @@ class ReportVerificationRegistryServicePdfTest {
     }
 
     @Test
+    void qrCertificateCandidateOutranksHigherScoringDifferentReport() throws Exception {
+        ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+        Method preferred = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "isPreferredOcrCandidate", boolean.class, boolean.class, double.class,
+                boolean.class, double.class);
+        preferred.setAccessible(true);
+
+        assertTrue((Boolean) preferred.invoke(service, true, true, 96.0, false, 99.0));
+        assertFalse((Boolean) preferred.invoke(service, true, false, 99.0, true, 96.0));
+        assertTrue((Boolean) preferred.invoke(service, false, false, 99.0, false, 96.0));
+    }
+
+    @Test
     void numberRuleReloadsWithoutRebuildingAndUnsafeRuleFailsClosed() throws Exception {
         Path rule = Files.createTempFile("certificate-verification-rule-", ".json");
         String previous = System.getProperty(CertificateVerificationRuleRegistry.RULE_FILE_PROPERTY);

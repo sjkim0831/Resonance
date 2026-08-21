@@ -376,6 +376,7 @@ public class ReportVerificationRegistryService {
 
         Map<String, Object> best = null;
         double bestScore = -1;
+        boolean bestCertificateMatch = false;
         List<Map<String, Object>> comparisons = new ArrayList<>();
         JsonNode uploadedVisualProfile = objectMapper.valueToTree(request.get("visualProfile"));
         for (Map<String, Object> candidate : candidates) {
@@ -473,8 +474,10 @@ public class ReportVerificationRegistryService {
             comparison.putAll(visualScore);
             comparison.putAll(score);
             comparisons.add(comparison);
-            if (combinedScore > bestScore) {
+            if (isPreferredOcrCandidate(qrDetected, certificateIdMatch, combinedScore,
+                    bestCertificateMatch, bestScore)) {
                 bestScore = combinedScore;
+                bestCertificateMatch = certificateIdMatch;
                 best = new LinkedHashMap<>(candidate);
                 best.putAll(score);
                 best.put("contentScore", contentScore);
@@ -493,10 +496,17 @@ public class ReportVerificationRegistryService {
                 best.putAll(visualScore);
             }
         }
-        comparisons.sort((left, right) -> Integer.compare(
-                ((Number) right.get("confidence")).intValue(),
-                ((Number) left.get("confidence")).intValue()
-        ));
+        comparisons.sort((left, right) -> {
+            if (qrDetected) {
+                int certificateOrder = Boolean.compare(
+                        Boolean.TRUE.equals(right.get("certificateIdMatch")),
+                        Boolean.TRUE.equals(left.get("certificateIdMatch")));
+                if (certificateOrder != 0) return certificateOrder;
+            }
+            return Integer.compare(
+                    ((Number) right.get("confidence")).intValue(),
+                    ((Number) left.get("confidence")).intValue());
+        });
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("verificationMode", "PHOTO_OCR_DATASET");
@@ -610,6 +620,15 @@ public class ReportVerificationRegistryService {
                     ? "The photographed report partially matches an issued dataset and requires visual review."
                     : "The photographed report content does not sufficiently match the issued dataset.");
         return response;
+    }
+
+    private boolean isPreferredOcrCandidate(boolean qrDetected, boolean candidateCertificateMatch,
+                                             double candidateScore, boolean currentCertificateMatch,
+                                             double currentScore) {
+        if (qrDetected && candidateCertificateMatch != currentCertificateMatch) {
+            return candidateCertificateMatch;
+        }
+        return candidateScore > currentScore;
     }
 
     private String classifySemanticStatus(boolean numericDataExactMatch, boolean chartExactMatch) {
