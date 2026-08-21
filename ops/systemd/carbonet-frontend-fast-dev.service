@@ -1,0 +1,27 @@
+[Unit]
+Description=Carbonet certificate verification no-build frontend
+After=network-online.target carbonet-java-fast-dev.service
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=sjkim
+Group=sjkim
+WorkingDirectory=/opt/resonance-data/dev-worktrees/certificate-verification/projects/carbonet-frontend/source
+Environment=NODE_ENV=development
+Environment=CARBONET_NODE_HEAP_MB=2048
+ExecStartPre=/usr/bin/test -x /opt/resonance-data/dev-worktrees/certificate-verification/projects/carbonet-frontend/source/node_modules/.bin/vite
+ExecStart=/usr/bin/node /opt/resonance-data/dev-worktrees/certificate-verification/projects/carbonet-frontend/source/node_modules/vite/bin/vite.js --host 0.0.0.0 --port 5175 --strictPort
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=20
+KillMode=control-group
+MemoryHigh=1536M
+MemoryMax=2048M
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
