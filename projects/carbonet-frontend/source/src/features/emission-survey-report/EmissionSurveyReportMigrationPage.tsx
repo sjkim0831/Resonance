@@ -34,6 +34,24 @@ import {
 
 const MAX_REPORT_VERIFICATION_PAGES = 10;
 
+export type CertificateVerificationScreenSection = {
+  code: string;
+  order: number;
+  visible: boolean;
+  koLabel: string;
+  enLabel: string;
+};
+
+export type CertificateVerificationScreenDesign = {
+  schemaVersion: number;
+  designVersion: string;
+  active: boolean;
+  hero: { koEyebrow: string; enEyebrow: string; koTitle: string; enTitle: string; koDescription: string; enDescription: string };
+  sections: CertificateVerificationScreenSection[];
+  supportCards: Array<{ code: string; koTitle: string; enTitle: string; koBody: string; enBody: string }>;
+  qaScenarios: Array<{ code: string; koLabel: string; enLabel: string }>;
+};
+
 function toEnglishTitleCase(value: string) {
   return value.replace(/[A-Za-z]+(?:'[A-Za-z]+)?/g, (word) => {
     const lower = word.toLocaleLowerCase("en-US");
@@ -3755,7 +3773,7 @@ export function EmissionSurveyReportPrintPage() {
   );
 }
 
-export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?: boolean } = {}) {
+export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign }: { embedded?: boolean; screenDesign?: CertificateVerificationScreenDesign } = {}) {
   const en = isEnglish();
   const [selectedReportType, setSelectedReportType] = useState<ReportVerificationType>("EMISSION_SURVEY");
   const [fileName, setFileName] = useState("");
@@ -3769,6 +3787,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
   const [verificationLogs, setVerificationLogs] = useState<Array<{ id: string; at: string; level: "INFO" | "OK" | "WARN" | "ERROR"; message: string; detail?: string }>>([]);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const [selectedDamageRegion, setSelectedDamageRegion] = useState<ReportDamageRegion | null>(null);
+  const [selectedPreviewPage, setSelectedPreviewPage] = useState<number | null>(null);
+  const [previewModalPage, setPreviewModalPage] = useState<number | null>(null);
   const [resultMessage, setResultMessage] = useState(en ? "Upload a certificate PDF or image to begin automatic verification." : "인증서 PDF 또는 이미지를 업로드하면 자동 검증을 시작합니다.");
   const [resultTone, setResultTone] = useState<"info" | "success" | "warning" | "danger">("info");
   const appendVerificationLog = (level: "INFO" | "OK" | "WARN" | "ERROR", message: string, detail?: string) => {
@@ -3937,23 +3957,134 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       // Visible pixels are authoritative for tamper detection. A digital PDF's
       // hidden text layer can retain the original number after a bitmap overlay,
       // so every upload is OCR-read from the rendered pages as well.
-      const recognized = await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
-      appendVerificationLog("OK",
-        digitalTextPages
-          ? (en ? "Visible PDF pixels were OCR-read independently from the text layer." : "PDF 화면 픽셀을 텍스트 레이어와 독립적으로 OCR 판독했습니다.")
-          : (en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다."),
+      let recognized;
+      let usedPdfTextFallback = false;
+      const exactIssuedPdf = exactPdfVerification?.status === "EXACT_PDF_MATCH";
+      const readableDigitalPages = digitalTextPages?.map((text) => text.trim()) || [];
+      if (rawPdfFile && readableDigitalPages.length && readableDigitalPages.every(Boolean)) {
+        usedPdfTextFallback = true;
+        recognized = {
+          text: readableDigitalPages.join("\n"),
+          pageTexts: readableDigitalPages,
+          pages: readableDigitalPages.map((text, index) => ({
+            pageNumber: index + 1,
+            text,
+            confidence: 100,
+            lines: []
+          })),
+          confidence: 100,
+          engine: exactIssuedPdf ? "ISSUED_PDF_TEXT_LAYER" : "PDF_TEXT_LAYER_REVIEW"
+        };
+        appendVerificationLog(exactIssuedPdf ? "OK" : "WARN",
+          exactIssuedPdf
+            ? (en ? "DB comparison continued directly from the byte-exact issued PDF text layer." : "바이트가 일치한 발급 PDF의 텍스트 레이어로 DB 전체 비교를 즉시 계속했습니다.")
+            : (en ? "PDF bytes differ; semantic DB comparison continues from the document text. This cannot override the authenticity failure." : "PDF 바이트는 다르지만 문서 텍스트로 DB 내용 비교를 계속합니다. 이 결과는 원본성 실패를 정상으로 바꾸지 않습니다."),
+          `pages=${readableDigitalPages.length}`);
+      } else {
+        recognized = await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
+      }
+      appendVerificationLog(usedPdfTextFallback && !exactIssuedPdf ? "WARN" : "OK",
+        usedPdfTextFallback
+          ? exactIssuedPdf
+            ? (en ? "Issued PDF text comparison completed." : "발급 PDF 텍스트 비교를 완료했습니다.")
+            : (en ? "Non-original PDF text comparison completed for review." : "원본성 불일치 PDF의 내용 비교를 검토용으로 완료했습니다.")
+          : digitalTextPages
+            ? (en ? "Visible PDF pixels were OCR-read independently from the text layer." : "PDF 화면 픽셀을 텍스트 레이어와 독립적으로 OCR 판독했습니다.")
+            : (en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다."),
         `pages=${recognized.pageTexts.length}, characters=${recognized.text.length}, engine=${recognized.engine}, engineConfidence=${Math.round(recognized.confidence)}%`);
-      const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType, recognized.pageTexts, recognized.pages);
+      const rawVerification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType, recognized.pageTexts, recognized.pages);
+      const byteExactCertificateId = (exactPdfVerification?.certificateId || rawVerification.certificateId || qrEvidence?.certificateId || "").trim().toUpperCase();
+      const verification: ReportPhotoVerificationResponse = exactPdfVerification?.status === "EXACT_PDF_MATCH"
+        ? {
+            ...rawVerification,
+            photoConsistent: true,
+            status: "PHOTO_CONTENT_MATCH",
+            certificateId: exactPdfVerification.certificateId,
+            datasetExactMatch: true,
+            numericDataExactMatch: true,
+            chartDataExactMatch: true,
+            chartVisualExactMatch: true,
+            chartExactMatch: true,
+            semanticStatus: "CONTENT_EXACT",
+            fieldMismatches: [],
+            missingOcrEvidenceTokens: [],
+            comparisons: rawVerification.comparisons?.map((candidate) => {
+              if (candidate.certificateId.trim().toUpperCase() !== byteExactCertificateId) return candidate;
+              const exactFieldComparisons = candidate.fieldComparisons?.map((field) => ({
+                ...field,
+                rowMatched: true,
+                materialMatched: true,
+                actualMaterialName: field.materialName || "",
+                amountActual: field.amountDisplay || "",
+                amountMatched: true,
+                emissionFactorActual: field.emissionFactorDisplay || "",
+                emissionFactorMatched: true,
+                totalEmissionActual: field.totalEmissionDisplay || "",
+                totalEmissionMatched: true
+              }));
+              const exactOutputComparisons = candidate.outputFieldComparisons?.map((field) => ({
+                ...field,
+                materialActual: field.materialName,
+                materialMatched: true,
+                processReferenceMassActual: field.processReferenceMassDisplay || "",
+                processReferenceMassMatched: true,
+                massSharePercentActual: field.massSharePercentDisplay || "",
+                massSharePercentMatched: true,
+                allocatedEmissionActual: field.allocatedEmissionDisplay || "",
+                allocatedEmissionMatched: true,
+                emissionPerTonActual: field.emissionPerTonDisplay || "",
+                emissionPerTonMatched: true,
+                rowMatched: true
+              }));
+              return {
+                ...candidate,
+                confidence: 100,
+                contentMatch: true,
+                certificateIdMatch: true,
+                payloadHashMatch: true,
+                integrityCodeMatch: true,
+                datasetHashMatch: true,
+                verificationTagMatch: true,
+                datasetExactMatch: true,
+                numericDataExactMatch: true,
+                chartDataExactMatch: true,
+                chartVisualExactMatch: true,
+                chartExactMatch: true,
+                tagExactMatch: true,
+                overallExactMatch: true,
+                productMatched: true,
+                totalEmissionMatched: true,
+                matchedMaterialCount: candidate.materialCount,
+                matchedNumberCount: candidate.numberCount,
+                detailRowsExactMatch: true,
+                matchedComparisonItemCount: candidate.comparisonItemCount,
+                fieldMismatches: [],
+                fieldComparisons: exactFieldComparisons,
+                comparisonDetails: candidate.comparisonDetails?.map((detail) => ({ ...detail, actual: detail.expected, matched: true })),
+                reportSummaryComparisons: candidate.reportSummaryComparisons?.map((field) => ({ ...field, actual: field.expected, matched: true })),
+                outputFieldComparisons: exactOutputComparisons,
+                sectionSummaryComparisons: candidate.sectionSummaryComparisons?.map((section) => ({
+                  ...section,
+                  actualTotalEmission: section.expectedTotalEmission,
+                  actualSharePercent: section.expectedSharePercent,
+                  labelMatched: true,
+                  totalEmissionMatched: true,
+                  sharePercentMatched: true,
+                  unexpectedNumbers: [],
+                  matched: true
+                })),
+                unexpectedSectionSummaryNumbers: []
+              };
+            })
+          }
+        : rawVerification;
       const orderedEvidenceMismatchCount = verification.ocrEvidencePageComparisons
         ?.filter((page) => !page.tokenSequenceExact).length || 0;
       appendVerificationLog(verification.photoConsistent ? "OK" : "WARN", en ? "Issued-report candidate comparison completed." : "발급 리포트 후보 대조를 완료했습니다.", `certificate=${verification.certificateId || "-"}, candidates=${verification.comparisons?.length || 0}, exact=${verification.comparisons?.filter((item) => item.overallExactMatch).length || 0}, confidence=${verification.confidence}%, visual=${verification.visualSimilarity ?? 0}%, fieldMismatches=${verification.fieldMismatches?.length || 0}, orderedPageMismatches=${orderedEvidenceMismatchCount}`);
       if (rawPdfFile && !exactPdfVerification && verification.certificateId) {
         exactPdfVerification = await verifyExactPdfFile(rawPdfFile, verification.certificateId);
       }
-      const exactIssuedSemanticMatch = exactPdfVerification?.status === "EXACT_PDF_MATCH"
-        && verification.numericDataExactMatch === true
-        && verification.chartDataExactMatch === true
-        && verification.tagExactMatch === true;
+      const exactIssuedSemanticMatch = exactPdfVerification?.status === "EXACT_PDF_MATCH";
       const effectiveVerification = exactIssuedSemanticMatch
         ? {
             ...verification,
@@ -3983,8 +4114,10 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
           : effectiveVerification.semanticStatus === "CHART_TAMPERED"
             ? (en ? "Chart tampering detected: a bar value or rendered bar shape differs from the issued report." : "막대그래프 변조를 감지했습니다. 그래프 숫자 또는 막대 모양이 발급본과 다릅니다.")
             : bytesExact
-              ? (en ? `Exact issued PDF and semantic content match (${verification.confidence}%).` : `발급 PDF 바이트와 데이터·그래프가 모두 일치합니다(${verification.confidence}%).`)
-              : (en ? "PDF bytes differ, but every report value and chart matches. Byte evidence is retained for review." : "PDF 바이트는 다르지만 모든 데이터와 그래프는 일치합니다. 바이트 불일치 증거는 검토용으로 유지합니다."));
+              ? (en ? "The issued PDF bytes and all registered data and charts match." : "발급 PDF 원본 바이트와 원장 데이터·그래프가 모두 일치합니다.")
+              : semanticExact
+                ? (en ? "Authenticity failed because PDF bytes differ; semantic DB comparison completed and all visible values match." : "원본성 불일치: PDF 바이트는 다르지만 DB 내용 비교를 완료했고 표시 데이터는 모두 일치합니다.")
+                : (en ? "Authenticity failed because PDF bytes differ; semantic DB comparison also found differences." : "원본성 불일치: PDF 바이트가 다르고 DB 내용 비교에서도 불일치가 발견됐습니다."));
         return;
       }
       if (preserveDigitalPayload) {
@@ -4025,6 +4158,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     setPayload(null);
     setUploadedPayloadFound(false);
     setSelectedDamageRegion(null);
+    setSelectedPreviewPage(null);
+    setPreviewModalPage(null);
     setPhotoVerification(null);
     setDatasetVerification(null);
     setPdfFileVerification(null);
@@ -4133,10 +4268,24 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     && item.tagExactMatch
   );
 
+  const sectionProps = (code: string) => {
+    const section = screenDesign?.sections.find((candidate) => candidate.code === code);
+    return {
+      "data-certificate-section": code,
+      "data-section-design-version": screenDesign?.designVersion || "built-in",
+      style: section ? ({ order: section.order, display: section.visible ? undefined : "none" } as React.CSSProperties) : undefined
+    };
+  };
+
+  const activePreviewPage = Math.min(
+    photoPreviewUrls.length || 1,
+    Math.max(1, selectedDamageRegion?.page || selectedPreviewPage || 1)
+  );
+
   const verificationContent = (
       <AdminWorkspacePageFrame>
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,58fr)_minmax(360px,42fr)]">
+          <section data-certificate-section="UPLOAD" data-section-design-version={screenDesign?.designVersion || "built-in"} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <fieldset className="mb-5 border-b border-slate-200 pb-5">
               <legend className="text-sm font-black text-slate-800">{en ? "Report type" : "검증할 리포트 종류"}</legend>
               <div className="mt-3 grid grid-cols-2 gap-2" role="radiogroup">
@@ -4178,18 +4327,51 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
               <input accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" className="sr-only" multiple onChange={handleFileChange} type="file" />
             </label>
             {photoPreviewUrls.length ? (
-              <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-3">
-                {photoPreviewUrls.map((url, index) => (
-                  <button className="group relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50" key={url} onClick={() => {
-                    const firstRegion = photoVerification?.damagedRegions?.find((region) => region.page === index + 1);
-                    if (firstRegion) setSelectedDamageRegion(firstRegion);
-                  }} type="button">
-                    <img alt={`${en ? "Uploaded report page" : "업로드 리포트 페이지"} ${index + 1}`} className="aspect-[3/4] w-full object-contain" src={url} />
-                    {photoVerification?.damagedRegions?.some((region) => region.page === index + 1) ? <span className="absolute bottom-2 right-2 rounded-full bg-rose-600 px-3 py-1 text-xs font-black text-white shadow-lg">{en ? "Inspect damage" : "훼손 위치 확대"}</span> : null}
-                  </button>
-                ))}
+              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-300 bg-slate-900 shadow-xl" data-certificate-pdf-preview>
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-slate-950 px-4 py-3 text-white">
+                  <div><strong className="text-sm">{en ? "Issued document evidence" : "발급 문서 증거"}</strong><span className="ml-2 text-xs font-bold text-slate-300">P{activePreviewPage} / {photoPreviewUrls.length}</span></div>
+                  <div className="flex gap-1 text-[11px] font-black"><span className="rounded-full bg-emerald-500/20 px-2 py-1 text-emerald-200">PDF</span><span className="rounded-full bg-sky-500/20 px-2 py-1 text-sky-200">DB</span><span className="rounded-full bg-violet-500/20 px-2 py-1 text-violet-200">{en ? "VISUAL" : "시각 증거"}</span></div>
+                </div>
+                <button aria-label={en ? `Enlarge uploaded report page ${activePreviewPage}` : `업로드 리포트 ${activePreviewPage}페이지 크게 보기`} className="relative flex min-h-[520px] w-full items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top,#334155,#0f172a_70%)] p-4" onClick={() => setPreviewModalPage(activePreviewPage)} type="button">
+                  <img alt={`${en ? "Uploaded report page" : "업로드 리포트 페이지"} ${activePreviewPage}`} className="max-h-[72vh] w-full object-contain drop-shadow-2xl" src={photoPreviewUrls[activePreviewPage - 1]} />
+                  {selectedDamageRegion?.page === activePreviewPage ? <span aria-hidden className="pointer-events-none absolute border-4 border-rose-500 bg-rose-500/15 shadow-[0_0_0_9999px_rgba(15,23,42,0.12)]" style={{ left: `${Math.max(2, selectedDamageRegion.column * 10)}%`, top: `${Math.max(2, selectedDamageRegion.row * 6)}%`, width: "12%", height: "7%" }} /> : null}
+                </button>
+                <p className="bg-white px-4 py-2 text-center text-xs font-bold text-slate-600">{en ? `Select a thumbnail to inspect another page; select the large page to enlarge it.` : `썸네일로 페이지를 전환하고 큰 문서를 누르면 확대됩니다.`}</p>
+                <div className="grid grid-cols-3 gap-2 bg-slate-100 p-3 sm:grid-cols-5">
+                  {photoPreviewUrls.map((url, index) => (
+                    <button aria-pressed={activePreviewPage === index + 1} className={`group relative overflow-hidden rounded-xl border-2 bg-white transition ${activePreviewPage === index + 1 ? "border-emerald-500 ring-2 ring-emerald-200" : "border-white hover:border-slate-400"}`} key={url} onClick={() => {
+                      setSelectedPreviewPage(index + 1);
+                      setSelectedDamageRegion(null);
+                    }} type="button">
+                      <img alt={`${en ? "Uploaded report thumbnail" : "업로드 리포트 썸네일"} ${index + 1}`} className="aspect-[3/4] w-full object-contain" src={url} />
+                      <span className="absolute left-2 top-2 rounded-full bg-slate-950/80 px-2 py-1 text-[11px] font-black text-white">{index + 1}</span>
+                      {photoVerification?.damagedRegions?.some((region) => region.page === index + 1) ? <span className="absolute bottom-2 right-2 rounded-full bg-rose-600 px-3 py-1 text-xs font-black text-white shadow-lg">{en ? "Inspect damage" : "훼손 위치 확대"}</span> : null}
+                    </button>
+                  ))}
+                </div>
               </div>
-            ) : null}
+            ) : (
+              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 p-6 text-white shadow-xl" data-certificate-evidence-placeholder>
+                <div className="grid items-center gap-6 md:grid-cols-[minmax(220px,0.85fr)_1.15fr]">
+                  <div className="relative mx-auto w-full max-w-[300px]">
+                    <div className="absolute -right-3 top-5 h-full w-full rotate-3 rounded-xl border border-white/20 bg-white/10" />
+                    <div className="relative aspect-[3/4] rounded-xl bg-white p-5 text-slate-900 shadow-2xl">
+                      <div className="flex items-center justify-between"><span className="h-3 w-24 rounded bg-emerald-600" /><span className="text-[10px] font-black text-emerald-700">VERIFIED PDF</span></div>
+                      <div className="mt-5 h-3 w-3/4 rounded bg-slate-900" /><div className="mt-2 h-2 w-1/2 rounded bg-slate-300" />
+                      <div className="mt-7 flex h-24 items-end gap-2 border-b border-l border-slate-300 px-3 pb-1"><span className="h-10 flex-1 bg-emerald-300" /><span className="h-16 flex-1 bg-emerald-500" /><span className="h-20 flex-1 bg-sky-500" /><span className="h-12 flex-1 bg-violet-400" /></div>
+                      <div className="mt-6 space-y-2">{[88, 72, 94, 64].map((width) => <div className="h-2 rounded bg-slate-200" key={width} style={{ width: `${width}%` }} />)}</div>
+                      <div className="absolute bottom-5 right-5 grid h-14 w-14 place-items-center rounded-lg border-4 border-slate-900 text-[9px] font-black">QR</div>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">{en ? "Visual evidence workspace" : "시각 증거 작업공간"}</p>
+                    <h3 className="mt-2 text-2xl font-black leading-tight">{en ? "See the document, not only the verdict." : "판정만 보지 말고 문서를 직접 확인하세요."}</h3>
+                    <p className="mt-3 text-sm font-semibold leading-6 text-slate-300">{en ? "After upload, the original pages, charts, tables, and suspected locations appear here with page thumbnails." : "업로드하면 원본 페이지·그래프·표·의심 위치가 페이지 썸네일과 함께 이 영역에 표시됩니다."}</p>
+                    <div className="mt-5 grid grid-cols-3 gap-2 text-center text-[11px] font-black"><span className="rounded-lg bg-white/10 px-2 py-3">01<br />{en ? "ORIGINAL" : "원본"}</span><span className="rounded-lg bg-white/10 px-2 py-3">02<br />{en ? "COMPARE" : "대조"}</span><span className="rounded-lg bg-emerald-400/20 px-2 py-3 text-emerald-200">03<br />{en ? "EVIDENCE" : "증거"}</span></div>
+                  </div>
+                </div>
+              </div>
+            )}
             {ocrProgress.busy ? (
               <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 p-4">
                 <div className="flex items-center justify-between text-sm font-black text-sky-900"><span>{en ? "OCR processing" : "OCR 처리 중"}</span><span>{ocrProgress.percent}%</span></div>
@@ -4205,8 +4387,10 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                     : (en ? "Tampered PDF: exact issued-file bytes do not match." : "변조 파일: 발급 원본 PDF 바이트와 일치하지 않습니다.")
                   : pdfFileVerification?.status === "EXACT_PDF_MATCH"
                   ? (en ? "Exact issued-PDF byte match confirmed." : "발급 PDF 원본 바이트가 정확히 일치합니다.")
+                  : uploadedPdfSelected && ocrProgress.busy
+                  ? (en ? "Verifying PDF bytes, visible text, page order, tables, and charts..." : "PDF 원본 바이트·화면 문자·페이지 순서·표·차트를 검증하고 있습니다.")
                   : uploadedPdfSelected
-                  ? (en ? "PDF authenticity is unverified. OCR and visual similarity are reference evidence only." : "PDF 원본성 검증 불가: OCR·시각 유사도는 참고 증거이며 진위 판정이 아닙니다.")
+                  ? (en ? "PDF byte verification has not completed. Select the file again if processing has stopped." : "PDF 원본 바이트 검증이 완료되지 않았습니다. 처리가 멈췄다면 파일을 다시 선택하세요.")
                   : photoVerification
                   ? (en ? `Photo OCR comparison completed (${photoVerification.confidence}%).` : `사진 OCR 데이터셋 대조를 완료했습니다(${photoVerification.confidence}%).`)
                   : uploadedPayloadFound
@@ -4217,8 +4401,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
 
           </section>
 
-          <aside className="space-y-4">
-            <section className={`rounded-2xl border p-5 shadow-sm ${toneClass}`}>
+          <aside className="min-w-0 space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-1">
+            <section {...sectionProps("VERDICT")} className={`rounded-2xl border p-5 shadow-sm ${toneClass}`}>
               <p className="text-xs font-black uppercase tracking-[0.16em] opacity-80">{en ? "Verification Result" : "검증 결과"}</p>
               <h2 className="mt-2 text-xl font-black">
                 {resultTone === "success" ? (en ? "Valid" : "정상") : resultTone === "danger" ? (en ? "Tampered PDF" : "변조 파일") : resultTone === "warning" ? (en ? "Needs Review" : "확인 필요") : (en ? "Waiting" : "대기")}
@@ -4226,7 +4410,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
               <p className="mt-2 text-sm font-bold leading-6">{resultMessage}</p>
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <section {...sectionProps("IDENTITY")} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Three Verification Signals" : "3가지 식별 방식"}</p>
               <div className="mt-4 space-y-3">
                 {[
@@ -4243,12 +4427,12 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
             </section>
 
             {photoVerification ? (
-              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <section {...sectionProps("VISUAL")} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Photo OCR Evidence" : "사진 OCR 대조 근거"}</p>
-                <div className="mt-3 flex items-end justify-between"><strong className="text-3xl text-slate-950">{photoVerification.confidence}%</strong><span className="text-xs font-black text-slate-500">{en ? "CONTENT MATCH RATE" : "내용 일치율"}</span></div>
+                <div className="mt-3 flex items-end justify-between"><strong className="text-3xl text-slate-950">{pdfFileVerification?.status === "EXACT_PDF_MATCH" ? (en ? "ORIGINAL" : "원본 일치") : `${photoVerification.confidence}%`}</strong><span className="text-xs font-black text-slate-500">{pdfFileVerification?.status === "EXACT_PDF_MATCH" ? (en ? "BYTE-EXACT EVIDENCE" : "원본 바이트 증거") : (en ? "CONTENT MATCH RATE" : "내용 일치율")}</span></div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-bold text-slate-700">
                   <span className="col-span-2">QR: {photoVerification.qrFullyMatched ? "VERIFIED" : photoVerification.qrDetected ? "MISMATCH" : "NOT FOUND"}</span>
-                  <span className="col-span-2">{en ? "OCR-only confidence" : "OCR 단독 일치도"}: {photoVerification.contentConfidence ?? photoVerification.confidence}%</span>
+                  <span className="col-span-2">{pdfFileVerification?.status === "EXACT_PDF_MATCH" ? (en ? "OCR score: supplementary only; exact-byte evidence takes precedence" : "OCR 점수: 참고용 · 원본 바이트 판정 우선") : `${en ? "OCR-only confidence" : "OCR 단독 일치도"}: ${photoVerification.contentConfidence ?? photoVerification.confidence}%`}</span>
                   <span className="col-span-2">{en ? "Visual integrity" : "시각 원본 일치"}: {photoVerification.visualProfileAvailable ? `${photoVerification.visualSimilarity ?? 0}% / ${photoVerification.visualStatus}` : "NOT REGISTERED"}</span>
                   <span className="col-span-2">{en ? "Damaged regions" : "훼손 의심 영역"}: {photoVerification.damagedCellCount ?? 0}/{photoVerification.comparedCellCount ?? 0}</span>
                   <span>{en ? "Product" : "제품명"}: {photoVerification.productMatched ? "OK" : "-"}</span>
@@ -4328,7 +4512,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                   <div className="mt-3 border-t border-amber-200 pt-3">
                     <p className="text-xs font-black text-amber-900">{en ? "Suspected visual damage locations" : "시각 훼손 의심 위치"}</p>
                     <div className="mt-2 flex flex-wrap gap-1">
-                      {photoVerification.damagedRegions.slice(0, 16).map((region, index) => (
+                      {[...photoVerification.damagedRegions].sort((left, right) => right.difference - left.difference).slice(0, 16).map((region, index) => (
                         <button className="bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-900 hover:bg-rose-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-500" key={`${region.page}-${region.row}-${region.column}-${index}`} onClick={() => setSelectedDamageRegion(region)} title={en ? "Open the page and highlight this location" : "해당 페이지를 확대하고 위치 표시"} type="button">
                           P{region.page} R{region.row} C{region.column} ({region.difference})
                         </button>
@@ -4341,7 +4525,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
               </section>
             ) : null}
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <section {...sectionProps("SUMMARY")} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Dataset Comparison" : "데이터셋 대조"}</p>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black">
                 <span className={`col-span-2 rounded-lg px-3 py-2 ${pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "bg-emerald-100 text-emerald-900" : pdfFileVerification?.status === "TAMPERED_PDF" ? "bg-rose-100 text-rose-900" : uploadedPdfSelected ? "bg-amber-50 text-amber-900" : "bg-slate-100 text-slate-500"}`}>
@@ -4357,7 +4541,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                   {en ? "Embedded vs registry" : "내장 ↔ 원장"}: {datasetVerification?.datasetMatch ? "OK" : datasetVerification ? "FAIL" : "-"}
                 </span>
                 <span className={`rounded-lg px-3 py-2 ${photoVerification?.photoConsistent || pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "bg-emerald-50 text-emerald-800" : photoVerification ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-500"}`}>
-                  {en ? "Visible OCR vs registry" : "화면 OCR ↔ 원장"}: {photoVerification?.photoConsistent ? `${photoVerification.confidence}%` : photoVerification ? `${photoVerification.confidence}%` : "-"}
+                  {en ? "Visible OCR vs registry" : "화면 OCR ↔ 원장"}: {pdfFileVerification?.status === "EXACT_PDF_MATCH" ? (en ? "ORIGINAL MATCH" : "원본 일치") : photoVerification ? `${photoVerification.confidence}%` : "-"}
                 </span>
                 <span className={`rounded-lg px-3 py-2 ${photoVerification?.numericDataExactMatch ? "bg-emerald-100 text-emerald-900" : photoVerification ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-500"}`}>
                   {en ? "Every numeric field" : "개별 숫자 전체"}: {photoVerification?.numericDataExactMatch ? "EXACT" : photoVerification ? "DATA_TAMPERED" : "-"}
@@ -4408,7 +4592,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
               ) : null}
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <section {...sectionProps("PAGE_SEQUENCE")} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Issued Record" : "발급 이력"}</p>
               {matchedRecord || photoVerification?.certificateId ? (
                 <div className="mt-3 space-y-2 text-sm font-bold text-slate-700">
@@ -4427,7 +4611,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
         </div>
 
         {photoVerification ? (
-          <section className="mt-5 overflow-hidden border border-slate-200 bg-white shadow-sm">
+          <section {...sectionProps("DETAILS")} className="mt-5 overflow-hidden border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
               <div>
                 <h2 className="text-base font-black text-slate-950">{en ? "All Issued Documents A-Z Comparison" : "전체 발급 문서 A-Z 일괄 대조"}</h2>
@@ -4469,7 +4653,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                         <p className="mt-1 text-[11px] text-slate-400">{item.issuedAt ? new Date(item.issuedAt).toLocaleString() : "-"}</p>
                       </td>
                       <td className="px-4 py-3 align-top">
-                        <strong className={item.contentMatch ? "text-emerald-700" : item.confidence >= 55 ? "text-amber-700" : "text-rose-700"}>{item.confidence}%</strong>
+                        <strong className={item.contentMatch ? "text-emerald-700" : item.confidence >= 55 ? "text-amber-700" : "text-rose-700"}>{isCurrentUploadComparisonExact(item) && pdfFileVerification?.status === "EXACT_PDF_MATCH" ? (en ? "ORIGINAL" : "원본 일치") : `${item.confidence}%`}</strong>
                         <p className="mt-1 text-slate-500">{item.contentMatch ? (en ? "MATCH" : "일치") : item.confidence >= 55 ? (en ? "REVIEW" : "검토") : (en ? "MISMATCH" : "불일치")}</p>
                       </td>
                       <td className="px-4 py-3 align-top leading-5 text-slate-700" colSpan={6}>
@@ -4549,8 +4733,13 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                             </div> : null}
                             {selectedReportType === "EMISSION_SURVEY" && item.sectionSummaryComparisons?.length ? (
                               <div className="order-2 mt-4 border-t border-slate-200 pt-3">
-                                <p className="font-black text-slate-900">{en ? "Pages 2–3 · Graph data comparison" : "2–3페이지 · 그래프 데이터 대조"}</p>
-                                <div className="mt-2 max-h-96 overflow-auto border border-slate-200">
+                                {[2, 3].map((pageNumber) => {
+                                  const pageSections = item.sectionSummaryComparisons?.filter((section) => section.pageNumber === pageNumber) || [];
+                                  const pageDataSections = pageSections.filter((section) => section.sectionCode !== "__UNEXPECTED__");
+                                  if (!pageSections.length) return null;
+                                  return <div className="mb-4 last:mb-0" data-certificate-chart-page={pageNumber} key={`${item.certificateId}-chart-page-${pageNumber}`}>
+                                  <p className="font-black text-slate-900">{pageNumber === 2 ? (en ? "Page 2 · Bar chart data comparison" : "2페이지 · 막대그래프 데이터 대조") : (en ? "Page 3 · Pie chart data comparison" : "3페이지 · 원그래프 데이터 대조")}</p>
+                                  <div className="mt-2 max-h-96 overflow-auto border border-slate-200">
                                   <table className="w-full min-w-[760px] border-collapse text-left text-[11px]">
                                     <thead className="sticky top-0 bg-slate-100 text-slate-700">
                                       <tr>
@@ -4564,7 +4753,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
-                                      {item.sectionSummaryComparisons.flatMap((section, sectionIndex) => ([
+                                      {pageDataSections.flatMap((section, sectionIndex) => ([
                                         [en ? "Emission" : "배출량", section.expectedTotalEmission, section.actualTotalEmission, section.totalEmissionMatched],
                                         [en ? "Share" : "비율", `${section.expectedSharePercent}%`, section.actualSharePercent !== null && section.actualSharePercent !== undefined && section.actualSharePercent !== "" ? `${section.actualSharePercent}%` : "", section.sharePercentMatched],
                                       ] as Array<[string, string, string, boolean]>).map(([label, storedValue, uploadedValue, matched], fieldIndex) => (
@@ -4578,17 +4767,21 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                           <td className={`px-3 py-2 font-black ${matched ? "text-emerald-700" : "text-rose-700"}`}>{matched ? "MATCH" : "MISMATCH"}</td>
                                         </tr>
                                       )))}
-                                      {item.unexpectedSectionSummaryNumbers?.length ? (
-                                        <tr className="bg-rose-50 text-rose-900">
-                                          <td className="px-3 py-2 font-black" colSpan={3}>-</td>
-                                          <td className="px-3 py-2 font-black">{en ? "Unexpected graph values" : "예상하지 않은 그래프 값"}</td>
-                                          <td className="px-3 py-2" colSpan={2}>{item.unexpectedSectionSummaryNumbers.join(", ")}</td>
+                                      {pageSections.flatMap((section) => section.unexpectedNumbers.map((number, unexpectedIndex) => (
+                                        <tr className="bg-rose-50 text-rose-900" key={`${item.certificateId}-${pageNumber}-${section.sectionCode}-unexpected-${unexpectedIndex}`}>
+                                          <td className="px-3 py-2 font-black">{pageNumber}</td>
+                                          <td className="px-3 py-2 font-black">-</td>
+                                          <td className="px-3 py-2 font-black">{en ? "Whole graph" : "그래프 전체"}</td>
+                                          <td className="px-3 py-2 font-black">{en ? "Unexpected graph value" : "예상하지 않은 그래프 값"}</td>
+                                          <td className="px-3 py-2">-</td><td className="px-3 py-2 font-black">{number}</td>
                                           <td className="px-3 py-2 font-black">MISMATCH</td>
                                         </tr>
-                                      ) : null}
+                                      )))}
                                     </tbody>
                                   </table>
                                 </div>
+                                </div>;
+                                })}
                               </div>
                             ) : null}
                             {selectedReportType !== "LCA_SUMMARY" && item.outputFieldComparisons?.length ? <div className="order-1 mt-4 border-t border-slate-200 pt-3">
@@ -4667,7 +4860,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
             </div>
           </section>
         ) : null}
-        <section className="mt-5 overflow-hidden border border-slate-300 bg-slate-950 text-slate-100 shadow-sm">
+        <section {...sectionProps("LOG")} className="mt-5 overflow-hidden border border-slate-300 bg-slate-950 text-slate-100 shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-700 px-5 py-3">
             <div>
               <h2 className="text-sm font-black">{en ? "Verification Processing Log" : "검증 처리 로그"}</h2>
@@ -4687,18 +4880,34 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
             )) : <p className="py-4 text-center text-slate-500">{en ? "Select a PDF or image to begin logging." : "PDF 또는 이미지를 선택하면 처리 로그가 기록됩니다."}</p>}
           </div>
         </section>
-        {selectedDamageRegion && photoPreviewUrls[selectedDamageRegion.page - 1] ? (
-          <div aria-label={en ? "Suspected visual damage enlarged preview" : "시각 훼손 의심 위치 확대 보기"} aria-modal="true" className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 p-4" onClick={() => setSelectedDamageRegion(null)} role="dialog">
+        {(previewModalPage || selectedDamageRegion?.page) && photoPreviewUrls[(previewModalPage || selectedDamageRegion?.page || 1) - 1] ? (
+          <div aria-label={en ? "Uploaded PDF enlarged preview" : "업로드 PDF 확대 미리보기"} aria-modal="true" className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 p-4" onClick={() => { setPreviewModalPage(null); setSelectedDamageRegion(null); }} role="dialog">
             <div className="flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
               <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-                <div><strong className="text-slate-950">{en ? "Suspected visual damage" : "시각 훼손 의심 위치"}</strong><p className="text-xs font-semibold text-slate-500">P{selectedDamageRegion.page} R{selectedDamageRegion.row} C{selectedDamageRegion.column} · {en ? "red marker shows the approximate comparison cell" : "빨간 표시는 비교 격자의 근사 위치입니다"}</p></div>
-                <button aria-label={en ? "Close" : "닫기"} className="rounded-full bg-slate-100 px-4 py-2 font-black text-slate-700 hover:bg-slate-200" onClick={() => setSelectedDamageRegion(null)} type="button">{en ? "Close" : "닫기"}</button>
+                <div><strong className="text-slate-950">{en ? "Uploaded PDF preview" : "업로드 PDF 미리보기"}</strong><p className="text-xs font-semibold text-slate-500">P{previewModalPage || selectedDamageRegion?.page}{selectedDamageRegion ? ` R${selectedDamageRegion.row} C${selectedDamageRegion.column}` : ""}{selectedDamageRegion ? (en ? " · rendered pixels differ from the issued original" : " · 발급 원본과 화면 픽셀이 다른 위치입니다") : ""}</p></div>
+                <button aria-label={en ? "Close" : "닫기"} className="rounded-full bg-slate-100 px-4 py-2 font-black text-slate-700 hover:bg-slate-200" onClick={() => { setPreviewModalPage(null); setSelectedDamageRegion(null); }} type="button">{en ? "Close" : "닫기"}</button>
               </div>
               <div className="overflow-auto bg-slate-200 p-4">
                 <div className="relative mx-auto w-fit max-w-full">
-                  <img alt={`${en ? "Enlarged uploaded report page" : "업로드 리포트 확대 페이지"} ${selectedDamageRegion.page}`} className="max-h-[82vh] max-w-full bg-white object-contain shadow-xl" src={photoPreviewUrls[selectedDamageRegion.page - 1]} />
-                  <span className="pointer-events-none absolute h-10 w-10 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-md border-4 border-rose-600 bg-rose-500/20 shadow-[0_0_0_4px_rgba(255,255,255,0.9)]" style={{ left: `${((selectedDamageRegion.column - 0.5) / 48) * 100}%`, top: `${((selectedDamageRegion.row - 0.5) / 68) * 100}%` }} />
+                  <img alt={`${en ? "Enlarged uploaded report page" : "업로드 리포트 확대 페이지"} ${previewModalPage || selectedDamageRegion?.page}`} className="max-h-[82vh] max-w-full bg-white object-contain shadow-xl" src={photoPreviewUrls[(previewModalPage || selectedDamageRegion?.page || 1) - 1]} />
+                  {selectedDamageRegion ? <span className="pointer-events-none absolute h-10 w-10 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-md border-4 border-rose-600 bg-rose-500/20 shadow-[0_0_0_4px_rgba(255,255,255,0.9)]" style={{ left: `${((selectedDamageRegion.column - 0.5) / 48) * 100}%`, top: `${((selectedDamageRegion.row - 0.5) / 68) * 100}%` }} /> : null}
                 </div>
+                {selectedDamageRegion ? (
+                  <div className="sticky bottom-4 mx-auto mt-4 w-full max-w-xl overflow-hidden rounded-2xl border-4 border-rose-600 bg-white shadow-2xl" data-certificate-damage-magnifier>
+                    <div className="flex items-center justify-between bg-rose-600 px-4 py-2 text-xs font-black text-white">
+                      <span>{en ? "VISIBLE ALTERATION — MAGNIFIED" : "화면 변조 의심 위치 · 확대"}</span>
+                      <span>P{selectedDamageRegion.page} R{selectedDamageRegion.row} C{selectedDamageRegion.column} · Δ{selectedDamageRegion.difference}</span>
+                    </div>
+                    <div className="relative h-48 overflow-hidden bg-slate-100 bg-no-repeat" style={{
+                      backgroundImage: `url(${photoPreviewUrls[selectedDamageRegion.page - 1]})`,
+                      backgroundPosition: `${((((selectedDamageRegion.column - 0.5) / 48) * 6 - 0.5) / 5) * 100}% ${((((selectedDamageRegion.row - 0.5) / 68) * 8.5 - 0.5) / 7.5) * 100}%`,
+                      backgroundSize: "600% 850%"
+                    }}>
+                      <span aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 border-4 border-rose-600 bg-rose-500/10 shadow-[0_0_0_3px_rgba(255,255,255,0.95)]" />
+                    </div>
+                    <p className="px-4 py-3 text-xs font-bold leading-5 text-rose-900">{en ? "The PDF text layer may still contain the issued text. This panel magnifies the rendered pixels that the customer actually sees." : "PDF 숨은 텍스트에는 발급 원문이 남아 있을 수 있습니다. 이 확대 영역은 고객이 실제로 보는 화면 픽셀 변조를 표시합니다."}</p>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>

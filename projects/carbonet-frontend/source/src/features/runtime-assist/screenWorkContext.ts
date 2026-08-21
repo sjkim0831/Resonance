@@ -61,6 +61,7 @@ export function localScreenWorkflowClassification(pathname: string): ScreenWorkf
     "/find/",
     "/password/",
     "/error/",
+    "/home/certificate-verify",
     "/admin/emission/survey-report-print",
     "/admin/emission/survey-report-lca-summary"
   ].some((prefix) => normalized === prefix.replace(/\/$/, "") || normalized.startsWith(prefix))

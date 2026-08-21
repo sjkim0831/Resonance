@@ -1,11 +1,32 @@
+import { useEffect, useState } from "react";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
-import { EmissionSurveyReportVerifyPage } from "../emission-survey-report/EmissionSurveyReportMigrationPage";
+import { EmissionSurveyReportVerifyPage, type CertificateVerificationScreenDesign } from "../emission-survey-report/EmissionSurveyReportMigrationPage";
 import { HOME_ENTRY_ASSETS, LOCALIZED_CONTENT } from "./homeEntryContent";
 import { HeaderBrand, HomeFooter, HomeInlineStyles } from "./HomeEntrySections";
 
 export function HomeCertificateVerifyPage() {
   const en = isEnglish();
   const content = en ? LOCALIZED_CONTENT.en : LOCALIZED_CONTENT.ko;
+  const [screenDesign, setScreenDesign] = useState<CertificateVerificationScreenDesign | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const response = await fetch(en ? "/api/en/home/certificate-verify/screen-design" : "/api/home/certificate-verify/screen-design", { cache: "no-store" });
+        if (!response.ok) return;
+        const next = await response.json() as CertificateVerificationScreenDesign;
+        if (active && next.active && next.schemaVersion === 1) setScreenDesign(next);
+      } catch {
+        // Preserve the last valid design while the runtime configuration endpoint recovers.
+      }
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 2000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [en]);
+
+  const hero = screenDesign?.hero;
   return (
     <>
       <HomeInlineStyles en={en} />
@@ -31,21 +52,23 @@ export function HomeCertificateVerifyPage() {
               <nav aria-label={en ? "Breadcrumb" : "현재 위치"} className="flex items-center gap-2 text-sm font-semibold text-slate-500">
                 <a className="hover:text-[var(--kr-gov-blue)]" href={buildLocalizedPath("/home", "/en/home")}>{en ? "Home" : "홈"}</a>
                 <span aria-hidden="true">›</span>
-                <span className="text-slate-800">{en ? "Certificate Authenticity" : "인증서 진위여부 확인"}</span>
+                <span className="text-slate-800">{en ? hero?.enTitle || "Certificate Authenticity" : hero?.koTitle || "인증서 진위여부 확인"}</span>
               </nav>
               <div className="mt-6 flex items-start gap-5">
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
                   <span className="material-symbols-outlined text-[34px]">verified_user</span>
                 </div>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">PUBLIC VERIFICATION</p>
-                  <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 lg:text-4xl">{en ? "Certificate Authenticity Verification" : "인증서 진위여부 확인"}</h1>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">{en ? hero?.enEyebrow || "PUBLIC VERIFICATION" : hero?.koEyebrow || "공개 진위검증"}</p>
+                  <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 lg:text-4xl">{en ? hero?.enTitle || "Certificate Authenticity Verification" : hero?.koTitle || "인증서 진위여부 확인"}</h1>
+                  <p className="mt-3 max-w-3xl text-sm font-semibold leading-6 text-slate-600">{en ? hero?.enDescription : hero?.koDescription}</p>
+                  {screenDesign ? <span className="mt-3 inline-flex rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-600" data-screen-design-version={screenDesign.designVersion}>{screenDesign.designVersion}</span> : null}
                 </div>
               </div>
             </div>
           </section>
           <section className="mx-auto max-w-7xl px-4 py-10 lg:px-8">
-            <EmissionSurveyReportVerifyPage embedded />
+            <EmissionSurveyReportVerifyPage embedded screenDesign={screenDesign || undefined} />
           </section>
         </main>
         <HomeFooter content={content} />

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "designVersion": "certificate-verify-screen-v1",
+  "active": true,
+  "hero": {
+    "koEyebrow": "공개 진위검증",
+    "enEyebrow": "PUBLIC VERIFICATION",
+    "koTitle": "인증서 진위여부 확인",
+    "enTitle": "Certificate Authenticity Verification",
+    "koDescription": "PDF 화면의 문자·숫자·페이지 순서·표·그래프를 발급 원장과 교차 검증합니다.",
+    "enDescription": "Cross-check visible PDF text, numbers, page order, tables, and charts against the issuance registry."
+  },
+  "sections": [
+    {"code":"UPLOAD","order":10,"visible":true,"koLabel":"문서 업로드","enLabel":"Upload"},
+    {"code":"VERDICT","order":20,"visible":true,"koLabel":"최종 판정","enLabel":"Verdict"},
+    {"code":"IDENTITY","order":30,"visible":true,"koLabel":"3가지 식별 방식","enLabel":"Three identifiers"},
+    {"code":"VISUAL","order":40,"visible":true,"koLabel":"OCR·시각 검증","enLabel":"OCR and visual verification"},
+    {"code":"SUMMARY","order":50,"visible":true,"koLabel":"검증 요약","enLabel":"Verification summary"},
+    {"code":"PAGE_SEQUENCE","order":60,"visible":true,"koLabel":"페이지 전체 항목·순서·중복","enLabel":"Page sequence and duplicates"},
+    {"code":"DETAILS","order":70,"visible":true,"koLabel":"상세 행·차트 검증","enLabel":"Detailed rows and charts"},
+    {"code":"LOG","order":80,"visible":true,"koLabel":"검증 처리 로그","enLabel":"Processing log"}
+  ],
+  "supportCards": [
+    {"code":"HELP","koTitle":"도움말","enTitle":"Help","koBody":"PDF 또는 페이지 이미지를 순서대로 업로드하면 원장·OCR·시각 증거를 함께 대조합니다.","enBody":"Upload the PDF or page images in order to compare registry, OCR, and visual evidence."},
+    {"code":"SCREEN_DESIGN","koTitle":"화면 설계","enTitle":"Screen design","koBody":"입력→판정→식별자→페이지→행·차트→로그 순서로 검증 근거를 추적합니다.","enBody":"Trace evidence from input through verdict, identifiers, pages, rows, charts, and logs."},
+    {"code":"QA","koTitle":"QA 검증","enTitle":"QA","koBody":"정상·권한·격리·예외·복구 5개 시나리오로 자동 검증합니다.","enBody":"Automated checks cover happy path, authority, isolation, exception, and recovery."},
+    {"code":"WORK_GUIDE","koTitle":"업무 길잡이","enTitle":"Work guide","koBody":"원본 PDF 선택→자동 판독→불일치 위치 확인→발급 원본 재확인 순서로 처리합니다.","enBody":"Select the original PDF, run recognition, inspect mismatches, then confirm the issued original."},
+    {"code":"ALL_WORK","koTitle":"전체 업무 보기","enTitle":"All work","koBody":"리포트 발급·진위검증·보완·재발급 업무의 연결 상태를 확인합니다.","enBody":"Review the connected issuance, verification, correction, and reissuance work."}
+  ],
+  "qaScenarios": [
+    {"code":"HAPPY_PATH","koLabel":"정상","enLabel":"Happy path"},
+    {"code":"AUTHORITY","koLabel":"권한","enLabel":"Authority"},
+    {"code":"ISOLATION","koLabel":"격리","enLabel":"Isolation"},
+    {"code":"EXCEPTION","koLabel":"예외","enLabel":"Exception"},
+    {"code":"RECOVERY","koLabel":"복구","enLabel":"Recovery"}
+  ]
+}

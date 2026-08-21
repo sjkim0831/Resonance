@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.lang.reflect.Method;
 import java.security.MessageDigest;
 import java.util.ArrayList;
@@ -140,7 +142,7 @@ class ReportVerificationRegistryServicePdfTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void sectionSummaryRejectsAnExtraOverlaidNumberThatExistsInAnotherSection() throws Exception {
+    void sectionSummaryRejectsRepeatedExpectedTextInsideAnotherSection() throws Exception {
         ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
         Method scorer = ReportVerificationRegistryService.class.getDeclaredMethod(
                 "scoreSectionSummaryPage", List.class, com.fasterxml.jackson.databind.JsonNode.class);
@@ -153,18 +155,23 @@ class ReportVerificationRegistryServicePdfTest {
         Map<String, Object> exact = (Map<String, Object>) scorer.invoke(service,
                 List.of("page one", "에너지 1.62 kg CO2e 0% 수계 배출물 0.36 kg CO2e 0%"),
                 new ObjectMapper().valueToTree(dataset));
-        Map<String, Object> tampered = (Map<String, Object>) scorer.invoke(service,
+        Map<String, Object> repeatedExpected = (Map<String, Object>) scorer.invoke(service,
                 List.of("page one", "에너지 1.62 kg CO2e 0% 수계 배출물 0.36 1.62 kg CO2e 0%"),
+                new ObjectMapper().valueToTree(dataset));
+        Map<String, Object> tampered = (Map<String, Object>) scorer.invoke(service,
+                List.of("page one", "에너지 1.62 kg CO2e 0% 수계 배출물 0.36 9.99 kg CO2e 0%"),
                 new ObjectMapper().valueToTree(dataset));
 
         assertTrue((Boolean) exact.get("sectionSummaryExactMatch"));
+        assertFalse((Boolean) repeatedExpected.get("sectionSummaryExactMatch"));
+        assertEquals(List.of("1.62"), repeatedExpected.get("unexpectedSectionSummaryNumbers"));
         assertFalse((Boolean) tampered.get("sectionSummaryExactMatch"));
-        assertEquals(List.of("1.62"), tampered.get("unexpectedSectionSummaryNumbers"));
+        assertEquals(List.of("9.99"), tampered.get("unexpectedSectionSummaryNumbers"));
         List<Map<String, Object>> comparisons =
                 (List<Map<String, Object>>) tampered.get("sectionSummaryComparisons");
         assertTrue((Boolean) comparisons.get(0).get("matched"));
-        assertEquals(List.of("1.62"), comparisons.get(1).get("unexpectedNumbers"));
-        assertFalse((Boolean) comparisons.get(1).get("matched"));
+        assertEquals(List.of("9.99"), comparisons.get(2).get("unexpectedNumbers"));
+        assertFalse((Boolean) comparisons.get(2).get("matched"));
 
         Map<String, Object> trailingOverlay = (Map<String, Object>) scorer.invoke(service,
                 List.of("page one", "에너지 1.62 kg CO2e 0% 수계 배출물 0.36 kg CO2e 0% 1.62"),
@@ -172,8 +179,33 @@ class ReportVerificationRegistryServicePdfTest {
         List<Map<String, Object>> trailingComparisons =
                 (List<Map<String, Object>>) trailingOverlay.get("sectionSummaryComparisons");
         assertEquals("0", trailingComparisons.get(1).get("actualSharePercent"));
-        assertEquals(List.of("1.62"), trailingComparisons.get(1).get("unexpectedNumbers"));
-        assertFalse((Boolean) trailingComparisons.get(1).get("matched"));
+        assertEquals(List.of("1.62"), trailingComparisons.get(2).get("unexpectedNumbers"));
+        assertFalse((Boolean) trailingComparisons.get(2).get("matched"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void sectionSummarySeparatesBarAndPieChartPagesAndCatchesPageTwoOverlay() throws Exception {
+        ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+        Method scorer = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "scoreSectionSummaryPage", List.class, com.fasterxml.jackson.databind.JsonNode.class);
+        scorer.setAccessible(true);
+        Map<String, Object> dataset = Map.of("sectionSummaries", List.of(
+                section("INPUT_ENERGY", "에너지", 1.62, 0, 3),
+                section("OUTPUT_WATER", "수계 배출물", 0.36, 0, 2)));
+
+        Map<String, Object> result = (Map<String, Object>) scorer.invoke(service, List.of(
+                "cover",
+                "섹션별 탄소배출 기여 그래프 에너지 1.62 kg CO2e 0% 수계 배출물 1.62 0.36 kg CO2e 0%",
+                "섹션별 탄소배출 기여 원그래프 에너지 0% 1.62 kg CO2e 수계 배출물 0% 0.36 kg CO2e"),
+                new ObjectMapper().valueToTree(dataset));
+
+        List<Map<String, Object>> comparisons =
+                (List<Map<String, Object>>) result.get("sectionSummaryComparisons");
+        assertEquals(5, comparisons.size());
+        assertEquals(List.of(2, 2, 2, 3, 3), comparisons.stream().map(row -> row.get("pageNumber")).toList());
+        assertEquals(List.of("1.62"), result.get("unexpectedSectionSummaryNumbers"));
+        assertFalse((Boolean) result.get("sectionSummaryExactMatch"));
     }
 
     @Test
@@ -509,6 +541,124 @@ class ReportVerificationRegistryServicePdfTest {
         Map<String, Object> decimalPointLoss = scoreDetailLines(service, normalize, scorer, dataset,
                 "1.23", "7923430", "79234.30");
         assertFalse((Boolean) decimalPointLoss.get("detailRowsExactMatch"));
+    }
+
+    @Test
+    void roundedIssuedDigitsAndShorterPdfSummaryScaleMatchTheSameDatabaseValue() throws Exception {
+        ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+        Method matcher = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "displayedNumberMatchesDatabase", String.class, String.class,
+                com.fasterxml.jackson.databind.JsonNode.class);
+        matcher.setAccessible(true);
+        ObjectMapper mapper = new ObjectMapper();
+
+        assertTrue((Boolean) matcher.invoke(service, "13.02", "13.02",
+                mapper.readTree("13.015107289620094")));
+        Method finder = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "findObservedDisplayedNumber", String.class, com.fasterxml.jackson.databind.JsonNode.class,
+                String.class, com.fasterxml.jackson.databind.JsonNode.class);
+        finder.setAccessible(true);
+        com.fasterxml.jackson.databind.JsonNode summary = mapper.readTree(
+                "{\"productGwpDisplay\":\"79,262.293968\"}");
+        assertEquals("79,262.29", finder.invoke(service, "제품 GWP 79,262.29", summary,
+                "productGwp", mapper.readTree("79262.29396809019")));
+        assertFalse((Boolean) matcher.invoke(service, "13.02", "13.03",
+                mapper.readTree("13.015107289620094")));
+        assertEquals("", finder.invoke(service, "제품 GWP 79,262.30", summary,
+                "productGwp", mapper.readTree("79262.29396809019")));
+    }
+
+    @Test
+    void qrCertificateCandidateOutranksHigherScoringDifferentReport() throws Exception {
+        ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+        Method preferred = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "isPreferredOcrCandidate", boolean.class, boolean.class, double.class,
+                boolean.class, double.class);
+        preferred.setAccessible(true);
+
+        assertTrue((Boolean) preferred.invoke(service, true, true, 96.0, false, 99.0));
+        assertFalse((Boolean) preferred.invoke(service, true, false, 99.0, true, 96.0));
+        assertTrue((Boolean) preferred.invoke(service, false, false, 99.0, false, 96.0));
+    }
+
+    @Test
+    void numberRuleReloadsWithoutRebuildingAndUnsafeRuleFailsClosed() throws Exception {
+        Path rule = Files.createTempFile("certificate-verification-rule-", ".json");
+        String previous = System.getProperty(CertificateVerificationRuleRegistry.RULE_FILE_PROPERTY);
+        try {
+            Files.writeString(rule, """
+                    {"schemaVersion":1,"ruleVersion":"dev-v1","active":true,
+                     "numberComparison":{"requirePdfScreenDigitsExact":true,
+                     "ignoreThousandsGrouping":true,"databaseComparison":"ROUND_HALF_UP_TO_PDF_SCALE"}}
+                    """);
+            System.setProperty(CertificateVerificationRuleRegistry.RULE_FILE_PROPERTY,
+                    rule.toAbsolutePath().toString());
+            CertificateVerificationRuleRegistry.resetForTest();
+            Method matcher = ReportVerificationRegistryService.class.getDeclaredMethod(
+                    "displayedNumberMatchesDatabase", String.class, String.class,
+                    com.fasterxml.jackson.databind.JsonNode.class);
+            matcher.setAccessible(true);
+            ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+            assertTrue((Boolean) matcher.invoke(service, "1.23", "1.23",
+                    new ObjectMapper().readTree("1.239")));
+
+            Files.writeString(rule, """
+                    {"schemaVersion":1,"ruleVersion":"dev-v2","active":true,
+                     "numberComparison":{"requirePdfScreenDigitsExact":false,
+                     "ignoreThousandsGrouping":true,"databaseComparison":"ROUND_HALF_UP_TO_PDF_SCALE"}}
+                    """);
+            CertificateVerificationRuleRegistry.resetForTest();
+            java.lang.reflect.InvocationTargetException failure = assertThrows(
+                    java.lang.reflect.InvocationTargetException.class,
+                    () -> matcher.invoke(service, "1.23", "1.23",
+                            new ObjectMapper().readTree("1.239")));
+            assertTrue(failure.getCause() instanceof IllegalStateException);
+            assertTrue(failure.getCause().getMessage().contains("CERTIFICATE_VERIFICATION_RULE_INVALID"));
+        } finally {
+            if (previous == null) System.clearProperty(CertificateVerificationRuleRegistry.RULE_FILE_PROPERTY);
+            else System.setProperty(CertificateVerificationRuleRegistry.RULE_FILE_PROPERTY, previous);
+            CertificateVerificationRuleRegistry.resetForTest();
+            Files.deleteIfExists(rule);
+        }
+    }
+
+    @Test
+    void screenDesignReloadsWithoutRebuildingAndIncompleteDesignFailsClosed() throws Exception {
+        Path design = Files.createTempFile("certificate-verification-screen-", ".json");
+        String previous = System.getProperty(CertificateVerificationScreenDesignRegistry.SCREEN_FILE_PROPERTY);
+        String canonical = """
+                {"schemaVersion":1,"designVersion":"dev-screen-v1","active":true,
+                 "hero":{"koTitle":"진위확인","enTitle":"Verification"},
+                 "sections":[%s],"supportCards":[%s],"qaScenarios":[%s]}
+                """.formatted(
+                codedItems("UPLOAD", "VERDICT", "IDENTITY", "VISUAL", "SUMMARY", "PAGE_SEQUENCE", "DETAILS", "LOG"),
+                codedItems("HELP", "SCREEN_DESIGN", "QA", "WORK_GUIDE", "ALL_WORK"),
+                codedItems("HAPPY_PATH", "AUTHORITY", "ISOLATION", "EXCEPTION", "RECOVERY"));
+        try {
+            Files.writeString(design, canonical);
+            System.setProperty(CertificateVerificationScreenDesignRegistry.SCREEN_FILE_PROPERTY,
+                    design.toAbsolutePath().toString());
+            CertificateVerificationScreenDesignRegistry.resetForTest();
+            assertEquals("dev-screen-v1",
+                    CertificateVerificationScreenDesignRegistry.activeDesign().get("designVersion"));
+
+            Files.writeString(design, canonical.replace(",{\"code\":\"LOG\"}", ""));
+            CertificateVerificationScreenDesignRegistry.resetForTest();
+            IllegalStateException failure = assertThrows(IllegalStateException.class,
+                    CertificateVerificationScreenDesignRegistry::activeDesign);
+            assertTrue(failure.getMessage().contains("CERTIFICATE_VERIFICATION_SCREEN_INVALID"));
+        } finally {
+            if (previous == null) System.clearProperty(CertificateVerificationScreenDesignRegistry.SCREEN_FILE_PROPERTY);
+            else System.setProperty(CertificateVerificationScreenDesignRegistry.SCREEN_FILE_PROPERTY, previous);
+            CertificateVerificationScreenDesignRegistry.resetForTest();
+            Files.deleteIfExists(design);
+        }
+    }
+
+    private static String codedItems(String... codes) {
+        return java.util.Arrays.stream(codes)
+                .map(code -> "{\"code\":\"" + code + "\"}")
+                .collect(java.util.stream.Collectors.joining(","));
     }
 
     @Test

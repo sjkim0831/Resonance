@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "ruleVersion": "certificate-number-exact-v2",
+  "active": true,
+  "reloadWithinSeconds": 1,
+  "numberComparison": {
+    "requirePdfScreenDigitsExact": true,
+    "ignoreThousandsGrouping": true,
+    "databaseComparison": "ROUND_HALF_UP_TO_PDF_SCALE"
+  }
+}

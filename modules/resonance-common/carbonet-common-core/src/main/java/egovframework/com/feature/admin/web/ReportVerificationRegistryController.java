@@ -1,6 +1,7 @@
 package egovframework.com.feature.admin.web;
 
 import egovframework.com.feature.admin.service.ReportVerificationRegistryService;
+import egovframework.com.feature.admin.service.CertificateVerificationScreenDesignRegistry;
 import egovframework.com.feature.admin.service.ReportProofreadingService;
 import egovframework.com.feature.admin.service.ReportPdfIssuanceService;
 import egovframework.com.feature.admin.service.ReportOcrGatewayService;
@@ -9,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -31,6 +33,14 @@ public class ReportVerificationRegistryController {
     private final ReportProofreadingService reportProofreadingService;
     private final ReportPdfIssuanceService reportPdfIssuanceService;
     private final ReportOcrGatewayService reportOcrGatewayService;
+
+    @GetMapping({
+            "/api/home/certificate-verify/screen-design",
+            "/api/en/home/certificate-verify/screen-design"
+    })
+    public ResponseEntity<Map<String, Object>> screenDesign() {
+        return ResponseEntity.ok(CertificateVerificationScreenDesignRegistry.activeDesign());
+    }
 
     @PostMapping({
             "/api/admin/emission-survey-report/issue",

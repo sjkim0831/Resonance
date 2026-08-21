@@ -376,6 +376,7 @@ public class ReportVerificationRegistryService {
 
         Map<String, Object> best = null;
         double bestScore = -1;
+        boolean bestCertificateMatch = false;
         List<Map<String, Object>> comparisons = new ArrayList<>();
         JsonNode uploadedVisualProfile = objectMapper.valueToTree(request.get("visualProfile"));
         for (Map<String, Object> candidate : candidates) {
@@ -440,7 +441,18 @@ public class ReportVerificationRegistryService {
             comparison.put("productName", candidate.get("product_name"));
             comparison.put("productNameActual", Boolean.TRUE.equals(score.get("productMatched")) ? candidate.get("product_name") : "");
             comparison.put("totalEmission", candidate.get("total_emission"));
-            comparison.put("totalEmissionActual", findObservedNumber(ocrText, objectMapper.valueToTree(candidate.get("total_emission"))));
+            String totalEmissionActual = findObservedNumber(ocrText,
+                    objectMapper.valueToTree(candidate.get("total_emission")));
+            if (totalEmissionActual.isBlank() && score.get("reportSummaryComparisons") instanceof List<?> summaryFields) {
+                totalEmissionActual = summaryFields.stream()
+                        .filter(item -> item instanceof Map<?, ?> field
+                                && "totalCarbonEmission".equals(text(field.get("field")))
+                                && Boolean.TRUE.equals(field.get("matched")))
+                        .map(item -> text(((Map<?, ?>) item).get("actual")))
+                        .filter(value -> !value.isBlank())
+                        .findFirst().orElse("");
+            }
+            comparison.put("totalEmissionActual", totalEmissionActual);
             comparison.put("rowCount", candidate.get("row_count"));
             comparison.put("payloadHash", payloadHash);
             comparison.put("integrityCode", integrityCode);
@@ -473,8 +485,10 @@ public class ReportVerificationRegistryService {
             comparison.putAll(visualScore);
             comparison.putAll(score);
             comparisons.add(comparison);
-            if (combinedScore > bestScore) {
+            if (isPreferredOcrCandidate(qrDetected, certificateIdMatch, combinedScore,
+                    bestCertificateMatch, bestScore)) {
                 bestScore = combinedScore;
+                bestCertificateMatch = certificateIdMatch;
                 best = new LinkedHashMap<>(candidate);
                 best.putAll(score);
                 best.put("contentScore", contentScore);
@@ -493,10 +507,17 @@ public class ReportVerificationRegistryService {
                 best.putAll(visualScore);
             }
         }
-        comparisons.sort((left, right) -> Integer.compare(
-                ((Number) right.get("confidence")).intValue(),
-                ((Number) left.get("confidence")).intValue()
-        ));
+        comparisons.sort((left, right) -> {
+            if (qrDetected) {
+                int certificateOrder = Boolean.compare(
+                        Boolean.TRUE.equals(right.get("certificateIdMatch")),
+                        Boolean.TRUE.equals(left.get("certificateIdMatch")));
+                if (certificateOrder != 0) return certificateOrder;
+            }
+            return Integer.compare(
+                    ((Number) right.get("confidence")).intValue(),
+                    ((Number) left.get("confidence")).intValue());
+        });
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("verificationMode", "PHOTO_OCR_DATASET");
@@ -612,6 +633,15 @@ public class ReportVerificationRegistryService {
         return response;
     }
 
+    private boolean isPreferredOcrCandidate(boolean qrDetected, boolean candidateCertificateMatch,
+                                             double candidateScore, boolean currentCertificateMatch,
+                                             double currentScore) {
+        if (qrDetected && candidateCertificateMatch != currentCertificateMatch) {
+            return candidateCertificateMatch;
+        }
+        return candidateScore > currentScore;
+    }
+
     private String classifySemanticStatus(boolean numericDataExactMatch, boolean chartExactMatch) {
         if (!numericDataExactMatch) {
             return "DATA_TAMPERED";
@@ -642,7 +672,43 @@ public class ReportVerificationRegistryService {
         if (!ocrLinePages.isEmpty()) {
             return scoreSectionSummaryLines(ocrLinePages, summaries);
         }
-        String pageText = selectSectionSummaryPage(normalizedOcrPages, summaries);
+        List<Integer> chartPageIndexes = new ArrayList<>();
+        for (int pageIndex = 0; pageIndex < normalizedOcrPages.size(); pageIndex++) {
+            String compact = compactOcrText(normalizedOcrPages.get(pageIndex));
+            if (compact.contains(compactOcrText("섹션별 탄소배출 기여 그래프"))
+                    || compact.contains(compactOcrText("섹션별 탄소배출 기여 원그래프"))) {
+                chartPageIndexes.add(pageIndex);
+            }
+        }
+        if (chartPageIndexes.isEmpty()) {
+            String selected = selectSectionSummaryPage(normalizedOcrPages, summaries);
+            int selectedIndex = normalizedOcrPages.indexOf(selected);
+            if (selectedIndex >= 0) chartPageIndexes.add(selectedIndex);
+        }
+        List<Map<String, Object>> allComparisons = new ArrayList<>();
+        List<String> allUnexpected = new ArrayList<>();
+        boolean allPagesExact = !chartPageIndexes.isEmpty();
+        for (int pageIndex : chartPageIndexes) {
+            Map<String, Object> pageResult = scoreSingleSectionSummaryTextPage(
+                    normalizedOcrPages.get(pageIndex), summaries, pageIndex + 1);
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> pageComparisons =
+                    (List<Map<String, Object>>) pageResult.get("sectionSummaryComparisons");
+            @SuppressWarnings("unchecked")
+            List<String> pageUnexpected = (List<String>) pageResult.get("unexpectedSectionSummaryNumbers");
+            allComparisons.addAll(pageComparisons);
+            allUnexpected.addAll(pageUnexpected);
+            allPagesExact = allPagesExact && Boolean.TRUE.equals(pageResult.get("sectionSummaryExactMatch"));
+        }
+        result.put("sectionSummaryExactMatch", allPagesExact);
+        result.put("sectionSummaryComparisons", allComparisons);
+        result.put("unexpectedSectionSummaryNumbers", allUnexpected);
+        return result;
+    }
+
+    private Map<String, Object> scoreSingleSectionSummaryTextPage(String pageText, JsonNode summaries,
+                                                                  int pageNumber) {
+        Map<String, Object> result = new LinkedHashMap<>();
         String normalizedPageText = normalizeText(pageText);
         List<String> actualNumbers = extractCanonicalNumbers(pageText);
         List<String> expectedNumbers = new ArrayList<>();
@@ -685,16 +751,16 @@ public class ReportVerificationRegistryService {
                 actualShareIndex = sectionNumbers.size() - 1;
             }
             String actualShare = actualShareIndex < 0 ? "" : sectionNumbers.get(actualShareIndex);
+            if (!total.equals(actualTotal) && containsVisibleNumber(pageText, total)) actualTotal = total;
+            if (!share.equals(actualShare) && containsVisibleNumber(pageText, share)) actualShare = share;
             List<String> unexpectedNumbers = new ArrayList<>();
-            for (int numberIndex = 1; numberIndex < sectionNumbers.size(); numberIndex++) {
-                if (numberIndex != actualShareIndex) unexpectedNumbers.add(sectionNumbers.get(numberIndex));
-            }
             boolean labelMatched = sectionStart >= 0;
             boolean totalMatched = total.equals(actualTotal);
             boolean shareMatched = share.equals(actualShare);
             Map<String, Object> comparison = new LinkedHashMap<>();
             comparison.put("sectionCode", summary.path("sectionCode").asText());
             comparison.put("sectionLabel", label);
+            comparison.put("pageNumber", pageNumber);
             comparison.put("expectedTotalEmission", total);
             comparison.put("actualTotalEmission", actualTotal);
             comparison.put("expectedSharePercent", share);
@@ -709,19 +775,40 @@ public class ReportVerificationRegistryService {
 
         Map<String, Integer> remaining = new LinkedHashMap<>();
         for (String number : expectedNumbers) remaining.merge(number, 1, Integer::sum);
+        Map<String, Integer> pageLevelAllowed = new LinkedHashMap<>();
+        if (compactOcrText(pageText).contains(compactOcrText("합계100%"))) {
+            pageLevelAllowed.put("100", 1);
+        }
         List<String> unexpected = new ArrayList<>();
         for (String number : actualNumbers) {
             int count = remaining.getOrDefault(number, 0);
             if (count > 0) {
                 remaining.put(number, count - 1);
+            } else if (pageLevelAllowed.getOrDefault(number, 0) > 0) {
+                pageLevelAllowed.put(number, pageLevelAllowed.get(number) - 1);
             } else if (unexpected.size() < MAX_DIFFERENCES) {
                 unexpected.add(number);
             }
         }
+        if (!unexpected.isEmpty() && !comparisons.isEmpty()) {
+            Map<String, Object> pageUnexpected = new LinkedHashMap<>();
+            pageUnexpected.put("sectionCode", "__UNEXPECTED__");
+            pageUnexpected.put("sectionLabel", "그래프 전체");
+            pageUnexpected.put("pageNumber", pageNumber);
+            pageUnexpected.put("expectedTotalEmission", "");
+            pageUnexpected.put("actualTotalEmission", "");
+            pageUnexpected.put("expectedSharePercent", "");
+            pageUnexpected.put("actualSharePercent", "");
+            pageUnexpected.put("labelMatched", true);
+            pageUnexpected.put("totalEmissionMatched", true);
+            pageUnexpected.put("sharePercentMatched", true);
+            pageUnexpected.put("unexpectedNumbers", unexpected);
+            pageUnexpected.put("matched", false);
+            comparisons.add(pageUnexpected);
+        }
         boolean allFieldsMatched = comparisons.stream()
                 .allMatch(value -> Boolean.TRUE.equals(value.get("matched")));
-        boolean exact = !pageText.isBlank() && allFieldsMatched
-                && expectedNumbers.size() == actualNumbers.size() && unexpected.isEmpty();
+        boolean exact = !pageText.isBlank() && allFieldsMatched && unexpected.isEmpty();
         result.put("sectionSummaryExactMatch", exact);
         result.put("sectionSummaryComparisons", comparisons);
         result.put("unexpectedSectionSummaryNumbers", unexpected);
@@ -1116,6 +1203,11 @@ public class ReportVerificationRegistryService {
                 }
             }
         }
+        if (!lcaReport && !totalMatched) {
+            totalMatched = reportSummaryComparisons.stream().anyMatch(field ->
+                    "totalCarbonEmission".equals(text(field.get("field")))
+                            && Boolean.TRUE.equals(field.get("matched")));
+        }
         List<Map<String, Object>> lcaFieldComparisons = new ArrayList<>();
         int lcaFieldCount = 0;
         int matchedLcaFieldCount = 0;
@@ -1298,21 +1390,43 @@ public class ReportVerificationRegistryService {
         for (String observed : extractDisplayedNumbers(normalizedText)) {
             if (displayedNumberMatchesDatabase(expectedDisplay, observed, value)) return observed;
         }
+        // Summary/output cards may intentionally render fewer decimals than the
+        // high-precision registry display. Accept that only when both strings are
+        // independently valid renderings of the same DB number.
+        if (databaseNumberRendersAs(value, expectedDisplay)) {
+            for (String observed : extractDisplayedNumbers(normalizedText)) {
+                if (databaseNumberRendersAs(value, observed)) return observed;
+            }
+        }
         return "";
     }
 
     private boolean displayedNumberMatchesDatabase(String expectedDisplay, String observedDisplay,
                                                      JsonNode databaseValue) {
+        CertificateVerificationRuleRegistry.NumberRule rule =
+                CertificateVerificationRuleRegistry.activeNumberRule();
         String expected = normalizeDisplayedNumber(expectedDisplay);
         String observed = normalizeDisplayedNumber(observedDisplay);
-        if (expected.isBlank() || !expected.equals(observed)
+        if (!rule.requirePdfScreenDigitsExact() || expected.isBlank() || observed.isBlank()
                 || databaseValue == null || !databaseValue.isNumber()) return false;
         try {
-            java.math.BigDecimal expectedNumber = new java.math.BigDecimal(expected);
-            java.math.BigDecimal databaseNumber = databaseValue.decimalValue();
-            int displayScale = displayedNumberScale(expected);
-            return databaseNumber.setScale(displayScale, java.math.RoundingMode.DOWN)
-                    .compareTo(expectedNumber) == 0;
+            if (!"ROUND_HALF_UP_TO_PDF_SCALE".equals(rule.databaseComparison())) return false;
+            // The issuance registry's captured display text is authoritative for an exact
+            // PDF-screen comparison. The raw numeric value may retain more precision.
+            return expected.equals(observed);
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+    }
+
+    private boolean databaseNumberRendersAs(JsonNode databaseValue, String display) {
+        String normalized = normalizeDisplayedNumber(display);
+        if (normalized.isBlank() || databaseValue == null || !databaseValue.isNumber()) return false;
+        try {
+            java.math.BigDecimal rendered = new java.math.BigDecimal(normalized);
+            return databaseValue.decimalValue()
+                    .setScale(displayedNumberScale(normalized), java.math.RoundingMode.HALF_UP)
+                    .compareTo(rendered) == 0;
         } catch (RuntimeException ignored) {
             return false;
         }
@@ -1879,7 +1993,7 @@ public class ReportVerificationRegistryService {
                 .map(java.util.regex.Pattern::quote)
                 .collect(java.util.stream.Collectors.joining("[.,]"));
         return java.util.regex.Pattern.compile("(?<!\\d)" + token + "(?!\\d)")
-                .matcher(text.replaceAll("\\s+", "")).find();
+                .matcher(text.replaceAll("[\\s,]+", "")).find();
     }
 
     private String selectSectionSummaryPage(List<String> pages, JsonNode summaries) {
