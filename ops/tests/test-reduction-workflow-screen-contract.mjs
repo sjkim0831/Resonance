@@ -12,6 +12,7 @@ const page = read("projects/carbonet-frontend/source/src/features/reduction-work
 const routes = read("projects/carbonet-frontend/source/src/app/routes/families/emissionMonitoringFamily.ts");
 const bootstrap = read("projects/carbonet-frontend/source/src/lib/api/appBootstrap.ts");
 const assignmentPage = read("projects/carbonet-frontend/source/src/features/work-assignment/WorkAssignmentPage.tsx");
+const globalShell = read("projects/carbonet-frontend/source/src/features/home-entry/GlobalUserGnbShell.tsx");
 const catalog = JSON.parse(read("projects/carbonet-frontend/src/main/resources/static/react-app/runtime/catalog.json"));
 
 assert.equal(contract.schemaVersion, 1);
@@ -45,6 +46,10 @@ for (const token of ["data-reduction-process", "data-reduction-step", "INPUT_FUN
 }
 for (const actor of ["REDUCTION_MANAGER", "DATA_ANALYST", "VERIFIER", "APPROVER", "AUDITOR"]) assert.ok(assignmentPage.includes(actor), `assignment actor ${actor}`);
 for (const forbidden of ["<header", "HeaderBrand", "HeaderDesktopNav", "HeaderMobileMenu", "<footer"]) assert.equal(assignmentPage.includes(forbidden), false, `assignment page must use global shell: ${forbidden}`);
+assert.ok(globalShell.includes("data-global-user-gnb"));
+assert.ok(globalShell.includes("<CommonUserFooter"));
+assert.ok(globalShell.includes("[data-global-user-page] footer"));
+assert.ok(globalShell.includes("payload.isLoggedIn || session.value?.authenticated"));
 for (const forbidden of ["<header", "<footer", "gnb-depth2", "GlobalUserGnbShell", "CommonUserFooter"]) {
   assert.equal(page.includes(forbidden), false, `page must not own global shell: ${forbidden}`);
 }
