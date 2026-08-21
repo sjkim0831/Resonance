@@ -27,7 +27,33 @@ status="$(curl --cacert "$CA_CERT" -sS -o "$response" -w '%{http_code}' \
   --header @"$auth_header" -H 'content-type: application/json' \
   -X POST "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands" \
   --data-binary @"$payload_file")"
-[[ "$status" == 200 ]] || { echo "[project-delivery-e2e] command failed: HTTP $status" >&2; exit 3; }
+if [[ "$status" != 200 ]]; then
+  diagnostic_message="$(RESPONSE_FILE="$response" node <<'NODE'
+const fs = require('fs');
+
+let value;
+try {
+  value = JSON.parse(fs.readFileSync(process.env.RESPONSE_FILE, 'utf8'));
+} catch {
+  process.stdout.write('unparseable-response');
+  process.exit(0);
+}
+
+const raw = typeof value?.message === 'string' ? value.message : 'unspecified';
+const safe = raw
+  .replace(/[\r\n\t]+/g, ' ')
+  .replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi, '$1 [REDACTED]')
+  .replace(/((?:authorization|cookie|password|passwd|token|secret)[A-Za-z0-9_.-]*\s*[:=]\s*)[^\s;,]+/gi, '$1[REDACTED]')
+  .replace(/\b[A-Za-z0-9_-]{60,}\b/g, '[REDACTED]')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .slice(0, 240);
+process.stdout.write(safe || 'unspecified');
+NODE
+)"
+  echo "[project-delivery-e2e] command failed: HTTP $status message=$diagnostic_message" >&2
+  exit 3
+fi
 
 RESPONSE="$response" node <<'NODE'
 const fs=require('fs');

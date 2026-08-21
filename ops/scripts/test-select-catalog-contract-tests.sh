@@ -15,11 +15,22 @@ mapfile -t all < <(printf '%s\n' ops/scripts/auto-deploy-main.sh | bash "$select
 [[ "$(printf '%s\n' "${all[@]}" | sort -u | wc -l)" == "$expected_all_count" ]]
 printf '%s\n' "${all[@]}" | grep -Fxq ops/tests/test-process-account-relay-design-compiler.mjs
 printf '%s\n' "${all[@]}" | grep -Fxq ops/tests/test-my-work-summary-screen-contract.mjs
+printf '%s\n' "${all[@]}" | grep -Fxq ops/tests/test-project-delivery-e2e-diagnostics.sh
 for selector_path in \
     ops/scripts/select-catalog-contract-tests.sh \
     ops/scripts/test-select-catalog-contract-tests.sh; do
   mapfile -t selector_self < <(printf '%s\n' "$selector_path" | bash "$selector" --paths-stdin)
   [[ "${#selector_self[@]}" == "$expected_all_count" ]]
+done
+
+for project_delivery_contract_path in \
+    ops/scripts/resonance-project-delivery-e2e.sh \
+    ops/tests/test-project-delivery-e2e-diagnostics.sh; do
+  mapfile -t project_delivery_contract_tests < <(
+    printf '%s\n' "$project_delivery_contract_path" | bash "$selector" --paths-stdin
+  )
+  [[ "${#project_delivery_contract_tests[@]}" == 1 ]]
+  [[ "${project_delivery_contract_tests[0]}" == ops/tests/test-project-delivery-e2e-diagnostics.sh ]]
 done
 
 python3 - "$root/ops/scripts/auto-deploy-main.sh" <<'PY'

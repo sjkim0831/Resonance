@@ -45,6 +45,7 @@ all_tests=(
   ops/tests/test-certificate-verify-fast-lane.sh
   ops/tests/test-process-account-relay-design-compiler.mjs
   ops/tests/test-my-work-summary-screen-contract.mjs
+  ops/tests/test-project-delivery-e2e-diagnostics.sh
 )
 
 add_test() {
@@ -113,6 +114,8 @@ select_for_path() {
       add_test ops/tests/test-certificate-verify-fast-lane.sh ;;
     ops/scripts/compile-process-account-relay-design.mjs|ops/tests/test-process-account-relay-design-compiler.mjs)
       add_test ops/tests/test-process-account-relay-design-compiler.mjs ;;
+    ops/scripts/resonance-project-delivery-e2e.sh|ops/tests/test-project-delivery-e2e-diagnostics.sh)
+      add_test ops/tests/test-project-delivery-e2e-diagnostics.sh ;;
     ops/tests/test-my-work-summary-screen-contract.mjs|\
     ops/scripts/resonance-project-task-browser-e2e.mjs|\
     projects/carbonet-frontend/source/src/features/emission-project-list/EmissionMyTasksPage.tsx|\
