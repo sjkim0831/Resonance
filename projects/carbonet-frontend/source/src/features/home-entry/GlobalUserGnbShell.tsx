@@ -12,6 +12,7 @@ const USER_GNB_EXCLUDED_PATHS = [
   "/join/",
   "/find/",
   "/error/",
+  "/home/certificate-verify",
   "/admin/emission/survey-report-print",
   "/admin/emission/survey-report-lca-summary"
 ];
