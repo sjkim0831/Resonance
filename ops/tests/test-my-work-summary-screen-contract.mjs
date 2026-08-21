@@ -10,7 +10,6 @@ const root = path.resolve(process.env.RESONANCE_ROOT || path.join(testRoot, "../
 const relative = {
   contract: "projects/carbonet-frontend/source/src/features/emission-project-list/emissionMyTasksScreen.contract.json",
   page: "projects/carbonet-frontend/source/src/features/emission-project-list/EmissionMyTasksPage.tsx",
-  taskQuest: "projects/carbonet-frontend/source/src/features/task-quest/TaskQuestPanel.tsx",
   accounts: "projects/carbonet-frontend/source/src/features/home-entry/TestAccountSwitcher.tsx",
   manifest: "projects/carbonet-frontend/source/src/platform/screen-registry/pageManifests.ts",
   help: "projects/carbonet-frontend/source/src/platform/screen-registry/helpContent.ts",
@@ -26,7 +25,6 @@ const read = (key) => readFileSync(path.join(root, relative[key]), "utf8");
 const baseline = {
   contract: JSON.parse(read("contract")),
   page: read("page"),
-  taskQuest: read("taskQuest"),
   accounts: read("accounts"),
   manifest: read("manifest"),
   help: read("help"),
@@ -136,7 +134,7 @@ function add(violations, failed, code) {
 
 function validate(candidate) {
   const violations = [];
-  const { contract, page, taskQuest, accounts, manifest, help, verificationInventory, routeFamily, service, controller, designDoc, browserE2e } = candidate;
+  const { contract, page, accounts, manifest, help, verificationInventory, routeFamily, service, controller, designDoc, browserE2e } = candidate;
 
   add(violations, contract.schemaVersion !== 2 || contract.pageId !== "emission-my-tasks" || contract.route !== "/emission/my-tasks" || contract.runtimeScope !== "EMISSION", "IDENTITY");
   add(violations, contract.designSystem !== "KRDS" || contract.templateCode !== "WORK_EXECUTION_HUB", "DESIGN_SYSTEM");
@@ -206,7 +204,6 @@ function validate(candidate) {
     !controller.includes('@RequestParam(name="compact",defaultValue="false") String compact') ||
     !controller.includes('boolean compactRequested="true".equalsIgnoreCase(compact)') ||
     !controller.includes("status,period,compactRequested") ||
-    !taskQuest.includes('fetch(`${api}?compact=true`') ||
     compactBranch < 0 || fullCatalogBranch < 0 || compactBranch > fullCatalogBranch ||
     summaryBranch < 0 || summaryBranch > compactBranch ||
     notificationsBranch < 0 || notificationsBranch > compactBranch ||
@@ -348,7 +345,6 @@ killed("compact page request deletion", { page: baseline.page.replace("&compact=
 killed("compact backend bypass deletion", { service: baseline.service.replace("if(compact)", "if(false)") }, "COMPACT_PAGE_API");
 killed("compact controller forwarding deletion", { controller: baseline.controller.replace("status,period,compactRequested", "status,period,false") }, "COMPACT_PAGE_API");
 killed("compact empty-value tolerance deletion", { controller: baseline.controller.replace('@RequestParam(name="compact",defaultValue="false") String compact', '@RequestParam(defaultValue="false") boolean compact') }, "COMPACT_PAGE_API");
-killed("global compact fetch deletion", { taskQuest: baseline.taskQuest.replace('fetch(`${api}?compact=true`', 'fetch(api') }, "COMPACT_PAGE_API");
 killed("design scope expansion", { designDoc: baseline.designDoc.replace("현재 실행 범위: `EMISSION`", "현재 실행 범위: `ALL`") }, "DESIGN_DOC_SCOPE");
 killed("design exception deletion", { designDoc: baseline.designDoc.replaceAll("EMISSION_PROJECT_CORRECT", "EMISSION_PROJECT_APPROVE") }, "DESIGN_DOC_EXCEPTION_BRANCH");
 {

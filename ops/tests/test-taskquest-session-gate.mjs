@@ -26,7 +26,7 @@ const required = [
   ["reactive session hook call", "panel", "const sessionState = useFrontendSession()"],
   ["shared fail-closed gate", "panel", "const canLoadPrivateTasks = canLoadTaskQuestPrivateTasks(sessionState.value)"],
   ["private request guard", "panel", "async function load() {\n    const sequence = beginTaskQuestPrivateLoad(privateLoadSequence);\n    if(!canLoadPrivateTasks){setData(null);setLoading(false);return;}"],
-  ["private emission task request", "panel", 'fetch(`${api}?compact=true`, { credentials: "include" })'],
+  ["private emission task request", "panel", 'fetch(api, { credentials: "include" })'],
   ["effect private request guard", "panel", "useEffect(() => {\n    if(!canLoadPrivateTasks){invalidateTaskQuestPrivateLoad(privateLoadSequence);setData(null);setLoading(false);return;}"],
   ["stale private response rejection", "panel", "if (!isCurrentTaskQuestPrivateLoad(privateLoadSequence, sequence)) return"],
   ["unauthorized response reset", "panel", "if (isCurrentTaskQuestPrivateLoad(privateLoadSequence, sequence)) setData(null)"],

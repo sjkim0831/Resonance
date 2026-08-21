@@ -643,7 +643,7 @@ export function TaskQuestPanel({
     const sequence = beginTaskQuestPrivateLoad(privateLoadSequence);
     if(!canLoadPrivateTasks){setData(null);setLoading(false);return;}
     try {
-      const response = await fetch(`${api}?compact=true`, { credentials: "include" });
+      const response = await fetch(api, { credentials: "include" });
       if (response.status === 401 || response.status === 403) {
         if (isCurrentTaskQuestPrivateLoad(privateLoadSequence, sequence)) setData(null);
         return;
