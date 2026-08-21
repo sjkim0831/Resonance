@@ -259,6 +259,7 @@ function validate(candidate) {
   add(violations, !browserE2e.includes('[data-my-work-summary][data-page-id="emission-my-tasks"]') || !browserE2e.includes("assertMyTasksScreen") || !browserE2e.includes('getAttribute("data-load-state")'), "BROWSER_ROOT_CONTRACT");
   for (const sectionCode of SECTION_CODES) add(violations, !browserE2e.includes(`"${sectionCode}"`), `BROWSER_SECTION_${sectionCode}`);
   add(violations, !browserE2e.includes("data-primary-task-id") || !browserE2e.includes("data-task-id") || !browserE2e.includes("selectOption(disposableProjectId)"), "BROWSER_TASK_IDENTITY");
+  add(violations, !page.includes('id="my-work-project"') || !browserE2e.includes('root.locator("#my-work-project").selectOption(disposableProjectId)') || browserE2e.includes('getByLabel("프로젝트"'), "BROWSER_LOCALE_NEUTRAL_PROJECT_SELECTOR");
   add(violations, /page\.locator\("article"\)[\s\S]{0,180}업무 시작/.test(browserE2e), "BROWSER_LEGACY_ARTICLE_SELECTOR");
   add(violations, !browserE2e.includes("wrong actor transition expected 403") || !browserE2e.includes("post-transition task lookup"), "BROWSER_ACTOR_AND_READBACK");
 
@@ -324,6 +325,7 @@ killed("active actor denial deletion", { service: baseline.service.replace("TASK
 killed("backend QA member drift", { service: baseline.service.replace('"EXCEPTION", "RECOVERY"', '"EXCEPTION", "CONFLICT"') }, "BACKEND_QA_CANONICAL_SET");
 killed("backend QA duplicate guard deletion", { service: baseline.service.replace("scenarioTypes.size()==CANONICAL_QA_SCENARIO_TYPES.size()", "scenarioTypes.size()>=CANONICAL_QA_SCENARIO_TYPES.size()") }, "BACKEND_QA_EXACT_VALIDATOR");
 killed("browser exact selector deletion", { browserE2e: baseline.browserE2e.replaceAll("data-primary-task-id", "data-removed-primary-task-id") }, "BROWSER_TASK_IDENTITY");
+killed("browser localized project selector reintroduction", { browserE2e: baseline.browserE2e.replace('root.locator("#my-work-project")', 'root.getByLabel("프로젝트", { exact: true })') }, "BROWSER_LOCALE_NEUTRAL_PROJECT_SELECTOR");
 killed("abort wiring deletion", { page: baseline.page.replace(/load\([\w.]+\.signal\)/, "load()") }, "ABORTABLE_LOAD");
 killed("design scope expansion", { designDoc: baseline.designDoc.replace("현재 실행 범위: `EMISSION`", "현재 실행 범위: `ALL`") }, "DESIGN_DOC_SCOPE");
 killed("design exception deletion", { designDoc: baseline.designDoc.replaceAll("EMISSION_PROJECT_CORRECT", "EMISSION_PROJECT_APPROVE") }, "DESIGN_DOC_EXCEPTION_BRANCH");

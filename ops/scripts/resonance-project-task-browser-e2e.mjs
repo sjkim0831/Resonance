@@ -334,7 +334,7 @@ try {
       await page.waitForFunction((name) => (document.body?.innerText || "").includes(String(name)), projectName, { timeout: 20_000 });
       const root = page.locator('[data-my-work-summary][data-page-id="emission-my-tasks"]');
       await assertMyTasksScreen(page, `disposable project=${disposableProjectId}`, [actionable.id]);
-      await root.getByLabel("프로젝트", { exact: true }).selectOption(disposableProjectId);
+      await root.locator("#my-work-project").selectOption(disposableProjectId);
       await page.waitForFunction((taskId) => document.querySelector('[data-section-code="NEXT_ACTION"]')?.getAttribute("data-primary-task-id") === String(taskId), actionable.id, { timeout: 10_000 });
       const taskRow = root.locator(`[data-section-code="TASK_QUEUE"] [data-task-id="${actionable.id}"]`);
       await taskRow.waitFor({ state: "visible", timeout: 10_000 });
