@@ -142,7 +142,11 @@ requireText("page", 'item.x + 2 < previousItem.x || Math.abs(item.y - previousIt
 requireText("page", '.join("\\n")');
 requireText("page", 'throw new Error(`Report page ${pageNumber} has no readable text layer. Reissue the PDF before verification.`)');
 requireText("page", 'digitalTextPages: string[] | null = null');
-requireText("page", 'const recognized = await recognizeReportPhotos(pages');
+requireText("page", 'recognized = await recognizeReportPhotos(pages');
+requireText("page", 'exactPdfVerification?.status === "EXACT_PDF_MATCH"');
+requireText("page", 'readableDigitalPages.every(Boolean)');
+requireText("page", 'engine: "ISSUED_PDF_TEXT_LAYER"');
+requireText("page", '바이트가 일치한 발급 PDF의 텍스트 레이어로 DB 전체 비교를 즉시 계속했습니다.');
 requireText("page", 'verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType, recognized.pageTexts, recognized.pages)');
 requireText("page", 'detail.actual || (en ? "MISSING" : "누락")');
 requireText("page", 'token.matched ? "MATCH" : "MISMATCH"');

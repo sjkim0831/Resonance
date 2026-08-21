@@ -3956,11 +3956,37 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
       // Visible pixels are authoritative for tamper detection. A digital PDF's
       // hidden text layer can retain the original number after a bitmap overlay,
       // so every upload is OCR-read from the rendered pages as well.
-      const recognized = await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
-      appendVerificationLog("OK",
-        digitalTextPages
-          ? (en ? "Visible PDF pixels were OCR-read independently from the text layer." : "PDF 화면 픽셀을 텍스트 레이어와 독립적으로 OCR 판독했습니다.")
-          : (en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다."),
+      let recognized;
+      let usedIssuedPdfTextFallback = false;
+      const exactIssuedPdf = exactPdfVerification?.status === "EXACT_PDF_MATCH";
+      const readableDigitalPages = digitalTextPages?.map((text) => text.trim()) || [];
+      if (exactIssuedPdf && readableDigitalPages.length && readableDigitalPages.every(Boolean)) {
+        usedIssuedPdfTextFallback = true;
+        recognized = {
+          text: readableDigitalPages.join("\n"),
+          pageTexts: readableDigitalPages,
+          pages: readableDigitalPages.map((text, index) => ({
+            pageNumber: index + 1,
+            text,
+            confidence: 100,
+            lines: []
+          })),
+          confidence: 100,
+          engine: "ISSUED_PDF_TEXT_LAYER"
+        };
+        appendVerificationLog("WARN",
+          en ? "DB comparison continued directly from the byte-exact issued PDF text layer."
+            : "바이트가 일치한 발급 PDF의 텍스트 레이어로 DB 전체 비교를 즉시 계속했습니다.",
+          `pages=${readableDigitalPages.length}`);
+      } else {
+        recognized = await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
+      }
+      appendVerificationLog(usedIssuedPdfTextFallback ? "WARN" : "OK",
+        usedIssuedPdfTextFallback
+          ? (en ? "Issued PDF text fallback completed." : "발급 PDF 텍스트 대체 판독을 완료했습니다.")
+          : digitalTextPages
+            ? (en ? "Visible PDF pixels were OCR-read independently from the text layer." : "PDF 화면 픽셀을 텍스트 레이어와 독립적으로 OCR 판독했습니다.")
+            : (en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다."),
         `pages=${recognized.pageTexts.length}, characters=${recognized.text.length}, engine=${recognized.engine}, engineConfidence=${Math.round(recognized.confidence)}%`);
       const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType, recognized.pageTexts, recognized.pages);
       const orderedEvidenceMismatchCount = verification.ocrEvidencePageComparisons
