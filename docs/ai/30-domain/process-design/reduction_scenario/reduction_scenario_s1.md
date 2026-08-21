@@ -1,0 +1,3117 @@
+# REDUCTION_SCENARIO / REDUCTION_SCENARIO_S1
+
+## Purpose and completion condition
+
+감축 시나리오 비교의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.
+
+## ADMIN screen contract: 감축 시나리오 비교 - 요청·범위·필수정보 확인 관리자 업무 화면
+
+- Route: `/admin/generated/reduction-scenario/reduction-scenario-s1`
+- Responsible actor: `DATA_ANALYST`
+- Business purpose: 감축 시나리오 비교 프로세스의 감축 시나리오 비교 - 요청·범위·필수정보 확인 단계에서 DATA_ANALYST 액터가 REDUCTION_SCENARIO_REQUEST 명령을 안전하게 수행하여 다음 완료 기준을 달성한다: 필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.
+- Entry condition: 다음 프로세스 시작 조건을 충족한다: 요청자 계정, 담당 액터, 테넌트·프로젝트 범위, 필수 기준정보와 선행 업무가 준비되어 있다. 현재 상태는 READY이며 서버가 테넌트·프로젝트·액터 권한을 확인한 경우에만 진입한다.
+- Completion condition: 다음 완료 기준을 검증한다: 필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다. 결과·버전·감사 증적을 저장한 뒤 STEP_1_COMPLETED 상태로 원자적으로 전이한다.
+
+### Layout, fields, and commands
+
+- KPI: [
+  {
+    "code": "COMPLETION_RATE",
+    "unit": "PERCENT",
+    "label": "감축 시나리오 비교 - 요청·범위·필수정보 확인 완료율"
+  },
+  {
+    "code": "SLA_REMAINING",
+    "unit": "MINUTE",
+    "label": "처리 기한 잔여시간"
+  },
+  {
+    "code": "BLOCKING_ERROR",
+    "unit": "COUNT",
+    "label": "차단 오류 수"
+  },
+  {
+    "code": "RECOVERY_RATE",
+    "unit": "PERCENT",
+    "label": "오류 복구 성공률"
+  }
+]
+- Sections: [
+  {
+    "code": "TASK_CONTEXT",
+    "label": "업무 문맥·진행 상태"
+  },
+  {
+    "code": "SEARCH_FILTER",
+    "label": "검색·필터"
+  },
+  {
+    "code": "WORKSPACE",
+    "label": "핵심 데이터 작업공간"
+  },
+  {
+    "code": "EVIDENCE_HISTORY",
+    "label": "증적·변경 이력"
+  },
+  {
+    "code": "NEXT_TASK",
+    "label": "다음 업무"
+  }
+]
+- Fields: [
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "STRING",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "tenantId",
+    "fieldName": "테넌트",
+    "fieldGroup": "공통",
+    "fieldOrder": 10,
+    "validation": {
+      "minLength": 1
+    },
+    "apiProperty": "tenantId",
+    "controlType": "HIDDEN",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "CONTEXT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "STRING",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "projectId",
+    "fieldName": "프로젝트",
+    "fieldGroup": "공통",
+    "fieldOrder": 20,
+    "validation": {
+      "minLength": 1
+    },
+    "apiProperty": "projectId",
+    "controlType": "PROJECT_SELECT",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "CODE",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "processCode",
+    "fieldName": "프로세스 코드",
+    "fieldGroup": "공통",
+    "fieldOrder": 30,
+    "validation": {
+      "source": "SERVER_CONTEXT",
+      "required": true,
+      "immutable": true
+    },
+    "apiProperty": "processCode",
+    "controlType": "HIDDEN",
+    "sourceTable": "framework_process_definition",
+    "privacyClass": "INTERNAL",
+    "sourceColumn": "process_code",
+    "mappingStatus": "CONTEXT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "CODE",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "stepCode",
+    "fieldName": "단계 코드",
+    "fieldGroup": "공통",
+    "fieldOrder": 40,
+    "validation": {
+      "source": "SERVER_CONTEXT",
+      "required": true,
+      "immutable": true
+    },
+    "apiProperty": "stepCode",
+    "controlType": "HIDDEN",
+    "sourceTable": "framework_process_step",
+    "privacyClass": "INTERNAL",
+    "sourceColumn": "step_code",
+    "mappingStatus": "CONTEXT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "UUID",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "recordId",
+    "fieldName": "업무 레코드 ID",
+    "fieldGroup": "공통",
+    "fieldOrder": 50,
+    "validation": {
+      "source": "SERVER_CONTEXT",
+      "required": false,
+      "immutable": true
+    },
+    "apiProperty": "recordId",
+    "controlType": "HIDDEN",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "CODE",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "statusCode",
+    "fieldName": "처리 상태",
+    "fieldGroup": "공통",
+    "fieldOrder": 60,
+    "validation": {
+      "codeGroup": "WORK_STATUS"
+    },
+    "apiProperty": "statusCode",
+    "controlType": "STATUS_BADGE",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "CODE",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "ownerActorCode",
+    "fieldName": "담당 액터",
+    "fieldGroup": "공통",
+    "fieldOrder": 70,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": false,
+      "required": true,
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "apiProperty": "ownerActorCode",
+    "controlType": "ACTOR_SELECT",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "INTEGER",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "rowVersion",
+    "fieldName": "데이터 버전",
+    "fieldGroup": "공통",
+    "fieldOrder": 80,
+    "validation": {
+      "min": 0
+    },
+    "apiProperty": "rowVersion",
+    "controlType": "HIDDEN",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DATETIME",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "createdAt",
+    "fieldName": "등록 일시",
+    "fieldGroup": "공통",
+    "fieldOrder": 90,
+    "validation": {
+      "type": "date-time",
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "createdAt",
+    "controlType": "DATETIME",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DATETIME",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "updatedAt",
+    "fieldName": "최종 수정 일시",
+    "fieldGroup": "공통",
+    "fieldOrder": 100,
+    "validation": {
+      "type": "date-time",
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "updatedAt",
+    "controlType": "DATETIME",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "INTEGER",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "evidenceCount",
+    "fieldName": "증빙 수",
+    "fieldGroup": "공통",
+    "fieldOrder": 110,
+    "validation": {
+      "min": 0
+    },
+    "apiProperty": "evidenceCount",
+    "controlType": "EVIDENCE_LINK",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "YEAR",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "baselineYear",
+    "fieldName": "기준연도",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 200,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": false,
+      "required": true,
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "apiProperty": "baselineYear",
+    "controlType": "YEAR",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "baselineEmission",
+    "fieldName": "기준 배출량",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 210,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": false,
+      "required": true
+    },
+    "apiProperty": "baselineEmission",
+    "controlType": "NUMBER",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "YEAR",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "targetYear",
+    "fieldName": "목표연도",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 220,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": false,
+      "required": true,
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "apiProperty": "targetYear",
+    "controlType": "YEAR",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "targetReduction",
+    "fieldName": "목표 감축량",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 230,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": false,
+      "required": true
+    },
+    "apiProperty": "targetReduction",
+    "controlType": "NUMBER",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "CODE",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "reductionMethod",
+    "fieldName": "감축 수단",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 240,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": false,
+      "required": true,
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "apiProperty": "reductionMethod",
+    "controlType": "METHOD_SELECT",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "expectedReduction",
+    "fieldName": "예상 감축량",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 250,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": false,
+      "required": true
+    },
+    "apiProperty": "expectedReduction",
+    "controlType": "CALCULATED_NUMBER",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "actualReduction",
+    "fieldName": "실적 감축량",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 260,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "actualReduction",
+    "controlType": "CALCULATED_NUMBER",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "capex",
+    "fieldName": "투자비",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 270,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "capex",
+    "controlType": "CURRENCY",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "opex",
+    "fieldName": "운영비",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 280,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "opex",
+    "controlType": "CURRENCY",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "TEXT",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "taskComment",
+    "fieldName": "업무 메모",
+    "fieldGroup": "업무 처리",
+    "fieldOrder": 400,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": true,
+      "required": false,
+      "maxLength": 4000,
+      "minLength": 0
+    },
+    "apiProperty": "taskComment",
+    "controlType": "TEXTAREA",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DATETIME",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "dueAt",
+    "fieldName": "마감 일시",
+    "fieldGroup": "업무 처리",
+    "fieldOrder": 410,
+    "validation": {
+      "type": "date-time",
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "dueAt",
+    "controlType": "DATETIME",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "CODE",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "nextActorCode",
+    "fieldName": "다음 담당 액터",
+    "fieldGroup": "업무 처리",
+    "fieldOrder": 420,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": true,
+      "required": false,
+      "maxLength": 4000,
+      "minLength": 0
+    },
+    "apiProperty": "nextActorCode",
+    "controlType": "ACTOR_VIEW",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  }
+]
+- Commands and navigation: [
+  {
+    "code": "REDUCTION_SCENARIO_REQUEST",
+    "label": "감축 시나리오 비교 - 요청·범위·필수정보 확인 실행",
+    "transactional": true,
+    "idempotencyRequired": true
+  },
+  {
+    "code": "SAVE_DRAFT",
+    "label": "임시저장",
+    "transactional": true
+  },
+  {
+    "code": "ATTACH_EVIDENCE",
+    "label": "증적 연결",
+    "auditRequired": true
+  },
+  {
+    "code": "MOVE_NEXT_TASK",
+    "label": "다음 업무 이동",
+    "completionRequired": true
+  }
+]
+- Required UI states: [
+  "READY",
+  "LOADING",
+  "EMPTY",
+  "SAVING",
+  "ERROR",
+  "FORBIDDEN",
+  "CONFLICT",
+  "RECOVERY",
+  "STEP_1_COMPLETED"
+]
+
+### API, transaction, and data contract
+
+- API: [
+  {
+    "code": "SCREEN_CONTRACT",
+    "path": "/home/api/process-executions/screen-contract",
+    "method": "GET",
+    "purpose": "라우트별 실행 계약 조회"
+  },
+  {
+    "code": "LOAD_EXECUTION",
+    "path": "/home/api/process-executions",
+    "method": "GET",
+    "purpose": "프로세스 실행 문맥 조회"
+  },
+  {
+    "code": "REDUCTION_SCENARIO_REQUEST",
+    "path": "/home/api/process-executions/{executionId}/commands",
+    "method": "POST",
+    "purpose": "감축 시나리오 비교 - 요청·범위·필수정보 확인 상태 명령 실행"
+  },
+  {
+    "code": "LOAD_DRAFT",
+    "path": "/home/api/process-executions/draft",
+    "method": "GET",
+    "purpose": "업무 임시저장 조회"
+  },
+  {
+    "code": "SAVE_DRAFT",
+    "path": "/home/api/process-executions/draft",
+    "method": "PUT",
+    "purpose": "업무 임시저장"
+  }
+]
+- Database entities: [
+  {
+    "keys": [
+      "tenantId",
+      "projectId",
+      "processCode"
+    ],
+    "entity": "framework_process_execution",
+    "versioned": true,
+    "tenantScoped": true
+  },
+  {
+    "keys": [
+      "processCode",
+      "stepCode"
+    ],
+    "entity": "framework_process_step",
+    "stateTransition": {
+      "to": "STEP_1_COMPLETED",
+      "from": "READY"
+    }
+  },
+  {
+    "keys": [
+      "tenantId",
+      "projectId",
+      "processCode",
+      "stepCode",
+      "actorCode"
+    ],
+    "entity": "framework_process_work_draft",
+    "versioned": true
+  },
+  {
+    "entity": "framework_process_execution_event",
+    "appendOnly": true,
+    "beforeAfterRequired": true
+  }
+]
+- Audit and evidence: [
+  {
+    "evidence": [
+      "request",
+      "response",
+      "stateTransition"
+    ],
+    "required": true,
+    "scenarioType": "HAPPY_PATH"
+  },
+  {
+    "evidence": [
+      "actorDecision",
+      "forbiddenResponse"
+    ],
+    "required": true,
+    "scenarioType": "AUTHORITY"
+  },
+  {
+    "evidence": [
+      "tenantBoundary",
+      "projectBoundary"
+    ],
+    "required": true,
+    "scenarioType": "ISOLATION"
+  },
+  {
+    "evidence": [
+      "validationError",
+      "rollbackState"
+    ],
+    "required": true,
+    "scenarioType": "EXCEPTION"
+  },
+  {
+    "evidence": [
+      "retry",
+      "idempotency",
+      "auditEvent"
+    ],
+    "required": true,
+    "scenarioType": "RECOVERY"
+  }
+]
+- Security and tenant isolation: 서버가 tenantId·projectId·actorCode·commandCode·rowVersion을 검증하고 최소권한, 업무분리, 객체수준 접근통제, 낙관적 잠금, 멱등성과 감사 이벤트를 적용한다.
+
+### Responsive and accessibility contract
+
+- Responsive behavior: 360px에서는 단일 열과 하단 주요 명령, 768px에서는 요약·작업영역 분리, 1280px 이상에서는 목록·상세 2열을 사용하고 표는 열 우선순위와 가로 스크롤을 적용한다.
+- Accessibility: KRDS와 WCAG 2.1 AA를 적용하고 제목 계층, 키보드 순서, 가시적 초점, 오류 요약·필드 연결, 비색상 상태 표현과 표 머리글 연결을 보장한다.
+
+## ADMIN screen contract: 감축 시나리오 비교 - 요청·범위·필수정보 확인 관리
+
+- Route: `/admin/planned/reduction/reduction-scenario/reduction-scenario-s1`
+- Responsible actor: `DATA_ANALYST`
+- Business purpose: 감축 시나리오 비교의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.
+- Entry condition: READY 상태이고 입력 계약과 액터 권한 검증을 통과해야 한다.
+- Completion condition: 필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.
+
+### Layout, fields, and commands
+
+- KPI: [
+  {
+    "code": "COMPLETION_RATE",
+    "unit": "PERCENT"
+  },
+  {
+    "code": "BLOCKING_ERROR",
+    "unit": "COUNT"
+  },
+  {
+    "code": "SLA_REMAINING",
+    "unit": "MINUTE"
+  }
+]
+- Sections: [
+  {
+    "code": "TASK_CONTEXT"
+  },
+  {
+    "code": "SEARCH_FILTER"
+  },
+  {
+    "code": "WORKSPACE"
+  },
+  {
+    "code": "EVIDENCE_HISTORY"
+  },
+  {
+    "code": "NEXT_TASK"
+  }
+]
+- Fields: [
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "STRING",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "tenantId",
+    "fieldName": "테넌트",
+    "fieldGroup": "공통",
+    "fieldOrder": 10,
+    "validation": {
+      "minLength": 1
+    },
+    "apiProperty": "tenantId",
+    "controlType": "HIDDEN",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "CONTEXT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "STRING",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "projectId",
+    "fieldName": "프로젝트",
+    "fieldGroup": "공통",
+    "fieldOrder": 20,
+    "validation": {
+      "minLength": 1
+    },
+    "apiProperty": "projectId",
+    "controlType": "PROJECT_SELECT",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "CODE",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "processCode",
+    "fieldName": "프로세스 코드",
+    "fieldGroup": "공통",
+    "fieldOrder": 30,
+    "validation": {
+      "source": "SERVER_CONTEXT",
+      "required": true,
+      "immutable": true
+    },
+    "apiProperty": "processCode",
+    "controlType": "HIDDEN",
+    "sourceTable": "framework_process_definition",
+    "privacyClass": "INTERNAL",
+    "sourceColumn": "process_code",
+    "mappingStatus": "CONTEXT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "CODE",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "stepCode",
+    "fieldName": "단계 코드",
+    "fieldGroup": "공통",
+    "fieldOrder": 40,
+    "validation": {
+      "source": "SERVER_CONTEXT",
+      "required": true,
+      "immutable": true
+    },
+    "apiProperty": "stepCode",
+    "controlType": "HIDDEN",
+    "sourceTable": "framework_process_step",
+    "privacyClass": "INTERNAL",
+    "sourceColumn": "step_code",
+    "mappingStatus": "CONTEXT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "UUID",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "recordId",
+    "fieldName": "업무 레코드 ID",
+    "fieldGroup": "공통",
+    "fieldOrder": 50,
+    "validation": {
+      "source": "SERVER_CONTEXT",
+      "required": false,
+      "immutable": true
+    },
+    "apiProperty": "recordId",
+    "controlType": "HIDDEN",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "CODE",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "statusCode",
+    "fieldName": "처리 상태",
+    "fieldGroup": "공통",
+    "fieldOrder": 60,
+    "validation": {
+      "codeGroup": "WORK_STATUS"
+    },
+    "apiProperty": "statusCode",
+    "controlType": "STATUS_BADGE",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "CODE",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "ownerActorCode",
+    "fieldName": "담당 액터",
+    "fieldGroup": "공통",
+    "fieldOrder": 70,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": false,
+      "required": true,
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "apiProperty": "ownerActorCode",
+    "controlType": "ACTOR_SELECT",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "INTEGER",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "rowVersion",
+    "fieldName": "데이터 버전",
+    "fieldGroup": "공통",
+    "fieldOrder": 80,
+    "validation": {
+      "min": 0
+    },
+    "apiProperty": "rowVersion",
+    "controlType": "HIDDEN",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DATETIME",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "createdAt",
+    "fieldName": "등록 일시",
+    "fieldGroup": "공통",
+    "fieldOrder": 90,
+    "validation": {
+      "type": "date-time",
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "createdAt",
+    "controlType": "DATETIME",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DATETIME",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "updatedAt",
+    "fieldName": "최종 수정 일시",
+    "fieldGroup": "공통",
+    "fieldOrder": 100,
+    "validation": {
+      "type": "date-time",
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "updatedAt",
+    "controlType": "DATETIME",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "INTEGER",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "evidenceCount",
+    "fieldName": "증빙 수",
+    "fieldGroup": "공통",
+    "fieldOrder": 110,
+    "validation": {
+      "min": 0
+    },
+    "apiProperty": "evidenceCount",
+    "controlType": "EVIDENCE_LINK",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "YEAR",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "baselineYear",
+    "fieldName": "기준연도",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 200,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": false,
+      "required": true,
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "apiProperty": "baselineYear",
+    "controlType": "YEAR",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "baselineEmission",
+    "fieldName": "기준 배출량",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 210,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": false,
+      "required": true
+    },
+    "apiProperty": "baselineEmission",
+    "controlType": "NUMBER",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "YEAR",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "targetYear",
+    "fieldName": "목표연도",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 220,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": false,
+      "required": true,
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "apiProperty": "targetYear",
+    "controlType": "YEAR",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "targetReduction",
+    "fieldName": "목표 감축량",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 230,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": false,
+      "required": true
+    },
+    "apiProperty": "targetReduction",
+    "controlType": "NUMBER",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "CODE",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "reductionMethod",
+    "fieldName": "감축 수단",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 240,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": false,
+      "required": true,
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "apiProperty": "reductionMethod",
+    "controlType": "METHOD_SELECT",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": true,
+    "fieldCode": "expectedReduction",
+    "fieldName": "예상 감축량",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 250,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": false,
+      "required": true
+    },
+    "apiProperty": "expectedReduction",
+    "controlType": "CALCULATED_NUMBER",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "actualReduction",
+    "fieldName": "실적 감축량",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 260,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "actualReduction",
+    "controlType": "CALCULATED_NUMBER",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "capex",
+    "fieldName": "투자비",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 270,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "capex",
+    "controlType": "CURRENCY",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "opex",
+    "fieldName": "운영비",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 280,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "opex",
+    "controlType": "CURRENCY",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "TEXT",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "taskComment",
+    "fieldName": "업무 메모",
+    "fieldGroup": "업무 처리",
+    "fieldOrder": 400,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": true,
+      "required": false,
+      "maxLength": 4000,
+      "minLength": 0
+    },
+    "apiProperty": "taskComment",
+    "controlType": "TEXTAREA",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "DATETIME",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "dueAt",
+    "fieldName": "마감 일시",
+    "fieldGroup": "업무 처리",
+    "fieldOrder": 410,
+    "validation": {
+      "type": "date-time",
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "dueAt",
+    "controlType": "DATETIME",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/admin/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "ADMIN",
+    "dataType": "CODE",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_ADMIN",
+    "required": false,
+    "fieldCode": "nextActorCode",
+    "fieldName": "다음 담당 액터",
+    "fieldGroup": "업무 처리",
+    "fieldOrder": 420,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": true,
+      "required": false,
+      "maxLength": 4000,
+      "minLength": 0
+    },
+    "apiProperty": "nextActorCode",
+    "controlType": "ACTOR_VIEW",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:ADMIN",
+    "evidenceRequired": false
+  }
+]
+- Commands and navigation: [
+  {
+    "code": "REDUCTION_SCENARIO_REQUEST",
+    "transactional": true,
+    "idempotencyRequired": true
+  },
+  {
+    "code": "SAVE_DRAFT",
+    "transactional": true
+  },
+  {
+    "code": "ATTACH_EVIDENCE",
+    "auditRequired": true
+  },
+  {
+    "code": "REDUCTION_SCENARIO_ROLLBACK_1",
+    "recovery": true
+  }
+]
+- Required UI states: [
+  "READY",
+  "LOADING",
+  "EMPTY",
+  "READY",
+  "SAVING",
+  "ERROR",
+  "FORBIDDEN",
+  "CONFLICT",
+  "RECOVERY",
+  "STEP_1_COMPLETED"
+]
+
+### API, transaction, and data contract
+
+- API: [
+  {
+    "method": "GET",
+    "path": "/home/api/process-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/home/api/process-executions/screen-contract"
+  },
+  {
+    "method": "POST",
+    "path": "/home/api/process-executions/{executionId}/commands"
+  },
+  {
+    "method": "GET",
+    "path": "/home/api/process-executions/draft"
+  },
+  {
+    "method": "PUT",
+    "path": "/home/api/process-executions/draft"
+  }
+]
+- Database entities: [
+  {
+    "keys": [
+      "tenantId",
+      "projectId",
+      "processCode"
+    ],
+    "entity": "framework_process_execution",
+    "versioned": true,
+    "tenantScoped": true
+  },
+  {
+    "keys": [
+      "tenantId",
+      "projectId"
+    ],
+    "entity": "emission_project_registry",
+    "versioned": true
+  },
+  {
+    "entity": "framework_process_execution_event",
+    "appendOnly": true
+  }
+]
+- Audit and evidence: [
+  {
+    "scenarioType": "HAPPY_PATH",
+    "required": true
+  },
+  {
+    "scenarioType": "EXCEPTION",
+    "required": true
+  },
+  {
+    "scenarioType": "AUTHORITY",
+    "required": true
+  },
+  {
+    "scenarioType": "ISOLATION",
+    "required": true
+  },
+  {
+    "scenarioType": "RECOVERY",
+    "required": true
+  }
+]
+- Security and tenant isolation: {"actorCode": "DATA_ANALYST", "auditRequired": true, "tenantIsolation": true, "projectIsolation": true, "fieldLevelAuthorization": true}
+
+### Responsive and accessibility contract
+
+- Responsive behavior: {"mobile": "single-column and priority fields", "tablet": "adaptive two-column", "desktop": "task-optimized grid", "overflow": "wrap-or-scroll-with-sticky-key-column"}
+- Accessibility: {"labels": true, "keyboard": true, "standard": "WCAG 2.1 AA", "errorSummary": true, "focusManagement": true}
+
+## USER screen contract: 감축 시나리오 비교 - 요청·범위·필수정보 확인 사용자 업무 화면
+
+- Route: `/generated/reduction-scenario/reduction-scenario-s1`
+- Responsible actor: `DATA_ANALYST`
+- Business purpose: 감축 시나리오 비교 프로세스의 감축 시나리오 비교 - 요청·범위·필수정보 확인 단계에서 DATA_ANALYST 액터가 REDUCTION_SCENARIO_REQUEST 명령을 안전하게 수행하여 다음 완료 기준을 달성한다: 필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.
+- Entry condition: 다음 프로세스 시작 조건을 충족한다: 요청자 계정, 담당 액터, 테넌트·프로젝트 범위, 필수 기준정보와 선행 업무가 준비되어 있다. 현재 상태는 READY이며 서버가 테넌트·프로젝트·액터 권한을 확인한 경우에만 진입한다.
+- Completion condition: 다음 완료 기준을 검증한다: 필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다. 결과·버전·감사 증적을 저장한 뒤 STEP_1_COMPLETED 상태로 원자적으로 전이한다.
+
+### Layout, fields, and commands
+
+- KPI: [
+  {
+    "code": "COMPLETION_RATE",
+    "unit": "PERCENT",
+    "label": "감축 시나리오 비교 - 요청·범위·필수정보 확인 완료율"
+  },
+  {
+    "code": "SLA_REMAINING",
+    "unit": "MINUTE",
+    "label": "처리 기한 잔여시간"
+  },
+  {
+    "code": "BLOCKING_ERROR",
+    "unit": "COUNT",
+    "label": "차단 오류 수"
+  },
+  {
+    "code": "RECOVERY_RATE",
+    "unit": "PERCENT",
+    "label": "오류 복구 성공률"
+  }
+]
+- Sections: [
+  {
+    "code": "TASK_CONTEXT",
+    "label": "업무 문맥·진행 상태"
+  },
+  {
+    "code": "SEARCH_FILTER",
+    "label": "검색·필터"
+  },
+  {
+    "code": "WORKSPACE",
+    "label": "핵심 데이터 작업공간"
+  },
+  {
+    "code": "EVIDENCE_HISTORY",
+    "label": "증적·변경 이력"
+  },
+  {
+    "code": "NEXT_TASK",
+    "label": "다음 업무"
+  }
+]
+- Fields: [
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "STRING",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "tenantId",
+    "fieldName": "테넌트",
+    "fieldGroup": "공통",
+    "fieldOrder": 10,
+    "validation": {
+      "minLength": 1
+    },
+    "apiProperty": "tenantId",
+    "controlType": "HIDDEN",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "CONTEXT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "STRING",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "projectId",
+    "fieldName": "프로젝트",
+    "fieldGroup": "공통",
+    "fieldOrder": 20,
+    "validation": {
+      "minLength": 1
+    },
+    "apiProperty": "projectId",
+    "controlType": "PROJECT_SELECT",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "CODE",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "processCode",
+    "fieldName": "프로세스 코드",
+    "fieldGroup": "공통",
+    "fieldOrder": 30,
+    "validation": {
+      "source": "SERVER_CONTEXT",
+      "required": true,
+      "immutable": true
+    },
+    "apiProperty": "processCode",
+    "controlType": "HIDDEN",
+    "sourceTable": "framework_process_definition",
+    "privacyClass": "INTERNAL",
+    "sourceColumn": "process_code",
+    "mappingStatus": "CONTEXT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "CODE",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "stepCode",
+    "fieldName": "단계 코드",
+    "fieldGroup": "공통",
+    "fieldOrder": 40,
+    "validation": {
+      "source": "SERVER_CONTEXT",
+      "required": true,
+      "immutable": true
+    },
+    "apiProperty": "stepCode",
+    "controlType": "HIDDEN",
+    "sourceTable": "framework_process_step",
+    "privacyClass": "INTERNAL",
+    "sourceColumn": "step_code",
+    "mappingStatus": "CONTEXT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "UUID",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "recordId",
+    "fieldName": "업무 레코드 ID",
+    "fieldGroup": "공통",
+    "fieldOrder": 50,
+    "validation": {
+      "source": "SERVER_CONTEXT",
+      "required": false,
+      "immutable": true
+    },
+    "apiProperty": "recordId",
+    "controlType": "HIDDEN",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "CODE",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "statusCode",
+    "fieldName": "처리 상태",
+    "fieldGroup": "공통",
+    "fieldOrder": 60,
+    "validation": {
+      "codeGroup": "WORK_STATUS"
+    },
+    "apiProperty": "statusCode",
+    "controlType": "STATUS_BADGE",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "CODE",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "ownerActorCode",
+    "fieldName": "담당 액터",
+    "fieldGroup": "공통",
+    "fieldOrder": 70,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": false,
+      "required": true,
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "apiProperty": "ownerActorCode",
+    "controlType": "ACTOR_SELECT",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "INTEGER",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "rowVersion",
+    "fieldName": "데이터 버전",
+    "fieldGroup": "공통",
+    "fieldOrder": 80,
+    "validation": {
+      "min": 0
+    },
+    "apiProperty": "rowVersion",
+    "controlType": "HIDDEN",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DATETIME",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "createdAt",
+    "fieldName": "등록 일시",
+    "fieldGroup": "공통",
+    "fieldOrder": 90,
+    "validation": {
+      "type": "date-time",
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "createdAt",
+    "controlType": "DATETIME",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DATETIME",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "updatedAt",
+    "fieldName": "최종 수정 일시",
+    "fieldGroup": "공통",
+    "fieldOrder": 100,
+    "validation": {
+      "type": "date-time",
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "updatedAt",
+    "controlType": "DATETIME",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "INTEGER",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "evidenceCount",
+    "fieldName": "증빙 수",
+    "fieldGroup": "공통",
+    "fieldOrder": 110,
+    "validation": {
+      "min": 0
+    },
+    "apiProperty": "evidenceCount",
+    "controlType": "EVIDENCE_LINK",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "YEAR",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "baselineYear",
+    "fieldName": "기준연도",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 200,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": false,
+      "required": true,
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "apiProperty": "baselineYear",
+    "controlType": "YEAR",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "baselineEmission",
+    "fieldName": "기준 배출량",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 210,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": false,
+      "required": true
+    },
+    "apiProperty": "baselineEmission",
+    "controlType": "NUMBER",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "YEAR",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "targetYear",
+    "fieldName": "목표연도",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 220,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": false,
+      "required": true,
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "apiProperty": "targetYear",
+    "controlType": "YEAR",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "targetReduction",
+    "fieldName": "목표 감축량",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 230,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": false,
+      "required": true
+    },
+    "apiProperty": "targetReduction",
+    "controlType": "NUMBER",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "CODE",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "reductionMethod",
+    "fieldName": "감축 수단",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 240,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": false,
+      "required": true,
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "apiProperty": "reductionMethod",
+    "controlType": "METHOD_SELECT",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "expectedReduction",
+    "fieldName": "예상 감축량",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 250,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": false,
+      "required": true
+    },
+    "apiProperty": "expectedReduction",
+    "controlType": "CALCULATED_NUMBER",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "actualReduction",
+    "fieldName": "실적 감축량",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 260,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "actualReduction",
+    "controlType": "CALCULATED_NUMBER",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "capex",
+    "fieldName": "투자비",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 270,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "capex",
+    "controlType": "CURRENCY",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "opex",
+    "fieldName": "운영비",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 280,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "opex",
+    "controlType": "CURRENCY",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "TEXT",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "taskComment",
+    "fieldName": "업무 메모",
+    "fieldGroup": "업무 처리",
+    "fieldOrder": 400,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": true,
+      "required": false,
+      "maxLength": 4000,
+      "minLength": 0
+    },
+    "apiProperty": "taskComment",
+    "controlType": "TEXTAREA",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DATETIME",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "dueAt",
+    "fieldName": "마감 일시",
+    "fieldGroup": "업무 처리",
+    "fieldOrder": 410,
+    "validation": {
+      "type": "date-time",
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "dueAt",
+    "controlType": "DATETIME",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "CODE",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "nextActorCode",
+    "fieldName": "다음 담당 액터",
+    "fieldGroup": "업무 처리",
+    "fieldOrder": 420,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": true,
+      "required": false,
+      "maxLength": 4000,
+      "minLength": 0
+    },
+    "apiProperty": "nextActorCode",
+    "controlType": "ACTOR_VIEW",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  }
+]
+- Commands and navigation: [
+  {
+    "code": "REDUCTION_SCENARIO_REQUEST",
+    "label": "감축 시나리오 비교 - 요청·범위·필수정보 확인 실행",
+    "transactional": true,
+    "idempotencyRequired": true
+  },
+  {
+    "code": "SAVE_DRAFT",
+    "label": "임시저장",
+    "transactional": true
+  },
+  {
+    "code": "ATTACH_EVIDENCE",
+    "label": "증적 연결",
+    "auditRequired": true
+  },
+  {
+    "code": "MOVE_NEXT_TASK",
+    "label": "다음 업무 이동",
+    "completionRequired": true
+  }
+]
+- Required UI states: [
+  "READY",
+  "LOADING",
+  "EMPTY",
+  "SAVING",
+  "ERROR",
+  "FORBIDDEN",
+  "CONFLICT",
+  "RECOVERY",
+  "STEP_1_COMPLETED"
+]
+
+### API, transaction, and data contract
+
+- API: [
+  {
+    "code": "SCREEN_CONTRACT",
+    "path": "/home/api/process-executions/screen-contract",
+    "method": "GET",
+    "purpose": "라우트별 실행 계약 조회"
+  },
+  {
+    "code": "LOAD_EXECUTION",
+    "path": "/home/api/process-executions",
+    "method": "GET",
+    "purpose": "프로세스 실행 문맥 조회"
+  },
+  {
+    "code": "REDUCTION_SCENARIO_REQUEST",
+    "path": "/home/api/process-executions/{executionId}/commands",
+    "method": "POST",
+    "purpose": "감축 시나리오 비교 - 요청·범위·필수정보 확인 상태 명령 실행"
+  },
+  {
+    "code": "LOAD_DRAFT",
+    "path": "/home/api/process-executions/draft",
+    "method": "GET",
+    "purpose": "업무 임시저장 조회"
+  },
+  {
+    "code": "SAVE_DRAFT",
+    "path": "/home/api/process-executions/draft",
+    "method": "PUT",
+    "purpose": "업무 임시저장"
+  }
+]
+- Database entities: [
+  {
+    "keys": [
+      "tenantId",
+      "projectId",
+      "processCode"
+    ],
+    "entity": "framework_process_execution",
+    "versioned": true,
+    "tenantScoped": true
+  },
+  {
+    "keys": [
+      "processCode",
+      "stepCode"
+    ],
+    "entity": "framework_process_step",
+    "stateTransition": {
+      "to": "STEP_1_COMPLETED",
+      "from": "READY"
+    }
+  },
+  {
+    "keys": [
+      "tenantId",
+      "projectId",
+      "processCode",
+      "stepCode",
+      "actorCode"
+    ],
+    "entity": "framework_process_work_draft",
+    "versioned": true
+  },
+  {
+    "entity": "framework_process_execution_event",
+    "appendOnly": true,
+    "beforeAfterRequired": true
+  }
+]
+- Audit and evidence: [
+  {
+    "evidence": [
+      "request",
+      "response",
+      "stateTransition"
+    ],
+    "required": true,
+    "scenarioType": "HAPPY_PATH"
+  },
+  {
+    "evidence": [
+      "actorDecision",
+      "forbiddenResponse"
+    ],
+    "required": true,
+    "scenarioType": "AUTHORITY"
+  },
+  {
+    "evidence": [
+      "tenantBoundary",
+      "projectBoundary"
+    ],
+    "required": true,
+    "scenarioType": "ISOLATION"
+  },
+  {
+    "evidence": [
+      "validationError",
+      "rollbackState"
+    ],
+    "required": true,
+    "scenarioType": "EXCEPTION"
+  },
+  {
+    "evidence": [
+      "retry",
+      "idempotency",
+      "auditEvent"
+    ],
+    "required": true,
+    "scenarioType": "RECOVERY"
+  }
+]
+- Security and tenant isolation: 서버가 tenantId·projectId·actorCode·commandCode·rowVersion을 검증하고 최소권한, 업무분리, 객체수준 접근통제, 낙관적 잠금, 멱등성과 감사 이벤트를 적용한다.
+
+### Responsive and accessibility contract
+
+- Responsive behavior: 360px에서는 단일 열과 하단 주요 명령, 768px에서는 요약·작업영역 분리, 1280px 이상에서는 목록·상세 2열을 사용하고 표는 열 우선순위와 가로 스크롤을 적용한다.
+- Accessibility: KRDS와 WCAG 2.1 AA를 적용하고 제목 계층, 키보드 순서, 가시적 초점, 오류 요약·필드 연결, 비색상 상태 표현과 표 머리글 연결을 보장한다.
+
+## USER screen contract: 감축 시나리오 비교 - 요청·범위·필수정보 확인
+
+- Route: `/planned/reduction/reduction-scenario/reduction-scenario-s1`
+- Responsible actor: `DATA_ANALYST`
+- Business purpose: 감축 시나리오 비교의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.
+- Entry condition: READY 상태이고 입력 계약과 액터 권한 검증을 통과해야 한다.
+- Completion condition: 필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.
+
+### Layout, fields, and commands
+
+- KPI: [
+  {
+    "code": "COMPLETION_RATE",
+    "unit": "PERCENT"
+  },
+  {
+    "code": "BLOCKING_ERROR",
+    "unit": "COUNT"
+  },
+  {
+    "code": "SLA_REMAINING",
+    "unit": "MINUTE"
+  }
+]
+- Sections: [
+  {
+    "code": "TASK_CONTEXT"
+  },
+  {
+    "code": "SEARCH_FILTER"
+  },
+  {
+    "code": "WORKSPACE"
+  },
+  {
+    "code": "EVIDENCE_HISTORY"
+  },
+  {
+    "code": "NEXT_TASK"
+  }
+]
+- Fields: [
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "STRING",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "tenantId",
+    "fieldName": "테넌트",
+    "fieldGroup": "공통",
+    "fieldOrder": 10,
+    "validation": {
+      "minLength": 1
+    },
+    "apiProperty": "tenantId",
+    "controlType": "HIDDEN",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "CONTEXT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "STRING",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "projectId",
+    "fieldName": "프로젝트",
+    "fieldGroup": "공통",
+    "fieldOrder": 20,
+    "validation": {
+      "minLength": 1
+    },
+    "apiProperty": "projectId",
+    "controlType": "PROJECT_SELECT",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "CODE",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "processCode",
+    "fieldName": "프로세스 코드",
+    "fieldGroup": "공통",
+    "fieldOrder": 30,
+    "validation": {
+      "source": "SERVER_CONTEXT",
+      "required": true,
+      "immutable": true
+    },
+    "apiProperty": "processCode",
+    "controlType": "HIDDEN",
+    "sourceTable": "framework_process_definition",
+    "privacyClass": "INTERNAL",
+    "sourceColumn": "process_code",
+    "mappingStatus": "CONTEXT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "CODE",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "stepCode",
+    "fieldName": "단계 코드",
+    "fieldGroup": "공통",
+    "fieldOrder": 40,
+    "validation": {
+      "source": "SERVER_CONTEXT",
+      "required": true,
+      "immutable": true
+    },
+    "apiProperty": "stepCode",
+    "controlType": "HIDDEN",
+    "sourceTable": "framework_process_step",
+    "privacyClass": "INTERNAL",
+    "sourceColumn": "step_code",
+    "mappingStatus": "CONTEXT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "UUID",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "recordId",
+    "fieldName": "업무 레코드 ID",
+    "fieldGroup": "공통",
+    "fieldOrder": 50,
+    "validation": {
+      "source": "SERVER_CONTEXT",
+      "required": false,
+      "immutable": true
+    },
+    "apiProperty": "recordId",
+    "controlType": "HIDDEN",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "CODE",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "statusCode",
+    "fieldName": "처리 상태",
+    "fieldGroup": "공통",
+    "fieldOrder": 60,
+    "validation": {
+      "codeGroup": "WORK_STATUS"
+    },
+    "apiProperty": "statusCode",
+    "controlType": "STATUS_BADGE",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "CODE",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "ownerActorCode",
+    "fieldName": "담당 액터",
+    "fieldGroup": "공통",
+    "fieldOrder": 70,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": false,
+      "required": true,
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "apiProperty": "ownerActorCode",
+    "controlType": "ACTOR_SELECT",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "INTEGER",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "rowVersion",
+    "fieldName": "데이터 버전",
+    "fieldGroup": "공통",
+    "fieldOrder": 80,
+    "validation": {
+      "min": 0
+    },
+    "apiProperty": "rowVersion",
+    "controlType": "HIDDEN",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DATETIME",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "createdAt",
+    "fieldName": "등록 일시",
+    "fieldGroup": "공통",
+    "fieldOrder": 90,
+    "validation": {
+      "type": "date-time",
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "createdAt",
+    "controlType": "DATETIME",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DATETIME",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "updatedAt",
+    "fieldName": "최종 수정 일시",
+    "fieldGroup": "공통",
+    "fieldOrder": 100,
+    "validation": {
+      "type": "date-time",
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "updatedAt",
+    "controlType": "DATETIME",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "INTEGER",
+    "editable": false,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "evidenceCount",
+    "fieldName": "증빙 수",
+    "fieldGroup": "공통",
+    "fieldOrder": 110,
+    "validation": {
+      "min": 0
+    },
+    "apiProperty": "evidenceCount",
+    "controlType": "EVIDENCE_LINK",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "YEAR",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "baselineYear",
+    "fieldName": "기준연도",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 200,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": false,
+      "required": true,
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "apiProperty": "baselineYear",
+    "controlType": "YEAR",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "baselineEmission",
+    "fieldName": "기준 배출량",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 210,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": false,
+      "required": true
+    },
+    "apiProperty": "baselineEmission",
+    "controlType": "NUMBER",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "YEAR",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "targetYear",
+    "fieldName": "목표연도",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 220,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": false,
+      "required": true,
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "apiProperty": "targetYear",
+    "controlType": "YEAR",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "targetReduction",
+    "fieldName": "목표 감축량",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 230,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": false,
+      "required": true
+    },
+    "apiProperty": "targetReduction",
+    "controlType": "NUMBER",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "CODE",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "reductionMethod",
+    "fieldName": "감축 수단",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 240,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": false,
+      "required": true,
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "apiProperty": "reductionMethod",
+    "controlType": "METHOD_SELECT",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": true,
+    "fieldCode": "expectedReduction",
+    "fieldName": "예상 감축량",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 250,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": false,
+      "required": true
+    },
+    "apiProperty": "expectedReduction",
+    "controlType": "CALCULATED_NUMBER",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "actualReduction",
+    "fieldName": "실적 감축량",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 260,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "actualReduction",
+    "controlType": "CALCULATED_NUMBER",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "capex",
+    "fieldName": "투자비",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 270,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "capex",
+    "controlType": "CURRENCY",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DECIMAL",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "opex",
+    "fieldName": "운영비",
+    "fieldGroup": "REDUCTION",
+    "fieldOrder": 280,
+    "validation": {
+      "type": "number",
+      "finite": true,
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "opex",
+    "controlType": "CURRENCY",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "TEXT",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "taskComment",
+    "fieldName": "업무 메모",
+    "fieldGroup": "업무 처리",
+    "fieldOrder": 400,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": true,
+      "required": false,
+      "maxLength": 4000,
+      "minLength": 0
+    },
+    "apiProperty": "taskComment",
+    "controlType": "TEXTAREA",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "DATETIME",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "dueAt",
+    "fieldName": "마감 일시",
+    "fieldGroup": "업무 처리",
+    "fieldOrder": 410,
+    "validation": {
+      "type": "date-time",
+      "nullable": true,
+      "required": false
+    },
+    "apiProperty": "dueAt",
+    "controlType": "DATETIME",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  },
+  {
+    "route": "/planned/reduction/reduction-scenario/reduction-scenario-s1",
+    "audience": "USER",
+    "dataType": "CODE",
+    "editable": true,
+    "pageCode": "REDUCTION_SCENARIO_REDUCTION_SCENARIO_S1_USER",
+    "required": false,
+    "fieldCode": "nextActorCode",
+    "fieldName": "다음 담당 액터",
+    "fieldGroup": "업무 처리",
+    "fieldOrder": 420,
+    "validation": {
+      "trim": true,
+      "type": "string",
+      "nullable": true,
+      "required": false,
+      "maxLength": 4000,
+      "minLength": 0
+    },
+    "apiProperty": "nextActorCode",
+    "controlType": "ACTOR_VIEW",
+    "sourceTable": null,
+    "privacyClass": "INTERNAL",
+    "sourceColumn": null,
+    "mappingStatus": "LOGICAL_CONTRACT",
+    "permissionCode": "DATA_ANALYST:USER",
+    "evidenceRequired": false
+  }
+]
+- Commands and navigation: [
+  {
+    "code": "REDUCTION_SCENARIO_REQUEST",
+    "transactional": true,
+    "idempotencyRequired": true
+  },
+  {
+    "code": "SAVE_DRAFT",
+    "transactional": true
+  },
+  {
+    "code": "ATTACH_EVIDENCE",
+    "auditRequired": true
+  },
+  {
+    "code": "REDUCTION_SCENARIO_ROLLBACK_1",
+    "recovery": true
+  }
+]
+- Required UI states: [
+  "READY",
+  "LOADING",
+  "EMPTY",
+  "READY",
+  "SAVING",
+  "ERROR",
+  "FORBIDDEN",
+  "CONFLICT",
+  "RECOVERY",
+  "STEP_1_COMPLETED"
+]
+
+### API, transaction, and data contract
+
+- API: [
+  {
+    "method": "GET",
+    "path": "/home/api/process-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/home/api/process-executions/screen-contract"
+  },
+  {
+    "method": "POST",
+    "path": "/home/api/process-executions/{executionId}/commands"
+  },
+  {
+    "method": "GET",
+    "path": "/home/api/process-executions/draft"
+  },
+  {
+    "method": "PUT",
+    "path": "/home/api/process-executions/draft"
+  }
+]
+- Database entities: [
+  {
+    "keys": [
+      "tenantId",
+      "projectId",
+      "processCode"
+    ],
+    "entity": "framework_process_execution",
+    "versioned": true,
+    "tenantScoped": true
+  },
+  {
+    "keys": [
+      "tenantId",
+      "projectId"
+    ],
+    "entity": "emission_project_registry",
+    "versioned": true
+  },
+  {
+    "entity": "framework_process_execution_event",
+    "appendOnly": true
+  }
+]
+- Audit and evidence: [
+  {
+    "scenarioType": "HAPPY_PATH",
+    "required": true
+  },
+  {
+    "scenarioType": "EXCEPTION",
+    "required": true
+  },
+  {
+    "scenarioType": "AUTHORITY",
+    "required": true
+  },
+  {
+    "scenarioType": "ISOLATION",
+    "required": true
+  },
+  {
+    "scenarioType": "RECOVERY",
+    "required": true
+  }
+]
+- Security and tenant isolation: {"actorCode": "DATA_ANALYST", "auditRequired": true, "tenantIsolation": true, "projectIsolation": true, "fieldLevelAuthorization": true}
+
+### Responsive and accessibility contract
+
+- Responsive behavior: {"mobile": "single-column and priority fields", "tablet": "adaptive two-column", "desktop": "task-optimized grid", "overflow": "wrap-or-scroll-with-sticky-key-column"}
+- Accessibility: {"labels": true, "keyboard": true, "standard": "WCAG 2.1 AA", "errorSummary": true, "focusManagement": true}
+
+## State transition and concurrency rules
+
+- The server validates tenantId, projectId, actorCode, commandCode, current state, and version before every transition.
+- Repeated commands use an idempotency key and return the existing result without duplicating data or workflow events.
+- Conflicting edits return a version conflict, preserve both audit contexts, and require the actor to reload before retrying.
+- Completion opens only the next process task; rejection or correction follows the explicitly designed branch and never skips a required actor.
+
+## Executable scenario matrix
+
+- HAPPY_PATH: an authorized actor completes the entry conditions, executes the command, stores evidence, reaches the expected state, and opens the next task once.
+- EXCEPTION: missing fields, invalid units, stale versions, and downstream failures remain on the current task with actionable errors and no partial commit.
+- AUTHORITY: an actor without the required role receives 403; a forbidden attempt is recorded without changing business data.
+- ISOLATION: another tenant or project cannot discover, search, update, export, or infer the protected object.
+- RECOVERY: retry after a transaction, integration, or report failure produces no duplicate version, event, notification, or file.
+
+## Frontend, backend, and integration delivery checklist
+
+- Frontend implements the selected KRDS layout, all required states, responsive behavior, keyboard access, direct links, and next-task navigation.
+- Backend implements the listed API and database contracts with transaction boundaries, object-level authorization, idempotency, optimistic locking, and immutable audit evidence.
+- Contract tests bind every command to its actor and state transition. Browser tests cover both user and administrator routes at mobile, tablet, and desktop widths.
+- Integration is complete only when the UI payload, API schema, persisted version, process event, notification, and displayed next task agree.
