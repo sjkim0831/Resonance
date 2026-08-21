@@ -4512,7 +4512,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
                   <div className="mt-3 border-t border-amber-200 pt-3">
                     <p className="text-xs font-black text-amber-900">{en ? "Suspected visual damage locations" : "시각 훼손 의심 위치"}</p>
                     <div className="mt-2 flex flex-wrap gap-1">
-                      {photoVerification.damagedRegions.slice(0, 16).map((region, index) => (
+                      {[...photoVerification.damagedRegions].sort((left, right) => right.difference - left.difference).slice(0, 16).map((region, index) => (
                         <button className="bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-900 hover:bg-rose-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-500" key={`${region.page}-${region.row}-${region.column}-${index}`} onClick={() => setSelectedDamageRegion(region)} title={en ? "Open the page and highlight this location" : "해당 페이지를 확대하고 위치 표시"} type="button">
                           P{region.page} R{region.row} C{region.column} ({region.difference})
                         </button>
@@ -4875,7 +4875,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
           <div aria-label={en ? "Uploaded PDF enlarged preview" : "업로드 PDF 확대 미리보기"} aria-modal="true" className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 p-4" onClick={() => { setPreviewModalPage(null); setSelectedDamageRegion(null); }} role="dialog">
             <div className="flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
               <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-                <div><strong className="text-slate-950">{en ? "Uploaded PDF preview" : "업로드 PDF 미리보기"}</strong><p className="text-xs font-semibold text-slate-500">P{previewModalPage || selectedDamageRegion?.page}{selectedDamageRegion ? ` R${selectedDamageRegion.row} C${selectedDamageRegion.column}` : ""}{selectedDamageRegion ? (en ? " · red marker shows the approximate comparison cell" : " · 빨간 표시는 비교 격자의 근사 위치입니다") : ""}</p></div>
+                <div><strong className="text-slate-950">{en ? "Uploaded PDF preview" : "업로드 PDF 미리보기"}</strong><p className="text-xs font-semibold text-slate-500">P{previewModalPage || selectedDamageRegion?.page}{selectedDamageRegion ? ` R${selectedDamageRegion.row} C${selectedDamageRegion.column}` : ""}{selectedDamageRegion ? (en ? " · rendered pixels differ from the issued original" : " · 발급 원본과 화면 픽셀이 다른 위치입니다") : ""}</p></div>
                 <button aria-label={en ? "Close" : "닫기"} className="rounded-full bg-slate-100 px-4 py-2 font-black text-slate-700 hover:bg-slate-200" onClick={() => { setPreviewModalPage(null); setSelectedDamageRegion(null); }} type="button">{en ? "Close" : "닫기"}</button>
               </div>
               <div className="overflow-auto bg-slate-200 p-4">
@@ -4883,6 +4883,22 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
                   <img alt={`${en ? "Enlarged uploaded report page" : "업로드 리포트 확대 페이지"} ${previewModalPage || selectedDamageRegion?.page}`} className="max-h-[82vh] max-w-full bg-white object-contain shadow-xl" src={photoPreviewUrls[(previewModalPage || selectedDamageRegion?.page || 1) - 1]} />
                   {selectedDamageRegion ? <span className="pointer-events-none absolute h-10 w-10 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-md border-4 border-rose-600 bg-rose-500/20 shadow-[0_0_0_4px_rgba(255,255,255,0.9)]" style={{ left: `${((selectedDamageRegion.column - 0.5) / 48) * 100}%`, top: `${((selectedDamageRegion.row - 0.5) / 68) * 100}%` }} /> : null}
                 </div>
+                {selectedDamageRegion ? (
+                  <div className="sticky bottom-4 mx-auto mt-4 w-full max-w-xl overflow-hidden rounded-2xl border-4 border-rose-600 bg-white shadow-2xl" data-certificate-damage-magnifier>
+                    <div className="flex items-center justify-between bg-rose-600 px-4 py-2 text-xs font-black text-white">
+                      <span>{en ? "VISIBLE ALTERATION — MAGNIFIED" : "화면 변조 의심 위치 · 확대"}</span>
+                      <span>P{selectedDamageRegion.page} R{selectedDamageRegion.row} C{selectedDamageRegion.column} · Δ{selectedDamageRegion.difference}</span>
+                    </div>
+                    <div className="relative h-48 overflow-hidden bg-slate-100 bg-no-repeat" style={{
+                      backgroundImage: `url(${photoPreviewUrls[selectedDamageRegion.page - 1]})`,
+                      backgroundPosition: `${((((selectedDamageRegion.column - 0.5) / 48) * 6 - 0.5) / 5) * 100}% ${((((selectedDamageRegion.row - 0.5) / 68) * 8.5 - 0.5) / 7.5) * 100}%`,
+                      backgroundSize: "600% 850%"
+                    }}>
+                      <span aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 border-4 border-rose-600 bg-rose-500/10 shadow-[0_0_0_3px_rgba(255,255,255,0.95)]" />
+                    </div>
+                    <p className="px-4 py-3 text-xs font-bold leading-5 text-rose-900">{en ? "The PDF text layer may still contain the issued text. This panel magnifies the rendered pixels that the customer actually sees." : "PDF 숨은 텍스트에는 발급 원문이 남아 있을 수 있습니다. 이 확대 영역은 고객이 실제로 보는 화면 픽셀 변조를 표시합니다."}</p>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
