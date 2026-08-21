@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.lang.reflect.Method;
 import java.security.MessageDigest;
 import java.util.ArrayList;
@@ -509,6 +511,47 @@ class ReportVerificationRegistryServicePdfTest {
         Map<String, Object> decimalPointLoss = scoreDetailLines(service, normalize, scorer, dataset,
                 "1.23", "7923430", "79234.30");
         assertFalse((Boolean) decimalPointLoss.get("detailRowsExactMatch"));
+    }
+
+    @Test
+    void numberRuleReloadsWithoutRebuildingAndUnsafeRuleFailsClosed() throws Exception {
+        Path rule = Files.createTempFile("certificate-verification-rule-", ".json");
+        String previous = System.getProperty(CertificateVerificationRuleRegistry.RULE_FILE_PROPERTY);
+        try {
+            Files.writeString(rule, """
+                    {"schemaVersion":1,"ruleVersion":"dev-v1","active":true,
+                     "numberComparison":{"requirePdfScreenDigitsExact":true,
+                     "ignoreThousandsGrouping":true,"databaseComparison":"TRUNCATE_TO_PDF_SCALE"}}
+                    """);
+            System.setProperty(CertificateVerificationRuleRegistry.RULE_FILE_PROPERTY,
+                    rule.toAbsolutePath().toString());
+            CertificateVerificationRuleRegistry.resetForTest();
+            Method matcher = ReportVerificationRegistryService.class.getDeclaredMethod(
+                    "displayedNumberMatchesDatabase", String.class, String.class,
+                    com.fasterxml.jackson.databind.JsonNode.class);
+            matcher.setAccessible(true);
+            ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+            assertTrue((Boolean) matcher.invoke(service, "1.23", "1.23",
+                    new ObjectMapper().readTree("1.239")));
+
+            Files.writeString(rule, """
+                    {"schemaVersion":1,"ruleVersion":"dev-v2","active":true,
+                     "numberComparison":{"requirePdfScreenDigitsExact":false,
+                     "ignoreThousandsGrouping":true,"databaseComparison":"TRUNCATE_TO_PDF_SCALE"}}
+                    """);
+            CertificateVerificationRuleRegistry.resetForTest();
+            java.lang.reflect.InvocationTargetException failure = assertThrows(
+                    java.lang.reflect.InvocationTargetException.class,
+                    () -> matcher.invoke(service, "1.23", "1.23",
+                            new ObjectMapper().readTree("1.239")));
+            assertTrue(failure.getCause() instanceof IllegalStateException);
+            assertTrue(failure.getCause().getMessage().contains("CERTIFICATE_VERIFICATION_RULE_INVALID"));
+        } finally {
+            if (previous == null) System.clearProperty(CertificateVerificationRuleRegistry.RULE_FILE_PROPERTY);
+            else System.setProperty(CertificateVerificationRuleRegistry.RULE_FILE_PROPERTY, previous);
+            CertificateVerificationRuleRegistry.resetForTest();
+            Files.deleteIfExists(rule);
+        }
     }
 
     @Test

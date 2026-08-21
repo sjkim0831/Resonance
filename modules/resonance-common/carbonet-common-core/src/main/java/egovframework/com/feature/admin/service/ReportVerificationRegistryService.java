@@ -1303,15 +1303,18 @@ public class ReportVerificationRegistryService {
 
     private boolean displayedNumberMatchesDatabase(String expectedDisplay, String observedDisplay,
                                                      JsonNode databaseValue) {
+        CertificateVerificationRuleRegistry.NumberRule rule =
+                CertificateVerificationRuleRegistry.activeNumberRule();
         String expected = normalizeDisplayedNumber(expectedDisplay);
         String observed = normalizeDisplayedNumber(observedDisplay);
-        if (expected.isBlank() || !expected.equals(observed)
+        if (!rule.requirePdfScreenDigitsExact() || expected.isBlank() || !expected.equals(observed)
                 || databaseValue == null || !databaseValue.isNumber()) return false;
         try {
             java.math.BigDecimal expectedNumber = new java.math.BigDecimal(expected);
             java.math.BigDecimal databaseNumber = databaseValue.decimalValue();
             int displayScale = displayedNumberScale(expected);
-            return databaseNumber.setScale(displayScale, java.math.RoundingMode.DOWN)
+            return "TRUNCATE_TO_PDF_SCALE".equals(rule.databaseComparison())
+                    && databaseNumber.setScale(displayScale, java.math.RoundingMode.DOWN)
                     .compareTo(expectedNumber) == 0;
         } catch (RuntimeException ignored) {
             return false;
