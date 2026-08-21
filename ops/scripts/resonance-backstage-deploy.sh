@@ -3229,7 +3229,11 @@ inspect_backstage_runtime_identity_for_rollback() {
         echo "[backstage] marker-absent baseline will retire stale pre-authority runtime identity after exact proof"
         return 0
       fi
-      verify_backstage_deploy_marker "$BACKSTAGE_RUNTIME_IDENTITY_TARGET_COMMIT" || return 79
+      if [[ "$BACKSTAGE_DEPLOY_MARKER_VALUE" != "$BACKSTAGE_RUNTIME_IDENTITY_TARGET_COMMIT" ]]; then
+        BACKSTAGE_STALE_RUNTIME_IDENTITY=true
+        echo "[backstage] marker-divergent baseline will retire stale pre-authority runtime identity after exact proof"
+        return 0
+      fi
       verify_backstage_deploy_marker_closure \
         "$BACKSTAGE_RUNTIME_IDENTITY_DEPLOYMENT_CLOSURE_SHA256" || return 79
     fi
@@ -3425,6 +3429,7 @@ reconcile_backstage_runtime_identity_after_rollback() {
       <<<"$BACKSTAGE_BASELINE_ROLLBACK_SPEC")" || return 79
     if is_digest_pinned_backstage_candidate_image "$rollback_image" &&
        [[ -n "$BACKSTAGE_DEPLOY_STATE_FILE" ]] &&
+       [[ "$BACKSTAGE_DEPLOY_MARKER_VALUE" == "$BACKSTAGE_RUNTIME_IDENTITY_TARGET_COMMIT" ]] &&
        [[ -e "$BACKSTAGE_DEPLOY_STATE_FILE" || -L "$BACKSTAGE_DEPLOY_STATE_FILE" ]]; then
       publish_normalized_backstage_runtime_identity_after_rollback || normalization_status="$?"
       if (( normalization_status == 0 )); then

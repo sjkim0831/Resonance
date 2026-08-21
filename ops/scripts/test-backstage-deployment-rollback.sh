@@ -2465,6 +2465,39 @@ grep -Fq 'marker-absent baseline will retire stale pre-authority runtime identit
 grep -Fq 'stale pre-authority runtime identity removed after exact baseline proof' \
   "$fixture/marker-absent-baseline-identity.out"
 
+# 73c. A divergent legacy marker is preserved while the identity it cannot
+# authorize is retired after exact physical baseline proof.
+reset_fixture
+create_runtime_identity_from_deployment "$other_commit" "$baseline"
+printf '%s\n' "$target_commit" >"$marker"
+chmod 0644 "$marker"
+marker_hash_before="$(sha256sum "$marker" | awk '{print $1}')"
+set +e
+BACKSTAGE_DEPLOY_STATE_FILE="$marker" bash -c '
+  set -Eeuo pipefail
+  NAMESPACE=resonance-ops
+  source "$1"
+  source "$2"
+  cleanup_build_tmp() { :; }
+  trap deployment_exit_handler EXIT
+  capture_backstage_deployment_baseline >/dev/null
+  arm_backstage_deployment_mutations >/dev/null
+  cp -- "$3" "$FAKE_DEPLOYMENT_STATE"
+  exit 33
+' _ "$functions" "$handler" "$candidate" \
+  >"$fixture/marker-divergent-baseline-identity.out" \
+  2>"$fixture/marker-divergent-baseline-identity.err"
+status="$?"
+set -e
+[[ "$status" == 33 ]]
+assert_baseline_restored
+[[ -f "$marker" && "$(sha256sum "$marker" | awk '{print $1}')" == "$marker_hash_before" && \
+   ! -e "$identity" && "$(cat "$mutations")" == 1 ]]
+grep -Fq 'marker-divergent baseline will retire stale pre-authority runtime identity after exact proof' \
+  "$fixture/marker-divergent-baseline-identity.out"
+grep -Fq 'stale pre-authority runtime identity removed after exact baseline proof' \
+  "$fixture/marker-divergent-baseline-identity.out"
+
 # 74-78. Every managed kind/object can move to its exact durable target intent
 # during MUTATION_ARMED and is restored to its full normalized baseline.
 for descriptor in \
@@ -3493,4 +3526,4 @@ if grep -R -Fq -- "$secret_value" \
   exit 1
 fi
 
-echo 'BACKSTAGE_DEPLOYMENT_ROLLBACK_PASS cases=128 failureStatus=37 rollbackFailure=79 sigkillResume=9 mutationPointMutants=8 casMutation=0 successPending=0 securityFailClosed=4 contentionStatus=79 contentionMutation=0 officialDirectShared=1 controlGroupKill=2 recoverPresent=1 recoverAbsent=2 deferredHandoff=1 markerThenClear=7 finalizeRetry=7 postMvSyncNoRollback=2 clearFailureNoRollback=1 clearSigkillNoRollback=1 missingMarkerStatus=79 markerFailureRetained=1 reconcileFinalize=1 reconcileRollback=2 invalidCliMutation0=3 foreignMutation0=3 legacyRecover=3 legacyFinalize=1 legacyFinalizeMutation0=2 standaloneImmediate=1 standaloneAttemptUnique=2 stagingPush=2 canonicalPush0=2 expectedBindingPass=2 expectedReplacementMutation0=2 expectedHashMutation0=2 expectedInodeRaceMutation0=2 expectedInvalidMutation0=2 expectedAbsentMutation0=2 identityPublish=2 identityVerifyExact=2 identityUnsafe=3 fullSpecDrift=3 identityPublicationCuts=3 identityAuthorityNoRollback=1 staleIdentityRemoved=3 baselineIdentityPreserved=1 markerAbsentBaselineRetired=1 managedExactRollback=5 managedCandidateRollback=1 managedForeignMutation0=5 aggregatePreflightMutation0=2 databasePasswordSecret0=4 servingDrift=7 readyPodImageIdDrift=1 registryReuse=1 registryReject=2 parentAuthorityBlock=5 inheritedLock=2 v4BaselineProof=1 v4TamperMutation0=2 mutableTagDigestRollback=1 verifyPendingExact=1 verifyPendingProofReject=2 verifyPendingBindingReject=2 holdCreationFailureMutation0=1 tagSwapBeforeCaptureMutation0=1 rollbackIdentityLabelLessRetired=1 rollbackDependencyDriftRetained=1 checkpointScopeFixed=1 checkpointScopeMutantKilled=1 secretValues=0'
+echo 'BACKSTAGE_DEPLOYMENT_ROLLBACK_PASS cases=129 failureStatus=37 rollbackFailure=79 sigkillResume=9 mutationPointMutants=8 casMutation=0 successPending=0 securityFailClosed=4 contentionStatus=79 contentionMutation=0 officialDirectShared=1 controlGroupKill=2 recoverPresent=1 recoverAbsent=2 deferredHandoff=1 markerThenClear=7 finalizeRetry=7 postMvSyncNoRollback=2 clearFailureNoRollback=1 clearSigkillNoRollback=1 missingMarkerStatus=79 markerFailureRetained=1 reconcileFinalize=1 reconcileRollback=2 invalidCliMutation0=3 foreignMutation0=3 legacyRecover=3 legacyFinalize=1 legacyFinalizeMutation0=2 standaloneImmediate=1 standaloneAttemptUnique=2 stagingPush=2 canonicalPush0=2 expectedBindingPass=2 expectedReplacementMutation0=2 expectedHashMutation0=2 expectedInodeRaceMutation0=2 expectedInvalidMutation0=2 expectedAbsentMutation0=2 identityPublish=2 identityVerifyExact=2 identityUnsafe=3 fullSpecDrift=3 identityPublicationCuts=3 identityAuthorityNoRollback=1 staleIdentityRemoved=4 baselineIdentityPreserved=1 markerAbsentBaselineRetired=1 markerDivergentBaselineRetired=1 managedExactRollback=5 managedCandidateRollback=1 managedForeignMutation0=5 aggregatePreflightMutation0=2 databasePasswordSecret0=4 servingDrift=7 readyPodImageIdDrift=1 registryReuse=1 registryReject=2 parentAuthorityBlock=5 inheritedLock=2 v4BaselineProof=1 v4TamperMutation0=2 mutableTagDigestRollback=1 verifyPendingExact=1 verifyPendingProofReject=2 verifyPendingBindingReject=2 holdCreationFailureMutation0=1 tagSwapBeforeCaptureMutation0=1 rollbackIdentityLabelLessRetired=1 rollbackDependencyDriftRetained=1 checkpointScopeFixed=1 checkpointScopeMutantKilled=1 secretValues=0'
