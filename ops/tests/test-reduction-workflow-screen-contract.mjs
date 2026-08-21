@@ -11,6 +11,7 @@ const contract = JSON.parse(read("projects/carbonet-frontend/source/src/features
 const page = read("projects/carbonet-frontend/source/src/features/reduction-workflow/ReductionWorkflowPage.tsx");
 const routes = read("projects/carbonet-frontend/source/src/app/routes/families/emissionMonitoringFamily.ts");
 const bootstrap = read("projects/carbonet-frontend/source/src/lib/api/appBootstrap.ts");
+const assignmentPage = read("projects/carbonet-frontend/source/src/features/work-assignment/WorkAssignmentPage.tsx");
 const catalog = JSON.parse(read("projects/carbonet-frontend/src/main/resources/static/react-app/runtime/catalog.json"));
 
 assert.equal(contract.schemaVersion, 1);
@@ -39,9 +40,11 @@ for (const step of contract.steps) {
   assert.ok(catalog.screens.some(screen => screen.process_code === mapping[0] && screen.actor_code === mapping[2] && screen.apis?.some(api => api.method === "POST" && api.code === mapping[1])), `${step.code}: runtime catalog authority contract`);
 }
 
-for (const token of ["data-reduction-process", "data-reduction-step", "INPUT_FUNCTION_OUTPUT", "AUTHORITY_QA", "HANDOFF", "RUNTIME_EXECUTION", "data-runtime-workspace-link", "/home/workspace", "projectId"]) {
+for (const token of ["data-reduction-process", "data-reduction-step", "INPUT_FUNCTION_OUTPUT", "AUTHORITY_QA", "HANDOFF", "RUNTIME_EXECUTION", "data-runtime-workspace-link", "data-runtime-assignment-link", "/home/workspace", "/emission/work-assignment", "projectId"]) {
   assert.ok(page.includes(token), `page token ${token}`);
 }
+for (const actor of ["REDUCTION_MANAGER", "DATA_ANALYST", "VERIFIER", "APPROVER", "AUDITOR"]) assert.ok(assignmentPage.includes(actor), `assignment actor ${actor}`);
+for (const forbidden of ["<header", "HeaderBrand", "HeaderDesktopNav", "HeaderMobileMenu", "<footer"]) assert.equal(assignmentPage.includes(forbidden), false, `assignment page must use global shell: ${forbidden}`);
 for (const forbidden of ["<header", "<footer", "gnb-depth2", "GlobalUserGnbShell", "CommonUserFooter"]) {
   assert.equal(page.includes(forbidden), false, `page must not own global shell: ${forbidden}`);
 }

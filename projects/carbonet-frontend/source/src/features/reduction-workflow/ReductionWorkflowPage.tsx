@@ -21,6 +21,9 @@ export function ReductionWorkflowPage() {
   if (projectId) workspaceQuery.set("projectId", projectId);
   if (tenantId) workspaceQuery.set("tenantId", tenantId);
   const workspacePath = `${en ? "/en" : ""}/home/workspace?${workspaceQuery}`;
+  const assignmentQuery = new URLSearchParams({ workTypeCode: "REDUCTION", processCode: runtimeProcessCode });
+  if (projectId) assignmentQuery.set("projectId", projectId);
+  const assignmentPath = `${en ? "/en" : ""}/emission/work-assignment?${assignmentQuery}`;
   return <main className="min-h-screen bg-slate-50 text-slate-900" data-help-id={`reduction-${step.code.toLowerCase()}`} data-reduction-process={contract.processCode} data-reduction-step={step.code}>
     <section className="border-b border-slate-200 bg-white">
       <div className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
@@ -43,7 +46,7 @@ export function ReductionWorkflowPage() {
         <section className="rounded-2xl border border-blue-200 bg-white p-5" data-workflow-section="RUNTIME_EXECUTION">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div><p className="text-xs font-black text-[#246beb]">실제 업무 원장 연결</p><h2 className="mt-1 text-lg font-black text-[#052b57]">{runtimeProcessCode} · {runtimeStepCode}</h2><p className="mt-2 text-sm text-slate-600">실행 액터 {runtimeActorCode}의 권한으로 임시저장·증빙·버전 충돌·완료·다음 담당자 인계를 처리합니다.</p></div>
-            <a className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#246beb] px-5 text-sm font-black text-white" data-runtime-workspace-link href={workspacePath}>{projectId ? "실제 업무 처리" : "프로젝트 선택 후 업무 처리"}</a>
+            <div className="flex flex-wrap gap-2"><a className="inline-flex min-h-11 items-center justify-center rounded-lg border border-blue-300 bg-white px-5 text-sm font-black text-blue-800" data-runtime-assignment-link href={assignmentPath}>담당 계정 배정</a><a className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#246beb] px-5 text-sm font-black text-white" data-runtime-workspace-link href={workspacePath}>{projectId ? "실제 업무 처리" : "프로젝트 선택 후 업무 처리"}</a></div>
           </div>
           {!projectId ? <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm font-bold text-amber-900">내 업무 또는 프로젝트 목록에서 프로젝트를 선택하면 projectId가 전달되고 실제 저장이 활성화됩니다.</p> : <p className="mt-3 text-xs font-bold text-emerald-700">프로젝트 {projectId}에 연결됨</p>}
         </section>
