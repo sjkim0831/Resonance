@@ -13,6 +13,14 @@ export function ReductionWorkflowPage() {
   const step = currentStep();
   const previous = contract.steps[step.order - 2];
   const next = contract.steps[step.order];
+  const [runtimeProcessCode, runtimeStepCode, runtimeActorCode] = contract.runtimeMappings[step.code as keyof typeof contract.runtimeMappings];
+  const query = new URLSearchParams(window.location.search);
+  const projectId = query.get("projectId") || "";
+  const tenantId = query.get("tenantId") || "";
+  const workspaceQuery = new URLSearchParams({ shell: "1", screenPath: en ? `/en${step.path}` : step.path, processCode: runtimeProcessCode, stepCode: runtimeStepCode });
+  if (projectId) workspaceQuery.set("projectId", projectId);
+  if (tenantId) workspaceQuery.set("tenantId", tenantId);
+  const workspacePath = `${en ? "/en" : ""}/home/workspace?${workspaceQuery}`;
   return <main className="min-h-screen bg-slate-50 text-slate-900" data-help-id={`reduction-${step.code.toLowerCase()}`} data-reduction-process={contract.processCode} data-reduction-step={step.code}>
     <section className="border-b border-slate-200 bg-white">
       <div className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
@@ -32,6 +40,13 @@ export function ReductionWorkflowPage() {
         <ol className="mt-3 space-y-1">{contract.steps.map(item => <li key={item.code}><a aria-current={item.code === step.code ? "step" : undefined} className={`flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-bold ${item.code === step.code ? "bg-[#246beb] text-white" : "text-slate-600 hover:bg-slate-100"}`} href={en ? `/en${item.path}` : item.path}><span>{item.order}</span><span>{item.name}</span></a></li>)}</ol>
       </aside>
       <div className="space-y-5">
+        <section className="rounded-2xl border border-blue-200 bg-white p-5" data-workflow-section="RUNTIME_EXECUTION">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div><p className="text-xs font-black text-[#246beb]">실제 업무 원장 연결</p><h2 className="mt-1 text-lg font-black text-[#052b57]">{runtimeProcessCode} · {runtimeStepCode}</h2><p className="mt-2 text-sm text-slate-600">실행 액터 {runtimeActorCode}의 권한으로 임시저장·증빙·버전 충돌·완료·다음 담당자 인계를 처리합니다.</p></div>
+            <a className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#246beb] px-5 text-sm font-black text-white" data-runtime-workspace-link href={workspacePath}>{projectId ? "실제 업무 처리" : "프로젝트 선택 후 업무 처리"}</a>
+          </div>
+          {!projectId ? <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm font-bold text-amber-900">내 업무 또는 프로젝트 목록에서 프로젝트를 선택하면 projectId가 전달되고 실제 저장이 활성화됩니다.</p> : <p className="mt-3 text-xs font-bold text-emerald-700">프로젝트 {projectId}에 연결됨</p>}
+        </section>
         <section className="grid gap-4 md:grid-cols-3" data-workflow-section="INPUT_FUNCTION_OUTPUT">
           {[["입력값",step.inputs,"input"],["수행 기능",step.functions,"settings"],["출력값",step.outputs,"output"]].map(([title,items,icon]) => <article className="rounded-2xl border border-slate-200 bg-white p-5" key={String(title)}><span className="material-symbols-outlined text-[#246beb]">{String(icon)}</span><h2 className="mt-2 font-black text-[#052b57]">{String(title)}</h2><ul className="mt-3 space-y-2 text-sm text-slate-700">{(items as readonly string[]).map(item => <li className="rounded-lg bg-slate-50 px-3 py-2" key={item}>{item}</li>)}</ul></article>)}
         </section>
