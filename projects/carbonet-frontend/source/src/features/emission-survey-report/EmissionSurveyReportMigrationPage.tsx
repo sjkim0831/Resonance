@@ -4270,10 +4270,15 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
     };
   };
 
+  const activePreviewPage = Math.min(
+    photoPreviewUrls.length || 1,
+    Math.max(1, selectedDamageRegion?.page || selectedPreviewPage || 1)
+  );
+
   const verificationContent = (
       <AdminWorkspacePageFrame>
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section {...sectionProps("UPLOAD")} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,58fr)_minmax(360px,42fr)]">
+          <section data-certificate-section="UPLOAD" data-section-design-version={screenDesign?.designVersion || "built-in"} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <fieldset className="mb-5 border-b border-slate-200 pb-5">
               <legend className="text-sm font-black text-slate-800">{en ? "Report type" : "검증할 리포트 종류"}</legend>
               <div className="mt-3 grid grid-cols-2 gap-2" role="radiogroup">
@@ -4315,14 +4320,19 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
               <input accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" className="sr-only" multiple onChange={handleFileChange} type="file" />
             </label>
             {photoPreviewUrls.length ? (
-              <div className="mt-4" data-certificate-pdf-preview>
-                <button aria-label={en ? "Enlarge uploaded report page 1" : "업로드 리포트 1페이지 크게 보기"} className="flex w-full items-center justify-center overflow-hidden border border-slate-300 bg-slate-100 p-3" onClick={() => { setSelectedPreviewPage(1); setSelectedDamageRegion(null); }} type="button">
-                  <img alt={`${en ? "Uploaded report page" : "업로드 리포트 페이지"} 1`} className="max-h-[720px] w-full object-contain" src={photoPreviewUrls[0]} />
+              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-300 bg-slate-900 shadow-xl" data-certificate-pdf-preview>
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-slate-950 px-4 py-3 text-white">
+                  <div><strong className="text-sm">{en ? "Issued document evidence" : "발급 문서 증거"}</strong><span className="ml-2 text-xs font-bold text-slate-300">P{activePreviewPage} / {photoPreviewUrls.length}</span></div>
+                  <div className="flex gap-1 text-[11px] font-black"><span className="rounded-full bg-emerald-500/20 px-2 py-1 text-emerald-200">PDF</span><span className="rounded-full bg-sky-500/20 px-2 py-1 text-sky-200">DB</span><span className="rounded-full bg-violet-500/20 px-2 py-1 text-violet-200">{en ? "VISUAL" : "시각 증거"}</span></div>
+                </div>
+                <button aria-label={en ? `Enlarge uploaded report page ${activePreviewPage}` : `업로드 리포트 ${activePreviewPage}페이지 크게 보기`} className="relative flex min-h-[520px] w-full items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top,#334155,#0f172a_70%)] p-4" onClick={() => { setSelectedPreviewPage(activePreviewPage); }} type="button">
+                  <img alt={`${en ? "Uploaded report page" : "업로드 리포트 페이지"} ${activePreviewPage}`} className="max-h-[72vh] w-full object-contain drop-shadow-2xl" src={photoPreviewUrls[activePreviewPage - 1]} />
+                  {selectedDamageRegion?.page === activePreviewPage ? <span aria-hidden className="pointer-events-none absolute border-4 border-rose-500 bg-rose-500/15 shadow-[0_0_0_9999px_rgba(15,23,42,0.12)]" style={{ left: `${Math.max(2, selectedDamageRegion.column * 10)}%`, top: `${Math.max(2, selectedDamageRegion.row * 6)}%`, width: "12%", height: "7%" }} /> : null}
                 </button>
-                <p className="mt-2 text-center text-xs font-bold text-slate-600">{en ? `PDF preview · ${photoPreviewUrls.length} page(s) · select a page to enlarge` : `PDF 미리보기 · 총 ${photoPreviewUrls.length}페이지 · 페이지를 누르면 크게 볼 수 있습니다.`}</p>
-                <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-5">
+                <p className="bg-white px-4 py-2 text-center text-xs font-bold text-slate-600">{en ? `Select a thumbnail to inspect another page; select the large page to enlarge it.` : `썸네일로 페이지를 전환하고 큰 문서를 누르면 확대됩니다.`}</p>
+                <div className="grid grid-cols-3 gap-2 bg-slate-100 p-3 sm:grid-cols-5">
                   {photoPreviewUrls.map((url, index) => (
-                    <button className="group relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50" key={url} onClick={() => {
+                    <button aria-pressed={activePreviewPage === index + 1} className={`group relative overflow-hidden rounded-xl border-2 bg-white transition ${activePreviewPage === index + 1 ? "border-emerald-500 ring-2 ring-emerald-200" : "border-white hover:border-slate-400"}`} key={url} onClick={() => {
                       setSelectedPreviewPage(index + 1);
                       setSelectedDamageRegion(photoVerification?.damagedRegions?.find((region) => region.page === index + 1) || null);
                     }} type="button">
@@ -4333,7 +4343,28 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
                   ))}
                 </div>
               </div>
-            ) : null}
+            ) : (
+              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 p-6 text-white shadow-xl" data-certificate-evidence-placeholder>
+                <div className="grid items-center gap-6 md:grid-cols-[minmax(220px,0.85fr)_1.15fr]">
+                  <div className="relative mx-auto w-full max-w-[300px]">
+                    <div className="absolute -right-3 top-5 h-full w-full rotate-3 rounded-xl border border-white/20 bg-white/10" />
+                    <div className="relative aspect-[3/4] rounded-xl bg-white p-5 text-slate-900 shadow-2xl">
+                      <div className="flex items-center justify-between"><span className="h-3 w-24 rounded bg-emerald-600" /><span className="text-[10px] font-black text-emerald-700">VERIFIED PDF</span></div>
+                      <div className="mt-5 h-3 w-3/4 rounded bg-slate-900" /><div className="mt-2 h-2 w-1/2 rounded bg-slate-300" />
+                      <div className="mt-7 flex h-24 items-end gap-2 border-b border-l border-slate-300 px-3 pb-1"><span className="h-10 flex-1 bg-emerald-300" /><span className="h-16 flex-1 bg-emerald-500" /><span className="h-20 flex-1 bg-sky-500" /><span className="h-12 flex-1 bg-violet-400" /></div>
+                      <div className="mt-6 space-y-2">{[88, 72, 94, 64].map((width) => <div className="h-2 rounded bg-slate-200" key={width} style={{ width: `${width}%` }} />)}</div>
+                      <div className="absolute bottom-5 right-5 grid h-14 w-14 place-items-center rounded-lg border-4 border-slate-900 text-[9px] font-black">QR</div>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">{en ? "Visual evidence workspace" : "시각 증거 작업공간"}</p>
+                    <h3 className="mt-2 text-2xl font-black leading-tight">{en ? "See the document, not only the verdict." : "판정만 보지 말고 문서를 직접 확인하세요."}</h3>
+                    <p className="mt-3 text-sm font-semibold leading-6 text-slate-300">{en ? "After upload, the original pages, charts, tables, and suspected locations appear here with page thumbnails." : "업로드하면 원본 페이지·그래프·표·의심 위치가 페이지 썸네일과 함께 이 영역에 표시됩니다."}</p>
+                    <div className="mt-5 grid grid-cols-3 gap-2 text-center text-[11px] font-black"><span className="rounded-lg bg-white/10 px-2 py-3">01<br />{en ? "ORIGINAL" : "원본"}</span><span className="rounded-lg bg-white/10 px-2 py-3">02<br />{en ? "COMPARE" : "대조"}</span><span className="rounded-lg bg-emerald-400/20 px-2 py-3 text-emerald-200">03<br />{en ? "EVIDENCE" : "증거"}</span></div>
+                  </div>
+                </div>
+              </div>
+            )}
             {ocrProgress.busy ? (
               <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 p-4">
                 <div className="flex items-center justify-between text-sm font-black text-sky-900"><span>{en ? "OCR processing" : "OCR 처리 중"}</span><span>{ocrProgress.percent}%</span></div>
@@ -4363,7 +4394,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
 
           </section>
 
-          <aside className="space-y-4">
+          <aside className="min-w-0 space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-1">
             <section {...sectionProps("VERDICT")} className={`rounded-2xl border p-5 shadow-sm ${toneClass}`}>
               <p className="text-xs font-black uppercase tracking-[0.16em] opacity-80">{en ? "Verification Result" : "검증 결과"}</p>
               <h2 className="mt-2 text-xl font-black">
