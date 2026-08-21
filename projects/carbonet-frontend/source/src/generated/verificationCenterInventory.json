@@ -10,12 +10,12 @@
     "governancePlan": "docs/architecture/verification-center-and-baseline-governance-plan.md"
   },
   "summary": {
-    "pageCount": 231,
-    "menuBoundPageCount": 231,
-    "staticMenuBoundPageCount": 230,
+    "pageCount": 232,
+    "menuBoundPageCount": 232,
+    "staticMenuBoundPageCount": 231,
     "dynamicMenuBoundPageCount": 1,
     "unmanagedPageCount": 0,
-    "routeBoundPageCount": 231,
+    "routeBoundPageCount": 232,
     "apiCount": 13,
     "uniqueRouteCount": 13,
     "functionCount": 59,
@@ -585,6 +585,13 @@
       "pageId": "emission-management",
       "routePath": "/admin/emission/management",
       "menuCode": "AMENU_EMISSION_MANAGEMENT",
+      "menuBindingType": "static"
+    },
+    {
+      "manifestKey": "emission-my-tasks",
+      "pageId": "emission-my-tasks",
+      "routePath": "/emission/my-tasks",
+      "menuCode": "H1010102",
       "menuBindingType": "static"
     },
     {

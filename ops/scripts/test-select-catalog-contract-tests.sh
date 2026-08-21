@@ -56,6 +56,7 @@ for my_work_contract_path in \
     projects/carbonet-frontend/source/src/features/home-entry/TestAccountSwitcher.tsx \
     projects/carbonet-frontend/source/src/platform/screen-registry/pageManifests.ts \
     projects/carbonet-frontend/source/src/platform/screen-registry/helpContent.ts \
+    projects/carbonet-frontend/source/src/generated/verificationCenterInventory.json \
     projects/carbonet-frontend/source/src/app/routes/families/emissionMonitoringFamily.ts \
     docs/design/emission-my-tasks-screen.md \
     modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/service/EmissionProjectRegistryService.java \
@@ -538,4 +539,4 @@ mapfile -t deduplicated < <(
 )
 [[ "${#deduplicated[@]}" == 2 ]]
 
-echo "[catalog-contract-selector-test] PASS all=$expected_all_count asset=1 performance=2 webhook=1 backstageContract=1 runtimeCheckpoint=15 flywayTimeout=1 compositeMigration=1 rollbackGate=2 emissionWorkflow=1 runtimeTemplateIdentity=15 retirementIdentity=15 postRebootIdentity=1 startupProfileIdentity=14 watchdogIdentity=14 legacyBootIdentity=14 retiredEntrypointIdentity=14 buildDeployIdentity=17 backupPrune=1 handoff=20 myWorkPaths=11 runnerMutants=1"
+echo "[catalog-contract-selector-test] PASS all=$expected_all_count asset=1 performance=2 webhook=1 backstageContract=1 runtimeCheckpoint=15 flywayTimeout=1 compositeMigration=1 rollbackGate=2 emissionWorkflow=1 runtimeTemplateIdentity=15 retirementIdentity=15 postRebootIdentity=1 startupProfileIdentity=14 watchdogIdentity=14 legacyBootIdentity=14 retiredEntrypointIdentity=14 buildDeployIdentity=17 backupPrune=1 handoff=20 myWorkPaths=12 runnerMutants=1"

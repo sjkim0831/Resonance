@@ -120,6 +120,7 @@ select_for_path() {
     projects/carbonet-frontend/source/src/features/home-entry/TestAccountSwitcher.tsx|\
     projects/carbonet-frontend/source/src/platform/screen-registry/pageManifests.ts|\
     projects/carbonet-frontend/source/src/platform/screen-registry/helpContent.ts|\
+    projects/carbonet-frontend/source/src/generated/verificationCenterInventory.json|\
     projects/carbonet-frontend/source/src/app/routes/families/emissionMonitoringFamily.ts|\
     docs/design/emission-my-tasks-screen.md|\
     modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/service/EmissionProjectRegistryService.java|\

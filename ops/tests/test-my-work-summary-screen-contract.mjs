@@ -13,6 +13,7 @@ const relative = {
   accounts: "projects/carbonet-frontend/source/src/features/home-entry/TestAccountSwitcher.tsx",
   manifest: "projects/carbonet-frontend/source/src/platform/screen-registry/pageManifests.ts",
   help: "projects/carbonet-frontend/source/src/platform/screen-registry/helpContent.ts",
+  verificationInventory: "projects/carbonet-frontend/source/src/generated/verificationCenterInventory.json",
   routeFamily: "projects/carbonet-frontend/source/src/app/routes/families/emissionMonitoringFamily.ts",
   service: "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/service/EmissionProjectRegistryService.java",
   controller: "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/web/EmissionProjectRegistryController.java",
@@ -27,6 +28,7 @@ const baseline = {
   accounts: read("accounts"),
   manifest: read("manifest"),
   help: read("help"),
+  verificationInventory: JSON.parse(read("verificationInventory")),
   routeFamily: read("routeFamily"),
   service: read("service"),
   controller: read("controller"),
@@ -132,7 +134,7 @@ function add(violations, failed, code) {
 
 function validate(candidate) {
   const violations = [];
-  const { contract, page, accounts, manifest, help, routeFamily, service, controller, designDoc, browserE2e } = candidate;
+  const { contract, page, accounts, manifest, help, verificationInventory, routeFamily, service, controller, designDoc, browserE2e } = candidate;
 
   add(violations, contract.schemaVersion !== 2 || contract.pageId !== "emission-my-tasks" || contract.route !== "/emission/my-tasks" || contract.runtimeScope !== "EMISSION", "IDENTITY");
   add(violations, contract.designSystem !== "KRDS" || contract.templateCode !== "WORK_EXECUTION_HUB", "DESIGN_SYSTEM");
@@ -203,6 +205,10 @@ function validate(candidate) {
   const componentIds = [...manifestBlock.matchAll(/componentId:\s*"([^"]+)"/g)].map((match) => match[1]);
   const instanceKeys = [...manifestBlock.matchAll(/instanceKey:\s*"([^"]+)"/g)].map((match) => match[1]);
   add(violations, componentIds.length < SECTION_CODES.length || instanceKeys.length !== componentIds.length || new Set(instanceKeys).size !== instanceKeys.length, "PAGE_MANIFEST_COMPONENTS");
+  const inventoryPage = Array.isArray(verificationInventory?.pages)
+    ? verificationInventory.pages.find((item) => item?.pageId === "emission-my-tasks")
+    : null;
+  add(violations, !inventoryPage || inventoryPage.routePath !== "/emission/my-tasks" || inventoryPage.menuCode !== "H1010102" || inventoryPage.menuBindingType !== "static", "VERIFICATION_INVENTORY_PAGE");
 
   const helpBlock = objectBlock(help, "emission-my-tasks");
   add(violations, !helpBlock || !helpBlock.includes('pageId: "emission-my-tasks"') || !/title:\s*"[^"]+"/.test(helpBlock) || !/summary:\s*"[^"]+"/.test(helpBlock), "PAGE_HELP");
@@ -321,6 +327,11 @@ killed("browser exact selector deletion", { browserE2e: baseline.browserE2e.repl
 killed("abort wiring deletion", { page: baseline.page.replace(/load\([\w.]+\.signal\)/, "load()") }, "ABORTABLE_LOAD");
 killed("design scope expansion", { designDoc: baseline.designDoc.replace("현재 실행 범위: `EMISSION`", "현재 실행 범위: `ALL`") }, "DESIGN_DOC_SCOPE");
 killed("design exception deletion", { designDoc: baseline.designDoc.replaceAll("EMISSION_PROJECT_CORRECT", "EMISSION_PROJECT_APPROVE") }, "DESIGN_DOC_EXCEPTION_BRANCH");
+{
+  const verificationInventory = structuredClone(baseline.verificationInventory);
+  verificationInventory.pages = verificationInventory.pages.filter((item) => item.pageId !== "emission-my-tasks");
+  killed("verification inventory page deletion", { verificationInventory }, "VERIFICATION_INVENTORY_PAGE");
+}
 
 const helpItems = [...objectBlock(baseline.help, "emission-my-tasks").matchAll(/anchorSelector:/g)].length;
 console.log(`MY_WORK_SUMMARY_SCREEN_CONTRACT_PASS sections=${SECTION_CODES.length} qa=${QA_SCENARIOS.length} accounts=${RELAY_ACCOUNTS.length} relaySteps=${WORKFLOW_STEPS.length} exceptionSteps=${EXCEPTION_STEPS.length} helpItems=${helpItems} mutants=${mutants}`);
