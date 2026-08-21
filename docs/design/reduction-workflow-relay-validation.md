@@ -50,3 +50,28 @@
 3. 저장은 `draftVersion`, 완료는 `idempotencyKey`와 현재 액터 권한을 검증한다.
 4. 다른 테넌트·프로젝트·액터 요청은 거부하고 감사 증거를 남긴다.
 5. 화면별 기능 추가 시 JSON 계약과 런타임 카탈로그를 함께 수정하고 자동 계약을 재실행한다.
+
+## QA 프로젝트 공식 업무배정 (2026-08-21)
+
+- 대상: `PRJ-ACTOR-TEST`
+- 공식 저장 API: `POST /home/api/work-assignments`
+- 저장·재조회: 8개 프로세스, 프로세스 담당 8건, 단계 담당 32건 모두 PASS
+- 계정 릴레이: `qaowner26`(REDUCTION_MANAGER), `qacalc26`(DATA_ANALYST), `qaverify26`(VERIFIER/AUDITOR), `qaapprove26`(APPROVER)
+- 기존 감축 배정: 0건을 저장 직전 다시 확인했으므로 덮어쓴 데이터 0건
+- 다른 프로젝트: 저장 요청의 `projectId`를 `PRJ-ACTOR-TEST`로 고정했으며 변경 대상 0건
+- 빌드·배포·DB 백업: 각 0회
+
+### 발견된 폐쇄 결함과 수정
+
+배정 저장 후 공식 프로세스 동기화를 실행했지만 감축 task는 0건이었다. 원인은
+`framework_sync_project_processes`의 적용 업무 종류에 `REDUCTION`이 빠져 있었기
+때문이다. `V20260821112000__include_reduction_in_project_process_sync.sql`은 다음을
+보장한다.
+
+1. 프로젝트 프로세스 동기화 범위에 `REDUCTION`을 추가한다.
+2. 이미 감축 단계 배정이 존재하는 프로젝트만 선택적으로 재동기화한다.
+3. `framework_reduction_assignment_delivery_audit`에서 프로세스·32단계 배정과
+   실제 `emission_project_task`의 누락 수를 한 행으로 검증한다.
+4. Flyway 적용 후 완료 기준은 `assigned_process_count=8`,
+   `assigned_step_count=32`, `generated_process_count=8`,
+   `generated_task_count=32`, `missing_task_count=0`이다.
