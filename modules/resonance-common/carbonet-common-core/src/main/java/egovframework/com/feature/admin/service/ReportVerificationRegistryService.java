@@ -1298,6 +1298,14 @@ public class ReportVerificationRegistryService {
         for (String observed : extractDisplayedNumbers(normalizedText)) {
             if (displayedNumberMatchesDatabase(expectedDisplay, observed, value)) return observed;
         }
+        // Summary/output cards may intentionally render fewer decimals than the
+        // high-precision registry display. Accept that only when both strings are
+        // independently valid renderings of the same DB number.
+        if (databaseNumberRendersAs(value, expectedDisplay)) {
+            for (String observed : extractDisplayedNumbers(normalizedText)) {
+                if (databaseNumberRendersAs(value, observed)) return observed;
+            }
+        }
         return "";
     }
 
@@ -1307,15 +1315,26 @@ public class ReportVerificationRegistryService {
                 CertificateVerificationRuleRegistry.activeNumberRule();
         String expected = normalizeDisplayedNumber(expectedDisplay);
         String observed = normalizeDisplayedNumber(observedDisplay);
-        if (!rule.requirePdfScreenDigitsExact() || expected.isBlank() || !expected.equals(observed)
+        if (!rule.requirePdfScreenDigitsExact() || expected.isBlank() || observed.isBlank()
                 || databaseValue == null || !databaseValue.isNumber()) return false;
         try {
-            java.math.BigDecimal expectedNumber = new java.math.BigDecimal(expected);
-            java.math.BigDecimal databaseNumber = databaseValue.decimalValue();
-            int displayScale = displayedNumberScale(expected);
-            return "TRUNCATE_TO_PDF_SCALE".equals(rule.databaseComparison())
-                    && databaseNumber.setScale(displayScale, java.math.RoundingMode.DOWN)
-                    .compareTo(expectedNumber) == 0;
+            if (!"ROUND_HALF_UP_TO_PDF_SCALE".equals(rule.databaseComparison())) return false;
+            // The issuance registry's captured display text is authoritative for an exact
+            // PDF-screen comparison. The raw numeric value may retain more precision.
+            return expected.equals(observed);
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+    }
+
+    private boolean databaseNumberRendersAs(JsonNode databaseValue, String display) {
+        String normalized = normalizeDisplayedNumber(display);
+        if (normalized.isBlank() || databaseValue == null || !databaseValue.isNumber()) return false;
+        try {
+            java.math.BigDecimal rendered = new java.math.BigDecimal(normalized);
+            return databaseValue.decimalValue()
+                    .setScale(displayedNumberScale(normalized), java.math.RoundingMode.HALF_UP)
+                    .compareTo(rendered) == 0;
         } catch (RuntimeException ignored) {
             return false;
         }

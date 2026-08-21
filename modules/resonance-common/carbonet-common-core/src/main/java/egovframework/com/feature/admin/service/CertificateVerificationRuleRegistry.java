@@ -15,7 +15,7 @@ final class CertificateVerificationRuleRegistry {
     private static final long RELOAD_INTERVAL_NANOS = 1_000_000_000L;
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final NumberRule BUILT_IN = new NumberRule(
-            "certificate-number-exact-v1", true, true, "TRUNCATE_TO_PDF_SCALE");
+            "certificate-number-exact-v2", true, true, "ROUND_HALF_UP_TO_PDF_SCALE");
     private static volatile CachedRule cached = new CachedRule("", -1L, -1L, BUILT_IN);
     private static volatile long nextCheckNanos;
 
@@ -88,7 +88,7 @@ final class CertificateVerificationRuleRegistry {
                     number.path("ignoreThousandsGrouping").asBoolean(false),
                     requiredText(number, "databaseComparison").toUpperCase(Locale.ROOT));
             if (!rule.requirePdfScreenDigitsExact() || !rule.ignoreThousandsGrouping()
-                    || !"TRUNCATE_TO_PDF_SCALE".equals(rule.databaseComparison())) {
+                    || !"ROUND_HALF_UP_TO_PDF_SCALE".equals(rule.databaseComparison())) {
                 throw invalidRule("unsupported or unsafe number comparison policy", null);
             }
             return rule;

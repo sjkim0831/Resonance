@@ -514,6 +514,31 @@ class ReportVerificationRegistryServicePdfTest {
     }
 
     @Test
+    void roundedIssuedDigitsAndShorterPdfSummaryScaleMatchTheSameDatabaseValue() throws Exception {
+        ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+        Method matcher = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "displayedNumberMatchesDatabase", String.class, String.class,
+                com.fasterxml.jackson.databind.JsonNode.class);
+        matcher.setAccessible(true);
+        ObjectMapper mapper = new ObjectMapper();
+
+        assertTrue((Boolean) matcher.invoke(service, "13.02", "13.02",
+                mapper.readTree("13.015107289620094")));
+        Method finder = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "findObservedDisplayedNumber", String.class, com.fasterxml.jackson.databind.JsonNode.class,
+                String.class, com.fasterxml.jackson.databind.JsonNode.class);
+        finder.setAccessible(true);
+        com.fasterxml.jackson.databind.JsonNode summary = mapper.readTree(
+                "{\"productGwpDisplay\":\"79,262.293968\"}");
+        assertEquals("79,262.29", finder.invoke(service, "제품 GWP 79,262.29", summary,
+                "productGwp", mapper.readTree("79262.29396809019")));
+        assertFalse((Boolean) matcher.invoke(service, "13.02", "13.03",
+                mapper.readTree("13.015107289620094")));
+        assertEquals("", finder.invoke(service, "제품 GWP 79,262.30", summary,
+                "productGwp", mapper.readTree("79262.29396809019")));
+    }
+
+    @Test
     void numberRuleReloadsWithoutRebuildingAndUnsafeRuleFailsClosed() throws Exception {
         Path rule = Files.createTempFile("certificate-verification-rule-", ".json");
         String previous = System.getProperty(CertificateVerificationRuleRegistry.RULE_FILE_PROPERTY);
@@ -521,7 +546,7 @@ class ReportVerificationRegistryServicePdfTest {
             Files.writeString(rule, """
                     {"schemaVersion":1,"ruleVersion":"dev-v1","active":true,
                      "numberComparison":{"requirePdfScreenDigitsExact":true,
-                     "ignoreThousandsGrouping":true,"databaseComparison":"TRUNCATE_TO_PDF_SCALE"}}
+                     "ignoreThousandsGrouping":true,"databaseComparison":"ROUND_HALF_UP_TO_PDF_SCALE"}}
                     """);
             System.setProperty(CertificateVerificationRuleRegistry.RULE_FILE_PROPERTY,
                     rule.toAbsolutePath().toString());
@@ -537,7 +562,7 @@ class ReportVerificationRegistryServicePdfTest {
             Files.writeString(rule, """
                     {"schemaVersion":1,"ruleVersion":"dev-v2","active":true,
                      "numberComparison":{"requirePdfScreenDigitsExact":false,
-                     "ignoreThousandsGrouping":true,"databaseComparison":"TRUNCATE_TO_PDF_SCALE"}}
+                     "ignoreThousandsGrouping":true,"databaseComparison":"ROUND_HALF_UP_TO_PDF_SCALE"}}
                     """);
             CertificateVerificationRuleRegistry.resetForTest();
             java.lang.reflect.InvocationTargetException failure = assertThrows(
