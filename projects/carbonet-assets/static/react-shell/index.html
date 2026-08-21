@@ -188,6 +188,13 @@
 
     const search = new URLSearchParams(window.location.search);
     const useDevServer = search.get("dev") === "1";
+    if (useDevServer && window.location.port !== "5175") {
+        search.delete("dev");
+        search.set("devRuntime", "1");
+        const target = `http://${window.location.hostname}:5175${window.location.pathname}?${search.toString()}`;
+        window.location.replace(target);
+        await new Promise(() => {});
+    }
     function resolveBootstrapPath() {
         return resolveBootstrapApiPath(window.location.pathname);
     }
@@ -306,9 +313,7 @@
             }
         }
 
-        const currentScriptSrc = useDevServer
-            ? `http://${window.location.hostname}:5175/src/main.tsx`
-            : (config.reactAppProdJs || "");
+        const currentScriptSrc = useDevServer ? `${config.reactAppDevUrl}/src/main.tsx` : (config.reactAppProdJs || "");
         const existingScript = document.querySelector('script[data-carbonet-react-app="1"]');
         if (existingScript && existingScript.dataset.carbonetReactSrc !== currentScriptSrc) {
             existingScript.remove();

@@ -94,6 +94,14 @@ export default defineConfig({
         target: "http://localhost:18000",
         changeOrigin: true
       },
+      "/home/api": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/home/api": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
       "/api": {
         target: "http://localhost:18000",
         changeOrigin: true
