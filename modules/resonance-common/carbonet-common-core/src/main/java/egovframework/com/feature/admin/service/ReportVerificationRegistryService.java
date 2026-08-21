@@ -441,7 +441,18 @@ public class ReportVerificationRegistryService {
             comparison.put("productName", candidate.get("product_name"));
             comparison.put("productNameActual", Boolean.TRUE.equals(score.get("productMatched")) ? candidate.get("product_name") : "");
             comparison.put("totalEmission", candidate.get("total_emission"));
-            comparison.put("totalEmissionActual", findObservedNumber(ocrText, objectMapper.valueToTree(candidate.get("total_emission"))));
+            String totalEmissionActual = findObservedNumber(ocrText,
+                    objectMapper.valueToTree(candidate.get("total_emission")));
+            if (totalEmissionActual.isBlank() && score.get("reportSummaryComparisons") instanceof List<?> summaryFields) {
+                totalEmissionActual = summaryFields.stream()
+                        .filter(item -> item instanceof Map<?, ?> field
+                                && "totalCarbonEmission".equals(text(field.get("field")))
+                                && Boolean.TRUE.equals(field.get("matched")))
+                        .map(item -> text(((Map<?, ?>) item).get("actual")))
+                        .filter(value -> !value.isBlank())
+                        .findFirst().orElse("");
+            }
+            comparison.put("totalEmissionActual", totalEmissionActual);
             comparison.put("rowCount", candidate.get("row_count"));
             comparison.put("payloadHash", payloadHash);
             comparison.put("integrityCode", integrityCode);
@@ -706,7 +717,10 @@ public class ReportVerificationRegistryService {
             String actualShare = actualShareIndex < 0 ? "" : sectionNumbers.get(actualShareIndex);
             List<String> unexpectedNumbers = new ArrayList<>();
             for (int numberIndex = 1; numberIndex < sectionNumbers.size(); numberIndex++) {
-                if (numberIndex != actualShareIndex) unexpectedNumbers.add(sectionNumbers.get(numberIndex));
+                String number = sectionNumbers.get(numberIndex);
+                if (numberIndex != actualShareIndex && !expectedNumbers.contains(number)) {
+                    unexpectedNumbers.add(number);
+                }
             }
             boolean labelMatched = sectionStart >= 0;
             boolean totalMatched = total.equals(actualTotal);
@@ -733,14 +747,13 @@ public class ReportVerificationRegistryService {
             int count = remaining.getOrDefault(number, 0);
             if (count > 0) {
                 remaining.put(number, count - 1);
-            } else if (unexpected.size() < MAX_DIFFERENCES) {
+            } else if (!expectedNumbers.contains(number) && unexpected.size() < MAX_DIFFERENCES) {
                 unexpected.add(number);
             }
         }
         boolean allFieldsMatched = comparisons.stream()
                 .allMatch(value -> Boolean.TRUE.equals(value.get("matched")));
-        boolean exact = !pageText.isBlank() && allFieldsMatched
-                && expectedNumbers.size() == actualNumbers.size() && unexpected.isEmpty();
+        boolean exact = !pageText.isBlank() && allFieldsMatched && unexpected.isEmpty();
         result.put("sectionSummaryExactMatch", exact);
         result.put("sectionSummaryComparisons", comparisons);
         result.put("unexpectedSectionSummaryNumbers", unexpected);
