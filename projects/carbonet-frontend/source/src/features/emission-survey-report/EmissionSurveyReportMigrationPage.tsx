@@ -3787,6 +3787,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
   const [verificationLogs, setVerificationLogs] = useState<Array<{ id: string; at: string; level: "INFO" | "OK" | "WARN" | "ERROR"; message: string; detail?: string }>>([]);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const [selectedDamageRegion, setSelectedDamageRegion] = useState<ReportDamageRegion | null>(null);
+  const [selectedPreviewPage, setSelectedPreviewPage] = useState<number | null>(null);
   const [resultMessage, setResultMessage] = useState(en ? "Upload a certificate PDF or image to begin automatic verification." : "인증서 PDF 또는 이미지를 업로드하면 자동 검증을 시작합니다.");
   const [resultTone, setResultTone] = useState<"info" | "success" | "warning" | "danger">("info");
   const appendVerificationLog = (level: "INFO" | "OK" | "WARN" | "ERROR", message: string, detail?: string) => {
@@ -4043,6 +4044,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
     setPayload(null);
     setUploadedPayloadFound(false);
     setSelectedDamageRegion(null);
+    setSelectedPreviewPage(null);
     setPhotoVerification(null);
     setDatasetVerification(null);
     setPdfFileVerification(null);
@@ -4205,16 +4207,23 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
               <input accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" className="sr-only" multiple onChange={handleFileChange} type="file" />
             </label>
             {photoPreviewUrls.length ? (
-              <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-3">
-                {photoPreviewUrls.map((url, index) => (
-                  <button className="group relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50" key={url} onClick={() => {
-                    const firstRegion = photoVerification?.damagedRegions?.find((region) => region.page === index + 1);
-                    if (firstRegion) setSelectedDamageRegion(firstRegion);
-                  }} type="button">
-                    <img alt={`${en ? "Uploaded report page" : "업로드 리포트 페이지"} ${index + 1}`} className="aspect-[3/4] w-full object-contain" src={url} />
-                    {photoVerification?.damagedRegions?.some((region) => region.page === index + 1) ? <span className="absolute bottom-2 right-2 rounded-full bg-rose-600 px-3 py-1 text-xs font-black text-white shadow-lg">{en ? "Inspect damage" : "훼손 위치 확대"}</span> : null}
-                  </button>
-                ))}
+              <div className="mt-4" data-certificate-pdf-preview>
+                <button aria-label={en ? "Enlarge uploaded report page 1" : "업로드 리포트 1페이지 크게 보기"} className="flex w-full items-center justify-center overflow-hidden border border-slate-300 bg-slate-100 p-3" onClick={() => { setSelectedPreviewPage(1); setSelectedDamageRegion(null); }} type="button">
+                  <img alt={`${en ? "Uploaded report page" : "업로드 리포트 페이지"} 1`} className="max-h-[720px] w-full object-contain" src={photoPreviewUrls[0]} />
+                </button>
+                <p className="mt-2 text-center text-xs font-bold text-slate-600">{en ? `PDF preview · ${photoPreviewUrls.length} page(s) · select a page to enlarge` : `PDF 미리보기 · 총 ${photoPreviewUrls.length}페이지 · 페이지를 누르면 크게 볼 수 있습니다.`}</p>
+                <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-5">
+                  {photoPreviewUrls.map((url, index) => (
+                    <button className="group relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50" key={url} onClick={() => {
+                      setSelectedPreviewPage(index + 1);
+                      setSelectedDamageRegion(photoVerification?.damagedRegions?.find((region) => region.page === index + 1) || null);
+                    }} type="button">
+                      <img alt={`${en ? "Uploaded report thumbnail" : "업로드 리포트 썸네일"} ${index + 1}`} className="aspect-[3/4] w-full object-contain" src={url} />
+                      <span className="absolute left-2 top-2 rounded-full bg-slate-950/80 px-2 py-1 text-[11px] font-black text-white">{index + 1}</span>
+                      {photoVerification?.damagedRegions?.some((region) => region.page === index + 1) ? <span className="absolute bottom-2 right-2 rounded-full bg-rose-600 px-3 py-1 text-xs font-black text-white shadow-lg">{en ? "Inspect damage" : "훼손 위치 확대"}</span> : null}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : null}
             {ocrProgress.busy ? (
@@ -4232,8 +4241,10 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
                     : (en ? "Tampered PDF: exact issued-file bytes do not match." : "변조 파일: 발급 원본 PDF 바이트와 일치하지 않습니다.")
                   : pdfFileVerification?.status === "EXACT_PDF_MATCH"
                   ? (en ? "Exact issued-PDF byte match confirmed." : "발급 PDF 원본 바이트가 정확히 일치합니다.")
+                  : uploadedPdfSelected && ocrProgress.busy
+                  ? (en ? "Verifying PDF bytes, visible text, page order, tables, and charts..." : "PDF 원본 바이트·화면 문자·페이지 순서·표·차트를 검증하고 있습니다.")
                   : uploadedPdfSelected
-                  ? (en ? "PDF authenticity is unverified. OCR and visual similarity are reference evidence only." : "PDF 원본성 검증 불가: OCR·시각 유사도는 참고 증거이며 진위 판정이 아닙니다.")
+                  ? (en ? "PDF byte verification has not completed. Select the file again if processing has stopped." : "PDF 원본 바이트 검증이 완료되지 않았습니다. 처리가 멈췄다면 파일을 다시 선택하세요.")
                   : photoVerification
                   ? (en ? `Photo OCR comparison completed (${photoVerification.confidence}%).` : `사진 OCR 데이터셋 대조를 완료했습니다(${photoVerification.confidence}%).`)
                   : uploadedPayloadFound
@@ -4714,17 +4725,17 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
             )) : <p className="py-4 text-center text-slate-500">{en ? "Select a PDF or image to begin logging." : "PDF 또는 이미지를 선택하면 처리 로그가 기록됩니다."}</p>}
           </div>
         </section>
-        {selectedDamageRegion && photoPreviewUrls[selectedDamageRegion.page - 1] ? (
-          <div aria-label={en ? "Suspected visual damage enlarged preview" : "시각 훼손 의심 위치 확대 보기"} aria-modal="true" className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 p-4" onClick={() => setSelectedDamageRegion(null)} role="dialog">
+        {(selectedPreviewPage || selectedDamageRegion?.page) && photoPreviewUrls[(selectedPreviewPage || selectedDamageRegion?.page || 1) - 1] ? (
+          <div aria-label={en ? "Uploaded PDF enlarged preview" : "업로드 PDF 확대 미리보기"} aria-modal="true" className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 p-4" onClick={() => { setSelectedPreviewPage(null); setSelectedDamageRegion(null); }} role="dialog">
             <div className="flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
               <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-                <div><strong className="text-slate-950">{en ? "Suspected visual damage" : "시각 훼손 의심 위치"}</strong><p className="text-xs font-semibold text-slate-500">P{selectedDamageRegion.page} R{selectedDamageRegion.row} C{selectedDamageRegion.column} · {en ? "red marker shows the approximate comparison cell" : "빨간 표시는 비교 격자의 근사 위치입니다"}</p></div>
-                <button aria-label={en ? "Close" : "닫기"} className="rounded-full bg-slate-100 px-4 py-2 font-black text-slate-700 hover:bg-slate-200" onClick={() => setSelectedDamageRegion(null)} type="button">{en ? "Close" : "닫기"}</button>
+                <div><strong className="text-slate-950">{en ? "Uploaded PDF preview" : "업로드 PDF 미리보기"}</strong><p className="text-xs font-semibold text-slate-500">P{selectedPreviewPage || selectedDamageRegion?.page}{selectedDamageRegion ? ` R${selectedDamageRegion.row} C${selectedDamageRegion.column}` : ""}{selectedDamageRegion ? (en ? " · red marker shows the approximate comparison cell" : " · 빨간 표시는 비교 격자의 근사 위치입니다") : ""}</p></div>
+                <button aria-label={en ? "Close" : "닫기"} className="rounded-full bg-slate-100 px-4 py-2 font-black text-slate-700 hover:bg-slate-200" onClick={() => { setSelectedPreviewPage(null); setSelectedDamageRegion(null); }} type="button">{en ? "Close" : "닫기"}</button>
               </div>
               <div className="overflow-auto bg-slate-200 p-4">
                 <div className="relative mx-auto w-fit max-w-full">
-                  <img alt={`${en ? "Enlarged uploaded report page" : "업로드 리포트 확대 페이지"} ${selectedDamageRegion.page}`} className="max-h-[82vh] max-w-full bg-white object-contain shadow-xl" src={photoPreviewUrls[selectedDamageRegion.page - 1]} />
-                  <span className="pointer-events-none absolute h-10 w-10 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-md border-4 border-rose-600 bg-rose-500/20 shadow-[0_0_0_4px_rgba(255,255,255,0.9)]" style={{ left: `${((selectedDamageRegion.column - 0.5) / 48) * 100}%`, top: `${((selectedDamageRegion.row - 0.5) / 68) * 100}%` }} />
+                  <img alt={`${en ? "Enlarged uploaded report page" : "업로드 리포트 확대 페이지"} ${selectedPreviewPage || selectedDamageRegion?.page}`} className="max-h-[82vh] max-w-full bg-white object-contain shadow-xl" src={photoPreviewUrls[(selectedPreviewPage || selectedDamageRegion?.page || 1) - 1]} />
+                  {selectedDamageRegion ? <span className="pointer-events-none absolute h-10 w-10 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-md border-4 border-rose-600 bg-rose-500/20 shadow-[0_0_0_4px_rgba(255,255,255,0.9)]" style={{ left: `${((selectedDamageRegion.column - 0.5) / 48) * 100}%`, top: `${((selectedDamageRegion.row - 0.5) / 68) * 100}%` }} /> : null}
                 </div>
               </div>
             </div>
