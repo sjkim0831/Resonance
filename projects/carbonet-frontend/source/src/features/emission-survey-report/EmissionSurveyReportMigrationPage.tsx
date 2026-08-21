@@ -4733,8 +4733,13 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
                             </div> : null}
                             {selectedReportType === "EMISSION_SURVEY" && item.sectionSummaryComparisons?.length ? (
                               <div className="order-2 mt-4 border-t border-slate-200 pt-3">
-                                <p className="font-black text-slate-900">{en ? "Pages 2–3 · Graph data comparison" : "2–3페이지 · 그래프 데이터 대조"}</p>
-                                <div className="mt-2 max-h-96 overflow-auto border border-slate-200">
+                                {[2, 3].map((pageNumber) => {
+                                  const pageSections = item.sectionSummaryComparisons?.filter((section) => section.pageNumber === pageNumber) || [];
+                                  const pageDataSections = pageSections.filter((section) => section.sectionCode !== "__UNEXPECTED__");
+                                  if (!pageSections.length) return null;
+                                  return <div className="mb-4 last:mb-0" data-certificate-chart-page={pageNumber} key={`${item.certificateId}-chart-page-${pageNumber}`}>
+                                  <p className="font-black text-slate-900">{pageNumber === 2 ? (en ? "Page 2 · Bar chart data comparison" : "2페이지 · 막대그래프 데이터 대조") : (en ? "Page 3 · Pie chart data comparison" : "3페이지 · 원그래프 데이터 대조")}</p>
+                                  <div className="mt-2 max-h-96 overflow-auto border border-slate-200">
                                   <table className="w-full min-w-[760px] border-collapse text-left text-[11px]">
                                     <thead className="sticky top-0 bg-slate-100 text-slate-700">
                                       <tr>
@@ -4748,7 +4753,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
-                                      {item.sectionSummaryComparisons.flatMap((section, sectionIndex) => ([
+                                      {pageDataSections.flatMap((section, sectionIndex) => ([
                                         [en ? "Emission" : "배출량", section.expectedTotalEmission, section.actualTotalEmission, section.totalEmissionMatched],
                                         [en ? "Share" : "비율", `${section.expectedSharePercent}%`, section.actualSharePercent !== null && section.actualSharePercent !== undefined && section.actualSharePercent !== "" ? `${section.actualSharePercent}%` : "", section.sharePercentMatched],
                                       ] as Array<[string, string, string, boolean]>).map(([label, storedValue, uploadedValue, matched], fieldIndex) => (
@@ -4762,17 +4767,21 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
                                           <td className={`px-3 py-2 font-black ${matched ? "text-emerald-700" : "text-rose-700"}`}>{matched ? "MATCH" : "MISMATCH"}</td>
                                         </tr>
                                       )))}
-                                      {item.unexpectedSectionSummaryNumbers?.length ? (
-                                        <tr className="bg-rose-50 text-rose-900">
-                                          <td className="px-3 py-2 font-black" colSpan={3}>-</td>
-                                          <td className="px-3 py-2 font-black">{en ? "Unexpected graph values" : "예상하지 않은 그래프 값"}</td>
-                                          <td className="px-3 py-2" colSpan={2}>{item.unexpectedSectionSummaryNumbers.join(", ")}</td>
+                                      {pageSections.flatMap((section) => section.unexpectedNumbers.map((number, unexpectedIndex) => (
+                                        <tr className="bg-rose-50 text-rose-900" key={`${item.certificateId}-${pageNumber}-${section.sectionCode}-unexpected-${unexpectedIndex}`}>
+                                          <td className="px-3 py-2 font-black">{pageNumber}</td>
+                                          <td className="px-3 py-2 font-black">-</td>
+                                          <td className="px-3 py-2 font-black">{en ? "Whole graph" : "그래프 전체"}</td>
+                                          <td className="px-3 py-2 font-black">{en ? "Unexpected graph value" : "예상하지 않은 그래프 값"}</td>
+                                          <td className="px-3 py-2">-</td><td className="px-3 py-2 font-black">{number}</td>
                                           <td className="px-3 py-2 font-black">MISMATCH</td>
                                         </tr>
-                                      ) : null}
+                                      )))}
                                     </tbody>
                                   </table>
                                 </div>
+                                </div>;
+                                })}
                               </div>
                             ) : null}
                             {selectedReportType !== "LCA_SUMMARY" && item.outputFieldComparisons?.length ? <div className="order-1 mt-4 border-t border-slate-200 pt-3">

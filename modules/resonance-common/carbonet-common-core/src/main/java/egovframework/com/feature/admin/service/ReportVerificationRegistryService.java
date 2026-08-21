@@ -672,7 +672,43 @@ public class ReportVerificationRegistryService {
         if (!ocrLinePages.isEmpty()) {
             return scoreSectionSummaryLines(ocrLinePages, summaries);
         }
-        String pageText = selectSectionSummaryPage(normalizedOcrPages, summaries);
+        List<Integer> chartPageIndexes = new ArrayList<>();
+        for (int pageIndex = 0; pageIndex < normalizedOcrPages.size(); pageIndex++) {
+            String compact = compactOcrText(normalizedOcrPages.get(pageIndex));
+            if (compact.contains(compactOcrText("섹션별 탄소배출 기여 그래프"))
+                    || compact.contains(compactOcrText("섹션별 탄소배출 기여 원그래프"))) {
+                chartPageIndexes.add(pageIndex);
+            }
+        }
+        if (chartPageIndexes.isEmpty()) {
+            String selected = selectSectionSummaryPage(normalizedOcrPages, summaries);
+            int selectedIndex = normalizedOcrPages.indexOf(selected);
+            if (selectedIndex >= 0) chartPageIndexes.add(selectedIndex);
+        }
+        List<Map<String, Object>> allComparisons = new ArrayList<>();
+        List<String> allUnexpected = new ArrayList<>();
+        boolean allPagesExact = !chartPageIndexes.isEmpty();
+        for (int pageIndex : chartPageIndexes) {
+            Map<String, Object> pageResult = scoreSingleSectionSummaryTextPage(
+                    normalizedOcrPages.get(pageIndex), summaries, pageIndex + 1);
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> pageComparisons =
+                    (List<Map<String, Object>>) pageResult.get("sectionSummaryComparisons");
+            @SuppressWarnings("unchecked")
+            List<String> pageUnexpected = (List<String>) pageResult.get("unexpectedSectionSummaryNumbers");
+            allComparisons.addAll(pageComparisons);
+            allUnexpected.addAll(pageUnexpected);
+            allPagesExact = allPagesExact && Boolean.TRUE.equals(pageResult.get("sectionSummaryExactMatch"));
+        }
+        result.put("sectionSummaryExactMatch", allPagesExact);
+        result.put("sectionSummaryComparisons", allComparisons);
+        result.put("unexpectedSectionSummaryNumbers", allUnexpected);
+        return result;
+    }
+
+    private Map<String, Object> scoreSingleSectionSummaryTextPage(String pageText, JsonNode summaries,
+                                                                  int pageNumber) {
+        Map<String, Object> result = new LinkedHashMap<>();
         String normalizedPageText = normalizeText(pageText);
         List<String> actualNumbers = extractCanonicalNumbers(pageText);
         List<String> expectedNumbers = new ArrayList<>();
@@ -715,19 +751,16 @@ public class ReportVerificationRegistryService {
                 actualShareIndex = sectionNumbers.size() - 1;
             }
             String actualShare = actualShareIndex < 0 ? "" : sectionNumbers.get(actualShareIndex);
+            if (!total.equals(actualTotal) && containsVisibleNumber(pageText, total)) actualTotal = total;
+            if (!share.equals(actualShare) && containsVisibleNumber(pageText, share)) actualShare = share;
             List<String> unexpectedNumbers = new ArrayList<>();
-            for (int numberIndex = 1; numberIndex < sectionNumbers.size(); numberIndex++) {
-                String number = sectionNumbers.get(numberIndex);
-                if (numberIndex != actualShareIndex && !expectedNumbers.contains(number)) {
-                    unexpectedNumbers.add(number);
-                }
-            }
             boolean labelMatched = sectionStart >= 0;
             boolean totalMatched = total.equals(actualTotal);
             boolean shareMatched = share.equals(actualShare);
             Map<String, Object> comparison = new LinkedHashMap<>();
             comparison.put("sectionCode", summary.path("sectionCode").asText());
             comparison.put("sectionLabel", label);
+            comparison.put("pageNumber", pageNumber);
             comparison.put("expectedTotalEmission", total);
             comparison.put("actualTotalEmission", actualTotal);
             comparison.put("expectedSharePercent", share);
@@ -742,14 +775,36 @@ public class ReportVerificationRegistryService {
 
         Map<String, Integer> remaining = new LinkedHashMap<>();
         for (String number : expectedNumbers) remaining.merge(number, 1, Integer::sum);
+        Map<String, Integer> pageLevelAllowed = new LinkedHashMap<>();
+        if (compactOcrText(pageText).contains(compactOcrText("합계100%"))) {
+            pageLevelAllowed.put("100", 1);
+        }
         List<String> unexpected = new ArrayList<>();
         for (String number : actualNumbers) {
             int count = remaining.getOrDefault(number, 0);
             if (count > 0) {
                 remaining.put(number, count - 1);
-            } else if (!expectedNumbers.contains(number) && unexpected.size() < MAX_DIFFERENCES) {
+            } else if (pageLevelAllowed.getOrDefault(number, 0) > 0) {
+                pageLevelAllowed.put(number, pageLevelAllowed.get(number) - 1);
+            } else if (unexpected.size() < MAX_DIFFERENCES) {
                 unexpected.add(number);
             }
+        }
+        if (!unexpected.isEmpty() && !comparisons.isEmpty()) {
+            Map<String, Object> pageUnexpected = new LinkedHashMap<>();
+            pageUnexpected.put("sectionCode", "__UNEXPECTED__");
+            pageUnexpected.put("sectionLabel", "그래프 전체");
+            pageUnexpected.put("pageNumber", pageNumber);
+            pageUnexpected.put("expectedTotalEmission", "");
+            pageUnexpected.put("actualTotalEmission", "");
+            pageUnexpected.put("expectedSharePercent", "");
+            pageUnexpected.put("actualSharePercent", "");
+            pageUnexpected.put("labelMatched", true);
+            pageUnexpected.put("totalEmissionMatched", true);
+            pageUnexpected.put("sharePercentMatched", true);
+            pageUnexpected.put("unexpectedNumbers", unexpected);
+            pageUnexpected.put("matched", false);
+            comparisons.add(pageUnexpected);
         }
         boolean allFieldsMatched = comparisons.stream()
                 .allMatch(value -> Boolean.TRUE.equals(value.get("matched")));
@@ -1938,7 +1993,7 @@ public class ReportVerificationRegistryService {
                 .map(java.util.regex.Pattern::quote)
                 .collect(java.util.stream.Collectors.joining("[.,]"));
         return java.util.regex.Pattern.compile("(?<!\\d)" + token + "(?!\\d)")
-                .matcher(text.replaceAll("\\s+", "")).find();
+                .matcher(text.replaceAll("[\\s,]+", "")).find();
     }
 
     private String selectSectionSummaryPage(List<String> pages, JsonNode summaries) {

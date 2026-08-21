@@ -142,7 +142,7 @@ class ReportVerificationRegistryServicePdfTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void sectionSummaryIgnoresRepeatedExpectedTextButRejectsForeignOverlayNumber() throws Exception {
+    void sectionSummaryRejectsRepeatedExpectedTextInsideAnotherSection() throws Exception {
         ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
         Method scorer = ReportVerificationRegistryService.class.getDeclaredMethod(
                 "scoreSectionSummaryPage", List.class, com.fasterxml.jackson.databind.JsonNode.class);
@@ -163,14 +163,15 @@ class ReportVerificationRegistryServicePdfTest {
                 new ObjectMapper().valueToTree(dataset));
 
         assertTrue((Boolean) exact.get("sectionSummaryExactMatch"));
-        assertTrue((Boolean) repeatedExpected.get("sectionSummaryExactMatch"));
+        assertFalse((Boolean) repeatedExpected.get("sectionSummaryExactMatch"));
+        assertEquals(List.of("1.62"), repeatedExpected.get("unexpectedSectionSummaryNumbers"));
         assertFalse((Boolean) tampered.get("sectionSummaryExactMatch"));
         assertEquals(List.of("9.99"), tampered.get("unexpectedSectionSummaryNumbers"));
         List<Map<String, Object>> comparisons =
                 (List<Map<String, Object>>) tampered.get("sectionSummaryComparisons");
         assertTrue((Boolean) comparisons.get(0).get("matched"));
-        assertEquals(List.of("9.99"), comparisons.get(1).get("unexpectedNumbers"));
-        assertFalse((Boolean) comparisons.get(1).get("matched"));
+        assertEquals(List.of("9.99"), comparisons.get(2).get("unexpectedNumbers"));
+        assertFalse((Boolean) comparisons.get(2).get("matched"));
 
         Map<String, Object> trailingOverlay = (Map<String, Object>) scorer.invoke(service,
                 List.of("page one", "에너지 1.62 kg CO2e 0% 수계 배출물 0.36 kg CO2e 0% 1.62"),
@@ -178,8 +179,33 @@ class ReportVerificationRegistryServicePdfTest {
         List<Map<String, Object>> trailingComparisons =
                 (List<Map<String, Object>>) trailingOverlay.get("sectionSummaryComparisons");
         assertEquals("0", trailingComparisons.get(1).get("actualSharePercent"));
-        assertTrue(((List<?>) trailingComparisons.get(1).get("unexpectedNumbers")).isEmpty());
-        assertTrue((Boolean) trailingComparisons.get(1).get("matched"));
+        assertEquals(List.of("1.62"), trailingComparisons.get(2).get("unexpectedNumbers"));
+        assertFalse((Boolean) trailingComparisons.get(2).get("matched"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void sectionSummarySeparatesBarAndPieChartPagesAndCatchesPageTwoOverlay() throws Exception {
+        ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+        Method scorer = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "scoreSectionSummaryPage", List.class, com.fasterxml.jackson.databind.JsonNode.class);
+        scorer.setAccessible(true);
+        Map<String, Object> dataset = Map.of("sectionSummaries", List.of(
+                section("INPUT_ENERGY", "에너지", 1.62, 0, 3),
+                section("OUTPUT_WATER", "수계 배출물", 0.36, 0, 2)));
+
+        Map<String, Object> result = (Map<String, Object>) scorer.invoke(service, List.of(
+                "cover",
+                "섹션별 탄소배출 기여 그래프 에너지 1.62 kg CO2e 0% 수계 배출물 1.62 0.36 kg CO2e 0%",
+                "섹션별 탄소배출 기여 원그래프 에너지 0% 1.62 kg CO2e 수계 배출물 0% 0.36 kg CO2e"),
+                new ObjectMapper().valueToTree(dataset));
+
+        List<Map<String, Object>> comparisons =
+                (List<Map<String, Object>>) result.get("sectionSummaryComparisons");
+        assertEquals(5, comparisons.size());
+        assertEquals(List.of(2, 2, 2, 3, 3), comparisons.stream().map(row -> row.get("pageNumber")).toList());
+        assertEquals(List.of("1.62"), result.get("unexpectedSectionSummaryNumbers"));
+        assertFalse((Boolean) result.get("sectionSummaryExactMatch"));
     }
 
     @Test
