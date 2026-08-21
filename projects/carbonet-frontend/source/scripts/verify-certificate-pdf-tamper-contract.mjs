@@ -103,6 +103,7 @@ rejectText("page", "내장 데이터셋 대조를 위해 새로 발급한 리포
 rejectText("page", "version 2 PDF에는 숨김 인증 정보와 정규화 데이터셋이 포함되며 업로드 시 자동으로 읽어 대조합니다.");
 rejectText("page", "PDF 다운로드 화면 열기");
 rejectText("home", "Carbonet에서 발급한 리포트 또는 인증서를 업로드하여 식별 정보와 전체 데이터셋을 발급 원장과 대조합니다.");
+rejectText("home", "data-certificate-support-cards");
 requireText("page", 'selectedReportType === "EMISSION_SURVEY" && photoVerification.ocrEvidencePageComparisons?.length');
 requireText("api", "actualTokenCount: number");
 requireText("api", "tokenSequenceExact: boolean");
@@ -161,6 +162,9 @@ requireText("page", 'setPreviewModalPage(activePreviewPage)');
 requireText("page", 'data-certificate-pdf-preview');
 requireText("page", '발급 문서 증거');
 requireText("page", '판정만 보지 말고 문서를 직접 확인하세요.');
+requireText("page", '원본 바이트 증거');
+requireText("page", 'OCR 점수: 참고용 · 원본 바이트 판정 우선');
+requireText("page", '원본 일치');
 requireText("page", 'verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType, recognized.pageTexts, recognized.pages)');
 requireText("page", 'detail.actual || (en ? "MISSING" : "누락")');
 requireText("page", 'token.matched ? "MATCH" : "MISMATCH"');

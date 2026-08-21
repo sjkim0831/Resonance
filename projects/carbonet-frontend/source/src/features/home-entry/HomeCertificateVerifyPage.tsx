@@ -68,16 +68,6 @@ export function HomeCertificateVerifyPage() {
             </div>
           </section>
           <section className="mx-auto max-w-7xl px-4 py-10 lg:px-8">
-            {screenDesign?.supportCards?.length ? (
-              <aside aria-label={en ? "Screen support cards" : "화면 지원 카드"} className="mb-6 grid gap-3 md:grid-cols-2 xl:grid-cols-5" data-certificate-support-cards>
-                {screenDesign.supportCards.map((card) => (
-                  <article className="border border-slate-200 bg-white p-4 shadow-sm" data-support-card={card.code} key={card.code}>
-                    <h2 className="text-sm font-black text-slate-950">{en ? card.enTitle : card.koTitle}</h2>
-                    <p className="mt-2 text-xs font-semibold leading-5 text-slate-600">{en ? card.enBody : card.koBody}</p>
-                  </article>
-                ))}
-              </aside>
-            ) : null}
             <EmissionSurveyReportVerifyPage embedded screenDesign={screenDesign || undefined} />
           </section>
         </main>

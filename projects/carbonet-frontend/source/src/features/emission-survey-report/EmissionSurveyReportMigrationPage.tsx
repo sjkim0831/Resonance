@@ -4111,7 +4111,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
           : effectiveVerification.semanticStatus === "CHART_TAMPERED"
             ? (en ? "Chart tampering detected: a bar value or rendered bar shape differs from the issued report." : "막대그래프 변조를 감지했습니다. 그래프 숫자 또는 막대 모양이 발급본과 다릅니다.")
             : bytesExact
-              ? (en ? `Exact issued PDF and semantic content match (${verification.confidence}%).` : `발급 PDF 바이트와 데이터·그래프가 모두 일치합니다(${verification.confidence}%).`)
+              ? (en ? "The issued PDF bytes and all registered data and charts match." : "발급 PDF 원본 바이트와 원장 데이터·그래프가 모두 일치합니다.")
               : (en ? "PDF bytes differ, but every report value and chart matches. Byte evidence is retained for review." : "PDF 바이트는 다르지만 모든 데이터와 그래프는 일치합니다. 바이트 불일치 증거는 검토용으로 유지합니다."));
         return;
       }
@@ -4424,10 +4424,10 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
             {photoVerification ? (
               <section {...sectionProps("VISUAL")} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Photo OCR Evidence" : "사진 OCR 대조 근거"}</p>
-                <div className="mt-3 flex items-end justify-between"><strong className="text-3xl text-slate-950">{photoVerification.confidence}%</strong><span className="text-xs font-black text-slate-500">{en ? "CONTENT MATCH RATE" : "내용 일치율"}</span></div>
+                <div className="mt-3 flex items-end justify-between"><strong className="text-3xl text-slate-950">{pdfFileVerification?.status === "EXACT_PDF_MATCH" ? (en ? "ORIGINAL" : "원본 일치") : `${photoVerification.confidence}%`}</strong><span className="text-xs font-black text-slate-500">{pdfFileVerification?.status === "EXACT_PDF_MATCH" ? (en ? "BYTE-EXACT EVIDENCE" : "원본 바이트 증거") : (en ? "CONTENT MATCH RATE" : "내용 일치율")}</span></div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-bold text-slate-700">
                   <span className="col-span-2">QR: {photoVerification.qrFullyMatched ? "VERIFIED" : photoVerification.qrDetected ? "MISMATCH" : "NOT FOUND"}</span>
-                  <span className="col-span-2">{en ? "OCR-only confidence" : "OCR 단독 일치도"}: {photoVerification.contentConfidence ?? photoVerification.confidence}%</span>
+                  <span className="col-span-2">{pdfFileVerification?.status === "EXACT_PDF_MATCH" ? (en ? "OCR score: supplementary only; exact-byte evidence takes precedence" : "OCR 점수: 참고용 · 원본 바이트 판정 우선") : `${en ? "OCR-only confidence" : "OCR 단독 일치도"}: ${photoVerification.contentConfidence ?? photoVerification.confidence}%`}</span>
                   <span className="col-span-2">{en ? "Visual integrity" : "시각 원본 일치"}: {photoVerification.visualProfileAvailable ? `${photoVerification.visualSimilarity ?? 0}% / ${photoVerification.visualStatus}` : "NOT REGISTERED"}</span>
                   <span className="col-span-2">{en ? "Damaged regions" : "훼손 의심 영역"}: {photoVerification.damagedCellCount ?? 0}/{photoVerification.comparedCellCount ?? 0}</span>
                   <span>{en ? "Product" : "제품명"}: {photoVerification.productMatched ? "OK" : "-"}</span>
@@ -4536,7 +4536,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
                   {en ? "Embedded vs registry" : "내장 ↔ 원장"}: {datasetVerification?.datasetMatch ? "OK" : datasetVerification ? "FAIL" : "-"}
                 </span>
                 <span className={`rounded-lg px-3 py-2 ${photoVerification?.photoConsistent || pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "bg-emerald-50 text-emerald-800" : photoVerification ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-500"}`}>
-                  {en ? "Visible OCR vs registry" : "화면 OCR ↔ 원장"}: {photoVerification?.photoConsistent ? `${photoVerification.confidence}%` : photoVerification ? `${photoVerification.confidence}%` : "-"}
+                  {en ? "Visible OCR vs registry" : "화면 OCR ↔ 원장"}: {pdfFileVerification?.status === "EXACT_PDF_MATCH" ? (en ? "ORIGINAL MATCH" : "원본 일치") : photoVerification ? `${photoVerification.confidence}%` : "-"}
                 </span>
                 <span className={`rounded-lg px-3 py-2 ${photoVerification?.numericDataExactMatch ? "bg-emerald-100 text-emerald-900" : photoVerification ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-500"}`}>
                   {en ? "Every numeric field" : "개별 숫자 전체"}: {photoVerification?.numericDataExactMatch ? "EXACT" : photoVerification ? "DATA_TAMPERED" : "-"}
@@ -4648,7 +4648,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
                         <p className="mt-1 text-[11px] text-slate-400">{item.issuedAt ? new Date(item.issuedAt).toLocaleString() : "-"}</p>
                       </td>
                       <td className="px-4 py-3 align-top">
-                        <strong className={item.contentMatch ? "text-emerald-700" : item.confidence >= 55 ? "text-amber-700" : "text-rose-700"}>{item.confidence}%</strong>
+                        <strong className={item.contentMatch ? "text-emerald-700" : item.confidence >= 55 ? "text-amber-700" : "text-rose-700"}>{isCurrentUploadComparisonExact(item) && pdfFileVerification?.status === "EXACT_PDF_MATCH" ? (en ? "ORIGINAL" : "원본 일치") : `${item.confidence}%`}</strong>
                         <p className="mt-1 text-slate-500">{item.contentMatch ? (en ? "MATCH" : "일치") : item.confidence >= 55 ? (en ? "REVIEW" : "검토") : (en ? "MISMATCH" : "불일치")}</p>
                       </td>
                       <td className="px-4 py-3 align-top leading-5 text-slate-700" colSpan={6}>
