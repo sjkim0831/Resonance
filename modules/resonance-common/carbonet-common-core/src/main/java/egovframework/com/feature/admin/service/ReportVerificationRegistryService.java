@@ -767,7 +767,7 @@ public class ReportVerificationRegistryService {
                 if (nextStart > start && nextStart < end) end = nextStart;
             }
             String rowText = start >= 0 ? pageText.substring(start, end) : "";
-            List<String> actualNumbers = extractCanonicalNumbers(rowText);
+            List<String> actualNumbers = extractDisplayedNumbers(rowText);
             Map<String, Object> comparison = new LinkedHashMap<>();
             comparison.put("rowIndex", rowIndex + 1);
             comparison.put("sectionLabel", sectionLabel(dataset, row));
@@ -787,16 +787,18 @@ public class ReportVerificationRegistryService {
                 boolean displayedDash = "totalEmission".equals(field) && value.isNumber()
                         && Math.abs(value.asDouble()) <= 0.0000001 && rowText.contains("-");
                 if (displayedDash) expected = "-";
-                String expectedCanonical = canonicalNumber(expected);
+                String expectedCanonical = normalizeDisplayedNumber(expected);
                 boolean repeatedVisibleValue = previousExpectedCanonical != null
                         && previousExpectedCanonical.equals(expectedCanonical)
                         && numericIndex >= actualNumbers.size();
                 String actual = repeatedVisibleValue ? previousActual
                         : numericIndex < actualNumbers.size() ? actualNumbers.get(numericIndex) : "";
                 if (displayedDash) actual = "-";
-                boolean matched = expectedCanonical.equals(canonicalNumber(actual));
+                boolean databaseMatched = displayedDash || displayedNumberMatchesDatabase(expected, expected, value);
+                boolean matched = displayedDash || displayedNumberMatchesDatabase(expected, actual, value);
                 comparison.put(field + "Display", expected);
                 comparison.put(field + "Actual", actual);
+                comparison.put(field + "DatabaseMatched", databaseMatched);
                 comparison.put(field + "Matched", matched);
                 rowMatched = rowMatched && matched;
                 if (!repeatedVisibleValue) numericIndex++;
@@ -928,6 +930,18 @@ public class ReportVerificationRegistryService {
                 .matcher(normalizedNumericText);
         while (matcher.find() && numbers.size() < MAX_FIELD_COMPARISONS) {
             numbers.add(canonicalNumber(matcher.group()));
+        }
+        return numbers;
+    }
+
+    private List<String> extractDisplayedNumbers(String text) {
+        List<String> numbers = new ArrayList<>();
+        String normalizedNumericText = (text == null ? "" : text)
+                .replaceAll("(?<=\\d)\\s*([.,])\\s*(?=\\d)", "$1");
+        Matcher matcher = Pattern.compile("(?<![\\p{L}\\p{N}.])-?\\d[\\d,]*(?:\\.\\d+)?(?![\\d.])")
+                .matcher(normalizedNumericText);
+        while (matcher.find() && numbers.size() < MAX_FIELD_COMPARISONS) {
+            numbers.add(matcher.group());
         }
         return numbers;
     }
@@ -1279,7 +1293,45 @@ public class ReportVerificationRegistryService {
     }
 
     private String findObservedDisplayedNumber(String normalizedText, JsonNode row, String field, JsonNode value) {
-        return findObservedNumber(normalizedText, value);
+        String expectedDisplay = displayValue(row, field, value);
+        if (expectedDisplay.isBlank()) return "";
+        for (String observed : extractDisplayedNumbers(normalizedText)) {
+            if (displayedNumberMatchesDatabase(expectedDisplay, observed, value)) return observed;
+        }
+        return "";
+    }
+
+    private boolean displayedNumberMatchesDatabase(String expectedDisplay, String observedDisplay,
+                                                     JsonNode databaseValue) {
+        String expected = normalizeDisplayedNumber(expectedDisplay);
+        String observed = normalizeDisplayedNumber(observedDisplay);
+        if (expected.isBlank() || !expected.equals(observed)
+                || databaseValue == null || !databaseValue.isNumber()) return false;
+        try {
+            java.math.BigDecimal expectedNumber = new java.math.BigDecimal(expected);
+            java.math.BigDecimal databaseNumber = databaseValue.decimalValue();
+            int displayScale = displayedNumberScale(expected);
+            return databaseNumber.setScale(displayScale, java.math.RoundingMode.DOWN)
+                    .compareTo(expectedNumber) == 0;
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+    }
+
+    private boolean displayedNumberTextEquals(String expectedDisplay, String observedDisplay) {
+        String expected = normalizeDisplayedNumber(expectedDisplay);
+        return !expected.isBlank() && expected.equals(normalizeDisplayedNumber(observedDisplay));
+    }
+
+    private String normalizeDisplayedNumber(String value) {
+        if (value == null) return "";
+        String normalized = value.replace("，", ",").replaceAll("\\s+", "").replace(",", "");
+        return normalized.matches("-?\\d+(?:\\.\\d+)?") ? normalized : "";
+    }
+
+    private int displayedNumberScale(String normalizedDisplay) {
+        int decimal = normalizedDisplay.indexOf('.');
+        return decimal < 0 ? 0 : normalizedDisplay.length() - decimal - 1;
     }
 
     private String displayValue(JsonNode row, String field, JsonNode value) {
@@ -1691,7 +1743,7 @@ public class ReportVerificationRegistryService {
                 pages.get(materialPage).stream()
                         .filter(line -> Math.abs(line.y() - materialLine.y()) <= 65 && line.x() > materialLine.x() + 100)
                         .sorted(java.util.Comparator.comparingDouble(OcrLineEvidence::x))
-                        .forEach(line -> actualNumbers.addAll(extractCanonicalNumbers(line.text())));
+                        .forEach(line -> actualNumbers.addAll(extractDisplayedNumbers(line.text())));
             }
             Map<String, Object> comparison = new LinkedHashMap<>();
             comparison.put("rowIndex", rowIndex + 1);
@@ -1708,7 +1760,7 @@ public class ReportVerificationRegistryService {
                         ? row.path("originalAmount") : row.path(field);
                 String expected = displayValue(row, "amount".equals(field) ? "originalAmount" : field, value);
                 if (expected.isBlank() && value.isNumber()) expected = canonicalNumber(value.asText());
-                String expectedCanonical = canonicalNumber(expected);
+                String expectedCanonical = normalizeDisplayedNumber(expected);
                 boolean repeatedVisibleValue = previousExpectedCanonical != null
                         && previousExpectedCanonical.equals(expectedCanonical)
                         && numericIndex >= actualNumbers.size();
@@ -1721,9 +1773,11 @@ public class ReportVerificationRegistryService {
                     expectedCanonical = "-";
                     actual = "-";
                 }
-                boolean matched = expectedCanonical.equals(canonicalNumber(actual));
+                boolean databaseMatched = displayedDash || displayedNumberMatchesDatabase(expected, expected, value);
+                boolean matched = displayedDash || displayedNumberMatchesDatabase(expected, actual, value);
                 comparison.put(field + "Display", expected);
                 comparison.put(field + "Actual", actual);
+                comparison.put(field + "DatabaseMatched", databaseMatched);
                 comparison.put(field + "Matched", matched);
                 rowMatched = rowMatched && matched;
                 if (!repeatedVisibleValue) numericIndex++;
@@ -1746,18 +1800,19 @@ public class ReportVerificationRegistryService {
     private void reuseSingleVisibleDuplicateValue(List<String> actualNumbers, Map<String, Object> row) {
         // A single printed value may represent two equal adjacent fields; any
         // third numeric value keeps the row in mismatch state as explicit tamper evidence.
-        String amountExpected = canonicalNumber(text(row.get("amountDisplay")));
-        String factorExpected = canonicalNumber(text(row.get("emissionFactorDisplay")));
-        String emissionExpected = canonicalNumber(text(row.get("totalEmissionDisplay")));
-        if (factorExpected.isBlank() || !factorExpected.equals(emissionExpected)
-                || !Boolean.TRUE.equals(row.get("amountMatched"))) return;
+        String amountExpected = text(row.get("amountDisplay"));
+        String factorExpected = text(row.get("emissionFactorDisplay"));
+        String emissionExpected = text(row.get("totalEmissionDisplay"));
+        if (!displayedNumberTextEquals(factorExpected, emissionExpected)
+                || !Boolean.TRUE.equals(row.get("amountMatched"))
+                || !Boolean.TRUE.equals(row.get("emissionFactorDatabaseMatched"))
+                || !Boolean.TRUE.equals(row.get("totalEmissionDatabaseMatched"))) return;
         long duplicateCount = actualNumbers.stream()
-                .map(this::canonicalNumber)
-                .filter(factorExpected::equals)
+                .filter(actual -> displayedNumberTextEquals(factorExpected, actual))
                 .count();
         boolean hasUnexpectedNumber = actualNumbers.stream()
-                .map(this::canonicalNumber)
-                .anyMatch(actual -> !actual.equals(amountExpected) && !actual.equals(factorExpected));
+                .anyMatch(actual -> !displayedNumberTextEquals(amountExpected, actual)
+                        && !displayedNumberTextEquals(factorExpected, actual));
         if (duplicateCount != 1 || hasUnexpectedNumber) return;
         row.put("emissionFactorActual", factorExpected);
         row.put("emissionFactorMatched", true);
@@ -1767,15 +1822,17 @@ public class ReportVerificationRegistryService {
 
     private void reuseIdenticalDuplicateRowEvidence(List<Map<String, Object>> comparisons) {
         for (Map<String, Object> row : comparisons) {
-            String factorExpected = canonicalNumber(text(row.get("emissionFactorDisplay")));
-            String emissionExpected = canonicalNumber(text(row.get("totalEmissionDisplay")));
-            if (factorExpected.equals(emissionExpected)) {
-                String amountExpected = canonicalNumber(text(row.get("amountDisplay")));
-                String amountActual = canonicalNumber(text(row.get("amountActual")));
-                String factorActual = canonicalNumber(text(row.get("emissionFactorActual")));
+            String factorExpected = text(row.get("emissionFactorDisplay"));
+            String emissionExpected = text(row.get("totalEmissionDisplay"));
+            if (displayedNumberTextEquals(factorExpected, emissionExpected)
+                    && Boolean.TRUE.equals(row.get("emissionFactorDatabaseMatched"))
+                    && Boolean.TRUE.equals(row.get("totalEmissionDatabaseMatched"))) {
+                String amountExpected = text(row.get("amountDisplay"));
+                String amountActual = text(row.get("amountActual"));
+                String factorActual = text(row.get("emissionFactorActual"));
                 boolean shiftedAmountDuplicate = Boolean.TRUE.equals(row.get("amountMatched"))
-                        && !factorExpected.equals(amountExpected)
-                        && factorActual.equals(amountActual);
+                        && !displayedNumberTextEquals(factorExpected, amountExpected)
+                        && displayedNumberTextEquals(factorActual, amountActual);
                 if (!Boolean.TRUE.equals(row.get("emissionFactorMatched"))
                         && (text(row.get("emissionFactorActual")).isBlank() || shiftedAmountDuplicate)
                         && Boolean.TRUE.equals(row.get("totalEmissionMatched"))) {
@@ -1791,13 +1848,14 @@ public class ReportVerificationRegistryService {
             for (String field : List.of("amount", "emissionFactor", "totalEmission")) {
                 if (Boolean.TRUE.equals(row.get(field + "Matched")) || !text(row.get(field + "Actual")).isBlank()) continue;
                 String material = compactOcrText(text(row.get("materialName")));
-                String expected = canonicalNumber(text(row.get(field + "Display")));
+                String expected = text(row.get(field + "Display"));
+                if (!Boolean.TRUE.equals(row.get(field + "DatabaseMatched"))) continue;
                 comparisons.stream()
                         .filter(other -> other != row
                                 && compactOcrText(text(other.get("materialName"))).equals(material))
                         .flatMap(other -> List.of("amount", "emissionFactor", "totalEmission").stream()
                                 .map(otherField -> text(other.get(otherField + "Actual"))))
-                        .filter(actual -> !actual.isBlank() && canonicalNumber(actual).equals(expected))
+                        .filter(actual -> !actual.isBlank() && displayedNumberTextEquals(expected, actual))
                         .findFirst()
                         .ifPresent(actual -> {
                             row.put(field + "Actual", actual);

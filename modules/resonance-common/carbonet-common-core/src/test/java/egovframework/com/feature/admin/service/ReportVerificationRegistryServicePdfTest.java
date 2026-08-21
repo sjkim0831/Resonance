@@ -467,6 +467,52 @@ class ReportVerificationRegistryServicePdfTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void pdfNumbersMustEqualScreenDigitsWhileDatabaseMayHaveMoreDecimals() throws Exception {
+        ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+        Method normalize = ReportVerificationRegistryService.class.getDeclaredMethod("normalizeOcrLinePages", Object.class);
+        Method scorer = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "scoreDetailTablePage", List.class, com.fasterxml.jackson.databind.JsonNode.class, List.class);
+        normalize.setAccessible(true);
+        scorer.setAccessible(true);
+
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("sectionCode", "INPUT_MATERIAL");
+        row.put("materialName", "정밀원료");
+        row.put("originalAmount", new java.math.BigDecimal("1.2390"));
+        row.put("originalAmountDisplay", "1.23");
+        row.put("emissionFactor", new java.math.BigDecimal("79234.30009"));
+        row.put("emissionFactorDisplay", "79,234.30");
+        row.put("totalEmission", new java.math.BigDecimal("79234.30009"));
+        row.put("totalEmissionDisplay", "79,234.30");
+        com.fasterxml.jackson.databind.JsonNode dataset = new ObjectMapper().valueToTree(Map.of("rows", List.of(row)));
+
+        Map<String, Object> exact = scoreDetailLines(service, normalize, scorer, dataset,
+                "1.23", "79234.30", "79234.30");
+        assertTrue((Boolean) exact.get("detailRowsExactMatch"));
+        List<Map<String, Object>> exactRows = (List<Map<String, Object>>) exact.get("fieldComparisons");
+        assertEquals("1.23", exactRows.get(0).get("amountActual"));
+        assertEquals("79234.30", exactRows.get(0).get("emissionFactorActual"));
+
+        Map<String, Object> changedDigit = scoreDetailLines(service, normalize, scorer, dataset,
+                "1.24", "79234.30", "79234.30");
+        assertFalse((Boolean) changedDigit.get("detailRowsExactMatch"));
+        List<Map<String, Object>> changedRows = (List<Map<String, Object>>) changedDigit.get("fieldComparisons");
+        assertFalse((Boolean) changedRows.get(0).get("amountMatched"));
+
+        Map<String, Object> changedScale = scoreDetailLines(service, normalize, scorer, dataset,
+                "1.230", "79234.3", "79234.30");
+        assertFalse((Boolean) changedScale.get("detailRowsExactMatch"));
+        List<Map<String, Object>> scaleRows = (List<Map<String, Object>>) changedScale.get("fieldComparisons");
+        assertFalse((Boolean) scaleRows.get(0).get("amountMatched"));
+        assertFalse((Boolean) scaleRows.get(0).get("emissionFactorMatched"));
+
+        Map<String, Object> decimalPointLoss = scoreDetailLines(service, normalize, scorer, dataset,
+                "1.23", "7923430", "79234.30");
+        assertFalse((Boolean) decimalPointLoss.get("detailRowsExactMatch"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void detailRowsMatchByVisibleMaterialWhenOcrOrderDiffersFromDatasetOrder() throws Exception {
         ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
         Method detailScorer = ReportVerificationRegistryService.class.getDeclaredMethod(
@@ -579,9 +625,16 @@ class ReportVerificationRegistryServicePdfTest {
                 if (changedField == 2) total += 7;
             }
             text.append(row.get("materialName")).append(' ')
-                    .append(amount).append("t ").append(factor).append(' ').append(total).append(' ');
+                    .append(screenNumber(amount)).append("t ")
+                    .append(screenNumber(factor)).append(' ')
+                    .append(screenNumber(total)).append(' ');
         }
         return text.toString();
+    }
+
+    private static String screenNumber(double value) {
+        return java.math.BigDecimal.valueOf(value).setScale(2, java.math.RoundingMode.HALF_UP)
+                .stripTrailingZeros().toPlainString();
     }
 
     private static String chartPage(List<Map<String, Object>> sections, int changedSection, boolean share) {
@@ -604,6 +657,23 @@ class ReportVerificationRegistryServicePdfTest {
         return Map.of("text", text, "polygon", List.of(
                 List.of(x - 10, y - 10), List.of(x + 10, y - 10),
                 List.of(x + 10, y + 10), List.of(x - 10, y + 10)));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> scoreDetailLines(ReportVerificationRegistryService service,
+                                                         Method normalize, Method scorer,
+                                                         com.fasterxml.jackson.databind.JsonNode dataset,
+                                                         String amount, String factor, String emission) throws Exception {
+        List<Map<String, Object>> pageLines = List.of(
+                ocrLine("상세 계산 결과표", 300, 300),
+                ocrLine("정밀원료", 250, 900), ocrLine(amount, 900, 900),
+                ocrLine(factor, 1400, 900), ocrLine(emission, 1900, 900));
+        Object lines = normalize.invoke(service, List.of(
+                Map.of("pageNumber", 1, "ocrText", "상세 계산 결과표 정밀원료 "
+                        + amount + " " + factor + " " + emission, "lines", pageLines)));
+        return (Map<String, Object>) scorer.invoke(service,
+                List.of("상세 계산 결과표 정밀원료 " + amount + " " + factor + " " + emission),
+                dataset, lines);
     }
 
     private static ReportVerificationRegistryService service(FingerprintJdbcTemplate jdbc) {
