@@ -48,6 +48,8 @@ const SECTION_CODES = [
 ];
 const SECTION_NAMES = ["업무 문맥", "오늘의 업무 상태", "가장 먼저 할 일", "내 처리 대기함", "프로세스 진행 현황", "지연·위험·예외", "최근 인계와 활동", "다음 업무 안내"];
 const QA_SCENARIOS = ["HAPPY_PATH", "AUTHORITY", "ISOLATION", "EXCEPTION", "RECOVERY"];
+const WORK_TYPE_CODES = ["MEMBER", "WORK_ASSIGNMENT", "EMISSION", "LCA", "REDUCTION", "MONITORING", "TRADE", "CERTIFICATE", "EDUCATION", "PORTFOLIO", "FACILITY_OPERATION", "MRV", "COMPLIANCE", "DATA_GOVERNANCE", "SYSTEM", "COMMON"];
+const WORK_VIEW_CODES = ["ALL", "TODO", "IN_PROGRESS", "MONITORING", "RECENT", "DONE", "RISK"];
 const RELAY_ACCOUNTS = [
   { accountId: "qaowner26", actorCode: "COMPANY_MANAGER", stepOrders: [1, 6, 7], expectedVisibleTasks: ["BASIC_INFO", "REPORT", "REGULATORY_SUBMISSION"] },
   { accountId: "qadata26", actorCode: "SITE_DATA_OWNER", stepOrders: [2], expectedVisibleTasks: ["ACTIVITY_DATA"] },
@@ -145,6 +147,9 @@ function validate(candidate) {
   add(violations, !isDeepStrictEqual(projectedQa, QA_SCENARIOS), "QA_SCENARIOS_EXACT");
   add(violations, Array.isArray(contract.qaScenarios) && contract.qaScenarios.some((item) => !isDeepStrictEqual(Object.keys(item).sort(), ["code", "label"]) || !isDeepStrictEqual(Object.keys(item.label || {}).sort(), ["en", "ko"])), "QA_SCENARIO_SHAPE");
   add(violations, !isDeepStrictEqual((contract.supportSurfaces || []).map((item) => item.code), ["HELP", "DESIGN", "QA", "GUIDE", "ALL_WORK"]), "SUPPORT_CARDS_EXACT");
+  add(violations, !isDeepStrictEqual((contract.workTypes || []).map((item) => item.workTypeCode), WORK_TYPE_CODES), "WORK_TYPES_EXACT");
+  add(violations, !page.includes('data-my-work-type-filter=""') || !page.includes("data-work-type-code={code}") || !page.includes("screenContract.workTypes"), "WORK_TYPE_FILTER");
+  add(violations, !page.includes('data-my-work-status-filter=""') || !page.includes("data-work-view={view}") || !WORK_VIEW_CODES.every((code) => page.includes(`\"${code}\"`)), "WORK_VIEW_FILTER");
 
   const fixture = contract.relayFixture || {};
   add(violations, fixture.scope !== "AUTOMATED_QA_FIXTURE", "RELAY_SCOPE");
@@ -303,6 +308,12 @@ function replaceAfter(source, marker, token, replacement) {
   const contract = cloneContract(); contract.sections.pop();
   killed("required section deletion", { contract }, "SECTIONS_EXACT");
 }
+{
+  const contract = cloneContract(); contract.workTypes.splice(3, 1);
+  killed("work type deletion", { contract }, "WORK_TYPES_EXACT");
+}
+killed("work type selector deletion", { page: baseline.page.replace('data-my-work-type-filter=""', 'data-removed-work-type-filter=""') }, "WORK_TYPE_FILTER");
+killed("work status selector deletion", { page: baseline.page.replace('data-my-work-status-filter=""', 'data-removed-work-status-filter=""') }, "WORK_VIEW_FILTER");
 {
   const contract = cloneContract(); contract.sections[7].code = "HANDOFF_ACTIVITY";
   killed("required section duplication", { contract }, "SECTIONS_EXACT");

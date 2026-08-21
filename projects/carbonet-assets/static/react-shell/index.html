@@ -306,7 +306,9 @@
             }
         }
 
-        const currentScriptSrc = useDevServer ? `${config.reactAppDevUrl}/src/main.tsx` : (config.reactAppProdJs || "");
+        const currentScriptSrc = useDevServer
+            ? `http://${window.location.hostname}:5175/src/main.tsx`
+            : (config.reactAppProdJs || "");
         const existingScript = document.querySelector('script[data-carbonet-react-app="1"]');
         if (existingScript && existingScript.dataset.carbonetReactSrc !== currentScriptSrc) {
             existingScript.remove();
