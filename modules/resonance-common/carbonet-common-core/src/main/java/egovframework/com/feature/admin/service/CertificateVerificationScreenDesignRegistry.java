@@ -15,6 +15,7 @@ import java.util.Set;
 public final class CertificateVerificationScreenDesignRegistry {
     public static final String SCREEN_FILE_PROPERTY = "carbonet.certificate.verification.screen-file";
     public static final String SCREEN_FILE_ENV = "CARBONET_CERTIFICATE_VERIFICATION_SCREEN_FILE";
+    private static final String DEFAULT_SCREEN_FILE = "/app/config/certificate-verification-screen.json";
     private static final long RELOAD_INTERVAL_NANOS = 1_000_000_000L;
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final Set<String> REQUIRED_SECTIONS = Set.of(
@@ -70,7 +71,9 @@ public final class CertificateVerificationScreenDesignRegistry {
 
     private static String configuredPath() {
         String property = System.getProperty(SCREEN_FILE_PROPERTY, "").trim();
-        return property.isBlank() ? System.getenv().getOrDefault(SCREEN_FILE_ENV, "").trim() : property;
+        if (!property.isBlank()) return property;
+        String environment = System.getenv().getOrDefault(SCREEN_FILE_ENV, "").trim();
+        return environment.isBlank() ? DEFAULT_SCREEN_FILE : environment;
     }
 
     private static Path trustedRegularFile(String configured) {

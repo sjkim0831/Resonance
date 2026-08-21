@@ -11,6 +11,9 @@ const paths = {
   service: path.join(repoRoot, "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/service/ReportVerificationRegistryService.java"),
   controller: path.join(repoRoot, "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/web/ReportVerificationRegistryController.java"),
   security: path.join(repoRoot, "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/config/security/CarbonetSecurityOverrideConfig.java"),
+  screenRegistry: path.join(repoRoot, "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/service/CertificateVerificationScreenDesignRegistry.java"),
+  deploy: path.join(repoRoot, "ops/scripts/resonance-k8s-build-deploy-80-v2.sh"),
+  runtimeAssets: path.join(frontendRoot, "public/runtime/screen-system-assets.js"),
   migration: path.join(repoRoot, "apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260818090000__bind_issued_pdf_bytes_to_verification_registry.sql"),
   ocrMigration: path.join(repoRoot, "apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260818173000__register_report_ocr_evidence.sql"),
 };
@@ -49,6 +52,11 @@ requireText("migration", "CHECK ((pdf_sha256 IS NULL) = (pdf_size_bytes IS NULL)
 requireText("ocrMigration", "ocr_evidence_json jsonb");
 requireText("ocrMigration", "ocr_evidence_version integer");
 requireText("ocrMigration", "conrelid = 'carbonet_report_verification_registry'::regclass");
+requireText("screenRegistry", 'DEFAULT_SCREEN_FILE = "/app/config/certificate-verification-screen.json"');
+requireText("deploy", '"$ROOT_DIR/config/certificate-verification/certificate-verification-screen.json"');
+requireText("deploy", '"$ROOT_DIR/config/certificate-verification/certificate-verification-rules.json"');
+requireText("deploy", '[[ -f "$certificate_config_source" && ! -L "$certificate_config_source" ]]');
+requireText("runtimeAssets", "build.sourceCommit || build.sourceHash");
 requireText("service", "MessageDigest.isEqual");
 requireText("service", '"EXACT_PDF_MATCH"');
 requireText("service", '"TAMPERED_PDF"');

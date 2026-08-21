@@ -62,7 +62,10 @@
       var response = await fetch("/assets/react/.resonance-build.json?ts=" + Date.now(), { cache: "no-store", credentials: "same-origin" });
       if (!response.ok) return;
       var build = await response.json();
-      var hash = build && build.sourceHash;
+      // A backend-only release can change verification semantics while the
+      // frontend source hash remains identical. Bind the live SPA session to
+      // the release commit first so stale verification state cannot survive it.
+      var hash = build && (build.sourceCommit || build.sourceHash);
       if (!hash) return;
       var active = sessionStorage.getItem(BUILD_HASH_KEY);
       if (!active) {

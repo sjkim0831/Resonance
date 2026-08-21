@@ -855,6 +855,22 @@ build_image() {
   log_detail "Copying config files..."
   mkdir -p "$RELEASE_DIR/ops/config"
   cp -r "$ROOT_DIR/ops/config/"* "$RELEASE_DIR/ops/config/" 2>/dev/null || true
+  local certificate_config_source certificate_config_target
+  for certificate_config_source in \
+    "$ROOT_DIR/config/certificate-verification/certificate-verification-screen.json" \
+    "$ROOT_DIR/config/certificate-verification/certificate-verification-rules.json"; do
+    [[ -f "$certificate_config_source" && ! -L "$certificate_config_source" ]] || {
+      rollback_and_fail "RELEASE_PREP_FAILED" \
+        "Required certificate verification config is unavailable" \
+        "test -f $certificate_config_source"
+    }
+    certificate_config_target="$RELEASE_DIR/config/$(basename "$certificate_config_source")"
+    install -m 0644 "$certificate_config_source" "$certificate_config_target" || {
+      rollback_and_fail "RELEASE_PREP_FAILED" \
+        "Failed to package certificate verification config" \
+        "install -m 0644 $certificate_config_source $certificate_config_target"
+    }
+  done
 
   local cache_ref=""
   local -a registry_cache_args=()
