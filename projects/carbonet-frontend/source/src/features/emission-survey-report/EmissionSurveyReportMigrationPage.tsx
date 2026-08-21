@@ -3958,11 +3958,11 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
       // hidden text layer can retain the original number after a bitmap overlay,
       // so every upload is OCR-read from the rendered pages as well.
       let recognized;
-      let usedIssuedPdfTextFallback = false;
+      let usedPdfTextFallback = false;
       const exactIssuedPdf = exactPdfVerification?.status === "EXACT_PDF_MATCH";
       const readableDigitalPages = digitalTextPages?.map((text) => text.trim()) || [];
-      if (exactIssuedPdf && readableDigitalPages.length && readableDigitalPages.every(Boolean)) {
-        usedIssuedPdfTextFallback = true;
+      if (rawPdfFile && readableDigitalPages.length && readableDigitalPages.every(Boolean)) {
+        usedPdfTextFallback = true;
         recognized = {
           text: readableDigitalPages.join("\n"),
           pageTexts: readableDigitalPages,
@@ -3973,18 +3973,21 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
             lines: []
           })),
           confidence: 100,
-          engine: "ISSUED_PDF_TEXT_LAYER"
+          engine: exactIssuedPdf ? "ISSUED_PDF_TEXT_LAYER" : "PDF_TEXT_LAYER_REVIEW"
         };
-        appendVerificationLog("WARN",
-          en ? "DB comparison continued directly from the byte-exact issued PDF text layer."
-            : "바이트가 일치한 발급 PDF의 텍스트 레이어로 DB 전체 비교를 즉시 계속했습니다.",
+        appendVerificationLog(exactIssuedPdf ? "OK" : "WARN",
+          exactIssuedPdf
+            ? (en ? "DB comparison continued directly from the byte-exact issued PDF text layer." : "바이트가 일치한 발급 PDF의 텍스트 레이어로 DB 전체 비교를 즉시 계속했습니다.")
+            : (en ? "PDF bytes differ; semantic DB comparison continues from the document text. This cannot override the authenticity failure." : "PDF 바이트는 다르지만 문서 텍스트로 DB 내용 비교를 계속합니다. 이 결과는 원본성 실패를 정상으로 바꾸지 않습니다."),
           `pages=${readableDigitalPages.length}`);
       } else {
         recognized = await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
       }
-      appendVerificationLog(usedIssuedPdfTextFallback ? "WARN" : "OK",
-        usedIssuedPdfTextFallback
-          ? (en ? "Issued PDF text fallback completed." : "발급 PDF 텍스트 대체 판독을 완료했습니다.")
+      appendVerificationLog(usedPdfTextFallback && !exactIssuedPdf ? "WARN" : "OK",
+        usedPdfTextFallback
+          ? exactIssuedPdf
+            ? (en ? "Issued PDF text comparison completed." : "발급 PDF 텍스트 비교를 완료했습니다.")
+            : (en ? "Non-original PDF text comparison completed for review." : "원본성 불일치 PDF의 내용 비교를 검토용으로 완료했습니다.")
           : digitalTextPages
             ? (en ? "Visible PDF pixels were OCR-read independently from the text layer." : "PDF 화면 픽셀을 텍스트 레이어와 독립적으로 OCR 판독했습니다.")
             : (en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다."),
@@ -4112,7 +4115,9 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
             ? (en ? "Chart tampering detected: a bar value or rendered bar shape differs from the issued report." : "막대그래프 변조를 감지했습니다. 그래프 숫자 또는 막대 모양이 발급본과 다릅니다.")
             : bytesExact
               ? (en ? "The issued PDF bytes and all registered data and charts match." : "발급 PDF 원본 바이트와 원장 데이터·그래프가 모두 일치합니다.")
-              : (en ? "PDF bytes differ, but every report value and chart matches. Byte evidence is retained for review." : "PDF 바이트는 다르지만 모든 데이터와 그래프는 일치합니다. 바이트 불일치 증거는 검토용으로 유지합니다."));
+              : semanticExact
+                ? (en ? "Authenticity failed because PDF bytes differ; semantic DB comparison completed and all visible values match." : "원본성 불일치: PDF 바이트는 다르지만 DB 내용 비교를 완료했고 표시 데이터는 모두 일치합니다.")
+                : (en ? "Authenticity failed because PDF bytes differ; semantic DB comparison also found differences." : "원본성 불일치: PDF 바이트가 다르고 DB 내용 비교에서도 불일치가 발견됐습니다."));
         return;
       }
       if (preserveDigitalPayload) {
