@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -258,6 +259,146 @@ class EmissionProjectRegistryServiceTest {
     }
 
     @Test
+    void updateTaskRejectsAssigneeWhoseActiveActorDoesNotMatchTheTask() {
+        JdbcTemplate jdbc=mock(JdbcTemplate.class);
+        ScopeAccessAuditService auditService=mock(ScopeAccessAuditService.class);
+        EmissionProjectRegistryService service=new EmissionProjectRegistryService(
+                jdbc,mock(ActorProcessGovernanceService.class),auditService);
+        when(jdbc.queryForList(contains("SELECT t.project_id,t.assignee_id,t.actor_code,t.predecessor_codes"),any(Object[].class)))
+                .thenReturn(List.of(taskAuthorityRow("PRJ-1","worker-1","VERIFIER")));
+        when(jdbc.queryForObject(contains("FROM emission_project_registry WHERE project_id=? AND tenant_id=?"),eq(Integer.class),any(Object[].class)))
+                .thenReturn(1);
+        when(jdbc.queryForObject(contains("lower(account_id)=lower(?) AND assignment_status='ACTIVE'"),eq(Integer.class),any(Object[].class)))
+                .thenReturn(1);
+        when(jdbc.queryForObject(contains("lower(account_id)=lower(?) AND actor_code=? AND assignment_status='ACTIVE'"),eq(Integer.class),any(Object[].class)))
+                .thenReturn(0);
+
+        SecurityException denial=assertThrows(SecurityException.class,
+                () -> service.updateTask(101L,"TENANT-1","IN_PROGRESS","worker-1",false));
+
+        assertEquals("TASK_ACTOR_AUTHORITY_REQUIRED",denial.getMessage());
+        verify(jdbc,times(1)).queryForObject(
+                contains("actor_code=? AND assignment_status='ACTIVE'"),eq(Integer.class),any(Object[].class));
+        verify(jdbc,never()).queryForObject(contains("FROM emission_project_task WHERE project_id=? AND task_code=ANY"),eq(Integer.class),any(Object[].class));
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
+        verifyNoInteractions(auditService);
+    }
+
+    @Test
+    void updateTaskRejectsAssignmentOutsideProjectOrDataScope() {
+        JdbcTemplate jdbc=mock(JdbcTemplate.class);
+        ScopeAccessAuditService auditService=mock(ScopeAccessAuditService.class);
+        EmissionProjectRegistryService service=new EmissionProjectRegistryService(
+                jdbc,mock(ActorProcessGovernanceService.class),auditService);
+        when(jdbc.queryForList(contains("SELECT t.project_id,t.assignee_id,t.actor_code,t.predecessor_codes"),any(Object[].class)))
+                .thenReturn(List.of(taskAuthorityRow("PRJ-1","worker-1","VERIFIER")));
+        when(jdbc.queryForObject(contains("FROM emission_project_registry WHERE project_id=? AND tenant_id=?"),eq(Integer.class),any(Object[].class)))
+                .thenReturn(1);
+        when(jdbc.queryForObject(
+                argThat((String sql) -> sql.contains("FROM framework_account_actor_assignment")
+                        && sql.contains("project_id IN ('*',?)")
+                        && sql.contains("data_scope='*' OR ?=ANY")
+                        && !sql.contains("actor_code=?")),
+                eq(Integer.class),any(Object[].class))).thenReturn(0);
+
+        SecurityException denial=assertThrows(SecurityException.class,
+                () -> service.updateTask(102L,"TENANT-1","IN_PROGRESS","worker-1",false));
+
+        assertEquals("PROJECT_ACTOR_SCOPE_DENIED",denial.getMessage());
+        verify(auditService,times(1)).recordDenied(
+                "worker-1","TENANT-1","PRJ-1",
+                ScopeAccessAuditService.ActionCode.PROJECT_PARTICIPANT_READ,
+                ScopeAccessAuditService.ResourceType.EMISSION_PROJECT,
+                "PROJECT_ACTOR_SCOPE_DENIED");
+        verify(jdbc,never()).queryForObject(contains("actor_code=? AND assignment_status='ACTIVE'"),eq(Integer.class),any(Object[].class));
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
+    }
+
+    @Test
+    void updateTaskRejectsExpiredExactActorAssignmentBeforePredecessorOrWrite() {
+        JdbcTemplate jdbc=mock(JdbcTemplate.class);
+        ScopeAccessAuditService auditService=mock(ScopeAccessAuditService.class);
+        EmissionProjectRegistryService service=new EmissionProjectRegistryService(
+                jdbc,mock(ActorProcessGovernanceService.class),auditService);
+        when(jdbc.queryForList(contains("SELECT t.project_id,t.assignee_id,t.actor_code,t.predecessor_codes"),any(Object[].class)))
+                .thenReturn(List.of(taskAuthorityRow("PRJ-1","worker-1","APPROVER")));
+        when(jdbc.queryForObject(contains("FROM emission_project_registry WHERE project_id=? AND tenant_id=?"),eq(Integer.class),any(Object[].class)))
+                .thenReturn(1);
+        when(jdbc.queryForObject(contains("lower(account_id)=lower(?) AND assignment_status='ACTIVE'"),eq(Integer.class),any(Object[].class)))
+                .thenReturn(1);
+        when(jdbc.queryForObject(
+                argThat((String sql) -> sql.contains("actor_code=?")
+                        && sql.contains("valid_from IS NULL OR valid_from<=current_date")
+                        && sql.contains("valid_until IS NULL OR valid_until>=current_date")),
+                eq(Integer.class),any(Object[].class))).thenReturn(0);
+
+        SecurityException denial=assertThrows(SecurityException.class,
+                () -> service.updateTask(103L,"TENANT-1","READY","worker-1",false));
+
+        assertEquals("TASK_ACTOR_AUTHORITY_REQUIRED",denial.getMessage());
+        verify(jdbc,never()).queryForObject(contains("FROM emission_project_task WHERE project_id=? AND task_code=ANY"),eq(Integer.class),any(Object[].class));
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
+        verifyNoInteractions(auditService);
+    }
+
+    @Test
+    void canonicalSupportRejectsFiveNonCanonicalQaScenarioTypes() throws Exception {
+        JdbcTemplate jdbc=mock(JdbcTemplate.class);
+        EmissionProjectRegistryService service=new EmissionProjectRegistryService(
+                jdbc,mock(ActorProcessGovernanceService.class),mock(ScopeAccessAuditService.class));
+        String designHash="2".repeat(64),catalogHash="3".repeat(64);
+        Map<String,Object> support=canonicalSupport(designHash,catalogHash,"/work/qa-vocabulary");
+        Map<String,Object> invalidQa=Map.of(
+                "requiredScenarioTypes",List.of("SUCCESS","VALIDATION_ERROR","FORBIDDEN","CONFLICT","RECOVERY"),
+                "checks",List.of(Map.of("code","API","passed",true)));
+        support.put("qa",invalidQa);
+        @SuppressWarnings("unchecked")
+        Map<String,Object> lanes=(Map<String,Object>)support.get("lanes");
+        lanes.put("QA",invalidQa);
+        when(jdbc.queryForList(contains("with requested(route_path) as (values"),any(Object[].class)))
+                .thenReturn(List.of(publishedSupportRow(
+                        "/work/qa-vocabulary","PROCESS_QA","STEP_QA",support,designHash,catalogHash)));
+        Map<String,Object> task=task("/work/qa-vocabulary","PROCESS_QA","STEP_QA");
+
+        Map<String,Object> summary=service.enrichCanonicalDesignSupport(new ArrayList<>(List.of(task)));
+
+        assertEquals("INVALID",task.get("canonicalSupportStatus"));
+        assertEquals("PUBLISHED_SUPPORT_HASH_OR_LANE_INVALID",task.get("canonicalSupportReason"));
+        assertFalse(task.containsKey("support"));
+        assertEquals(1L,summary.get("invalidCount"));
+        verify(jdbc,times(1)).queryForList(contains("with requested(route_path) as (values"),any(Object[].class));
+        verifyNoMoreInteractions(jdbc);
+    }
+
+    @Test
+    void canonicalSupportRejectsDuplicatedCanonicalQaScenarioType() throws Exception {
+        JdbcTemplate jdbc=mock(JdbcTemplate.class);
+        EmissionProjectRegistryService service=new EmissionProjectRegistryService(
+                jdbc,mock(ActorProcessGovernanceService.class),mock(ScopeAccessAuditService.class));
+        String designHash="4".repeat(64),catalogHash="5".repeat(64);
+        Map<String,Object> support=canonicalSupport(designHash,catalogHash,"/work/qa-duplicate");
+        Map<String,Object> duplicateQa=Map.of(
+                "requiredScenarioTypes",List.of("HAPPY_PATH","AUTHORITY","ISOLATION","EXCEPTION","RECOVERY","RECOVERY"),
+                "checks",List.of(Map.of("code","API","passed",true)));
+        support.put("qa",duplicateQa);
+        @SuppressWarnings("unchecked")
+        Map<String,Object> lanes=(Map<String,Object>)support.get("lanes");
+        lanes.put("QA",duplicateQa);
+        when(jdbc.queryForList(contains("with requested(route_path) as (values"),any(Object[].class)))
+                .thenReturn(List.of(publishedSupportRow(
+                        "/work/qa-duplicate","PROCESS_QA","STEP_QA",support,designHash,catalogHash)));
+        Map<String,Object> task=task("/work/qa-duplicate","PROCESS_QA","STEP_QA");
+
+        Map<String,Object> summary=service.enrichCanonicalDesignSupport(new ArrayList<>(List.of(task)));
+
+        assertEquals("INVALID",task.get("canonicalSupportStatus"));
+        assertEquals(1L,summary.get("invalidCount"));
+        assertFalse(task.containsKey("support"));
+        verify(jdbc,times(1)).queryForList(contains("with requested(route_path) as (values"),any(Object[].class));
+        verifyNoMoreInteractions(jdbc);
+    }
+
+    @Test
     void canonicalSupportOnlyAbsorbsExplicitRolloutSchemaStatesAndRethrowsSyntaxErrors() {
         assertRolloutSchemaStateIsAbsorbed("42P01");
         assertRolloutSchemaStateIsAbsorbed("42703");
@@ -308,6 +449,14 @@ class EmissionProjectRegistryServiceTest {
         task.put("targetUrl",route);task.put("processCode",process);task.put("processStepCode",step);
         task.put("name","Stale task");task.put("workPurpose","Stale purpose");
         return task;
+    }
+
+    private static Map<String,Object> taskAuthorityRow(String projectId,String assigneeId,String actorCode) {
+        return Map.of(
+                "project_id",projectId,
+                "assignee_id",assigneeId,
+                "actor_code",actorCode,
+                "predecessor_codes","");
     }
 
     private static Map<String,Object> publishedSupportRow(String route,String process,String step,

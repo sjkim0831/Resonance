@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 2,
+  "pageId": "emission-my-tasks",
+  "route": "/emission/my-tasks",
+  "runtimeScope": "EMISSION",
+  "screenName": {
+    "ko": "내 업무 요약",
+    "en": "My Work Summary"
+  },
+  "designSystem": "KRDS",
+  "templateCode": "WORK_EXECUTION_HUB",
+  "objective": {
+    "ko": "로그인 사용자가 배출 업무 범위와 실행 가능한 작업을 확인하고, 실제 권한과 선행조건에 맞는 업무 화면으로 이동한다.",
+    "en": "Help the signed-in user review the emission-work scope and actionable tasks, then open a workspace allowed by the actual authority and prerequisites."
+  },
+  "sections": [
+    { "code": "WORK_CONTEXT", "name": { "ko": "업무 문맥", "en": "Work context" }, "required": true, "helpId": "emission-my-tasks-work-context" },
+    { "code": "TODAY_STATUS", "name": { "ko": "오늘의 업무 상태", "en": "Today's work status" }, "required": true, "helpId": "emission-my-tasks-today-status" },
+    { "code": "NEXT_ACTION", "name": { "ko": "가장 먼저 할 일", "en": "First action" }, "required": true, "helpId": "emission-my-tasks-next-action" },
+    { "code": "TASK_QUEUE", "name": { "ko": "내 처리 대기함", "en": "My action queue" }, "required": true, "helpId": "emission-my-tasks-task-queue" },
+    { "code": "PROCESS_PROGRESS", "name": { "ko": "프로세스 진행 현황", "en": "Process progress" }, "required": true, "helpId": "emission-my-tasks-process-progress" },
+    { "code": "RISKS", "name": { "ko": "지연·위험·예외", "en": "Delays, risks and exceptions" }, "required": true, "helpId": "emission-my-tasks-risks" },
+    { "code": "HANDOFF_ACTIVITY", "name": { "ko": "최근 인계와 활동", "en": "Recent handoffs and activity" }, "required": true, "helpId": "emission-my-tasks-handoff-activity" },
+    { "code": "NEXT_GUIDANCE", "name": { "ko": "다음 업무 안내", "en": "Next-work guidance" }, "required": true, "helpId": "emission-my-tasks-next-guidance" }
+  ],
+  "filters": [
+    { "code": "runtimeScope", "label": { "ko": "업무 범위", "en": "Work scope" }, "controlType": "FIXED", "source": "runtimeScope.domainCode" },
+    { "code": "project", "label": { "ko": "프로젝트", "en": "Project" }, "controlType": "SELECT", "source": "items.projectId" },
+    { "code": "period", "label": { "ko": "기간", "en": "Period" }, "controlType": "SELECT", "source": "query.period" },
+    { "code": "status", "label": { "ko": "상태", "en": "Status" }, "controlType": "SELECT", "source": "query.status" }
+  ],
+  "priorityModel": {
+    "mode": "CLIENT_ESTIMATE",
+    "label": {
+      "ko": "화면 추정 우선순위",
+      "en": "Screen-estimated priority"
+    },
+    "disclosure": {
+      "ko": "화면 정렬을 돕는 추정값입니다. 실제 처리 가능 여부와 순서는 서버 상태·권한·선행조건을 우선합니다.",
+      "en": "This estimate only assists screen sorting. Server state, authority and prerequisites determine actual eligibility and order."
+    },
+    "factors": [
+      { "code": "DEADLINE", "source": "task.dueDate", "rule": "DUE_WINDOW", "weight": 35 },
+      { "code": "SERVER_PRIORITY", "source": "task.priority", "rule": "PRIORITY_BAND", "weight": 25 },
+      { "code": "OVERDUE_DURATION", "source": "task.dueDate", "rule": "OVERDUE_WINDOW", "weight": 20 },
+      { "code": "EXCEPTION", "source": "task.status,task.blockedReason", "rule": "BLOCKED_OR_HAS_REASON", "weight": 10 },
+      { "code": "DEPENDENCY_BLOCK", "source": "task.pendingPredecessors", "rule": "HAS_PENDING_PREDECESSORS", "weight": 10 }
+    ],
+    "bands": { "P0": 80, "P1": 60, "P2": 30, "P3": 0 }
+  },
+  "supportSurfaces": [
+    { "code": "HELP", "provider": "GLOBAL_HELP_OVERLAY", "label": { "ko": "도움말", "en": "Help" } },
+    { "code": "DESIGN", "provider": "GLOBAL_SCREEN_DEVELOPMENT_NOTE", "label": { "ko": "화면 설계", "en": "Screen design" } },
+    { "code": "QA", "provider": "GLOBAL_TASK_QUEST", "label": { "ko": "QA 검증", "en": "QA verification" } },
+    { "code": "GUIDE", "provider": "GLOBAL_TASK_QUEST", "label": { "ko": "업무 길잡이", "en": "Work guide" } },
+    { "code": "ALL_WORK", "provider": "GLOBAL_TASK_QUEST_OVERVIEW", "label": { "ko": "전체 업무 보기", "en": "View all work" } }
+  ],
+  "qaScenarios": [
+    { "code": "HAPPY_PATH", "label": { "ko": "정상 경로", "en": "Happy path" } },
+    { "code": "AUTHORITY", "label": { "ko": "권한 경로", "en": "Authority" } },
+    { "code": "ISOLATION", "label": { "ko": "데이터 격리", "en": "Isolation" } },
+    { "code": "EXCEPTION", "label": { "ko": "예외·보완 경로", "en": "Exception and correction" } },
+    { "code": "RECOVERY", "label": { "ko": "복구 경로", "en": "Recovery" } }
+  ],
+  "relayFixture": {
+    "scope": "AUTOMATED_QA_FIXTURE",
+    "accounts": [
+      { "accountId": "qaowner26", "actorCode": "COMPANY_MANAGER", "stepOrders": [1, 6, 7], "expectedVisibleTasks": ["BASIC_INFO", "REPORT", "REGULATORY_SUBMISSION"] },
+      { "accountId": "qadata26", "actorCode": "SITE_DATA_OWNER", "stepOrders": [2], "expectedVisibleTasks": ["ACTIVITY_DATA"] },
+      { "accountId": "qacalc26", "actorCode": "CALCULATOR", "stepOrders": [3], "expectedVisibleTasks": ["CALCULATION"] },
+      { "accountId": "qaverify26", "actorCode": "VERIFIER", "stepOrders": [4], "expectedVisibleTasks": ["VERIFICATION"] },
+      { "accountId": "qaapprove26", "actorCode": "APPROVER", "stepOrders": [5], "expectedVisibleTasks": ["APPROVAL"] }
+    ],
+    "workflowSteps": [
+      { "stepOrder": 1, "taskCode": "BASIC_INFO", "processCode": "EMISSION_PROJECT", "processStepCode": "EMISSION_PROJECT_SETUP", "actorCode": "COMPANY_MANAGER", "accountId": "qaowner26" },
+      { "stepOrder": 2, "taskCode": "ACTIVITY_DATA", "processCode": "EMISSION_PROJECT", "processStepCode": "EMISSION_PROJECT_COLLECT", "actorCode": "SITE_DATA_OWNER", "accountId": "qadata26" },
+      { "stepOrder": 3, "taskCode": "CALCULATION", "processCode": "EMISSION_PROJECT", "processStepCode": "EMISSION_PROJECT_CALCULATE", "actorCode": "CALCULATOR", "accountId": "qacalc26" },
+      { "stepOrder": 4, "taskCode": "VERIFICATION", "processCode": "EMISSION_PROJECT", "processStepCode": "EMISSION_PROJECT_VALIDATE", "actorCode": "VERIFIER", "accountId": "qaverify26" },
+      { "stepOrder": 5, "taskCode": "APPROVAL", "processCode": "EMISSION_PROJECT", "processStepCode": "EMISSION_PROJECT_APPROVE", "actorCode": "APPROVER", "accountId": "qaapprove26" },
+      { "stepOrder": 6, "taskCode": "REPORT", "processCode": "EMISSION_PROJECT", "processStepCode": "EMISSION_PROJECT_REPORT", "actorCode": "COMPANY_MANAGER", "accountId": "qaowner26" },
+      { "stepOrder": 7, "taskCode": "REGULATORY_SUBMISSION", "processCode": "REGULATORY_SUBMISSION", "processStepCode": "REGULATORY_SUBMISSION_S1", "actorCode": "COMPANY_MANAGER", "accountId": "qaowner26" }
+    ],
+    "exceptionSteps": [
+      { "processStepCode": "EMISSION_PROJECT_CORRECT", "actorCode": "SITE_DATA_OWNER", "accountId": "qadata26", "trigger": "VALIDATION_REJECTED", "reentryProcessStepCode": "EMISSION_PROJECT_CALCULATE" }
+    ]
+  },
+  "completionRule": {
+    "ko": "권한·API·DB 재조회·상태 인계·예외 복구·브라우저 시각 검증이 모두 통과해야 화면 완료로 판정한다.",
+    "en": "The screen is complete only after authority, API, database readback, state handoff, exception recovery and browser visual checks all pass."
+  }
+}

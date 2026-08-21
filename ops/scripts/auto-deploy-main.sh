@@ -6722,14 +6722,18 @@ sync_react_asset_prune_worker_if_required() {
 
 run_parallel_contract_tests() {
   local log_dir test_path test_name index status failed
-  local -a pids=() tests=("$@")
+  local -a pids=() tests=("$@") runner=()
   log_dir="$ROOT_DIR/var/logs/catalog-contract-tests-${target_commit:0:10}"
   rm -rf "$log_dir"
   mkdir -p "$log_dir"
   index=0
   for test_path in "${tests[@]}"; do
     test_name="$(basename "$test_path" .sh)"
-    (bash "$test_path") >"$log_dir/$index-$test_name.log" 2>&1 &
+    case "$test_path" in
+      *.mjs|*.js) runner=(node "$test_path") ;;
+      *) runner=(bash "$test_path") ;;
+    esac
+    ("${runner[@]}") >"$log_dir/$index-$test_name.log" 2>&1 &
     pids+=("$!")
     index=$((index + 1))
   done

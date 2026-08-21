@@ -21,6 +21,16 @@ const executablePath = configuredExecutable || [
 ].find((candidate) => existsSync(candidate)) || "";
 const accounts = ["qaowner26", "qadata26", "qacalc26", "qaverify26", "qaapprove26"];
 const coreTaskCodes = new Set(["BASIC_INFO", "ACTIVITY_DATA", "CALCULATION", "VERIFICATION", "APPROVAL", "REPORT", "REGULATORY_SUBMISSION"]);
+const myTasksSectionCodes = [
+  "WORK_CONTEXT",
+  "TODAY_STATUS",
+  "NEXT_ACTION",
+  "TASK_QUEUE",
+  "PROCESS_PROGRESS",
+  "RISKS",
+  "HANDOFF_ACTIVITY",
+  "NEXT_GUIDANCE",
+];
 const fatalText = /React app did not mount|Bootstrap loaded\. Waiting for React app mount|페이지 처리 중 오류가 발생했습니다|An unexpected error occurred/;
 const loginPath = /\/signin\/loginView\/?$/;
 
@@ -74,6 +84,42 @@ async function requireJson(response, label, expectedStatus = 200) {
   return payload;
 }
 
+async function assertMyTasksScreen(page, label, expectedTaskIds = []) {
+  const root = page.locator('[data-my-work-summary][data-page-id="emission-my-tasks"][data-screen-contract="WORK_EXECUTION_HUB"]');
+  await root.waitFor({ state: "visible", timeout: 20_000 });
+  const expectedIds = expectedTaskIds.map(String);
+  await page.waitForFunction((taskIds) => {
+    const screen = document.querySelector('[data-my-work-summary][data-page-id="emission-my-tasks"]');
+    const loadState = screen?.getAttribute("data-load-state") || "";
+    if (!screen || loadState === "loading") return false;
+    if (loadState === "error") return true;
+    const rendered = new Set([...screen.querySelectorAll('[data-section-code="TASK_QUEUE"] [data-task-id]')]
+      .map((node) => node.getAttribute("data-task-id") || "").filter(Boolean));
+    return taskIds.every((taskId) => rendered.has(taskId));
+  }, expectedIds, { timeout: 20_000 });
+  if (await root.count() !== 1) throw new Error(`${label} my-work root must be unique`);
+  const loadState = String(await root.getAttribute("data-load-state") || "");
+  if (loadState === "error") throw new Error(`${label} my-work screen entered error state`);
+  for (const sectionCode of myTasksSectionCodes) {
+    const section = root.locator(`[data-section-code="${sectionCode}"]`);
+    if (await section.count() !== 1) {
+      throw new Error(`${label} section expected exactly once code=${sectionCode} actual=${await section.count()}`);
+    }
+  }
+  const queue = root.locator('[data-section-code="TASK_QUEUE"]');
+  const renderedTaskIds = new Set(await queue.locator("[data-task-id]").evaluateAll((nodes) =>
+    nodes.map((node) => node.getAttribute("data-task-id") || "").filter(Boolean)));
+  for (const taskId of expectedIds) {
+    if (!renderedTaskIds.has(taskId)) throw new Error(`${label} task hook missing taskId=${taskId}`);
+  }
+  const primarySection = root.locator('[data-section-code="NEXT_ACTION"]');
+  const primaryTaskId = String(await primarySection.getAttribute("data-primary-task-id") || "");
+  if (primaryTaskId && !renderedTaskIds.has(primaryTaskId)) {
+    throw new Error(`${label} primary task is absent from queue taskId=${primaryTaskId}`);
+  }
+  return { primaryTaskId, renderedTaskCount: renderedTaskIds.size };
+}
+
 try {
   // Each account owns an isolated API session and browser context. Running
   // these read-only route checks concurrently avoids paying cold page/runtime
@@ -103,6 +149,18 @@ try {
         viewport: { width: 1440, height: 1000 },
       });
       try {
+        const overview = await context.newPage();
+        const overviewErrors = [];
+        overview.on("pageerror", (error) => overviewErrors.push(error.message));
+        try {
+          const overviewResponse = await overview.goto(`${baseUrl}/emission/my-tasks`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+          if ((overviewResponse?.status() || 0) >= 400) throw new Error(`my-work page HTTP ${overviewResponse?.status()}`);
+          await assertMyTasksScreen(overview, `account=${account}`, (tasksPayload.items || []).map((task) => task.id));
+          if (overviewErrors.length) throw new Error(`my-work page errors: ${overviewErrors.join(" | ")}`);
+          routeResults.push({ account, taskCode: "MY_WORK_SUMMARY", target: "/emission/my-tasks", ok: true });
+        } finally {
+          await overview.close();
+        }
         for (const task of tasks) {
           const page = await context.newPage();
           const pageErrors = [];
@@ -274,10 +332,14 @@ try {
       // browser jobs. Keep the wait bounded, but allow one busy render cycle
       // after the task API has already proved the project exists.
       await page.waitForFunction((name) => (document.body?.innerText || "").includes(String(name)), projectName, { timeout: 20_000 });
-      const start = page.locator("article")
-        .filter({ hasText: projectName })
-        .getByRole("button", { name: "업무 시작", exact: true })
-        .first();
+      const root = page.locator('[data-my-work-summary][data-page-id="emission-my-tasks"]');
+      await assertMyTasksScreen(page, `disposable project=${disposableProjectId}`, [actionable.id]);
+      await root.getByLabel("프로젝트", { exact: true }).selectOption(disposableProjectId);
+      await page.waitForFunction((taskId) => document.querySelector('[data-section-code="NEXT_ACTION"]')?.getAttribute("data-primary-task-id") === String(taskId), actionable.id, { timeout: 10_000 });
+      const taskRow = root.locator(`[data-section-code="TASK_QUEUE"] [data-task-id="${actionable.id}"]`);
+      await taskRow.waitFor({ state: "visible", timeout: 10_000 });
+      const start = root.locator(`[data-section-code="NEXT_ACTION"][data-primary-task-id="${actionable.id}"]`)
+        .getByRole("button", { name: "업무 시작", exact: true });
       await start.waitFor({ state: "visible", timeout: 10_000 });
       const [transitionResponse] = await Promise.all([
         page.waitForResponse((response) => response.url().includes(`/home/api/emission-tasks/${actionable.id}/status`) && response.request().method() === "POST"),

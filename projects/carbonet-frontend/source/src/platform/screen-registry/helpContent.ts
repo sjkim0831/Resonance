@@ -45,6 +45,21 @@ const PAGE_HELP: Record<string, PageHelpContent> = {
       { id: "progress", title: "심사 진행 현황", body: "단계별 심사 진행 상태와 비율을 시각적으로 확인합니다.", anchorSelector: '[data-help-id="admin-home-progress"]', placement: "left", iconName: "analytics", highlightStyle: "neutral" }
     ]
   },
+  "emission-my-tasks": {
+    pageId: "emission-my-tasks",
+    title: "내 업무 요약 도움말",
+    summary: "실제 배출 업무 API 범위, 실행 가능 상태, 등록된 프로세스 순서와 다음 단계 후보를 구분해 확인합니다.",
+    items: [
+      { id: "work-context", title: "업무 문맥", body: "서버가 선언한 EMISSION 범위와 로그인 계정·액터·프로젝트·기간·상태 필터를 확인합니다.", anchorSelector: '[data-help-id="emission-my-tasks-work-context"]', placement: "top", iconName: "filter_alt", highlightStyle: "focus" },
+      { id: "today-status", title: "오늘의 업무 상태", body: "실제 마감일과 상태 필드로 처리 필요, 오늘 마감, 지연, 진행 중, 차단 건수를 집계합니다.", anchorSelector: '[data-help-id="emission-my-tasks-today-status"]', placement: "bottom", iconName: "today", highlightStyle: "neutral" },
+      { id: "next-action", title: "가장 먼저 할 일", body: "서버가 실행 가능으로 응답한 업무의 입력·출력·완료 조건과 화면 추정 우선순위를 함께 검토합니다.", anchorSelector: '[data-help-id="emission-my-tasks-next-action"]', placement: "right", iconName: "play_circle", highlightStyle: "focus" },
+      { id: "task-queue", title: "내 처리 대기함", body: "업무, 프로세스 단계, 프로젝트, 담당 계정·액터, 상태, 마감과 허용된 실행 링크를 표에서 확인합니다.", anchorSelector: '[data-help-id="emission-my-tasks-task-queue"]', placement: "top", iconName: "view_list", highlightStyle: "neutral" },
+      { id: "process-progress", title: "프로세스 진행 현황", body: "선택 업무와 같은 프로젝트의 등록 업무 원장 순서를 봅니다. 실제 다음 단계는 실행 결과·보완·권한·선행조건에 따라 달라질 수 있습니다.", anchorSelector: '[data-help-id="emission-my-tasks-process-progress"]', placement: "left", iconName: "account_tree", highlightStyle: "success" },
+      { id: "risks", title: "지연·위험·예외", body: "마감 경과, 명시 계정 배정 없음, 서버 차단 상태처럼 API가 직접 제공하거나 실제 필드로 판정 가능한 항목만 표시합니다.", anchorSelector: '[data-help-id="emission-my-tasks-risks"]', placement: "top", iconName: "warning", highlightStyle: "warning" },
+      { id: "handoff-activity", title: "최근 인계와 활동", body: "업무 알림과 읽음 상태를 확인하며 표기 시각은 한국 표준시 기준으로 변환됩니다.", anchorSelector: '[data-help-id="emission-my-tasks-handoff-activity"]', placement: "right", iconName: "notifications", highlightStyle: "neutral" },
+      { id: "next-guidance", title: "다음 업무 안내", body: "API에 등록된 다음 단계 후보와 액터를 확인합니다. 확정 분기가 아니므로 전체 업무 보기에서 현재 프로세스 계약을 함께 검토합니다.", anchorSelector: '[data-help-id="emission-my-tasks-next-guidance"]', placement: "left", iconName: "route", highlightStyle: "focus" }
+    ]
+  },
   "emission-data-input": {
     pageId: "emission-data-input",
     title: "데이터 입력 허브 도움말",

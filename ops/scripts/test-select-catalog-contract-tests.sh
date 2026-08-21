@@ -3,14 +3,66 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 selector="$root/ops/scripts/select-catalog-contract-tests.sh"
+expected_all_count="$(awk '
+  $0 == "all_tests=(" { inside=1; next }
+  inside && $0 == ")" { print count; exit }
+  inside && $0 ~ /^[[:space:]]+[^[:space:]]/ { count++ }
+' "$selector")"
+[[ "$expected_all_count" =~ ^[1-9][0-9]*$ ]]
 
 mapfile -t all < <(printf '%s\n' ops/scripts/auto-deploy-main.sh | bash "$selector" --paths-stdin)
-[[ "${#all[@]}" == 35 ]]
+[[ "${#all[@]}" == "$expected_all_count" ]]
+[[ "$(printf '%s\n' "${all[@]}" | sort -u | wc -l)" == "$expected_all_count" ]]
+printf '%s\n' "${all[@]}" | grep -Fxq ops/tests/test-process-account-relay-design-compiler.mjs
+printf '%s\n' "${all[@]}" | grep -Fxq ops/tests/test-my-work-summary-screen-contract.mjs
 for selector_path in \
     ops/scripts/select-catalog-contract-tests.sh \
     ops/scripts/test-select-catalog-contract-tests.sh; do
   mapfile -t selector_self < <(printf '%s\n' "$selector_path" | bash "$selector" --paths-stdin)
-  [[ "${#selector_self[@]}" == 35 ]]
+  [[ "${#selector_self[@]}" == "$expected_all_count" ]]
+done
+
+python3 - "$root/ops/scripts/auto-deploy-main.sh" <<'PY'
+import pathlib
+import sys
+
+source = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+start = source.index("run_parallel_contract_tests() {")
+runner = source[start:source.index("\n}\n", start) + 3]
+
+def extension_aware(block: str) -> bool:
+    if '*.mjs|*.js)' not in block:
+        return False
+    node_branch = block.split('*.mjs|*.js)', 1)[1].split(';;', 1)[0]
+    fallback = block.split('*)', 1)[1].split(';;', 1)[0]
+    return (
+        'runner=(node "$test_path")' in node_branch
+        and 'runner=(bash "$test_path")' in fallback
+        and '("${runner[@]}")' in block
+    )
+
+if not extension_aware(runner):
+    raise SystemExit("catalog contract runner must use node for .mjs/.js and bash for other tests")
+bash_only_mutant = runner.replace('runner=(node "$test_path")', 'runner=(bash "$test_path")', 1)
+if extension_aware(bash_only_mutant):
+    raise SystemExit("bash-only catalog runner mutant survived")
+PY
+
+for my_work_contract_path in \
+    ops/tests/test-my-work-summary-screen-contract.mjs \
+    ops/scripts/resonance-project-task-browser-e2e.mjs \
+    projects/carbonet-frontend/source/src/features/emission-project-list/EmissionMyTasksPage.tsx \
+    projects/carbonet-frontend/source/src/features/emission-project-list/emissionMyTasksScreen.contract.json \
+    projects/carbonet-frontend/source/src/features/home-entry/TestAccountSwitcher.tsx \
+    projects/carbonet-frontend/source/src/platform/screen-registry/pageManifests.ts \
+    projects/carbonet-frontend/source/src/platform/screen-registry/helpContent.ts \
+    projects/carbonet-frontend/source/src/app/routes/families/emissionMonitoringFamily.ts \
+    docs/design/emission-my-tasks-screen.md \
+    modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/service/EmissionProjectRegistryService.java \
+    modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/web/EmissionProjectRegistryController.java; do
+  mapfile -t my_work_contract_tests < <(printf '%s\n' "$my_work_contract_path" | bash "$selector" --paths-stdin)
+  [[ "${#my_work_contract_tests[@]}" == 1 ]]
+  [[ "${my_work_contract_tests[0]}" == ops/tests/test-my-work-summary-screen-contract.mjs ]]
 done
 
 for failure_handler_contract_path in \
@@ -486,4 +538,4 @@ mapfile -t deduplicated < <(
 )
 [[ "${#deduplicated[@]}" == 2 ]]
 
-echo "[catalog-contract-selector-test] PASS all=35 asset=1 performance=2 webhook=1 backstageContract=1 runtimeCheckpoint=15 flywayTimeout=1 compositeMigration=1 rollbackGate=2 emissionWorkflow=1 runtimeTemplateIdentity=15 retirementIdentity=15 postRebootIdentity=1 startupProfileIdentity=14 watchdogIdentity=14 legacyBootIdentity=14 retiredEntrypointIdentity=14 buildDeployIdentity=17 backupPrune=1 handoff=20"
+echo "[catalog-contract-selector-test] PASS all=$expected_all_count asset=1 performance=2 webhook=1 backstageContract=1 runtimeCheckpoint=15 flywayTimeout=1 compositeMigration=1 rollbackGate=2 emissionWorkflow=1 runtimeTemplateIdentity=15 retirementIdentity=15 postRebootIdentity=1 startupProfileIdentity=14 watchdogIdentity=14 legacyBootIdentity=14 retiredEntrypointIdentity=14 buildDeployIdentity=17 backupPrune=1 handoff=20 myWorkPaths=11 runnerMutants=1"

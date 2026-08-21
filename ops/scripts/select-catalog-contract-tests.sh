@@ -43,6 +43,8 @@ all_tests=(
   ops/scripts/test-prune-predeploy-backups.sh
   ops/scripts/test-backstage-fast-deploy-policy.sh
   ops/tests/test-certificate-verify-fast-lane.sh
+  ops/tests/test-process-account-relay-design-compiler.mjs
+  ops/tests/test-my-work-summary-screen-contract.mjs
 )
 
 add_test() {
@@ -109,6 +111,20 @@ select_for_path() {
       add_test ops/tests/test-durable-postdeploy-rollback-reconciler.sh ;;
     ops/scripts/deploy-certificate-verify-fast.sh|ops/scripts/restart-local-carbonet-frontend-fast.sh|ops/tests/test-certificate-verify-fast-lane.sh)
       add_test ops/tests/test-certificate-verify-fast-lane.sh ;;
+    ops/scripts/compile-process-account-relay-design.mjs|ops/tests/test-process-account-relay-design-compiler.mjs)
+      add_test ops/tests/test-process-account-relay-design-compiler.mjs ;;
+    ops/tests/test-my-work-summary-screen-contract.mjs|\
+    ops/scripts/resonance-project-task-browser-e2e.mjs|\
+    projects/carbonet-frontend/source/src/features/emission-project-list/EmissionMyTasksPage.tsx|\
+    projects/carbonet-frontend/source/src/features/emission-project-list/emissionMyTasksScreen.contract.json|\
+    projects/carbonet-frontend/source/src/features/home-entry/TestAccountSwitcher.tsx|\
+    projects/carbonet-frontend/source/src/platform/screen-registry/pageManifests.ts|\
+    projects/carbonet-frontend/source/src/platform/screen-registry/helpContent.ts|\
+    projects/carbonet-frontend/source/src/app/routes/families/emissionMonitoringFamily.ts|\
+    docs/design/emission-my-tasks-screen.md|\
+    modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/service/EmissionProjectRegistryService.java|\
+    modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/web/EmissionProjectRegistryController.java)
+      add_test ops/tests/test-my-work-summary-screen-contract.mjs ;;
     ops/scripts/resonance-backstage-deploy.sh|\
     ops/scripts/test-backstage-runtime-fingerprint.sh|\
     ops/scripts/test-backstage-runtime-purge-recovery-secret.sh|\

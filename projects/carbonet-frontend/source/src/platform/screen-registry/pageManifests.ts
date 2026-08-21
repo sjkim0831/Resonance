@@ -991,6 +991,26 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "EmissionDashboardQuickActions", instanceKey: "emission-dashboard-quick-actions", layoutZone: "actions", propsSummary: ["continueTask", "dataInput", "reportSubmit"] }
     ]
   },
+  "emission-my-tasks": {
+    pageId: "emission-my-tasks",
+    routePath: "/emission/my-tasks",
+    menuCode: "H1010102",
+    domainCode: "home",
+    layoutVersion: "v2",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "COMMON_USER_GNB", instanceKey: "emission-my-tasks-user-gnb", layoutZone: "header", propsSummary: ["homeMenu", "isLoggedIn", "language"] },
+      { componentId: "MyWorkContextFilters", instanceKey: "emission-my-tasks-work-context", layoutZone: "actions", propsSummary: ["runtimeScope", "project", "period", "status"] },
+      { componentId: "MyWorkTodayStatus", instanceKey: "emission-my-tasks-today-status", layoutZone: "content", propsSummary: ["needsAction", "dueToday", "overdue", "inProgress", "blocked"] },
+      { componentId: "MyWorkNextAction", instanceKey: "emission-my-tasks-next-action", layoutZone: "content", propsSummary: ["actionableTask", "requiredInputs", "expectedOutput", "estimatedPriority"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "emission-my-tasks-task-queue", layoutZone: "content", propsSummary: ["tasks", "status", "actorCode", "targetUrl"] },
+      { componentId: "MyWorkProcessProgress", instanceKey: "emission-my-tasks-process-progress", layoutZone: "content", propsSummary: ["registeredSteps", "pendingPredecessors", "openFullWorkflow"] },
+      { componentId: "MyWorkRiskSummary", instanceKey: "emission-my-tasks-risks", layoutZone: "content", propsSummary: ["overdue", "assignee", "blockedReason"] },
+      { componentId: "MyWorkHandoffActivity", instanceKey: "emission-my-tasks-handoff-activity", layoutZone: "content", propsSummary: ["notifications", "unreadNotificationCount"] },
+      { componentId: "MyWorkNextGuidance", instanceKey: "emission-my-tasks-next-guidance", layoutZone: "actions", propsSummary: ["registeredNextTaskName", "registeredNextActorCode", "openFullWorkflow"] },
+      { componentId: "GLOBAL_SCREEN_SUPPORT", instanceKey: "emission-my-tasks-global-support", layoutZone: "actions", propsSummary: ["HELP", "DESIGN", "QA", "GUIDE", "ALL_WORK"] }
+    ]
+  },
   "emission-project-list": {
     pageId: "emission-project-list",
     routePath: "/emission/project_list",
