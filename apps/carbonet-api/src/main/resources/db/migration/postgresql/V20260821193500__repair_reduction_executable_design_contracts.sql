@@ -23,8 +23,7 @@ SET to_state = CASE WHEN step_order=4 THEN 'COMPLETED' ELSE to_state END,
       '{toState}',
       to_jsonb(CASE WHEN step_order=4 THEN 'COMPLETED' ELSE to_state END),
       true
-    )::text,
-    updated_at = current_timestamp
+    )::text
 WHERE process_code IN (
   'REDUCTION_TARGET_PLANNING','REDUCTION_ROADMAP',
   'REDUCTION_PROJECT_REGISTRATION','REDUCTION_PROJECT_APPROVAL',
