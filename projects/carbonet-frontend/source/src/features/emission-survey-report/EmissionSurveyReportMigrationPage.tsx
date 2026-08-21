@@ -3989,6 +3989,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
             : (en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다."),
         `pages=${recognized.pageTexts.length}, characters=${recognized.text.length}, engine=${recognized.engine}, engineConfidence=${Math.round(recognized.confidence)}%`);
       const rawVerification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType, recognized.pageTexts, recognized.pages);
+      const byteExactCertificateId = (exactPdfVerification?.certificateId || rawVerification.certificateId || qrEvidence?.certificateId || "").trim().toUpperCase();
       const verification: ReportPhotoVerificationResponse = exactPdfVerification?.status === "EXACT_PDF_MATCH"
         ? {
             ...rawVerification,
@@ -4004,7 +4005,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
             fieldMismatches: [],
             missingOcrEvidenceTokens: [],
             comparisons: rawVerification.comparisons?.map((candidate) => {
-              if (candidate.certificateId !== exactPdfVerification.certificateId) return candidate;
+              if (candidate.certificateId.trim().toUpperCase() !== byteExactCertificateId) return candidate;
               const exactFieldComparisons = candidate.fieldComparisons?.map((field) => ({
                 ...field,
                 rowMatched: true,
@@ -4079,10 +4080,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
       if (rawPdfFile && !exactPdfVerification && verification.certificateId) {
         exactPdfVerification = await verifyExactPdfFile(rawPdfFile, verification.certificateId);
       }
-      const exactIssuedSemanticMatch = exactPdfVerification?.status === "EXACT_PDF_MATCH"
-        && verification.numericDataExactMatch === true
-        && verification.chartDataExactMatch === true
-        && verification.tagExactMatch === true;
+      const exactIssuedSemanticMatch = exactPdfVerification?.status === "EXACT_PDF_MATCH";
       const effectiveVerification = exactIssuedSemanticMatch
         ? {
             ...verification,
