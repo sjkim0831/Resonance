@@ -34,6 +34,24 @@ import {
 
 const MAX_REPORT_VERIFICATION_PAGES = 10;
 
+export type CertificateVerificationScreenSection = {
+  code: string;
+  order: number;
+  visible: boolean;
+  koLabel: string;
+  enLabel: string;
+};
+
+export type CertificateVerificationScreenDesign = {
+  schemaVersion: number;
+  designVersion: string;
+  active: boolean;
+  hero: { koEyebrow: string; enEyebrow: string; koTitle: string; enTitle: string; koDescription: string; enDescription: string };
+  sections: CertificateVerificationScreenSection[];
+  supportCards: Array<{ code: string; koTitle: string; enTitle: string; koBody: string; enBody: string }>;
+  qaScenarios: Array<{ code: string; koLabel: string; enLabel: string }>;
+};
+
 function toEnglishTitleCase(value: string) {
   return value.replace(/[A-Za-z]+(?:'[A-Za-z]+)?/g, (word) => {
     const lower = word.toLocaleLowerCase("en-US");
@@ -3755,7 +3773,7 @@ export function EmissionSurveyReportPrintPage() {
   );
 }
 
-export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?: boolean } = {}) {
+export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign }: { embedded?: boolean; screenDesign?: CertificateVerificationScreenDesign } = {}) {
   const en = isEnglish();
   const [selectedReportType, setSelectedReportType] = useState<ReportVerificationType>("EMISSION_SURVEY");
   const [fileName, setFileName] = useState("");
@@ -4133,10 +4151,19 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     && item.tagExactMatch
   );
 
+  const sectionProps = (code: string) => {
+    const section = screenDesign?.sections.find((candidate) => candidate.code === code);
+    return {
+      "data-certificate-section": code,
+      "data-section-design-version": screenDesign?.designVersion || "built-in",
+      style: section ? ({ order: section.order, display: section.visible ? undefined : "none" } as React.CSSProperties) : undefined
+    };
+  };
+
   const verificationContent = (
       <AdminWorkspacePageFrame>
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section {...sectionProps("UPLOAD")} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <fieldset className="mb-5 border-b border-slate-200 pb-5">
               <legend className="text-sm font-black text-slate-800">{en ? "Report type" : "검증할 리포트 종류"}</legend>
               <div className="mt-3 grid grid-cols-2 gap-2" role="radiogroup">
@@ -4218,7 +4245,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
           </section>
 
           <aside className="space-y-4">
-            <section className={`rounded-2xl border p-5 shadow-sm ${toneClass}`}>
+            <section {...sectionProps("VERDICT")} className={`rounded-2xl border p-5 shadow-sm ${toneClass}`}>
               <p className="text-xs font-black uppercase tracking-[0.16em] opacity-80">{en ? "Verification Result" : "검증 결과"}</p>
               <h2 className="mt-2 text-xl font-black">
                 {resultTone === "success" ? (en ? "Valid" : "정상") : resultTone === "danger" ? (en ? "Tampered PDF" : "변조 파일") : resultTone === "warning" ? (en ? "Needs Review" : "확인 필요") : (en ? "Waiting" : "대기")}
@@ -4226,7 +4253,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
               <p className="mt-2 text-sm font-bold leading-6">{resultMessage}</p>
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <section {...sectionProps("IDENTITY")} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Three Verification Signals" : "3가지 식별 방식"}</p>
               <div className="mt-4 space-y-3">
                 {[
@@ -4243,7 +4270,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
             </section>
 
             {photoVerification ? (
-              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <section {...sectionProps("VISUAL")} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Photo OCR Evidence" : "사진 OCR 대조 근거"}</p>
                 <div className="mt-3 flex items-end justify-between"><strong className="text-3xl text-slate-950">{photoVerification.confidence}%</strong><span className="text-xs font-black text-slate-500">{en ? "CONTENT MATCH RATE" : "내용 일치율"}</span></div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-bold text-slate-700">
@@ -4341,7 +4368,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
               </section>
             ) : null}
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <section {...sectionProps("SUMMARY")} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Dataset Comparison" : "데이터셋 대조"}</p>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black">
                 <span className={`col-span-2 rounded-lg px-3 py-2 ${pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "bg-emerald-100 text-emerald-900" : pdfFileVerification?.status === "TAMPERED_PDF" ? "bg-rose-100 text-rose-900" : uploadedPdfSelected ? "bg-amber-50 text-amber-900" : "bg-slate-100 text-slate-500"}`}>
@@ -4408,7 +4435,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
               ) : null}
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <section {...sectionProps("PAGE_SEQUENCE")} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Issued Record" : "발급 이력"}</p>
               {matchedRecord || photoVerification?.certificateId ? (
                 <div className="mt-3 space-y-2 text-sm font-bold text-slate-700">
@@ -4427,7 +4454,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
         </div>
 
         {photoVerification ? (
-          <section className="mt-5 overflow-hidden border border-slate-200 bg-white shadow-sm">
+          <section {...sectionProps("DETAILS")} className="mt-5 overflow-hidden border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
               <div>
                 <h2 className="text-base font-black text-slate-950">{en ? "All Issued Documents A-Z Comparison" : "전체 발급 문서 A-Z 일괄 대조"}</h2>
@@ -4667,7 +4694,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
             </div>
           </section>
         ) : null}
-        <section className="mt-5 overflow-hidden border border-slate-300 bg-slate-950 text-slate-100 shadow-sm">
+        <section {...sectionProps("LOG")} className="mt-5 overflow-hidden border border-slate-300 bg-slate-950 text-slate-100 shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-700 px-5 py-3">
             <div>
               <h2 className="text-sm font-black">{en ? "Verification Processing Log" : "검증 처리 로그"}</h2>

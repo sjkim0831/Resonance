@@ -555,6 +555,45 @@ class ReportVerificationRegistryServicePdfTest {
     }
 
     @Test
+    void screenDesignReloadsWithoutRebuildingAndIncompleteDesignFailsClosed() throws Exception {
+        Path design = Files.createTempFile("certificate-verification-screen-", ".json");
+        String previous = System.getProperty(CertificateVerificationScreenDesignRegistry.SCREEN_FILE_PROPERTY);
+        String canonical = """
+                {"schemaVersion":1,"designVersion":"dev-screen-v1","active":true,
+                 "hero":{"koTitle":"진위확인","enTitle":"Verification"},
+                 "sections":[%s],"supportCards":[%s],"qaScenarios":[%s]}
+                """.formatted(
+                codedItems("UPLOAD", "VERDICT", "IDENTITY", "VISUAL", "SUMMARY", "PAGE_SEQUENCE", "DETAILS", "LOG"),
+                codedItems("HELP", "SCREEN_DESIGN", "QA", "WORK_GUIDE", "ALL_WORK"),
+                codedItems("HAPPY_PATH", "AUTHORITY", "ISOLATION", "EXCEPTION", "RECOVERY"));
+        try {
+            Files.writeString(design, canonical);
+            System.setProperty(CertificateVerificationScreenDesignRegistry.SCREEN_FILE_PROPERTY,
+                    design.toAbsolutePath().toString());
+            CertificateVerificationScreenDesignRegistry.resetForTest();
+            assertEquals("dev-screen-v1",
+                    CertificateVerificationScreenDesignRegistry.activeDesign().get("designVersion"));
+
+            Files.writeString(design, canonical.replace(",{\"code\":\"LOG\"}", ""));
+            CertificateVerificationScreenDesignRegistry.resetForTest();
+            IllegalStateException failure = assertThrows(IllegalStateException.class,
+                    CertificateVerificationScreenDesignRegistry::activeDesign);
+            assertTrue(failure.getMessage().contains("CERTIFICATE_VERIFICATION_SCREEN_INVALID"));
+        } finally {
+            if (previous == null) System.clearProperty(CertificateVerificationScreenDesignRegistry.SCREEN_FILE_PROPERTY);
+            else System.setProperty(CertificateVerificationScreenDesignRegistry.SCREEN_FILE_PROPERTY, previous);
+            CertificateVerificationScreenDesignRegistry.resetForTest();
+            Files.deleteIfExists(design);
+        }
+    }
+
+    private static String codedItems(String... codes) {
+        return java.util.Arrays.stream(codes)
+                .map(code -> "{\"code\":\"" + code + "\"}")
+                .collect(java.util.stream.Collectors.joining(","));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void detailRowsMatchByVisibleMaterialWhenOcrOrderDiffersFromDatasetOrder() throws Exception {
         ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
