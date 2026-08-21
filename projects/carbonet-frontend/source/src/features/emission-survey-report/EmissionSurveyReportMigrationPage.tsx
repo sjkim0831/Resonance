@@ -45,6 +45,7 @@ export type CertificateVerificationScreenSection = {
 export type CertificateVerificationScreenDesign = {
   schemaVersion: number;
   designVersion: string;
+  runtimeCommit?: string;
   active: boolean;
   hero: { koEyebrow: string; enEyebrow: string; koTitle: string; enTitle: string; koDescription: string; enDescription: string };
   sections: CertificateVerificationScreenSection[];

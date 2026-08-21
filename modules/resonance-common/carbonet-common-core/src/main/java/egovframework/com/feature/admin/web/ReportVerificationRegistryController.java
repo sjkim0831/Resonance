@@ -39,7 +39,12 @@ public class ReportVerificationRegistryController {
             "/api/en/home/certificate-verify/screen-design"
     })
     public ResponseEntity<Map<String, Object>> screenDesign() {
-        return ResponseEntity.ok(CertificateVerificationScreenDesignRegistry.activeDesign());
+        Map<String, Object> response = new LinkedHashMap<>(CertificateVerificationScreenDesignRegistry.activeDesign());
+        String runtimeCommit = System.getenv("RESONANCE_COMPOSITE_AUTOCOMPLETION_RUNTIME_COMMIT");
+        if (runtimeCommit != null && runtimeCommit.matches("[0-9a-f]{40}")) {
+            response.put("runtimeCommit", runtimeCommit);
+        }
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping({

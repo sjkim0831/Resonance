@@ -68,7 +68,11 @@ export function HomeCertificateVerifyPage() {
             </div>
           </section>
           <section className="mx-auto max-w-7xl px-4 py-10 lg:px-8">
-            <EmissionSurveyReportVerifyPage embedded screenDesign={screenDesign || undefined} />
+            <EmissionSurveyReportVerifyPage
+              key={screenDesign?.runtimeCommit || "runtime-unknown"}
+              embedded
+              screenDesign={screenDesign || undefined}
+            />
           </section>
         </main>
         <HomeFooter content={content} />
