@@ -126,6 +126,7 @@ requireText("page", 'page.unexpectedTokens.join(", ")');
 requireText("api", "sectionSummaryComparisons?: Array<{");
 requireText("api", "actualTotalEmission: string");
 rejectText("page", 'en ? "Pages 2–3 · Graph data comparison" : "2–3페이지 · 그래프 데이터 대조"');
+rejectText("page", 'en ? "Ordered page evidence" : "페이지별 전체 항목·순서·중복 검증"');
 requireText("page", 'matched ? "MATCH" : "MISMATCH"');
 requireText("page", 'pageDataSections.flatMap((section, sectionIndex)');
 requireText("page", 'en ? "Uploaded PDF value" : "업로드 PDF값"');

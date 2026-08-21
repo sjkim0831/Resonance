@@ -4447,38 +4447,6 @@ export function EmissionSurveyReportVerifyPage({ embedded = false, screenDesign 
                     <span className="col-span-2">{en ? "Numeric cells" : "수치 셀"}: {photoVerification.matchedNumberCount || 0}/{photoVerification.numberCount || 0}</span>
                   </>}
                 </div>
-                {selectedReportType === "EMISSION_SURVEY" && photoVerification.ocrEvidencePageComparisons?.length ? (
-                  <div className="mt-4 border-t border-slate-200 pt-3">
-                    <p className="text-xs font-black text-slate-900">{en ? "Ordered page evidence" : "페이지별 전체 항목·순서·중복 검증"}</p>
-                    <div className="mt-2 grid gap-2">
-                      {photoVerification.ocrEvidencePageComparisons.map((page) => (
-                        <div className={`rounded-lg border px-3 py-2 text-xs ${page.matched ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900"}`} key={`${page.pageNumber}-${page.pageType}`}>
-                          <strong>P{page.pageNumber} {page.pageType}</strong>
-                          <span className="ml-2">{en ? "expected" : "기대"} {page.expectedTokenCount} / {en ? "uploaded" : "업로드"} {page.actualTokenCount}</span>
-                          <span className="ml-2">{page.tokenSequenceExact ? "SEQUENCE EXACT" : "SEQUENCE MISMATCH"}</span>
-                          {page.missingTokens?.length ? (
-                            <p className="mt-2 break-words font-semibold">{en ? "Missing" : "누락"}: {page.missingTokens.join(", ")}</p>
-                          ) : null}
-                          {page.unexpectedTokens?.length ? (
-                            <p className="mt-2 break-words font-black">{en ? "Unexpected or displaced" : "추가·위치 불일치"}: {page.unexpectedTokens.join(", ")}</p>
-                          ) : null}
-                          {page.tokenComparisons?.length ? (
-                            <div className="mt-3 max-h-72 overflow-y-auto border border-current/20 bg-white/70">
-                              {page.tokenComparisons.map((token) => (
-                                <div className={`grid grid-cols-[3.5rem_1fr_1fr_5rem] gap-2 border-b border-current/10 px-2 py-1 last:border-b-0 ${token.matched ? "text-emerald-800" : "bg-rose-100 font-black text-rose-900"}`} key={`${page.pageNumber}-${token.position}-${token.expectedOccurrence}`}>
-                                  <span>#{token.position}</span>
-                                  <span className="break-all">{en ? "Expected" : "기대"}: {token.expected}</span>
-                                  <span className="break-all">{en ? "Uploaded" : "업로드"}: {token.actual || (en ? "MISSING" : "누락")}</span>
-                                  <span>{token.matched ? "MATCH" : "MISMATCH"}</span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
                 {selectedReportType === "LCA_SUMMARY" && photoVerification.lcaFieldComparisons?.length ? (
                   <div className="mt-4 grid gap-2 sm:grid-cols-2">
                     {photoVerification.lcaFieldComparisons.map((field) => (
