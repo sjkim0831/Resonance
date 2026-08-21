@@ -77,6 +77,22 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      "/signin/actionLogin": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/signin/actionLogin": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/admin/login/actionLogin": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/admin/login/actionLogin": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
       "/api": {
         target: "http://localhost:18000",
         changeOrigin: true
