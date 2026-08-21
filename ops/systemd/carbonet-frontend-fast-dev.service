@@ -13,7 +13,6 @@ WorkingDirectory=/opt/resonance-data/dev-worktrees/certificate-verification/proj
 Environment=NODE_ENV=development
 Environment=CARBONET_NODE_HEAP_MB=2048
 ExecStartPre=/usr/bin/test -x /opt/resonance-data/dev-worktrees/certificate-verification/projects/carbonet-frontend/source/node_modules/.bin/vite
-ExecStartPre=/bin/bash -c 'mkdir -p public/assets/react && ln -sfn ../../img public/assets/react/img'
 ExecStart=/usr/bin/node /opt/resonance-data/dev-worktrees/certificate-verification/projects/carbonet-frontend/source/node_modules/vite/bin/vite.js --host 0.0.0.0 --port 5175 --strictPort --base /
 Restart=on-failure
 RestartSec=10
