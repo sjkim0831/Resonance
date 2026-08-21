@@ -102,7 +102,7 @@ class ReportVerificationRegistryServicePdfTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void ocrEvidenceRejectsAnOverlaidDuplicateValueEvenWhenEveryIssuedTokenRemains() throws Exception {
+    void ocrEvidenceAcceptsOcrTokenSplitsButRejectsAnOverlaidDuplicateNumber() throws Exception {
         ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
         Method scorer = ReportVerificationRegistryService.class.getDeclaredMethod(
                 "scoreRegisteredOcrEvidence", List.class, com.fasterxml.jackson.databind.JsonNode.class);
@@ -118,7 +118,7 @@ class ReportVerificationRegistryServicePdfTest {
         evidence.put("pages", List.of(issuedPage));
 
         Map<String, Object> exact = (Map<String, Object>) scorer.invoke(service,
-                List.of("에너지 1.62 kg CO2e 수계 배출물 0.36 kg CO2e"),
+                List.of("에 너 지 1.62kg CO2e 수 계 배 출 물 0.36 kgCO2e"),
                 new ObjectMapper().valueToTree(evidence));
         Map<String, Object> overlaid = (Map<String, Object>) scorer.invoke(service,
                 List.of("에너지 1.62 kg CO2e 수계 배출물 1.62 0.36 kg CO2e"),
@@ -135,9 +135,9 @@ class ReportVerificationRegistryServicePdfTest {
         assertEquals(9, tokenComparisons.size());
         assertTrue((Boolean) tokenComparisons.get(0).get("matched"));
         assertEquals("0.36", tokenComparisons.get(6).get("expected"));
-        assertEquals("1.62", tokenComparisons.get(6).get("actual"));
-        assertFalse((Boolean) tokenComparisons.get(6).get("matched"));
-        assertEquals(2, tokenComparisons.get(1).get("actualOccurrenceCount"));
+        assertEquals("0.36", tokenComparisons.get(6).get("actual"));
+        assertTrue((Boolean) tokenComparisons.get(6).get("matched"));
+        assertEquals(List.of("page=1:unexpected-numeric-evidence"), comparison.get("unexpectedTokens"));
     }
 
     @Test

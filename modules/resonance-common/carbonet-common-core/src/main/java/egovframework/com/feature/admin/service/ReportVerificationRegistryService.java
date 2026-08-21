@@ -1701,6 +1701,36 @@ public class ReportVerificationRegistryService {
         return tokens;
     }
 
+    private int findCompactEvidenceToken(String actual, String expected, int fromIndex) {
+        int cursor = Math.max(0, fromIndex);
+        boolean numeric = expected.chars().anyMatch(Character::isDigit);
+        while (cursor <= actual.length() - expected.length()) {
+            int found = actual.indexOf(expected, cursor);
+            if (found < 0) return -1;
+            if (!numeric || hasNumericTokenBoundaries(actual, found, found + expected.length())) {
+                return found;
+            }
+            cursor = found + 1;
+        }
+        return -1;
+    }
+
+    private boolean hasNumericTokenBoundaries(String value, int start, int end) {
+        // The compact OCR stream removes whitespace, so the preceding character can
+        // belong to the previous legitimate number. Extra preceding digits are
+        // detected separately as skipped numeric evidence. The right boundary still
+        // prevents an integer token such as "1" from matching the prefix of "1.62".
+        return end >= value.length() || !isNumericContinuation(value.charAt(end));
+    }
+
+    private boolean isNumericContinuation(char value) {
+        return Character.isDigit(value) || value == '.' || value == ',';
+    }
+
+    private boolean containsDigit(String value) {
+        return value != null && value.chars().anyMatch(Character::isDigit);
+    }
+
     private List<String> normalizeOcrPages(Object rawPages) {
         if (!(rawPages instanceof List<?> pages)) {
             return List.of();
@@ -2074,15 +2104,15 @@ public class ReportVerificationRegistryService {
         List<Map<String, Object>> pageComparisons = new ArrayList<>();
         for (int pageIndex = 0; pageIndex < evidencePages.size(); pageIndex++) {
             JsonNode expectedPage = evidencePages.get(pageIndex);
+            String actualPageText = pageIndex < normalizedOcrPages.size()
+                    ? normalizedOcrPages.get(pageIndex) : "";
+            String compactActualPage = compactOcrText(actualPageText);
             List<String> actualTokens = pageIndex < normalizedOcrPages.size()
                     ? extractOcrEvidenceTokens(normalizedOcrPages.get(pageIndex)) : List.of();
-            Map<String, Integer> availableCounts = new LinkedHashMap<>();
-            for (String token : actualTokens) {
-                availableCounts.merge(token, 1, Integer::sum);
-            }
             Map<String, Integer> consumedCounts = new LinkedHashMap<>();
             int sequenceCursor = 0;
             boolean ordered = true;
+            boolean unexpectedNumericEvidence = false;
             int pageTotal = 0;
             int pageMatched = 0;
             List<String> pageMissing = new ArrayList<>();
@@ -2096,20 +2126,17 @@ public class ReportVerificationRegistryService {
                 total++;
                 pageTotal++;
                 int occurrence = consumedCounts.merge(token, 1, Integer::sum);
-                boolean countMatched = availableCounts.getOrDefault(token, 0) >= occurrence;
-                int foundAt = -1;
-                for (int scan = sequenceCursor; scan < actualTokens.size(); scan++) {
-                    if (token.equals(actualTokens.get(scan))) {
-                        foundAt = scan;
-                        break;
-                    }
-                }
+                String compactToken = compactOcrText(token);
+                int foundAt = compactToken.isBlank() ? -1
+                        : findCompactEvidenceToken(compactActualPage, compactToken, sequenceCursor);
                 if (foundAt >= 0) {
-                    sequenceCursor = foundAt + 1;
+                    String skipped = compactActualPage.substring(sequenceCursor, foundAt);
+                    unexpectedNumericEvidence = unexpectedNumericEvidence || containsDigit(skipped);
+                    sequenceCursor = foundAt + compactToken.length();
                 } else {
                     ordered = false;
                 }
-                if (countMatched && foundAt >= 0) {
+                if (foundAt >= 0) {
                     matched++;
                     pageMatched++;
                 } else {
@@ -2118,35 +2145,24 @@ public class ReportVerificationRegistryService {
                     if (pageMissing.size() < MAX_DIFFERENCES) pageMissing.add(difference);
                 }
                 Map<String, Object> tokenComparison = new LinkedHashMap<>();
-                String actualToken = expectedPosition < actualTokens.size()
-                        ? actualTokens.get(expectedPosition) : "";
+                String actualToken = foundAt >= 0 ? token : "";
                 tokenComparison.put("position", expectedPosition + 1);
                 tokenComparison.put("expected", token);
                 tokenComparison.put("actual", actualToken);
                 tokenComparison.put("expectedOccurrence", occurrence);
-                tokenComparison.put("actualOccurrenceCount", availableCounts.getOrDefault(token, 0));
-                tokenComparison.put("matched", token.equals(actualToken));
+                tokenComparison.put("actualOccurrenceCount", foundAt >= 0 ? occurrence : 0);
+                tokenComparison.put("matched", foundAt >= 0);
                 tokenComparisons.add(tokenComparison);
             }
-            boolean tokenSequenceExact = expectedTokens.equals(actualTokens);
             List<String> pageUnexpected = new ArrayList<>();
-            if (!tokenSequenceExact) {
-                int sharedLength = Math.min(expectedTokens.size(), actualTokens.size());
-                for (int tokenIndex = 0; tokenIndex < sharedLength; tokenIndex++) {
-                    if (!expectedTokens.get(tokenIndex).equals(actualTokens.get(tokenIndex))
-                            && pageUnexpected.size() < MAX_DIFFERENCES) {
-                        pageUnexpected.add("page=" + (pageIndex + 1) + ":position=" + (tokenIndex + 1)
-                                + ":expected=" + expectedTokens.get(tokenIndex)
-                                + ":actual=" + actualTokens.get(tokenIndex));
-                    }
-                }
-                for (int tokenIndex = sharedLength;
-                     tokenIndex < actualTokens.size() && pageUnexpected.size() < MAX_DIFFERENCES;
-                     tokenIndex++) {
-                    pageUnexpected.add("page=" + (pageIndex + 1) + ":unexpected="
-                            + actualTokens.get(tokenIndex) + "#" + (tokenIndex + 1));
-                }
+            String trailing = sequenceCursor <= compactActualPage.length()
+                    ? compactActualPage.substring(sequenceCursor) : "";
+            unexpectedNumericEvidence = unexpectedNumericEvidence || containsDigit(trailing);
+            if (unexpectedNumericEvidence) {
+                pageUnexpected.add("page=" + (pageIndex + 1) + ":unexpected-numeric-evidence");
             }
+            boolean tokenSequenceExact = pageTotal > 0 && pageMatched == pageTotal
+                    && ordered && !unexpectedNumericEvidence;
             boolean pageMatchedExactly = pageTotal > 0 && pageMatched == pageTotal
                     && ordered && tokenSequenceExact;
             if (pageMatchedExactly) matchedPages++;
