@@ -1715,6 +1715,24 @@ public class ReportVerificationRegistryService {
         return -1;
     }
 
+    private int findUnconsumedCompactEvidenceToken(String actual, String expected, boolean[] consumed) {
+        int cursor = 0;
+        while (cursor <= actual.length() - expected.length()) {
+            int found = findCompactEvidenceToken(actual, expected, cursor);
+            if (found < 0) return -1;
+            boolean available = true;
+            for (int index = found; index < found + expected.length(); index++) {
+                if (consumed[index]) {
+                    available = false;
+                    break;
+                }
+            }
+            if (available) return found;
+            cursor = found + 1;
+        }
+        return -1;
+    }
+
     private boolean hasNumericTokenBoundaries(String value, int start, int end) {
         // The compact OCR stream removes whitespace, so the preceding character can
         // belong to the previous legitimate number. Extra preceding digits are
@@ -2110,7 +2128,7 @@ public class ReportVerificationRegistryService {
             List<String> actualTokens = pageIndex < normalizedOcrPages.size()
                     ? extractOcrEvidenceTokens(normalizedOcrPages.get(pageIndex)) : List.of();
             Map<String, Integer> consumedCounts = new LinkedHashMap<>();
-            int sequenceCursor = 0;
+            boolean[] consumedCharacters = new boolean[compactActualPage.length()];
             boolean ordered = true;
             boolean unexpectedNumericEvidence = false;
             int pageTotal = 0;
@@ -2128,11 +2146,11 @@ public class ReportVerificationRegistryService {
                 int occurrence = consumedCounts.merge(token, 1, Integer::sum);
                 String compactToken = compactOcrText(token);
                 int foundAt = compactToken.isBlank() ? -1
-                        : findCompactEvidenceToken(compactActualPage, compactToken, sequenceCursor);
+                        : findUnconsumedCompactEvidenceToken(compactActualPage, compactToken, consumedCharacters);
                 if (foundAt >= 0) {
-                    String skipped = compactActualPage.substring(sequenceCursor, foundAt);
-                    unexpectedNumericEvidence = unexpectedNumericEvidence || containsDigit(skipped);
-                    sequenceCursor = foundAt + compactToken.length();
+                    for (int index = foundAt; index < foundAt + compactToken.length(); index++) {
+                        consumedCharacters[index] = true;
+                    }
                 } else {
                     ordered = false;
                 }
@@ -2155,9 +2173,12 @@ public class ReportVerificationRegistryService {
                 tokenComparisons.add(tokenComparison);
             }
             List<String> pageUnexpected = new ArrayList<>();
-            String trailing = sequenceCursor <= compactActualPage.length()
-                    ? compactActualPage.substring(sequenceCursor) : "";
-            unexpectedNumericEvidence = unexpectedNumericEvidence || containsDigit(trailing);
+            for (int index = 0; index < compactActualPage.length(); index++) {
+                if (!consumedCharacters[index] && Character.isDigit(compactActualPage.charAt(index))) {
+                    unexpectedNumericEvidence = true;
+                    break;
+                }
+            }
             if (unexpectedNumericEvidence) {
                 pageUnexpected.add("page=" + (pageIndex + 1) + ":unexpected-numeric-evidence");
             }

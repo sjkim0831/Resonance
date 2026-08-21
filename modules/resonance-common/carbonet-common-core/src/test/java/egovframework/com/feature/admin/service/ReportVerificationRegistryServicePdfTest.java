@@ -142,6 +142,33 @@ class ReportVerificationRegistryServicePdfTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void ocrEvidenceAcceptsMultiColumnReadingOrderWithoutMaskingNumericTampering() throws Exception {
+        ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
+        Method scorer = ReportVerificationRegistryService.class.getDeclaredMethod(
+                "scoreRegisteredOcrEvidence", List.class, com.fasterxml.jackson.databind.JsonNode.class);
+        scorer.setAccessible(true);
+        Map<String, Object> issuedPage = new LinkedHashMap<>();
+        issuedPage.put("pageNumber", 1);
+        issuedPage.put("pageType", "SUMMARY");
+        issuedPage.put("tokens", List.of("제품", "e-케로신", "총", "탄소배출량", "79,262.29", "kg", "co2e"));
+        Map<String, Object> evidence = Map.of("schemaVersion", 3, "pages", List.of(issuedPage));
+
+        Map<String, Object> reordered = (Map<String, Object>) scorer.invoke(service,
+                List.of("총 탄소배출량 e-케로신 79,262.29 kg CO2e 제품"),
+                new ObjectMapper().valueToTree(evidence));
+        Map<String, Object> tampered = (Map<String, Object>) scorer.invoke(service,
+                List.of("총 탄소배출량 e-케로신 79,262.29 kg CO2e 제품 1.62"),
+                new ObjectMapper().valueToTree(evidence));
+
+        assertTrue((Boolean) reordered.get("ocrEvidenceExactMatch"));
+        assertFalse((Boolean) tampered.get("ocrEvidenceExactMatch"));
+        Map<String, Object> comparison = (Map<String, Object>)
+                ((List<?>) tampered.get("ocrEvidencePageComparisons")).get(0);
+        assertEquals(List.of("page=1:unexpected-numeric-evidence"), comparison.get("unexpectedTokens"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void sectionSummaryRejectsRepeatedExpectedTextInsideAnotherSection() throws Exception {
         ReportVerificationRegistryService service = service(new FingerprintJdbcTemplate());
         Method scorer = ReportVerificationRegistryService.class.getDeclaredMethod(
