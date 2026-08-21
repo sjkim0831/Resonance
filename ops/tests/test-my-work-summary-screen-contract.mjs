@@ -195,6 +195,19 @@ function validate(candidate) {
   add(violations, !page.includes("Asia/Seoul") || !page.includes("data?.summary.serverDate || kstDateKey()") || /toISOString\(\)\.slice\(0,\s*10\)/.test(page), "KST_DATE_BOUNDARY");
   add(violations, !page.includes('!String(task.assignee || "").trim()') || page.includes("explicitlyAssigned"), "ASSIGNEE_GAP_METRIC");
   add(violations, !/new\s+AbortController\s*\(/.test(page) || !/signal:\s*(?:signal|[\w.]+\.signal)\b/.test(page) || !/load\([\w.]+\.signal\)/.test(page) || !/\.abort\(\)/.test(page), "ABORTABLE_LOAD");
+  const compactBranch = service.indexOf("if(compact)");
+  const fullCatalogBranch = service.indexOf('result.put("workTypes"');
+  const summaryBranch = service.indexOf('result.put("summary"');
+  const notificationsBranch = service.indexOf('result.put("notifications"');
+  add(violations,
+    !page.includes("&compact=true") ||
+    !controller.includes('@RequestParam(defaultValue="false") boolean compact') ||
+    !controller.includes("status,period,compact") ||
+    compactBranch < 0 || fullCatalogBranch < 0 || compactBranch > fullCatalogBranch ||
+    summaryBranch < 0 || summaryBranch > compactBranch ||
+    notificationsBranch < 0 || notificationsBranch > compactBranch ||
+    !service.slice(compactBranch, compactBranch + 220).includes('"SUMMARY_COMPACT"'),
+    "COMPACT_PAGE_API");
   add(violations, !/const\s*\[loading,\s*setLoading\]\s*=\s*useState/.test(page) || !page.includes("aria-busy={loading}") || !page.includes("data-load-state="), "LOADING_STATE");
   add(violations, !page.includes('aria-live="polite"') || !page.includes('role="alert"'), "ASYNC_A11Y");
   add(violations, !page.includes("<caption") || !page.includes('scope="col"'), "TABLE_A11Y");
@@ -327,6 +340,9 @@ killed("backend QA duplicate guard deletion", { service: baseline.service.replac
 killed("browser exact selector deletion", { browserE2e: baseline.browserE2e.replaceAll("data-primary-task-id", "data-removed-primary-task-id") }, "BROWSER_TASK_IDENTITY");
 killed("browser localized project selector reintroduction", { browserE2e: baseline.browserE2e.replace('root.locator("#my-work-project")', 'root.getByLabel("프로젝트", { exact: true })') }, "BROWSER_LOCALE_NEUTRAL_PROJECT_SELECTOR");
 killed("abort wiring deletion", { page: baseline.page.replace(/load\([\w.]+\.signal\)/, "load()") }, "ABORTABLE_LOAD");
+killed("compact page request deletion", { page: baseline.page.replace("&compact=true", "") }, "COMPACT_PAGE_API");
+killed("compact backend bypass deletion", { service: baseline.service.replace("if(compact)", "if(false)") }, "COMPACT_PAGE_API");
+killed("compact controller forwarding deletion", { controller: baseline.controller.replace("status,period,compact", "status,period,false") }, "COMPACT_PAGE_API");
 killed("design scope expansion", { designDoc: baseline.designDoc.replace("현재 실행 범위: `EMISSION`", "현재 실행 범위: `ALL`") }, "DESIGN_DOC_SCOPE");
 killed("design exception deletion", { designDoc: baseline.designDoc.replaceAll("EMISSION_PROJECT_CORRECT", "EMISSION_PROJECT_APPROVE") }, "DESIGN_DOC_EXCEPTION_BRANCH");
 {

@@ -224,7 +224,7 @@ export function EmissionMyTasksPage() {
     setLoading(true);
     setMessage("");
     try {
-      const response = await fetch(`${api}?status=${encodeURIComponent(status)}&period=${encodeURIComponent(period)}`, {
+      const response = await fetch(`${api}?status=${encodeURIComponent(status)}&period=${encodeURIComponent(period)}&compact=true`, {
         credentials: "include",
         signal: signal,
       });
