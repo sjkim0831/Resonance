@@ -75,3 +75,21 @@
 4. Flyway 적용 후 완료 기준은 `assigned_process_count=8`,
    `assigned_step_count=32`, `generated_process_count=8`,
    `generated_task_count=32`, `missing_task_count=0`이다.
+
+### Flyway 적용 결과 (2026-08-21 18:54 KST)
+
+- Flyway version: `20260821112000`, history success 1건
+- 실행 시간: 1.16초
+- 앱 빌드·Runtime 롤아웃·DB 백업: 각 0회
+- 배정 원장: 프로세스 8/8, 단계 32/32
+- 실제 업무 생성: 프로세스 1/8, 단계 4/32, 누락 28
+- `REDUCTION_EXECUTION`: 구현증거 44/44, 업무 4건 생성
+- 나머지 7개: 구조 설계 정확도 90점, 설계 blocker 0건이지만 구현증거
+  0/56이므로 `IMPLEMENTATION_EVIDENCE_REQUIRED`로 fail-closed
+- 내 업무 재조회: `qaowner26` 3건, `qaapprove26` 1건,
+  `qacalc26` 0건, `qaverify26` 0건
+
+따라서 8/32 배정은 완료됐지만 8/32 업무 실행 폐쇄는 아직 완료가 아니다.
+남은 완료 조건은 7개 프로세스의 392개 필수 구현증거(프로세스당 56개)를
+자동 생성·검증한 뒤 동일 동기화 함수를 재실행하여 `missing_task_count=0`을
+확인하는 것이다. 구현증거를 DB에서 임의 승인하거나 설계 게이트를 우회하지 않는다.
