@@ -76,6 +76,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    cors: true,
     proxy: {
       "/signin/actionLogin": {
         target: "http://localhost:18000",
