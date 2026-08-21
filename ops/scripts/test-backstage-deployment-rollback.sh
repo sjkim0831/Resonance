@@ -2430,6 +2430,36 @@ assert_baseline_restored
 [[ "$(sha256sum "$identity" | awk '{print $1}')" == "$baseline_identity_hash" ]]
 [[ "$(cat "$mutations")" == 1 ]]
 
+# 73b. If the exact captured baseline had no deploy marker, its otherwise
+# matching pre-authority identity is retired only after the baseline proof.
+reset_fixture
+create_runtime_identity_from_deployment "$other_commit" "$baseline"
+rm -f -- "$marker"
+set +e
+bash -c '
+  set -Eeuo pipefail
+  NAMESPACE=resonance-ops
+  source "$1"
+  source "$2"
+  cleanup_build_tmp() { :; }
+  trap deployment_exit_handler EXIT
+  capture_backstage_deployment_baseline >/dev/null
+  arm_backstage_deployment_mutations >/dev/null
+  cp -- "$3" "$FAKE_DEPLOYMENT_STATE"
+  exit 33
+' _ "$functions" "$handler" "$candidate" \
+  >"$fixture/marker-absent-baseline-identity.out" \
+  2>"$fixture/marker-absent-baseline-identity.err"
+status="$?"
+set -e
+[[ "$status" == 33 ]]
+assert_baseline_restored
+[[ ! -e "$marker" && ! -e "$identity" && "$(cat "$mutations")" == 1 ]]
+grep -Fq 'marker-absent baseline will retire stale pre-authority runtime identity after exact proof' \
+  "$fixture/marker-absent-baseline-identity.out"
+grep -Fq 'stale pre-authority runtime identity removed after exact baseline proof' \
+  "$fixture/marker-absent-baseline-identity.out"
+
 # 74-78. Every managed kind/object can move to its exact durable target intent
 # during MUTATION_ARMED and is restored to its full normalized baseline.
 for descriptor in \

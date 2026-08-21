@@ -3224,10 +3224,11 @@ inspect_backstage_runtime_identity_for_rollback() {
         "$BACKSTAGE_RUNTIME_IDENTITY_CANDIDATE_IMAGE" == "$baseline_image" &&
         "$BACKSTAGE_RUNTIME_IDENTITY_CANDIDATE_SPEC_SHA256" == "$BACKSTAGE_BASELINE_ROLLBACK_SPEC_SHA256" ]]; then
     if [[ -n "$BACKSTAGE_DEPLOY_STATE_FILE" ]]; then
-      [[ -e "$BACKSTAGE_DEPLOY_STATE_FILE" || -L "$BACKSTAGE_DEPLOY_STATE_FILE" ]] || {
-        backstage_rollback_fail "baseline runtime identity has no configured deploy marker; mutation=0"
-        return 79
-      }
+      if [[ ! -e "$BACKSTAGE_DEPLOY_STATE_FILE" && ! -L "$BACKSTAGE_DEPLOY_STATE_FILE" ]]; then
+        BACKSTAGE_STALE_RUNTIME_IDENTITY=true
+        echo "[backstage] marker-absent baseline will retire stale pre-authority runtime identity after exact proof"
+        return 0
+      fi
       verify_backstage_deploy_marker "$BACKSTAGE_RUNTIME_IDENTITY_TARGET_COMMIT" || return 79
       verify_backstage_deploy_marker_closure \
         "$BACKSTAGE_RUNTIME_IDENTITY_DEPLOYMENT_CLOSURE_SHA256" || return 79
