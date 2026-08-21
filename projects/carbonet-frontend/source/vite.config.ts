@@ -95,11 +95,15 @@ export default defineConfig({
         changeOrigin: true
       },
       "/home/api": {
-        target: "http://localhost:18000",
+        target: "http://127.0.0.1",
         changeOrigin: true
       },
       "/en/home/api": {
-        target: "http://localhost:18000",
+        target: "http://127.0.0.1",
+        changeOrigin: true
+      },
+      "/api/frontend/session": {
+        target: "http://127.0.0.1",
         changeOrigin: true
       },
       "/api": {
