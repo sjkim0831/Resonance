@@ -2685,7 +2685,13 @@ public class ActorProcessGovernanceService {
                      framework_strict_jsonb_array(c.section_contract) sections,
                      framework_strict_jsonb_array(c.field_contract) fields,
                      framework_strict_jsonb_array(c.command_contract) commands,
-                     framework_strict_jsonb_array(c.state_contract) states,
+                     (select coalesce(jsonb_agg(case jsonb_typeof(state.value)
+                         when 'object' then state.value
+                         when 'string' then jsonb_build_object(
+                           'stateCode',state.value#>>'{}','stateName',state.value#>>'{}')
+                         else state.value end order by state.ordinality),'[]'::jsonb)
+                        from jsonb_array_elements(framework_strict_jsonb_array(c.state_contract))
+                          with ordinality state(value,ordinality)) states,
                      framework_strict_jsonb_array(c.api_contract) apis,
                      framework_strict_jsonb_array(c.data_contract) data_contract,
                      framework_strict_jsonb_array(c.evidence_contract) evidence,
