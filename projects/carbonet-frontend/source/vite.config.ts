@@ -96,6 +96,30 @@ export default defineConfig({
         target: "http://localhost:18000",
         changeOrigin: true
       },
+      "/signin/actionLogin": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/signin/actionLogin": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/signin/actionLogout": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/signin/actionLogout": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/signin/refreshSession": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/signin/refreshSession": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
       "/admin/login/actionLogin": {
         target: "http://localhost:18000",
         changeOrigin: true

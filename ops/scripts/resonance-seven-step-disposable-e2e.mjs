@@ -6,8 +6,9 @@ import process from "node:process";
 
 const root = path.resolve(process.env.RESONANCE_ROOT || path.join(import.meta.dirname, "../.."));
 const require = createRequire(path.join(root, "projects/carbonet-frontend/source/package.json"));
-const { request } = require("@playwright/test");
+const { chromium, request } = require("@playwright/test");
 const baseURL = String(process.env.CARBONET_RUNTIME_BASE_URL || "http://127.0.0.1").replace(/\/$/, "");
+const frontendURL = String(process.env.CARBONET_FRONTEND_BASE_URL || "").replace(/\/$/, "");
 const password = String(process.env.CARBONET_ACTOR_TEST_PASSWORD || "");
 const users = { owner: "qaowner26", data: "qadata26", calculator: "qacalc26", verifier: "qaverify26", approver: "qaapprove26" };
 if (!password) throw new Error("CARBONET_ACTOR_TEST_PASSWORD is required");
@@ -146,6 +147,61 @@ try {
   if (!simulation.scenarioId || simulation.scenarioId !== simulationReplay.scenarioId || simulation.version !== simulationReplay.version) throw new Error("simulation idempotency contract failed");
   if (!(simulationWorkflow.scenarios || []).some((row) => Number(row.scenarioId) === Number(simulation.scenarioId))) throw new Error("simulation workflow readback failed");
   evidence.simulation = { actor: "CALCULATOR", account: users.calculator, input: { scenarioCode: simulationInput.scenarioCode, techInvestment: 51, efficiencyGain: 63, renewableRate: 36, ccusScale: 21 }, output: { scenarioId: simulation.scenarioId, version: simulation.version, projectedReduction: simulation.projectedReduction, unit: simulation.unit }, create: true, replay: true, readback: true };
+
+  if (frontendURL) {
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const context = await browser.newContext({ baseURL: frontendURL, ignoreHTTPSErrors: true, viewport: { width: 1440, height: 1000 } });
+      const page = await context.newPage();
+      await page.goto("/signin/loginView", { waitUntil: "domcontentloaded", timeout: 30_000 });
+      await page.locator("#userId").fill(users.calculator);
+      await page.locator("#userPw").fill(password);
+      await Promise.all([
+        page.waitForURL((url) => !url.pathname.includes("/signin/loginView"), { timeout: 30_000 }),
+        page.locator('#loginForm button[type="submit"]').click(),
+      ]);
+      await page.goto(`/emission/simulate?projectId=${encodeURIComponent(projectId)}`, { waitUntil: "domcontentloaded", timeout: 30_000 });
+      const browserWorkflowProbe = await page.request.get(`/home/api/emission-projects/${encodeURIComponent(projectId)}/simulation-workflow`, { failOnStatusCode: false });
+      const browserWorkflowBody = await browserWorkflowProbe.json().catch(() => ({}));
+      const browserScenarioCount = Array.isArray(browserWorkflowBody.scenarios) ? browserWorkflowBody.scenarios.length : -1;
+      if (browserWorkflowProbe.status() !== 200 || browserScenarioCount < 1) {
+        throw new Error(`browser workflow unavailable status=${browserWorkflowProbe.status()} scenarios=${browserScenarioCount} message=${String(browserWorkflowBody.message || "none").slice(0, 120)}`);
+      }
+      try {
+        await page.locator('[data-help-id="emission-simulate-history"]').waitFor({ state: "visible", timeout: 15_000 });
+        await page.locator('[data-help-id="emission-simulate-history"] tbody tr').filter({ hasText: "v1" }).first().waitFor({ state: "visible", timeout: 15_000 });
+      } catch {
+        const sessionProbe = await page.request.get("/api/frontend/session", { failOnStatusCode: false });
+        const sessionBody = await sessionProbe.json().catch(() => ({}));
+        const visibleText = (await page.locator("body").innerText().catch(() => "")).replace(/\s+/g, " ").slice(0, 240);
+        throw new Error(`browser screen unavailable url=${page.url()} sessionStatus=${sessionProbe.status()} authenticated=${Boolean(sessionBody.isAuthenticated || sessionBody.authenticated || sessionBody.isLoggedIn)} text=${visibleText}`);
+      }
+      const baseline = await page.getByText("승인 산정 기준", { exact: true }).locator("..").innerText();
+      const history = await page.locator('[data-help-id="emission-simulate-history"]').innerText();
+      const evidenceHash = await page.locator('[data-help-id="emission-simulate-history"] tbody tr').first().locator("td").last().innerText();
+      const sliderCount = await page.locator('[data-help-id="emission-simulate-builder"] input[type="range"]').count();
+      const bodyText = await page.locator("body").innerText();
+      const baselineVisible = !baseline.includes("\n-\n");
+      const versionVisible = history.includes("v1");
+      const projectedReductionVisible = history.includes("18,150");
+      const inputHashVisible = /^[0-9a-f]{12}$/i.test(evidenceHash.trim());
+      if (!baselineVisible || !versionVisible || !projectedReductionVisible || !inputHashVisible || sliderCount !== 4) {
+        throw new Error(`browser simulation evidence mismatch baseline=${baselineVisible} version=${versionVisible} projectedReduction=${projectedReductionVisible} inputHash=${inputHashVisible} hash=${evidenceHash.trim().slice(0, 24)} sliders=${sliderCount}`);
+      }
+      for (const forbidden of ["₩2.4B", "94.8/100", "0.42 tCO2/₩M"]) {
+        if (bodyText.includes(forbidden)) throw new Error(`browser retained fake metric=${forbidden}`);
+      }
+      const outputDir = path.join(root, "var/test-evidence");
+      await mkdir(outputDir, { recursive: true });
+      await page.screenshot({ path: path.join(outputDir, "reduction-execution-latest.png"), fullPage: true });
+      evidence.simulation.browser = { route: "/emission/simulate", authenticatedAccount: users.calculator, baselineVisible, versionVisible, projectedReductionVisible, inputHashVisible, sliderCount, fakeMetricCount: 0, screenshot: "var/test-evidence/reduction-execution-latest.png" };
+      await context.close();
+      await clients.calculator.dispose();
+      clients.calculator = await login(users.calculator);
+    } finally {
+      await browser.close();
+    }
+  }
 
   await call(clients.owner, "get", `/home/api/emission-projects/${projectId}/completion`);
   mark("REPORT_CERTIFICATION", "REPORT_CERTIFICATION_01_PLAN", "COMPANY_MANAGER",

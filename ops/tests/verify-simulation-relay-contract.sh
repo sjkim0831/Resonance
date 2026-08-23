@@ -2,11 +2,21 @@
 set -euo pipefail
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 SCRIPT="$ROOT/ops/scripts/resonance-seven-step-disposable-e2e.mjs"
+VITE_CONFIG="$ROOT/projects/carbonet-frontend/source/vite.config.ts"
+PAGE="$ROOT/projects/carbonet-frontend/source/src/features/emission-simulate/EmissionSimulateMigrationPage.tsx"
 grep -Fq '/simulate' "$SCRIPT"
 grep -Fq '/simulation-workflow' "$SCRIPT"
 grep -Fq 'simulation idempotency contract failed' "$SCRIPT"
 grep -Fq 'simulation workflow readback failed' "$SCRIPT"
 grep -Fq 'evidence.simulation' "$SCRIPT"
 grep -Fq 'projectedReduction' "$SCRIPT"
+grep -Fq 'CARBONET_FRONTEND_BASE_URL' "$SCRIPT"
+grep -Fq 'reduction-execution-latest.png' "$SCRIPT"
+grep -Fq 'fakeMetricCount: 0' "$SCRIPT"
+grep -Fq 'sliderCount !== 4' "$SCRIPT"
+grep -Fq '"/signin/actionLogin"' "$VITE_CONFIG"
+grep -Fq '"/signin/actionLogout"' "$VITE_CONFIG"
+grep -Fq '"/signin/refreshSession"' "$VITE_CONFIG"
+grep -Fq '!bg-slate-900 !border-slate-800 !text-white' "$PAGE"
 grep -Fq 'if (projectId && clients.owner)' "$SCRIPT"
-printf '%s\n' '{"status":"PASS","processRelay":1,"create":1,"idempotentReplay":1,"readback":1,"cleanup":1}'
+printf '%s\n' '{"status":"PASS","processRelay":1,"create":1,"idempotentReplay":1,"readback":1,"browser":1,"cleanup":1}'
