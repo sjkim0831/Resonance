@@ -1120,6 +1120,7 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "EmissionSimulateHero", instanceKey: "emission-simulate-hero", layoutZone: "header", propsSummary: ["engineStatus", "recommendationCount"] },
       { componentId: "EmissionSimulateRecommendations", instanceKey: "emission-simulate-recommendations", layoutZone: "content", propsSummary: ["recommendations", "category", "title"] },
       { componentId: "EmissionSimulateChart", instanceKey: "emission-simulate-chart", layoutZone: "content", propsSummary: ["scenarioId", "forecastCurve", "capLine"] },
+      { componentId: "EmissionSimulateHistory", instanceKey: "emission-simulate-history", layoutZone: "content", propsSummary: ["latestCalculation", "scenarios", "inputHash", "version"] },
       { componentId: "EmissionSimulateBuilder", instanceKey: "emission-simulate-builder", layoutZone: "actions", propsSummary: ["techInvestment", "efficiencyGain", "renewableRate", "ccusScale"] }
     ]
   },

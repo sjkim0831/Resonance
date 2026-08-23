@@ -34,7 +34,12 @@ type ScenarioCard = {
   label: string;
 };
 
-type SimulationWorkflow = { scenarios?: Array<{ scenarioCode:string; techInvestment:number; efficiencyGain:number; renewableRate:number; ccusScale:number; projectedReduction:number; version:number }> };
+type SimulationScenario = { scenarioId?:number; scenarioCode:string; techInvestment:number; efficiencyGain:number; renewableRate:number; ccusScale:number; projectedReduction:number; version:number; unit?:string; inputHash?:string; createdBy?:string; createdAt?:string };
+type SimulationWorkflow = {
+  project?: { projectId?:string; projectName?:string; projectNm?:string };
+  latestCalculation?: { calculationId:number; version:number; totalEmission:number; unit:string; calculatedAt?:string } | null;
+  scenarios?: SimulationScenario[];
+};
 
 type BuilderCopy = {
   tech: string;
@@ -217,33 +222,18 @@ export function EmissionSimulateMigrationPage() {
   const recommendations = useMemo<Recommendation[]>(
     () => en
       ? [
-          { category: "ENERGY MIX", categoryClass: "text-blue-400 bg-blue-500/20", icon: "bolt", title: "Increase renewable sourcing", description: "Raising the PPA mix by 15% shortens the net-zero arrival by roughly two years." },
-          { category: "TECH INVEST", categoryClass: "text-emerald-400 bg-emerald-500/20", icon: "precision_manufacturing", title: "Replace high-load motors", description: "A targeted retrofit in Pohang Plant 1 yields an estimated 1,200 tCO2e reduction per year." },
-          { category: "COST OPTIM", categoryClass: "text-orange-400 bg-orange-500/20", icon: "payments", title: "Monetize excess allowances", description: "Selling 5,000 surplus tons in Q3 recovers about KRW 150M in operating budget." },
-          { category: "COMPLIANCE", categoryClass: "text-violet-400 bg-violet-500/20", icon: "gavel", title: "Refresh K-ETS factors", description: "Indirect-emission factor revisions require a reporting workflow update within 15 days." }
+          { category: "ENERGY MIX", categoryClass: "text-blue-400 bg-blue-500/20", icon: "bolt", title: "Renewable transition input", description: `Current scenario input: ${renewableRate}%. Verify feasibility and evidence before approval.` },
+          { category: "TECH INVEST", categoryClass: "text-emerald-400 bg-emerald-500/20", icon: "precision_manufacturing", title: "Technology investment input", description: `Current normalized investment input: ${techInvestment}/100. Link an approved project budget before execution.` },
+          { category: "EFFICIENCY", categoryClass: "text-orange-400 bg-orange-500/20", icon: "speed", title: "Efficiency improvement input", description: `Current scenario input: ${efficiencyGain}%. Confirm the baseline calculation and measurement plan.` },
+          { category: "CCUS", categoryClass: "text-violet-400 bg-violet-500/20", icon: "factory", title: "Capture and storage input", description: `Current scenario input: ${ccusScale}%. Review capacity, schedule and monitoring evidence.` }
         ]
       : [
-          { category: "ENERGY MIX", categoryClass: "text-blue-400 bg-blue-500/20", icon: "bolt", title: "신재생 에너지 비중 확대", description: "PPA 구매 비중을 15% 높이면 Net-Zero 도달 시점을 약 2년 단축할 수 있습니다." },
-          { category: "TECH INVEST", categoryClass: "text-emerald-400 bg-emerald-500/20", icon: "precision_manufacturing", title: "고효율 모터 교체 사업", description: "포항 제1공장 설비 교체 시 연간 약 1,200 tCO2e 감축 효과가 예상됩니다." },
-          { category: "COST OPTIM", categoryClass: "text-orange-400 bg-orange-500/20", icon: "payments", title: "배출권 거래 수익화", description: "3분기 잉여 배출권 5,000톤 매도 시 약 1.5억원의 운영 재원을 확보할 수 있습니다." },
-          { category: "COMPLIANCE", categoryClass: "text-violet-400 bg-violet-500/20", icon: "gavel", title: "K-ETS 대응 고도화", description: "간접 배출 계수 변경에 맞춰 15일 이내 보고 체계를 보정해야 합니다." }
+          { category: "ENERGY MIX", categoryClass: "text-blue-400 bg-blue-500/20", icon: "bolt", title: "재생에너지 전환 입력", description: `현재 시나리오 입력은 ${renewableRate}%입니다. 승인 전 실현 가능성과 증거를 확인하세요.` },
+          { category: "TECH INVEST", categoryClass: "text-emerald-400 bg-emerald-500/20", icon: "precision_manufacturing", title: "기술 투자 입력", description: `현재 정규화 투자 입력은 ${techInvestment}/100입니다. 실행 전 승인 예산과 연결하세요.` },
+          { category: "EFFICIENCY", categoryClass: "text-orange-400 bg-orange-500/20", icon: "speed", title: "공정 효율 입력", description: `현재 시나리오 입력은 ${efficiencyGain}%입니다. 기준 산정과 측정 계획을 확인하세요.` },
+          { category: "CCUS", categoryClass: "text-violet-400 bg-violet-500/20", icon: "factory", title: "포집·저장 입력", description: `현재 시나리오 입력은 ${ccusScale}%입니다. 용량·일정·모니터링 증거를 검토하세요.` }
         ],
-    [en]
-  );
-
-  const metrics = useMemo<MetricCard[]>(
-    () => en
-      ? [
-          { label: "Cost savings", value: "₩2.4B", caption: "12% lower than last year", toneClass: "bg-emerald-50 border-emerald-100 text-emerald-900", badge: "ESTIMATED" },
-          { label: "Compliance score", value: "94.8/100", caption: "Aligned with current policy thresholds", toneClass: "bg-blue-50 border-blue-100 text-blue-900", badge: "TARGET" },
-          { label: "Carbon intensity", value: "0.42 tCO2/₩M", caption: "Ahead of sector average", toneClass: "bg-slate-900 border-slate-800 text-white", badge: "REALTIME" }
-        ]
-      : [
-          { label: "비용 절감", value: "₩2.4B", caption: "전년 대비 12% 절감", toneClass: "bg-emerald-50 border-emerald-100 text-emerald-900", badge: "ESTIMATED" },
-          { label: "규제 적합도", value: "94.8/100", caption: "현재 규제 기준에 부합", toneClass: "bg-blue-50 border-blue-100 text-blue-900", badge: "TARGET" },
-          { label: "탄소 집약도", value: "0.42 tCO2/₩M", caption: "업계 평균 대비 우수", toneClass: "bg-slate-900 border-slate-800 text-white", badge: "REALTIME" }
-        ],
-    [en]
+    [ccusScale, efficiencyGain, en, renewableRate, techInvestment]
   );
 
   const scenarioTabs = useMemo<ScenarioCard[]>(
@@ -290,6 +280,19 @@ export function EmissionSimulateMigrationPage() {
   }, [ccusScale, efficiencyGain, renewableRate, scenarioId, techInvestment]);
 
   const projectedWidth = `${Math.min(100, Math.round(projectedReduction / 350))}%`;
+  const latestCalculation = simulationWorkflow.value?.latestCalculation || null;
+  const savedScenarios = simulationWorkflow.value?.scenarios || [];
+  const latestScenario = savedScenarios[0] || null;
+  const projectName = simulationWorkflow.value?.project?.projectName || simulationWorkflow.value?.project?.projectNm || projectId;
+  const baselineEmission = Number(latestCalculation?.totalEmission || 0);
+  const latestReductionRate = baselineEmission > 0 && latestScenario
+    ? Math.min(100, (Number(latestScenario.projectedReduction || 0) / baselineEmission) * 100)
+    : 0;
+  const metrics = useMemo<MetricCard[]>(() => [
+    { label: en ? "Approved baseline" : "승인 산정 기준", value: latestCalculation ? `${Number(latestCalculation.totalEmission).toLocaleString()} ${latestCalculation.unit || "tCO2e"}` : "-", caption: latestCalculation ? `${en ? "Calculation version" : "산정 버전"} ${latestCalculation.version}` : (en ? "Complete calculation before simulation." : "시뮬레이션 전에 산정을 완료해야 합니다."), toneClass: "bg-blue-50 border-blue-100 text-blue-900", badge: "DB" },
+    { label: en ? "Saved scenarios" : "저장 시나리오", value: savedScenarios.length.toLocaleString(), caption: latestScenario ? `${en ? "Latest version" : "최신 버전"} ${latestScenario.version} · ${latestScenario.scenarioCode}` : (en ? "No saved scenario" : "저장된 시나리오 없음"), toneClass: "bg-emerald-50 border-emerald-100 text-emerald-900", badge: "LEDGER" },
+    { label: en ? "Latest reduction ratio" : "최신 감축 비율", value: latestScenario && baselineEmission > 0 ? `${latestReductionRate.toFixed(2)}%` : "-", caption: latestScenario ? `${Number(latestScenario.projectedReduction).toLocaleString()} ${latestScenario.unit || "tCO2e"}` : (en ? "Save a scenario to compare." : "시나리오를 저장하면 비교됩니다."), toneClass: "bg-slate-900 border-slate-800 text-white", badge: "CALCULATED" }
+  ], [baselineEmission, en, latestCalculation, latestReductionRate, latestScenario, savedScenarios.length]);
   const reportHref = buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit");
   const validateHref = buildLocalizedPath("/emission/validate", "/en/emission/validate");
   const resultHref = buildLocalizedPath("/emission/result_detail", "/en/emission/result_detail");
@@ -426,6 +429,17 @@ export function EmissionSimulateMigrationPage() {
           </section>
 
           <section className="max-w-[1600px] mx-auto px-4 lg:px-8 py-8">
+            <section className={`mb-6 rounded-xl border p-4 ${projectId && latestCalculation ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`} data-help-id="emission-simulate-context">
+              <h3 className="font-black">{projectId ? (projectName || projectId) : (en ? "Project selection required" : "프로젝트 선택 필요")}</h3>
+              <p className="mt-1 text-sm leading-6">
+                {!projectId
+                  ? (en ? "Open this screen from My Work or a project page. Values can be explored, but saving is blocked without a project." : "내 업무 또는 프로젝트 화면에서 진입하세요. 값은 탐색할 수 있지만 프로젝트 없이는 저장되지 않습니다.")
+                  : latestCalculation
+                    ? (en ? `Calculation v${latestCalculation.version} is the approved baseline for scenario comparison.` : `산정 버전 ${latestCalculation.version}을 시나리오 비교 기준으로 사용합니다.`)
+                    : (en ? "Complete the project calculation before saving a reduction scenario." : "감축 시나리오 저장 전에 프로젝트 산정을 완료해야 합니다.")}
+              </p>
+              {simulationWorkflow.error ? <p className="mt-2 text-sm font-bold text-red-700">{simulationWorkflow.error}</p> : null}
+            </section>
             <div className="grid grid-cols-12 gap-6">
               <div className="col-span-12 lg:col-span-8 space-y-6">
                 <section className="planner-card p-6 h-[500px]" data-help-id="emission-simulate-chart">
@@ -510,6 +524,23 @@ export function EmissionSimulateMigrationPage() {
                       <p className="text-[11px] mt-2 font-medium opacity-80">{metric.caption}</p>
                     </article>
                   ))}
+                </section>
+
+                <section className="planner-card overflow-hidden" data-help-id="emission-simulate-history">
+                  <div className="border-b border-slate-200 px-5 py-4">
+                    <h3 className="font-black">{en ? "Saved scenario evidence" : "저장 시나리오 증거"}</h3>
+                    <p className="mt-1 text-xs text-slate-500">{en ? "Version, inputs, result and input hash are read back from the project ledger." : "버전·입력값·결과·입력 해시를 프로젝트 원장에서 다시 읽어 확인합니다."}</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[720px] text-left text-sm">
+                      <caption className="sr-only">{en ? "Saved reduction scenario versions" : "저장된 감축 시나리오 버전"}</caption>
+                      <thead className="bg-slate-50 text-xs text-slate-600"><tr><th className="px-4 py-3" scope="col">{en ? "Version" : "버전"}</th><th className="px-4 py-3" scope="col">{en ? "Scenario" : "시나리오"}</th><th className="px-4 py-3" scope="col">{en ? "Inputs" : "입력값"}</th><th className="px-4 py-3" scope="col">{en ? "Reduction" : "감축량"}</th><th className="px-4 py-3" scope="col">{en ? "Evidence" : "증거"}</th></tr></thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {savedScenarios.slice(0, 5).map((scenario) => <tr key={scenario.scenarioId || `${scenario.scenarioCode}-${scenario.version}`}><td className="px-4 py-3 font-bold">v{scenario.version}</td><td className="px-4 py-3">{scenario.scenarioCode}</td><td className="px-4 py-3 text-xs">{scenario.techInvestment}/{scenario.efficiencyGain}/{scenario.renewableRate}/{scenario.ccusScale}</td><td className="px-4 py-3">{Number(scenario.projectedReduction).toLocaleString()} {scenario.unit || "tCO2e"}</td><td className="px-4 py-3 font-mono text-xs">{scenario.inputHash ? scenario.inputHash.slice(0, 12) : "-"}</td></tr>)}
+                        {!savedScenarios.length ? <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={5}>{en ? "No scenario has been saved for this project." : "이 프로젝트에 저장된 시나리오가 없습니다."}</td></tr> : null}
+                      </tbody>
+                    </table>
+                  </div>
                 </section>
               </div>
 

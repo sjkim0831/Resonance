@@ -146,6 +146,7 @@ const PAGE_HELP: Record<string, PageHelpContent> = {
       { id: "hero", title: "전략 제언 헤더", body: "현재 감축 전략과 보고서 내보내기 진입점을 상단에서 확인합니다.", anchorSelector: '[data-help-id="emission-simulate-hero"]', placement: "top", iconName: "lightbulb", highlightStyle: "focus" },
       { id: "recommendations", title: "전략 추천 카드", body: "에너지 믹스, 기술 투자, 비용 최적화, 규제 대응 권고안을 카드로 확인합니다.", anchorSelector: '[data-help-id="emission-simulate-recommendations"]', placement: "bottom", iconName: "analytics", highlightStyle: "success" },
       { id: "chart", title: "예측 곡선 차트", body: "현행 유지선과 시나리오 적용선을 비교하며 연도별 감축 경로를 검토합니다.", anchorSelector: '[data-help-id="emission-simulate-chart"]', placement: "left", iconName: "show_chart", highlightStyle: "warning" },
+      { id: "history", title: "저장 시나리오 증거", body: "프로젝트 원장에서 버전·입력값·예상 감축량·입력 해시를 다시 읽어 저장 결과를 검증합니다.", anchorSelector: '[data-help-id="emission-simulate-history"]', placement: "top", iconName: "history", highlightStyle: "success" },
       { id: "builder", title: "시나리오 빌더", body: "기술 투자, 효율 개선, 재생에너지 전환, CCUS 규모를 조정해 예상 감축량을 계산합니다.", anchorSelector: '[data-help-id="emission-simulate-builder"]', placement: "left", iconName: "tune", highlightStyle: "neutral" }
     ]
   },
