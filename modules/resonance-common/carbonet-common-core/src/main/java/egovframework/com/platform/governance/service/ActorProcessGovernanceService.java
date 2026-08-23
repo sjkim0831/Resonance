@@ -3572,6 +3572,33 @@ public class ActorProcessGovernanceService {
             """,Integer.class,process,canonicalGroup);
         if(canonicalJobCount==null||canonicalJobCount!=1)
             throw new IllegalStateException("CANONICAL_GENERATION_JOB_NOT_EXACT");
+        Integer supersededJobCount=jdbc.queryForObject("""
+            with candidates as materialized (
+              select job_id,job_status
+                from framework_development_job
+               where process_code=? and job_id<>?
+                 and coalesce(job_group_code,'')<>?
+                 and job_status not in('RUNNING','COMPLETED','SUPERSEDED')
+               for update
+            ), changed as (
+              update framework_development_job job
+                 set job_status='SUPERSEDED',required=false,worker_id=null,
+                     lease_token=null,lease_until=null,
+                     last_error='SUPERSEDED_BY_CANONICAL_PUBLICATION:'||?::text,
+                     updated_at=current_timestamp
+                from candidates candidate where job.job_id=candidate.job_id
+              returning job.job_id,candidate.job_status
+            ), events as (
+              insert into framework_development_job_event(
+                job_id,event_type,from_status,to_status,worker_id,detail_json)
+              select job_id,'SUPERSEDED',job_status,'SUPERSEDED',?,
+                     jsonb_build_object('reason','CANONICAL_PUBLICATION',
+                       'canonicalJobId',?::bigint,'processCode',?::text)::text
+                from changed
+              returning event_id
+            )
+            select count(*)::integer from events
+            """,Integer.class,process,jobId,canonicalGroup,jobId,actor,jobId,process);
         boolean workerCanProgress=(Set.of("PLANNED","RETRY").contains(executableStatus)
                 &&executableAttempt<executableMaximum)
             ||("RUNNING".equals(executableStatus)&&executableLeasePresent);
@@ -3596,6 +3623,7 @@ public class ActorProcessGovernanceService {
         result.put("jobAttemptCount",executableAttempt);
         result.put("jobMaxAttempts",executableMaximum);
         result.put("workerCanProgress",!queued||workerCanProgress);
+        result.put("supersededJobCount",supersededJobCount==null?0:supersededJobCount);
         result.put("recoveryReset",recoveryReset);
         result.put("processInputHash",sourceHash);result.put("designSetHash",designSetHash);
         result.put("designCatalogHash",designCatalogHash);
