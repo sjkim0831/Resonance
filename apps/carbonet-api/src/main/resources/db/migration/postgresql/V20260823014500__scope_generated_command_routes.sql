@@ -9,8 +9,8 @@ BEGIN
     'public.framework_normalize_generated_composite_design(jsonb)'::regprocedure)
     INTO original_definition;
   patched_definition:=replace(original_definition,
-    $$'path', '/home/api/process-executions/{executionId}/commands'$$,
-    $$'path', '/home/api/process-executions/{executionId}/commands/'||lower(identity->>'processCode')||'/'||lower(identity->>'stepCode')||'/'||lower(identity->>'audience')$$);
+    $$'path','/home/api/process-executions/{executionId}/commands'$$,
+    $$'path','/home/api/process-executions/{executionId}/commands/'||lower(identity->>'processCode')||'/'||lower(identity->>'stepCode')||'/'||lower(identity->>'audience')$$);
   IF patched_definition=original_definition THEN
     RAISE EXCEPTION 'generated command route patch target is not exact'
       USING ERRCODE='55000';
@@ -23,9 +23,10 @@ DO $postcondition$
 DECLARE definition text:=pg_get_functiondef(
   'public.framework_normalize_generated_composite_design(jsonb)'::regprocedure);
 BEGIN
-  IF position($$lower(identity ->> 'processCode'::text)$$ in definition)=0
-     OR position($$lower(identity ->> 'stepCode'::text)$$ in definition)=0
-     OR position($$lower(identity ->> 'audience'::text)$$ in definition)=0 THEN
+  IF position('/commands/' in definition)=0
+     OR position('processCode' in definition)=0
+     OR position('stepCode' in definition)=0
+     OR position('audience' in definition)=0 THEN
     RAISE EXCEPTION 'generated command route postcondition failed'
       USING ERRCODE='55000';
   END IF;
