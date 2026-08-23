@@ -44,6 +44,43 @@ import type {
 import { normalizeHomeEmissionMenu } from "./menuNormalization";
 const SESSION_CACHE_TTL_MS = 5 * 60 * 1000;
 
+const REDUCTION_DEVELOPMENT_ROUTE_BY_LABEL: Record<string, string> = {
+  "감축 목표": "/reduction/target",
+  "기준연도": "/reduction/baseline-year",
+  "조직·사업장 목표": "/reduction/site-target",
+  "감축 로드맵": "/reduction/roadmap",
+  "감축 과제 목록": "/reduction/tasks",
+  "감축 과제 등록": "/reduction/task/new",
+  "담당자·예산·일정": "/reduction/task/resources",
+  "예상 감축량": "/reduction/task/estimate",
+  "과제 승인": "/reduction/task/approval",
+  "감축 실적": "/reduction/performance",
+  "목표 대비 실적": "/reduction/target-gap",
+  "비용 대비 효과": "/reduction/cost-effectiveness",
+  "감축 수단 분석": "/reduction/measures",
+  "한계감축비용": "/reduction/mac",
+  "우선순위": "/reduction/prioritization",
+  "투자 계획": "/reduction/investment-plan",
+  "성과 보고서": "/reduction/performance-report"
+};
+
+function applyReductionDevelopmentMenuRoutes(payload: BootstrappedHomePayload) {
+  if (!import.meta.env.DEV || payload.isEn) return payload;
+  return {
+    ...payload,
+    homeMenu: payload.homeMenu.map(top => ({
+      ...top,
+      sections: Array.isArray(top.sections) ? (top.sections as Array<Record<string, unknown>>).map(section => ({
+        ...section,
+        items: Array.isArray(section.items) ? (section.items as Array<Record<string, unknown>>).map(item => {
+          const route = REDUCTION_DEVELOPMENT_ROUTE_BY_LABEL[String(item.label || "")];
+          return route ? { ...item, url: route } : item;
+        }) : section.items
+      })) : top.sections
+    }))
+  };
+}
+
 export async function fetchSitemapPage(): Promise<SitemapPagePayload> {
   return fetchLocalizedPageJson<SitemapPagePayload>("/api/sitemap", "/api/en/sitemap");
 }
@@ -65,9 +102,9 @@ export async function fetchAdminMenuPlaceholderPage(requestPath: string): Promis
 }
 
 export async function fetchHomePayload(): Promise<BootstrappedHomePayload> {
-  const payload = normalizeHomeEmissionMenu(await fetchLocalizedPageJson<BootstrappedHomePayload>("/api/home", "/en/api/home", {
+  const payload = applyReductionDevelopmentMenuRoutes(normalizeHomeEmissionMenu(await fetchLocalizedPageJson<BootstrappedHomePayload>("/api/home", "/en/api/home", {
     init: { cache: "no-store" }
-  }));
+  })));
   writeSessionStorageCache(
     `${SESSION_STORAGE_CACHE_PREFIX}home-payload:${payload.isEn ? "en" : "ko"}`,
     payload,

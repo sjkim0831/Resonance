@@ -59,6 +59,15 @@ type RuntimeScope = {
   taskLedger?: string;
 };
 
+type WorkType = {
+  workTypeCode: string;
+  workTypeName: string;
+  workTypeNameEn?: string;
+  definedProcessCount?: number;
+  activeProcessCount?: number;
+  taskCount?: number;
+};
+
 type Data = {
   items: Task[];
   actorId: string;
@@ -68,6 +77,7 @@ type Data = {
   summary: { total: number; completed: number; today: number; overdue: number; approval: number; serverDate?: string };
   notifications: WorkflowNotification[];
   unreadNotificationCount: number;
+  workTypes?: WorkType[];
 };
 
 type LocaleText = { ko: string; en: string };
@@ -96,6 +106,17 @@ const STATUS_EN: Record<string, string> = {
   DONE: "Done",
 };
 const PRIORITY_KO: Record<string, string> = { URGENT: "긴급", HIGH: "높음", NORMAL: "보통", LOW: "낮음" };
+const WORK_VIEWS = ["ALL", "TODO", "IN_PROGRESS", "MONITORING", "RECENT", "DONE", "RISK"] as const;
+type WorkView = (typeof WORK_VIEWS)[number];
+const WORK_VIEW_LABELS: Record<WorkView, LocaleText> = {
+  ALL: { ko: "전체", en: "All" },
+  TODO: { ko: "해야 할 업무", en: "To do" },
+  IN_PROGRESS: { ko: "진행 중", en: "In progress" },
+  MONITORING: { ko: "모니터링", en: "Monitoring" },
+  RECENT: { ko: "최근 수행", en: "Recent" },
+  DONE: { ko: "마감 완료", en: "Completed" },
+  RISK: { ko: "지연·위험", en: "Delayed / risk" },
+};
 
 function localized(value: LocaleText, en: boolean) {
   return en ? value.en : value.ko;
@@ -213,6 +234,8 @@ export function EmissionMyTasksPage() {
   const [period, setPeriod] = useState("");
   const [status, setStatus] = useState("");
   const [project, setProject] = useState("");
+  const [workType, setWorkType] = useState("ALL");
+  const [workView, setWorkView] = useState<WorkView>("ALL");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [busyTask, setBusyTask] = useState<number | null>(null);
@@ -301,12 +324,31 @@ export function EmissionMyTasksPage() {
     () => [...new Map(scopedItems.map((task) => [task.projectId, task.projectName])).entries()],
     [scopedItems],
   );
+  const recentTaskIds = useMemo(
+    () => new Set((data?.notifications || []).map((item) => Number(item.taskId)).filter(Number.isFinite)),
+    [data?.notifications],
+  );
+  const matchesWorkView = useCallback((task: Task, view: WorkView) => {
+    if (view === "TODO") return task.status === "READY";
+    if (view === "IN_PROGRESS") return task.status === "IN_PROGRESS";
+    if (view === "MONITORING") return task.status === "WAITING" || Boolean(task.pendingPredecessors);
+    if (view === "RECENT") return recentTaskIds.has(task.id);
+    if (view === "DONE") return task.status === "DONE";
+    if (view === "RISK") return task.status === "BLOCKED" || Boolean(task.blockedReason) || isOverdue(task);
+    return true;
+  }, [recentTaskIds]);
   const visibleItems = useMemo(
     () => scopedItems
+      .filter((task) => workType === "ALL" || String(task.domainCode || "EMISSION").toUpperCase() === workType)
+      .filter((task) => matchesWorkView(task, workView))
       .filter((task) => !project || task.projectId === project)
       .sort((left, right) => priorityScore(right) - priorityScore(left) || Number(left.stepOrder || 0) - Number(right.stepOrder || 0)),
-    [project, scopedItems],
+    [matchesWorkView, project, scopedItems, workType, workView],
   );
+  const workTypes: WorkType[] = data?.workTypes?.length ? data.workTypes : screenContract.workTypes;
+  const workViewCounts = useMemo(() => Object.fromEntries(
+    WORK_VIEWS.map((view) => [view, scopedItems.filter((task) => matchesWorkView(task, view)).length]),
+  ) as Record<WorkView, number>, [matchesWorkView, scopedItems]);
   const nextTask = visibleItems.find((item) => item.actionable && item.status !== "DONE") || null;
   const workflowTask = nextTask || visibleItems[0] || scopedItems[0] || null;
   const focusProjectTasks = useMemo(
@@ -376,6 +418,8 @@ export function EmissionMyTasksPage() {
     data-screen-contract={screenContract.templateCode}
     data-runtime-scope={screenContract.runtimeScope}
     data-load-state={loadState}
+    data-selected-work-type={workType}
+    data-selected-work-view={workView}
   >
     <main className="krds-responsive-container py-8" aria-busy={loading}>
       <nav className="gov-text-label font-bold text-slate-500" aria-label={en ? "Breadcrumb" : "현재 위치"}>
@@ -431,6 +475,29 @@ export function EmissionMyTasksPage() {
             <div>
               <p className="gov-text-caption font-black tracking-[0.08em] text-[var(--kr-gov-blue)]">01 WORK CONTEXT</p>
               <h2 className="gov-text-heading-sm mt-1 font-black text-[#052b57]" id="my-work-context-heading">{en ? "Work context" : "업무 문맥"}</h2>
+            </div>
+            <div data-my-work-type-filter="">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <span className="gov-text-label block font-black text-[#052b57]">{en ? "Work type" : "업무 종류"}</span>
+                  <p className="gov-text-caption mt-1 text-slate-600">{en ? "The 16 canonical work types from View all work are reused here." : "전체 업무 보기의 정본 업무 종류 16개를 동일하게 사용합니다."}</p>
+                </div>
+                <strong className="gov-text-label text-[var(--kr-gov-blue)]">{workTypes.length}{en ? " types" : "개 종류"}</strong>
+              </div>
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-2" role="tablist" aria-label={en ? "Work type" : "업무 종류"}>
+                <button className={`min-h-11 shrink-0 rounded-full border px-4 font-black ${workType === "ALL" ? "border-[var(--kr-gov-blue)] bg-[var(--kr-gov-blue)] text-white" : "border-slate-300 bg-white text-slate-700"}`} onClick={() => { setWorkType("ALL"); setProject(""); }} role="tab" aria-selected={workType === "ALL"} type="button">{en ? "All work" : "전체 업무"} ({scopedItems.length})</button>
+                {workTypes.map((item) => {
+                  const code = String(item.workTypeCode || "").toUpperCase();
+                  const count = scopedItems.filter((task) => String(task.domainCode || "EMISSION").toUpperCase() === code).length;
+                  return <button className={`min-h-11 shrink-0 rounded-full border px-4 font-black ${workType === code ? "border-[var(--kr-gov-blue)] bg-[var(--kr-gov-blue)] text-white" : "border-slate-300 bg-white text-slate-700"}`} data-work-type-code={code} key={code} onClick={() => { setWorkType(code); setProject(""); }} role="tab" aria-selected={workType === code} type="button">{en ? item.workTypeNameEn || item.workTypeName : item.workTypeName} ({count})</button>;
+                })}
+              </div>
+            </div>
+            <div data-my-work-status-filter="">
+              <span className="gov-text-label block font-black text-[#052b57]">{en ? "Work status" : "업무 상태"}</span>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-7" role="tablist" aria-label={en ? "Work status" : "업무 상태"}>
+                {WORK_VIEWS.map((view) => <button className={`min-h-14 rounded-[var(--kr-gov-radius)] border px-3 text-left ${workView === view ? "border-blue-500 bg-blue-50 text-blue-950" : "border-slate-200 bg-white text-slate-700"}`} data-work-view={view} key={view} onClick={() => setWorkView(view)} role="tab" aria-selected={workView === view} type="button"><span className="block text-xs font-bold">{localized(WORK_VIEW_LABELS[view], en)}</span><strong className="mt-1 block text-xl">{workViewCounts[view]}</strong></button>)}
+              </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>

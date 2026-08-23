@@ -3,6 +3,24 @@
   "pageId": "emission-my-tasks",
   "route": "/emission/my-tasks",
   "runtimeScope": "EMISSION",
+  "workTypes": [
+    { "workTypeCode": "MEMBER", "workTypeName": "회원·기업·권한", "workTypeNameEn": "Member, company and authority" },
+    { "workTypeCode": "WORK_ASSIGNMENT", "workTypeName": "업무 배정", "workTypeNameEn": "Work assignment" },
+    { "workTypeCode": "EMISSION", "workTypeName": "탄소배출 관리", "workTypeNameEn": "Emissions management" },
+    { "workTypeCode": "LCA", "workTypeName": "제품 LCA", "workTypeNameEn": "Product LCA" },
+    { "workTypeCode": "REDUCTION", "workTypeName": "감축 관리", "workTypeNameEn": "Reduction management" },
+    { "workTypeCode": "MONITORING", "workTypeName": "모니터링·분석", "workTypeNameEn": "Monitoring and analytics" },
+    { "workTypeCode": "TRADE", "workTypeName": "탄소·자원 거래", "workTypeNameEn": "Carbon and resource trading" },
+    { "workTypeCode": "CERTIFICATE", "workTypeName": "보고서·인증", "workTypeNameEn": "Reports and certification" },
+    { "workTypeCode": "EDUCATION", "workTypeName": "교육·지원", "workTypeNameEn": "Education and support" },
+    { "workTypeCode": "PORTFOLIO", "workTypeName": "프로젝트·포트폴리오 관리", "workTypeNameEn": "Project and portfolio" },
+    { "workTypeCode": "FACILITY_OPERATION", "workTypeName": "CCUS 설비·운영", "workTypeNameEn": "CCUS facility operations" },
+    { "workTypeCode": "MRV", "workTypeName": "CCUS MRV·추적성", "workTypeNameEn": "CCUS MRV and traceability" },
+    { "workTypeCode": "COMPLIANCE", "workTypeName": "규제·공시 대응", "workTypeNameEn": "Compliance and disclosure" },
+    { "workTypeCode": "DATA_GOVERNANCE", "workTypeName": "데이터 거버넌스·품질", "workTypeNameEn": "Data governance and quality" },
+    { "workTypeCode": "SYSTEM", "workTypeName": "시스템 운영", "workTypeNameEn": "System operations" },
+    { "workTypeCode": "COMMON", "workTypeName": "공통 업무", "workTypeNameEn": "Common work" }
+  ],
   "screenName": {
     "ko": "내 업무 요약",
     "en": "My Work Summary"
@@ -10,8 +28,8 @@
   "designSystem": "KRDS",
   "templateCode": "WORK_EXECUTION_HUB",
   "objective": {
-    "ko": "로그인 사용자가 배출 업무 범위와 실행 가능한 작업을 확인하고, 실제 권한과 선행조건에 맞는 업무 화면으로 이동한다.",
-    "en": "Help the signed-in user review the emission-work scope and actionable tasks, then open a workspace allowed by the actual authority and prerequisites."
+    "ko": "로그인 사용자가 전체 업무 보기와 동일한 업무 종류를 기준으로 해야 할 업무·진행 중·모니터링·최근 수행·완료·위험 업무를 구분하고, 실제 권한과 선행조건에 맞는 업무 화면으로 이동한다.",
+    "en": "Help the signed-in user classify assigned work by the canonical work types and lifecycle views, then open a workspace allowed by actual authority and prerequisites."
   },
   "sections": [
     { "code": "WORK_CONTEXT", "name": { "ko": "업무 문맥", "en": "Work context" }, "required": true, "helpId": "emission-my-tasks-work-context" },
@@ -24,7 +42,8 @@
     { "code": "NEXT_GUIDANCE", "name": { "ko": "다음 업무 안내", "en": "Next-work guidance" }, "required": true, "helpId": "emission-my-tasks-next-guidance" }
   ],
   "filters": [
-    { "code": "runtimeScope", "label": { "ko": "업무 범위", "en": "Work scope" }, "controlType": "FIXED", "source": "runtimeScope.domainCode" },
+    { "code": "workType", "label": { "ko": "업무 종류", "en": "Work type" }, "controlType": "TABS", "source": "workTypes.workTypeCode" },
+    { "code": "workView", "label": { "ko": "업무 상태 분류", "en": "Work lifecycle view" }, "controlType": "TABS", "source": "items.status,items.dueDate,notifications.taskId" },
     { "code": "project", "label": { "ko": "프로젝트", "en": "Project" }, "controlType": "SELECT", "source": "items.projectId" },
     { "code": "period", "label": { "ko": "기간", "en": "Period" }, "controlType": "SELECT", "source": "query.period" },
     { "code": "status", "label": { "ko": "상태", "en": "Status" }, "controlType": "SELECT", "source": "query.status" }

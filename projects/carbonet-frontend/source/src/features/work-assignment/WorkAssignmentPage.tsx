@@ -1,12 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useEffect, useState } from "react";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { EMISSION_END_TO_END_PROCESS_CODE, emissionPhaseLabel, isCustomerVisibleEmissionProcess } from "../../lib/workflow/emissionProcessHierarchy";
-import { HeaderBrand, HeaderDesktopNav, HeaderMobileMenu, HomeInlineStyles } from "../home-entry/HomeEntrySections";
-import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
-import type { HomePayload } from "../home-entry/homeEntryTypes";
 
 type Project = { projectId: string; projectName: string };
 type Account = { accountId: string; accountName: string; department?: string; actorCodes?: string };
@@ -34,6 +29,9 @@ const ACTORS: Record<string, { label: string; icon: string; color: string }> = {
   EMISSION_APPROVER: { label: "승인 담당자", icon: "approval", color: "bg-indigo-600" },
   APPROVER: { label: "승인 담당자", icon: "approval", color: "bg-indigo-600" },
   WORK_ASSIGNMENT_MANAGER: { label: "업무 배정 담당자", icon: "assignment_ind", color: "bg-slate-700" },
+  REDUCTION_MANAGER: { label: "감축 관리 책임자", icon: "trending_down", color: "bg-blue-700" },
+  DATA_ANALYST: { label: "감축 데이터 분석가", icon: "query_stats", color: "bg-emerald-700" },
+  AUDITOR: { label: "감축 감사자", icon: "fact_check", color: "bg-violet-700" },
 };
 
 const actorInfo = (code = "") => ACTORS[code] || { label: "담당자 미지정", icon: "person", color: "bg-slate-500" };
@@ -60,11 +58,7 @@ async function readJson<T>(response: Response): Promise<T> {
 
 export function WorkAssignmentPage() {
   const en = isEnglish();
-  const content = LOCALIZED_CONTENT[en ? "en" : "ko"];
   const session = useFrontendSession();
-  const emptyHome = useMemo<HomePayload>(() => ({ isLoggedIn: false, isEn: en, homeMenu: [] }), [en]);
-  const home = useAsyncValue<HomePayload>(() => fetchHomePayload(), [en], { initialValue: emptyHome, onError: () => undefined });
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [projectId, setProjectId] = useState(new URLSearchParams(location.search).get("projectId") || "");
   const [workTypeCode, setWorkTypeCode] = useState(new URLSearchParams(location.search).get("workTypeCode") || "EMISSION");
@@ -103,7 +97,6 @@ export function WorkAssignmentPage() {
   }
 
   useEffect(() => { void load().catch(error => setMessage(error instanceof Error ? error.message : String(error))); }, []);
-  useEffect(() => { document.body.classList.toggle("mobile-menu-open", mobileMenuOpen); return () => document.body.classList.remove("mobile-menu-open"); }, [mobileMenuOpen]);
 
   const steps = workspace?.steps || [];
   const visibleProcesses = (workspace?.processes || [])
@@ -139,15 +132,7 @@ export function WorkAssignmentPage() {
 
   const accountOptions = (key: string) => (workspace?.accounts || []).map(account => <option key={`${key}-${account.accountId}`} value={account.accountId}>{account.accountName} · {account.accountId}{account.department ? ` · ${account.department}` : ""}</option>);
 
-  return <><HomeInlineStyles en={en} /><div className="min-h-screen bg-[#f4f7fb] text-[var(--kr-gov-text-primary)]">
-    <a className="skip-link" href="#assignment-main">{content.skipLink}</a>
-    <header className="fixed inset-x-0 top-0 z-50 border-b-2 border-[#001e40] bg-white"><div className="mx-auto max-w-[96rem] px-4 lg:px-8"><div className="relative flex h-16 items-center">
-      <div className="h-11 w-11 shrink-0 xl:hidden" aria-hidden="true" /><HeaderBrand content={content} en={en} /><HeaderDesktopNav en={en} homeMenu={home.value?.homeMenu || []} />
-      <div className="ml-auto flex items-center gap-2"><button className="hidden rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold xl:block" onClick={() => navigate(en ? "/emission/work-assignment" : "/en/emission/work-assignment")} type="button">{en ? "KO" : "EN"}</button>{home.value?.isLoggedIn ? <button className="hidden rounded-lg bg-[#246beb] px-4 py-2.5 font-bold text-white xl:block" onClick={() => void session.logout()} type="button">{content.logout}</button> : null}<button aria-label={content.openAllMenu} className="flex h-11 w-11 items-center justify-center rounded border border-slate-300 xl:hidden" onClick={() => setMobileMenuOpen(true)} type="button"><span className="material-symbols-outlined">menu</span></button></div>
-    </div></div></header><div className="h-16" aria-hidden="true" />
-    <div className={`${mobileMenuOpen ? "" : "hidden"} fixed inset-0 z-[70] xl:hidden`}><button aria-label={content.closeAllMenu} className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} type="button" /><HeaderMobileMenu content={content} en={en} homeMenu={home.value?.homeMenu || []} isLoggedIn={Boolean(home.value?.isLoggedIn)} onClose={() => setMobileMenuOpen(false)} onLogout={session.logout} /></div>
-
-    <main className="mx-auto max-w-[96rem] px-4 py-7 lg:px-8" id="assignment-main">
+  return <main className="mx-auto min-h-screen max-w-[96rem] bg-[#f4f7fb] px-4 py-7 text-[var(--kr-gov-text-primary)] lg:px-8" id="assignment-main">
       <section className="overflow-hidden rounded-3xl border border-[#0b3b70] bg-[#052b57] text-white shadow-xl">
         <div className="px-6 py-5 lg:px-8"><p className="text-sm font-bold text-blue-200">{en ? "Enterprise work orchestration" : "기업 업무 오케스트레이션"}</p><h1 className="mt-1 text-3xl font-black">{en ? "Process and task assignment" : "프로세스·세부 업무 배정"}</h1><p className="mt-2 text-sm text-blue-100">{en ? "Choose a work type and process, then assign its owner, actors, and every detailed step." : "업무 종류와 프로세스를 선택한 뒤 프로세스 책임자, 액터, 세부 절차 담당 계정을 배정합니다."}</p>
           <div className="mt-5 grid gap-3 lg:grid-cols-3">
@@ -184,6 +169,5 @@ export function WorkAssignmentPage() {
         {message ? <p className={`mt-5 rounded-xl p-4 text-sm font-bold ${message.includes("저장") || message.includes("assigned") ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`} role="status">{message}</p> : null}
         <div className="sticky bottom-0 z-20 mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur"><span className="text-sm font-bold text-slate-600">{unassigned ? (en ? `${unassigned} tasks need an assignee.` : `${unassigned}개 세부 업무의 담당자를 지정해야 합니다.`) : (en ? "Every task has an assignee." : "모든 세부 업무에 담당자가 지정되었습니다.")}</span><button className="min-h-12 rounded-lg bg-[#0755b5] px-7 font-black text-white disabled:bg-slate-300" disabled={busy || !steps.length || unassigned > 0} onClick={() => void save()} type="button">{busy ? (en ? "Saving..." : "저장 중...") : (en ? "Save and notify" : "배정 저장·담당자 알림")}</button></div>
       </>}
-    </main>
-  </div></>;
+    </main>;
 }

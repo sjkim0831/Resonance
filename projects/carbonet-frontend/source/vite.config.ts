@@ -76,6 +76,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    cors: true,
     proxy: {
       "/assets/react/img": {
         target: "http://127.0.0.1:5175",
@@ -86,6 +87,34 @@ export default defineConfig({
         target: "http://127.0.0.1:5175",
         changeOrigin: true,
         rewrite: (requestPath) => requestPath.replace(/^\/assets\/react/, "")
+      },
+      "/signin/actionLogin": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/signin/actionLogin": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/admin/login/actionLogin": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/admin/login/actionLogin": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/home/api": {
+        target: "http://127.0.0.1",
+        changeOrigin: true
+      },
+      "/en/home/api": {
+        target: "http://127.0.0.1",
+        changeOrigin: true
+      },
+      "/api/frontend/session": {
+        target: "http://127.0.0.1",
+        changeOrigin: true
       },
       "/api": {
         target: "http://localhost:18000",

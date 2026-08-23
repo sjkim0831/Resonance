@@ -2615,6 +2615,16 @@ public class ActorProcessGovernanceService {
         String process=req(b,"processCode");
         if(!str(b,"stepCode").isBlank())return enqueueCanonicalFullStackGeneration(b,actor);
         boolean force=bool(b,"force");
+        Map<String,Object> canonical=refreshAndQueueCanonicalProcess(process,actor,
+            Map.of("triggerType","PROCESS_DEFINITION"));
+        if(!force&&Boolean.TRUE.equals(canonical.get("generationQueued"))){
+            canonical.put("success",true);canonical.put("processCode",process);
+            canonical.put("changed",true);canonical.put("status","READY_TO_EXECUTE");
+            canonical.put("deliveryMode","CANONICAL_FULL_STACK");
+            canonical.put("legacyBootstrapSkipped",true);
+            canonical.put("nextAction","정본 전체 스택 작업 1개를 즉시 실행합니다.");
+            return canonical;
+        }
         String processHash=jdbc.queryForObject("select md5(concat_ws('|',p.process_code,p.process_version,p.domain_code,p.goal,p.start_condition,p.completion_condition,p.automation_mode,coalesce(string_agg(concat_ws('~',s.step_order,s.step_code,s.step_name,s.actor_code,s.from_state,s.command_code,s.to_state,s.completion_rule,s.requirement_text,s.input_contract,s.output_contract,s.requires_user_page,s.requires_admin_page,s.requires_api,s.requires_database,s.requires_notification,s.user_path,s.admin_path,s.api_contract),'|' order by s.step_order,s.step_code),''))) from framework_process_definition p left join framework_process_step s on s.process_code=p.process_code where p.process_code=? group by p.process_code,p.process_version,p.domain_code,p.goal,p.start_condition,p.completion_condition,p.automation_mode",String.class,process);
         if(processHash==null)throw new IllegalArgumentException("프로세스를 찾을 수 없습니다: "+process);
         String screenHash=jdbc.queryForObject("select md5(coalesce(string_agg(concat_ws('~',c.step_code,c.audience,c.route_path,c.business_purpose,c.entry_condition,c.exit_condition,c.kpi_contract,c.section_contract,c.field_contract,c.command_contract,c.state_contract,c.api_contract,c.data_contract,c.evidence_contract,c.responsive_contract,c.accessibility_contract,c.security_contract,n.note_version,m.mockup_version,md5(coalesce(m.html_content,''))),'|' order by c.step_code,c.audience,c.route_path),'')) from framework_professional_screen_contract c left join framework_screen_development_note n on n.route_key=lower(split_part(c.route_path,'?',1)) left join framework_screen_html_mockup m on m.route_key=lower(split_part(c.route_path,'?',1)) and m.selected=true where c.process_code=?",String.class,process);
@@ -2631,7 +2641,16 @@ public class ActorProcessGovernanceService {
         Number batch=(Number)result.get("batchId");
         String resultJson="{\"factoryStatus\":\""+status+"\",\"stepCount\":"+steps+",\"developmentJobCount\":"+jobs+",\"blockedStepCount\":"+result.getOrDefault("blockedStepCount",0)+"}";
         jdbc.update("insert into framework_design_delivery_revision(process_code,design_hash,delivery_status,step_count,development_job_count,generation_batch_id,result_json,executed_by) values(?,?,?,?,?,?,?,?) on conflict(process_code) do update set design_hash=excluded.design_hash,delivery_status=excluded.delivery_status,step_count=excluded.step_count,development_job_count=excluded.development_job_count,generation_batch_id=excluded.generation_batch_id,result_json=excluded.result_json,executed_by=excluded.executed_by,executed_at=current_timestamp",process,designHash,status,steps,jobs,batch==null?null:batch.longValue(),resultJson,actor);
-        Map<String,Object> out=new LinkedHashMap<>();out.put("success",true);out.put("processCode",process);out.put("designHash",designHash);out.put("changed",true);out.put("status",status);out.put("bootstrap",result);out.put("nextAction","READY_TO_EXECUTE".equals(status)?"승인 개발 작업을 즉시 실행합니다.":"차단된 화면 설계 게이트를 보완한 뒤 동일 API를 다시 실행합니다.");return out;
+        Map<String,Object> out=new LinkedHashMap<>();out.put("success",true);out.put("processCode",process);out.put("designHash",designHash);out.put("changed",true);out.put("status",status);out.put("bootstrap",result);
+        if("READY_TO_EXECUTE".equals(status)){
+            canonical=refreshAndQueueCanonicalProcess(process,actor,
+                Map.of("triggerType","PROCESS_DEFINITION"));
+            out.put("canonicalGeneration",canonical);
+            out.put("generationQueued",canonical.getOrDefault("generationQueued",false));
+            out.put("jobCount",canonical.getOrDefault("jobCount",0));
+            out.put("deliveryMode","CANONICAL_FULL_STACK");
+        }
+        out.put("nextAction","READY_TO_EXECUTE".equals(status)?"정본 전체 스택 작업 1개를 즉시 실행합니다.":"차단된 화면 설계 게이트를 보완한 뒤 동일 API를 다시 실행합니다.");return out;
     }
 
     /**
@@ -2666,7 +2685,13 @@ public class ActorProcessGovernanceService {
                      framework_strict_jsonb_array(c.section_contract) sections,
                      framework_strict_jsonb_array(c.field_contract) fields,
                      framework_strict_jsonb_array(c.command_contract) commands,
-                     framework_strict_jsonb_array(c.state_contract) states,
+                     (select coalesce(jsonb_agg(case jsonb_typeof(state.value)
+                         when 'object' then state.value
+                         when 'string' then jsonb_build_object(
+                           'stateCode',state.value#>>'{}','stateName',state.value#>>'{}')
+                         else state.value end order by state.ordinality),'[]'::jsonb)
+                        from jsonb_array_elements(framework_strict_jsonb_array(c.state_contract))
+                          with ordinality state(value,ordinality)) states,
                      framework_strict_jsonb_array(c.api_contract) apis,
                      framework_strict_jsonb_array(c.data_contract) data_contract,
                      framework_strict_jsonb_array(c.evidence_contract) evidence,
@@ -3547,6 +3572,33 @@ public class ActorProcessGovernanceService {
             """,Integer.class,process,canonicalGroup);
         if(canonicalJobCount==null||canonicalJobCount!=1)
             throw new IllegalStateException("CANONICAL_GENERATION_JOB_NOT_EXACT");
+        Integer supersededJobCount=jdbc.queryForObject("""
+            with candidates as materialized (
+              select job_id,job_status
+                from framework_development_job
+               where process_code=? and job_id<>?
+                 and coalesce(job_group_code,'')<>?
+                 and job_status not in('RUNNING','COMPLETED','SUPERSEDED')
+               for update
+            ), changed as (
+              update framework_development_job job
+                 set job_status='SUPERSEDED',required=false,worker_id=null,
+                     lease_token=null,lease_until=null,
+                     last_error='SUPERSEDED_BY_CANONICAL_PUBLICATION:'||?::text,
+                     updated_at=current_timestamp
+                from candidates candidate where job.job_id=candidate.job_id
+              returning job.job_id,candidate.job_status
+            ), events as (
+              insert into framework_development_job_event(
+                job_id,event_type,from_status,to_status,worker_id,detail_json)
+              select job_id,'SUPERSEDED',job_status,'SUPERSEDED',?,
+                     jsonb_build_object('reason','CANONICAL_PUBLICATION',
+                       'canonicalJobId',?::bigint,'processCode',?::text)::text
+                from changed
+              returning event_id
+            )
+            select count(*)::integer from events
+            """,Integer.class,process,jobId,canonicalGroup,jobId,actor,jobId,process);
         boolean workerCanProgress=(Set.of("PLANNED","RETRY").contains(executableStatus)
                 &&executableAttempt<executableMaximum)
             ||("RUNNING".equals(executableStatus)&&executableLeasePresent);
@@ -3571,6 +3623,7 @@ public class ActorProcessGovernanceService {
         result.put("jobAttemptCount",executableAttempt);
         result.put("jobMaxAttempts",executableMaximum);
         result.put("workerCanProgress",!queued||workerCanProgress);
+        result.put("supersededJobCount",supersededJobCount==null?0:supersededJobCount);
         result.put("recoveryReset",recoveryReset);
         result.put("processInputHash",sourceHash);result.put("designSetHash",designSetHash);
         result.put("designCatalogHash",designCatalogHash);
