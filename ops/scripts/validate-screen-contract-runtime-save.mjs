@@ -159,6 +159,7 @@ async function main() {
       rolledBack: saved.body?.rolledBack,
       committed: saved.body?.committed,
       mutationScope: saved.body?.mutationScope,
+      errorMessage: typeof saved.body?.message === "string" ? saved.body.message.slice(0, 2000) : undefined,
     });
     assertOk(saved.response.status === 200 && saved.body?.success === true, `save failed attempt=${attempt} status=${saved.response.status}`, saves.at(-1));
     assertOk(saved.elapsedMs <= maxSaveMillis, `save too slow attempt=${attempt} elapsedMs=${saved.elapsedMs} max=${maxSaveMillis}`, saves.at(-1));
