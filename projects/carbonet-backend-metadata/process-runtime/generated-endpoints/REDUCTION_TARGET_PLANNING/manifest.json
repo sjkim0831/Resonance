@@ -1,0 +1,325 @@
+{
+  "adapter": "EXISTING_PROCESS_COMMAND_RUNTIME",
+  "artifactCount": 40,
+  "artifactHash": "134334e96fec5742f33fe74d71d60b4e41beca96fbfc4f4b52397743f5e5fa8d",
+  "artifacts": [
+    {
+      "designHash": "c56171e478b1a6b109edcb46451b58138115d72664bdf1f08b53c233f2ce6013",
+      "endpointHash": "71f91afe26129c59ca331e185d95b95e64432d8ae546b744c128876e71de2a9a",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op46bf0976eed5b55a824a32a2fa36a84ce145b85eController.java",
+      "sha256": "d4edde11a496b37208debdf0ebbe7809ac088cc0fb9a0dcc23eb38670e3078dc"
+    },
+    {
+      "designHash": "c56171e478b1a6b109edcb46451b58138115d72664bdf1f08b53c233f2ce6013",
+      "endpointHash": "71f91afe26129c59ca331e185d95b95e64432d8ae546b744c128876e71de2a9a",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op46bf0976eed5b55a824a32a2fa36a84ce145b85eErrorResponse.java",
+      "sha256": "d247ec4601b9a37e4b3d95831ce1ee544dd914c0203a205c03a8e6a080e3e43e"
+    },
+    {
+      "designHash": "c56171e478b1a6b109edcb46451b58138115d72664bdf1f08b53c233f2ce6013",
+      "endpointHash": "71f91afe26129c59ca331e185d95b95e64432d8ae546b744c128876e71de2a9a",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op46bf0976eed5b55a824a32a2fa36a84ce145b85eRecoveryResponse.java",
+      "sha256": "6885e8783fe8e385a57554fba62ac431222480fb025591f860bf8e237286947f"
+    },
+    {
+      "designHash": "c56171e478b1a6b109edcb46451b58138115d72664bdf1f08b53c233f2ce6013",
+      "endpointHash": "71f91afe26129c59ca331e185d95b95e64432d8ae546b744c128876e71de2a9a",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op46bf0976eed5b55a824a32a2fa36a84ce145b85eRequest.java",
+      "sha256": "c12e34cc32e43453d7ee313064ff98d3ff018dbaa9ad74909832050b96386dc1"
+    },
+    {
+      "designHash": "c56171e478b1a6b109edcb46451b58138115d72664bdf1f08b53c233f2ce6013",
+      "endpointHash": "71f91afe26129c59ca331e185d95b95e64432d8ae546b744c128876e71de2a9a",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op46bf0976eed5b55a824a32a2fa36a84ce145b85eSuccessResponse.java",
+      "sha256": "4bea18be5b5288048e4d63f0d2f34e4c93d47b92476c65c39ba8ac9b614f990d"
+    },
+    {
+      "designHash": "7fe1f51607632358f31cc18a589fe4a7d0cef916985c78d6a49fc27edd3b493c",
+      "endpointHash": "6cd91419495955e8ce8f63651a63aefd362f1539272d6cd108a58cc628fe4186",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op4cc63a89d101d9b334c00da946557733433e6f07Controller.java",
+      "sha256": "24f8dfbad8325fae6721856a4f27ab86032ce7cbe93892aa6754a11a529cfb4f"
+    },
+    {
+      "designHash": "7fe1f51607632358f31cc18a589fe4a7d0cef916985c78d6a49fc27edd3b493c",
+      "endpointHash": "6cd91419495955e8ce8f63651a63aefd362f1539272d6cd108a58cc628fe4186",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op4cc63a89d101d9b334c00da946557733433e6f07ErrorResponse.java",
+      "sha256": "1d224b3209e0f6fb17e144d06bf12a52ba0119cf04d3c72e9861627b9669c332"
+    },
+    {
+      "designHash": "7fe1f51607632358f31cc18a589fe4a7d0cef916985c78d6a49fc27edd3b493c",
+      "endpointHash": "6cd91419495955e8ce8f63651a63aefd362f1539272d6cd108a58cc628fe4186",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op4cc63a89d101d9b334c00da946557733433e6f07RecoveryResponse.java",
+      "sha256": "dc724cec356f322875508e79cb305039d6a7c6971b7a627cd44cebc108c74b56"
+    },
+    {
+      "designHash": "7fe1f51607632358f31cc18a589fe4a7d0cef916985c78d6a49fc27edd3b493c",
+      "endpointHash": "6cd91419495955e8ce8f63651a63aefd362f1539272d6cd108a58cc628fe4186",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op4cc63a89d101d9b334c00da946557733433e6f07Request.java",
+      "sha256": "eeffcda1949c265fb0f4f7341ab12c0ae79902a24d7804f89aa75781f8d7ed8b"
+    },
+    {
+      "designHash": "7fe1f51607632358f31cc18a589fe4a7d0cef916985c78d6a49fc27edd3b493c",
+      "endpointHash": "6cd91419495955e8ce8f63651a63aefd362f1539272d6cd108a58cc628fe4186",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op4cc63a89d101d9b334c00da946557733433e6f07SuccessResponse.java",
+      "sha256": "29d991fa257194bd6328ca6e1382fff4eed55be14504cd004a531f0eeead684c"
+    },
+    {
+      "designHash": "b6726727f1e19da80558b520a05ca3ed3dbea6c6282f8ee754548c90247d82e5",
+      "endpointHash": "16a7a0ae3724765b697d8db3dba2474f7a96f83e157edac47ac8842499f9fd58",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op718ae3988d09bedc5329999a2c2ad4a299bf25edController.java",
+      "sha256": "38d04e8fc7829a4f892b5465eda20b96e6f3c116add405a91249d8f33b3eb19a"
+    },
+    {
+      "designHash": "b6726727f1e19da80558b520a05ca3ed3dbea6c6282f8ee754548c90247d82e5",
+      "endpointHash": "16a7a0ae3724765b697d8db3dba2474f7a96f83e157edac47ac8842499f9fd58",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op718ae3988d09bedc5329999a2c2ad4a299bf25edErrorResponse.java",
+      "sha256": "37656e728fee12b0da1840ee3703a3790c6d36a3b2155c2700e0b6370d9aa229"
+    },
+    {
+      "designHash": "b6726727f1e19da80558b520a05ca3ed3dbea6c6282f8ee754548c90247d82e5",
+      "endpointHash": "16a7a0ae3724765b697d8db3dba2474f7a96f83e157edac47ac8842499f9fd58",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op718ae3988d09bedc5329999a2c2ad4a299bf25edRecoveryResponse.java",
+      "sha256": "20e84f3805ed6be41dd49902b51935b07ef26d3aa5999189d0f36fec6b335776"
+    },
+    {
+      "designHash": "b6726727f1e19da80558b520a05ca3ed3dbea6c6282f8ee754548c90247d82e5",
+      "endpointHash": "16a7a0ae3724765b697d8db3dba2474f7a96f83e157edac47ac8842499f9fd58",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op718ae3988d09bedc5329999a2c2ad4a299bf25edRequest.java",
+      "sha256": "39a60c0f913a9abb5c32b95a69f4929e63a92c8db276982dbe97356e3adbc9de"
+    },
+    {
+      "designHash": "b6726727f1e19da80558b520a05ca3ed3dbea6c6282f8ee754548c90247d82e5",
+      "endpointHash": "16a7a0ae3724765b697d8db3dba2474f7a96f83e157edac47ac8842499f9fd58",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op718ae3988d09bedc5329999a2c2ad4a299bf25edSuccessResponse.java",
+      "sha256": "057b991c6b1b97a59ce980bd1fd34689d8a793abe41d3c2735336134a7c96401"
+    },
+    {
+      "designHash": "55d42d9ae553871899dff3c593a568e496f1f311a09e1201f913b231f50b336e",
+      "endpointHash": "cb784dc393c93c043dc87d2e849d215b5f13c3308744a85cd414bde8f8ecb720",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op73958317c1fee8aec8d627587497e224a135f8e2Controller.java",
+      "sha256": "1c6b36f3455288dd5a954b9343883c8c0c9bd9517d3088c97f2a440e98bf0b9f"
+    },
+    {
+      "designHash": "55d42d9ae553871899dff3c593a568e496f1f311a09e1201f913b231f50b336e",
+      "endpointHash": "cb784dc393c93c043dc87d2e849d215b5f13c3308744a85cd414bde8f8ecb720",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op73958317c1fee8aec8d627587497e224a135f8e2ErrorResponse.java",
+      "sha256": "1c08b3ff39662060f6a9d4c8084e677b6d4cb5d4eecdde849807f819c06a0625"
+    },
+    {
+      "designHash": "55d42d9ae553871899dff3c593a568e496f1f311a09e1201f913b231f50b336e",
+      "endpointHash": "cb784dc393c93c043dc87d2e849d215b5f13c3308744a85cd414bde8f8ecb720",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op73958317c1fee8aec8d627587497e224a135f8e2RecoveryResponse.java",
+      "sha256": "64c75573ce6e4588adaaa42e07f269b1c42c788b40c5f8c9f9c90f948b45c2bf"
+    },
+    {
+      "designHash": "55d42d9ae553871899dff3c593a568e496f1f311a09e1201f913b231f50b336e",
+      "endpointHash": "cb784dc393c93c043dc87d2e849d215b5f13c3308744a85cd414bde8f8ecb720",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op73958317c1fee8aec8d627587497e224a135f8e2Request.java",
+      "sha256": "077c75d0eecfa0a9683eddf81bae427ccfb31001a985f364315e94b91faece15"
+    },
+    {
+      "designHash": "55d42d9ae553871899dff3c593a568e496f1f311a09e1201f913b231f50b336e",
+      "endpointHash": "cb784dc393c93c043dc87d2e849d215b5f13c3308744a85cd414bde8f8ecb720",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op73958317c1fee8aec8d627587497e224a135f8e2SuccessResponse.java",
+      "sha256": "e4dc5905dfab51c8a10ffec77c894e79d14e5a498b344c78c1a957b99999c204"
+    },
+    {
+      "designHash": "887e0d10f5572c269009772d3b2a9c5f20aa159463e8ae6e17ff525c9d69ca17",
+      "endpointHash": "5fdb03b18f46b18bb4d2e81314321e86c9388c071f4a5a440a96e8fe8dcf70d3",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op8f45050fb767b86fac65c7961961f8407334c0c9Controller.java",
+      "sha256": "3ad502717a2325c6a1d75a43dab2d0c5307b1be7c432b4739fd7631827fec60d"
+    },
+    {
+      "designHash": "887e0d10f5572c269009772d3b2a9c5f20aa159463e8ae6e17ff525c9d69ca17",
+      "endpointHash": "5fdb03b18f46b18bb4d2e81314321e86c9388c071f4a5a440a96e8fe8dcf70d3",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op8f45050fb767b86fac65c7961961f8407334c0c9ErrorResponse.java",
+      "sha256": "a2779f2b9929566472784ff9efa42c6c54b4cd82f0748448b6eb6253cbe147c6"
+    },
+    {
+      "designHash": "887e0d10f5572c269009772d3b2a9c5f20aa159463e8ae6e17ff525c9d69ca17",
+      "endpointHash": "5fdb03b18f46b18bb4d2e81314321e86c9388c071f4a5a440a96e8fe8dcf70d3",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op8f45050fb767b86fac65c7961961f8407334c0c9RecoveryResponse.java",
+      "sha256": "192fefe67e858050d355b769a8f01dcb5033f6214b6e342bb9c562a8d2a4a339"
+    },
+    {
+      "designHash": "887e0d10f5572c269009772d3b2a9c5f20aa159463e8ae6e17ff525c9d69ca17",
+      "endpointHash": "5fdb03b18f46b18bb4d2e81314321e86c9388c071f4a5a440a96e8fe8dcf70d3",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op8f45050fb767b86fac65c7961961f8407334c0c9Request.java",
+      "sha256": "858e097c7faec7896dfba147ed9d3a081c0cb5922623917944cc9ee5c36b3312"
+    },
+    {
+      "designHash": "887e0d10f5572c269009772d3b2a9c5f20aa159463e8ae6e17ff525c9d69ca17",
+      "endpointHash": "5fdb03b18f46b18bb4d2e81314321e86c9388c071f4a5a440a96e8fe8dcf70d3",
+      "path": "src/main/java/egovframework/com/generated/canonical/Op8f45050fb767b86fac65c7961961f8407334c0c9SuccessResponse.java",
+      "sha256": "e48a4debec3bf6618ee924b7c09180941059d9011bd7c00895d2fd0f63d5e3d7"
+    },
+    {
+      "designHash": "7f6ba0fd23863385ea676bdc314f60f1a4d397f08869e23a23017e0ddc3a39b9",
+      "endpointHash": "231fdcca2b2008f0a779dac32e58dcc630f5fb4ad64e98e9a5e5cef8f6df8c79",
+      "path": "src/main/java/egovframework/com/generated/canonical/Opa2b0349962d29c1f8d2306a423fd3501690c5b32Controller.java",
+      "sha256": "f2022200bf7f2308da44d643ed5bc60b21d73a932a22de90210ee824509beda5"
+    },
+    {
+      "designHash": "7f6ba0fd23863385ea676bdc314f60f1a4d397f08869e23a23017e0ddc3a39b9",
+      "endpointHash": "231fdcca2b2008f0a779dac32e58dcc630f5fb4ad64e98e9a5e5cef8f6df8c79",
+      "path": "src/main/java/egovframework/com/generated/canonical/Opa2b0349962d29c1f8d2306a423fd3501690c5b32ErrorResponse.java",
+      "sha256": "6f5f614911d263908619f606140415f63b516121cac40dd5ad1f166940028721"
+    },
+    {
+      "designHash": "7f6ba0fd23863385ea676bdc314f60f1a4d397f08869e23a23017e0ddc3a39b9",
+      "endpointHash": "231fdcca2b2008f0a779dac32e58dcc630f5fb4ad64e98e9a5e5cef8f6df8c79",
+      "path": "src/main/java/egovframework/com/generated/canonical/Opa2b0349962d29c1f8d2306a423fd3501690c5b32RecoveryResponse.java",
+      "sha256": "0cd257e69bb15ac5e8fbb0158d02662ddd3772cd5bdc82da8ce45d152864d417"
+    },
+    {
+      "designHash": "7f6ba0fd23863385ea676bdc314f60f1a4d397f08869e23a23017e0ddc3a39b9",
+      "endpointHash": "231fdcca2b2008f0a779dac32e58dcc630f5fb4ad64e98e9a5e5cef8f6df8c79",
+      "path": "src/main/java/egovframework/com/generated/canonical/Opa2b0349962d29c1f8d2306a423fd3501690c5b32Request.java",
+      "sha256": "752e5731bf63ca11bf0b297835034b5e4f1f0130abfa1a9d518d506ede777a69"
+    },
+    {
+      "designHash": "7f6ba0fd23863385ea676bdc314f60f1a4d397f08869e23a23017e0ddc3a39b9",
+      "endpointHash": "231fdcca2b2008f0a779dac32e58dcc630f5fb4ad64e98e9a5e5cef8f6df8c79",
+      "path": "src/main/java/egovframework/com/generated/canonical/Opa2b0349962d29c1f8d2306a423fd3501690c5b32SuccessResponse.java",
+      "sha256": "7c7d70489ca97ad7067fe3f4d4be2eca6cda1e1a7da82091fc34c970e30b3177"
+    },
+    {
+      "designHash": "c687051c1dc17d21775b82c8b903f627a315f4c4a601fe912a4da1fd00c5083b",
+      "endpointHash": "336d7fd232c7547a3f27e68dfbb386bb753b493bd05607e5e75d0c0ad2f47f2d",
+      "path": "src/main/java/egovframework/com/generated/canonical/Opc0d9694da1113639c609e1b1b26a9485ea9f7b9bController.java",
+      "sha256": "ecc9083c74ec46605332d5f618c0fd1297732850bee460d48ceaf0fdf3536868"
+    },
+    {
+      "designHash": "c687051c1dc17d21775b82c8b903f627a315f4c4a601fe912a4da1fd00c5083b",
+      "endpointHash": "336d7fd232c7547a3f27e68dfbb386bb753b493bd05607e5e75d0c0ad2f47f2d",
+      "path": "src/main/java/egovframework/com/generated/canonical/Opc0d9694da1113639c609e1b1b26a9485ea9f7b9bErrorResponse.java",
+      "sha256": "40ed8865db88584a03b0075a3d1d223f75872cedffab5a8be3da36437e59886b"
+    },
+    {
+      "designHash": "c687051c1dc17d21775b82c8b903f627a315f4c4a601fe912a4da1fd00c5083b",
+      "endpointHash": "336d7fd232c7547a3f27e68dfbb386bb753b493bd05607e5e75d0c0ad2f47f2d",
+      "path": "src/main/java/egovframework/com/generated/canonical/Opc0d9694da1113639c609e1b1b26a9485ea9f7b9bRecoveryResponse.java",
+      "sha256": "535d0f4d374ade71363cd789cef20ebdec39f915d8baca376123efc80ee6065c"
+    },
+    {
+      "designHash": "c687051c1dc17d21775b82c8b903f627a315f4c4a601fe912a4da1fd00c5083b",
+      "endpointHash": "336d7fd232c7547a3f27e68dfbb386bb753b493bd05607e5e75d0c0ad2f47f2d",
+      "path": "src/main/java/egovframework/com/generated/canonical/Opc0d9694da1113639c609e1b1b26a9485ea9f7b9bRequest.java",
+      "sha256": "ec397b7d2b01d59aff02947336519383e1f7d45410370d0a5e4a784872ff3366"
+    },
+    {
+      "designHash": "c687051c1dc17d21775b82c8b903f627a315f4c4a601fe912a4da1fd00c5083b",
+      "endpointHash": "336d7fd232c7547a3f27e68dfbb386bb753b493bd05607e5e75d0c0ad2f47f2d",
+      "path": "src/main/java/egovframework/com/generated/canonical/Opc0d9694da1113639c609e1b1b26a9485ea9f7b9bSuccessResponse.java",
+      "sha256": "022ffefa08ac29b173cc7f9433baf6eab1df7df3526290b1b2ec506a12cc142e"
+    },
+    {
+      "designHash": "e2cac46439845589b414936e3098403a20d6fe9b01cb1ac999f2d3ec736d031d",
+      "endpointHash": "1326d07498be0f28e375f1f862107bddfa792a3de671cd6fd3abd81160e612a8",
+      "path": "src/main/java/egovframework/com/generated/canonical/Opdb2f6ba0bec718374cc61d4fc71936a014dfa5e4Controller.java",
+      "sha256": "a268dfbfb43ac9cbf1f0a8aa009533f0d58d0926c6b868e0940ea63b2580e18d"
+    },
+    {
+      "designHash": "e2cac46439845589b414936e3098403a20d6fe9b01cb1ac999f2d3ec736d031d",
+      "endpointHash": "1326d07498be0f28e375f1f862107bddfa792a3de671cd6fd3abd81160e612a8",
+      "path": "src/main/java/egovframework/com/generated/canonical/Opdb2f6ba0bec718374cc61d4fc71936a014dfa5e4ErrorResponse.java",
+      "sha256": "179cb6fba5dc80bc263d509baebb2b0f11493ea97b27c9b86d83a9d5cc609a91"
+    },
+    {
+      "designHash": "e2cac46439845589b414936e3098403a20d6fe9b01cb1ac999f2d3ec736d031d",
+      "endpointHash": "1326d07498be0f28e375f1f862107bddfa792a3de671cd6fd3abd81160e612a8",
+      "path": "src/main/java/egovframework/com/generated/canonical/Opdb2f6ba0bec718374cc61d4fc71936a014dfa5e4RecoveryResponse.java",
+      "sha256": "2a084813c215bd070d147404c1cef0344d70ae1d71153422f06b9e4ee76d66e4"
+    },
+    {
+      "designHash": "e2cac46439845589b414936e3098403a20d6fe9b01cb1ac999f2d3ec736d031d",
+      "endpointHash": "1326d07498be0f28e375f1f862107bddfa792a3de671cd6fd3abd81160e612a8",
+      "path": "src/main/java/egovframework/com/generated/canonical/Opdb2f6ba0bec718374cc61d4fc71936a014dfa5e4Request.java",
+      "sha256": "0da797fa6d78cb63f3492c4388e668506ba94a322691637d2df4e5521bfdc937"
+    },
+    {
+      "designHash": "e2cac46439845589b414936e3098403a20d6fe9b01cb1ac999f2d3ec736d031d",
+      "endpointHash": "1326d07498be0f28e375f1f862107bddfa792a3de671cd6fd3abd81160e612a8",
+      "path": "src/main/java/egovframework/com/generated/canonical/Opdb2f6ba0bec718374cc61d4fc71936a014dfa5e4SuccessResponse.java",
+      "sha256": "bb128ac1cc20db2dfb2d75f9b2fbd215509e9622edf4e2f151fd6a856ac77183"
+    }
+  ],
+  "bundleHash": "e254cee0e94485f4b07a9b502bc2c2e5750c3f9f7f07831c8f0d1d18a166f630",
+  "catalogHash": "507abca03295eb3b0c0f2d67eed07975a93bd41f2861da2d8af0476625132730",
+  "generatorHash": "0b550b18cdf832930f6fe416085e16331d0fa8e306334d37df4e541d3db868d9",
+  "operations": [
+    {
+      "designHash": "c56171e478b1a6b109edcb46451b58138115d72664bdf1f08b53c233f2ce6013",
+      "endpointHash": "71f91afe26129c59ca331e185d95b95e64432d8ae546b744c128876e71de2a9a",
+      "handlerClass": "egovframework.com.generated.canonical.Op46bf0976eed5b55a824a32a2fa36a84ce145b85eController",
+      "handlerMethod": "execute",
+      "method": "POST",
+      "operationKey": "op46bf0976eed5b55a824a32a2fa36a84ce145b85e",
+      "path": "/home/api/process-executions/{executionId}/commands/reduction_target_planning/reduction_target_planning_s1/admin"
+    },
+    {
+      "designHash": "7fe1f51607632358f31cc18a589fe4a7d0cef916985c78d6a49fc27edd3b493c",
+      "endpointHash": "6cd91419495955e8ce8f63651a63aefd362f1539272d6cd108a58cc628fe4186",
+      "handlerClass": "egovframework.com.generated.canonical.Op4cc63a89d101d9b334c00da946557733433e6f07Controller",
+      "handlerMethod": "execute",
+      "method": "POST",
+      "operationKey": "op4cc63a89d101d9b334c00da946557733433e6f07",
+      "path": "/home/api/process-executions/{executionId}/commands/reduction_target_planning/reduction_target_planning_s2/user"
+    },
+    {
+      "designHash": "b6726727f1e19da80558b520a05ca3ed3dbea6c6282f8ee754548c90247d82e5",
+      "endpointHash": "16a7a0ae3724765b697d8db3dba2474f7a96f83e157edac47ac8842499f9fd58",
+      "handlerClass": "egovframework.com.generated.canonical.Op718ae3988d09bedc5329999a2c2ad4a299bf25edController",
+      "handlerMethod": "execute",
+      "method": "POST",
+      "operationKey": "op718ae3988d09bedc5329999a2c2ad4a299bf25ed",
+      "path": "/home/api/process-executions/{executionId}/commands/reduction_target_planning/reduction_target_planning_s3/admin"
+    },
+    {
+      "designHash": "55d42d9ae553871899dff3c593a568e496f1f311a09e1201f913b231f50b336e",
+      "endpointHash": "cb784dc393c93c043dc87d2e849d215b5f13c3308744a85cd414bde8f8ecb720",
+      "handlerClass": "egovframework.com.generated.canonical.Op73958317c1fee8aec8d627587497e224a135f8e2Controller",
+      "handlerMethod": "execute",
+      "method": "POST",
+      "operationKey": "op73958317c1fee8aec8d627587497e224a135f8e2",
+      "path": "/home/api/process-executions/{executionId}/commands/reduction_target_planning/reduction_target_planning_s4/admin"
+    },
+    {
+      "designHash": "887e0d10f5572c269009772d3b2a9c5f20aa159463e8ae6e17ff525c9d69ca17",
+      "endpointHash": "5fdb03b18f46b18bb4d2e81314321e86c9388c071f4a5a440a96e8fe8dcf70d3",
+      "handlerClass": "egovframework.com.generated.canonical.Op8f45050fb767b86fac65c7961961f8407334c0c9Controller",
+      "handlerMethod": "execute",
+      "method": "POST",
+      "operationKey": "op8f45050fb767b86fac65c7961961f8407334c0c9",
+      "path": "/home/api/process-executions/{executionId}/commands/reduction_target_planning/reduction_target_planning_s3/user"
+    },
+    {
+      "designHash": "7f6ba0fd23863385ea676bdc314f60f1a4d397f08869e23a23017e0ddc3a39b9",
+      "endpointHash": "231fdcca2b2008f0a779dac32e58dcc630f5fb4ad64e98e9a5e5cef8f6df8c79",
+      "handlerClass": "egovframework.com.generated.canonical.Opa2b0349962d29c1f8d2306a423fd3501690c5b32Controller",
+      "handlerMethod": "execute",
+      "method": "POST",
+      "operationKey": "opa2b0349962d29c1f8d2306a423fd3501690c5b32",
+      "path": "/home/api/process-executions/{executionId}/commands/reduction_target_planning/reduction_target_planning_s1/user"
+    },
+    {
+      "designHash": "c687051c1dc17d21775b82c8b903f627a315f4c4a601fe912a4da1fd00c5083b",
+      "endpointHash": "336d7fd232c7547a3f27e68dfbb386bb753b493bd05607e5e75d0c0ad2f47f2d",
+      "handlerClass": "egovframework.com.generated.canonical.Opc0d9694da1113639c609e1b1b26a9485ea9f7b9bController",
+      "handlerMethod": "execute",
+      "method": "POST",
+      "operationKey": "opc0d9694da1113639c609e1b1b26a9485ea9f7b9b",
+      "path": "/home/api/process-executions/{executionId}/commands/reduction_target_planning/reduction_target_planning_s4/user"
+    },
+    {
+      "designHash": "e2cac46439845589b414936e3098403a20d6fe9b01cb1ac999f2d3ec736d031d",
+      "endpointHash": "1326d07498be0f28e375f1f862107bddfa792a3de671cd6fd3abd81160e612a8",
+      "handlerClass": "egovframework.com.generated.canonical.Opdb2f6ba0bec718374cc61d4fc71936a014dfa5e4Controller",
+      "handlerMethod": "execute",
+      "method": "POST",
+      "operationKey": "opdb2f6ba0bec718374cc61d4fc71936a014dfa5e4",
+      "path": "/home/api/process-executions/{executionId}/commands/reduction_target_planning/reduction_target_planning_s2/admin"
+    }
+  ],
+  "schema": "carbonet.generated-endpoints/v1"
+}

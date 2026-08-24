@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "REDUCTION_TARGET_PLANNING",
+      "stepCode": "REDUCTION_TARGET_PLANNING_S1",
+      "package": "REDUCTION_TARGET_PLANNING__REDUCTION_TARGET_PLANNING_S1.json",
+      "packageHash": "5618609f83f345d42d8418eb851913dd36af8ff3b726f07776f1839d1a1fa84f",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_TARGET_PLANNING",
+      "stepCode": "REDUCTION_TARGET_PLANNING_S2",
+      "package": "REDUCTION_TARGET_PLANNING__REDUCTION_TARGET_PLANNING_S2.json",
+      "packageHash": "a4d927f06c10e95cdbe58e174a074c88fb6c01547642545cad8d7b51814c183c",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_TARGET_PLANNING",
+      "stepCode": "REDUCTION_TARGET_PLANNING_S3",
+      "package": "REDUCTION_TARGET_PLANNING__REDUCTION_TARGET_PLANNING_S3.json",
+      "packageHash": "a94499f05e762d9d60ff45c734e40145c3966d0196b0b71339a2c088ae8084d1",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_TARGET_PLANNING",
+      "stepCode": "REDUCTION_TARGET_PLANNING_S4",
+      "package": "REDUCTION_TARGET_PLANNING__REDUCTION_TARGET_PLANNING_S4.json",
+      "packageHash": "898e3eef6db275ceb7945bcf06baf45e403915bd95bdf33a0c706192542cdaf3",
+      "pages": 2
+    }
+  ],
+  "canonicalCatalogHash": "2df54878e43479d7ed17a56a06e90ff338099678152fed41b7d33061301f763e",
+  "canonicalScreens": [
+    {
+      "screenKey": "REDUCTION_TARGET_PLANNING|REDUCTION_TARGET_PLANNING_S1|ADMIN|/admin/generated/reduction-target-planning/reduction-target-planning-s1",
+      "designHash": "c56171e478b1a6b109edcb46451b58138115d72664bdf1f08b53c233f2ce6013"
+    },
+    {
+      "screenKey": "REDUCTION_TARGET_PLANNING|REDUCTION_TARGET_PLANNING_S1|USER|/generated/reduction-target-planning/reduction-target-planning-s1",
+      "designHash": "7f6ba0fd23863385ea676bdc314f60f1a4d397f08869e23a23017e0ddc3a39b9"
+    },
+    {
+      "screenKey": "REDUCTION_TARGET_PLANNING|REDUCTION_TARGET_PLANNING_S2|ADMIN|/admin/generated/reduction-target-planning/reduction-target-planning-s2",
+      "designHash": "e2cac46439845589b414936e3098403a20d6fe9b01cb1ac999f2d3ec736d031d"
+    },
+    {
+      "screenKey": "REDUCTION_TARGET_PLANNING|REDUCTION_TARGET_PLANNING_S2|USER|/generated/reduction-target-planning/reduction-target-planning-s2",
+      "designHash": "7fe1f51607632358f31cc18a589fe4a7d0cef916985c78d6a49fc27edd3b493c"
+    },
+    {
+      "screenKey": "REDUCTION_TARGET_PLANNING|REDUCTION_TARGET_PLANNING_S3|ADMIN|/admin/generated/reduction-target-planning/reduction-target-planning-s3",
+      "designHash": "b6726727f1e19da80558b520a05ca3ed3dbea6c6282f8ee754548c90247d82e5"
+    },
+    {
+      "screenKey": "REDUCTION_TARGET_PLANNING|REDUCTION_TARGET_PLANNING_S3|USER|/generated/reduction-target-planning/reduction-target-planning-s3",
+      "designHash": "887e0d10f5572c269009772d3b2a9c5f20aa159463e8ae6e17ff525c9d69ca17"
+    },
+    {
+      "screenKey": "REDUCTION_TARGET_PLANNING|REDUCTION_TARGET_PLANNING_S4|ADMIN|/admin/generated/reduction-target-planning/reduction-target-planning-s4",
+      "designHash": "55d42d9ae553871899dff3c593a568e496f1f311a09e1201f913b231f50b336e"
+    },
+    {
+      "screenKey": "REDUCTION_TARGET_PLANNING|REDUCTION_TARGET_PLANNING_S4|USER|/generated/reduction-target-planning/reduction-target-planning-s4",
+      "designHash": "c687051c1dc17d21775b82c8b903f627a315f4c4a601fe912a4da1fd00c5083b"
+    }
+  ],
+  "manifestHash": "c866f97ddd30f0cd3e200a546186eb72a76ab3a62e1d1146d6c738c45b8b9c26"
+}
