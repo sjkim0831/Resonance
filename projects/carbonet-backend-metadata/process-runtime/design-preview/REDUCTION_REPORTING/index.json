@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "REDUCTION_REPORTING",
+      "stepCode": "REDUCTION_REPORTING_S1",
+      "package": "REDUCTION_REPORTING__REDUCTION_REPORTING_S1.json",
+      "packageHash": "86be9e85ea7b6469b0cd2e3d9e5d4a29cb9bdb6d495b82e3c80979983faf54c5",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_REPORTING",
+      "stepCode": "REDUCTION_REPORTING_S2",
+      "package": "REDUCTION_REPORTING__REDUCTION_REPORTING_S2.json",
+      "packageHash": "df9681ca90a73ffc4714c7df1e6b22fbb6fe66b7240e18cf970ceb64b4cd54af",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_REPORTING",
+      "stepCode": "REDUCTION_REPORTING_S3",
+      "package": "REDUCTION_REPORTING__REDUCTION_REPORTING_S3.json",
+      "packageHash": "49828a5e5090c4290c885848eff01f933d1de684880f95bede87216e95742da4",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_REPORTING",
+      "stepCode": "REDUCTION_REPORTING_S4",
+      "package": "REDUCTION_REPORTING__REDUCTION_REPORTING_S4.json",
+      "packageHash": "5dfeb34408e73bc030c3fbf09d0ba3b75a37ce2a12be111118f2e427ece79d4f",
+      "pages": 2
+    }
+  ],
+  "canonicalCatalogHash": "106939e6313f466491145665094ba430bcbc433307c50482480ce94e583d9afa",
+  "canonicalScreens": [
+    {
+      "screenKey": "REDUCTION_REPORTING|REDUCTION_REPORTING_S1|ADMIN|/admin/generated/reduction-reporting/reduction-reporting-s1",
+      "designHash": "14d24325f75d610cfe253d9cfddf3b6da1a72a328d48ff59bd1026e65d70adbe"
+    },
+    {
+      "screenKey": "REDUCTION_REPORTING|REDUCTION_REPORTING_S1|USER|/generated/reduction-reporting/reduction-reporting-s1",
+      "designHash": "7f05cfefae1a5ca56392f94e31e84753bd720b555fec96b520c636aac18e7aa5"
+    },
+    {
+      "screenKey": "REDUCTION_REPORTING|REDUCTION_REPORTING_S2|ADMIN|/admin/generated/reduction-reporting/reduction-reporting-s2",
+      "designHash": "c6b37cc75baed616dc1154b40a77cf251765e45384c607c2fcb64fce97cb8372"
+    },
+    {
+      "screenKey": "REDUCTION_REPORTING|REDUCTION_REPORTING_S2|USER|/generated/reduction-reporting/reduction-reporting-s2",
+      "designHash": "268f3830bee4af293fde38e5eef692a3d4cefd5a16b66b9d9d70584d5c53454d"
+    },
+    {
+      "screenKey": "REDUCTION_REPORTING|REDUCTION_REPORTING_S3|ADMIN|/admin/generated/reduction-reporting/reduction-reporting-s3",
+      "designHash": "fc2e626496e5b5c6fd33955f277d75418e8e3baacc83fc03cd5ad6dc2abaaa30"
+    },
+    {
+      "screenKey": "REDUCTION_REPORTING|REDUCTION_REPORTING_S3|USER|/generated/reduction-reporting/reduction-reporting-s3",
+      "designHash": "1f335e4f49202a3baa6b34b7aecdbc6fc2b4e44598e8cad49f688bdcd9623e3c"
+    },
+    {
+      "screenKey": "REDUCTION_REPORTING|REDUCTION_REPORTING_S4|ADMIN|/admin/generated/reduction-reporting/reduction-reporting-s4",
+      "designHash": "cd8b3a0989e3f16cf9ae99eb95d19607c1b4bd2f1ea559d5d9aa9dfa5fefd42a"
+    },
+    {
+      "screenKey": "REDUCTION_REPORTING|REDUCTION_REPORTING_S4|USER|/generated/reduction-reporting/reduction-reporting-s4",
+      "designHash": "aaab00f4f3c8942a5cf5f7607cfd39e94527a85e733b31c4326ac3682cccf2ec"
+    }
+  ],
+  "manifestHash": "c65ca92829b0bd8ed13171880600d92a8fc72e125bd113b5fbf0736a140a4565"
+}
