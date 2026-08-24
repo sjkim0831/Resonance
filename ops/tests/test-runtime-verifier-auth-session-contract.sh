@@ -22,6 +22,8 @@ fi
 
 grep -Fq '/signin/actionLogin' "$HELPER"
 grep -Fq '/signin/actionLogout' "$HELPER"
+grep -Fq '[[ "$status" != "401" ]]' "$HELPER"
+grep -Fq 'already unauthenticated' "$HELPER"
 grep -Fq 'primary webmaster login is forbidden' "$HELPER"
 grep -Fq 'carbonet-test-account-switch' "$HELPER"
 grep -Fq 'carbonet_qa_login "$COOKIE_JAR"' "${TARGETS[0]}"

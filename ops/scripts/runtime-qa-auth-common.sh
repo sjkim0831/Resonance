@@ -221,7 +221,9 @@ carbonet_qa_logout() {
     else
       status="$(curl -sS -b "$cookie_jar" -o "$response_file" -w '%{http_code}' \
         -X POST "$base_url/signin/actionLogout")" || status="000"
-      if [[ "$status" != "200" ]] || ! jq -e '(.status // "") == "success"' "$response_file" >/dev/null 2>&1; then
+      # Logout is idempotently complete when the server reports that the
+      # short-lived QA session is already unauthenticated.
+      if [[ "$status" != "401" ]] && { [[ "$status" != "200" ]] || ! jq -e '(.status // "") == "success"' "$response_file" >/dev/null 2>&1; }; then
         echo "[runtime-qa-auth] isolated QA logout failed (http=$status)" >&2
         result=1
       fi
