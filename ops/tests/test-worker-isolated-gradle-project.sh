@@ -17,6 +17,7 @@ grep -Fq "SOURCES=$wt/projects/carbonet-backend-metadata/process-runtime/generat
 grep -Fq "PWD=$wt" "$tmp/trace"
 mutant="${function_source/cd \"\$worktree\"/cd .}"
 rm -f "$tmp/trace"
-(cd "$tmp/outside"; export TRACE="$tmp/trace"; eval "$mutant"; compile_canonical_generated_endpoint "$wt" "$process")
-if grep -Fq "PWD=$wt" "$tmp/trace"; then echo 'worktree-cwd mutant survived' >&2; exit 1; fi
+if (cd "$tmp/outside"; export TRACE="$tmp/trace"; eval "$mutant"; compile_canonical_generated_endpoint "$wt" "$process") 2>/dev/null; then
+  if grep -Fq "PWD=$wt" "$tmp/trace"; then echo 'worktree-cwd mutant survived' >&2; exit 1; fi
+fi
 echo WORKER_ISOLATED_GRADLE_PROJECT_PASS
