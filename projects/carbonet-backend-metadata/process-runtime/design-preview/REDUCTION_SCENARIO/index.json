@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "REDUCTION_SCENARIO",
+      "stepCode": "REDUCTION_SCENARIO_S1",
+      "package": "REDUCTION_SCENARIO__REDUCTION_SCENARIO_S1.json",
+      "packageHash": "e6aba42cbfa7cbbc94447c3cf735c613b132ec69e4b4615e3d2e43bccf74b07d",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_SCENARIO",
+      "stepCode": "REDUCTION_SCENARIO_S2",
+      "package": "REDUCTION_SCENARIO__REDUCTION_SCENARIO_S2.json",
+      "packageHash": "7a95a213ea4d86ba16d0764ed20e9b54da81400a03eabad47e7770c3d08e1257",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_SCENARIO",
+      "stepCode": "REDUCTION_SCENARIO_S3",
+      "package": "REDUCTION_SCENARIO__REDUCTION_SCENARIO_S3.json",
+      "packageHash": "a50cfe32f8bfc1dc56250db4502ecbb2744848e469a04069c4093cf2ef7f966d",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_SCENARIO",
+      "stepCode": "REDUCTION_SCENARIO_S4",
+      "package": "REDUCTION_SCENARIO__REDUCTION_SCENARIO_S4.json",
+      "packageHash": "e628d83a48efe1c713d1711a5ce4f3d48e4309c067b97a873ce84cf319e1a84d",
+      "pages": 2
+    }
+  ],
+  "canonicalCatalogHash": "ea0fde08fbdfac56e1c28364aaa07c979ea34c6a536fbddb798854754c46fe59",
+  "canonicalScreens": [
+    {
+      "screenKey": "REDUCTION_SCENARIO|REDUCTION_SCENARIO_S1|ADMIN|/admin/generated/reduction-scenario/reduction-scenario-s1",
+      "designHash": "b5ad90664d8eb97569122fc7a1ff780072864ccda7b63c21082cc99cefa4dd29"
+    },
+    {
+      "screenKey": "REDUCTION_SCENARIO|REDUCTION_SCENARIO_S1|USER|/generated/reduction-scenario/reduction-scenario-s1",
+      "designHash": "bc557d217919011567bb58da2dea75ee5c30e809f44ba4f7d741dc230c27b324"
+    },
+    {
+      "screenKey": "REDUCTION_SCENARIO|REDUCTION_SCENARIO_S2|ADMIN|/admin/generated/reduction-scenario/reduction-scenario-s2",
+      "designHash": "9eef0c2868d4d53b087d139884fdb240b1e029a4db255e9e93c6ba9189cb3645"
+    },
+    {
+      "screenKey": "REDUCTION_SCENARIO|REDUCTION_SCENARIO_S2|USER|/generated/reduction-scenario/reduction-scenario-s2",
+      "designHash": "f5d049bdbebe646ffedee8cbfd2d573a49bdacedf658fd9c4d2eb96b510e94ed"
+    },
+    {
+      "screenKey": "REDUCTION_SCENARIO|REDUCTION_SCENARIO_S3|ADMIN|/admin/generated/reduction-scenario/reduction-scenario-s3",
+      "designHash": "42260e33102485e2da0886735fa6507b54a461b9e1db11032099de358656e17e"
+    },
+    {
+      "screenKey": "REDUCTION_SCENARIO|REDUCTION_SCENARIO_S3|USER|/generated/reduction-scenario/reduction-scenario-s3",
+      "designHash": "ad6692869d087f4a57b985e8c8ae84bff09b339f15b1aa8391dadb2f92eb6354"
+    },
+    {
+      "screenKey": "REDUCTION_SCENARIO|REDUCTION_SCENARIO_S4|ADMIN|/admin/generated/reduction-scenario/reduction-scenario-s4",
+      "designHash": "77f185ca339108bde76c6f753dcf3cfef403e862ffa8244f1cfda9871f398365"
+    },
+    {
+      "screenKey": "REDUCTION_SCENARIO|REDUCTION_SCENARIO_S4|USER|/generated/reduction-scenario/reduction-scenario-s4",
+      "designHash": "23cb79db83ce70260d7f51b2279eaf20c95991abc25b75c3dce429dcd83ab7bf"
+    }
+  ],
+  "manifestHash": "8eb1ed01b37bcb29876df5174df9e024ef4154cc77f7c78a76991fde3ce6f604"
+}
