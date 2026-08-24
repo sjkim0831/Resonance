@@ -411,7 +411,8 @@ compile_canonical_generated_endpoint() {
     return
   fi
   CANONICAL_ENDPOINT_SOURCE_DIRS="$joined_sources" \
-    bash "$worktree/gradlew" :modules:resonance-common:carbonet-common-core:compileJava \
+    bash "$worktree/gradlew" --project-dir "$worktree" \
+      :modules:resonance-common:carbonet-common-core:compileJava \
       --no-daemon --console=plain --no-build-cache --rerun-tasks
 }
 
