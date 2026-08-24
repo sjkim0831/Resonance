@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "REDUCTION_ROADMAP",
+      "stepCode": "REDUCTION_ROADMAP_S1",
+      "package": "REDUCTION_ROADMAP__REDUCTION_ROADMAP_S1.json",
+      "packageHash": "ff155902bef2347aeaba50972beff22cb0b2e94d06d0a16165cbe41718bb497d",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_ROADMAP",
+      "stepCode": "REDUCTION_ROADMAP_S2",
+      "package": "REDUCTION_ROADMAP__REDUCTION_ROADMAP_S2.json",
+      "packageHash": "56311713a0d065fccebfe938dd816257c94bf988611e7701c1872887f0855f20",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_ROADMAP",
+      "stepCode": "REDUCTION_ROADMAP_S3",
+      "package": "REDUCTION_ROADMAP__REDUCTION_ROADMAP_S3.json",
+      "packageHash": "91f6f3e46562696029babff4ddb825a3824e5723683dfb4e370ac582f3db239f",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_ROADMAP",
+      "stepCode": "REDUCTION_ROADMAP_S4",
+      "package": "REDUCTION_ROADMAP__REDUCTION_ROADMAP_S4.json",
+      "packageHash": "bcbae422a827355f4516a9090475bb06b99623bf09ffa2cb35d0d84fbc99f6f4",
+      "pages": 2
+    }
+  ],
+  "canonicalCatalogHash": "a13c162602b78d7ccba7260f2d1ff41b558559d58ff6e3a5f8293042816ffb13",
+  "canonicalScreens": [
+    {
+      "screenKey": "REDUCTION_ROADMAP|REDUCTION_ROADMAP_S1|ADMIN|/admin/generated/reduction-roadmap/reduction-roadmap-s1",
+      "designHash": "fc80525d8428c5a1f81f560e62aadf6fd8a69388a6a94d153e9d76bfcba82ac3"
+    },
+    {
+      "screenKey": "REDUCTION_ROADMAP|REDUCTION_ROADMAP_S1|USER|/generated/reduction-roadmap/reduction-roadmap-s1",
+      "designHash": "f5be1ce8a633a9a749bf4c62823f8ddf7ead8210ccdab7ca626fc109b6f36f25"
+    },
+    {
+      "screenKey": "REDUCTION_ROADMAP|REDUCTION_ROADMAP_S2|ADMIN|/admin/generated/reduction-roadmap/reduction-roadmap-s2",
+      "designHash": "d13b2b7c0b1968d3f09214fd608dbf653cac2ecb8c8613d420cfc6663e60ec33"
+    },
+    {
+      "screenKey": "REDUCTION_ROADMAP|REDUCTION_ROADMAP_S2|USER|/generated/reduction-roadmap/reduction-roadmap-s2",
+      "designHash": "57f0d2c887575291290be184d576d395fe245e31ef291317aad52f9595160260"
+    },
+    {
+      "screenKey": "REDUCTION_ROADMAP|REDUCTION_ROADMAP_S3|ADMIN|/admin/generated/reduction-roadmap/reduction-roadmap-s3",
+      "designHash": "ac468c9143dfefa3bc64748f4c8076866a915e8b3ccc8b9a1589b904ad2e8949"
+    },
+    {
+      "screenKey": "REDUCTION_ROADMAP|REDUCTION_ROADMAP_S3|USER|/generated/reduction-roadmap/reduction-roadmap-s3",
+      "designHash": "a71ef7ae6fa5e573a2e736fae8dc91e536daccdfeb415b07254779e3cb505e68"
+    },
+    {
+      "screenKey": "REDUCTION_ROADMAP|REDUCTION_ROADMAP_S4|ADMIN|/admin/generated/reduction-roadmap/reduction-roadmap-s4",
+      "designHash": "243c3b1d293fe011eb573d8ae496581ee49123d413606abbf05da3f11bdcc5fb"
+    },
+    {
+      "screenKey": "REDUCTION_ROADMAP|REDUCTION_ROADMAP_S4|USER|/generated/reduction-roadmap/reduction-roadmap-s4",
+      "designHash": "07e86f4e31be051a4d6e0203ac820a8ef953ef6aac3391abc2a327dd4a1e4ca7"
+    }
+  ],
+  "manifestHash": "224da5c1d98ce2fe6b560ab2695d9126e9c4fb658edfdfd71f9e2378cb982bed"
+}
