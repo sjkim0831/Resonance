@@ -337,6 +337,22 @@ END $$;
 -- catalog synchronization. Validate it before COMMIT so deployment never
 -- needs a second leader discovery/session and a failed invariant rolls back
 -- the catalog mutation rather than observing it after the fact.
+UPDATE framework_unified_asset asset
+SET active_yn='N',updated_at=current_timestamp
+WHERE asset.active_yn='Y'
+  AND EXISTS (
+    SELECT 1 FROM framework_asset_canonical_map map
+    WHERE map.duplicate_asset_id=asset.asset_id
+  );
+
+UPDATE framework_unified_asset_relation relation
+SET active_yn='N',updated_at=current_timestamp
+WHERE relation.active_yn='Y'
+  AND (EXISTS (SELECT 1 FROM framework_unified_asset asset
+               WHERE asset.asset_id=relation.source_asset_id AND asset.active_yn='N')
+    OR EXISTS (SELECT 1 FROM framework_unified_asset asset
+               WHERE asset.asset_id=relation.target_asset_id AND asset.active_yn='N'));
+
 DO $$
 DECLARE
   active_duplicate_count integer;
