@@ -14,7 +14,7 @@ grep -Fq 'CARBONET_FRONTEND_BASE_URL' "$SCRIPT"
 grep -Fq 'reduction-execution-latest.png' "$SCRIPT"
 grep -Fq 'fakeMetricCount: 0' "$SCRIPT"
 grep -Fq 'sliderCount !== 4' "$SCRIPT"
-grep -Fq '"/signin/actionLogin"' "$VITE_CONFIG"
+[[ "$(grep -Fc '"/signin/actionLogin"' "$VITE_CONFIG")" -eq 1 ]]
 grep -Fq '"/signin/actionLogout"' "$VITE_CONFIG"
 grep -Fq '"/signin/refreshSession"' "$VITE_CONFIG"
 grep -Fq '!bg-slate-900 !border-slate-800 !text-white' "$PAGE"

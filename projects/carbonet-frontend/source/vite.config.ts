@@ -96,14 +96,6 @@ export default defineConfig({
         target: "http://localhost:18000",
         changeOrigin: true
       },
-      "/signin/actionLogin": {
-        target: "http://localhost:18000",
-        changeOrigin: true
-      },
-      "/en/signin/actionLogin": {
-        target: "http://localhost:18000",
-        changeOrigin: true
-      },
       "/signin/actionLogout": {
         target: "http://localhost:18000",
         changeOrigin: true
