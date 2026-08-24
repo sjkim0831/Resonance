@@ -26,6 +26,12 @@ CANONICAL_PUBLICATION_DB_READ_FD=""
 CANONICAL_PUBLICATION_DB_WRITE_FD=""
 CANONICAL_PUBLICATION_PROCESS_CODE=""
 CANONICAL_PUBLICATION_HOST_LOCK_HELD=0
+AI_STAGED_PUBLICATION_BRANCH="${AI_STAGED_PUBLICATION_BRANCH:-}"
+if [[ -n "$AI_STAGED_PUBLICATION_BRANCH" \
+    && ! "$AI_STAGED_PUBLICATION_BRANCH" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]{0,120}$ ]]; then
+  echo "AI_STAGED_PUBLICATION_BRANCH is invalid" >&2
+  exit 2
+fi
 # The two-int advisory namespace keeps the fixed MAIN publication lock separate
 # from the bigint process locks. 0x43414e4f / 0x4d41494e spells CANO / MAIN.
 readonly CANONICAL_MAIN_PUBLICATION_LOCK_CLASS_ID=1128353359
@@ -1350,10 +1356,11 @@ trap 'fail_job "worker interrupted by signal"' INT TERM
 event "CLAIMED" "PLANNED" "RUNNING" "{\"attempt\":${ATTEMPT}}"
 exec 5>"${AI_GIT_FETCH_LOCK_FILE:-/tmp/resonance-ai-git-fetch.lock}"
 flock 5
-git -C "$ROOT_DIR" fetch origin main >>"$LOG_FILE" 2>&1
+SOURCE_BRANCH="${AI_STAGED_PUBLICATION_BRANCH:-main}"
+git -C "$ROOT_DIR" fetch origin "$SOURCE_BRANCH" >>"$LOG_FILE" 2>&1
 flock -u 5
 exec 5>&-
-BASE_COMMIT="$(git -C "$ROOT_DIR" rev-parse origin/main)"
+BASE_COMMIT="$(git -C "$ROOT_DIR" rev-parse "origin/$SOURCE_BRANCH")"
 git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
 git -C "$ROOT_DIR" worktree add -B "$BRANCH" "$WT" "$BASE_COMMIT" >>"$LOG_FILE" 2>&1
 
@@ -1954,6 +1961,37 @@ gate_result "DIFF_CHECK" "PASSED" "git diff --check"
 git -C "$WT" -c user.name='Resonance AI Worker' -c user.email='ai-worker@resonance.local' commit -m "auto: ${PROCESS_CODE} ${JOB_TYPE} job ${JOB_ID}" >>"$LOG_FILE" 2>&1
 if [[ "$CANONICAL_PUBLICATION_ACTIVE" = 1 ]]; then
   revalidate_canonical_commit_after_rebase HEAD
+fi
+
+# Staged publication accumulates independently verified process packages on a
+# non-main branch.  It deliberately stops before the MAIN advisory lock,
+# runtime deployment, and terminal VERIFIED write.  Promotion later retries
+# these BLOCKED jobs against the one deployed aggregate commit.
+if [[ -n "$AI_STAGED_PUBLICATION_BRANCH" ]]; then
+  exec 8>"${AI_STAGED_PUBLISH_LOCK_FILE:-/tmp/resonance-ai-staged-publish.lock}"
+  flock 8
+  git -C "$WT" fetch origin "$AI_STAGED_PUBLICATION_BRANCH" >>"$LOG_FILE" 2>&1
+  if [[ "$(git -C "$WT" rev-parse "origin/$AI_STAGED_PUBLICATION_BRANCH")" != "$BASE_COMMIT" ]]; then
+    git -C "$WT" rebase "origin/$AI_STAGED_PUBLICATION_BRANCH" >>"$LOG_FILE" 2>&1 \
+      || fail_job "staged publication rebase conflict"
+    if [[ "$DETERMINISTIC_HANDLED" = 1 && "$JOB_TYPE" =~ ^FULL_STACK(_GENERATION)?$ \
+        && -f "$CANONICAL_ENDPOINT_MANIFEST" ]]; then
+      revalidate_canonical_commit_after_rebase HEAD
+    fi
+  fi
+  RESULT_COMMIT="$(git -C "$WT" rev-parse HEAD)"
+  git -C "$WT" push origin "HEAD:$AI_STAGED_PUBLICATION_BRANCH" >>"$LOG_FILE" 2>&1 \
+    || fail_job "staged branch push rejected"
+  EVIDENCE="git:${RESULT_COMMIT};branch:${AI_STAGED_PUBLICATION_BRANCH};log:${LOG_FILE}"
+  psqlq -c "update framework_development_job set job_status='BLOCKED',quality_status='PENDING',result_json=\$json\${\"commit\":\"${RESULT_COMMIT}\",\"branch\":\"${AI_STAGED_PUBLICATION_BRANCH}\",\"status\":\"STAGED_AWAITING_PROMOTION\"}\$json\$,evidence_ref='${EVIDENCE}',rollback_ref='${BASE_COMMIT}',last_error='STAGED_AWAITING_PROMOTION',worker_id=null,lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=${JOB_ID} and lease_token='${LEASE_TOKEN}'; update framework_process_artifact set delivery_status='GENERATED',evidence_ref='${EVIDENCE}',updated_at=current_timestamp where process_code='${PROCESS_CODE}' and step_code='${STEP_CODE}' and contract_ref='AUTO:${JOB_TYPE}';" >/dev/null
+  event "STAGED_AWAITING_PROMOTION" "RUNNING" "BLOCKED" \
+    "{\"commit\":\"${RESULT_COMMIT}\",\"branch\":\"${AI_STAGED_PUBLICATION_BRANCH}\"}"
+  flock -u 8
+  exec 8>&-
+  git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
+  printf 'STAGED job=%s commit=%s branch=%s deployment=0\n' \
+    "$JOB_ID" "$RESULT_COMMIT" "$AI_STAGED_PUBLICATION_BRANCH"
+  exit 0
 fi
 
 # Parallel workers develop in isolated worktrees, then serialize only the short

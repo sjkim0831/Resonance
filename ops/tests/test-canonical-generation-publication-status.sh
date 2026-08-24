@@ -176,6 +176,7 @@ endpoint_manifest["artifactHash"] = hashlib.sha256(stable(endpoint_manifest["art
 endpoint_manifest["bundleHash"] = hashlib.sha256(stable(endpoint_manifest).encode()).hexdigest()
 release = {
     "schema": "carbonet.canonical-full-stack-release/v1",
+    "activationPolicy": "SOURCE_IMMEDIATE_V1",
     "lanes": ["FRONTEND", "API", "DATABASE", "HELP", "CARDS"],
     "designCatalogHash": "b" * 64,
     "endpointCatalogHash": "c" * 64,
@@ -615,6 +616,7 @@ manifest["artifactHash"]=digest(stable(artifacts))
 manifest["bundleHash"]=digest(stable(manifest))
 release={
     "schema":"carbonet.canonical-full-stack-release/v1",
+    "activationPolicy":"SOURCE_IMMEDIATE_V1",
     "lanes":["FRONTEND","API","DATABASE","HELP","CARDS"],
     "designCatalogHash":catalog_hash,"endpointCatalogHash":endpoint_catalog_hash,
     "designHashes":[design_hash],"packageManifestHash":package_index["manifestHash"],
