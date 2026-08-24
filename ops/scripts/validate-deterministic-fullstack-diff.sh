@@ -536,7 +536,7 @@ def validate_endpoint_manifest(reader: CurrentReader | GitReader, state: str):
 
 def validate_release(value: Any, runtime: dict[str, Any] | None, preview: dict[str, Any] | None,
                      endpoint: dict[str, Any], state: str) -> None:
-    keys = {"schema", "lanes", "designCatalogHash", "endpointCatalogHash", "designHashes",
+    keys = {"schema", "activationPolicy", "lanes", "designCatalogHash", "endpointCatalogHash", "designHashes",
             "packageManifestHash", "endpointBundleHash", "releaseHash"}
     composite = any(key in value for key in (
         "compositeAuthoritySetHash", "compositeArtifactManifestHash")) if isinstance(value, dict) else False
@@ -545,6 +545,8 @@ def validate_release(value: Any, runtime: dict[str, Any] | None, preview: dict[s
     release = exact_keys(value, keys, f"{state} full-stack release")
     if release["schema"] != "carbonet.canonical-full-stack-release/v1":
         raise ValueError(f"invalid {state} full-stack release schema")
+    if release["activationPolicy"] != "SOURCE_IMMEDIATE_V1":
+        raise ValueError(f"invalid {state} full-stack release activation policy")
     expected_lanes = ["FRONTEND", "API", "DATABASE", "HELP", "CARDS"]
     if composite:
         expected_lanes.append("COMPOSITE_EXECUTABLE_DESIGN")

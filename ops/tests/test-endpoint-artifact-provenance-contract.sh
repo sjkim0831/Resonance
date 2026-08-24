@@ -26,5 +26,7 @@ mutant = validator.replace('"SuccessResponse"', '"Response"', 1)
 match = re.search(r'for suffix in \(("Controller"[^\n]+)\)', mutant)
 if set(re.findall(r'"([A-Za-z]+)"', match.group(1))) == emitted:
     raise AssertionError("legacy generic Response mutant survived")
-print("ENDPOINT_ARTIFACT_PROVENANCE_PASS artifacts=5 mutants=1")
+if '"activationPolicy"' not in validator or 'SOURCE_IMMEDIATE_V1' not in validator:
+    raise AssertionError("full-stack release activation policy is not validated")
+print("ENDPOINT_ARTIFACT_PROVENANCE_PASS artifacts=5 activationPolicy=1 mutants=1")
 PY
