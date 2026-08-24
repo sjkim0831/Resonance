@@ -507,7 +507,10 @@ def validate_endpoint_manifest(reader: CurrentReader | GitReader, state: str):
             raise ValueError(f"duplicate endpoint operation binding: {operation_key}")
         operation_keys.add(signatures[0]); routes.add(signatures[1]); handlers.add(signatures[2])
         base = f"src/main/java/{handler_class.replace('.', '/')[:-len('Controller')]}"
-        expected_operation_artifacts = {f"{base}{suffix}.java" for suffix in ("Controller", "Request", "Response")}
+        expected_operation_artifacts = {
+            f"{base}{suffix}.java"
+            for suffix in ("Controller", "Request", "SuccessResponse", "RecoveryResponse", "ErrorResponse")
+        }
         for artifact in expected_operation_artifacts:
             provenance = artifact_by_path.get(artifact)
             if provenance is None or provenance["designHash"] != design_hash or provenance["endpointHash"] != endpoint_hash:
