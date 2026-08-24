@@ -298,11 +298,10 @@ assert "systemd-run" in launcher and "--collect" in launcher
 assert "--wait" not in launcher
 assert launcher.index("CARBONET_COMPOSITE_EXPECTED_RUNTIME_COMMIT") < launcher.index("campaign;")
 assert "CARBONET_COMPOSITE_CAMPAIGN_TIMEOUT_SECONDS=720" in launcher
-assert "--property=Restart=on-failure" in launcher
-assert "--property=RestartSec=15s" in launcher
-assert "--property=StartLimitIntervalSec=1800" in launcher
-burst=re.search(r'--property=StartLimitBurst=(\d+)',launcher)
-assert burst and int(burst.group(1))>=3
+assert "--property=Restart=no" in launcher
+assert "--property=Restart=on-failure" not in launcher
+assert "--property=RestartSec=" not in launcher
+assert "--property=StartLimitBurst=" not in launcher
 reconcile=source.split("reconcile_composite_autocompletion_postdeploy(){",1)[1]
 reconcile=reconcile.split("\n}",1)[0]
 assert "gate=PREPARED prepared=true" in reconcile
@@ -468,7 +467,8 @@ unset -f bash sudo bulk_claim_count finalize_postdeploy_candidate_release \
   finalize_postdeploy_candidate_release_with_composite_gate_cleanup
 
 # The exact commit+candidate transient unit is delivered once while active and
-# carries a restart window long enough for delayed account provisioning.
+# never restarts after an unavailable optional inspection. A later deployment
+# may enqueue a new commit-bound unit, but one release cannot create a storm.
 eval "$(sed -n '/^launch_composite_autocompletion_postdeploy_campaign() {/,/^}/p' \
   "$ROOT/ops/scripts/auto-deploy-main.sh")"
 launcher_active=false; launcher_calls=()
@@ -478,9 +478,10 @@ sudo(){ launcher_calls+=("$*"); launcher_active=true; return 0; }
 launch_composite_autocompletion_postdeploy_campaign
 launch_composite_autocompletion_postdeploy_campaign
 [[ "${#launcher_calls[@]}" == 1 \
-   && "${launcher_calls[0]}" == *'--property=Restart=on-failure'* \
-   && "${launcher_calls[0]}" == *'--property=RestartSec=15s'* \
-   && "${launcher_calls[0]}" == *'--property=StartLimitBurst=120'* ]] || {
+   && "${launcher_calls[0]}" == *'--property=Restart=no'* \
+   && "${launcher_calls[0]}" != *'--property=Restart=on-failure'* \
+   && "${launcher_calls[0]}" != *'--property=RestartSec='* \
+   && "${launcher_calls[0]}" != *'--property=StartLimitBurst='* ]] || {
   echo "campaign duplicate/retry contract invalid: ${launcher_calls[*]}" >&2; exit 1
 }
 unset -f sudo systemctl launch_composite_autocompletion_postdeploy_campaign

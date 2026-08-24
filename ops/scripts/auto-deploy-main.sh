@@ -8679,8 +8679,7 @@ launch_composite_autocompletion_postdeploy_campaign() {
   fi
   if ! sudo -n systemd-run --quiet --collect --unit "$unit_name" \
       --uid=sjkim --gid=sjkim --property=Type=oneshot --property=TimeoutStartSec=930 \
-      --property=Restart=on-failure --property=RestartSec=15s \
-      --property=StartLimitIntervalSec=1800 --property=StartLimitBurst=120 \
+      --property=Restart=no \
       /usr/bin/env RESONANCE_ROOT="$ROOT_DIR" \
         CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" \
         CARBONET_COMPOSITE_EXPECTED_RUNTIME_COMMIT="$target_commit" \
@@ -8694,7 +8693,7 @@ launch_composite_autocompletion_postdeploy_campaign() {
     echo "[auto-deploy] WARN asynchronous composite campaign launch failed: $unit_name" >&2
     return 0
   fi
-  echo "[auto-deploy] asynchronous composite campaign queued: $unit_name timeout=720s"
+  echo "[auto-deploy] asynchronous composite campaign queued once: $unit_name timeout=720s"
 }
 
 finalize_postdeploy_candidate_release_with_composite_gate_cleanup() {
