@@ -1,0 +1,4 @@
+package egovframework.com.generated.canonical;
+
+@javax.annotation.processing.Generated(value="canonical-design", comments="designHash=cd3744476ed500779ba7b5d488ed40efbab1d0dd54cdd0f0f4387dccf14ff799;endpointHash=9480162d0886d2e5b7cdd0ff3d8d855ccf951e44013355889c5c942ef77bba59")
+public record Op3e54778277f31ba9a04b2efc783b87567161aa63ErrorResponse(String code, String message, Boolean success) {}

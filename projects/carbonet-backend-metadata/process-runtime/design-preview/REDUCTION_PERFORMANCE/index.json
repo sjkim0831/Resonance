@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "REDUCTION_PERFORMANCE",
+      "stepCode": "REDUCTION_PERFORMANCE_S1",
+      "package": "REDUCTION_PERFORMANCE__REDUCTION_PERFORMANCE_S1.json",
+      "packageHash": "2650414c745de8f0369e4cf0241cb9bc84f8d4ab36a9576c571cb53a639e8399",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_PERFORMANCE",
+      "stepCode": "REDUCTION_PERFORMANCE_S2",
+      "package": "REDUCTION_PERFORMANCE__REDUCTION_PERFORMANCE_S2.json",
+      "packageHash": "a0bed4340d91cc245743a2e12234a8d2ac4e32c521def0f1bd1e00f2e509ad38",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_PERFORMANCE",
+      "stepCode": "REDUCTION_PERFORMANCE_S3",
+      "package": "REDUCTION_PERFORMANCE__REDUCTION_PERFORMANCE_S3.json",
+      "packageHash": "b393afdd7cc1a7393b17e432e7ded78df59d88a79d2c3f4ce60dfa22f4205040",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_PERFORMANCE",
+      "stepCode": "REDUCTION_PERFORMANCE_S4",
+      "package": "REDUCTION_PERFORMANCE__REDUCTION_PERFORMANCE_S4.json",
+      "packageHash": "67a2b420eeb87b2de3dcbccf317899d108aa14e1b78e9823235be4a78895b43e",
+      "pages": 2
+    }
+  ],
+  "canonicalCatalogHash": "72bac94c2751828c80a27ca49ab13efdbe6f401ac1f94dc0829ee76638064d76",
+  "canonicalScreens": [
+    {
+      "screenKey": "REDUCTION_PERFORMANCE|REDUCTION_PERFORMANCE_S1|ADMIN|/admin/generated/reduction-performance/reduction-performance-s1",
+      "designHash": "49037178727e7dd5b891f25d9e6cabeb17ad831567be933715a6ecd00de67eb1"
+    },
+    {
+      "screenKey": "REDUCTION_PERFORMANCE|REDUCTION_PERFORMANCE_S1|USER|/generated/reduction-performance/reduction-performance-s1",
+      "designHash": "f96c4d8e2fc2504e016e6e837fc11e177a025138aec1b08b538b11efa32d1beb"
+    },
+    {
+      "screenKey": "REDUCTION_PERFORMANCE|REDUCTION_PERFORMANCE_S2|ADMIN|/admin/generated/reduction-performance/reduction-performance-s2",
+      "designHash": "ba54bf32bb660b1249a4df5d4ff23c7cf5d9e05b0077de647cbaccb834289247"
+    },
+    {
+      "screenKey": "REDUCTION_PERFORMANCE|REDUCTION_PERFORMANCE_S2|USER|/generated/reduction-performance/reduction-performance-s2",
+      "designHash": "a2a178307a02a0433de342913f9c58103cc12d224ac84a37dc429460b72efcdf"
+    },
+    {
+      "screenKey": "REDUCTION_PERFORMANCE|REDUCTION_PERFORMANCE_S3|ADMIN|/admin/generated/reduction-performance/reduction-performance-s3",
+      "designHash": "56a70c3613b477b95b7bfa03460fe4a6e8f88725b1c5c2bc31b404446d76ff37"
+    },
+    {
+      "screenKey": "REDUCTION_PERFORMANCE|REDUCTION_PERFORMANCE_S3|USER|/generated/reduction-performance/reduction-performance-s3",
+      "designHash": "0be074368fe0ed859c0343474d39c8152b9d35d6630806a91a5fe472d9c1a739"
+    },
+    {
+      "screenKey": "REDUCTION_PERFORMANCE|REDUCTION_PERFORMANCE_S4|ADMIN|/admin/generated/reduction-performance/reduction-performance-s4",
+      "designHash": "cd3744476ed500779ba7b5d488ed40efbab1d0dd54cdd0f0f4387dccf14ff799"
+    },
+    {
+      "screenKey": "REDUCTION_PERFORMANCE|REDUCTION_PERFORMANCE_S4|USER|/generated/reduction-performance/reduction-performance-s4",
+      "designHash": "24306529360735c8e3ef8dfe7e1c516578c5b22633c2150e3471cd5ef4c6febf"
+    }
+  ],
+  "manifestHash": "e317db442f64a1b33dd7b8118570d114013a4cba9afe1d97d70037e6615ef7a2"
+}
