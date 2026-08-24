@@ -126,10 +126,16 @@ function loadShellModule(candidateSource, initialEnglish = false) {
   };
   const content = {
     closeAllMenu: "Close",
+    footerAddress: "Address",
+    footerDesc: "Service",
+    footerLinks: [],
+    footerOrg: "Organization",
+    lastModified: "Last modified",
     login: "Login",
     logout: "Logout",
     openAllMenu: "Open",
     signup: "Sign up",
+    waAlt: "Web accessibility",
   };
   const require = (specifier) => {
     if (specifier === "react") return react;
@@ -139,6 +145,9 @@ function loadShellModule(candidateSource, initialEnglish = false) {
       return { useFrontendSession: () => ({ logout: async () => undefined }) };
     }
     if (specifier === "../../lib/api/appBootstrap") return { fetchHomePayload };
+    if (specifier === "../../components/user-shell/CommonUserFooter") {
+      return { CommonUserFooter: () => null };
+    }
     if (specifier === "../../lib/navigation/runtime") {
       return {
         buildLocalizedPath: (ko, en) => english ? en : ko,
@@ -156,7 +165,7 @@ function loadShellModule(candidateSource, initialEnglish = false) {
       };
     }
     if (specifier === "./homeEntryContent") {
-      return { LOCALIZED_CONTENT: { en: content, ko: content } };
+      return { HOME_ENTRY_ASSETS: { FOOTER_SYMBOL: "", WA_MARK: "" }, LOCALIZED_CONTENT: { en: content, ko: content } };
     }
     throw new Error(`Unexpected GlobalUserGnbShell dependency: ${specifier}`);
   };
