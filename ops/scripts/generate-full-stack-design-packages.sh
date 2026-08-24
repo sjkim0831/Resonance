@@ -195,7 +195,7 @@ validate_endpoint_layout
 if [[ -z "$ENDPOINT_CATALOG" && "$ENDPOINT_AUTODETECT" == "true" ]]; then
   endpoint_compiler_available="$(kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- \
     psql -h 127.0.0.1 -U "$DB_USER" -d "$DATABASE" -X -Atqc \
-    "select (case when '$PROCESS_CODE'='' then to_regprocedure('public.framework_canonical_endpoint_catalog(integer)') is not null else to_regprocedure('public.framework_source_canonical_design_catalog(integer,character varying)') is not null and to_regprocedure('public.framework_source_canonical_endpoint_readiness(integer,character varying)') is not null and to_regprocedure('public.framework_source_canonical_endpoint_catalog(integer,character varying)') is not null end)::text")"
+    "select (case when '$PROCESS_CODE'='' then to_regprocedure('public.framework_canonical_endpoint_catalog(integer)') is not null else to_regprocedure('public.framework_process_generation_bundle(text)') is not null end)::text")"
   if [[ "$endpoint_compiler_available" == "true" ]]; then
     # The authoritative endpoint bundle below performs the only canonical
     # readiness/catalog call. Use a marker here so explicit and autodetect paths
@@ -225,9 +225,15 @@ if [[ -n "$ENDPOINT_CATALOG" ]]; then
   AUTHORITATIVE_TMP="$(mktemp)"
   REBOUND_TMP="$(mktemp)"
   DESIGN_CATALOG_TMP="$(mktemp)"
-  kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- \
-    psql -h 127.0.0.1 -U "$DB_USER" -d "$DATABASE" -X -q -v ON_ERROR_STOP=1 -At \
-    -c "with source_snapshot as materialized (select framework_process_generation_snapshot($selector) runtime,$(design_catalog_expression) design,$(endpoint_readiness_expression) endpoint_readiness), complete_snapshot as materialized (select runtime,design,endpoint_readiness,case when endpoint_readiness->>'status'='COMPLETE' then $(endpoint_catalog_expression) else null end endpoint from source_snapshot) select jsonb_build_object('runtime',runtime,'design',design,'endpointReadiness',endpoint_readiness,'endpoint',endpoint) from complete_snapshot;" >"$DB_BUNDLE_TMP"
+  if [[ -n "$PROCESS_CODE" ]]; then
+    kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- \
+      psql -h 127.0.0.1 -U "$DB_USER" -d "$DATABASE" -X -q -v ON_ERROR_STOP=1 -At \
+      -c "select framework_process_generation_bundle('$PROCESS_CODE');" >"$DB_BUNDLE_TMP"
+  else
+    kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- \
+      psql -h 127.0.0.1 -U "$DB_USER" -d "$DATABASE" -X -q -v ON_ERROR_STOP=1 -At \
+      -c "with source_snapshot as materialized (select framework_process_generation_snapshot($selector) runtime,$(design_catalog_expression) design,$(endpoint_readiness_expression) endpoint_readiness), complete_snapshot as materialized (select runtime,design,endpoint_readiness,case when endpoint_readiness->>'status'='COMPLETE' then $(endpoint_catalog_expression) else null end endpoint from source_snapshot) select jsonb_build_object('runtime',runtime,'design',design,'endpointReadiness',endpoint_readiness,'endpoint',endpoint) from complete_snapshot;" >"$DB_BUNDLE_TMP"
+  fi
   endpoint_readiness="$(jq -e '.endpointReadiness' "$DB_BUNDLE_TMP")"
   if [[ "$(jq -er '.status' <<<"$endpoint_readiness")" != "COMPLETE" ]]; then
     if [[ "$EXTERNAL_ENDPOINT_CATALOG" == "__AUTODETECT__" ]]; then
