@@ -410,10 +410,13 @@ compile_canonical_generated_endpoint() {
       "$CANONICAL_ENDPOINT_COMPILE_COMMAND" "$worktree" "$process_code"
     return
   fi
-  CANONICAL_ENDPOINT_SOURCE_DIRS="$joined_sources" \
-    bash "$worktree/gradlew" --project-dir "$worktree" \
-      :modules:resonance-common:carbonet-common-core:compileJava \
-      --no-daemon --console=plain --no-build-cache --rerun-tasks
+  (
+    cd "$worktree"
+    CANONICAL_ENDPOINT_SOURCE_DIRS="$joined_sources" \
+      bash ./gradlew --project-dir "$worktree" \
+        :modules:resonance-common:carbonet-common-core:compileJava \
+        --no-daemon --console=plain --no-build-cache --rerun-tasks
+  )
 }
 
 canonical_generated_worktree_fingerprint() {
