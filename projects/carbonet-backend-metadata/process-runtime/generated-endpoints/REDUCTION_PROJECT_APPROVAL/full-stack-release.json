@@ -1,0 +1,26 @@
+{
+  "schema": "carbonet.canonical-full-stack-release/v1",
+  "activationPolicy": "SOURCE_IMMEDIATE_V1",
+  "lanes": [
+    "FRONTEND",
+    "API",
+    "DATABASE",
+    "HELP",
+    "CARDS"
+  ],
+  "designCatalogHash": "deccd4842934355546f561c1b6e220a72ff29c73789ed94b7ff5ffa07a5e3df1",
+  "endpointCatalogHash": "029a822428ee5d00e8ebbb0cac28e22a8cbd6fbec236de315d299fca5e493053",
+  "designHashes": [
+    "02db89e77b56f1d23b488099c39c2b7c2ae2607a10072904c09b1e3195eb24e6",
+    "2aa46168332dcd1a505986219d3d8962b241a17047db62855946f739aa64cdc6",
+    "3252bf123bf5e0e801c9dfe1d0e4083aef3230a9b666e337afd1d7e2939b93c0",
+    "4311e8da567b5a6cab467102247fee94f38148678ab4aeceb39dfd32c7f1f107",
+    "5946bfc34576d54eb56c271c8b35acf8c7d1f29b0f8ec39f50381d05fffb7325",
+    "a4ef1209fdf92c91e2f7eac885d0e5bf2e0511ab5bbd7bdb80c224f5fd41d201",
+    "b60dfed40c0e5fe36ecde2e984c7bcadf2a33110f117e36576d951cdb7301462",
+    "f60c8fadee088ba35ee560b3134e013a8d6edbdebdad30cf6b30437f338956ca"
+  ],
+  "packageManifestHash": "3598589cd0475d5f5aad7085cc9ccc279334799213c8d3c0a6bd9b50d1938c17",
+  "endpointBundleHash": "bf06d0f9fd4db7acaca5a951ca21d1e26b00703579de98b29f66f8d2ea36862c",
+  "releaseHash": "284258a99b11aaa591c3fa97d1edd56af4ff35686f8daeed278c0e05b518c2fd"
+}

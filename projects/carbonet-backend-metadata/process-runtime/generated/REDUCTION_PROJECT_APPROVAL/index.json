@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "REDUCTION_PROJECT_APPROVAL",
+      "stepCode": "REDUCTION_PROJECT_APPROVAL_S1",
+      "package": "REDUCTION_PROJECT_APPROVAL__REDUCTION_PROJECT_APPROVAL_S1.json",
+      "packageHash": "92519dfd092e67508171c5592535dae2d4ff80e5ae46d1459b98c0d38cb05752",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_PROJECT_APPROVAL",
+      "stepCode": "REDUCTION_PROJECT_APPROVAL_S2",
+      "package": "REDUCTION_PROJECT_APPROVAL__REDUCTION_PROJECT_APPROVAL_S2.json",
+      "packageHash": "9e748ff70a794972cadf74a45008eb87818c58027ad194c62da7be73bdbf17a7",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_PROJECT_APPROVAL",
+      "stepCode": "REDUCTION_PROJECT_APPROVAL_S3",
+      "package": "REDUCTION_PROJECT_APPROVAL__REDUCTION_PROJECT_APPROVAL_S3.json",
+      "packageHash": "2baf32b951b962c07319a460ef59b733fd64ca43243116d211aed412c536a833",
+      "pages": 2
+    },
+    {
+      "processCode": "REDUCTION_PROJECT_APPROVAL",
+      "stepCode": "REDUCTION_PROJECT_APPROVAL_S4",
+      "package": "REDUCTION_PROJECT_APPROVAL__REDUCTION_PROJECT_APPROVAL_S4.json",
+      "packageHash": "1c7718a30336f012a34a51b0aa542105e9fde263f036dc89f37cda2d6d023a1f",
+      "pages": 2
+    }
+  ],
+  "canonicalCatalogHash": "deccd4842934355546f561c1b6e220a72ff29c73789ed94b7ff5ffa07a5e3df1",
+  "canonicalScreens": [
+    {
+      "screenKey": "REDUCTION_PROJECT_APPROVAL|REDUCTION_PROJECT_APPROVAL_S1|ADMIN|/admin/generated/reduction-project-approval/reduction-project-approval-s1",
+      "designHash": "5946bfc34576d54eb56c271c8b35acf8c7d1f29b0f8ec39f50381d05fffb7325"
+    },
+    {
+      "screenKey": "REDUCTION_PROJECT_APPROVAL|REDUCTION_PROJECT_APPROVAL_S1|USER|/generated/reduction-project-approval/reduction-project-approval-s1",
+      "designHash": "02db89e77b56f1d23b488099c39c2b7c2ae2607a10072904c09b1e3195eb24e6"
+    },
+    {
+      "screenKey": "REDUCTION_PROJECT_APPROVAL|REDUCTION_PROJECT_APPROVAL_S2|ADMIN|/admin/generated/reduction-project-approval/reduction-project-approval-s2",
+      "designHash": "b60dfed40c0e5fe36ecde2e984c7bcadf2a33110f117e36576d951cdb7301462"
+    },
+    {
+      "screenKey": "REDUCTION_PROJECT_APPROVAL|REDUCTION_PROJECT_APPROVAL_S2|USER|/generated/reduction-project-approval/reduction-project-approval-s2",
+      "designHash": "3252bf123bf5e0e801c9dfe1d0e4083aef3230a9b666e337afd1d7e2939b93c0"
+    },
+    {
+      "screenKey": "REDUCTION_PROJECT_APPROVAL|REDUCTION_PROJECT_APPROVAL_S3|ADMIN|/admin/generated/reduction-project-approval/reduction-project-approval-s3",
+      "designHash": "2aa46168332dcd1a505986219d3d8962b241a17047db62855946f739aa64cdc6"
+    },
+    {
+      "screenKey": "REDUCTION_PROJECT_APPROVAL|REDUCTION_PROJECT_APPROVAL_S3|USER|/generated/reduction-project-approval/reduction-project-approval-s3",
+      "designHash": "4311e8da567b5a6cab467102247fee94f38148678ab4aeceb39dfd32c7f1f107"
+    },
+    {
+      "screenKey": "REDUCTION_PROJECT_APPROVAL|REDUCTION_PROJECT_APPROVAL_S4|ADMIN|/admin/generated/reduction-project-approval/reduction-project-approval-s4",
+      "designHash": "f60c8fadee088ba35ee560b3134e013a8d6edbdebdad30cf6b30437f338956ca"
+    },
+    {
+      "screenKey": "REDUCTION_PROJECT_APPROVAL|REDUCTION_PROJECT_APPROVAL_S4|USER|/generated/reduction-project-approval/reduction-project-approval-s4",
+      "designHash": "a4ef1209fdf92c91e2f7eac885d0e5bf2e0511ab5bbd7bdb80c224f5fd41d201"
+    }
+  ],
+  "manifestHash": "3598589cd0475d5f5aad7085cc9ccc279334799213c8d3c0a6bd9b50d1938c17"
+}

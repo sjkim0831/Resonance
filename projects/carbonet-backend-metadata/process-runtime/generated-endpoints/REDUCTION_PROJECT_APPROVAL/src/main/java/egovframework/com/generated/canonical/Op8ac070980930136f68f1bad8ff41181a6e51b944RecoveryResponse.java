@@ -1,0 +1,4 @@
+package egovframework.com.generated.canonical;
+
+@javax.annotation.processing.Generated(value="canonical-design", comments="designHash=3252bf123bf5e0e801c9dfe1d0e4083aef3230a9b666e337afd1d7e2939b93c0;endpointHash=1096211560188ba464b4f8e28bd5a06a0203d0218abd1f441010a46aaae7e365")
+public record Op8ac070980930136f68f1bad8ff41181a6e51b944RecoveryResponse(java.math.BigDecimal actualReduction, java.math.BigDecimal baselineEmission, String baselineYear, java.math.BigDecimal capex, String decidedAt, String decisionCode, Long eventId, java.math.BigDecimal expectedReduction, Boolean idempotent, java.math.BigDecimal opex, String ownerActorCode, Boolean recovered, String reductionMethod, String rejectionReasonCode, String reviewComment, Boolean success, java.math.BigDecimal targetReduction, String targetYear, String toState) {}
