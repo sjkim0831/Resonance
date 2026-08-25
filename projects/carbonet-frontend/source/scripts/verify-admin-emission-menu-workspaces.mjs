@@ -29,7 +29,7 @@ assert.equal(new Set(processCodes).size, 40, "every menu must have a distinct pr
 assert.equal(menuCodes.filter((code) => code.startsWith("A103")).length, 21, "carbon menu count drift");
 assert.equal(menuCodes.filter((code) => code.startsWith("A104")).length, 19, "LCA menu count drift");
 
-for (const token of ["data-menu-code", "data-process-code", "data-card-kind", "data-work-input", "data-work-output", "data-work-action", "functionRoutes", "workspaceAction"]) {
+for (const token of ["data-work-input", "data-work-output", "data-work-action", "functionRoutes"]) {
   assert.ok(contract.includes(token), `missing machine-readable UI contract: ${token}`);
 }
 const lcaDetailCodes = [...contract.matchAll(/^\s{2}(LCA_[A-Z0-9_]+): lcaDetail\(/gm)].map((match) => match[1]);
@@ -41,10 +41,12 @@ for (const processCode of processCodes.filter((code) => code.startsWith("LCA_"))
 for (const token of ["data-lca-process-flow", "data-process-step", "data-field-key", "data-field-type", "data-actor-code", "data-actor-relay-count", "completionEvidence", "fieldSchema"]) {
   assert.ok(contract.includes(token), `missing detailed LCA runtime contract: ${token}`);
 }
-for (const card of ["help", "design", "qa", "guide"]) assert.ok(contract.includes(`\"${card}\"`), `missing floating card: ${card}`);
 for (const source of [project, survey]) {
   assert.ok(source.includes("currentAdminMenuCode("), "menuCode must select the rendered workspace");
-  assert.ok(source.includes("AdminMenuWorkspaceContractPanel"), "screen must render its design/QA/work-guide contract");
+  assert.ok(!source.includes("AdminMenuWorkspaceContractPanel"), "duplicate menu design/QA/work-guide panel must remain removed");
+}
+for (const token of ["AdminMenuWorkspaceContractPanel", "data-card-kind", "menu-workspace-"]) {
+  assert.ok(!contract.includes(token), `removed duplicate workspace panel returned: ${token}`);
 }
 assert.ok(survey.includes('workspace.surface === "SURVEY_DATA"'), "LCA specialized menus must not render the shared survey form");
 assert.ok(survey.includes("AdminMenuSpecializedWorkspace"), "LCA specialized workspace missing");
@@ -53,8 +55,7 @@ for (const token of ["data-business-key", "data-lca-save", "data-lca-record", "d
 }
 for (const route of ["/admin/emission/project-operations", "/admin/emission/validate", "/admin/emission/result_list", "/admin/emission/survey-report", "/admin/emission/survey-report-verify", "/admin/emission/evidence-management", "/admin/emission/data_history", "/admin/emission/lci-classification", "/admin/emission/ecoinvent", "/admin/emission/survey-admin-data"]) assert.ok(contract.includes(route), `missing real business route: ${route}`);
 for (const menuCode of menuCodes) assert.ok(smoke.includes(`\"${menuCode}\"`), `authenticated browser relay is missing menu: ${menuCode}`);
-for (const token of ["inspectAdminEmissionMenuModes", "adminEmissionMenuModeCount", "data-feature-index", "SURVEY_GRID", "allowedWorkspaceActionPaths"]) assert.ok(smoke.includes(token), `missing browser relay contract: ${token}`);
-assert.ok(smoke.includes('"/admin/emission/report-template"'), "report-template relay route is not browser-verified");
+for (const token of ["inspectAdminEmissionMenuModes", "adminEmissionMenuModeCount", "DUPLICATE_PANEL", "DUPLICATE_CARDS", "DUPLICATE_ACTIONS", "SURVEY_GRID"]) assert.ok(smoke.includes(token), `missing browser relay contract: ${token}`);
 for (const token of ["DRAFT", "VALIDATED", "SUBMITTED", "APPROVED", "REJECTED", "invalid LCA workflow transition", "framework_lca_workspace_event", "framework_account_actor_assignment", "segregation of duties", "validator cannot approve"]) {
   assert.ok(service.includes(token), `backend LCA state contract missing: ${token}`);
 }
@@ -65,4 +66,4 @@ for (const token of ["framework_lca_workspace_record", "framework_lca_workspace_
   assert.ok(migration.includes(token), `durable LCA database contract missing: ${token}`);
 }
 
-console.log(`ADMIN_EMISSION_MENU_WORKSPACE_PASS menus=${menuCodes.length} carbon=21 lca=19 lcaDetailed=19 processes=${new Set(processCodes).size} cards=4 specializedSplit=1 realRoutes=11 persistentInputs=1 stateMachine=5 browserRelay=40`);
+console.log(`ADMIN_EMISSION_MENU_WORKSPACE_PASS menus=${menuCodes.length} carbon=21 lca=19 lcaDetailed=19 processes=${new Set(processCodes).size} duplicatePanel=0 specializedSplit=1 realRoutes=11 persistentInputs=1 stateMachine=5 browserRelay=40`);

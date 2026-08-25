@@ -27,7 +27,7 @@ import type {
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { normalizeUnitValue, resolveUnitCategory } from "../emission-common/unitOptions";
 import { UnitCategorySelectPair } from "../emission-common/UnitCategorySelectPair";
-import { AdminMenuSpecializedWorkspace, AdminMenuWorkspaceContractPanel, currentAdminMenuCode, resolveAdminMenuWorkspace } from "../emission-common/adminMenuWorkspaceContracts";
+import { AdminMenuSpecializedWorkspace, currentAdminMenuCode, resolveAdminMenuWorkspace } from "../emission-common/adminMenuWorkspaceContracts";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { PageStatusNotice } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -2698,7 +2698,6 @@ export function EmissionSurveyAdminMigrationPage() {
       loadingLabel={en ? "Loading the emission survey workspace..." : "배출 설문 작업공간을 불러오는 중입니다."}
     >
       <AdminWorkspacePageFrame>
-        <AdminMenuWorkspaceContractPanel contract={workspace} />
         {pageState.loading && !page && !pageState.error ? (
           <PageStatusNotice tone="warning">기본 화면을 먼저 표시하고 있습니다. 설문 데이터는 로딩이 끝나는 대로 이어서 표시됩니다.</PageStatusNotice>
         ) : null}

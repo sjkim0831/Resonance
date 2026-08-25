@@ -150,32 +150,6 @@ export function resolveAdminMenuWorkspace(menuCode: string, fallback: string) {
   return ADMIN_EMISSION_MENU_WORKSPACES[menuCode] || ADMIN_EMISSION_MENU_WORKSPACES[fallback];
 }
 
-export function AdminMenuWorkspaceContractPanel({ contract }: { contract: AdminMenuWorkspaceContract }) {
-  const en = isEnglish();
-  const cards = [
-    [en ? "Help" : "도움말", en ? contract.objectiveEn : contract.objective, "help"],
-    [en ? "Screen design" : "화면 설계", contract.functions.join(" · "), "design"],
-    ["QA", `${contract.inputs.length} inputs → ${contract.outputs.length} outputs · actor=${contract.actor}`, "qa"],
-    [en ? "Work guide" : "업무 길잡이", `${contract.processCode} → ${contract.nextLabel}`, "guide"],
-  ];
-  return (
-    <section
-      className="rounded-2xl border border-blue-200 bg-gradient-to-br from-white to-blue-50 p-5 shadow-sm"
-      data-menu-code={contract.menuCode}
-      data-process-code={contract.processCode}
-      data-testid={`menu-workspace-${contract.menuCode}`}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><p className="text-xs font-black text-blue-700">{contract.menuCode} · {contract.processCode}</p><h2 className="mt-1 text-2xl font-black text-slate-950">{en ? contract.titleEn : contract.title}</h2><p className="mt-2 text-sm font-semibold text-slate-700">{en ? contract.objectiveEn : contract.objective}</p></div>
-        <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white">{contract.actor}</span>
-      </div>
-      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">{cards.map(([title, body, kind]) => <article className="rounded-xl border bg-white p-4" data-card-kind={kind} key={kind}><strong className="text-sm text-[#052b57]">{title}</strong><p className="mt-2 text-xs font-semibold leading-5 text-slate-600">{body}</p></article>)}</div>
-      <div className="mt-4 flex flex-wrap gap-2">{contract.functions.map((feature, index) => <a className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-black text-blue-800" data-feature-index={index + 1} href={`${buildLocalizedPath(contract.functionRoutes[index], `/en${contract.functionRoutes[index]}`)}?menuCode=${encodeURIComponent(contract.menuCode)}&workspaceAction=${index + 1}`} key={feature}>{feature}</a>)}</div>
-      <a className="mt-4 inline-flex rounded-lg bg-[#246beb] px-4 py-2 text-sm font-black text-white" href={buildLocalizedPath(contract.nextRoute, `/en${contract.nextRoute}`)}>{contract.nextLabel}</a>
-    </section>
-  );
-}
-
 export function AdminMenuSpecializedWorkspace({ contract }: { contract: AdminMenuWorkspaceContract }) {
   const [businessKey, setBusinessKey] = useState("");
   const [values, setValues] = useState<Record<string, unknown>>({});

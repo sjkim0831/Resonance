@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
-import { AdminMenuWorkspaceContractPanel, currentAdminMenuCode, resolveAdminMenuWorkspace } from "../emission-common/adminMenuWorkspaceContracts";
+import { currentAdminMenuCode, resolveAdminMenuWorkspace } from "../emission-common/adminMenuWorkspaceContracts";
 
 type Project = {
   id: string;
@@ -105,7 +105,6 @@ export function AdminEmissionProjectOperationsPage() {
       title={en ? workspace.titleEn : workspace.title}
     >
       <div className="space-y-5" data-testid="admin-emission-project-operations" data-active-menu-code={workspace.menuCode}>
-        <AdminMenuWorkspaceContractPanel contract={workspace} />
         <section className="rounded-2xl bg-gradient-to-r from-[#052b57] to-[#174ea6] p-6 text-white">
           <p className="text-sm font-bold text-blue-200">EMISSION PROJECT CONTROL</p>
           <h2 className="mt-1 text-2xl font-black">

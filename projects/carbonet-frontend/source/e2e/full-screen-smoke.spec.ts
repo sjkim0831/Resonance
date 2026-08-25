@@ -53,7 +53,6 @@ const routesById = new Map(manifest.routes.map((route) => [route.id, route]));
 const carbonMenuCodes = ["A1030102", "A1030103", "A1030104", "A1030105", "A1030106", "A1030110", "A1030201", "A1030202", "A1030203", "A1030204", "A1030205", "A1030301", "A1030302", "A1030303", "A1030304", "A1030305", "A10304", "A1030401", "A1030402", "A1030404", "A1030405"];
 const lcaMenuCodes = ["A104", "A10401", "A1040101", "A1040102", "A1040103", "A1040104", "A1040201", "A1040202", "A1040203", "A1040204", "A1040205", "A1040206", "A1040301", "A1040302", "A1040303", "A1040304", "A1040305", "A1040306", "A1040307"];
 const lcaSurveyDataCodes = new Set(["A1040103", "A1040201", "A1040202", "A1040307"]);
-const allowedWorkspaceActionPaths = new Set(["/admin/emission/project-operations", "/admin/emission/validate", "/admin/emission/result_list", "/admin/emission/survey-report", "/admin/emission/survey-report-verify", "/admin/emission/evidence-management", "/admin/emission/data_history", "/admin/emission/lci-classification", "/admin/emission/ecoinvent", "/admin/emission/survey-admin", "/admin/emission/survey-admin-data", "/admin/emission/report-template"]);
 
 test.use({ viewport: { width: 1440, height: 1000 } });
 test.describe.configure({ mode: "parallel" });
@@ -105,26 +104,19 @@ async function inspectAdminEmissionMenuModes(page: Page) {
         window.history.pushState({}, "", `${pathName}?menuCode=${code}`);
         window.dispatchEvent(new PopStateEvent("popstate"));
       }, { pathName: basePath, code: menuCode });
-      await page.waitForFunction((code) => Boolean(document.querySelector(`[data-testid="menu-workspace-${code}"]`)), menuCode, { polling: 50, timeout: 1_500 }).catch(() => undefined);
       const mode = await page.evaluate(({ code, surveyData }) => {
-        const root = document.querySelector(`[data-testid="menu-workspace-${code}"]`);
-        const actionLinks = [...(root?.querySelectorAll<HTMLAnchorElement>("a[data-feature-index]") || [])];
         return {
-          mounted: Boolean(root),
-          processCode: root?.getAttribute("data-process-code") || "",
-          cards: root?.querySelectorAll("[data-card-kind]").length || 0,
-          actions: actionLinks.length,
-          actionPaths: actionLinks.map((link) => new URL(link.href).pathname),
+          duplicatePanel: Boolean(document.querySelector('[data-testid^="menu-workspace-"]')),
+          duplicateCards: document.querySelectorAll("[data-card-kind]").length,
+          duplicateActions: document.querySelectorAll("a[data-feature-index]").length,
           specialized: Boolean(document.querySelector(`[data-specialized-workspace="${code}"]`)),
           surveyGrid: Boolean(document.querySelector('[data-help-id="emission-survey-admin-classification"]')),
           expectsSurveyData: surveyData.includes(code),
         };
       }, { code: menuCode, surveyData: [...lcaSurveyDataCodes] });
-      if (!mode.mounted) errors.push(`${menuCode}:MOUNT`);
-      if (!mode.processCode) errors.push(`${menuCode}:PROCESS`);
-      if (mode.cards !== 4) errors.push(`${menuCode}:CARDS_${mode.cards}`);
-      if (mode.actions !== 4) errors.push(`${menuCode}:ACTIONS_${mode.actions}`);
-      for (const actionPath of mode.actionPaths) if (!allowedWorkspaceActionPaths.has(actionPath)) errors.push(`${menuCode}:ROUTE_${actionPath}`);
+      if (mode.duplicatePanel) errors.push(`${menuCode}:DUPLICATE_PANEL`);
+      if (mode.duplicateCards) errors.push(`${menuCode}:DUPLICATE_CARDS_${mode.duplicateCards}`);
+      if (mode.duplicateActions) errors.push(`${menuCode}:DUPLICATE_ACTIONS_${mode.duplicateActions}`);
       if (basePath.includes("survey-admin") && mode.specialized === mode.expectsSurveyData) errors.push(`${menuCode}:SURFACE`);
       if (basePath.includes("survey-admin") && mode.surveyGrid !== mode.expectsSurveyData) errors.push(`${menuCode}:SURVEY_GRID`);
       inspected += 1;
