@@ -13,10 +13,13 @@ type Task = {
   completionSatisfied?: boolean; completionEvidence?: string; nextTaskName?: string; nextActorCode?: string;
 };
 type WorkflowNotification = { id: number; projectId: string; taskId: number; eventType: string; title: string; message: string; targetUrl?: string; readAt?: string; createdAt: string };
+type WorkType = { workTypeCode: string; workTypeName: string; workTypeNameEn?: string; definedProcessCount?: number; activeProcessCount?: number; taskCount?: number };
+type ProcessCatalogItem = { processCode: string; processName: string; domainCode: string; ownerActorCode?: string; workflowPhase?: string; stepCount?: number; completionScore?: number; requiredTasks?: number; completedTasks?: number; blockedTasks?: number; nextAction?: string; targetUrl?: string };
 type Data = {
   items: Task[]; actorId: string; allVisible: boolean;
   summary: { total: number; completed: number; today: number; overdue: number; approval: number };
   notifications: WorkflowNotification[]; unreadNotificationCount: number;
+  workTypes?: WorkType[]; processCatalog?: ProcessCatalogItem[]; accountActors?: string[];
 };
 
 const STATUS_STYLE: Record<string, string> = {
@@ -43,6 +46,7 @@ export function EmissionMyTasksPage() {
   const [status, setStatus] = useState("");
   const [message, setMessage] = useState("");
   const [busyTask, setBusyTask] = useState<number | null>(null);
+  const [workType, setWorkType] = useState("ALL");
   const api = buildLocalizedPath("/home/api/emission-tasks", "/en/home/api/emission-tasks");
 
   async function load() {
@@ -98,6 +102,11 @@ export function EmissionMyTasksPage() {
   const focusProjectTasks = useMemo(() => nextTask ? data?.items.filter((item) => item.projectId === nextTask.projectId) || [] : [], [data, nextTask]);
   const completionPercent = data?.summary.total ? Math.round((data.summary.completed / data.summary.total) * 100) : 0;
   const statusLabel = (value: string) => (en ? STATUS_EN : STATUS_KO)[value] || value;
+  const workTypes = data?.workTypes || [];
+  const processCatalog = data?.processCatalog || [];
+  const selectedProcesses = useMemo(() => processCatalog.filter((process) => workType === "ALL" || String(process.domainCode || "").toUpperCase() === workType), [processCatalog, workType]);
+  const assignedByType = (code: string) => (data?.items || []).filter((task) => String((task as Task & { domainCode?: string }).domainCode || "EMISSION").toUpperCase() === code).length;
+  const catalogVisibility = data?.allVisible ? (en ? "Administrator full catalog" : "관리자 전체 카탈로그") : (en ? "Actor-scoped catalog" : "계정·액터 권한 범위");
 
   return <>
     <HomeInlineStyles en={en} />
@@ -110,7 +119,7 @@ export function EmissionMyTasksPage() {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
-        <nav className="text-sm font-bold text-slate-500">{en ? "Carbon Emission Management / My Tasks" : "탄소배출 관리 / 내 업무"}</nav>
+        <nav className="text-sm font-bold text-slate-500">{en ? "All Work / My Work Summary" : "전체 업무 / 내 업무 요약"}</nav>
         <div className="mt-3 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div>
             <p className="text-sm font-black text-[#246beb]">{data?.allVisible ? (en ? "Administrator work queue" : "관리자 전체 업무 큐") : `${data?.actorId || "-"} · ${en ? "Assigned work" : "배정 업무"}`}</p>
@@ -134,6 +143,26 @@ export function EmissionMyTasksPage() {
             <div className="flex items-start justify-between gap-3"><div><h3 className="font-black text-[#052b57]">{notification.title}</h3><p className="mt-1 text-sm leading-6 text-slate-600">{notification.message}</p></div>{!notification.readAt && <button className="shrink-0 rounded-lg border border-amber-400 px-3 py-2 text-xs font-black text-amber-900" type="button" onClick={() => void readNotification(notification).catch((error) => setMessage(error.message))}>{en ? "Mark read" : "읽음"}</button>}</div>
           </article>)}</div>
         </section>}
+
+        <section className="mt-6 rounded-2xl border border-blue-200 bg-white p-5 shadow-sm" data-section-code="WORK_PORTFOLIO" aria-label={en ? "All-work management coverage" : "전체 업무 관리 현황"}>
+          <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
+            <div><p className="text-sm font-black text-[#246beb]">{en ? "ALL WORK CATALOG" : "전체 업무 카탈로그"}</p><h2 className="mt-1 text-xl font-black text-[#052b57]">{en ? "Work types and processes" : "업무 종류·프로세스 현황"}</h2><p className="mt-2 text-sm text-slate-600">{en ? "The catalog is filtered by the signed-in account and active actors. Only generated task records are executable." : "로그인 계정과 활성 액터 권한으로 프로세스를 조회합니다. 실제 실행 원장에 생성된 업무만 실행할 수 있습니다."}</p></div>
+            <div className="rounded-full bg-slate-100 px-4 py-2 text-xs font-black text-slate-700">{catalogVisibility} · {workTypes.length}{en ? " types" : "개 업무"} · {processCatalog.length}{en ? " processes" : "개 프로세스"}</div>
+          </div>
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-2" role="tablist" aria-label={en ? "Work type" : "업무 종류"}>
+            <button className={`shrink-0 rounded-full border px-4 py-2 text-sm font-black ${workType === "ALL" ? "border-[#246beb] bg-[#246beb] text-white" : "border-slate-300 bg-white text-slate-700"}`} onClick={() => setWorkType("ALL")} role="tab" aria-selected={workType === "ALL"} type="button">{en ? "All" : "전체"} {processCatalog.length}</button>
+            {workTypes.map((item) => <button className={`shrink-0 rounded-full border px-4 py-2 text-sm font-black ${workType === item.workTypeCode ? "border-[#246beb] bg-[#246beb] text-white" : "border-slate-300 bg-white text-slate-700"}`} key={item.workTypeCode} onClick={() => setWorkType(item.workTypeCode)} role="tab" aria-selected={workType === item.workTypeCode} type="button">{en ? item.workTypeNameEn || item.workTypeName : item.workTypeName} {item.definedProcessCount || 0}</button>)}
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {workTypes.map((item) => { const selected = workType === item.workTypeCode; const assigned = assignedByType(item.workTypeCode); return <button className={`rounded-xl border p-4 text-left ${selected ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-slate-50"}`} key={`summary-${item.workTypeCode}`} onClick={() => setWorkType(item.workTypeCode)} type="button"><div className="flex items-start justify-between gap-2"><strong className="text-[#052b57]">{en ? item.workTypeNameEn || item.workTypeName : item.workTypeName}</strong><span className={`rounded-full px-2 py-1 text-[11px] font-black ${assigned ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>{assigned ? (en ? "ASSIGNED" : "배정 있음") : (en ? "CATALOG" : "설계·연결")}</span></div><dl className="mt-3 grid grid-cols-2 gap-2 text-center text-xs"><div><dt className="text-slate-500">{en ? "Processes" : "프로세스"}</dt><dd className="mt-1 text-xl font-black">{item.definedProcessCount || 0}</dd></div><div><dt className="text-slate-500">{en ? "My tasks" : "내 업무"}</dt><dd className="mt-1 text-xl font-black">{assigned}</dd></div></dl></button>; })}
+          </div>
+          <div className="mt-5 max-h-[420px] overflow-auto rounded-xl border border-slate-200">
+            <table className="w-full min-w-[860px] border-collapse text-left text-sm"><caption className="sr-only">{en ? "Processes in the selected work type" : "선택 업무 종류의 프로세스"}</caption><thead className="sticky top-0 bg-[#052b57] text-white"><tr><th className="px-4 py-3" scope="col">{en ? "Process" : "프로세스"}</th><th className="px-4 py-3" scope="col">{en ? "Phase" : "업무 단계"}</th><th className="px-4 py-3" scope="col">{en ? "Actor" : "책임 액터"}</th><th className="px-4 py-3" scope="col">{en ? "Steps" : "절차"}</th><th className="px-4 py-3" scope="col">{en ? "Readiness" : "구현 준비도"}</th><th className="px-4 py-3" scope="col">{en ? "Screen" : "화면"}</th></tr></thead>
+              <tbody className="divide-y divide-slate-200">{selectedProcesses.map((process) => <tr key={process.processCode}><td className="px-4 py-3"><strong className="text-[#052b57]">{process.processName}</strong><code className="mt-1 block text-[11px] text-slate-500">{process.processCode}</code></td><td className="px-4 py-3 font-bold">{process.workflowPhase || "-"}</td><td className="px-4 py-3 font-bold">{process.ownerActorCode || "-"}</td><td className="px-4 py-3 font-black">{process.stepCount || 0}</td><td className="px-4 py-3"><strong>{Number(process.completionScore || 0)}%</strong><p className="mt-1 text-xs text-slate-500">{process.completedTasks || 0}/{process.requiredTasks || 0} · {en ? "blocked" : "차단"} {process.blockedTasks || 0}</p></td><td className="px-4 py-3">{process.targetUrl?.startsWith("/") ? <a className="font-black text-[#246beb] underline" href={buildLocalizedPath(process.targetUrl, `/en${process.targetUrl}`)}>{en ? "Open" : "화면 열기"}</a> : <span className="text-xs font-bold text-amber-800">{process.nextAction || (en ? "Connection required" : "화면 연결 필요")}</span>}</td></tr>)}</tbody>
+            </table>
+            {!selectedProcesses.length && <p className="p-8 text-center font-bold text-slate-600">{en ? "No process is visible in the current actor scope." : "현재 계정·액터 권한 범위에 노출할 프로세스가 없습니다."}</p>}
+          </div>
+        </section>
 
         <section className="mt-7 overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-sm">
           <div className="grid lg:grid-cols-[minmax(0,1fr)_280px]">
