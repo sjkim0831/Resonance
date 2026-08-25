@@ -122,6 +122,36 @@
         <p class="shell-loading-meta" id="shell-loading-meta">Loading admin shell...</p>
     </div>
 </div>
+<script>
+    function hydrateVisibleReportVerificationIdentifiers(root) {
+        (root || document).querySelectorAll(".pdf-machine-readable").forEach((source) => {
+            const footer = source.previousElementSibling;
+            if (!footer || !footer.classList.contains("report-verification-footer")
+                || footer.querySelector('[data-report-verification-identifiers="visible"]')) return;
+            const match = (source.textContent || "").match(/CARBONET_REPORT_VERIFY_BEGIN\s*([A-Za-z0-9_-]+)\s*CARBONET_REPORT_VERIFY_END/);
+            if (!match) return;
+            try {
+                const normalized = match[1].replace(/-/g, "+").replace(/_/g, "/");
+                const payload = JSON.parse(decodeURIComponent(Array.from(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=")))
+                    .map((character) => `%${character.charCodeAt(0).toString(16).padStart(2, "0")}`).join("")));
+                const identifiers = document.createElement("div");
+                identifiers.dataset.reportVerificationIdentifiers = "visible";
+                identifiers.className = "mt-2 space-y-0.5 font-mono text-[9px] leading-4 text-slate-500";
+                identifiers.innerHTML = [
+                    ["인증서 ID", payload.certificateId],
+                    ["SHA-256 리포트 지문", payload.payloadHash],
+                    ["무결성 코드", payload.integrityCode],
+                    ["데이터셋 해시", payload.datasetHash || payload.payloadHash]
+                ].map(([label, value]) => `<p>${label}: ${String(value || "-")}</p>`).join("");
+                (footer.firstElementChild || footer).appendChild(identifiers);
+            } catch (error) {
+                console.error("Visible report verification identifiers could not be hydrated.", error);
+            }
+        });
+    }
+    new MutationObserver(() => hydrateVisibleReportVerificationIdentifiers(document))
+        .observe(document.documentElement, { childList: true, subtree: true });
+</script>
 <script src="/assets/react/runtime/screen-system-assets.js?v=login-endpoint-v4"></script>
 <script type="module">
     function isAdminPath(pathname) {

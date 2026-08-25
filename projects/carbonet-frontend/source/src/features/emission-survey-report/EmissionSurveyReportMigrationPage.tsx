@@ -3761,6 +3761,11 @@ export function EmissionSurveyReportPrintPage() {
                   {en ? "Scan to verify this issued report." : "발급된 리포트의 진위 여부를 확인할 수 있습니다."}
                 </p>
                 <p className="mt-1 font-mono text-[10px] text-slate-500">{verificationRecord.certificateId}</p>
+                <div className="mt-2 space-y-0.5 font-mono text-[9px] leading-4 text-slate-500" data-report-verification-identifiers="visible">
+                  <p>{en ? "SHA-256 report fingerprint" : "SHA-256 리포트 지문"}: {verificationRecord.payloadHash}</p>
+                  <p>{en ? "Integrity code" : "무결성 코드"}: {verificationRecord.integrityCode}</p>
+                  <p>{en ? "Dataset hash" : "데이터셋 해시"}: {verificationRecord.datasetHash || verificationRecord.payloadHash}</p>
+                </div>
               </div>
               {verificationQrDataUrl ? <img alt={en ? "Report verification QR code" : "리포트 진위 확인 QR 코드"} className="h-[18mm] w-[18mm] shrink-0" src={verificationQrDataUrl} /> : null}
             </footer>
