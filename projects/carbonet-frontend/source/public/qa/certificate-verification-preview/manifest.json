@@ -1,0 +1,29 @@
+{
+  "processCode": "CERTIFICATE_VERIFICATION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "CERTIFICATE_VERIFICATION_S1",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/certificate-verification/certificate-verification-s1?step=certificate_verification_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "CERTIFICATE_VERIFICATION_S2",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/certificate-verification/certificate-verification-s2?step=certificate_verification_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "CERTIFICATE_VERIFICATION_S3",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/certificate-verification/certificate-verification-s3?step=certificate_verification_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "CERTIFICATE_VERIFICATION_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/certificate-verification/certificate-verification-s4?step=certificate_verification_s4"
+    }
+  ]
+}

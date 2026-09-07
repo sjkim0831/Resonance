@@ -18,6 +18,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ReactBootstrapRequestAdapter implements BootstrapExecutionGate {
 
+    static final String UNMAPPED_ADMIN_SHELL_ROUTE = "admin-shell";
+
     private static final List<BootstrapEndpointBinding> DEFAULT_BOOTSTRAP_ENDPOINT_BINDINGS = List.of(
             new BootstrapEndpointBinding("/en/admin/login/api/app/bootstrap", "/en/admin/login/loginView", "admin-login", true),
             new BootstrapEndpointBinding("/admin/login/api/app/bootstrap", "/admin/login/loginView", "admin-login", true),
@@ -56,13 +58,21 @@ public class ReactBootstrapRequestAdapter implements BootstrapExecutionGate {
         BootstrapEndpointBinding binding = findBinding(safe(requestUri), request.admin());
 
         String requestedPath = safe(request.requestedPath());
-        if (requestedPath.isEmpty() && binding != null) {
+        boolean callerSuppliedPath = !requestedPath.isEmpty();
+        if (!callerSuppliedPath && binding != null) {
             requestedPath = binding.requestedPath();
         }
 
         String initialRoute = safe(request.requestedRoute());
         if (initialRoute.isEmpty() && !requestedPath.isEmpty()) {
             initialRoute = ReactPageUrlMapper.resolveRouteIdForPath(requestedPath).replace('_', '-');
+        }
+        if (initialRoute.isEmpty() && callerSuppliedPath && request.admin()) {
+            // A concrete but not-yet-registered admin page still needs the
+            // authenticated shell and menu. It must not inherit the endpoint's
+            // admin-home default because that would build unrelated, potentially
+            // expensive dashboard data for every generated or SDUI route.
+            initialRoute = UNMAPPED_ADMIN_SHELL_ROUTE;
         }
         if (initialRoute.isEmpty()) {
             initialRoute = binding == null ? (request.admin() ? "auth-group" : "mypage") : binding.defaultRoute();

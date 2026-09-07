@@ -2,9 +2,12 @@ package egovframework.com.feature.home.service.impl;
 
 import egovframework.com.common.context.ProjectRuntimeContext;
 import egovframework.com.feature.auth.domain.entity.EntrprsMber;
+import egovframework.com.feature.auth.domain.entity.EmplyrInfo;
 import egovframework.com.feature.auth.domain.repository.EnterpriseMemberRepository;
+import egovframework.com.feature.auth.domain.repository.EmployeeMemberRepository;
 import egovframework.com.feature.auth.domain.entity.PasswordResetHistory;
 import egovframework.com.feature.auth.service.AuthService;
+import egovframework.com.feature.auth.service.MfaOtpDeliveryService;
 import egovframework.com.feature.auth.util.JwtTokenProvider;
 import egovframework.com.feature.home.service.HomeMypageService;
 import egovframework.com.feature.member.model.vo.InsttInfoVO;
@@ -13,14 +16,20 @@ import egovframework.com.feature.member.service.EnterpriseMemberService;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.ui.Model;
 import org.springframework.util.ObjectUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.format.DateTimeFormatter;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.LinkedHashMap;
@@ -28,7 +37,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import org.apache.tomcat.util.codec.binary.Base64;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service("homeMypageService")
 @RequiredArgsConstructor
@@ -38,9 +51,30 @@ public class HomeMypageServiceImpl implements HomeMypageService {
 
     private final JwtTokenProvider jwtProvider;
     private final EnterpriseMemberRepository enterpriseMemberRepository;
+    private final EmployeeMemberRepository employeeMemberRepository;
     private final EnterpriseMemberService entrprsManageService;
     private final AuthService authService;
     private final ProjectRuntimeContext projectRuntimeContext;
+    private final JdbcTemplate jdbcTemplate;
+    private final MfaOtpDeliveryService mfaOtpDeliveryService;
+
+    private static final SecureRandom MFA_RANDOM = new SecureRandom();
+    private static final int MFA_TTL_MINUTES = 10;
+    private static final ConcurrentMap<String, DevelopmentContactChallenge> DEVELOPMENT_CONTACT_CHALLENGES = new ConcurrentHashMap<>();
+
+    private record DevelopmentContactChallenge(String userId, String codeHash, String channel, String target,
+            Instant expiresAt, int attempts, boolean consumed) {
+        DevelopmentContactChallenge failedAttempt() {
+            return new DevelopmentContactChallenge(userId, codeHash, channel, target, expiresAt, attempts + 1, consumed);
+        }
+
+        DevelopmentContactChallenge consume() {
+            return new DevelopmentContactChallenge(userId, codeHash, channel, target, expiresAt, attempts, true);
+        }
+    }
+
+    @Value("${carbonet.mfa.development-code-enabled:false}")
+    private boolean mfaDevelopmentCodeEnabled;
 
 
     @Override
@@ -56,10 +90,16 @@ public class HomeMypageServiceImpl implements HomeMypageService {
         }
 
         Map<String, Object> payload = createAuthenticatedPayload(userId);
-        payload.put("insttId", findEnterpriseMember(userId)
+        String insttId = findEnterpriseMember(userId)
                 .map(EntrprsMber::getInsttId)
                 .map(this::safeString)
-                .orElse(""));
+                .orElse("");
+        if (insttId.isEmpty()) {
+            insttId = findEmployeeInstitution(userId)
+                    .map(row -> safeString(row.get("insttId")))
+                    .orElse("");
+        }
+        payload.put("insttId", insttId);
         return payload;
     }
 
@@ -81,6 +121,9 @@ public class HomeMypageServiceImpl implements HomeMypageService {
         Optional<EntrprsMber> enterpriseOpt = findEnterpriseMember(userId);
         if (enterpriseOpt.isEmpty()) {
             payload.put("pageType", "default");
+            employeeMemberRepository.findFirstByEmplyrIdIgnoreCase(userId)
+                    .ifPresent(employee -> payload.put("employeeMember", employee));
+            findEmployeeInstitution(userId).ifPresent(company -> payload.put("company", company));
             return payload;
         }
 
@@ -97,7 +140,7 @@ public class HomeMypageServiceImpl implements HomeMypageService {
             return payload;
         }
 
-        if ("A".equalsIgnoreCase(entrprsMberSttus) || "R".equalsIgnoreCase(entrprsMberSttus)) {
+        if ("R".equalsIgnoreCase(entrprsMberSttus)) {
             payload.put("pageType", "pending");
             payload.put("submittedAt", formatSubmittedAt(enterprise));
             payload.put("companyName", ObjectUtils.isEmpty(enterprise.getCmpnyNm()) ? "-" : enterprise.getCmpnyNm());
@@ -108,6 +151,29 @@ public class HomeMypageServiceImpl implements HomeMypageService {
 
         payload.put("pageType", "default");
         return payload;
+    }
+
+    private Optional<Map<String, Object>> findEmployeeInstitution(String userId) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
+                SELECT trim(i.instt_id) AS "insttId",
+                       coalesce(i.instt_nm, '') AS "insttNm",
+                       coalesce(i.bizrno, '') AS "bizrno",
+                       coalesce(i.reprsnt_nm, '') AS "representativeName",
+                       coalesce(i.zip, '') AS "zip",
+                       coalesce(i.adres, '') AS "address",
+                       coalesce(i.detail_adres, '') AS "detailAddress",
+                       coalesce(i.entrprs_se_code, '') AS "companyType",
+                       coalesce(i.instt_sttus, '') AS "status",
+                       coalesce(i.charger_nm, e.user_nm, '') AS "managerName",
+                       coalesce(i.charger_email, e.email_adres, '') AS "managerEmail",
+                       coalesce(i.charger_tel, e.mbtlnum, '') AS "managerTel"
+                  FROM comtnemplyrinfo e
+                  JOIN comtninsttinfo i ON trim(i.instt_id)=trim(e.instt_id)
+                 WHERE lower(e.emplyr_id)=lower(?)
+                 ORDER BY i.last_updt_pnttm DESC NULLS LAST
+                 LIMIT 1
+                """, userId);
+        return rows.stream().findFirst();
     }
 
     @Override
@@ -130,6 +196,13 @@ public class HomeMypageServiceImpl implements HomeMypageService {
 
         Object memberObject = payload.get("member");
         if (!(memberObject instanceof EntrprsMber)) {
+            if ("email".equals(normalizedSection) && payload.get("employeeMember") instanceof EmplyrInfo employee) {
+                payload.put("member", buildEmployeeContactPayload(employee));
+                payload.put("canViewSection", true);
+                payload.put("canUseSection", true);
+                payload.put("items", buildEmployeeContactItems(employee));
+                return payload;
+            }
             payload.put("sectionReason", en
                     ? "Member information could not be loaded."
                     : "회원 정보를 불러오지 못했습니다.");
@@ -251,6 +324,161 @@ public class HomeMypageServiceImpl implements HomeMypageService {
     }
 
     @Override
+    public Map<String, Object> requestContactVerification(boolean en, String channel, String targetValue,
+            HttpServletRequest request) {
+        Map<String, Object> payload = buildMypageSectionPayload(en, "email", request);
+        String userId = safeString(payload.get("userId"));
+        if (!Boolean.TRUE.equals(payload.get("authenticated")) || !Boolean.TRUE.equals(payload.get("canUseSection"))
+                || userId.isEmpty()) return markMfaFailure(payload, en ? "Member information could not be loaded."
+                        : "회원 정보를 불러오지 못했습니다.");
+        String normalizedChannel = safeString(channel).toUpperCase(Locale.ROOT);
+        String normalizedTarget = "EMAIL".equals(normalizedChannel) ? safeString(targetValue)
+                : digitsOnly(targetValue, 11);
+        if (!("EMAIL".equals(normalizedChannel) && isValidEmail(normalizedTarget))
+                && !("PHONE".equals(normalizedChannel) && normalizedTarget.matches("01\\d{8,9}"))) {
+            return markMfaFailure(payload, en ? "Enter a valid email address or mobile number."
+                    : "올바른 이메일 주소 또는 휴대전화 번호를 입력해 주세요.");
+        }
+        String challengeId = UUID.randomUUID().toString();
+        String code = String.format("%06d", MFA_RANDOM.nextInt(1_000_000));
+        if (mfaDevelopmentCodeEnabled) {
+            DEVELOPMENT_CONTACT_CHALLENGES.entrySet().removeIf(entry -> entry.getValue().userId().equals(userId));
+            DEVELOPMENT_CONTACT_CHALLENGES.put(challengeId, new DevelopmentContactChallenge(userId,
+                    mfaDigest(challengeId, code), normalizedChannel, normalizedTarget,
+                    Instant.now().plusSeconds(MFA_TTL_MINUTES * 60L), 0, false));
+        } else {
+            jdbcTemplate.update("DELETE FROM member_mfa_challenge WHERE user_id=? AND purpose='CONTACT_CHANGE' AND verified_at IS NULL", userId);
+            jdbcTemplate.update("""
+                    INSERT INTO member_mfa_challenge
+                      (challenge_id,user_id,purpose,code_hash,expires_at,attempt_count,created_at,target_channel,target_value)
+                    VALUES (?,?, 'CONTACT_CHANGE', ?, CURRENT_TIMESTAMP + INTERVAL '10 minutes', 0, CURRENT_TIMESTAMP, ?, ?)
+                    """, UUID.fromString(challengeId), userId, mfaDigest(challengeId, code), normalizedChannel, normalizedTarget);
+        }
+        if (!mfaOtpDeliveryService.deliver(challengeId, userId, normalizedTarget, code, "CONTACT_CHANGE", normalizedChannel, en)) {
+            if (mfaDevelopmentCodeEnabled) DEVELOPMENT_CONTACT_CHALLENGES.remove(challengeId);
+            else jdbcTemplate.update("DELETE FROM member_mfa_challenge WHERE challenge_id=?", UUID.fromString(challengeId));
+            return markMfaFailure(payload, en ? "The verification code could not be delivered."
+                    : "인증번호를 발송하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        }
+        payload.put("challengeId", challengeId);
+        payload.put("channel", normalizedChannel);
+        payload.put("targetMasked", "EMAIL".equals(normalizedChannel) ? maskEmail(normalizedTarget)
+                : normalizedTarget.replaceFirst("(\\d{3})(\\d{3,4})(\\d{4})", "$1-****-$3"));
+        payload.put("expiresInSeconds", MFA_TTL_MINUTES * 60);
+        payload.put("message", en ? "A verification code was sent." : "인증번호를 발송했습니다.");
+        if (mfaDevelopmentCodeEnabled) payload.put("developmentCode", code);
+        return payload;
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> confirmContactVerification(boolean en, String challengeId, String verificationCode,
+            HttpServletRequest request) {
+        Map<String, Object> payload = buildMypageSectionPayload(en, "email", request);
+        String userId = safeString(payload.get("userId"));
+        if (!Boolean.TRUE.equals(payload.get("authenticated")) || !Boolean.TRUE.equals(payload.get("canUseSection"))
+                || userId.isEmpty()) return markMfaFailure(payload, en ? "Member information could not be loaded."
+                        : "회원 정보를 불러오지 못했습니다.");
+        if (!safeString(challengeId).matches("[0-9a-fA-F-]{36}") || !safeString(verificationCode).matches("\\d{6}")) {
+            return markMfaFailure(payload, en ? "Enter the 6-digit verification code." : "6자리 인증번호를 입력해 주세요.");
+        }
+        UUID id = UUID.fromString(challengeId);
+        String channel;
+        String target;
+        if (mfaDevelopmentCodeEnabled) {
+            DevelopmentContactChallenge challenge = DEVELOPMENT_CONTACT_CHALLENGES.get(challengeId);
+            if (challenge == null || !challenge.userId().equals(userId)
+                    || challenge.expiresAt().isBefore(Instant.now()) || challenge.consumed()) {
+                return markMfaFailure(payload, en ? "The verification request expired or was already used."
+                        : "인증 요청이 만료됐거나 이미 사용됐습니다.");
+            }
+            if (challenge.attempts() >= 5 || !MessageDigest.isEqual(challenge.codeHash().getBytes(StandardCharsets.UTF_8),
+                    mfaDigest(challengeId, verificationCode).getBytes(StandardCharsets.UTF_8))) {
+                DEVELOPMENT_CONTACT_CHALLENGES.computeIfPresent(challengeId, (key, value) -> value.failedAttempt());
+                return markMfaFailure(payload, en ? "The verification code is incorrect." : "인증번호가 일치하지 않습니다.");
+            }
+            channel = challenge.channel();
+            target = challenge.target();
+        } else {
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
+                    SELECT code_hash,attempt_count,expires_at>CURRENT_TIMESTAMP AS valid,target_channel,target_value,consumed_at
+                      FROM member_mfa_challenge
+                     WHERE challenge_id=? AND user_id=? AND purpose='CONTACT_CHANGE' FOR UPDATE
+                    """, id, userId);
+            if (rows.isEmpty() || !Boolean.TRUE.equals(rows.get(0).get("valid")) || rows.get(0).get("consumed_at") != null) {
+                return markMfaFailure(payload, en ? "The verification request expired or was already used."
+                        : "인증 요청이 만료됐거나 이미 사용됐습니다.");
+            }
+            int attempts = ((Number) rows.get(0).getOrDefault("attempt_count", 0)).intValue();
+            if (attempts >= 5 || !MessageDigest.isEqual(safeString(rows.get(0).get("code_hash")).getBytes(StandardCharsets.UTF_8),
+                    mfaDigest(challengeId, verificationCode).getBytes(StandardCharsets.UTF_8))) {
+                jdbcTemplate.update("UPDATE member_mfa_challenge SET attempt_count=attempt_count+1 WHERE challenge_id=?", id);
+                return markMfaFailure(payload, en ? "The verification code is incorrect." : "인증번호가 일치하지 않습니다.");
+            }
+            channel = safeString(rows.get(0).get("target_channel"));
+            target = safeString(rows.get(0).get("target_value"));
+        }
+        Optional<EntrprsMber> enterpriseMember = findEnterpriseMember(userId);
+        if (enterpriseMember.isPresent()) {
+            EntrprsMber member = enterpriseMember.get();
+            if ("EMAIL".equals(channel)) {
+                member.setApplcntEmailAdres(target);
+                member.setAuthEmail(target);
+            } else {
+                member.setAreaNo(target.substring(0, 3));
+                member.setEntrprsMiddleTelno(target.substring(3, target.length() - 4));
+                member.setEntrprsEndTelno(target.substring(target.length() - 4));
+            }
+            enterpriseMemberRepository.save(member);
+            payload.put("member", member);
+            payload.put("items", buildSectionItems("email", member));
+        } else {
+            EmplyrInfo employee = employeeMemberRepository.findFirstByEmplyrIdIgnoreCase(userId).orElse(null);
+            if (employee == null) return markMfaFailure(payload, en ? "Member information could not be loaded."
+                    : "회원 정보를 불러오지 못했습니다.");
+            if ("EMAIL".equals(channel)) {
+                employee.setEmailAdres(target);
+                employee.setAuthEmail(target);
+            } else {
+                employee.setMbtlNum(target);
+            }
+            employeeMemberRepository.save(employee);
+            payload.put("member", buildEmployeeContactPayload(employee));
+            payload.put("items", buildEmployeeContactItems(employee));
+        }
+        if (mfaDevelopmentCodeEnabled) {
+            DEVELOPMENT_CONTACT_CHALLENGES.computeIfPresent(challengeId, (key, value) -> value.consume());
+        } else {
+            jdbcTemplate.update("UPDATE member_mfa_challenge SET verified_at=CURRENT_TIMESTAMP,consumed_at=CURRENT_TIMESTAMP WHERE challenge_id=?", id);
+        }
+        payload.put("saved", true);
+        payload.put("channel", channel);
+        payload.put("message", "EMAIL".equals(channel)
+                ? (en ? "Your email address has been changed." : "이메일 주소가 변경되었습니다.")
+                : (en ? "Your mobile number has been changed." : "휴대전화 번호가 변경되었습니다."));
+        return payload;
+    }
+
+    private Map<String, Object> buildEmployeeContactPayload(EmplyrInfo employee) {
+        String phone = digitsOnly(employee.getMbtlNum(), 11);
+        Map<String, Object> member = new LinkedHashMap<>();
+        member.put("applcntEmailAdres", safeString(employee.getEmailAdres()));
+        member.put("authEmail", safeString(employee.getAuthEmail()));
+        member.put("areaNo", phone.length() >= 10 ? phone.substring(0, 3) : "");
+        member.put("entrprsMiddleTelno", phone.length() >= 10 ? phone.substring(3, phone.length() - 4) : "");
+        member.put("entrprsEndTelno", phone.length() >= 10 ? phone.substring(phone.length() - 4) : "");
+        return member;
+    }
+
+    private List<Map<String, String>> buildEmployeeContactItems(EmplyrInfo employee) {
+        List<Map<String, String>> items = new java.util.ArrayList<>();
+        addItem(items, "현재 이메일", employee.getEmailAdres());
+        addItem(items, "인증 이메일", employee.getAuthEmail());
+        addItem(items, "현재 휴대전화", employee.getMbtlNum());
+        return items;
+    }
+
+    @Override
     public Map<String, Object> updatePassword(boolean en, String currentPassword, String newPassword, HttpServletRequest request) {
         Map<String, Object> payload = buildMypageSectionPayload(en, "password", request);
         EntrprsMber member = prepareWritableSectionPayload(payload, en);
@@ -267,7 +495,7 @@ public class HomeMypageServiceImpl implements HomeMypageService {
                     : "비밀번호 정책(9자리 이상, 3종류 조합)을 충족해 주세요.");
             return payload;
         }
-        boolean updated = authService.resetPassword(member.getEntrprsMberId(), newPassword, member.getEntrprsMberId(),
+        boolean updated = authService.resetPassword(member.getEntrprsMberId(), "ENT", newPassword, member.getEntrprsMberId(),
                 resolveClientIp(request), "MYPAGE_SELF_SERVICE");
         if (!updated) {
             markSaveFailure(payload, en ? "Password update failed." : "비밀번호 변경에 실패했습니다.");
@@ -281,7 +509,142 @@ public class HomeMypageServiceImpl implements HomeMypageService {
         });
         payload.put("saved", true);
         payload.put("message", en ? "Password updated." : "비밀번호를 변경했습니다.");
+        invalidateCurrentAuthentication(request);
         return payload;
+    }
+
+    @Override
+    public Map<String, Object> buildMfaStatus(boolean en, HttpServletRequest request) {
+        Map<String, Object> payload = buildMypageSectionPayload(en, "password", request);
+        EntrprsMber member = prepareWritableSectionPayload(payload, en);
+        if (member == null) return payload;
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
+                SELECT method, destination_masked, enabled, verified_at, updated_at
+                  FROM member_mfa_setting WHERE user_id=?
+                """, member.getEntrprsMberId());
+        payload.put("mfaEnabled", !rows.isEmpty() && Boolean.TRUE.equals(rows.get(0).get("enabled")));
+        payload.put("mfaMethod", rows.isEmpty() ? "EMAIL_OTP" : safeString(rows.get(0).get("method")));
+        payload.put("destinationMasked", rows.isEmpty() ? maskEmail(member.getApplcntEmailAdres())
+                : safeString(rows.get(0).get("destination_masked")));
+        payload.put("verifiedAt", rows.isEmpty() ? "" : safeString(rows.get(0).get("verified_at")));
+        return payload;
+    }
+
+    @Override
+    public Map<String, Object> requestMfaEnrollment(boolean en, HttpServletRequest request) {
+        Map<String, Object> payload = buildMfaStatus(en, request);
+        if (!Boolean.TRUE.equals(payload.get("authenticated")) || !Boolean.TRUE.equals(payload.get("canUseSection"))) return payload;
+        String userId = safeString(payload.get("userId"));
+        String challengeId = UUID.randomUUID().toString();
+        String code = String.format("%06d", MFA_RANDOM.nextInt(1_000_000));
+        String codeHash = mfaDigest(challengeId, code);
+        jdbcTemplate.update("DELETE FROM member_mfa_challenge WHERE user_id=? AND purpose='ENROLL' AND verified_at IS NULL", userId);
+        jdbcTemplate.update("""
+                INSERT INTO member_mfa_challenge
+                  (challenge_id,user_id,purpose,code_hash,expires_at,attempt_count,created_at)
+                VALUES (?,?, 'ENROLL', ?, CURRENT_TIMESTAMP + INTERVAL '10 minutes', 0, CURRENT_TIMESTAMP)
+                """, UUID.fromString(challengeId), userId, codeHash);
+        String destination = findEnterpriseMember(userId).map(EntrprsMber::getApplcntEmailAdres).orElse("");
+        if (!mfaOtpDeliveryService.deliver(challengeId, userId, destination, code, "ENROLL", en)) {
+            jdbcTemplate.update("DELETE FROM member_mfa_challenge WHERE challenge_id=?", UUID.fromString(challengeId));
+            return markMfaFailure(payload, en ? "The verification code could not be delivered."
+                    : "인증번호를 발송하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        }
+        payload.put("challengeId", challengeId);
+        payload.put("expiresInSeconds", MFA_TTL_MINUTES * 60);
+        payload.put("message", en ? "A verification code was issued." : "인증번호를 발급했습니다.");
+        if (mfaDevelopmentCodeEnabled) payload.put("developmentCode", code);
+        return payload;
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> verifyMfaEnrollment(boolean en, String challengeId, String verificationCode,
+            HttpServletRequest request) {
+        Map<String, Object> payload = buildMfaStatus(en, request);
+        if (!Boolean.TRUE.equals(payload.get("authenticated")) || !Boolean.TRUE.equals(payload.get("canUseSection"))) return payload;
+        String userId = safeString(payload.get("userId"));
+        if (!safeString(challengeId).matches("[0-9a-fA-F-]{36}") || !safeString(verificationCode).matches("\\d{6}")) {
+            return markMfaFailure(payload, en ? "Enter the 6-digit verification code." : "6자리 인증번호를 입력해 주세요.");
+        }
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
+                SELECT code_hash,attempt_count,expires_at>CURRENT_TIMESTAMP AS valid
+                  FROM member_mfa_challenge
+                 WHERE challenge_id=? AND user_id=? AND purpose='ENROLL' AND verified_at IS NULL
+                 FOR UPDATE
+                """, UUID.fromString(challengeId), userId);
+        if (rows.isEmpty() || !Boolean.TRUE.equals(rows.get(0).get("valid"))) {
+            return markMfaFailure(payload, en ? "The verification request expired." : "인증 요청이 만료됐습니다.");
+        }
+        int attempts = ((Number) rows.get(0).getOrDefault("attempt_count", 0)).intValue();
+        if (attempts >= 5 || !MessageDigest.isEqual(
+                safeString(rows.get(0).get("code_hash")).getBytes(StandardCharsets.UTF_8),
+                mfaDigest(challengeId, verificationCode).getBytes(StandardCharsets.UTF_8))) {
+            jdbcTemplate.update("UPDATE member_mfa_challenge SET attempt_count=attempt_count+1 WHERE challenge_id=?", UUID.fromString(challengeId));
+            return markMfaFailure(payload, en ? "The verification code is incorrect." : "인증번호가 일치하지 않습니다.");
+        }
+        String masked = findEnterpriseMember(userId).map(EntrprsMber::getApplcntEmailAdres).map(this::maskEmail).orElse("");
+        jdbcTemplate.update("UPDATE member_mfa_challenge SET verified_at=CURRENT_TIMESTAMP WHERE challenge_id=?", UUID.fromString(challengeId));
+        jdbcTemplate.update("""
+                INSERT INTO member_mfa_setting(user_id,method,destination_masked,enabled,verified_at,updated_at)
+                VALUES (?, 'EMAIL_OTP', ?, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ON CONFLICT (user_id) DO UPDATE SET method=EXCLUDED.method,destination_masked=EXCLUDED.destination_masked,
+                  enabled=TRUE,verified_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP
+                """, userId, masked);
+        payload.put("mfaEnabled", true);
+        payload.put("destinationMasked", masked);
+        payload.put("saved", true);
+        payload.put("message", en ? "Multi-factor authentication is enabled." : "다중 인증을 활성화했습니다.");
+        return payload;
+    }
+
+    @Override
+    public Map<String, Object> disableMfa(boolean en, String currentPassword, HttpServletRequest request) {
+        Map<String, Object> payload = buildMfaStatus(en, request);
+        EntrprsMber member = prepareWritableSectionPayload(payload, en);
+        if (member == null) return payload;
+        if (!matchesPassword(currentPassword, member.getEntrprsMberId(), member.getEntrprsMberPassword())) {
+            return markMfaFailure(payload, en ? "Current password does not match." : "현재 비밀번호가 일치하지 않습니다.");
+        }
+        jdbcTemplate.update("UPDATE member_mfa_setting SET enabled=FALSE,updated_at=CURRENT_TIMESTAMP WHERE user_id=?",
+                member.getEntrprsMberId());
+        payload.put("mfaEnabled", false);
+        payload.put("saved", true);
+        payload.put("message", en ? "Multi-factor authentication is disabled." : "다중 인증을 해제했습니다.");
+        return payload;
+    }
+
+    private Map<String, Object> markMfaFailure(Map<String, Object> payload, String message) {
+        payload.put("saved", false);
+        payload.put("message", message);
+        return payload;
+    }
+
+    private String mfaDigest(String challengeId, String code) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return java.util.HexFormat.of().formatHex(digest.digest((challengeId + ":" + code).getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
+    }
+
+    private String maskEmail(String email) {
+        String value = safeString(email);
+        int at = value.indexOf('@');
+        if (at <= 1) return value.isEmpty() ? "등록 이메일 없음" : "***";
+        return value.substring(0, 1) + "***" + value.substring(at);
+    }
+
+    private void invalidateCurrentAuthentication(HttpServletRequest request) {
+        try {
+            HttpSession session = request == null ? null : request.getSession(false);
+            if (session != null) {
+                session.invalidate();
+            }
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     private Map<String, Object> createAnonymousMypageContext(boolean en) {
@@ -367,6 +730,9 @@ public class HomeMypageServiceImpl implements HomeMypageService {
 
     private String extractUserId(String accessToken) {
         try {
+            if (jwtProvider.accessValidateToken(accessToken) != 200) {
+                return "";
+            }
             Claims claims = jwtProvider.accessExtractClaims(accessToken);
             Object encryptedUserId = claims.get("userId");
             if (encryptedUserId == null) {
@@ -654,8 +1020,8 @@ public class HomeMypageServiceImpl implements HomeMypageService {
         return enterprise.getSbscrbDe().format(DISPLAY_DATE_TIME);
     }
 
-    private String safeString(String value) {
-        return value == null ? "" : value.trim();
+    private String safeString(Object value) {
+        return value == null ? "" : String.valueOf(value).trim();
     }
 
     private Optional<EntrprsMber> findEnterpriseMember(String userId) {

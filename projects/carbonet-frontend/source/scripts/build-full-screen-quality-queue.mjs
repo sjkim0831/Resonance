@@ -2,7 +2,7 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const root = path.resolve(process.env.ROOT_DIR || ".");
+const root = path.resolve(process.env.FRONTEND_ROOT_DIR || ".");
 const cache = path.resolve(process.env.FULL_SCREEN_SMOKE_CACHE_DIR || path.join(root, ".cache/full-screen-smoke"));
 const manifestPath = path.resolve(process.env.FULL_SCREEN_SMOKE_MANIFEST || path.join(cache, "manifest.json"));
 const resultDir = path.resolve(process.env.FULL_SCREEN_SMOKE_RESULT_DIR || path.join(cache, "results"));
@@ -12,7 +12,16 @@ const queuePath = path.resolve(process.env.FULL_SCREEN_QUALITY_QUEUE || path.joi
 const historyPath = path.resolve(process.env.FULL_SCREEN_QUALITY_HISTORY || path.join(cache, "quality-history.json"));
 
 const readJson = async (file, fallback) => { try { return JSON.parse(await readFile(file, "utf8")); } catch { return fallback; } };
-const normalizeRoute = (value) => { try { return new URL(String(value), "http://quality.local").pathname.replace(/\/$/, "") || "/"; } catch { return String(value).split("?")[0].replace(/\/$/, "") || "/"; } };
+// Runtime routes are historically mixed-case (`/signin/loginView`) while the
+// canonical DB graph stores normalized lower-case keys.  Quality traceability
+// is semantic and must not report a missing design solely because of casing.
+const normalizeRoute = (value) => {
+  try {
+    return (new URL(String(value), "http://quality.local").pathname.replace(/\/$/, "") || "/").toLowerCase();
+  } catch {
+    return (String(value).split("?")[0].replace(/\/$/, "") || "/").toLowerCase();
+  }
+};
 const semanticRouteKey = (value) => {
   const parts = normalizeRoute(value).split("/").filter(Boolean);
   return `${parts[0] === "admin" ? "admin" : "user"}|${parts.slice(-2).join("/")}`;
@@ -76,8 +85,26 @@ const scoredRoutes = [];
 for (const route of manifest.routes) {
   const result = resultByRoute.get(route.routePath);
   if (!result) {
-    const prior = previousByRoute.get(route.routePath);
-    if (prior) scoredRoutes.push(prior);
+    scoredRoutes.push({
+      routeId: route.id,
+      routePath: route.routePath,
+      contractIds: route.contractIds,
+      actorCodes: route.actorCodes,
+      processCodes: route.processCodes,
+      screenName: route.contracts?.[0]?.screenName || "",
+      sourceRef: "",
+      routeMatch: "NOT_TESTED",
+      professionalScore: 0,
+      taskCount: 0,
+      testCount: 0,
+      durationMs: 0,
+      qualityScore: 0,
+      runtimeScore: 0,
+      traceabilityScore: 0,
+      priority: "NOT_TESTED",
+      gaps: ["TEST_NOT_EXECUTED"],
+      suggestedFix: "관리자 시험 계정으로 실제 화면 검사를 실행"
+    });
     continue;
   }
   const exactDb = contextByRoute.get(normalizeRoute(route.routePath));
@@ -117,7 +144,7 @@ const unusedScreens = screenInventoryCandidates.filter((row) => row.reason !== "
 const plannedScreens = screenInventoryCandidates.filter((row) => row.reason === "PLANNED_NOT_CONTRACTED");
 
 const queue = scoredRoutes.filter((route) => route.priority !== "READY").sort((a, b) => {
-  const rank = { P0: 0, P1: 1, P2: 2, P3: 3 };
+  const rank = { P0: 0, P1: 1, P2: 2, P3: 3, NOT_TESTED: 4 };
   return rank[a.priority] - rank[b.priority] || a.qualityScore - b.qualityScore || a.routePath.localeCompare(b.routePath);
 }).map((route, index) => ({ queueOrder: index + 1, ...route, incrementalCommand: `FULL_SCREEN_SMOKE_CHANGED_ONLY=true npm run test:e2e:full-screen-smoke` }));
 
@@ -138,6 +165,7 @@ const summary = {
   routeCount: scoredRoutes.length,
   averageScore: run.averageScore,
   readyCount: scoredRoutes.filter((route) => route.priority === "READY").length,
+  notTestedCount: scoredRoutes.filter((route) => route.priority === "NOT_TESTED").length,
   priorityCounts: Object.fromEntries(["P0", "P1", "P2", "P3"].map((priority) => [priority, scoredRoutes.filter((route) => route.priority === priority).length])),
   duplicateContractCandidateCount: duplicateContracts.length,
   unusedScreenCandidateCount: unusedScreens.length,

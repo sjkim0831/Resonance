@@ -1,0 +1,13 @@
+html.p006-workbench:not(.show-studio-details) body #app .main>section.roundtrip-qa,
+html.p006-workbench:not(.show-studio-details) body #app .main>section.performance-qa{display:none!important}
+html.p006-workbench body #app .main>section.studio-quick-guide{align-items:center;background:#fff;border:1px solid #9fc5cd;border-radius:12px;display:flex!important;gap:10px;margin:10px 0;padding:10px 12px}
+.p006-workbench .studio-quick-guide>div{align-items:center;display:flex;gap:8px;min-width:145px}.p006-workbench .studio-quick-guide>div>b{background:#087f8c;border-radius:50%;color:#fff;display:grid;flex:0 0 26px;height:26px;place-items:center}.p006-workbench .studio-quick-guide span{display:grid}.p006-workbench .studio-quick-guide small{color:#52636d}.p006-workbench .studio-quick-guide>i{color:#69909a;font-style:normal}.p006-workbench .studio-quick-guide nav{display:flex;gap:6px;margin-left:auto}.p006-workbench .studio-quick-guide button{background:#fff;border:1px solid #087f8c;border-radius:7px;color:#074f59;cursor:pointer;font-weight:800;padding:7px 9px;white-space:nowrap}
+.p006-workbench .studio{grid-template-columns:340px minmax(0,1fr)!important;gap:14px}.p006-workbench.asset-panel-expanded .studio{grid-template-columns:460px minmax(0,1fr)!important}.p006-workbench .studio>.assets{border:1px solid #b9d1d7;border-radius:12px;padding:12px;scrollbar-gutter:stable}.p006-workbench.asset-panel-expanded .studio>.assets .asset-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:1200px){.p006-workbench .studio-quick-guide>i,.p006-workbench .studio-quick-guide small{display:none}.p006-workbench .studio-quick-guide>div{min-width:auto}.p006-workbench .studio{grid-template-columns:280px minmax(0,1fr)!important}}
+@media(max-width:900px){.p006-workbench .studio-quick-guide{align-items:stretch;display:grid;grid-template-columns:1fr 1fr}.p006-workbench .studio-quick-guide nav{grid-column:1/-1;margin:0}.p006-workbench .studio{display:block!important}}
+html.p006-workbench:not(.show-studio-details) body #app .workarea>.performance-monitor,
+html.p006-workbench:not(.show-studio-details) body #app .workarea>.blueprint-studio,
+html.p006-workbench:not(.show-studio-details) body #app .workarea>.rtx-telemetry-overlay,
+html.p006-workbench:not(.show-studio-details) body #app .workarea>.timeline-controls{display:none!important}
+.p006-workbench:not(.show-studio-details) .workarea>.bar{min-height:0;padding:12px!important}
+.p006-workbench:not(.show-studio-details) .workarea>.factory-editor{margin:0 0 10px!important}

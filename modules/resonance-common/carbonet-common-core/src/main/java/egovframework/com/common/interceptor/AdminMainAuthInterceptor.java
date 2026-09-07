@@ -14,9 +14,11 @@ import egovframework.com.feature.member.service.EnterpriseMemberService;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.util.ObjectUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.util.HtmlUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -36,6 +38,7 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
     private final EmployeeMemberRepository employeeMemberRepository;
     private final FrameworkAuthorityPolicyService frameworkAuthorityPolicyService;
     private final CurrentUserContextService currentUserContextService;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -69,17 +72,23 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
             deny(response);
             return false;
         }
-        // Unified-account mode: authentication is the only admin-console gate.
-        markCompanyScope(request, "ALLOW_AUTHENTICATED", "Authenticated unified account.",
-                resolveTargetInsttId(request, normalizeMenuUrl(requestUri)));
-        return true;
-        /*
         if (frameworkAuthorityPolicyService.isSystemMaster(authorCode)) {
             markCompanyScope(request, "ALLOW_MASTER", "System master bypassed company scope validation.",
                     resolveTargetInsttId(request, normalizeMenuUrl(requestUri)));
             return true;
         }
         String normalizedMenuUrl = normalizeMenuUrl(request);
+        if (isAssignedLcaPractitionerOperation(request, normalizedMenuUrl, userId)) {
+            markCompanyScope(request, "ALLOW_ASSIGNED_LCA_PRACTITIONER",
+                    "Project-scoped LCA practitioner assignment authorized the operation.",
+                    resolveCurrentAdminInsttId(userId));
+            return true;
+        }
+        // These operations have stricter endpoint-local role, actor-assignment,
+        // tenant, or system-report authorization than the legacy menu mapping.
+        if (isLocallyGuardedAdminOperation(request, normalizedMenuUrl)) {
+            return true;
+        }
         String canonicalMenuUrl = canonicalizeAdminMenuUrl(normalizedMenuUrl);
         if (!checkCompanyScope(request, response, userId, authorCode, canonicalMenuUrl)) {
             return false;
@@ -120,11 +129,130 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
             return false;
         }
         return true;
-        */
+    }
+
+    private boolean isLocallyGuardedAdminOperation(HttpServletRequest request, String normalizedMenuUrl) {
+        if (request == null) {
+            return false;
+        }
+        String path = safeString(normalizedMenuUrl).toLowerCase(Locale.ROOT);
+        if (path.startsWith("/admin/api/admin/lca-workspaces/")) {
+            // LcaWorkspaceExecutionController performs authenticated actor,
+            // transition, and segregation-of-duties checks for every command.
+            return true;
+        }
+        String prefix = "/admin/api/system/actor-process";
+        if (!path.startsWith(prefix)) {
+            return false;
+        }
+        String endpoint = path.substring(prefix.length());
+        if ("GET".equalsIgnoreCase(request.getMethod())) {
+            // These read endpoints perform the stricter SYSTEM_ADMIN family
+            // check in ActorProcessGovernanceApiController. Let that local
+            // guard return the stable JSON denial contract instead of the
+            // menu-feature interceptor's legacy HTML alert.
+            return endpoint.equals("/system-test-report")
+                    || endpoint.startsWith("/system-test-report/");
+        }
+        return endpoint.equals("/process-closing/audit")
+                || endpoint.equals("/assets/refresh")
+                || endpoint.equals("/process-archetypes/bind-screen")
+                || endpoint.equals("/design-assets/preflight")
+                || endpoint.equals("/actors")
+                || endpoint.equals("/work-types")
+                || endpoint.equals("/assignments")
+                || endpoint.equals("/delivery/blueprints")
+                || endpoint.equals("/delivery/apply")
+                || endpoint.equals("/processes")
+                || endpoint.equals("/steps")
+                || endpoint.equals("/design/save-and-generate")
+                || endpoint.equals("/design/validate")
+                || endpoint.equals("/design/generate-professional-graph")
+                || endpoint.equals("/development/plan")
+                || endpoint.equals("/development/bootstrap-process")
+                || endpoint.equals("/development/direct")
+                || endpoint.equals("/development/approve")
+                || endpoint.equals("/development/preflight")
+                || endpoint.equals("/development/retry")
+                || endpoint.equals("/development/request")
+                || endpoint.equals("/generation/compile")
+                || endpoint.equals("/generation/compile-and-queue")
+                || endpoint.equals("/generation/adopt-existing")
+                || endpoint.equals("/generation/queue")
+                || endpoint.equals("/professional-screen-contracts")
+                || endpoint.equals("/professional-screen-contracts/preview")
+                || endpoint.equals("/professional-factory/execute")
+                || endpoint.equals("/professional-factory/evidence")
+                || endpoint.equals("/professional-factory/assemble-assets")
+                || endpoint.equals("/screen-workflow-test")
+                || endpoint.equals("/screen-workflow-test-cases")
+                || endpoint.equals("/qa-sessions")
+                || endpoint.equals("/common-features/install")
+                || endpoint.equals("/backend/verify")
+                || endpoint.equals("/backend/runtime-smoke")
+                || endpoint.equals("/references/scan")
+                || endpoint.equals("/cases")
+                || endpoint.equals("/artifacts")
+                || endpoint.equals("/runs")
+                || endpoint.equals("/standard-pack")
+                || endpoint.equals("/executions/start")
+                || endpoint.matches("/executions/[0-9a-f-]{36}/commands")
+                || endpoint.startsWith("/system-test-report/")
+                || endpoint.equals("/system-test-report");
+    }
+
+    private boolean isAssignedLcaPractitionerOperation(HttpServletRequest request, String normalizedMenuUrl,
+                                                       String userId) {
+        String path = safeString(normalizedMenuUrl).toLowerCase(Locale.ROOT);
+        boolean surveyWorkspace = path.equals("/admin/emission/survey-admin")
+                || path.equals("/admin/emission/survey-admin/page-data")
+                || path.startsWith("/admin/api/admin/emission-survey-admin/");
+        if (!surveyWorkspace || safeString(userId).isEmpty()) {
+            return false;
+        }
+        String projectId = safeString(request.getParameter("projectId"));
+        if (projectId.isEmpty()) {
+            String referer = safeString(request.getHeader("Referer"));
+            if (!referer.isEmpty()) {
+                try {
+                    projectId = safeString(UriComponentsBuilder.fromUriString(referer).build()
+                            .getQueryParams().getFirst("projectId"));
+                } catch (IllegalArgumentException ignored) {
+                    return false;
+                }
+            }
+        }
+        if (projectId.isEmpty()) {
+            return false;
+        }
+        Integer assigned = jdbcTemplate.queryForObject("""
+                select count(*)
+                  from framework_account_actor_assignment account_assignment
+                  join framework_project_actor_assignment project_assignment
+                    on project_assignment.project_id=account_assignment.project_id
+                   and project_assignment.actor_code=account_assignment.actor_code
+                   and lower(project_assignment.user_id)=lower(account_assignment.account_id)
+                   and project_assignment.active_yn='Y'
+                 where account_assignment.project_id=?
+                   and account_assignment.actor_code='LCA_PRACTITIONER'
+                   and lower(account_assignment.account_id)=lower(?)
+                   and account_assignment.assignment_status='ACTIVE'
+                   and (account_assignment.valid_from is null or account_assignment.valid_from<=current_date)
+                   and (account_assignment.valid_until is null or account_assignment.valid_until>=current_date)
+                """, Integer.class, projectId, userId);
+        return assigned != null && assigned > 0;
     }
 
     private void redirectToLogin(HttpServletRequest request, HttpServletResponse response) throws Exception {
         String requestUri = request.getRequestURI();
+        if (isAjaxRequest(request) || isAdminDataRequest(requestUri)) {
+            String message = isEnglishRequest(request) ? "Authentication is required." : "로그인이 필요합니다.";
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"status\":401,\"message\":\"" + escapeJson(message) + "\"}");
+            return;
+        }
         String language = request.getParameter("language");
         boolean english = (!ObjectUtils.isEmpty(requestUri) && requestUri.startsWith("/en/admin"))
                 || "en".equalsIgnoreCase(language);
@@ -135,16 +263,33 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
         }
     }
 
+    private boolean isAdminDataRequest(String requestUri) {
+        String normalized = safeString(requestUri).toLowerCase(Locale.ROOT);
+        return normalized.endsWith("/page-data")
+                || normalized.contains("/api/");
+    }
+
     private boolean shouldSkipAuthorization(HttpServletRequest request, String requestUri) {
         String rawUri = safeString(requestUri);
         if (rawUri.startsWith("/admin/assets/react/") || rawUri.startsWith("/en/admin/assets/react/")) {
             return true;
         }
         String normalizedUri = canonicalizeAdminMenuUrl(normalizeMenuUrl(request));
-        return ObjectUtils.isEmpty(normalizedUri)
+        return isWorkerControlEndpoint(request, normalizedUri)
+                || ObjectUtils.isEmpty(normalizedUri)
                 || "/admin".equals(normalizedUri)
                 || "/admin/".equals(normalizedUri)
                 || normalizedUri.startsWith("/admin/assets/react/");
+    }
+
+    private boolean isWorkerControlEndpoint(HttpServletRequest request, String normalizedUri) {
+        if (request == null || !"POST".equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
+        String path=safeString(normalizedUri).toLowerCase(Locale.ROOT);
+        return "/admin/api/system/actor-process/development/claim".equals(path)
+                || "/admin/api/system/actor-process/development/heartbeat".equals(path)
+                || "/admin/api/system/actor-process/development/complete".equals(path);
     }
 
     private String normalizeMenuUrl(String requestUri) {
@@ -472,7 +617,8 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
     }
 
     private boolean requiresOwnCompanyAccess(String authorCode) {
-        return frameworkAuthorityPolicyService.isOperationAdmin(authorCode);
+        return frameworkAuthorityPolicyService.isOperationAdmin(authorCode)
+                || frameworkAuthorityPolicyService.isCompanyAdmin(authorCode);
     }
 
     private boolean hasMemberManagementCompanyAdminAccess(String authorCode) {
@@ -572,6 +718,9 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
                 || "/admin/member/auth-group/create".equals(value)
                 || "/admin/member/auth-group/save-features".equals(value)
                 || "/admin/member/dept-role-mapping".equals(value)
+                || "/admin/emission/site-management".equals(value)
+                || "/admin/emission/site-management/page-data".equals(value)
+                || "/admin/api/admin/emission/sites".equals(value)
                 || "/admin/api/admin/member/list/page".equals(value)
                 || "/admin/api/admin/member/edit".equals(value)
                 || "/admin/api/admin/member/detail/page".equals(value)

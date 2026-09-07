@@ -1,0 +1,1038 @@
+{
+  "generatedAt": "2026-08-13T23:35:41.371108+00:00",
+  "status": "PASS",
+  "physicalAssets": 128,
+  "dbMappings": 128,
+  "usdBundles": 15,
+  "uniqueVariants": 128,
+  "uniqueGeometryPrims": 128,
+  "validatedAssets": 128,
+  "failedAssets": 0,
+  "conversionRate": 100.0,
+  "rows": [
+    {
+      "assetId": "A0001",
+      "placementCode": "catalog_a0001",
+      "name": "냉각장비",
+      "bundleCode": "mold_cooling",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0002",
+      "placementCode": "catalog_a0002",
+      "name": "로봇제어반1",
+      "bundleCode": "robot_panel",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0003",
+      "placementCode": "catalog_a0003",
+      "name": "로봇제어반2",
+      "bundleCode": "robot_panel",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0004",
+      "placementCode": "catalog_a0004",
+      "name": "보온로1",
+      "bundleCode": "holding_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0005",
+      "placementCode": "catalog_a0005",
+      "name": "보온로2",
+      "bundleCode": "holding_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0006",
+      "placementCode": "catalog_a0006",
+      "name": "스프레이로봇,래들1",
+      "bundleCode": "spray_ladler",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0007",
+      "placementCode": "catalog_a0007",
+      "name": "이형제1",
+      "bundleCode": "release_agent",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0008",
+      "placementCode": "catalog_a0008",
+      "name": "제어반전체1",
+      "bundleCode": "main_panel",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0009",
+      "placementCode": "catalog_a0009",
+      "name": "주조기_필터",
+      "bundleCode": "casting_filter",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0010",
+      "placementCode": "catalog_a0010",
+      "name": "주조기1",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0011",
+      "placementCode": "catalog_a0011",
+      "name": "주조기2",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0012",
+      "placementCode": "catalog_a0012",
+      "name": "주조기3",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0013",
+      "placementCode": "catalog_a0013",
+      "name": "주조기4",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0014",
+      "placementCode": "catalog_a0014",
+      "name": "주조기5",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0015",
+      "placementCode": "catalog_a0015",
+      "name": "주조기6",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0016",
+      "placementCode": "catalog_a0016",
+      "name": "주조기7",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0017",
+      "placementCode": "catalog_a0017",
+      "name": "진공장치",
+      "bundleCode": "vacuum_unit",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0018",
+      "placementCode": "catalog_a0018",
+      "name": "진공장치2",
+      "bundleCode": "vacuum_unit",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0019",
+      "placementCode": "catalog_a0019",
+      "name": "진공장치3",
+      "bundleCode": "vacuum_unit",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0020",
+      "placementCode": "catalog_a0020",
+      "name": "진공장치4",
+      "bundleCode": "vacuum_unit",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0021",
+      "placementCode": "catalog_a0021",
+      "name": "턴테이블로1",
+      "bundleCode": "turntable_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0022",
+      "placementCode": "catalog_a0022",
+      "name": "턴테이블로2",
+      "bundleCode": "turntable_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0023",
+      "placementCode": "catalog_a0023",
+      "name": "트리밍1",
+      "bundleCode": "trimming_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0024",
+      "placementCode": "catalog_a0024",
+      "name": "트리밍2",
+      "bundleCode": "trimming_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0025",
+      "placementCode": "catalog_a0025",
+      "name": "용해로",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0026",
+      "placementCode": "catalog_a0026",
+      "name": "BUHLER",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0027",
+      "placementCode": "catalog_a0027",
+      "name": "LADLER",
+      "bundleCode": "ladler",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0028",
+      "placementCode": "catalog_a0028",
+      "name": "베이스",
+      "bundleCode": "ladler",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0029",
+      "placementCode": "catalog_a0029",
+      "name": "부품1",
+      "bundleCode": "ladler",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0030",
+      "placementCode": "catalog_a0030",
+      "name": "부품2",
+      "bundleCode": "ladler",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0031",
+      "placementCode": "catalog_a0031",
+      "name": "부품3",
+      "bundleCode": "ladler",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0032",
+      "placementCode": "catalog_a0032",
+      "name": "부품4",
+      "bundleCode": "ladler",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0033",
+      "placementCode": "catalog_a0033",
+      "name": "부품5",
+      "bundleCode": "ladler",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0034",
+      "placementCode": "catalog_a0034",
+      "name": "컵",
+      "bundleCode": "ladler",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0035",
+      "placementCode": "catalog_a0035",
+      "name": "punching press",
+      "bundleCode": "punching_press",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0036",
+      "placementCode": "catalog_a0036",
+      "name": "펀칭기 제어반",
+      "bundleCode": "punching_press",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0037",
+      "placementCode": "catalog_a0037",
+      "name": "펀칭기",
+      "bundleCode": "punching_press",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0038",
+      "placementCode": "catalog_a0038",
+      "name": "펀칭기_1",
+      "bundleCode": "punching_press",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0039",
+      "placementCode": "catalog_a0039",
+      "name": "펀칭기_2",
+      "bundleCode": "punching_press",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0040",
+      "placementCode": "catalog_a0040",
+      "name": "펀칭기_3",
+      "bundleCode": "punching_press",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0041",
+      "placementCode": "catalog_a0041",
+      "name": "TT-1800",
+      "bundleCode": "turntable_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0042",
+      "placementCode": "catalog_a0042",
+      "name": "VACUUM SUCTION UNIT",
+      "bundleCode": "vacuum_unit",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0043",
+      "placementCode": "catalog_a0043",
+      "name": "금형고압냉각장비",
+      "bundleCode": "mold_cooling",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0044",
+      "placementCode": "catalog_a0044",
+      "name": "금형고압 DOOR",
+      "bundleCode": "mold_cooling",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0045",
+      "placementCode": "catalog_a0045",
+      "name": "금형고압냉각장비",
+      "bundleCode": "mold_cooling",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0046",
+      "placementCode": "catalog_a0046",
+      "name": "금형고압냉각장비_1",
+      "bundleCode": "mold_cooling",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0047",
+      "placementCode": "catalog_a0047",
+      "name": "파트_a0",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0048",
+      "placementCode": "catalog_a0048",
+      "name": "파트_a1",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0049",
+      "placementCode": "catalog_a0049",
+      "name": "파트_a2",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0050",
+      "placementCode": "catalog_a0050",
+      "name": "파트_a3",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0051",
+      "placementCode": "catalog_a0051",
+      "name": "파트_a4",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0052",
+      "placementCode": "catalog_a0052",
+      "name": "파트_a5",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0053",
+      "placementCode": "catalog_a0053",
+      "name": "로봇",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0054",
+      "placementCode": "catalog_a0054",
+      "name": "로봇01",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0055",
+      "placementCode": "catalog_a0055",
+      "name": "로봇02",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0056",
+      "placementCode": "catalog_a0056",
+      "name": "로봇03",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0057",
+      "placementCode": "catalog_a0057",
+      "name": "로봇04",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0058",
+      "placementCode": "catalog_a0058",
+      "name": "로봇05",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0059",
+      "placementCode": "catalog_a0059",
+      "name": "로봇06",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0060",
+      "placementCode": "catalog_a0060",
+      "name": "로봇1",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0061",
+      "placementCode": "catalog_a0061",
+      "name": "본체",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0062",
+      "placementCode": "catalog_a0062",
+      "name": "로봇2",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0063",
+      "placementCode": "catalog_a0063",
+      "name": "로봇2-1",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0064",
+      "placementCode": "catalog_a0064",
+      "name": "로봇2-2",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0065",
+      "placementCode": "catalog_a0065",
+      "name": "로봇2-3",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0066",
+      "placementCode": "catalog_a0066",
+      "name": "로봇2-4",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0067",
+      "placementCode": "catalog_a0067",
+      "name": "로봇2-5",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0068",
+      "placementCode": "catalog_a0068",
+      "name": "로봇2-6",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0069",
+      "placementCode": "catalog_a0069",
+      "name": "보온로",
+      "bundleCode": "holding_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0070",
+      "placementCode": "catalog_a0070",
+      "name": "보온로",
+      "bundleCode": "holding_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0071",
+      "placementCode": "catalog_a0071",
+      "name": "보온로-부품1",
+      "bundleCode": "holding_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0072",
+      "placementCode": "catalog_a0072",
+      "name": "보온로-부품2",
+      "bundleCode": "holding_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0073",
+      "placementCode": "catalog_a0073",
+      "name": "보온로-부품3",
+      "bundleCode": "holding_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0074",
+      "placementCode": "catalog_a0074",
+      "name": "스프레이로보트제어반",
+      "bundleCode": "spray_ladler",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0075",
+      "placementCode": "catalog_a0075",
+      "name": "용해로",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0076",
+      "placementCode": "catalog_a0076",
+      "name": "용해로1_1",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0077",
+      "placementCode": "catalog_a0077",
+      "name": "용해로1_2",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0078",
+      "placementCode": "catalog_a0078",
+      "name": "용해로1_3",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0079",
+      "placementCode": "catalog_a0079",
+      "name": "용해로2",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0080",
+      "placementCode": "catalog_a0080",
+      "name": "용해로3_1",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0081",
+      "placementCode": "catalog_a0081",
+      "name": "용해로3_2",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0082",
+      "placementCode": "catalog_a0082",
+      "name": "용해로4",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0083",
+      "placementCode": "catalog_a0083",
+      "name": "용해로5",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0084",
+      "placementCode": "catalog_a0084",
+      "name": "용해로6",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0085",
+      "placementCode": "catalog_a0085",
+      "name": "용해로7",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0086",
+      "placementCode": "catalog_a0086",
+      "name": "용해로8",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0087",
+      "placementCode": "catalog_a0087",
+      "name": "용해로다리",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0088",
+      "placementCode": "catalog_a0088",
+      "name": "용해로제어반",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0089",
+      "placementCode": "catalog_a0089",
+      "name": "이형제_1",
+      "bundleCode": "release_agent",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0090",
+      "placementCode": "catalog_a0090",
+      "name": "이형제_2",
+      "bundleCode": "release_agent",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0091",
+      "placementCode": "catalog_a0091",
+      "name": "이형제_3",
+      "bundleCode": "release_agent",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0092",
+      "placementCode": "catalog_a0092",
+      "name": "이형제_4",
+      "bundleCode": "release_agent",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0093",
+      "placementCode": "catalog_a0093",
+      "name": "이형제2",
+      "bundleCode": "release_agent",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0094",
+      "placementCode": "catalog_a0094",
+      "name": "전체 어셈블리",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0095",
+      "placementCode": "catalog_a0095",
+      "name": "01스프레이로보트제어반",
+      "bundleCode": "spray_ladler",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0096",
+      "placementCode": "catalog_a0096",
+      "name": "스프레이로보트제어반1",
+      "bundleCode": "spray_ladler",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0097",
+      "placementCode": "catalog_a0097",
+      "name": "자동화제어반",
+      "bundleCode": "main_panel",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0098",
+      "placementCode": "catalog_a0098",
+      "name": "취출로보트제어반",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0099",
+      "placementCode": "catalog_a0099",
+      "name": "취출로보트제어반1",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0100",
+      "placementCode": "catalog_a0100",
+      "name": "buhler",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0101",
+      "placementCode": "catalog_a0101",
+      "name": "buhler-2",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0102",
+      "placementCode": "catalog_a0102",
+      "name": "cylinder plate reworked",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0103",
+      "placementCode": "catalog_a0103",
+      "name": "fixing plate fixed",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0104",
+      "placementCode": "catalog_a0104",
+      "name": "fixing plate mobile",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0105",
+      "placementCode": "catalog_a0105",
+      "name": "주조기",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0106",
+      "placementCode": "catalog_a0106",
+      "name": "주조기_tie bar",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0107",
+      "placementCode": "catalog_a0107",
+      "name": "주조기_파트1",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0108",
+      "placementCode": "catalog_a0108",
+      "name": "주조기_파트12",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0109",
+      "placementCode": "catalog_a0109",
+      "name": "주조기_파트2",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0110",
+      "placementCode": "catalog_a0110",
+      "name": "주조기_파트3",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0111",
+      "placementCode": "catalog_a0111",
+      "name": "주조기_파트4",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0112",
+      "placementCode": "catalog_a0112",
+      "name": "주조기_파트5",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0113",
+      "placementCode": "catalog_a0113",
+      "name": "주조기_파트7",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0114",
+      "placementCode": "catalog_a0114",
+      "name": "주조기_파트8",
+      "bundleCode": "casting_machine",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0115",
+      "placementCode": "catalog_a0115",
+      "name": "vacuum suction unit",
+      "bundleCode": "vacuum_unit",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0116",
+      "placementCode": "catalog_a0116",
+      "name": "vacuum suction unit_1",
+      "bundleCode": "vacuum_unit",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0117",
+      "placementCode": "catalog_a0117",
+      "name": "VACUUM 상단DOOR",
+      "bundleCode": "vacuum_unit",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0118",
+      "placementCode": "catalog_a0118",
+      "name": "VACUUM 하단DOOR",
+      "bundleCode": "vacuum_unit",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0119",
+      "placementCode": "catalog_a0119",
+      "name": "취출로보트제어반",
+      "bundleCode": "takeout_robot",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0120",
+      "placementCode": "catalog_a0120",
+      "name": "TT-1800_01",
+      "bundleCode": "turntable_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0121",
+      "placementCode": "catalog_a0121",
+      "name": "TT-1800_02",
+      "bundleCode": "turntable_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0122",
+      "placementCode": "catalog_a0122",
+      "name": "TT-1800_03",
+      "bundleCode": "turntable_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0123",
+      "placementCode": "catalog_a0123",
+      "name": "TT-1800_04",
+      "bundleCode": "turntable_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0124",
+      "placementCode": "catalog_a0124",
+      "name": "TT-1800_05",
+      "bundleCode": "turntable_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0125",
+      "placementCode": "catalog_a0125",
+      "name": "주조기,보온로",
+      "bundleCode": "holding_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0126",
+      "placementCode": "catalog_a0126",
+      "name": "턴테이블로",
+      "bundleCode": "turntable_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0243",
+      "placementCode": "catalog_a0243",
+      "name": "ass'y(20170425)",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "assetId": "A0244",
+      "placementCode": "catalog_a0244",
+      "name": "경동식 연속용해로 1t 3D",
+      "bundleCode": "melting_furnace",
+      "status": "PASS",
+      "errors": []
+    }
+  ]
+}

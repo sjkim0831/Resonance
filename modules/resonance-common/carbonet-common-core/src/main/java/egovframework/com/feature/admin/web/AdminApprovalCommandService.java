@@ -2,6 +2,7 @@ package egovframework.com.feature.admin.web;
 
 import egovframework.com.platform.codex.service.AdminApprovalPagePayloadService;
 import egovframework.com.platform.codex.service.AdminAuthorityPagePayloadSupport;
+import egovframework.com.feature.member.service.CompanyMasterInvitationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.ui.Model;
@@ -22,6 +23,7 @@ public class AdminApprovalCommandService {
     private final AdminAuthorityPagePayloadSupport adminAuthorityPagePayloadSupport;
     private final AdminApprovalNavigationSupport adminApprovalNavigationSupport;
     private final AdminApprovalAuditSupport adminApprovalAuditSupport;
+    private final CompanyMasterInvitationService companyMasterInvitationService;
 
     public AdminApprovalCommandService(
             AdminApprovalActionService adminApprovalActionService,
@@ -30,7 +32,8 @@ public class AdminApprovalCommandService {
             AdminRequestContextSupport adminRequestContextSupport,
             AdminAuthorityPagePayloadSupport adminAuthorityPagePayloadSupport,
             AdminApprovalNavigationSupport adminApprovalNavigationSupport,
-            AdminApprovalAuditSupport adminApprovalAuditSupport) {
+            AdminApprovalAuditSupport adminApprovalAuditSupport,
+            CompanyMasterInvitationService companyMasterInvitationService) {
         this.adminApprovalActionService = adminApprovalActionService;
         this.adminCertificateApprovalService = adminCertificateApprovalService;
         this.adminApprovalPagePayloadService = adminApprovalPagePayloadService;
@@ -38,6 +41,7 @@ public class AdminApprovalCommandService {
         this.adminAuthorityPagePayloadSupport = adminAuthorityPagePayloadSupport;
         this.adminApprovalNavigationSupport = adminApprovalNavigationSupport;
         this.adminApprovalAuditSupport = adminApprovalAuditSupport;
+        this.companyMasterInvitationService = companyMasterInvitationService;
     }
 
     public String submitMemberApproveForm(
@@ -191,7 +195,17 @@ public class AdminApprovalCommandService {
                         + adminApprovalAuditSupport.safeJson(result.getSelectedIds().toString()) + "\",\"rejectReason\":\""
                         + adminApprovalAuditSupport.safeJson(result.getRejectReason()) + "\"}",
                 "{\"targetStatus\":\"" + result.getTargetStatus() + "\"}");
-        return result.toResponseEntity();
+        ResponseEntity<Map<String, Object>> baseResponse = result.toResponseEntity();
+        if (!"P".equals(result.getTargetStatus())) {
+            return baseResponse;
+        }
+        Map<String, Object> response = new java.util.LinkedHashMap<>(baseResponse.getBody());
+        java.util.List<Map<String, Object>> invitations = new java.util.ArrayList<>();
+        for (String approvedInsttId : result.getSelectedIds()) {
+            invitations.add(companyMasterInvitationService.issue(approvedInsttId, currentUserId));
+        }
+        response.put("masterInvitations", invitations);
+        return ResponseEntity.ok(response);
     }
 
     public ResponseEntity<Map<String, Object>> submitCertificateApproveApi(

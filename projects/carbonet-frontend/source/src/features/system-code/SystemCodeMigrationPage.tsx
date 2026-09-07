@@ -576,7 +576,7 @@ export function SystemCodeMigrationPage() {
           </div>
 
           <form action={buildLocalizedPath("/admin/system/code/class/create", "/en/admin/system/code/class/create")} className={`${showCodeRegister ? "grid" : "hidden"} grid-cols-1 gap-4 mb-4 md:grid-cols-5`} data-reset-on-success="true" method="post" onSubmit={handleSubmit}>
-            <input name="currentDetailCodeId" type="hidden" value={detailCodeId} />
+            <input name="currentDetailCodeId" type="hidden" value={detailCodeId} className="krds-control-field" />
             <div>
               <label className="gov-label" htmlFor="clCode">{en ? "Class Code" : "분류 코드"}</label>
               <AdminInput id="clCode" name="clCode" placeholder={en ? "e.g., HME" : "예: HME"} />
@@ -691,7 +691,7 @@ export function SystemCodeMigrationPage() {
           </div>
 
           <form action={buildLocalizedPath("/admin/system/code/group/create", "/en/admin/system/code/group/create")} className={`${showCodeRegister ? "grid" : "hidden"} grid-cols-1 gap-4 mb-4 md:grid-cols-6`} data-reset-on-success="true" method="post" onSubmit={handleSubmit}>
-            <input name="currentDetailCodeId" type="hidden" value={detailCodeId} />
+            <input name="currentDetailCodeId" type="hidden" value={detailCodeId} className="krds-control-field" />
             <div>
               <label className="gov-label" htmlFor="codeId">{en ? "Code ID" : "코드 ID"}</label>
               <AdminInput id="codeId" name="codeId" placeholder="HMENU1" />
@@ -802,15 +802,15 @@ export function SystemCodeMigrationPage() {
           <div className={`${showCodeLookup ? "flex" : "hidden"} mb-4 flex-wrap items-center justify-end gap-3 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-surface-subtle)] px-4 py-3`}>
             <div className="flex flex-wrap gap-2">
               <form action={buildLocalizedPath("/admin/system/code/detail/bulk-use", "/en/admin/system/code/detail/bulk-use")} method="post" onSubmit={handleSubmit}>
-                <input name="codeId" type="hidden" value={detailCodeId} />
-                <input name="codes" type="hidden" value={selectedDetailRowsForBulk.map((row) => stringOf(row, "code", "CODE")).join(",")} />
-                <input name="useAt" type="hidden" value="Y" />
+                <input name="codeId" type="hidden" value={detailCodeId} className="krds-control-field" />
+                <input name="codes" type="hidden" value={selectedDetailRowsForBulk.map((row) => stringOf(row, "code", "CODE")).join(",")} className="krds-control-field" />
+                <input name="useAt" type="hidden" value="Y" className="krds-control-field" />
                 <MemberButton disabled={selectedDetailRowKeys.length === 0} type="submit" variant="secondary">{en ? "Mark Active" : "사용중 변경"}</MemberButton>
               </form>
               <form action={buildLocalizedPath("/admin/system/code/detail/bulk-use", "/en/admin/system/code/detail/bulk-use")} method="post" onSubmit={handleSubmit}>
-                <input name="codeId" type="hidden" value={detailCodeId} />
-                <input name="codes" type="hidden" value={selectedDetailRowsForBulk.map((row) => stringOf(row, "code", "CODE")).join(",")} />
-                <input name="useAt" type="hidden" value="N" />
+                <input name="codeId" type="hidden" value={detailCodeId} className="krds-control-field" />
+                <input name="codes" type="hidden" value={selectedDetailRowsForBulk.map((row) => stringOf(row, "code", "CODE")).join(",")} className="krds-control-field" />
+                <input name="useAt" type="hidden" value="N" className="krds-control-field" />
                 <MemberButton disabled={selectedDetailRowKeys.length === 0} type="submit" variant="secondary">{en ? "Mark Inactive" : "미사용 변경"}</MemberButton>
               </form>
               <MemberButton disabled={selectedDetailRowKeys.length === 0} onClick={() => setSelectedDetailRowKeys([])} type="button" variant="secondary">{en ? "Clear Selection" : "선택 해제"}</MemberButton>
@@ -893,7 +893,7 @@ export function SystemCodeMigrationPage() {
                       aria-label={en ? "Select all visible detail codes" : "현재 보이는 상세 코드 전체 선택"}
                       checked={allVisibleDetailRowsSelected}
                       onChange={(event) => toggleAllVisibleDetailRows(event.target.checked)}
-                      type="checkbox"
+                      type="checkbox" className="krds-control-native"
                     />
                   </th>
                   <th className="px-4 py-3">{en ? "Code ID" : "코드 ID"}</th>
@@ -925,7 +925,7 @@ export function SystemCodeMigrationPage() {
                           aria-label={en ? `Select detail code ${stringOf(row, "code", "CODE")}` : `${stringOf(row, "code", "CODE")} 상세 코드 선택`}
                           checked={isChecked}
                           onChange={() => toggleDetailRowSelection(rowKey)}
-                          type="checkbox"
+                          type="checkbox" className="krds-control-native"
                         />
                       </td>
                       <td className="px-4 py-3 font-bold">{stringOf(row, "codeId", "CODE_ID")}</td>
@@ -939,11 +939,11 @@ export function SystemCodeMigrationPage() {
                             {en ? "Copy" : "복사"}
                           </MemberButton>
                           <form action={buildLocalizedPath("/admin/system/code/detail/update", "/en/admin/system/code/detail/update")} method="post" onSubmit={handleSubmit}>
-                            <input name="codeId" type="hidden" value={stringOf(row, "codeId", "CODE_ID")} />
-                            <input name="code" type="hidden" value={stringOf(row, "code", "CODE")} />
-                            <input name="codeNm" type="hidden" value={stringOf(row, "codeNm", "CODE_NM")} />
-                            <input name="codeDc" type="hidden" value={stringOf(row, "codeDc", "CODE_DC")} />
-                            <input name="useAt" type="hidden" value={(stringOf(row, "useAt", "USE_AT") || "Y") === "Y" ? "N" : "Y"} />
+                            <input name="codeId" type="hidden" value={stringOf(row, "codeId", "CODE_ID")} className="krds-control-field" />
+                            <input name="code" type="hidden" value={stringOf(row, "code", "CODE")} className="krds-control-field" />
+                            <input name="codeNm" type="hidden" value={stringOf(row, "codeNm", "CODE_NM")} className="krds-control-field" />
+                            <input name="codeDc" type="hidden" value={stringOf(row, "codeDc", "CODE_DC")} className="krds-control-field" />
+                            <input name="useAt" type="hidden" value={(stringOf(row, "useAt", "USE_AT") || "Y") === "Y" ? "N" : "Y"} className="krds-control-field" />
                             <MemberButton aria-label={(stringOf(row, "useAt", "USE_AT") || "Y") === "Y"
                               ? (en ? `Set detail code ${stringOf(row, "code", "CODE")} inactive` : `${stringOf(row, "code", "CODE")} 상세 코드를 미사용으로 변경`)
                               : (en ? `Set detail code ${stringOf(row, "code", "CODE")} active` : `${stringOf(row, "code", "CODE")} 상세 코드를 사용중으로 변경`)} type="submit" variant="secondary">
@@ -978,13 +978,13 @@ export function SystemCodeMigrationPage() {
               {selectedClassRefCount > 0 ? (en ? `${selectedClassRefCount} code IDs linked.` : `${selectedClassRefCount}개 코드 ID 연결됨`) : (en ? "No linked code IDs." : "연결된 코드 ID 없음")}
             </p>
             <form action={buildLocalizedPath("/admin/system/code/class/update", "/en/admin/system/code/class/update")} className="grid grid-cols-1 gap-4 md:grid-cols-4" method="post" onSubmit={handleSubmit}>
-              <input name="clCode" type="hidden" value={stringOf(selectedClassRow, "clCode", "CL_CODE")} />
-              <input name="currentDetailCodeId" type="hidden" value={detailCodeId} />
+              <input name="clCode" type="hidden" value={stringOf(selectedClassRow, "clCode", "CL_CODE")} className="krds-control-field" />
+              <input name="currentDetailCodeId" type="hidden" value={detailCodeId} className="krds-control-field" />
               <div><label className="gov-label">{en ? "Class Name" : "분류명"}</label><AdminInput defaultValue={stringOf(selectedClassRow, "clCodeNm", "CL_CODE_NM")} name="clCodeNm" /></div>
               <div className="md:col-span-2"><label className="gov-label">{en ? "Description" : "설명"}</label><AdminInput defaultValue={stringOf(selectedClassRow, "clCodeDc", "CL_CODE_DC")} name="clCodeDc" /></div>
               <div><label className="gov-label">{en ? "Use" : "사용"}</label><AdminSelect defaultValue={stringOf(selectedClassRow, "useAt", "USE_AT") || "Y"} name="useAt"><option value="Y">Y</option><option value="N">N</option></AdminSelect></div>
               <div className="md:col-span-4 flex justify-end gap-2">
-                <form action={buildLocalizedPath("/admin/system/code/class/delete", "/en/admin/system/code/class/delete")} data-confirm-message={en ? "Delete?" : "삭제?"} method="post" onSubmit={handleSubmit}><input name="clCode" type="hidden" value={stringOf(selectedClassRow, "clCode", "CL_CODE")} /><input name="currentDetailCodeId" type="hidden" value={detailCodeId} /><MemberButton disabled={selectedClassRefCount > 0} type="submit" variant="danger">{en ? "Delete" : "삭제"}</MemberButton></form>
+                <form action={buildLocalizedPath("/admin/system/code/class/delete", "/en/admin/system/code/class/delete")} data-confirm-message={en ? "Delete?" : "삭제?"} method="post" onSubmit={handleSubmit}><input name="clCode" type="hidden" value={stringOf(selectedClassRow, "clCode", "CL_CODE")} className="krds-control-field" /><input name="currentDetailCodeId" type="hidden" value={detailCodeId} className="krds-control-field" /><MemberButton disabled={selectedClassRefCount > 0} type="submit" variant="danger">{en ? "Delete" : "삭제"}</MemberButton></form>
                 <MemberButton onClick={() => setEditClassModalOpen(false)} type="button" variant="secondary">{en ? "Cancel" : "취소"}</MemberButton>
                 <MemberButton type="submit" variant="primary">{en ? "Save" : "저장"}</MemberButton>
               </div>
@@ -1004,14 +1004,14 @@ export function SystemCodeMigrationPage() {
               {selectedGroupRefCount > 0 ? (en ? `${selectedGroupRefCount} detail codes linked.` : `${selectedGroupRefCount}개 상세 코드 연결됨`) : (en ? "No linked detail codes." : "연결된 상세 코드 없음")}
             </p>
             <form action={buildLocalizedPath("/admin/system/code/group/update", "/en/admin/system/code/group/update")} className="grid grid-cols-1 gap-4 md:grid-cols-5" method="post" onSubmit={handleSubmit}>
-              <input name="codeId" type="hidden" value={stringOf(selectedGroupRow, "codeId", "CODE_ID")} />
-              <input name="currentDetailCodeId" type="hidden" value={detailCodeId} />
+              <input name="codeId" type="hidden" value={stringOf(selectedGroupRow, "codeId", "CODE_ID")} className="krds-control-field" />
+              <input name="currentDetailCodeId" type="hidden" value={detailCodeId} className="krds-control-field" />
               <div><label className="gov-label">{en ? "Code Name" : "코드명"}</label><AdminInput defaultValue={stringOf(selectedGroupRow, "codeIdNm", "CODE_ID_NM")} name="codeIdNm" /></div>
               <div className="md:col-span-2"><label className="gov-label">{en ? "Description" : "설명"}</label><AdminInput defaultValue={stringOf(selectedGroupRow, "codeIdDc", "CODE_ID_DC")} name="codeIdDc" /></div>
               <div><label className="gov-label">{en ? "Class Code" : "분류 코드"}</label><AdminSelect defaultValue={stringOf(selectedGroupRow, "clCode", "CL_CODE")} name="clCode">{clCodeList.map((row) => <option key={stringOf(row, "clCode", "CL_CODE")} value={stringOf(row, "clCode", "CL_CODE")}>{stringOf(row, "clCode", "CL_CODE")} - {stringOf(row, "clCodeNm", "CL_CODE_NM")}</option>)}</AdminSelect></div>
               <div><label className="gov-label">{en ? "Use" : "사용"}</label><AdminSelect defaultValue={stringOf(selectedGroupRow, "useAt", "USE_AT") || "Y"} name="useAt"><option value="Y">Y</option><option value="N">N</option></AdminSelect></div>
               <div className="md:col-span-5 flex justify-end gap-2">
-                <form action={buildLocalizedPath("/admin/system/code/group/delete", "/en/admin/system/code/group/delete")} data-confirm-message={en ? "Delete?" : "삭제?"} method="post" onSubmit={handleSubmit}><input name="codeId" type="hidden" value={stringOf(selectedGroupRow, "codeId", "CODE_ID")} /><input name="currentDetailCodeId" type="hidden" value={detailCodeId} /><MemberButton disabled={selectedGroupRefCount > 0} type="submit" variant="danger">{en ? "Delete" : "삭제"}</MemberButton></form>
+                <form action={buildLocalizedPath("/admin/system/code/group/delete", "/en/admin/system/code/group/delete")} data-confirm-message={en ? "Delete?" : "삭제?"} method="post" onSubmit={handleSubmit}><input name="codeId" type="hidden" value={stringOf(selectedGroupRow, "codeId", "CODE_ID")} className="krds-control-field" /><input name="currentDetailCodeId" type="hidden" value={detailCodeId} className="krds-control-field" /><MemberButton disabled={selectedGroupRefCount > 0} type="submit" variant="danger">{en ? "Delete" : "삭제"}</MemberButton></form>
                 <MemberButton onClick={() => setEditGroupModalOpen(false)} type="button" variant="secondary">{en ? "Cancel" : "취소"}</MemberButton>
                 <MemberButton type="submit" variant="primary">{en ? "Save" : "저장"}</MemberButton>
               </div>
@@ -1028,13 +1028,13 @@ export function SystemCodeMigrationPage() {
               <MemberButton onClick={() => void handleCopy(stringOf(selectedDetailRow, "code", "CODE"), en ? "Detail code" : "상세 코드")} type="button" variant="secondary">{en ? "Copy" : "복사"}</MemberButton>
             </div>
             <form action={buildLocalizedPath("/admin/system/code/detail/update", "/en/admin/system/code/detail/update")} className="grid grid-cols-1 gap-4 md:grid-cols-4" method="post" onSubmit={handleSubmit}>
-              <input name="codeId" type="hidden" value={stringOf(selectedDetailRow, "codeId", "CODE_ID")} />
-              <input name="code" type="hidden" value={stringOf(selectedDetailRow, "code", "CODE")} />
+              <input name="codeId" type="hidden" value={stringOf(selectedDetailRow, "codeId", "CODE_ID")} className="krds-control-field" />
+              <input name="code" type="hidden" value={stringOf(selectedDetailRow, "code", "CODE")} className="krds-control-field" />
               <div><label className="gov-label">{en ? "Code Name" : "코드명"}</label><AdminInput defaultValue={stringOf(selectedDetailRow, "codeNm", "CODE_NM")} name="codeNm" /></div>
               <div className="md:col-span-2"><label className="gov-label">{en ? "Description" : "설명"}</label><AdminInput defaultValue={stringOf(selectedDetailRow, "codeDc", "CODE_DC")} name="codeDc" /></div>
               <div><label className="gov-label">{en ? "Use" : "사용"}</label><AdminSelect defaultValue={stringOf(selectedDetailRow, "useAt", "USE_AT") || "Y"} name="useAt"><option value="Y">Y</option><option value="N">N</option></AdminSelect></div>
               <div className="md:col-span-4 flex justify-end gap-2">
-                <form action={buildLocalizedPath("/admin/system/code/detail/delete", "/en/admin/system/code/detail/delete")} data-confirm-message={en ? "Delete?" : "삭제?"} method="post" onSubmit={handleSubmit}><input name="codeId" type="hidden" value={stringOf(selectedDetailRow, "codeId", "CODE_ID")} /><input name="code" type="hidden" value={stringOf(selectedDetailRow, "code", "CODE")} /><MemberButton type="submit" variant="danger">{en ? "Delete" : "삭제"}</MemberButton></form>
+                <form action={buildLocalizedPath("/admin/system/code/detail/delete", "/en/admin/system/code/detail/delete")} data-confirm-message={en ? "Delete?" : "삭제?"} method="post" onSubmit={handleSubmit}><input name="codeId" type="hidden" value={stringOf(selectedDetailRow, "codeId", "CODE_ID")} className="krds-control-field" /><input name="code" type="hidden" value={stringOf(selectedDetailRow, "code", "CODE")} className="krds-control-field" /><MemberButton type="submit" variant="danger">{en ? "Delete" : "삭제"}</MemberButton></form>
                 <MemberButton onClick={() => setEditDetailModalOpen(false)} type="button" variant="secondary">{en ? "Cancel" : "취소"}</MemberButton>
                 <MemberButton type="submit" variant="primary">{en ? "Save" : "저장"}</MemberButton>
               </div>

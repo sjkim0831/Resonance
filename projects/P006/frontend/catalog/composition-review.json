@@ -1,0 +1,29 @@
+{
+  "promoted": [
+    {
+      "id": "A0094",
+      "name": "전체 어셈블리",
+      "category": "equipment-module",
+      "sourceGroup": "modeling-image",
+      "extension": "JPG",
+      "relativePath": "모델링사진\\이미지파일\\전체 어셈블리.JPG",
+      "size": 484295,
+      "sha256": "2d3cc47df6dbf97d7628442b284986c649b472f58ada785e99a61a5528bc4910",
+      "preview": "images/A0094.jpg",
+      "download": null,
+      "assetCode": "casting_machine",
+      "placeable": true,
+      "compositionStatus": "PROMOTED_MODULE",
+      "comment": "actual equipment or part image",
+      "compositionConfidence": 0.95,
+      "compositionSource": "ADMIN_VISUAL_REVIEW",
+      "reviewReason": null,
+      "partRole": "ASSEMBLY",
+      "assemblyType": "CASTING_PROCESS_CELL",
+      "dimensionEvidence": "IMAGE_SCALE_REQUIRED",
+      "reviewedAt": "2026-08-13T12:05:44.579828+00:00"
+    }
+  ],
+  "pending": [],
+  "decision": "A0094 is a casting process cell assembly after visual review"
+}

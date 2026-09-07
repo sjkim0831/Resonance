@@ -1,5 +1,6 @@
 package egovframework.com.feature.auth.domain.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -62,6 +63,7 @@ public class EntrprsMber implements CommonEntity {
     private String deptNm;
 
     @Column(name = "APPLCNT_IHIDNUM")
+    @JsonIgnore
     private String applcntIhidnum;
 
     @Column(name = "SBSCRB_DE")
@@ -71,12 +73,15 @@ public class EntrprsMber implements CommonEntity {
     private String entrprsMberStus;
 
     @Column(name = "ENTRPRS_MBER_PASSWORD")
+    @JsonIgnore
     private String entrprsMberPassword;
 
     @Column(name = "ENTRPRS_MBER_PASSWORD_HINT")
+    @JsonIgnore
     private String entrprsMberPasswordHint;
 
     @Column(name = "ENTRPRS_MBER_PASSWORD_CNSR")
+    @JsonIgnore
     private String entrprsMberPasswordCnsr;
 
     @Column(name = "GROUP_ID")

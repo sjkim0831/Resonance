@@ -549,12 +549,41 @@ const ADMIN_DOMAIN_OVERRIDES: AdminMenuTreePayload = {
         { code: "AMENU_ADMIN_PERMISSION", text: "관리자 권한", tEn: "Admin Permissions", u: "/admin/member/admin_account/permissions", icon: "key" },
         { code: "AMENU_AUTH_GROUP", text: "권한 그룹", tEn: "Authority Groups", u: "/admin/auth/group", icon: "verified_user" },
         { code: "AMENU_AUTH_CHANGE", text: "권한 변경", tEn: "Authority Changes", u: "/admin/member/auth-change", icon: "published_with_changes" },
-        { code: "AMENU_DEPT_ROLE", text: "부서 권한 맵핑", tEn: "Department Role Mapping", u: "/admin/member/dept-role-mapping", icon: "account_tree" },
+        { code: "AMENU_DEPT_ROLE", text: "부서·회원 권한 할당", tEn: "Department and Member Role Assignment", u: "/admin/member/dept-role-mapping", icon: "account_tree" },
         { code: "AMENU_PASSWORD_RESET", text: "비밀번호 초기화", tEn: "Password Reset", u: "/admin/member/reset_password", icon: "lock_reset" }
       ] }
     ]
   },
   A002: EMISSION_ADMIN_DOMAIN,
+  A104: {
+    label: "LCA 운영",
+    labelEn: "LCA Operations",
+    summary: "제품 LCA 프로젝트, 데이터, 산정·검토·보고 업무를 관리합니다.",
+    groups: [
+      { title: "LCA 프로젝트", titleEn: "LCA Projects", icon: "account_tree", links: [
+        { code: "A1040101", text: "LCA 프로젝트 관리", tEn: "LCA Project Management", u: "/admin/emission/survey-admin?menuCode=A1040101", icon: "assignment" },
+        { code: "A1040102", text: "제품·공정 관리", tEn: "Product & Process", u: "/admin/emission/survey-admin?menuCode=A1040102", icon: "precision_manufacturing" },
+        { code: "A1040103", text: "데이터 수집 현황", tEn: "Data Collection Status", u: "/admin/emission/survey-admin?menuCode=A1040103", icon: "fact_check" },
+        { code: "A1040104", text: "검토·승인", tEn: "Review & Approval", u: "/admin/emission/survey-admin?menuCode=A1040104", icon: "approval" }
+      ] },
+      { title: "LCA 데이터", titleEn: "LCA Data", icon: "dataset", links: [
+        { code: "A1040201", text: "업로드 데이터셋", tEn: "Uploaded Datasets", u: "/admin/emission/survey-admin?menuCode=A1040201", icon: "upload_file" },
+        { code: "A1040202", text: "물질 매핑", tEn: "Substance Mapping", u: "/admin/emission/survey-admin?menuCode=A1040202", icon: "conversion_path" },
+        { code: "A1040203", text: "LCI 분류", tEn: "LCI Classification", u: "/admin/emission/survey-admin?menuCode=A1040203", icon: "category" },
+        { code: "A1040204", text: "LCI 데이터베이스", tEn: "LCI Database", u: "/admin/emission/survey-admin?menuCode=A1040204", icon: "database" },
+        { code: "A1040205", text: "제품·부산물 기준", tEn: "Product & By-product Rules", u: "/admin/emission/survey-admin?menuCode=A1040205", icon: "rule" },
+        { code: "A1040206", text: "기능 단위·시스템 경계", tEn: "Functional Unit & System Boundary", u: "/admin/emission/survey-admin?menuCode=A1040206", icon: "select_all" }
+      ] },
+      { title: "LCA 산정·보고", titleEn: "LCA Calculation & Reporting", icon: "analytics", links: [
+        { code: "A1040301", text: "산정 결과", tEn: "Calculation Results", u: "/admin/emission/survey-admin?menuCode=A1040301", icon: "calculate" },
+        { code: "A1040302", text: "영향평가 결과", tEn: "Impact Assessment", u: "/admin/emission/survey-admin?menuCode=A1040302", icon: "analytics" },
+        { code: "A1040303", text: "검토·확정", tEn: "Review & Finalize", u: "/admin/emission/survey-admin?menuCode=A1040303", icon: "task_alt" },
+        { code: "A1040304", text: "보고서 생성", tEn: "Generate Report", u: "/admin/emission/survey-admin?menuCode=A1040304", icon: "description" },
+        { code: "A1040305", text: "보고서 양식", tEn: "Report Templates", u: "/admin/emission/survey-admin?menuCode=A1040305", icon: "article" },
+        { code: "A1040306", text: "진위 확인", tEn: "Authenticity Check", u: "/admin/emission/survey-admin?menuCode=A1040306", icon: "verified" }
+      ] }
+    ]
+  },
   A003: {
     label: "거래·결제·인증",
     labelEn: "Trade, Payment & Certificate",
@@ -752,5 +781,26 @@ export function normalizeHomeEmissionMenu<T extends BootstrappedHomePayload | nu
 }
 
 export function normalizeAdminEmissionMenuTree(payload: AdminMenuTreePayload): AdminMenuTreePayload {
-  return payload;
+  const candidate = payload as unknown;
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+    return getNormalizedAdminMenuTree();
+  }
+  const entries = Object.entries(candidate as Record<string, unknown>);
+  const validDomains = entries.filter(([key]) => !["status", "message", "timestamp", "path"].includes(key));
+  const hasValidDomainShape = validDomains.length > 0 && validDomains.every(([, value]) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const domain = value as Record<string, unknown>;
+    return typeof domain.label === "string" && Array.isArray(domain.groups);
+  });
+  if (!hasValidDomainShape) return getNormalizedAdminMenuTree();
+  const validPayload = payload as AdminMenuTreePayload;
+  const hasLcaDomain = Object.values(validPayload).some((domain) => `${domain.label || ""} ${domain.labelEn || ""}`.toLowerCase().includes("lca"));
+  if (hasLcaDomain) return validPayload;
+  const result: AdminMenuTreePayload = {};
+  Object.entries(validPayload).forEach(([key, domain]) => {
+    result[key] = domain;
+    if (key === "A002") result.A104 = ADMIN_DOMAIN_OVERRIDES.A104;
+  });
+  if (!result.A104) result.A104 = ADMIN_DOMAIN_OVERRIDES.A104;
+  return result;
 }

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "registryId": "p006-sdui-common-components",
+  "registryVersion": "1.0.0",
+  "updatedAt": "2026-08-20T23:40:00+09:00",
+  "components": [
+    {
+      "componentId": "KRDS_HERO_V1",
+      "componentType": "hero",
+      "label": "KRDS 업무 화면 헤더",
+      "reusable": true,
+      "status": "ACTIVE"
+    },
+    {
+      "componentId": "KRDS_METRIC_GRID_V1",
+      "componentType": "metric-grid",
+      "label": "KRDS 핵심 지표 그리드",
+      "reusable": true,
+      "status": "ACTIVE"
+    },
+    {
+      "componentId": "KRDS_JSON_FORM_V1",
+      "componentType": "json-form",
+      "label": "JSON Schema Form",
+      "reusable": true,
+      "status": "ACTIVE"
+    },
+    {
+      "componentId": "KRDS_PROCESS_STEPS_V1",
+      "componentType": "process-steps",
+      "label": "업무 단계 길잡이",
+      "reusable": true,
+      "status": "ACTIVE"
+    },
+    {
+      "componentId": "KRDS_SUPPORT_CARD_GRID_V1",
+      "componentType": "card-grid",
+      "label": "업무 지원 카드 그리드",
+      "reusable": true,
+      "status": "ACTIVE"
+    }
+  ]
+}

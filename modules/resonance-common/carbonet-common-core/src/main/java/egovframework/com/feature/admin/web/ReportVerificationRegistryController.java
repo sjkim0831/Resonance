@@ -1,13 +1,16 @@
 package egovframework.com.feature.admin.web;
 
 import egovframework.com.feature.admin.service.ReportVerificationRegistryService;
+import egovframework.com.feature.admin.service.CertificateVerificationScreenDesignRegistry;
 import egovframework.com.feature.admin.service.ReportProofreadingService;
 import egovframework.com.feature.admin.service.ReportPdfIssuanceService;
+import egovframework.com.feature.admin.service.ReportOcrGatewayService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -20,6 +23,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -28,6 +32,15 @@ public class ReportVerificationRegistryController {
     private final ReportVerificationRegistryService reportVerificationRegistryService;
     private final ReportProofreadingService reportProofreadingService;
     private final ReportPdfIssuanceService reportPdfIssuanceService;
+    private final ReportOcrGatewayService reportOcrGatewayService;
+
+    @GetMapping({
+            "/api/home/certificate-verify/screen-design",
+            "/api/en/home/certificate-verify/screen-design"
+    })
+    public ResponseEntity<Map<String, Object>> screenDesign() {
+        return ResponseEntity.ok(CertificateVerificationScreenDesignRegistry.activeDesign());
+    }
 
     @PostMapping({
             "/api/admin/emission-survey-report/issue",
@@ -143,7 +156,38 @@ public class ReportVerificationRegistryController {
             "/en/admin/api/admin/emission-survey-report/verify-ocr"
     })
     public ResponseEntity<Map<String, Object>> verifyOcr(@RequestBody Map<String, Object> payload) {
-        return ResponseEntity.ok(reportVerificationRegistryService.verifyOcr(payload));
+        try {
+            return ResponseEntity.ok(reportVerificationRegistryService.verifyOcr(payload));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "status", "INVALID_VERIFICATION_REQUEST",
+                    "message", exception.getMessage(),
+                    "maxPageCount", ReportVerificationRegistryService.MAX_VERIFICATION_PAGES
+            ));
+        }
+    }
+
+    @PostMapping(value = {
+            "/api/home/certificate-verify/recognize-pages",
+            "/api/en/home/certificate-verify/recognize-pages",
+            "/api/admin/emission-survey-report/recognize-pages",
+            "/admin/api/admin/emission-survey-report/recognize-pages",
+            "/en/admin/api/admin/emission-survey-report/recognize-pages"
+    }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> recognizePages(@RequestPart("files") List<MultipartFile> files) {
+        try {
+            return ResponseEntity.ok(reportOcrGatewayService.recognize(files));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "status", "INVALID_OCR_REQUEST",
+                    "message", exception.getMessage()
+            ));
+        } catch (ReportOcrGatewayService.ReportOcrUnavailableException exception) {
+            return ResponseEntity.status(503).body(Map.of(
+                    "status", "OCR_UNAVAILABLE",
+                    "message", exception.getMessage()
+            ));
+        }
     }
 
     private String resolveActorId(HttpServletRequest request) {

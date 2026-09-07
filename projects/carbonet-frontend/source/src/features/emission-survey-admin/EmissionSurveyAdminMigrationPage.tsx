@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { validateSurveyAmounts } from "./surveyAmountValidation";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
 import {
@@ -14,6 +15,7 @@ import {
   fetchEmissionVariableDefinitions,
   importSelectedEcoinventDatasets,
   saveEcoinventMapping,
+  saveEmissionSurveyCaseDraft,
   uploadEmissionSurveyWorkbook
 } from "../../lib/api/emission";
 import type {
@@ -25,8 +27,10 @@ import type {
   EmissionSurveyAdminSection
 } from "../../lib/api/emissionTypes";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { buildResilientCsrfHeaders } from "../../lib/api/core";
 import { normalizeUnitValue, resolveUnitCategory } from "../emission-common/unitOptions";
 import { UnitCategorySelectPair } from "../emission-common/UnitCategorySelectPair";
+import { AdminMenuSpecializedWorkspace, currentAdminMenuCode, resolveAdminMenuWorkspace } from "../emission-common/adminMenuWorkspaceContracts";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { PageStatusNotice } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -1489,11 +1493,14 @@ function SectionEditor({
 
 export function EmissionSurveyAdminMigrationPage() {
   const en = isEnglish();
+  const menuCode = currentAdminMenuCode("A1040307");
+  const workspace = resolveAdminMenuWorkspace(menuCode, "A1040307");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const restoredReturnState = useMemo(() => loadSurveyAdminReturnState(), []);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [savingDrafts, setSavingDrafts] = useState(false);
   const [pageOverride, setPageOverride] = useState<EmissionSurveyAdminPagePayload | null>(() => restoredReturnState?.pageOverride || null);
   const [drafts, setDrafts] = useState<DraftState>(() => restoredReturnState?.drafts || {});
   const [activeCases, setActiveCases] = useState<SectionCaseState>(() => restoredReturnState?.activeCases || {});
@@ -2508,6 +2515,80 @@ export function EmissionSurveyAdminMigrationPage() {
     });
   }
 
+  async function handleSaveInputDrafts() {
+    const productName = (selectedProductName || productSearchQuery).trim();
+    if (!productName) {
+      setErrorMessage("저장할 제품명을 입력하세요.");
+      return;
+    }
+    if (sections.length === 0) {
+      setErrorMessage("저장할 INPUT/OUTPUT 섹션 데이터가 없습니다.");
+      return;
+    }
+    setSavingDrafts(true);
+    setMessage("");
+    setErrorMessage("");
+    try {
+      let verifiedCount = 0;
+      for (const section of sections) {
+        const sectionCode = section.sectionCode || "";
+        const caseCode = activeCases[sectionCode] || "CASE_3_2";
+        const current = getCase(sectionCode, caseCode, buildDefaultCaseRows(section, caseCode));
+        const result = await saveEmissionSurveyCaseDraft({
+          productName,
+          sectionCode,
+          caseCode,
+          majorCode: section.majorCode || "",
+          lciMajorCode: classification.majorCode,
+          lciMajorLabel: classification.majorLabel,
+          lciMiddleCode: classification.middleCode,
+          lciMiddleLabel: classification.middleLabel,
+          lciSmallCode: classification.smallCode,
+          lciSmallLabel: classification.smallLabel,
+          sectionLabel: section.sectionLabel || "",
+          sourceFileName: stringOf(page as Record<string, unknown>, "sourceFileName"),
+          sourcePath: stringOf(page as Record<string, unknown>, "sourcePath"),
+          targetPath: stringOf(page as Record<string, unknown>, "targetPath"),
+          titleRowLabel: section.titleRowLabel || "",
+          guidance: section.guidance || [],
+          columns: section.columns || [],
+          rows: current.rows
+        });
+        if (result.databaseVerified === true) verifiedCount += 1;
+      }
+      persistReturnStateForReport();
+      if (verifiedCount !== sections.length) {
+        throw new Error(`DB 재조회 검증이 완료되지 않은 섹션이 있습니다. (${verifiedCount}/${sections.length})`);
+      }
+      const projectId = new URLSearchParams(window.location.search).get("projectId")?.trim() || "";
+      if (!projectId) throw new Error("LCA 업무 제출에 필요한 projectId가 없습니다.");
+      const workspaceEndpoint = "/admin/api/admin/lca-workspaces/LCA_EXECUTION";
+      const workspaceResponse = await fetch(workspaceEndpoint, {
+        method: "POST", credentials: "include",
+        headers: await buildResilientCsrfHeaders({ "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" }),
+        body: JSON.stringify({
+          businessKey: `${projectId}:${productName}:${Date.now()}`,
+          assignedActor: "LCA_PRACTITIONER",
+          payload: { projectId, productName, sectionCount: sections.length, verifiedCount, source: "admin_emission_survey_case" }
+        })
+      });
+      const workspace = await workspaceResponse.json().catch(() => ({})) as { workspaceId?: string; message?: string };
+      if (!workspaceResponse.ok || !workspace.workspaceId) throw new Error(workspace.message || `LCA 업무 원장 저장 실패 (${workspaceResponse.status})`);
+      const submitResponse = await fetch(`${workspaceEndpoint}/${encodeURIComponent(workspace.workspaceId)}/commands`, {
+        method: "POST", credentials: "include",
+        headers: await buildResilientCsrfHeaders({ "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" }),
+        body: JSON.stringify({ command: "SUBMIT", evidence: { projectId, productName, sectionCount: sections.length } })
+      });
+      const submitted = await submitResponse.json().catch(() => ({})) as { workflowStatus?: string; message?: string };
+      if (!submitResponse.ok || submitted.workflowStatus !== "SUBMITTED") throw new Error(submitted.message || `LCA 업무 제출 실패 (${submitResponse.status})`);
+      setMessage(`${productName} 입력 데이터 ${verifiedCount}개 섹션을 저장하고 검증자에게 제출했습니다.`);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "입력 데이터 저장에 실패했습니다.");
+    } finally {
+      setSavingDrafts(false);
+    }
+  }
+
   function handleMoveToCalculation() {
     const resolvedProductName = selectedProductName || stringOf(page as Record<string, unknown>, "selectedProductName");
     if (!resolvedProductName) {
@@ -2525,6 +2606,31 @@ export function EmissionSurveyAdminMigrationPage() {
     }
     if (hasUnconfirmedEcoinventRecommendations(sections, activeCases, getCase)) {
       setErrorMessage("ecoinvent 자동 추천 배출계수가 남아 있습니다. 각 행의 `확인` 버튼을 눌러 매핑을 확정한 뒤 계산하세요.");
+      return;
+    }
+    const amountCheck = validateSurveyAmounts(sections.flatMap((section) => {
+      const sectionCode = section.sectionCode || "";
+      const activeCase = activeCases[sectionCode] || "CASE_3_1";
+      return getCase(sectionCode, activeCase, buildDefaultCaseRows(section, activeCase)).rows.map((row) => ({
+        sectionCode,
+        sectionLabel: stripSectionNumber(section.sectionLabel || sectionCode),
+        materialName: row.values.materialName || row.rowId,
+        amount: row.values.amount || ""
+      }));
+    }));
+    if (!amountCheck.valid) {
+      const targets = amountCheck.invalid.slice(0, 5).map((row) => `${row.sectionLabel} · ${row.materialName}`).join(", ");
+      setErrorMessage(amountCheck.invalid.length
+        ? `입력량 확인: ${amountCheck.invalid.length}개 행의 양이 비어 있거나 올바르지 않습니다. ${targets}${amountCheck.invalid.length > 5 ? " 외" : ""}. 양을 0 이상의 숫자로 입력하세요. 사용하지 않는 항목은 0으로 명시하고, 제품·부산물의 총 질량은 0보다 커야 합니다.`
+        : "산출물 질량 확인: 제품·부산물의 총 질량이 0입니다. 최소 1개 산출물의 양을 0보다 크게 입력한 뒤 계산하세요.");
+      setMessage("");
+      const codes = amountCheck.invalid.length ? amountCheck.invalid.map((row) => row.sectionCode) : ["OUTPUT_PRODUCTS"];
+      setExpandedSections((current) => ({ ...current, ...Object.fromEntries(codes.map((code) => [code, true])) }));
+      requestAnimationFrame(() => {
+        const notice = document.getElementById("survey-calculation-input-error");
+        notice?.scrollIntoView({ block: "center" });
+        notice?.focus({ preventScroll: true });
+      });
       return;
     }
     const normalization = buildNormalizationContext(sections, activeCases, getCase);
@@ -2679,7 +2785,9 @@ export function EmissionSurveyAdminMigrationPage() {
     };
     persistReturnStateForReport();
     saveEmissionSurveyReportSession(payload);
-    navigate(buildLocalizedPath("/admin/emission/survey-report", "/en/admin/emission/survey-report"));
+    const projectId = new URLSearchParams(window.location.search).get("projectId")?.trim() || "";
+    const reportPath = buildLocalizedPath("/admin/emission/survey-report", "/en/admin/emission/survey-report");
+    navigate(projectId ? `${reportPath}?projectId=${encodeURIComponent(projectId)}` : reportPath);
   }
 
   return (
@@ -2687,9 +2795,9 @@ export function EmissionSurveyAdminMigrationPage() {
       breadcrumbs={[
         { label: en ? "Home" : "홈" },
         { label: en ? "Emissions & Certification" : "배출/인증" },
-        { label: en ? "Emission Survey Management" : "배출 설문 관리" }
+        { label: en ? workspace.titleEn : workspace.title }
       ]}
-      title={stringOf(page as Record<string, unknown>, "pageTitle") || "배출 설문 관리"}
+      title={workspace.title || stringOf(page as Record<string, unknown>, "pageTitle") || "배출 설문 관리"}
       subtitle=""
       loading={false}
       loadingLabel={en ? "Loading the emission survey workspace..." : "배출 설문 작업공간을 불러오는 중입니다."}
@@ -2699,11 +2807,12 @@ export function EmissionSurveyAdminMigrationPage() {
           <PageStatusNotice tone="warning">기본 화면을 먼저 표시하고 있습니다. 설문 데이터는 로딩이 끝나는 대로 이어서 표시됩니다.</PageStatusNotice>
         ) : null}
         {message ? <PageStatusNotice tone="success">{message}</PageStatusNotice> : null}
-        {errorMessage || pageState.error ? <PageStatusNotice tone="error">{errorMessage || pageState.error}</PageStatusNotice> : null}
+        {errorMessage || pageState.error ? <div id="survey-calculation-input-error" tabIndex={-1} role="alert"><PageStatusNotice tone="error">{errorMessage || pageState.error}</PageStatusNotice></div> : null}
         {hasUnconfirmedEcoinventRecommendations(sections, activeCases, getCase) ? (
           <PageStatusNotice tone="warning">ecoinvent 자동 추천 배출계수가 있습니다. 각 행의 `확인` 버튼에서 Product / Activity / Geography를 확인하고 매핑을 확정하세요.</PageStatusNotice>
         ) : null}
 
+        {workspace.surface === "SURVEY_DATA" ? <>
         <section className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-5 shadow-sm" data-help-id="emission-survey-admin-classification">
           <MemberSectionToolbar
             title={<span>분류 선택 및 편집 시작</span>}
@@ -2923,6 +3032,9 @@ export function EmissionSurveyAdminMigrationPage() {
               eyebrow={en ? "Final Action" : "최종 실행"}
               primary={(
                 <div className="flex flex-wrap items-center justify-end gap-3">
+                  <MemberButton disabled={savingDrafts} onClick={() => void handleSaveInputDrafts()} type="button" variant="secondary">
+                    {savingDrafts ? "저장 중..." : "입력 데이터 저장"}
+                  </MemberButton>
                   <MemberButton onClick={handleMoveToCalculation} type="button">
                     {en ? "Calculate Carbon Emissions" : "실제 탄소배출량 계산"}
                   </MemberButton>
@@ -3004,6 +3116,7 @@ export function EmissionSurveyAdminMigrationPage() {
             totalCount={ecoinventMappingTotalCount}
           />
         ) : null}
+        </> : <AdminMenuSpecializedWorkspace contract={workspace} />}
       </AdminWorkspacePageFrame>
     </AdminPageShell>
   );

@@ -1,0 +1,265 @@
+{
+  "$schema": "./common/sdui-screen.schema.json",
+  "schemaVersion": "1.0",
+  "designVersion": "2026.08.21.1",
+  "screenId": "p006-sdui-scenario-form",
+  "pageId": "p006-sdui-scenario-form",
+  "menuCode": "P006_SDUI_SCENARIO_FORM",
+  "title": "시뮬레이션 시나리오 JSON Form",
+  "description": "설계 JSON이 화면, 검증, DB 저장, USD 동기화 절차를 직접 구동합니다.",
+  "route": "/projects/P006/digital-twin/sdui-scenario-form",
+  "runtimeMode": "SDUI_JSON_FORM_HOTLOAD",
+  "status": "PUBLISHED",
+  "themeRef": "screens/common/theme-krds-p006.json",
+  "componentRegistryRef": "screens/common/component-registry.json",
+  "authority": {
+    "actor": "SIMULATION_OPERATOR",
+    "roleAny": [
+      "PROJECT_ADMIN",
+      "SIMULATION_OPERATOR"
+    ],
+    "permissions": [
+      "SIMULATION_RUN"
+    ],
+    "source": "/projects/P006/authz",
+    "deniedBehavior": "SHOW_AUTHORITY_MESSAGE"
+  },
+  "workflow": {
+    "load": {
+      "method": "GET",
+      "endpoint": "/projects/P006/scenario-config",
+      "output": "form+metrics"
+    },
+    "submit": {
+      "stateResultStep": "save",
+      "workingMessage": "전용 DB 저장 후 USD 애니메이션을 동기화하고 있습니다.",
+      "successMessage": "저장 완료 · 양품 ${steps.save.metrics.goodUnitsPerHour}개/h · 수율 ${steps.save.metrics.yieldRate}% · USD ${steps.sync.status}",
+      "failureMessage": "시나리오 저장 또는 USD 동기화에 실패했습니다.",
+      "steps": [
+        {
+          "id": "save",
+          "type": "http",
+          "method": "POST",
+          "endpoint": "/projects/P006/scenario-config",
+          "body": "$form",
+          "output": "dt_simulation_scenario.parameters_json"
+        },
+        {
+          "id": "scene",
+          "type": "http",
+          "method": "GET",
+          "endpoint": "/r/P006/actuator/p006/factory-scenes/default",
+          "output": "scene"
+        },
+        {
+          "id": "sync",
+          "type": "http",
+          "method": "POST",
+          "endpoint": "/projects/P006/sync-usd",
+          "body": {
+            "scene": "$steps.scene",
+            "scenario": "$steps.save"
+          },
+          "output": "usd-animation"
+        }
+      ]
+    }
+  },
+  "nodes": [
+    {
+      "nodeId": "scenario-hero",
+      "componentId": "KRDS_HERO_V1",
+      "componentType": "hero",
+      "sortOrder": 10,
+      "props": {
+        "eyebrow": "WOOSU · P006 · SDUI",
+        "title": "시뮬레이션 시나리오 JSON Form",
+        "description": "화면 코드를 다시 빌드하지 않고 JSON Schema와 UI Schema만으로 16개 공정 입력, 검증, DB 저장, USD 동기화를 실행합니다.",
+        "badges": [
+          "KRDS",
+          "SDUI",
+          "JSON Form",
+          "무빌드",
+          "무배포",
+          "DB Readback"
+        ]
+      }
+    },
+    {
+      "nodeId": "scenario-metrics",
+      "componentId": "KRDS_METRIC_GRID_V1",
+      "componentType": "metric-grid",
+      "sortOrder": 20,
+      "props": {
+        "title": "시나리오 계산 결과",
+        "items": [
+          { "label": "총 공정시간", "path": "metrics.cycleSeconds", "unit": "초" },
+          { "label": "시간당 투입", "path": "metrics.inputPerHour", "unit": "개" },
+          { "label": "시간당 양품", "path": "metrics.goodUnitsPerHour", "unit": "개" },
+          { "label": "누적 불량률", "path": "metrics.defectRate", "unit": "%" },
+          { "label": "수율", "path": "metrics.yieldRate", "unit": "%" },
+          { "label": "병목 공정", "path": "metrics.bottleneck", "unit": "" }
+        ]
+      }
+    },
+    {
+      "nodeId": "scenario-form",
+      "componentId": "KRDS_JSON_FORM_V1",
+      "componentType": "json-form",
+      "sortOrder": 30,
+      "props": {
+        "title": "생산 시나리오 입력",
+        "description": "필수 2개 기본값과 16개 공정의 체류시간·불량률을 검증한 뒤 저장합니다.",
+        "validateLabel": "34개 입력값 검증",
+        "reloadLabel": "DB 값 다시 불러오기",
+        "submitLabel": "DB 저장 · USD 동기화",
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "additionalProperties": true,
+          "required": [
+            "scenarioName",
+            "inputPerHour",
+            "processes"
+          ],
+          "properties": {
+            "scenarioName": {
+              "type": "string",
+              "title": "시나리오명",
+              "minLength": 2,
+              "maxLength": 200
+            },
+            "inputPerHour": {
+              "type": "number",
+              "title": "시간당 투입량",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            "processes": {
+              "type": "array",
+              "title": "공정별 설정",
+              "description": "16개 전체 공정을 순서대로 입력합니다.",
+              "minItems": 16,
+              "maxItems": 16,
+              "items": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "dwellSeconds",
+                  "defectRate"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "title": "공정 코드",
+                    "pattern": "^[a-z0-9_]{2,80}$",
+                    "readOnly": true
+                  },
+                  "dwellSeconds": {
+                    "type": "integer",
+                    "title": "체류시간(초)",
+                    "minimum": 1,
+                    "maximum": 600
+                  },
+                  "defectRate": {
+                    "type": "number",
+                    "title": "불량률(%)",
+                    "minimum": 0,
+                    "maximum": 30,
+                    "multipleOf": 0.1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "uiSchema": {
+          "layout": {
+            "sections": [
+              {
+                "title": "기본 조건",
+                "description": "시나리오 이름과 시간당 목표 투입량을 입력합니다.",
+                "fields": [
+                  "scenarioName",
+                  "inputPerHour"
+                ]
+              },
+              {
+                "title": "16개 공정 조건",
+                "description": "모든 공정의 체류시간과 불량률을 입력해야 저장할 수 있습니다.",
+                "fields": [
+                  "processes"
+                ]
+              }
+            ]
+          },
+          "fields": {
+            "scenarioName": {
+              "widget": "text",
+              "placeholder": "예: 주간 생산 기준 시나리오",
+              "help": "2~200자로 입력합니다."
+            },
+            "inputPerHour": {
+              "widget": "number",
+              "step": 1,
+              "help": "1~10,000개/h 범위입니다."
+            },
+            "processes": {
+              "widget": "editable-table",
+              "columns": [
+                "code",
+                "dwellSeconds",
+                "defectRate"
+              ],
+              "readOnly": [
+                "code"
+              ],
+              "step": {
+                "dwellSeconds": 1,
+                "defectRate": 0.1
+              },
+              "help": "공정 코드는 설계 정본이며 체류시간 1~600초, 불량률 0~30%를 허용합니다."
+            }
+          }
+        }
+      }
+    },
+    {
+      "nodeId": "scenario-process",
+      "componentId": "KRDS_PROCESS_STEPS_V1",
+      "componentType": "process-steps",
+      "sortOrder": 40,
+      "props": {
+        "title": "업무 길잡이",
+        "description": "SIMULATION_OPERATOR가 한 화면에서 입력부터 복원 확인까지 수행합니다.",
+        "steps": [
+          { "title": "1. DB 불러오기", "description": "현재 활성 시나리오와 16개 공정 값을 읽습니다." },
+          { "title": "2. 입력", "description": "시나리오명, 투입량, 체류시간, 불량률을 수정합니다." },
+          { "title": "3. JSON 검증", "description": "필수값, 자료형, 범위, 배열 완전성을 검사합니다." },
+          { "title": "4. 저장·동기화", "description": "DB에 저장하고 같은 응답으로 USD 애니메이션을 갱신합니다." },
+          { "title": "5. 재조회", "description": "새로고침 후 DB 출력이 입력값으로 복원되는지 확인합니다." }
+        ]
+      }
+    },
+    {
+      "nodeId": "scenario-support",
+      "componentId": "KRDS_SUPPORT_CARD_GRID_V1",
+      "componentType": "card-grid",
+      "sortOrder": 50,
+      "props": {
+        "title": "화면·QA·다음 업무",
+        "description": "설계 JSON과 함께 유지되는 6개 업무 지원 카드입니다.",
+        "items": [
+          { "id": "help", "title": "도움말", "description": "체류시간은 공정별 처리시간이며 불량률은 해당 공정의 예상 손실 비율입니다." },
+          { "id": "screen-design", "title": "화면 설계", "description": "입력 34개, 공정 16행, 계산 KPI 6개, 저장 API 3단계로 구성됩니다." },
+          { "id": "qa", "title": "QA 검증", "description": "PAGE→ACTOR→SCREEN→FUNCTION→INPUT→DATABASE_OUTPUT→RELOAD_RESTORE 순서로 검증합니다." },
+          { "id": "work-guide", "title": "업무 길잡이", "description": "시뮬레이션 운영자가 초안을 입력하고 프로젝트 관리자가 결과와 감사를 검토합니다." },
+          { "id": "all-work", "title": "전체 업무 보기", "description": "5개 단계, 16개 공정, 34개 입력, 6개 출력 KPI, 2개 허용 역할을 한 화면에서 확인합니다." },
+          { "id": "next-work", "title": "다음 업무", "description": "동일 런타임으로 PLC 연결 설정과 작업 지시 승인 Form을 JSON만 추가해 확장합니다." }
+        ]
+      }
+    }
+  ],
+  "testContractRef": "screens/p006-scenario-form.process-test.json",
+  "updatedAt": "2026-08-21T00:30:00+09:00"
+}

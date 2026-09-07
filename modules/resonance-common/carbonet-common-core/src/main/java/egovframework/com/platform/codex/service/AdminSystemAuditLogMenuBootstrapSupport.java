@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -30,6 +31,7 @@ public class AdminSystemAuditLogMenuBootstrapSupport {
     private final PlatformMenuProvisionSupport platformMenuProvisionSupport;
 
     @EventListener(ApplicationReadyEvent.class)
+    @Async("applicationReadyBootstrapExecutor")
     public void ensureSystemAuditLogMenu() {
         platformMenuProvisionSupport.provisionAdminMenu(
                 "System audit log menu",

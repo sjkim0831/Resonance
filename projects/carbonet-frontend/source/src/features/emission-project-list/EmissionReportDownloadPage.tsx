@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { CommonPageContainer } from "../../components/common-design/CommonDesignPrimitives";
 
 type Report = {
   id: number;
@@ -64,8 +65,7 @@ export function EmissionReportDownloadPage() {
     }
   }
   return (
-    <main className="min-h-screen bg-[#f5f7fa] px-4 py-10">
-      <div className="mx-auto max-w-6xl">
+    <CommonPageContainer contentClassName="max-w-6xl">
         <a
           className="font-bold text-blue-700"
           href={buildLocalizedPath(
@@ -158,7 +158,6 @@ export function EmissionReportDownloadPage() {
             </p>
           )}
         </div>
-      </div>
-    </main>
+    </CommonPageContainer>
   );
 }

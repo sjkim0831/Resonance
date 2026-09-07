@@ -91,15 +91,20 @@ const routes = [...grouped.entries()].map(([routePath, contracts]) => {
 
 const changedRoutes = changedOnly ? routes.filter((route) => route.changed) : routes;
 const selectedRoutes = routeMatcher ? changedRoutes.filter((route) => routeMatcher.test(route.routePath)) : changedRoutes;
-const shards = Array.from({ length: shardCount }, (_, index) => ({ index, routeIds: [] }));
-selectedRoutes.forEach((route, index) => shards[index % shardCount].routeIds.push(route.id));
+// Creating an empty Playwright shard still initializes a browser fixture
+// before the test can skip itself. Bound the effective shard count to the
+// selected route count so a one-screen deploy launches exactly one session,
+// while the nightly full sweep can still use all requested workers.
+const effectiveShardCount = Math.max(1, Math.min(shardCount, selectedRoutes.length || 1));
+const shards = Array.from({ length: effectiveShardCount }, (_, index) => ({ index, routeIds: [] }));
+selectedRoutes.forEach((route, index) => shards[index % effectiveShardCount].routeIds.push(route.id));
 
 const manifest = {
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
   inputPath,
   baselinePath,
-  options: { changedOnly, shardCount, routePattern },
+  options: { changedOnly, shardCount, effectiveShardCount, routePattern },
   counts: {
     contractCount: rows.length,
     routeCount: routes.length,
@@ -114,4 +119,4 @@ const manifest = {
 
 await mkdir(path.dirname(outputPath), { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
-process.stdout.write(`${JSON.stringify({ outputPath, ...manifest.counts, shardCount, changedOnly })}\n`);
+process.stdout.write(`${JSON.stringify({ outputPath, ...manifest.counts, shardCount, effectiveShardCount, changedOnly })}\n`);

@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ class AdminCompanyAccountService {
     private final EnterpriseMemberService entrprsManageService;
     private final AdminCompanyAccountSupportService adminCompanyAccountSupportService;
 
+    @Transactional(rollbackFor = Exception.class)
     SaveResult saveCompanyAccount(
             String insttId,
             String membershipType,
@@ -88,6 +90,7 @@ class AdminCompanyAccountService {
             return result.invalid();
         }
 
+        List<InsttFileVO> newFiles = Collections.emptyList();
         try {
             String targetInsttId = result.insttId;
             if (targetInsttId.isEmpty()) {
@@ -113,7 +116,7 @@ class AdminCompanyAccountService {
                     : "A");
 
             int nextFileSn = hasExistingFiles ? result.existingFiles.size() + 1 : 1;
-            List<InsttFileVO> newFiles = adminCompanyAccountSupportService.saveAdminInsttEvidenceFiles(targetInsttId, fileUploads, nextFileSn);
+            newFiles = adminCompanyAccountSupportService.saveAdminInsttEvidenceFiles(targetInsttId, fileUploads, nextFileSn);
             if (!newFiles.isEmpty()) {
                 vo.setBizRegFilePath(adminCompanyAccountSupportService.joinInsttEvidencePaths(newFiles));
             } else if (exists) {
@@ -131,8 +134,14 @@ class AdminCompanyAccountService {
             result.saved = true;
             return result;
         } catch (Exception e) {
+            adminCompanyAccountSupportService.cleanupInsttEvidenceFiles(newFiles);
             log.error("Failed to save admin company account. insttId={}", result.insttId, e);
-            return result.serverError(isEn ? "An error occurred while saving the company registration." : "회원사 등록 저장 중 오류가 발생했습니다.");
+            SaveResult failed = result.serverError(isEn
+                    ? "An error occurred while saving the company registration."
+                    : "회원사 등록 저장 중 오류가 발생했습니다.");
+            // The exception must cross the @Transactional boundary. Returning here would commit
+            // the institution row even though its evidence insert failed and the file was removed.
+            throw new CompanyAccountPersistenceException(failed, e);
         }
     }
 
@@ -170,6 +179,19 @@ class AdminCompanyAccountService {
         }
         if (!adminCompanyAccountSupportService.hasValidInsttEvidenceFiles(fileUploads) && !hasExistingFiles) {
             result.errors.add(isEn ? "Please upload at least one supporting document." : "증빙 서류를 1개 이상 업로드해 주세요.");
+        }
+    }
+
+    static final class CompanyAccountPersistenceException extends RuntimeException {
+        private final SaveResult result;
+
+        CompanyAccountPersistenceException(SaveResult result, Throwable cause) {
+            super("Admin company account persistence failed", cause);
+            this.result = result;
+        }
+
+        SaveResult getResult() {
+            return result;
         }
     }
 

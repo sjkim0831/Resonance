@@ -1,0 +1,23 @@
+{
+  "processCode": "FACILITY_ASSET_REGISTRY",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "FAR_REGISTER",
+      "actorCode": "FACILITY_OPERATOR",
+      "routePath": "/ccus/facility/facility-asset-registry?step=far_register"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "FAR_ASSIGN",
+      "actorCode": "MAINTENANCE_ENGINEER",
+      "routePath": "/ccus/facility/facility-asset-registry?step=far_assign"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "FAR_APPROVE",
+      "actorCode": "HSE_MANAGER",
+      "routePath": "/ccus/facility/facility-asset-registry?step=far_approve"
+    }
+  ]
+}

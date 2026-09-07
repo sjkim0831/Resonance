@@ -1,0 +1,29 @@
+{
+  "processCode": "ROLE_AUTHORITY_MANAGEMENT",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "ROLE_AUTHORITY_MANAGEMENT_S1",
+      "actorCode": "AUTHORITY_ADMIN",
+      "routePath": "/generated/role-authority-management/role-authority-management-s1?step=role_authority_management_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "ROLE_AUTHORITY_MANAGEMENT_S2",
+      "actorCode": "AUTHORITY_ADMIN",
+      "routePath": "/generated/role-authority-management/role-authority-management-s2?step=role_authority_management_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "ROLE_AUTHORITY_MANAGEMENT_S3",
+      "actorCode": "AUTHORITY_ADMIN",
+      "routePath": "/generated/role-authority-management/role-authority-management-s3?step=role_authority_management_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "ROLE_AUTHORITY_MANAGEMENT_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/role-authority-management/role-authority-management-s4?step=role_authority_management_s4"
+    }
+  ]
+}

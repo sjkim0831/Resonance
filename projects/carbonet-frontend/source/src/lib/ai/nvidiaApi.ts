@@ -1,23 +1,4 @@
-export const NVIDIA_API_KEYS = [
-  "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",
-  "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",
-  "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",
-  "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",
-  "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",
-  "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",
-  "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",
-  "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",
-  "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",
-  "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",
-  "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",
-  "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",
-  "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",
-  "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",
-  "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",
-  "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",
-];
-
-export const NVIDIA_API_BASE_URL = "https://integrate.api.nvidia.com/v1";
+import { apiFetch, buildAdminApiPath } from "../api/core";
 
 export interface AIChatMessage {
   role: "system" | "user" | "assistant";
@@ -41,20 +22,18 @@ export interface AIStreamCallback {
   onError?: (error: Error) => void;
 }
 
-let currentKeyIndex = 0;
-
-function getNextApiKey(): string {
-  const key = NVIDIA_API_KEYS[currentKeyIndex];
-  currentKeyIndex = (currentKeyIndex + 1) % NVIDIA_API_KEYS.length;
-  return key;
-}
-
+/**
+ * Calls the server-side NVIDIA NIM proxy (POST /admin/ai/chat/completions) instead of
+ * NVIDIA's API directly from the browser. API keys never reach the client - the backend
+ * holds the key pool (see NimKeyPoolClient.java) and forwards the request. The proxy is
+ * currently non-streaming, so `onChunk` fires once with the full text rather than
+ * token-by-token; `onComplete`/`onError` behave the same as before.
+ */
 export async function createAICompletion(
   options: AICompletionOptions,
   callback?: AIStreamCallback
 ): Promise<string> {
   const model = options.model || "mistralai/mixtral-8x7b-instruct-v0.1";
-  const apiKey = getNextApiKey();
 
   const requestBody: Record<string, unknown> = {
     model,
@@ -63,7 +42,6 @@ export async function createAICompletion(
     top_p: options.top_p ?? 0.95,
     frequency_penalty: options.frequency_penalty ?? 0,
     presence_penalty: options.presence_penalty ?? 0,
-    stream: callback ? true : false,
   };
 
   if (options.messages) {
@@ -72,68 +50,30 @@ export async function createAICompletion(
     requestBody.prompt = options.prompt;
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 120000);
-
   try {
-    const response = await fetch(`${NVIDIA_API_BASE_URL}/chat/completions`, {
+    const response = await apiFetch(buildAdminApiPath("/admin/ai/chat/completions"), {
       method: "POST",
+      credentials: "include",
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json",
+        "X-Requested-With": "XMLHttpRequest",
       },
       body: JSON.stringify(requestBody),
-      signal: controller.signal,
     });
-
-    clearTimeout(timeout);
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`NVIDIA API error: ${response.status} - ${errorText}`);
+      throw new Error(`AI chat completion error: ${response.status} - ${errorText}`);
     }
 
-    if (callback && response.body) {
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let fullText = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "[DONE]") continue;
-
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) {
-                fullText += content;
-                callback.onChunk?.(content);
-              }
-            } catch {
-              // Skip invalid JSON lines
-            }
-          }
-        }
-      }
-
-      callback.onComplete?.(fullText);
-      return fullText;
-    } else {
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || "";
-      callback?.onComplete?.(content);
-      return content;
-    }
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || "";
+    callback?.onChunk?.(content);
+    callback?.onComplete?.(content);
+    return content;
   } catch (error) {
-    clearTimeout(timeout);
     callback?.onError?.(error instanceof Error ? error : new Error(String(error)));
     throw error;
   }

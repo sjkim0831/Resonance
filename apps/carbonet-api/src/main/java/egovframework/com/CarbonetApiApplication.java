@@ -2,6 +2,8 @@ package egovframework.com;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import egovframework.com.config.data.DataSourceConfig;
+import egovframework.com.platform.versioncontrol.mapper.VersionControlMapper;
+import egovframework.com.platform.versioncontrol.service.impl.VersionControlServiceImpl;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -33,7 +35,7 @@ import javax.sql.DataSource;
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "egovframework\\.com\\.platform\\.runtimecontrol\\..*")
         })
 @EnableScheduling
-@Import(DataSourceConfig.class)
+@Import({DataSourceConfig.class, VersionControlMapper.class, VersionControlServiceImpl.class})
 public class CarbonetApiApplication {
 
     static {

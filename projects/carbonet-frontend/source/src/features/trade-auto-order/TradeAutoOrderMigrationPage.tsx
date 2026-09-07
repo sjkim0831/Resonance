@@ -620,7 +620,7 @@ export function TradeAutoOrderMigrationPage() {
                             onClick={() => setSelectedOrderId(row.id)}
                           >
                             <td className="px-4 py-4 align-top">
-                              <input checked={active} onChange={() => setSelectedOrderId(row.id)} type="checkbox" />
+                              <input checked={active} onChange={() => setSelectedOrderId(row.id)} type="checkbox" className="krds-control-native" />
                             </td>
                             <td className="px-4 py-4 align-top text-sm font-black text-[var(--trade-accent)]">
                               {row.id}

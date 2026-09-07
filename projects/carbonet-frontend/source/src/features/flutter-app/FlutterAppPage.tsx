@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { CommonEmbeddedWorkspace } from "../../components/common-design/CommonDesignPrimitives";
 
 const FLUTTER_APP_URL = "http://127.0.0.1:8080/flutter-app";
 
@@ -16,7 +17,7 @@ export default function FlutterAppPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-slate-100 text-slate-900">
+    <CommonEmbeddedWorkspace workspaceId="FLUTTER_APP" className="flex h-screen flex-col bg-slate-100 text-slate-900">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-white px-4 py-3 shadow-sm">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.12em] text-blue-700">External Runtime</p>
@@ -47,6 +48,6 @@ export default function FlutterAppPage() {
           onError={() => setLoadState("error")}
         />
       </main>
-    </div>
+    </CommonEmbeddedWorkspace>
   );
 }

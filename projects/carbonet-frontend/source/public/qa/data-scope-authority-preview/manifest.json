@@ -1,0 +1,29 @@
+{
+  "processCode": "DATA_SCOPE_AUTHORITY",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "DATA_SCOPE_AUTHORITY_S1",
+      "actorCode": "AUTHORITY_ADMIN",
+      "routePath": "/generated/data-scope-authority/data-scope-authority-s1?step=data_scope_authority_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "DATA_SCOPE_AUTHORITY_S2",
+      "actorCode": "AUTHORITY_ADMIN",
+      "routePath": "/generated/data-scope-authority/data-scope-authority-s2?step=data_scope_authority_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "DATA_SCOPE_AUTHORITY_S3",
+      "actorCode": "AUTHORITY_ADMIN",
+      "routePath": "/generated/data-scope-authority/data-scope-authority-s3?step=data_scope_authority_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "DATA_SCOPE_AUTHORITY_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/data-scope-authority/data-scope-authority-s4?step=data_scope_authority_s4"
+    }
+  ]
+}

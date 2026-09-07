@@ -1,0 +1,29 @@
+{
+  "processCode": "REPORT_SUBMISSION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "REPORT_SUBMISSION_S1",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/generated/report-submission/report-submission-s1?step=report_submission_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "REPORT_SUBMISSION_S2",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/generated/report-submission/report-submission-s2?step=report_submission_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "REPORT_SUBMISSION_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/report-submission/report-submission-s3?step=report_submission_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "REPORT_SUBMISSION_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/report-submission/report-submission-s4?step=report_submission_s4"
+    }
+  ]
+}

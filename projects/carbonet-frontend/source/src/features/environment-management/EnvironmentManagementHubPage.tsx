@@ -3275,8 +3275,8 @@ export function EnvironmentManagementHubPage() {
             {selectedMenu && selectedMenuIsPage ? (
               <>
                 <form action={buildFeatureManagementCreatePath()} className="grid gap-4" method="post" onSubmit={handleFeatureSubmit}>
-                  <input name="menuType" type="hidden" value={menuType} />
-                  <input name="menuCode" type="hidden" value={selectedMenu.code} />
+                  <input name="menuType" type="hidden" value={menuType} className="krds-control-field" />
+                  <input name="menuCode" type="hidden" value={selectedMenu.code} className="krds-control-field" />
                   <div>
                     <label className="gov-label" htmlFor="featureCode">{en ? "Feature Code" : "기능 코드"}</label>
                     <input className="gov-input" id="featureCode" name="featureCode" placeholder={`${selectedMenu.code}_CREATE`} value={featureDraft.featureCode} onChange={(event) => setFeatureDraft((current) => ({ ...current, featureCode: event.target.value.toUpperCase() }))} />

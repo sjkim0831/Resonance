@@ -1,0 +1,29 @@
+{
+  "processCode": "NEWSLETTER_OPERATION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "NEWSLETTER_OPERATION_S1",
+      "actorCode": "CONTENT_MANAGER",
+      "routePath": "/generated/newsletter-operation/newsletter-operation-s1?step=newsletter_operation_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "NEWSLETTER_OPERATION_S2",
+      "actorCode": "CONTENT_MANAGER",
+      "routePath": "/generated/newsletter-operation/newsletter-operation-s2?step=newsletter_operation_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "NEWSLETTER_OPERATION_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/newsletter-operation/newsletter-operation-s3?step=newsletter_operation_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "NEWSLETTER_OPERATION_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/newsletter-operation/newsletter-operation-s4?step=newsletter_operation_s4"
+    }
+  ]
+}

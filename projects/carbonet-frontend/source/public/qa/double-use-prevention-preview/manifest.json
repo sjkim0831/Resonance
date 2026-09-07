@@ -1,0 +1,29 @@
+{
+  "processCode": "DOUBLE_USE_PREVENTION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "DOUBLE_USE_PREVENTION_S1",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/double-use-prevention/double-use-prevention-s1?step=double_use_prevention_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "DOUBLE_USE_PREVENTION_S2",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/double-use-prevention/double-use-prevention-s2?step=double_use_prevention_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "DOUBLE_USE_PREVENTION_S3",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/double-use-prevention/double-use-prevention-s3?step=double_use_prevention_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "DOUBLE_USE_PREVENTION_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/double-use-prevention/double-use-prevention-s4?step=double_use_prevention_s4"
+    }
+  ]
+}

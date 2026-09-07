@@ -1,0 +1,18 @@
+{
+  "status": "PASS",
+  "verifiedAt": "2026-08-18T19:58:00+09:00",
+  "actor": "PROJECT_ADMIN",
+  "sceneObjects": 179,
+  "usdObjects": 160,
+  "elapsedSeconds": 8.091,
+  "checks": {
+    "objectId": true,
+    "assetCode": true,
+    "transformMove": true,
+    "transformRestore": true,
+    "databasePrimPath": true,
+    "usdPrim": true,
+    "versionMapping": true
+  },
+  "process": ["DB 장면 조회", "Transform 임시 이동", "USD 동기화", "버전 복원", "USD 재동기화", "1:1 매핑 검증"]
+}

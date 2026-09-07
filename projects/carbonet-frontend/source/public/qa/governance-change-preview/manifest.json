@@ -1,0 +1,41 @@
+{
+  "processCode": "GOVERNANCE_CHANGE",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "GOV_REQUEST",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/governance-change/gov-request?process=GOVERNANCE_CHANGE&step=GOV_REQUEST&commandRoute=%2Fadmin%2Fsystem%2Factor-process&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "GOV_IMPACT",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/governance-change/gov-impact?process=GOVERNANCE_CHANGE&step=GOV_IMPACT&commandRoute=%2Fadmin%2Fsystem%2Fdesign-governance&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "GOV_DESIGN",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/governance-change/gov-design?process=GOVERNANCE_CHANGE&step=GOV_DESIGN&commandRoute=%2Fadmin%2Fsystem%2Factor-process&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "GOV_SIMULATE",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/governance-change/gov-simulate?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE&commandRoute=%2Fadmin%2Fsystem%2Factor-process%3Fprocess%3DGOVERNANCE_CHANGE&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 5,
+      "stepCode": "GOV_APPROVE",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/governance-change/gov-approve?process=GOVERNANCE_CHANGE&step=GOV_APPROVE&commandRoute=%2Fadmin%2Fsystem%2Factor-process&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 6,
+      "stepCode": "GOV_PUBLISH",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/governance-change/gov-publish?process=GOVERNANCE_CHANGE&step=GOV_PUBLISH&commandRoute=%2Fadmin%2Fsystem%2Fbuild-studio&commandAudience=ADMIN"
+    }
+  ]
+}

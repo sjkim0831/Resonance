@@ -4,6 +4,7 @@ import egovframework.com.platform.request.codex.CodexProvisionRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -21,6 +22,7 @@ public class AdminAssetInventoryMenuBootstrapSupport {
     private final PlatformMenuProvisionSupport platformMenuProvisionSupport;
 
     @EventListener(ApplicationReadyEvent.class)
+    @Async("applicationReadyBootstrapExecutor")
     public void ensureAssetManagementMenus() {
         provisionMenu("A0060123", "자산 인벤토리", "Asset Inventory", "/admin/system/asset-inventory", "inventory_2");
         provisionMenu("A0060124", "자산 상세", "Asset Detail", "/admin/system/asset-detail", "info");

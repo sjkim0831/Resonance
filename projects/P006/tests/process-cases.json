@@ -1,0 +1,225 @@
+{
+  "schemaVersion": 1,
+  "projectId": "P006",
+  "designFingerprint": "47a7a93e038553316d2dc0bd4a6bea672f37115111b1be14d442a4cf9b2e2378",
+  "validationOrder": [
+    "PAGE",
+    "ACTOR",
+    "SCREEN",
+    "FUNCTION",
+    "INPUT",
+    "DATABASE_OUTPUT",
+    "RELOAD_RESTORE",
+    "VISUAL_QA"
+  ],
+  "actors": [
+    {
+      "code": "PROJECT_ADMIN",
+      "name": "프로젝트 관리자",
+      "permissions": [
+        "ACCOUNT_MANAGE",
+        "ASSET_MANAGE",
+        "SCENE_EDIT",
+        "SIMULATION_RUN",
+        "RESULT_APPROVE"
+      ]
+    },
+    {
+      "code": "FACTORY_DESIGNER",
+      "name": "공장 설계자",
+      "permissions": [
+        "ASSET_VIEW",
+        "SCENE_EDIT",
+        "ANIMATION_EDIT"
+      ]
+    },
+    {
+      "code": "SIMULATION_OPERATOR",
+      "name": "시뮬레이션 운영자",
+      "permissions": [
+        "SCENE_VIEW",
+        "SIMULATION_RUN",
+        "RESULT_VIEW"
+      ]
+    },
+    {
+      "code": "REVIEWER",
+      "name": "검토자",
+      "permissions": [
+        "SCENE_VIEW",
+        "RESULT_VIEW",
+        "RESULT_APPROVE"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "pageId": "p006-dashboard",
+      "actor": "PROJECT_ADMIN",
+      "function": "DASHBOARD",
+      "inputs": [
+        "authenticatedSession",
+        "projectId=P006"
+      ],
+      "outputs": [
+        "HTTP_200",
+        "KRDS_FRAME",
+        "P006_DATA_SCOPE"
+      ],
+      "scenarios": [
+        "DRAG_PLACE_SAVE_RESTORE",
+        "AUTHORITY",
+        "ISOLATION",
+        "INVALID_COORDINATE",
+        "DELETE_RECOVERY",
+        "AUTO_CONFIGURE_16_ASSETS",
+        "SCENARIO_DB_KPI_USD_SYNC",
+        "SDUI_JSON_FORM_MUTATE_DB_RELOAD_ROLLBACK",
+        "TELEMETRY_SAVE_COMPARE_RELOAD",
+        "COLLECTOR_WAITING_HEALTHY_DEGRADED",
+        "SIMULATOR_TEN_CONSECUTIVE_COLLECTIONS",
+        "REAL_MES_PREFLIGHT_ATOMIC_CUTOVER_ROLLBACK"
+      ]
+    },
+    {
+      "pageId": "p006-factory-studio",
+      "actor": "FACTORY_DESIGNER",
+      "function": "STUDIO",
+      "inputs": [
+        "authenticatedSession",
+        "projectId=P006"
+      ],
+      "outputs": [
+        "HTTP_200",
+        "KRDS_FRAME",
+        "P006_DATA_SCOPE"
+      ],
+      "scenarios": [
+        "DRAG_PLACE_SAVE_RESTORE",
+        "AUTHORITY",
+        "ISOLATION",
+        "INVALID_COORDINATE",
+        "DELETE_RECOVERY",
+        "AUTO_CONFIGURE_16_ASSETS",
+        "SCENARIO_DB_KPI_USD_SYNC",
+        "SDUI_JSON_FORM_MUTATE_DB_RELOAD_ROLLBACK",
+        "TELEMETRY_SAVE_COMPARE_RELOAD",
+        "COLLECTOR_WAITING_HEALTHY_DEGRADED",
+        "SIMULATOR_TEN_CONSECUTIVE_COLLECTIONS",
+        "REAL_MES_PREFLIGHT_ATOMIC_CUTOVER_ROLLBACK"
+      ]
+    },
+    {
+      "pageId": "p006-factory-simulator",
+      "actor": "SIMULATION_OPERATOR",
+      "function": "VIEWER",
+      "inputs": [
+        "authenticatedSession",
+        "projectId=P006"
+      ],
+      "outputs": [
+        "HTTP_200",
+        "KRDS_FRAME",
+        "P006_DATA_SCOPE"
+      ],
+      "scenarios": [
+        "DRAG_PLACE_SAVE_RESTORE",
+        "AUTHORITY",
+        "ISOLATION",
+        "INVALID_COORDINATE",
+        "DELETE_RECOVERY",
+        "AUTO_CONFIGURE_16_ASSETS",
+        "SCENARIO_DB_KPI_USD_SYNC",
+        "SDUI_JSON_FORM_MUTATE_DB_RELOAD_ROLLBACK",
+        "TELEMETRY_SAVE_COMPARE_RELOAD",
+        "COLLECTOR_WAITING_HEALTHY_DEGRADED",
+        "SIMULATOR_TEN_CONSECUTIVE_COLLECTIONS",
+        "REAL_MES_PREFLIGHT_ATOMIC_CUTOVER_ROLLBACK"
+      ]
+    },
+    {
+      "pageId": "p006-scenarios",
+      "actor": "SIMULATION_OPERATOR",
+      "function": "LIST",
+      "inputs": [
+        "authenticatedSession",
+        "projectId=P006"
+      ],
+      "outputs": [
+        "HTTP_200",
+        "KRDS_FRAME",
+        "P006_DATA_SCOPE"
+      ],
+      "scenarios": [
+        "DRAG_PLACE_SAVE_RESTORE",
+        "AUTHORITY",
+        "ISOLATION",
+        "INVALID_COORDINATE",
+        "DELETE_RECOVERY",
+        "AUTO_CONFIGURE_16_ASSETS",
+        "SCENARIO_DB_KPI_USD_SYNC",
+        "SDUI_JSON_FORM_MUTATE_DB_RELOAD_ROLLBACK",
+        "TELEMETRY_SAVE_COMPARE_RELOAD",
+        "COLLECTOR_WAITING_HEALTHY_DEGRADED",
+        "SIMULATOR_TEN_CONSECUTIVE_COLLECTIONS",
+        "REAL_MES_PREFLIGHT_ATOMIC_CUTOVER_ROLLBACK"
+      ]
+    },
+    {
+      "pageId": "p006-results",
+      "actor": "REVIEWER",
+      "function": "ANALYSIS",
+      "inputs": [
+        "authenticatedSession",
+        "projectId=P006"
+      ],
+      "outputs": [
+        "HTTP_200",
+        "KRDS_FRAME",
+        "P006_DATA_SCOPE"
+      ],
+      "scenarios": [
+        "DRAG_PLACE_SAVE_RESTORE",
+        "AUTHORITY",
+        "ISOLATION",
+        "INVALID_COORDINATE",
+        "DELETE_RECOVERY",
+        "AUTO_CONFIGURE_16_ASSETS",
+        "SCENARIO_DB_KPI_USD_SYNC",
+        "SDUI_JSON_FORM_MUTATE_DB_RELOAD_ROLLBACK",
+        "TELEMETRY_SAVE_COMPARE_RELOAD",
+        "COLLECTOR_WAITING_HEALTHY_DEGRADED",
+        "SIMULATOR_TEN_CONSECUTIVE_COLLECTIONS",
+        "REAL_MES_PREFLIGHT_ATOMIC_CUTOVER_ROLLBACK"
+      ]
+    },
+    {
+      "pageId": "p006-sdui-scenario-form",
+      "actor": "SIMULATION_OPERATOR",
+      "function": "SDUI_JSON_FORM",
+      "inputs": [
+        "authenticatedSession",
+        "projectId=P006"
+      ],
+      "outputs": [
+        "HTTP_200",
+        "KRDS_FRAME",
+        "P006_DATA_SCOPE"
+      ],
+      "scenarios": [
+        "DRAG_PLACE_SAVE_RESTORE",
+        "AUTHORITY",
+        "ISOLATION",
+        "INVALID_COORDINATE",
+        "DELETE_RECOVERY",
+        "AUTO_CONFIGURE_16_ASSETS",
+        "SCENARIO_DB_KPI_USD_SYNC",
+        "SDUI_JSON_FORM_MUTATE_DB_RELOAD_ROLLBACK",
+        "TELEMETRY_SAVE_COMPARE_RELOAD",
+        "COLLECTOR_WAITING_HEALTHY_DEGRADED",
+        "SIMULATOR_TEN_CONSECUTIVE_COLLECTIONS",
+        "REAL_MES_PREFLIGHT_ATOMIC_CUTOVER_ROLLBACK"
+      ]
+    }
+  ]
+}

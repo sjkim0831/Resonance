@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "recordingMode": "22_AUTHENTICATED_UI_LOGIN_INPUT_SAVE_COMPLETE_ACCOUNT_RELAY",
+  "processCount": 6,
+  "stepCount": 22,
+  "passed": 22,
+  "failed": 0,
+  "cleanup": true,
+  "projectId": "PRJ-2026-2A7D37",
+  "recordedAt": "2026-09-01T09:18:53.576Z",
+  "durationSeconds": 100.8,
+  "sizeBytes": 29013255,
+  "sha256": "ddfba396b3e0a29740df1199807619171f819683d841abfb8a4987cbb7d0edce",
+  "evidenceUrl": "/qa/emission-relay-proof/emission-live-22-step-ui-relay-evidence.json"
+}

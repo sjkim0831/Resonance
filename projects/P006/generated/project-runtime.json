@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "generatedFrom": "design/project.contract.json",
+  "designFingerprint": "47a7a93e038553316d2dc0bd4a6bea672f37115111b1be14d442a4cf9b2e2378",
+  "project": {
+    "id": "P006",
+    "code": "WOOSU_DIGITAL_TWIN",
+    "name": "Woosu Digital Twin",
+    "database": "woosu_digital_twin",
+    "databaseIsolation": "DEDICATED_DATABASE",
+    "sharedFrame": "RESONANCE_KRDS_ADMIN_V1"
+  },
+  "routes": [
+    "/projects/P006/digital-twin",
+    "/projects/P006/digital-twin/factory-studio",
+    "/projects/P006/digital-twin/factory-simulator",
+    "/projects/P006/digital-twin/scenarios",
+    "/projects/P006/digital-twin/results",
+    "/projects/P006/digital-twin/sdui-scenario-form"
+  ],
+  "runtimeBase": "/r/P006",
+  "databaseIsolation": "DEDICATED_DATABASE"
+}

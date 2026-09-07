@@ -1,0 +1,11 @@
+{
+  "status": "PARTIAL",
+  "alert": true,
+  "reason": "실제 URL 3개 녹화 · 관리자 인증 및 업무 기능 검증 미완료",
+  "consecutiveFailures": 0,
+  "durationMs": 15588,
+  "updatedAt": "2026-09-06T06:55:51.334Z",
+  "evidenceRun": "2026-09-06T06-55-35-746Z",
+  "receipt": "/opt/Resonance/runtime/recordings/2026-09-06T06-55-35-746Z/receipt.json",
+  "functionalTest": "NOT_EXECUTED"
+}

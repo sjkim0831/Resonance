@@ -1,4 +1,5 @@
 import { PointerEvent, WheelEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { normalizeScreenRoute } from "../runtime-assist/screenWorkContext";
 
 type Row = Record<string, unknown>;
 type Point = { x: number; y: number };
@@ -16,9 +17,15 @@ const statusStyle = (status: string) => status === "VERIFIED"
   ? "border-emerald-400 bg-emerald-50 text-emerald-900"
   : status === "IMPLEMENTED" ? "border-blue-400 bg-blue-50 text-blue-950" : "border-amber-400 bg-amber-50 text-amber-950";
 const previewPath = (route: string) => `${route}${route.includes("?") ? "&" : "?"}canvasPreview=1`;
+const requestedCanvasRoute = () => {
+  const raw = new URLSearchParams(window.location.search).get("routePath")?.trim() || "";
+  return raw ? normalizeScreenRoute(raw) : "";
+};
 
 export function ProfessionalDesignCanvas({ base, en }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
+  const initialRouteFocusHandled = useRef(false);
+  const [requestedRoutePath] = useState(requestedCanvasRoute);
   const [rows, setRows] = useState<Row[]>([]);
   const [flowEdges, setFlowEdges] = useState<Row[]>([]);
   const [summary, setSummary] = useState<Row>({});
@@ -28,7 +35,7 @@ export function ProfessionalDesignCanvas({ base, en }: Props) {
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [lastSyncedAt, setLastSyncedAt] = useState("");
   const [error, setError] = useState("");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(requestedRoutePath);
   const [workType, setWorkType] = useState("");
   const [selected, setSelected] = useState<CanvasNode | null>(null);
   const [preview, setPreview] = useState(false);
@@ -122,13 +129,26 @@ export function ProfessionalDesignCanvas({ base, en }: Props) {
     setTransform({ scale, x: Math.max(24, (rect.width - layout.width * scale) / 2), y: 24 });
   }, [layout.height, layout.width]);
   const reset = useCallback(() => setTransform({ x: 36, y: 64, scale: .72 }), []);
-  const jumpToMatch = useCallback(() => {
-    const target = layout.nodes.find(node => matchingKeys.has(node.key));
-    const rect = viewportRef.current?.getBoundingClientRect(); if (!target || !rect) return;
+  const centerNode = useCallback((target: CanvasNode) => {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    if (!rect) return false;
     const scale = Math.max(.65, transform.scale);
     setTransform({ scale, x: rect.width / 2 - (target.x + target.width / 2) * scale, y: rect.height / 2 - (target.y + target.height / 2) * scale });
     setSelected(target);
-  }, [layout.nodes, matchingKeys, transform.scale]);
+    setPreview(false);
+    return true;
+  }, [transform.scale]);
+  const jumpToMatch = useCallback(() => {
+    const target = layout.nodes.find(node => matchingKeys.has(node.key));
+    if (target) centerNode(target);
+  }, [centerNode, layout.nodes, matchingKeys]);
+  useEffect(() => {
+    if (loading || initialRouteFocusHandled.current || !requestedRoutePath || !layout.nodes.length) return;
+    const target = layout.nodes.find(node => normalizeScreenRoute(value(node.row, "routePath")) === requestedRoutePath);
+    setQuery(requestedRoutePath);
+    initialRouteFocusHandled.current = true;
+    if (target) centerNode(target);
+  }, [centerNode, layout.nodes, loading, requestedRoutePath]);
   const onWheel = (event: WheelEvent<HTMLDivElement>) => { event.preventDefault(); zoomAt(transform.scale * (event.deltaY > 0 ? .88 : 1.14), event.clientX, event.clientY); };
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if ((event.target as HTMLElement).closest("button,a,input,select,aside")) return;

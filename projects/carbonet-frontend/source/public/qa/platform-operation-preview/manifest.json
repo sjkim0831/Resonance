@@ -1,0 +1,29 @@
+{
+  "processCode": "PLATFORM_OPERATION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "PLATFORM_DESIGN",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/platform-operation/platform-design?process=PLATFORM_OPERATION&step=PLATFORM_DESIGN&commandRoute=%2Fadmin%2Fplanned%2Fsystem%2Fplatform-operation%2Fplatform-design&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "PLATFORM_VALIDATE",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/platform-operation/platform-validate?process=PLATFORM_OPERATION&step=PLATFORM_VALIDATE&commandRoute=%2Fadmin%2Fplanned%2Fsystem%2Fplatform-operation%2Fplatform-validate&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "PLATFORM_DEPLOY",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/platform-operation/platform-deploy?process=PLATFORM_OPERATION&step=PLATFORM_DEPLOY&commandRoute=%2Fadmin%2Fplanned%2Fsystem%2Fplatform-operation%2Fplatform-deploy&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "PLATFORM_AUDIT",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/platform-operation/platform-audit?process=PLATFORM_OPERATION&step=PLATFORM_AUDIT&commandRoute=%2Fadmin%2Fplanned%2Fsystem%2Fplatform-operation%2Fplatform-audit&commandAudience=ADMIN"
+    }
+  ]
+}

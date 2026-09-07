@@ -81,6 +81,7 @@ public class SrTicketWorkbenchServiceImpl implements SrTicketWorkbenchService {
     private final Object laneMonitor = new Object();
     private final Map<String, String> activeLaneTickets = new LinkedHashMap<String, String>();
     private ExecutorService laneExecutor;
+    private boolean tmuxLaneTransportAvailable;
 
     public SrTicketWorkbenchServiceImpl(ObjectMapper objectMapper,
                                         ScreenCommandCenterService screenCommandCenterService,
@@ -94,13 +95,19 @@ public class SrTicketWorkbenchServiceImpl implements SrTicketWorkbenchService {
     public void initializeLaneExecutor() {
         int laneCount = Math.max(parallelLaneCount, 1);
         this.laneExecutor = Executors.newFixedThreadPool(laneCount);
+        this.tmuxLaneTransportAvailable = detectTmuxLaneTransport();
         synchronized (laneMonitor) {
             activeLaneTickets.clear();
             for (int idx = 1; idx <= laneCount; idx++) {
                 String laneId = formatLaneId(idx);
                 activeLaneTickets.put(laneId, "");
-                ensureTmuxLaneSession(laneId);
+                if (tmuxLaneTransportAvailable) {
+                    ensureTmuxLaneSession(laneId);
+                }
             }
+        }
+        if (!codexEnabled) {
+            return;
         }
         try {
             dispatchQueuedTickets();
@@ -730,6 +737,10 @@ public class SrTicketWorkbenchServiceImpl implements SrTicketWorkbenchService {
 
     @Override
     public Map<String, Object> queueDirectExecuteTicket(String ticketId, String actorId) throws Exception {
+        if (!codexEnabled) {
+            throw new IllegalStateException(
+                    "Local Codex execution is disabled. Submit this ticket to the external executor.");
+        }
         SrTicketRecordVO ticket = findTicket(ticketId);
         if (ticket == null) {
             throw new IllegalArgumentException("SR 티켓을 찾을 수 없습니다.");
@@ -1541,8 +1552,12 @@ public class SrTicketWorkbenchServiceImpl implements SrTicketWorkbenchService {
             for (Map.Entry<String, String> entry : activeLaneTickets.entrySet()) {
                 rows.add(orderedMap(
                         "laneId", entry.getKey(),
-                        "tmuxSessionName", buildLaneSessionName(entry.getKey()),
+                        "tmuxSessionName", tmuxLaneTransportAvailable ? buildLaneSessionName(entry.getKey()) : "",
                         "activeTicketId", safe(entry.getValue()),
+                        "transport", tmuxLaneTransportAvailable ? "TMUX"
+                                : (codexEnabled ? "IN_PROCESS" : "EXTERNAL_EXECUTOR"),
+                        "transportAvailable", codexEnabled,
+                        "tmuxAvailable", tmuxLaneTransportAvailable,
                         "status", safe(entry.getValue()).isEmpty() ? "IDLE" : "RUNNING"));
             }
         }
@@ -1587,6 +1602,9 @@ public class SrTicketWorkbenchServiceImpl implements SrTicketWorkbenchService {
     }
 
     private void ensureTmuxLaneSession(String laneId) {
+        if (!tmuxLaneTransportAvailable) {
+            return;
+        }
         String sessionName = buildLaneSessionName(laneId);
         String idleMessage = "Codex lane " + laneId + " is idle.";
         try {
@@ -1601,6 +1619,9 @@ public class SrTicketWorkbenchServiceImpl implements SrTicketWorkbenchService {
     }
 
     private void announceLaneTicket(String laneId, SrTicketRecordVO ticket) {
+        if (!tmuxLaneTransportAvailable) {
+            return;
+        }
         String sessionName = buildLaneSessionName(laneId);
         String message = "["
                 + now()
@@ -1618,6 +1639,30 @@ public class SrTicketWorkbenchServiceImpl implements SrTicketWorkbenchService {
         } catch (Exception e) {
             log.warn("Failed to announce tmux lane ticket. laneId={} ticketId={}", laneId, safe(ticket.getTicketId()), e);
         }
+    }
+
+    private boolean detectTmuxLaneTransport() {
+        if (!codexEnabled) {
+            log.info("Local Codex lane transport is disabled; SR tickets remain available for external execution.");
+            return false;
+        }
+        Path repositoryRoot = resolveRepositoryRoot();
+        if (!Files.isDirectory(repositoryRoot)) {
+            log.warn("Local Codex lane transport is unavailable because the repository root does not exist: {}",
+                    repositoryRoot);
+            return false;
+        }
+        try {
+            if (runCommandAllowFailure(repositoryRoot, "tmux", "-V")) {
+                return true;
+            }
+        } catch (Exception e) {
+            log.warn("Local Codex lane transport is unavailable; use the external executor. reason={}",
+                    firstNonBlank(safe(e.getMessage()), e.getClass().getSimpleName()));
+            return false;
+        }
+        log.warn("Local Codex lane transport is unavailable because tmux did not pass its capability check.");
+        return false;
     }
 
     private void runCommand(Path workdir, String... command) throws Exception {

@@ -15,10 +15,13 @@ import egovframework.com.feature.auth.service.CurrentUserContextService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 
 @RestController
 @RequiredArgsConstructor
 public class EmissionProjectRegistryController {
+    private static final Set<String> QA_CATALOG_ACCOUNTS=Set.of(
+            "qaowner26","qadata26","qacalc26","qaverify26","qaapprove26","qaassign26");
     private final EmissionProjectRegistryService service;
     private final CurrentUserContextService currentUserContextService;
 
@@ -41,6 +44,23 @@ public class EmissionProjectRegistryController {
 
     @GetMapping({"/home/api/emission-projects/options", "/en/home/api/emission-projects/options"})
     public Map<String, Object> options(@RequestParam(defaultValue = "") String keyword,HttpServletRequest request) {var c=currentUserContextService.resolve(request);return service.options(tenant(c),c.getUserId(),keyword); }
+
+    @GetMapping({"/home/api/emission-project-portfolio/preference", "/en/home/api/emission-project-portfolio/preference"})
+    public ResponseEntity<?> portfolioPreference(HttpServletRequest request) {
+        var context=currentUserContextService.resolve(request);
+        if(!context.isAuthenticated()) return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));
+        return ResponseEntity.ok(service.portfolioPreference(tenant(context),context.getUserId()));
+    }
+
+    @PutMapping({"/home/api/emission-project-portfolio/preference", "/en/home/api/emission-project-portfolio/preference"})
+    public ResponseEntity<?> savePortfolioPreference(@RequestBody Map<String,Object> body,HttpServletRequest request) {
+        var context=currentUserContextService.resolve(request);
+        if(!context.isAuthenticated()) return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));
+        try { return ResponseEntity.ok(service.savePortfolioPreference(tenant(context),context.getUserId(),context.isWebmaster(),body)); }
+        catch(SecurityException e) { return ResponseEntity.status(403).body(Map.of("message",e.getMessage())); }
+        catch(IllegalStateException e) { return ResponseEntity.status(409).body(Map.of("message",e.getMessage())); }
+        catch(IllegalArgumentException e) { return ResponseEntity.badRequest().body(Map.of("message",e.getMessage())); }
+    }
 
     @GetMapping({"/home/api/emission-projects/name-availability", "/en/home/api/emission-projects/name-availability"})
     public Map<String, Object> nameAvailability(@RequestParam String name,HttpServletRequest request) { return Map.of("available",service.nameAvailable(tenant(currentUserContextService.resolve(request)),name)); }
@@ -67,6 +87,35 @@ public class EmissionProjectRegistryController {
 
     @PostMapping({"/home/api/emission-projects/{id}/activities","/en/home/api/emission-projects/{id}/activities"})
     public ResponseEntity<?> saveActivity(@PathVariable String id,@RequestBody Map<String,Object> body,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(Map.of("success",true,"id",service.saveActivity(id,tenant(c),c.getUserId(),c.isWebmaster(),body)));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
+
+    @GetMapping({"/home/api/emission-projects/{id}/activities/{activityId}","/en/home/api/emission-projects/{id}/activities/{activityId}"})
+    public ResponseEntity<?> activity(@PathVariable String id,@PathVariable long activityId,HttpServletRequest request) {
+        var c=currentUserContextService.resolve(request);
+        if(!c.isAuthenticated()) return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));
+        try{return ResponseEntity.ok(service.activity(id,activityId,tenant(c),c.getUserId(),c.isWebmaster()));}
+        catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}
+        catch(IllegalArgumentException e){return ResponseEntity.notFound().build();}
+    }
+
+    @PostMapping({"/home/api/emission-projects/{id}/activities/{activityId}","/en/home/api/emission-projects/{id}/activities/{activityId}"})
+    public ResponseEntity<?> updateActivity(@PathVariable String id,@PathVariable long activityId,@RequestBody Map<String,Object> body,HttpServletRequest request) {
+        var c=currentUserContextService.resolve(request);
+        if(!c.isAuthenticated()) return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));
+        try{return ResponseEntity.ok(Map.of("success",service.updateActivity(id,activityId,tenant(c),c.getUserId(),c.isWebmaster(),body)>0));}
+        catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}
+        catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}
+        catch(IllegalArgumentException e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}
+    }
+
+    @DeleteMapping({"/home/api/emission-projects/{id}/activities/{activityId}","/en/home/api/emission-projects/{id}/activities/{activityId}"})
+    public ResponseEntity<?> deleteActivity(@PathVariable String id,@PathVariable long activityId,HttpServletRequest request) {
+        var c=currentUserContextService.resolve(request);
+        if(!c.isAuthenticated()) return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));
+        try{return ResponseEntity.ok(Map.of("success",service.deleteActivity(id,activityId,tenant(c),c.getUserId(),c.isWebmaster())>0));}
+        catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}
+        catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}
+        catch(IllegalArgumentException e){return ResponseEntity.notFound().build();}
+    }
 
     @PostMapping({"/home/api/emission-projects/{id}/activities/upload","/en/home/api/emission-projects/{id}/activities/upload"})
     public ResponseEntity<?> uploadActivities(@PathVariable String id,@RequestParam("file") MultipartFile file,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(Map.of("success",true,"count",service.uploadActivities(id,tenant(c),c.getUserId(),c.isWebmaster(),file)));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
@@ -128,11 +177,23 @@ public class EmissionProjectRegistryController {
     @PostMapping({"/home/api/emission-projects/{id}/submissions/{submissionId}/approval/decision","/en/home/api/emission-projects/{id}/submissions/{submissionId}/approval/decision"})
     public ResponseEntity<?> decideApproval(@PathVariable String id,@PathVariable long submissionId,@RequestBody Map<String,Object> body,HttpServletRequest request) {var context=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.decideApproval(id,submissionId,tenant(context),context.getUserId(),context.isWebmaster(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
 
+    @PostMapping({"/home/api/emission-projects/{id}/submissions/{submissionId}/calculations/{calculationId}/lock","/en/home/api/emission-projects/{id}/submissions/{submissionId}/calculations/{calculationId}/lock"})
+    public ResponseEntity<?> lockApprovedResult(@PathVariable String id,@PathVariable long submissionId,@PathVariable long calculationId,@RequestBody Map<String,Object> body,HttpServletRequest request) {var context=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.lockApprovedResult(id,submissionId,calculationId,tenant(context),context.getUserId(),context.isWebmaster(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @GetMapping({"/home/api/emission-projects/{id}/result-lock","/en/home/api/emission-projects/{id}/result-lock"})
+    public ResponseEntity<?> resultLock(@PathVariable String id,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.resultLockWorkflow(id,tenant(c),c.getUserId(),c.isWebmaster()));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @PostMapping({"/home/api/emission-projects/{id}/result-lock","/en/home/api/emission-projects/{id}/result-lock"})
+    public ResponseEntity<?> createResultLock(@PathVariable String id,@RequestBody Map<String,Object> body,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.lockApprovedResult(id,Long.parseLong(String.valueOf(body.get("submissionId"))),Long.parseLong(String.valueOf(body.get("calculationId"))),tenant(c),c.getUserId(),c.isWebmaster(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @GetMapping({"/home/api/emission-projects/{id}/result-lock/audit","/en/home/api/emission-projects/{id}/result-lock/audit"})
+    public ResponseEntity<?> resultLockAudit(@PathVariable String id,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.resultLockAudit(id,tenant(c),c.getUserId(),c.isWebmaster()));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
     @GetMapping({"/home/api/emission-projects/{id}/reports","/en/home/api/emission-projects/{id}/reports"})
     public ResponseEntity<?> reports(@PathVariable String id,HttpServletRequest request) {var context=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.reportWorkflow(id,tenant(context)));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}}
 
     @GetMapping({"/home/api/emission-projects/{id}/regulatory-submissions","/en/home/api/emission-projects/{id}/regulatory-submissions"})
-    public ResponseEntity<?> regulatorySubmissions(@PathVariable String id,HttpServletRequest request) {var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(service.regulatorySubmissionWorkflow(id,tenant(context)));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+    public ResponseEntity<?> regulatorySubmissions(@PathVariable String id,HttpServletRequest request) {var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(service.regulatorySubmissionWorkflow(id,tenant(context),context.isWebmaster()));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
 
     @PostMapping({"/home/api/emission-projects/{id}/regulatory-submissions","/en/home/api/emission-projects/{id}/regulatory-submissions"})
     public ResponseEntity<?> createRegulatorySubmission(@PathVariable String id,@RequestBody Map<String,Object> body,HttpServletRequest request) {var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(service.createRegulatorySubmission(id,tenant(context),context.getUserId(),context.isWebmaster(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
@@ -185,6 +246,12 @@ public class EmissionProjectRegistryController {
     @PostMapping({"/home/api/emission-projects/{id}/organizational-boundary/review-ready","/en/home/api/emission-projects/{id}/organizational-boundary/review-ready"})
     public ResponseEntity<?> boundaryReviewReady(@PathVariable String id,HttpServletRequest request){var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","LOGIN_REQUIRED"));try{return ResponseEntity.ok(service.markOrganizationalBoundaryReviewReady(id,tenant(c),c.getUserId(),c.isWebmaster()));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
 
+    @GetMapping({"/home/api/emission-projects/{id}/organizational-boundary/review","/en/home/api/emission-projects/{id}/organizational-boundary/review"})
+    public ResponseEntity<?> boundaryVerificationReview(@PathVariable String id,HttpServletRequest request){var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","LOGIN_REQUIRED"));try{return ResponseEntity.ok(service.organizationalBoundaryReview(id,tenant(c),c.getUserId(),c.isWebmaster()));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @PostMapping({"/home/api/emission-projects/{id}/organizational-boundary/verification/decision","/en/home/api/emission-projects/{id}/organizational-boundary/verification/decision"})
+    public ResponseEntity<?> decideBoundaryVerification(@PathVariable String id,@RequestBody Map<String,Object> body,HttpServletRequest request){var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","LOGIN_REQUIRED"));try{return ResponseEntity.ok(service.decideOrganizationalBoundaryVerification(id,tenant(c),c.getUserId(),c.isWebmaster(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
     @PostMapping({"/home/api/emission-projects/{id}/organizational-boundary/consolidate","/en/home/api/emission-projects/{id}/organizational-boundary/consolidate"})
     public ResponseEntity<?> consolidateBoundary(@PathVariable String id,@RequestBody Map<String,Object> body,HttpServletRequest request){var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","LOGIN_REQUIRED"));try{return ResponseEntity.ok(service.consolidateOrganizationalBoundary(id,tenant(c),c.getUserId(),c.isWebmaster(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
 
@@ -194,14 +261,55 @@ public class EmissionProjectRegistryController {
     @GetMapping({"/home/api/emission-projects/{id}/calculation","/en/home/api/emission-projects/{id}/calculation"})
     public ResponseEntity<?> calculation(@PathVariable String id,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.calculationResult(id,tenant(c),c.getUserId(),c.isWebmaster()));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
 
+    @GetMapping({"/home/api/emission-projects/{id}/calculation/diff","/en/home/api/emission-projects/{id}/calculation/diff"})
+    public ResponseEntity<?> calculationDiff(@PathVariable String id,HttpServletRequest request) {var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","LOGIN_REQUIRED"));try{return ResponseEntity.ok(service.calculationDiff(id,tenant(c),c.getUserId(),c.isWebmaster()));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
+
     @PostMapping({"/home/api/emission-projects/{id}/calculation","/en/home/api/emission-projects/{id}/calculation"})
     public ResponseEntity<?> calculate(@PathVariable String id,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(Map.of("success",true,"id",service.calculate(id,tenant(c),c.getUserId(),c.isWebmaster())));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
 
+    @PostMapping({"/home/api/emission-projects/{id}/calculations/{calculationId}/submit","/en/home/api/emission-projects/{id}/calculations/{calculationId}/submit"})
+    public ResponseEntity<?> submitCalculation(@PathVariable String id,@PathVariable long calculationId,@RequestBody Map<String,Object> body,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.submitCalculation(id,calculationId,tenant(c),c.getUserId(),c.isWebmaster(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @GetMapping({"/home/api/emission-projects/{id}/simulation-workflow","/en/home/api/emission-projects/{id}/simulation-workflow"})
+    public ResponseEntity<?> simulationWorkflow(@PathVariable String id,HttpServletRequest request) {var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","LOGIN_REQUIRED"));try{return ResponseEntity.ok(service.simulationWorkflow(id,tenant(c),c.getUserId(),c.isWebmaster()));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalArgumentException e){return ResponseEntity.notFound().build();}}
+
+    @PostMapping({"/home/api/emission-projects/{id}/simulate","/en/home/api/emission-projects/{id}/simulate"})
+    public ResponseEntity<?> simulate(@PathVariable String id,@RequestBody Map<String,Object> body,HttpServletRequest request) {var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","LOGIN_REQUIRED"));try{return ResponseEntity.ok(service.simulate(id,tenant(c),c.getUserId(),c.isWebmaster(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(IllegalArgumentException e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @GetMapping({"/home/api/emission-projects/{id}/step-applicability","/en/home/api/emission-projects/{id}/step-applicability"})
+    public ResponseEntity<?> stepApplicability(@PathVariable String id,HttpServletRequest request){var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","LOGIN_REQUIRED"));try{return ResponseEntity.ok(service.stepApplicabilityWorkspace(tenant(c),c.getUserId(),c.isWebmaster(),id));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @PutMapping({"/home/api/emission-projects/{id}/step-applicability/{processCode}/{stepCode}","/en/home/api/emission-projects/{id}/step-applicability/{processCode}/{stepCode}"})
+    public ResponseEntity<?> decideStepApplicability(@PathVariable String id,@PathVariable String processCode,@PathVariable String stepCode,@RequestBody Map<String,Object> body,HttpServletRequest request){var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","LOGIN_REQUIRED"));try{return ResponseEntity.ok(service.decideStepApplicability(tenant(c),c.getUserId(),c.isWebmaster(),id,processCode,stepCode,body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
     @GetMapping({"/home/api/emission-tasks","/en/home/api/emission-tasks"})
-    public ResponseEntity<?> myTasks(@RequestParam(defaultValue="") String status,@RequestParam(defaultValue="") String period,HttpServletRequest request) { var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));String authority=context.getAuthorCode()==null?"":context.getAuthorCode().toUpperCase();boolean showAll=context.isWebmaster()||"ROLE_SYSTEM_MASTER".equals(authority)||"ROLE_OPERATION_ADMIN".equals(authority);return ResponseEntity.ok(service.myTasks(tenant(context),context.getUserId(),showAll,status,period)); }
+    public ResponseEntity<?> myTasks(@RequestParam(defaultValue="") String status,@RequestParam(defaultValue="") String period,@RequestParam(defaultValue="false") boolean compact,@RequestParam(defaultValue="") String qaCatalog,@RequestHeader(value="X-Carbonet-Test-Mode",required=false) String testMode,HttpServletRequest request) { var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));String authority=context.getAuthorCode()==null?"":context.getAuthorCode().toUpperCase();boolean showAll=context.isWebmaster()||"ROLE_SYSTEM_MASTER".equals(authority)||"ROLE_OPERATION_ADMIN".equals(authority);String userId=context.getUserId()==null?"":context.getUserId().toLowerCase();boolean qaCatalogRequested="true".equalsIgnoreCase(qaCatalog);boolean includeFullCatalog=qaCatalogRequested&&"1".equals(testMode)&&(showAll||QA_CATALOG_ACCOUNTS.contains(userId));if(qaCatalogRequested&&!includeFullCatalog)return ResponseEntity.status(403).body(Map.of("message","QA_FULL_CATALOG_FORBIDDEN"));return ResponseEntity.ok(service.myTasks(tenant(context),context.getUserId(),showAll,includeFullCatalog,status,period,compact)); }
 
     @PostMapping({"/home/api/emission-tasks/{taskId}/status","/en/home/api/emission-tasks/{taskId}/status"})
     public ResponseEntity<?> updateTask(@PathVariable long taskId,@RequestBody Map<String,Object> body,HttpServletRequest request) {var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(Map.of("success",service.updateTask(taskId,tenant(context),String.valueOf(body.get("status")),context.getUserId(),context.isWebmaster())>0));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @GetMapping({"/home/api/work-assignments","/en/home/api/work-assignments"})
+    public ResponseEntity<?> workAssignments(@RequestParam(defaultValue="") String projectId,@RequestParam(defaultValue="") String processCode,HttpServletRequest request) {var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","AUTHENTICATION_REQUIRED"));try{return ResponseEntity.ok(service.workAssignmentWorkspace(tenant(context),context.getUserId(),context.isWebmaster(),projectId,processCode));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @PostMapping({"/home/api/work-assignments","/en/home/api/work-assignments"})
+    public ResponseEntity<?> saveWorkAssignments(@RequestBody Map<String,Object> body,HttpServletRequest request) {var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","AUTHENTICATION_REQUIRED"));try{return ResponseEntity.ok(service.saveWorkAssignments(tenant(context),context.getUserId(),context.isWebmaster(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @GetMapping({"/home/api/company-manager-delegations","/en/home/api/company-manager-delegations"})
+    public ResponseEntity<?> companyManagerDelegations(@RequestParam(defaultValue="") String projectId,@RequestParam(defaultValue="") String accountId,HttpServletRequest request) {var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","AUTHENTICATION_REQUIRED"));try{return ResponseEntity.ok(service.companyManagerDelegationWorkspace(tenant(c),c.getUserId(),authorityAdmin(c),projectId,accountId));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @PostMapping({"/home/api/company-manager-delegations","/en/home/api/company-manager-delegations"})
+    public ResponseEntity<?> requestCompanyManagerDelegation(@RequestBody Map<String,Object> body,HttpServletRequest request) {var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","AUTHENTICATION_REQUIRED"));try{return ResponseEntity.ok(service.requestCompanyManagerDelegation(tenant(c),c.getUserId(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @PostMapping({"/home/api/company-manager-delegations/{id}/decision","/en/home/api/company-manager-delegations/{id}/decision"})
+    public ResponseEntity<?> decideCompanyManagerDelegation(@PathVariable String id,@RequestBody Map<String,Object> body,HttpServletRequest request) {var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","AUTHENTICATION_REQUIRED"));try{return ResponseEntity.ok(service.decideCompanyManagerDelegation(tenant(c),c.getUserId(),authorityAdmin(c),id,body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @PostMapping({"/home/api/company-manager-delegations/{id}/complete","/en/home/api/company-manager-delegations/{id}/complete"})
+    public ResponseEntity<?> completeCompanyManagerDelegation(@PathVariable String id,HttpServletRequest request) {var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","AUTHENTICATION_REQUIRED"));try{return ResponseEntity.ok(service.completeCompanyManagerDelegation(tenant(c),c.getUserId(),id));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    private boolean authorityAdmin(CurrentUserContextService.CurrentUserContext context) {
+        String role=context.getAuthorCode()==null?"":context.getAuthorCode().toUpperCase();
+        return context.isWebmaster()||Set.of("ROLE_SYSTEM_MASTER","ROLE_OPERATION_ADMIN","ROLE_AUTHORITY_ADMIN").contains(role);
+    }
 
     @PostMapping({"/home/api/emission-task-notifications/{notificationId}/read","/en/home/api/emission-task-notifications/{notificationId}/read"})
     public ResponseEntity<?> readTaskNotification(@PathVariable long notificationId,HttpServletRequest request) {var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));return ResponseEntity.ok(Map.of("success",service.readWorkflowNotification(notificationId,tenant(context),context.getUserId(),context.isWebmaster())>0));}

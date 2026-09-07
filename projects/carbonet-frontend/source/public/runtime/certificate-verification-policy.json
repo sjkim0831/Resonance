@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-08-25T00:00:00+09:00",
+  "damageRegion": {
+    "visibleRows": 5,
+    "rowHeightRem": 1.75,
+    "hideWhenExactPdf": true
+  },
+  "ocrMismatch": {
+    "hideWhenExactPdf": true,
+    "adminOnlyDetails": false
+  },
+  "exactPdf": {
+    "authoritative": true,
+    "normalizeVisualDamage": true,
+    "normalizeOcrEvidence": true
+  },
+  "ocrRetry": {
+    "maxAttempts": 3,
+    "maxPagesPerAttempt": 4,
+    "minScoreGain": 1
+  }
+}

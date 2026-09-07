@@ -84,7 +84,15 @@ export type EmissionSurveyReportPayload = {
 };
 
 export function saveEmissionSurveyReportSession(payload: EmissionSurveyReportPayload) {
-  window.sessionStorage.setItem(EMISSION_SURVEY_REPORT_SESSION_KEY, JSON.stringify(payload));
+  try {
+    window.sessionStorage.setItem(EMISSION_SURVEY_REPORT_SESSION_KEY, JSON.stringify(payload));
+    return true;
+  } catch (error) {
+    // A large survey can exceed the browser storage quota. Session persistence is
+    // useful for returning to the report, but it must never block PDF issuance.
+    console.warn("[emission-survey-report:session-persistence]", error);
+    return false;
+  }
 }
 
 export function loadEmissionSurveyReportSession(): EmissionSurveyReportPayload | null {

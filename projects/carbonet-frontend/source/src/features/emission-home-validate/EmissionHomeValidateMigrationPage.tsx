@@ -4,6 +4,7 @@ import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchEmissionResultDetailPage } from "../../lib/api/emission";
 import type { EmissionResultDetailPagePayload } from "../../lib/api/emissionTypes";
 import { buildLocalizedPath, getSearchParam, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { CommonPortalPageShell } from "../../components/common-design/CommonDesignPrimitives";
 
 const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
 const GOV_SYMBOL_FALLBACK = "/img/egovframework/kr_gov_symbol.svg";
@@ -390,7 +391,7 @@ export function EmissionHomeValidateMigrationPage() {
   return (
     <>
       <EmissionHomeValidateInlineStyles />
-      <div className="bg-[#f4f7fa] text-[var(--kr-gov-text-primary)]">
+      <CommonPortalPageShell>
         <a className="skip-link" href="#main-content">{en ? "Skip to main content" : "본문 바로가기"}</a>
         <div className="bg-[var(--kr-gov-bg-gray)] border-b border-[var(--kr-gov-border-light)]">
           <div className="max-w-[1440px] mx-auto px-4 lg:px-8 py-2 flex items-center justify-between">
@@ -735,7 +736,7 @@ export function EmissionHomeValidateMigrationPage() {
             </div>
           </section>
         </main>
-      </div>
+      </CommonPortalPageShell>
     </>
   );
 }

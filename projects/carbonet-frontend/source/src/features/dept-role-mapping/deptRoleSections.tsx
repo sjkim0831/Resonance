@@ -29,7 +29,7 @@ export function renderRoleProfilePreview(page: DeptRolePagePayload | null, profi
 export function DeptRoleCompanySection({ page, insttId, canUseAllCompanies, canUseOwnCompany, onCompanyChange }: { page: DeptRolePagePayload | null; insttId: string; canUseAllCompanies: boolean; canUseOwnCompany: boolean; onCompanyChange: (value: string) => void; }) {
   return (
     <section className="gov-card" data-help-id="dept-role-company">
-      <GridToolbar title={t(page, "선택 회사의 부서 권한 목록", "Department roles for the selected company")} />
+      <GridToolbar title={t(page, "선택 회사의 부서 기본 권한 할당", "Department role assignments for the selected company")} />
       <div className="mb-4 flex flex-wrap items-center gap-3 p-6 pb-0">
         <label className="text-sm font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="dept-role-company">{t(page, "회사명", "Company")}</label>
         <select className="max-w-md w-full rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] h-10 px-3 text-sm" disabled={!canUseAllCompanies && !canUseOwnCompany} id="dept-role-company" value={insttId} onChange={(e) => onCompanyChange(e.target.value)}>
@@ -67,7 +67,7 @@ export function DeptRoleDepartmentTable({ page, canUseAllCompanies, canUseOwnCom
                       <select aria-label={`${row.deptNm || key} 기본 권한`} className="min-w-[16rem] rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] h-10 px-3 text-sm" disabled={!canUseAllCompanies && !canUseOwnCompany} value={deptDrafts[key] || ""} onChange={(e) => setDeptDrafts((current) => ({ ...current, [key]: e.target.value }))}>
                         {(page?.departmentAuthorGroups || []).map((group) => <option key={group.authorCode} value={group.authorCode}>{group.authorNm} ({group.authorCode})</option>)}
                       </select>
-                      <MemberPermissionButton allowed={canUseAllCompanies || canUseOwnCompany} onClick={() => onDeptSave(row)} reason={t(page, "전체 회사 또는 자기 회사 관리 권한이 있어야 부서 기본 Role을 저장할 수 있습니다.", "You need all-company or own-company access to save a department role.")} size="xs" type="button" variant="primary">{t(page, "저장", "Save")}</MemberPermissionButton>
+                      <MemberPermissionButton allowed={canUseAllCompanies || canUseOwnCompany} onClick={() => onDeptSave(row)} reason={t(page, "전체 회사 또는 자기 회사 관리 권한이 있어야 부서 기본 권한을 할당할 수 있습니다.", "You need all-company or own-company access to assign a department role.")} size="xs" type="button" variant="primary">{t(page, "권한 할당 저장", "Save assignment")}</MemberPermissionButton>
                     </div>
                     {renderRoleProfilePreview(page, roleProfilesByAuthorCode[deptDrafts[key] || row.authorCode || ""])}
                   </td>
@@ -84,7 +84,7 @@ export function DeptRoleDepartmentTable({ page, canUseAllCompanies, canUseOwnCom
 export function DeptRoleMemberTable({ page, canUseAllCompanies, canUseOwnCompany, memberSearchDraft, setMemberSearchDraft, onMemberSearchSubmit, currentMemberPage, totalMemberPages, memberDrafts, setMemberDrafts, roleProfilesByAuthorCode, onMemberSave, setMemberPageIndex }: { page: DeptRolePagePayload | null; canUseAllCompanies: boolean; canUseOwnCompany: boolean; memberSearchDraft: string; setMemberSearchDraft: (value: string) => void; onMemberSearchSubmit: () => void; currentMemberPage: number; totalMemberPages: number; memberDrafts: Record<string, string>; setMemberDrafts: Dispatch<SetStateAction<Record<string, string>>>; roleProfilesByAuthorCode: Record<string, { displayTitle?: string; priorityWorks?: string[]; description?: string; baseRoleYn?: string; assignmentScope?: string; parentAuthorCode?: string }>; onMemberSave: (userId: string) => void; setMemberPageIndex: (value: number) => void; }) {
   return (
     <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] overflow-hidden" data-help-id="dept-role-members">
-      <GridToolbar actions={<span className="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[var(--kr-gov-text-secondary)]">{page?.companyMemberCount ?? 0}{t(page, "명", " members")}</span>} title={t(page, "선택 회사 회원 권한 목록", "Member roles for the selected company")} />
+      <GridToolbar actions={<span className="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[var(--kr-gov-text-secondary)]">{page?.companyMemberCount ?? 0}{t(page, "명", " members")}</span>} title={t(page, "선택 회사의 회원별 권한 할당", "Member role assignments for the selected company")} />
       <div className="flex flex-col gap-3 border-b border-[var(--kr-gov-border-light)] bg-white px-4 py-4 md:flex-row md:items-center md:justify-between">
         <div className="flex w-full max-w-xl items-center gap-2">
           <input aria-label={t(page, "회원 권한 검색어", "Member role search")} className="h-10 flex-1 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] px-3 text-sm" placeholder={t(page, "회원 ID, 이름, 부서명 검색", "Search by member ID, name, or department")} value={memberSearchDraft} onChange={(e) => setMemberSearchDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onMemberSearchSubmit(); } }} />
@@ -117,7 +117,7 @@ export function DeptRoleMemberTable({ page, canUseAllCompanies, canUseOwnCompany
                     <select aria-label={`${row.userId} 회원 권한`} className="min-w-[16rem] rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] h-10 px-3 text-sm" disabled={!canUseAllCompanies && !canUseOwnCompany} value={memberDrafts[row.userId] || ""} onChange={(e) => setMemberDrafts((current) => ({ ...current, [row.userId]: e.target.value }))}>
                       {(page?.memberAssignableAuthorGroups || []).map((group) => <option key={group.authorCode} value={group.authorCode}>{group.authorNm} ({group.authorCode})</option>)}
                     </select>
-                    <MemberPermissionButton allowed={canUseAllCompanies || canUseOwnCompany} onClick={() => onMemberSave(row.userId)} reason={t(page, "전체 회사 또는 자기 회사 관리 권한이 있어야 회원 권한을 저장할 수 있습니다.", "You need all-company or own-company access to save a member role.")} size="xs" type="button" variant="primary">{t(page, "저장", "Save")}</MemberPermissionButton>
+                    <MemberPermissionButton allowed={canUseAllCompanies || canUseOwnCompany} onClick={() => onMemberSave(row.userId)} reason={t(page, "전체 회사 또는 자기 회사 관리 권한이 있어야 회원 권한을 할당할 수 있습니다.", "You need all-company or own-company access to assign a member role.")} size="xs" type="button" variant="primary">{t(page, "권한 할당 저장", "Save assignment")}</MemberPermissionButton>
                   </div>
                   {renderRoleProfilePreview(page, roleProfilesByAuthorCode[memberDrafts[row.userId] || row.authorCode || ""])}
                 </td>

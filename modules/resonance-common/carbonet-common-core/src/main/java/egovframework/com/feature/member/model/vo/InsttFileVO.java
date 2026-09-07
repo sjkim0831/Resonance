@@ -8,6 +8,9 @@ public class InsttFileVO implements Serializable {
 
     private String fileId;
     private String insttId;
+    private String projectId;
+    private String scopeStatus;
+    private String fileSha256;
     private Integer fileSn;
     private String streFileNm;
     private String orignlFileNm;
@@ -31,6 +34,30 @@ public class InsttFileVO implements Serializable {
 
     public void setInsttId(String insttId) {
         this.insttId = insttId;
+    }
+
+    public String getProjectId() {
+        return projectId;
+    }
+
+    public void setProjectId(String projectId) {
+        this.projectId = projectId;
+    }
+
+    public String getScopeStatus() {
+        return scopeStatus;
+    }
+
+    public void setScopeStatus(String scopeStatus) {
+        this.scopeStatus = scopeStatus;
+    }
+
+    public String getFileSha256() {
+        return fileSha256;
+    }
+
+    public void setFileSha256(String fileSha256) {
+        this.fileSha256 = fileSha256;
     }
 
     public Integer getFileSn() {

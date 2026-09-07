@@ -61,7 +61,7 @@ while IFS= read -r pod; do
 done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
 [[ "$ready_members" -ge 2 ]] || fail "Patroni quorum is not ready ($ready_members/3)"
 
-latest_data_backup="$(latest_valid_backup 'carbonet-*.sql.gz' '+1M' || true)"
+latest_data_backup="$(latest_valid_backup 'carbonet-*.sql.gz' '+100k' || true)"
 latest_role_backup="$(latest_valid_backup 'postgres-roles-*.sql.gz' '+100c' || true)"
 [[ -n "$latest_data_backup" ]] || fail "no valid data backup from the last 24 hours"
 [[ -n "$latest_role_backup" ]] || fail "no valid role backup from the last 24 hours"

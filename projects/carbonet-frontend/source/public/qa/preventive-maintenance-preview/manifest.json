@@ -1,0 +1,23 @@
+{
+  "processCode": "PREVENTIVE_MAINTENANCE",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "PM_PLAN",
+      "actorCode": "MAINTENANCE_ENGINEER",
+      "routePath": "/ccus/facility/preventive-maintenance?step=pm_plan"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "PM_EXECUTE",
+      "actorCode": "MAINTENANCE_ENGINEER",
+      "routePath": "/ccus/facility/preventive-maintenance?step=pm_execute"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "PM_RETURN_SERVICE",
+      "actorCode": "FACILITY_OPERATOR",
+      "routePath": "/ccus/facility/preventive-maintenance?step=pm_return_service"
+    }
+  ]
+}

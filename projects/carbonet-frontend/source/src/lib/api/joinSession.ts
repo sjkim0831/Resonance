@@ -1,5 +1,5 @@
 import { buildFormUrlEncoded, fetchJsonWithResponse, postFormDataWithResponse, postFormUrlEncoded, postJson } from "./core";
-import type { JoinSessionPayload } from "./joinTypes";
+import type { JoinCompanyReapplyReceipt, JoinSessionPayload } from "./joinTypes";
 
 let joinSessionCache: JoinSessionPayload | null = null;
 let joinSessionPromise: Promise<JoinSessionPayload> | null = null;
@@ -25,6 +25,7 @@ type JoinStep4SubmitPayload = {
 };
 
 type JoinCompanyReapplySubmitPayload = {
+  reapplyToken: string;
   insttId: string;
   agencyName: string;
   representativeName: string;
@@ -35,10 +36,34 @@ type JoinCompanyReapplySubmitPayload = {
   chargerName: string;
   chargerEmail: string;
   chargerTel: string;
+  applicantResponse: string;
   fileUploads: File[];
 };
 
 type JoinActionResponse = { success?: boolean; message?: string } & Record<string, unknown>;
+export type JoinExternalAuthStartResponse = JoinActionResponse & {
+  txId?: string;
+  nextAction?: "COMPLETE" | "REDIRECT" | "CONFIGURE";
+  urlScheme?: string;
+};
+export type JoinExternalAuthCompleteResponse = JoinActionResponse & {
+  status?: string;
+  certified?: boolean;
+  nextUrl?: string;
+};
+export type JoinIdentityEmailIssueResponse = JoinActionResponse & {
+  challengeId?: string;
+  status?: string;
+  maskedDestination?: string;
+  expiresInSeconds?: number;
+  developmentCode?: string;
+  errorCode?: string;
+};
+export type JoinIdentityEmailVerifyResponse = JoinActionResponse & {
+  status?: string;
+  nextStep?: number;
+  errorCode?: string;
+};
 type JoinFormFieldPayload = Record<string, string | undefined>;
 type JoinStepPayload = Record<string, string>;
 
@@ -66,6 +91,7 @@ function buildJoinStep4Form(payload: JoinStep4SubmitPayload): FormData {
 function buildJoinCompanyReapplyForm(payload: JoinCompanyReapplySubmitPayload): FormData {
   const form = new FormData();
   appendFormFields(form, {
+    reapplyToken: payload.reapplyToken,
     insttId: payload.insttId,
     agencyName: payload.agencyName,
     representativeName: payload.representativeName,
@@ -75,19 +101,20 @@ function buildJoinCompanyReapplyForm(payload: JoinCompanyReapplySubmitPayload): 
     companyAddressDetail: payload.companyAddressDetail,
     chargerName: payload.chargerName,
     chargerEmail: payload.chargerEmail,
-    chargerTel: payload.chargerTel
+    chargerTel: payload.chargerTel,
+    applicantResponse: payload.applicantResponse
   });
   payload.fileUploads.forEach((file) => form.append("fileUploads", file));
   return form;
 }
 
-async function submitJoinForm(
+async function submitJoinForm<T extends JoinActionResponse = JoinActionResponse>(
   path: string,
   form: FormData,
   fallbackMessage: string
-) {
+): Promise<T> {
   invalidateJoinSessionCache();
-  const { response, body } = await postFormDataWithResponse<JoinActionResponse>(
+  const { response, body } = await postFormDataWithResponse<T>(
     path,
     form
   );
@@ -160,6 +187,48 @@ export async function saveJoinStep3(authMethod: string) {
   return postJoinStep("/join/api/step3", { auth_method: authMethod }, "Failed to save join step3");
 }
 
+export async function requestJoinIdentityEmail(email: string) {
+  const body = await postFormUrlEncoded<JoinIdentityEmailIssueResponse>(
+    "/join/api/identity/email/request",
+    buildFormUrlEncoded({ email })
+  );
+  if (!body.success || !body.challengeId) {
+    throw new Error(body.message || "Failed to send the verification code");
+  }
+  return body;
+}
+
+export async function verifyJoinIdentityEmail(challengeId: string, code: string) {
+  const body = await postFormUrlEncoded<JoinIdentityEmailVerifyResponse>(
+    "/join/api/identity/email/verify",
+    buildFormUrlEncoded({ challengeId, code })
+  );
+  if (!body.success || body.status !== "VERIFIED") {
+    throw new Error(body.message || "Failed to verify the code");
+  }
+  invalidateJoinSessionCache();
+  return body;
+}
+
+export async function startJoinExternalAuth(methodCode: string) {
+  return postJson<JoinExternalAuthStartResponse>("/signin/external-auth/start", {
+    methodCode,
+    returnUrl: "/join/step3"
+  });
+}
+
+export async function completeJoinExternalAuth(methodCode: string, txId: string) {
+  const response = await postJson<JoinExternalAuthCompleteResponse>("/signin/external-auth/complete", {
+    methodCode,
+    txId
+  });
+  if (!response.success || response.status !== "joinVerificationSuccess") {
+    throw new Error(response.message || "Identity verification did not update the registration session");
+  }
+  invalidateJoinSessionCache();
+  return response;
+}
+
 export async function submitJoinStep4(payload: JoinStep4SubmitPayload) {
   return submitJoinForm(
     "/join/api/step4/submit",
@@ -169,7 +238,7 @@ export async function submitJoinStep4(payload: JoinStep4SubmitPayload) {
 }
 
 export async function submitJoinCompanyReapply(payload: JoinCompanyReapplySubmitPayload) {
-  return submitJoinForm(
+  return submitJoinForm<JoinCompanyReapplyReceipt>(
     "/join/api/company-reapply",
     buildJoinCompanyReapplyForm(payload),
     "Failed to submit company reapply"

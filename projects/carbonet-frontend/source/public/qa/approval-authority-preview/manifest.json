@@ -1,0 +1,29 @@
+{
+  "processCode": "APPROVAL_AUTHORITY",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "APPROVAL_AUTHORITY_S1",
+      "actorCode": "AUTHORITY_ADMIN",
+      "routePath": "/generated/approval-authority/approval-authority-s1?step=approval_authority_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "APPROVAL_AUTHORITY_S2",
+      "actorCode": "AUTHORITY_ADMIN",
+      "routePath": "/generated/approval-authority/approval-authority-s2?step=approval_authority_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "APPROVAL_AUTHORITY_S3",
+      "actorCode": "AUTHORITY_ADMIN",
+      "routePath": "/generated/approval-authority/approval-authority-s3?step=approval_authority_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "APPROVAL_AUTHORITY_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/approval-authority/approval-authority-s4?step=approval_authority_s4"
+    }
+  ]
+}

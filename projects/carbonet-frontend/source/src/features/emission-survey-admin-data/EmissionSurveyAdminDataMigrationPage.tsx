@@ -1307,7 +1307,7 @@ function GwpMappingModal({
                       disabled={option.disabled}
                       name="gwp-factor-type"
                       onChange={() => onFactorTypeChange(option.value)}
-                      type="radio"
+                      type="radio" className="krds-control-native"
                     />
                     <span>
                       <span className="block text-sm font-bold text-slate-900">{option.label}</span>

@@ -69,4 +69,6 @@ public interface EmployeeMemberRepository extends JpaRepository<EmplyrInfo, Stri
 
     Optional<EmplyrInfo> findFirstByAuthDi(String authDi);
 
+    Optional<EmplyrInfo> findFirstByEmplyrIdIgnoreCase(String emplyrId);
+
 }

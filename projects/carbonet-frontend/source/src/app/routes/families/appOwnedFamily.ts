@@ -7,6 +7,7 @@ const sharedJoinCompanyStatusLoader = () => import("../../../features/join-compa
 
 const APP_OWNED_ROUTE_DEFINITIONS = [
   { id: "home", label: "Home", group: "home", koPath: "/home", enPath: "/en/home" },
+  { id: "privacy-policy", label: "Privacy Policy", group: "home", koPath: "/policy/privacy", enPath: "/en/policy/privacy" },
   { id: "flutter-app", label: "Flutter App", group: "home", koPath: "/flutter-app", enPath: "/en/flutter-app" },
   { id: "signin-login", label: "Login", group: "home", koPath: "/signin/loginView", enPath: "/en/signin/loginView" },
   { id: "signin-auth-choice", label: "Auth Choice", group: "home", koPath: "/signin/authChoice", enPath: "/en/signin/authChoice" },
@@ -26,6 +27,7 @@ const APP_OWNED_ROUTE_DEFINITIONS = [
 
 const APP_OWNED_PAGE_UNITS = [
   { id: "home", exportName: "HomeLandingPage", loader: () => import("../../../features/home-entry/HomeEntryPages") },
+  { id: "privacy-policy", exportName: "PrivacyPolicyPage", loader: () => import("../../../features/privacy-policy/PrivacyPolicyPage") },
   { id: "home-certificate-verify", exportName: "HomeCertificateVerifyPage", loader: () => import("../../../features/home-entry/HomeCertificateVerifyPage") },
   { id: "flutter-app", exportName: "default", loader: () => import("../../../features/flutter-app/FlutterAppPage") },
   { id: "admin-home", exportName: "AdminHomePage", loader: sharedAdminEntryLoader },

@@ -1,0 +1,29 @@
+{
+  "processCode": "REPORT_TEMPLATE_MANAGEMENT",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "REPORT_TEMPLATE_MANAGEMENT_S1",
+      "actorCode": "CERTIFICATE_OFFICER",
+      "routePath": "/generated/report-template-management/report-template-management-s1?step=report_template_management_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "REPORT_TEMPLATE_MANAGEMENT_S2",
+      "actorCode": "CERTIFICATE_OFFICER",
+      "routePath": "/generated/report-template-management/report-template-management-s2?step=report_template_management_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "REPORT_TEMPLATE_MANAGEMENT_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/report-template-management/report-template-management-s3?step=report_template_management_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "REPORT_TEMPLATE_MANAGEMENT_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/report-template-management/report-template-management-s4?step=report_template_management_s4"
+    }
+  ]
+}

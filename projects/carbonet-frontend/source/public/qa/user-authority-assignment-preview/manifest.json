@@ -1,0 +1,29 @@
+{
+  "processCode": "USER_AUTHORITY_ASSIGNMENT",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "USER_AUTHORITY_ASSIGNMENT_S1",
+      "actorCode": "COMPANY_ADMIN",
+      "routePath": "/generated/user-authority-assignment/user-authority-assignment-s1?process=USER_AUTHORITY_ASSIGNMENT&step=USER_AUTHORITY_ASSIGNMENT_S1&commandRoute=%2Fmypage%2Fstaff&commandAudience=USER"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "USER_AUTHORITY_ASSIGNMENT_S2",
+      "actorCode": "AUTHORITY_ADMIN",
+      "routePath": "/generated/user-authority-assignment/user-authority-assignment-s2?process=USER_AUTHORITY_ASSIGNMENT&step=USER_AUTHORITY_ASSIGNMENT_S2&commandRoute=%2Fmypage%2Fstaff&commandAudience=USER"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "USER_AUTHORITY_ASSIGNMENT_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/user-authority-assignment/user-authority-assignment-s3?process=USER_AUTHORITY_ASSIGNMENT&step=USER_AUTHORITY_ASSIGNMENT_S3&commandRoute=%2Fmypage%2Fstaff&commandAudience=USER"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "USER_AUTHORITY_ASSIGNMENT_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/user-authority-assignment/user-authority-assignment-s4?process=USER_AUTHORITY_ASSIGNMENT&step=USER_AUTHORITY_ASSIGNMENT_S4&commandRoute=%2Fmypage%2Fstaff&commandAudience=USER"
+    }
+  ]
+}

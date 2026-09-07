@@ -27,6 +27,7 @@ public class ExternalAuthProperties {
         private boolean enabled = true;
         private String adapterVersion = "v1";
         private String sdkJarPath;
+        private String sdkSha256;
         private String decryptToolPath;
         private String clientId;
         private String serviceCode;

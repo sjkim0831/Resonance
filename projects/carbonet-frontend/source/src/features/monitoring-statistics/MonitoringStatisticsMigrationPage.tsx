@@ -477,7 +477,7 @@ export function MonitoringStatisticsMigrationPage() {
   }, [en, reportFilter, session.value?.authorCode]);
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-[var(--kr-gov-text-primary)]">
+    <div className="min-h-screen bg-[#f8fafc] text-[var(--kr-gov-text-primary)]" data-screen-theme="krds-v1">
       <a className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[var(--kr-gov-blue)] focus:px-3 focus:py-2 focus:text-white" href="#main-content">
         {en ? "Skip to main content" : "본문 바로가기"}
       </a>

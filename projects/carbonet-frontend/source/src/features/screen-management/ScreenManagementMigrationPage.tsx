@@ -46,11 +46,73 @@ type ScreenRow = {
   pageFamily: string;
   status: "registered" | "unregistered" | "has-screen" | "no-screen";
   hasBuilder: boolean;
+  runtimeStatus: RuntimeStatus;
+  runtimePriority: string;
+  runtimeErrors: string[];
+  runtimeDurationMs?: number;
+  runtimeScore?: number;
+  verifiedAt?: string;
 };
+
+type RuntimeStatus = "pass" | "error" | "warning" | "not-tested";
+
+type RuntimeQualityRoute = {
+  routePath: string;
+  priority?: string;
+  gaps?: string[];
+  durationMs?: number;
+  runtimeScore?: number;
+};
+
+type RuntimeQualityReport = {
+  completedAt?: string;
+  summary?: { routeCount?: number };
+  routes?: RuntimeQualityRoute[];
+};
+
+function routeKey(value: string) {
+  try {
+    const url = new URL(value, window.location.origin);
+    const query = [...url.searchParams.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, val]) => `${key.toLowerCase()}=${val.toLowerCase()}`)
+      .join("&");
+    return `${url.pathname.replace(/\/$/, "") || "/"}${query ? `?${query}` : ""}`.toLowerCase();
+  } catch {
+    return value.toLowerCase();
+  }
+}
+
+function runtimeStatusOf(route?: RuntimeQualityRoute): RuntimeStatus {
+  if (!route) return "not-tested";
+  const gaps = route.gaps || [];
+  if (route.priority === "NOT_TESTED" || gaps.includes("TEST_NOT_EXECUTED")) return "not-tested";
+  if (route.priority === "P0" || route.priority === "P1" || gaps.some((gap) => /HTTP_|BLANK_SCREEN|BOOTSTRAP|API_FAILURE|CONSOLE_ERROR|PAGE_ERROR/.test(gap))) return "error";
+  if (route.priority === "P2" || route.priority === "P3") return "warning";
+  return "pass";
+}
+
+async function fetchRuntimeQualityReport(): Promise<RuntimeQualityReport> {
+  const candidates = ["/full-screen-quality-report.json", "/assets/react/full-screen-quality-report.json"];
+  let lastError: unknown;
+  for (const url of candidates) {
+    try {
+      const response = await fetch(url, { cache: "no-store", credentials: "same-origin" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("json")) throw new Error(`INVALID_CONTENT_TYPE ${contentType}`);
+      return await response.json() as RuntimeQualityReport;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("실제 화면 검사 결과를 불러오지 못했습니다.");
+}
 
 function buildScreenRows(
   routeTraces: RouteOwnershipTrace[],
-  screenPages?: ScreenCommandPagePayload["pages"]
+  screenPages?: ScreenCommandPagePayload["pages"],
+  qualityReport?: RuntimeQualityReport
 ): ScreenRow[] {
   const pageMap = new Map<string, ScreenCommandPagePayload["pages"][number]>();
 
@@ -63,10 +125,12 @@ function buildScreenRows(
     }
   });
 
+  const runtimeMap = new Map((qualityReport?.routes || []).map((route) => [routeKey(route.routePath), route]));
   return routeTraces.map((trace): ScreenRow => {
     const menuCode = trace.menuCode || "";
     const pageId = trace.pageId || "";
     const matched = pageMap.get(menuCode.toUpperCase()) || pageMap.get(pageId);
+    const runtime = runtimeMap.get(routeKey(trace.canonicalRoute));
 
     let status: ScreenRow["status"] = "unregistered";
     if (matched) {
@@ -86,7 +150,13 @@ function buildScreenRows(
       ownershipLane: trace.ownershipLane,
       pageFamily: trace.pageFamily,
       status,
-      hasBuilder: false
+      hasBuilder: false,
+      runtimeStatus: runtimeStatusOf(runtime),
+      runtimePriority: runtime?.priority || "NOT_TESTED",
+      runtimeErrors: runtime?.gaps || [],
+      runtimeDurationMs: runtime?.durationMs,
+      runtimeScore: runtime?.runtimeScore,
+      verifiedAt: runtime ? qualityReport?.completedAt : undefined
     };
   });
 }
@@ -163,24 +233,16 @@ function ScreenManagementCatalogPanel({
               <div className="flex flex-col items-end gap-1">
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                    item.status === "has-screen"
-                      ? "bg-emerald-100 text-emerald-800"
-                      : item.status === "registered"
-                      ? "bg-blue-100 text-blue-800"
+                    item.runtimeStatus === "pass" ? "bg-emerald-100 text-emerald-800"
+                      : item.runtimeStatus === "error" ? "bg-red-100 text-red-800"
+                      : item.runtimeStatus === "warning" ? "bg-amber-100 text-amber-800"
                       : "bg-gray-100 text-gray-600"
                   }`}
                 >
-                  {item.status === "has-screen"
-                    ? en
-                      ? "Screen"
-                      : "화면있음"
-                    : item.status === "registered"
-                    ? en
-                      ? "Menu"
-                      : "메뉴"
-                    : en
-                    ? "None"
-                    : "없음"}
+                  {item.runtimeStatus === "pass" ? (en ? "Pass" : "정상")
+                    : item.runtimeStatus === "error" ? (en ? "Error" : "오류")
+                    : item.runtimeStatus === "warning" ? (en ? "Warning" : "주의")
+                    : (en ? "Not tested" : "미검사")}
                 </span>
               </div>
             </div>
@@ -230,6 +292,10 @@ function ScreenDetailPanel({
     { label: en ? "Family ID" : "패밀리 ID", value: screen.familyId },
     { label: en ? "Ownership" : "소유권", value: screen.ownershipLane },
     { label: en ? "Page Family" : "페이지 계열", value: screen.pageFamily }
+    ,{ label: en ? "Runtime Status" : "실제 검사 상태", value: screen.runtimePriority }
+    ,{ label: en ? "Runtime Score" : "실행 점수", value: screen.runtimeScore == null ? "-" : `${screen.runtimeScore}점` }
+    ,{ label: en ? "Response Time" : "응답 시간", value: screen.runtimeDurationMs == null ? "-" : `${screen.runtimeDurationMs}ms` }
+    ,{ label: en ? "Last Verified" : "최근 검사", value: screen.verifiedAt || "미검사" }
   ];
 
   return (
@@ -246,8 +312,22 @@ function ScreenDetailPanel({
         description=""
         title={en ? "Screen Information" : "화면 정보"}
       />
+      {screen.runtimeErrors.length > 0 && (
+        <PageStatusNotice tone={screen.runtimeStatus === "error" ? "error" : "warning"}>
+          <p className="font-bold">{en ? "Detected issues" : "실제 검사 오류"}</p>
+          <p className="mt-1 break-words text-xs">{screen.runtimeErrors.join(", ")}</p>
+        </PageStatusNotice>
+      )}
 
       <div className="mt-4 flex flex-wrap gap-2">
+        <MemberButton
+          onClick={() => window.open(screen.routePath, "_blank", "noopener,noreferrer")}
+          size="sm"
+          type="button"
+          variant="secondary"
+        >
+          {en ? "Open actual screen" : "실제 화면 열기"}
+        </MemberButton>
         <MemberButton
           onClick={() => onOpenBuilder(screen)}
           size="sm"
@@ -313,7 +393,7 @@ export function ScreenManagementMigrationPage() {
   const en = isEnglish();
   const session = useFrontendSession();
   const [routeFilter, setRouteFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "has-screen" | "registered" | "unregistered">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | RuntimeStatus>("all");
   const [selectedScreen, setSelectedScreen] = useState<ScreenRow | null>(null);
 
   const routeTraces = useMemo(() => listRouteOwnershipTraces(), []);
@@ -322,25 +402,24 @@ export function ScreenManagementMigrationPage() {
     () => fetchScreenCommandPage(""),
     []
   );
+  const qualityPayload = useAsyncValue<RuntimeQualityReport>(fetchRuntimeQualityReport, []);
 
   const screenRows = useMemo(() => {
-    return buildScreenRows(routeTraces, screenPayload.value?.pages);
-  }, [routeTraces, screenPayload.value]);
+    return buildScreenRows(routeTraces, screenPayload.value?.pages, qualityPayload.value);
+  }, [routeTraces, screenPayload.value, qualityPayload.value]);
 
   const filteredScreenRows = useMemo(() => {
     let rows = screenRows;
     if (statusFilter !== "all") {
-      rows = rows.filter((r) => r.status === statusFilter);
+      rows = rows.filter((r) => r.runtimeStatus === statusFilter);
     }
     return rows;
   }, [screenRows, statusFilter]);
 
   const statusCounts = useMemo(() => {
-    const counts = { all: screenRows.length, "has-screen": 0, registered: 0, unregistered: 0 };
+    const counts = { all: screenRows.length, pass: 0, error: 0, warning: 0, "not-tested": 0 };
     screenRows.forEach((r) => {
-      if (r.status === "has-screen") counts["has-screen"]++;
-      else if (r.status === "registered") counts.registered++;
-      else counts.unregistered++;
+      counts[r.runtimeStatus]++;
     });
     return counts;
   }, [screenRows]);
@@ -348,20 +427,22 @@ export function ScreenManagementMigrationPage() {
   useEffect(() => {
     logGovernanceScope("PAGE", "screen-management", {
       totalScreens: screenRows.length,
-      hasScreenCount: statusCounts["has-screen"],
-      registeredCount: statusCounts.registered,
-      unregisteredCount: statusCounts.unregistered
+      passCount: statusCounts.pass,
+      errorCount: statusCounts.error,
+      warningCount: statusCounts.warning,
+      notTestedCount: statusCounts["not-tested"]
     });
   }, [screenRows.length, statusCounts]);
 
   useEffect(() => {
     function handleNavigationSync() {
       void screenPayload.reload();
+      void qualityPayload.reload();
       void session.reload();
     }
     window.addEventListener(getNavigationEventName(), handleNavigationSync);
     return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-  }, [screenPayload, session]);
+  }, [screenPayload, qualityPayload, session]);
 
   const handleOpenBuilder = (screen: ScreenRow) => {
     const builderUrl = buildLocalizedPath(
@@ -411,6 +492,19 @@ export function ScreenManagementMigrationPage() {
           </div>
         </PageStatusNotice>
 
+        {qualityPayload.error && (
+          <PageStatusNotice tone="error">
+            {en ? "The runtime inspection report could not be loaded." : "실제 화면 검사 결과를 불러오지 못했습니다."} {String(qualityPayload.error)}
+          </PageStatusNotice>
+        )}
+        {qualityPayload.value && qualityPayload.value.summary?.routeCount !== screenRows.length && (
+          <PageStatusNotice tone="warning">
+            {en
+              ? `Inspection coverage ${qualityPayload.value.summary?.routeCount || 0} / registry ${screenRows.length}. Unmatched routes are shown as Not tested.`
+              : `실제 검사 ${qualityPayload.value.summary?.routeCount || 0}건 / 화면 원장 ${screenRows.length}건입니다. 일치하지 않는 화면은 미검사로 표시됩니다.`}
+          </PageStatusNotice>
+        )}
+
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
           <SummaryMetricCard
             title={en ? "Total Screens" : "전체 화면"}
@@ -419,20 +513,20 @@ export function ScreenManagementMigrationPage() {
             surfaceClassName="text-blue-800"
           />
           <SummaryMetricCard
-            title={en ? "Has Screen" : "화면 있음"}
-            value={statusCounts["has-screen"]}
+            title={en ? "Pass" : "정상"}
+            value={statusCounts.pass}
             accentClassName="bg-emerald-50 border-emerald-200"
             surfaceClassName="text-emerald-800"
           />
           <SummaryMetricCard
-            title={en ? "Menu Only" : "메뉴만 있음"}
-            value={statusCounts.registered}
-            accentClassName="bg-amber-50 border-amber-200"
-            surfaceClassName="text-amber-800"
+            title={en ? "Error" : "오류"}
+            value={statusCounts.error}
+            accentClassName="bg-red-50 border-red-200"
+            surfaceClassName="text-red-800"
           />
           <SummaryMetricCard
-            title={en ? "Unregistered" : "미등록"}
-            value={statusCounts.unregistered}
+            title={en ? "Warning / Not tested" : "주의 / 미검사"}
+            value={statusCounts.warning + statusCounts["not-tested"]}
             accentClassName="bg-gray-50 border-gray-200"
             surfaceClassName="text-gray-800"
           />
@@ -445,9 +539,10 @@ export function ScreenManagementMigrationPage() {
             className="w-48"
           >
             <option value="all">{en ? "All Status" : "전체 상태"}</option>
-            <option value="has-screen">{en ? "Has Screen" : "화면 있음"}</option>
-            <option value="registered">{en ? "Menu Only" : "메뉴만 있음"}</option>
-            <option value="unregistered">{en ? "Unregistered" : "미등록"}</option>
+            <option value="pass">{en ? "Pass" : "정상"}</option>
+            <option value="error">{en ? "Error" : "오류"}</option>
+            <option value="warning">{en ? "Warning" : "주의"}</option>
+            <option value="not-tested">{en ? "Not tested" : "미검사"}</option>
           </AdminSelect>
           <div className="flex-1">
             <AdminInput

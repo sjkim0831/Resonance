@@ -1,0 +1,29 @@
+{
+  "processCode": "LCA_ALLOCATION_SENSITIVITY",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "LCA_ALLOCATION_SENSITIVITY_S1",
+      "actorCode": "LCA_PRACTITIONER",
+      "routePath": "/generated/lca-allocation-sensitivity/lca-allocation-sensitivity-s1?step=lca_allocation_sensitivity_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "LCA_ALLOCATION_SENSITIVITY_S2",
+      "actorCode": "LCA_PRACTITIONER",
+      "routePath": "/generated/lca-allocation-sensitivity/lca-allocation-sensitivity-s2?step=lca_allocation_sensitivity_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "LCA_ALLOCATION_SENSITIVITY_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/lca-allocation-sensitivity/lca-allocation-sensitivity-s3?step=lca_allocation_sensitivity_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "LCA_ALLOCATION_SENSITIVITY_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/lca-allocation-sensitivity/lca-allocation-sensitivity-s4?step=lca_allocation_sensitivity_s4"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "processCode": "CUSTOMER_INQUIRY",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "CUSTOMER_INQUIRY_S1",
+      "actorCode": "SUPPORT_AGENT",
+      "routePath": "/generated/customer-inquiry/customer-inquiry-s1?step=customer_inquiry_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "CUSTOMER_INQUIRY_S2",
+      "actorCode": "SUPPORT_AGENT",
+      "routePath": "/generated/customer-inquiry/customer-inquiry-s2?step=customer_inquiry_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "CUSTOMER_INQUIRY_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/customer-inquiry/customer-inquiry-s3?step=customer_inquiry_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "CUSTOMER_INQUIRY_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/customer-inquiry/customer-inquiry-s4?step=customer_inquiry_s4"
+    }
+  ]
+}

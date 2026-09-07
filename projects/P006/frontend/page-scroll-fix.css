@@ -1,0 +1,44 @@
+/* Keep the factory canvas scroll behavior, but always allow the full page to scroll. */
+html.p006-workbench {
+  height: auto !important;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto !important;
+  scrollbar-gutter: stable;
+}
+
+html.p006-workbench body,
+html.p006-workbench body #app,
+html.p006-workbench body #app > .layout {
+  height: auto !important;
+  min-height: 100%;
+  overflow: visible !important;
+}
+
+html.p006-workbench body #app .main {
+  overflow: visible !important;
+}
+
+/* The QA/control cards above the canvas can exceed the old fixed 620px shell. */
+html.p006-workbench body #app .studio {
+  align-items: start;
+  height: auto !important;
+  min-height: 620px;
+}
+
+html.p006-workbench body #app .workarea {
+  height: auto !important;
+  min-height: 620px;
+  overflow: visible !important;
+}
+
+html.p006-workbench body #app .workspace-viewport {
+  flex: 0 0 auto;
+  height: clamp(620px, 72vh, 900px);
+  min-height: 620px;
+  overscroll-behavior-y: auto;
+}
+
+html.p006-workbench body #app .studio > .assets {
+  height: clamp(620px, 72vh, 900px);
+}

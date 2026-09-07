@@ -3,7 +3,7 @@ import { buildLocalizedPath } from "../../lib/navigation/runtime";
 const AUTHORITY_NAV_ITEMS = [
   { id: "auth-group", labelKo: "권한 그룹", labelEn: "Authority Groups", koPath: "/admin/auth/group", enPath: "/en/admin/auth/group", icon: "admin_panel_settings" },
   { id: "auth-change", labelKo: "권한 변경", labelEn: "Authority Change", koPath: "/admin/member/auth-change", enPath: "/en/admin/member/auth-change", icon: "sync_alt" },
-  { id: "dept-role", labelKo: "부서 권한", labelEn: "Department Roles", koPath: "/admin/member/dept-role-mapping", enPath: "/en/admin/member/dept-role-mapping", icon: "lan" },
+  { id: "dept-role", labelKo: "권한 할당", labelEn: "Role Assignment", koPath: "/admin/member/dept-role-mapping", enPath: "/en/admin/member/dept-role-mapping", icon: "lan" },
   { id: "admin-permission", labelKo: "관리자 권한", labelEn: "Admin Permissions", koPath: "/admin/member/admin_account/permissions", enPath: "/en/admin/member/admin_account/permissions", icon: "key" },
   { id: "member-list", labelKo: "회원 목록", labelEn: "Members", koPath: "/admin/member/list", enPath: "/en/admin/member/list", icon: "group" },
   { id: "admin-list", labelKo: "관리자 목록", labelEn: "Admins", koPath: "/admin/member/admin_list", enPath: "/en/admin/member/admin_list", icon: "manage_accounts" }

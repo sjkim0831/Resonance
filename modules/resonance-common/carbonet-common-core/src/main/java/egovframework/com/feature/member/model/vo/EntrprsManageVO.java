@@ -1,5 +1,7 @@
 package egovframework.com.feature.member.model.vo;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 /**
  * 기업회원VO클래스로서 기업회원관리 비지니스로직 처리용 항목을 구성한다.
  * 
@@ -197,6 +199,7 @@ public class EntrprsManageVO extends UserDefaultVO {
 		this.authDn = authDn;
 	}
 
+	@JsonIgnore
 	public String getAuthCi() {
 		return authCi;
 	}
@@ -205,6 +208,7 @@ public class EntrprsManageVO extends UserDefaultVO {
 		this.authCi = authCi;
 	}
 
+	@JsonIgnore
 	public String getAuthDi() {
 		return authDi;
 	}

@@ -1,0 +1,29 @@
+{
+  "processCode": "TRADE_SETTLEMENT",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "TRADE_SETTLEMENT_S1",
+      "actorCode": "SETTLEMENT_OPERATOR",
+      "routePath": "/generated/trade-settlement/trade-settlement-s1?step=trade_settlement_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "TRADE_SETTLEMENT_S2",
+      "actorCode": "SETTLEMENT_OPERATOR",
+      "routePath": "/generated/trade-settlement/trade-settlement-s2?step=trade_settlement_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "TRADE_SETTLEMENT_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/trade-settlement/trade-settlement-s3?step=trade_settlement_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "TRADE_SETTLEMENT_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/trade-settlement/trade-settlement-s4?step=trade_settlement_s4"
+    }
+  ]
+}

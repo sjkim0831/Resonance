@@ -1,4 +1,5 @@
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { CommonEmbeddedWorkspace } from "../../components/common-design/CommonDesignPrimitives";
 
 type TemplateFrameConfig = {
   titleKo: string;
@@ -214,25 +215,25 @@ export function AdminTemplateFramePage() {
 
   if (!config) {
     return (
-      <main className="bg-[#f8f9fa] min-h-screen p-8">
+      <CommonEmbeddedWorkspace workspaceId="ADMIN_TEMPLATE_FRAME_NOT_FOUND" className="p-8">
         <section className="mx-auto max-w-4xl rounded-[var(--kr-gov-radius)] border border-red-200 bg-white p-8 shadow-sm">
           <h1 className="text-2xl font-black text-[var(--kr-gov-text-primary)]">
             {en ? "Admin parity route not found" : "관리자 패리티 경로를 찾을 수 없습니다"}
           </h1>
         </section>
-      </main>
+      </CommonEmbeddedWorkspace>
     );
   }
 
   const sourceUrl = buildLocalizedPath(config.koPath, config.enPath);
 
   return (
-    <main className="min-h-screen bg-white">
+    <CommonEmbeddedWorkspace workspaceId={`ADMIN_TEMPLATE_FRAME_${routeId.toUpperCase()}`} className="bg-white">
       <iframe
         className="block h-screen w-full border-0 bg-white"
         src={sourceUrl}
         title={en ? config.titleEn : config.titleKo}
       />
-    </main>
+    </CommonEmbeddedWorkspace>
   );
 }

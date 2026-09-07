@@ -1,0 +1,29 @@
+{
+  "processCode": "PROJECT_LIFECYCLE_CONTROL",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "PROJECT_LIFECYCLE_CONTROL_S1",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/generated/project-lifecycle-control/project-lifecycle-control-s1?step=project_lifecycle_control_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "PROJECT_LIFECYCLE_CONTROL_S2",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/generated/project-lifecycle-control/project-lifecycle-control-s2?step=project_lifecycle_control_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "PROJECT_LIFECYCLE_CONTROL_S3",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/project-lifecycle-control/project-lifecycle-control-s3?step=project_lifecycle_control_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "PROJECT_LIFECYCLE_CONTROL_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/project-lifecycle-control/project-lifecycle-control-s4?step=project_lifecycle_control_s4"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, isEnglish, replace as replaceNavigation } from "../../lib/navigation/runtime";
+import { runtimeUuid } from "../../lib/runtime-id";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 
 type Row = Record<string, unknown>;
@@ -37,8 +38,8 @@ export function ProcessStepWorkspacePage() {
   const en = isEnglish();
   const query = new URLSearchParams(location.search);
   const [dashboard, setDashboard] = useState<Dashboard>({});
-  const [processCode, setProcessCode] = useState(query.get("process") || "EMISSION_PROJECT");
-  const [stepCode, setStepCode] = useState(query.get("step") || "");
+  const [processCode, setProcessCode] = useState(query.get("processCode") || query.get("process") || "EMISSION_PROJECT");
+  const [stepCode, setStepCode] = useState(query.get("stepCode") || query.get("step") || "");
   const [tenantId, setTenantId] = useState(query.get("tenantId") || "");
   const [projectId, setProjectId] = useState(query.get("projectId") || "");
   const [execution, setExecution] = useState<Execution>({});
@@ -78,11 +79,13 @@ export function ProcessStepWorkspacePage() {
 
   useEffect(() => {
     const next = new URLSearchParams(location.search);
+    next.set("processCode", processCode);
     next.set("process", processCode);
-    if (stepCode) next.set("step", stepCode); else next.delete("step");
+    if (stepCode) { next.set("stepCode", stepCode); next.set("step", stepCode); }
+    else { next.delete("stepCode"); next.delete("step"); }
     if (tenantId) next.set("tenantId", tenantId); else next.delete("tenantId");
     if (projectId) next.set("projectId", projectId); else next.delete("projectId");
-    history.replaceState(null, "", `${location.pathname}?${next.toString()}`);
+    replaceNavigation(`${location.pathname}?${next.toString()}`);
   }, [processCode, stepCode, tenantId, projectId]);
 
   const clearFeedback = () => { setError(""); setMessage(""); };
@@ -137,7 +140,7 @@ export function ProcessStepWorkspacePage() {
         body: JSON.stringify({
           tenantId: tenantId.trim(), projectId: projectId.trim(), processCode,
           stepCode: value(selectedStep, "stepCode"), actorCode,
-          commandCode: value(selectedStep, "commandCode"), idempotencyKey: crypto.randomUUID(),
+          commandCode: value(selectedStep, "commandCode"), idempotencyKey: runtimeUuid(),
           requestJson: JSON.stringify({ workNote: workNote.trim(), evidenceRef: evidenceRef.trim(), fields: fieldValues }),
           resultJson: JSON.stringify({ completed: true, evidenceRef: evidenceRef.trim() }),
         }),
@@ -220,8 +223,8 @@ function DynamicField({ field, value: fieldValue, onChange }: { field: StepField
   const common = { className: "min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3", value: fieldValue, required: Boolean(field.required), onChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => onChange(event.target.value) };
   return <Field label={`${label}${field.required ? " *" : ""}`}>
     {control === "TEXTAREA" ? <textarea {...common} className={`${common.className} min-h-24 py-3`} />
-      : control === "SELECT" && field.options?.length ? <select {...common}><option value="">선택</option>{field.options.map(option => <option key={option} value={option}>{option}</option>)}</select>
-        : <input {...common} type={control === "DATE" ? "date" : control === "NUMBER" || control === "DECIMAL" ? "number" : "text"} />}
+      : control === "SELECT" && field.options?.length ? <select {...common} className="krds-control-field"><option value="">선택</option>{field.options.map(option => <option key={option} value={option}>{option}</option>)}</select>
+        : <input {...common} type={control === "DATE" ? "date" : control === "NUMBER" || control === "DECIMAL" ? "number" : "text"} className="krds-control-field" />}
     {field.description && <span className="mt-1 block text-xs leading-5 text-slate-500">{field.description}</span>}
   </Field>;
 }

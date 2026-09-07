@@ -13,6 +13,9 @@ public class AdminReactRouteSupport {
         if (uri.startsWith("/en/")) {
             return true;
         }
+        if (uri.startsWith("/admin")) {
+            return false;
+        }
         String language = safe(request == null ? null : request.getParameter("language"));
         if ("en".equalsIgnoreCase(language)) {
             return true;

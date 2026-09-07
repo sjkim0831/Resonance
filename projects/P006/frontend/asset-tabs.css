@@ -1,0 +1,4 @@
+.catalog-tabs{display:grid;gap:6px;grid-template-columns:repeat(2,minmax(0,1fr));margin:14px 0}
+.catalog-tabs button{background:#eef5f7;border:1px solid #aac4cc;border-radius:7px;color:#27434d;cursor:pointer;font-weight:700;padding:9px 6px}
+.catalog-tabs button.active{background:#006b78;border-color:#006b78;color:#fff}
+.catalog-tabs b{background:rgba(255,255,255,.75);border-radius:99px;color:#064e58;margin-left:3px;padding:1px 5px}

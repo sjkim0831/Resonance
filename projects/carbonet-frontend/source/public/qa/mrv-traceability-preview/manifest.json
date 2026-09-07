@@ -1,0 +1,29 @@
+{
+  "processCode": "MRV_TRACEABILITY",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "MRV_TRACEABILITY_S1",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "routePath": "/generated/mrv-traceability/mrv-traceability-s1?step=mrv_traceability_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "MRV_TRACEABILITY_S2",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "routePath": "/generated/mrv-traceability/mrv-traceability-s2?step=mrv_traceability_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "MRV_TRACEABILITY_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/mrv-traceability/mrv-traceability-s3?step=mrv_traceability_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "MRV_TRACEABILITY_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/mrv-traceability/mrv-traceability-s4?step=mrv_traceability_s4"
+    }
+  ]
+}

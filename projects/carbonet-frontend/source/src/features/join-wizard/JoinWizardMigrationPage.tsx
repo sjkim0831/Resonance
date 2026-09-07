@@ -4,10 +4,10 @@ import { logGovernanceScope } from "../../app/policy/debug";
 import { resetJoinSession, saveJoinStep1 } from "../../lib/api/joinSession";
 import { useJoinSession } from "../../app/hooks/useJoinSession";
 import {
-  UserGovernmentBar,
   UserLanguageToggle,
   UserPortalHeader
 } from "../../components/user-shell/UserPortalChrome";
+import { JoinGovernmentBar } from "./JoinGovernmentBar";
 import { buildLocalizedPath, getSearchParam, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { EN_MEMBERSHIP_CARDS, KO_MEMBERSHIP_CARDS } from "../join/shared/membershipCards";
 
@@ -93,7 +93,7 @@ export function JoinWizardMigrationPage() {
     <div className="join-step1-screen bg-[var(--kr-gov-bg-gray)] text-[var(--kr-gov-text-primary)] min-h-screen flex flex-col">
       <a className="skip-link" href="#main-content">{en ? "Skip to content" : "본문 바로가기"}</a>
 
-      <UserGovernmentBar governmentText={en ? "Official Government Service of the Republic of Korea" : "대한민국정부 공식 누리집"} />
+      <JoinGovernmentBar en={en} />
       <UserPortalHeader
         brandSubtitle="Carbon Footprint Platform"
         brandTitle={en ? "CCUS Carbon Footprint Platform" : "CCUS 탄소발자국 플랫폼"}

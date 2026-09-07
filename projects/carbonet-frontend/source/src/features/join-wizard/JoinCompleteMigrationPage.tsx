@@ -30,6 +30,7 @@ function readPayload(): JoinCompletePayload {
 export function JoinCompleteMigrationPage() {
   const en = isEnglish();
   const payload = readPayload();
+  const isStatusPage = window.location.pathname.includes("memberStatusSearch");
 
   useEffect(() => {
     logGovernanceScope("PAGE", "join-step5", {
@@ -125,7 +126,7 @@ export function JoinCompleteMigrationPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10">
             <h2 className="text-3xl font-bold text-[var(--kr-gov-text-primary)] mb-2">{en ? "Registration" : "회원가입"}</h2>
-            <p className="text-[var(--kr-gov-text-secondary)]">{en ? "Your application has been submitted." : "가입 신청이 완료되었습니다."}</p>
+            <p className="text-[var(--kr-gov-text-secondary)]">{isStatusPage ? (en ? "Check your membership approval status." : "회원가입 승인 진행 상태를 확인합니다.") : (en ? "Your application has been submitted." : "가입 신청이 완료되었습니다.")}</p>
           </div>
 
           <div className="max-w-5xl mx-auto mb-12">
@@ -161,21 +162,21 @@ export function JoinCompleteMigrationPage() {
             <div className="mb-6 inline-flex items-center justify-center w-20 h-20 rounded-full bg-blue-50 text-[var(--kr-gov-blue)]">
               <span className="material-symbols-outlined text-[48px]" style={{ fontVariationSettings: "'wght' 600" }}>check_circle</span>
             </div>
-            <h3 className="text-2xl font-bold text-[var(--kr-gov-text-primary)] mb-4">{en ? "Application Submitted" : "가입 신청 완료"}</h3>
+            <h3 className="text-2xl font-bold text-[var(--kr-gov-text-primary)] mb-4">{isStatusPage ? (en ? "Approval Pending" : "가입 승인 대기 안내") : (en ? "Application Submitted" : "가입 신청 완료")}</h3>
             <p className="text-lg text-[var(--kr-gov-text-primary)] font-medium mb-2">
-              {en ? "Your registration application has been successfully submitted." : "회원가입 신청이 정상적으로 완료되었습니다."}
+              {isStatusPage ? (en ? "Your application is waiting for administrator approval." : "회원가입 신청이 완료되어 운영자의 승인을 기다리고 있습니다.") : (en ? "Your registration application has been successfully submitted." : "회원가입 신청이 정상적으로 완료되었습니다.")}
             </p>
             <div className="bg-gray-50 border border-gray-100 p-6 rounded-lg mb-10 text-left max-w-xl mx-auto">
               <p className="text-[var(--kr-gov-text-secondary)] text-sm leading-relaxed mb-4">
-                {en
-                  ? "You will be able to use all services after administrator approval is completed."
-                  : "운영자의 승인이 완료된 후 모든 서비스를 이용하실 수 있습니다."}
+                {isStatusPage
+                  ? (en ? "The review usually takes 2 to 3 business days." : "운영자 검토는 영업일 기준 2~3일이 소요될 수 있습니다.")
+                  : (en ? "You will be able to use all services after administrator approval is completed." : "운영자의 승인이 완료된 후 모든 서비스를 이용하실 수 있습니다.")}
                 <br />
                 {en
                   ? "Approval results will be sent to your registered email and SMS."
                   : "승인 결과는 등록하신 이메일과 SMS로 안내해 드립니다."}
               </p>
-              <div className="border-t border-gray-200 pt-4 space-y-2">
+              {(payload.mberId || payload.mberNm || payload.insttNm) ? <div className="border-t border-gray-200 pt-4 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-bold text-gray-500">{en ? "Name" : "이름"}</span>
                   <span className="text-sm font-medium text-[var(--kr-gov-text-primary)]">{payload.mberNm || (en ? "John Doe" : "홍길동")}</span>
@@ -188,7 +189,7 @@ export function JoinCompleteMigrationPage() {
                   <span className="text-sm font-bold text-gray-500">{en ? "Organization" : "소속 기관"}</span>
                   <span className="text-sm font-medium text-[var(--kr-gov-text-primary)]">{payload.insttNm || (en ? "Korea Energy Agency" : "한국에너지공단")}</span>
                 </div>
-              </div>
+              </div> : <div className="border-t border-gray-200 pt-4 text-sm font-medium text-[var(--kr-gov-text-secondary)]">{en ? "Application details and the approval result are sent to the registered email and mobile number." : "신청 정보와 승인 결과는 가입 시 등록한 이메일과 휴대전화로 안내됩니다."}</div>}
             </div>
             <div className="flex flex-col gap-4" data-help-id="join-step5-actions">
               <button

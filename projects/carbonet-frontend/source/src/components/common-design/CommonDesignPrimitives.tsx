@@ -1,5 +1,21 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
+export function CommonPortalPageShell({ children, className = "", ...attributes }: HTMLAttributes<HTMLDivElement>) {
+  return <div {...attributes} data-common-component="COMMON_PORTAL_PAGE_SHELL" className={`min-h-screen bg-[var(--kr-gov-bg-gray,#f4f7fa)] text-[var(--kr-gov-text-primary)] ${className}`}>{children}</div>;
+}
+
+export function CommonPageContainer({ children, className = "", contentClassName = "", ...attributes }: HTMLAttributes<HTMLElement> & { contentClassName?: string }) {
+  return <main {...attributes} data-common-component="COMMON_PAGE_CONTAINER" className={`min-h-[calc(100vh-80px)] bg-[var(--kr-gov-surface,#f5f7fa)] px-4 py-8 lg:px-8 ${className}`}><div className={`mx-auto max-w-7xl ${contentClassName}`}>{children}</div></main>;
+}
+
+export function CommonPageHeader({ eyebrow, title, description, actions }: { eyebrow?: ReactNode; title: ReactNode; description?: ReactNode; actions?: ReactNode }) {
+  return <header data-common-component="COMMON_PAGE_HEADER" className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div>{eyebrow ? <p className="text-sm font-bold text-[var(--kr-gov-blue,#246beb)]">{eyebrow}</p> : null}<h1 className="mt-2 text-3xl font-black text-[var(--kr-gov-text-primary,#052b57)]">{title}</h1>{description ? <p className="mt-2 text-[var(--kr-gov-text-secondary,#475569)]">{description}</p> : null}</div>{actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}</header>;
+}
+
+export function CommonEmbeddedWorkspace({ children, className = "", workspaceId, ...attributes }: HTMLAttributes<HTMLDivElement> & { workspaceId: string }) {
+  return <div {...attributes} data-common-component="COMMON_EMBEDDED_WORKSPACE" data-workspace-id={workspaceId} className={`min-h-screen bg-[var(--kr-gov-surface,#f5f7fa)] text-[var(--kr-gov-text-primary,#052b57)] ${className}`}>{children}</div>;
+}
+
 export function CommonStatusBadge({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <span data-common-component="COMMON_STATUS_BADGE" className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-tight ${className}`}>{children}</span>;
 }

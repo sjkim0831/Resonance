@@ -137,6 +137,16 @@ public class AdminAuthorityApiCommandService {
         return ResponseEntity.ok(result.getBody());
     }
 
+    public ResponseEntity<Map<String, Object>> authChangeRelayQueue(HttpServletRequest request, Locale locale) {
+        AdminAuthorityCommandService.CommandResult result = adminAuthorityCommandService.authChangeRelayQueue(request, locale);
+        return ResponseEntity.status(result.getStatus()).body(result.getBody());
+    }
+
+    public ResponseEntity<Map<String, Object>> authChangeRelayAction(Map<String, String> payload, HttpServletRequest request, Locale locale) {
+        AdminAuthorityCommandService.CommandResult result = adminAuthorityCommandService.authChangeRelayAction(payload, request, locale);
+        return ResponseEntity.status(result.getStatus()).body(result.getBody());
+    }
+
     public ResponseEntity<Map<String, Object>> saveDeptRoleMapping(
             AdminDeptRoleMappingSaveRequestDTO payload,
             HttpServletRequest request,

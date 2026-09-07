@@ -1,22 +1,119 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-root_dir="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-cache_dir="${FULL_SCREEN_SMOKE_CACHE_DIR:-$root_dir/.cache/full-screen-smoke}"
-result_dir="${FULL_SCREEN_SMOKE_RESULT_DIR:-$cache_dir/results}"
+root_dir="${FRONTEND_ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+smoke_started_at="$(date +%s)"
+command -v realpath >/dev/null || { echo 'realpath is required for safe smoke output paths' >&2; exit 2; }
+physical_root_dir="$(realpath -e -- "$root_dir")" || {
+  echo "frontend root is missing or unsafe: $root_dir" >&2
+  exit 2
+}
+expected_cache_root="$physical_root_dir/.cache/full-screen-smoke"
+assert_physical_smoke_cache_root() {
+  local resolved_cache_root
+  if [[ -L "$physical_root_dir/.cache" || -L "$expected_cache_root" ]]; then
+    echo "unsafe symlinked smoke cache root: $expected_cache_root" >&2
+    return 1
+  fi
+  resolved_cache_root="$(realpath -m -- "$expected_cache_root")" || return 1
+  if [[ "$resolved_cache_root" != "$expected_cache_root" ]]; then
+    echo "unsafe non-physical smoke cache root: $expected_cache_root -> $resolved_cache_root" >&2
+    return 1
+  fi
+}
+assert_physical_smoke_cache_root || exit 2
+canonical_cache_root="$expected_cache_root"
+cache_dir="$(realpath -m -- "${FULL_SCREEN_SMOKE_CACHE_DIR:-$canonical_cache_root}")"
+result_dir="$(realpath -m -- "${FULL_SCREEN_SMOKE_RESULT_DIR:-$cache_dir/results}")"
+case "$cache_dir" in
+  "$canonical_cache_root"|"$canonical_cache_root"/*) ;;
+  *) echo "unsafe smoke cache directory: $cache_dir" >&2; exit 2 ;;
+esac
+case "$result_dir" in
+  "$cache_dir"/*) ;;
+  *) echo "unsafe smoke result directory: $result_dir" >&2; exit 2 ;;
+esac
+export FULL_SCREEN_SMOKE_CACHE_DIR="$cache_dir"
 export FULL_SCREEN_SMOKE_MANIFEST="${FULL_SCREEN_SMOKE_MANIFEST:-$cache_dir/manifest.json}"
 export FULL_SCREEN_SMOKE_RESULT_DIR="$result_dir"
 export FULL_SCREEN_SMOKE_BASELINE="${FULL_SCREEN_SMOKE_BASELINE:-$cache_dir/last-success.json}"
+auth_state_path=""
+cleanup_smoke_secrets() {
+  local exit_status=$?
+  local logout_status=0
+  trap - EXIT
+  if [[ -n "$auth_state_path" && -f "$auth_state_path" ]]; then
+    set +e
+    node "$root_dir/scripts/logout-full-screen-auth-state.mjs"
+    logout_status=$?
+    set -e
+    rm -f -- "$auth_state_path"
+  fi
+  if [[ "$exit_status" -eq 0 && "$logout_status" -ne 0 ]]; then
+    exit_status="$logout_status"
+  fi
+  exit "$exit_status"
+}
+trap cleanup_smoke_secrets EXIT
 
-case "$result_dir" in
-  "$root_dir"/.cache/full-screen-smoke/*) ;;
-  *) echo "unsafe smoke result directory: $result_dir" >&2; exit 2 ;;
-esac
+# Prefer the Chromium revision installed by the pinned Playwright package.
+# A newer system/Snap Chromium can speak a different DevTools protocol and
+# intermittently close the whole browser transport during a deploy gate. Fall
+# back to the host browser only when the matching managed binary is absent.
+if [[ -z "${PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH:-}" ]]; then
+  managed_chromium="$({
+    cd "$root_dir"
+    node -e "process.stdout.write(require('@playwright/test').chromium.executablePath())"
+  } 2>/dev/null || true)"
+  if [[ -n "$managed_chromium" && -x "$managed_chromium" ]]; then
+    export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="$managed_chromium"
+  elif [[ -x /snap/bin/chromium ]]; then
+    export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/snap/bin/chromium
+  fi
+fi
+
+# Interrupted operator runs can leave Playwright's default output owned by a
+# different account. Repair only these bounded generated directories before
+# the fail-closed browser gate starts; source files are never changed here.
+for generated_output in "$root_dir/test-results" "$root_dir/playwright-report"; do
+  [[ -e "$generated_output" ]] || continue
+  if [[ ! -w "$generated_output" ]]; then
+    sudo -n chown -R "$(id -u):$(id -g)" "$generated_output"
+  fi
+done
+
 mkdir -p "$result_dir"
 rm -f "$result_dir"/shard-*.json
 
+# Authenticate once through the same JSON endpoint used by the React login
+# form, then give every isolated browser context the resulting cookie state.
+# Candidate and nightly gates share a single-session principal: one shard must
+# never invalidate every other shard by falling back to a fresh UI login.
+strict_preauth="${FULL_SCREEN_SMOKE_REQUIRE_PREAUTH:-false}"
+if [[ "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate ]]; then
+  strict_preauth=true
+fi
+export FULL_SCREEN_SMOKE_REQUIRE_PREAUTH="$strict_preauth"
+auth_state_path="$cache_dir/auth-state-$$.json"
+rm -f -- "$auth_state_path"
+export FULL_SCREEN_SMOKE_STORAGE_STATE="$auth_state_path"
+if node "$root_dir/scripts/prepare-full-screen-auth-state.mjs"; then
+  export FULL_SCREEN_SMOKE_PREAUTHENTICATED=true
+else
+  rm -f -- "$auth_state_path"
+  auth_state_path=""
+  unset FULL_SCREEN_SMOKE_STORAGE_STATE FULL_SCREEN_SMOKE_PREAUTHENTICATED
+  if [[ "$strict_preauth" == true ]]; then
+    printf '[full-screen-smoke] shared authentication unavailable; strict gate forbids per-shard login\n' >&2
+    exit 75
+  fi
+  printf '[full-screen-smoke] shared authentication unavailable; using per-shard UI login\n' >&2
+fi
+
 bash "$root_dir/scripts/export-full-screen-smoke-manifest.sh"
-bash "$root_dir/scripts/export-full-screen-quality-context.sh"
+if [[ "${FULL_SCREEN_SMOKE_SKIP_QUALITY_REFRESH:-false}" != "true" ]]; then
+  bash "$root_dir/scripts/export-full-screen-quality-context.sh"
+fi
 
 detect_safe_workers() {
   if [[ -n "${FULL_SCREEN_SMOKE_WORKERS:-}" ]]; then
@@ -42,6 +139,13 @@ detect_safe_workers() {
 }
 
 smoke_workers="$(detect_safe_workers)"
+if [[ -f "$root_dir/node_modules/@playwright/test/cli.js" ]]; then
+  playwright_command=(node "$root_dir/node_modules/@playwright/test/cli.js")
+else
+  # Developer worktrees may intentionally rely on npm's executable resolver.
+  # Production keeps the exact dependency installed and takes the direct path.
+  playwright_command=(npx playwright)
+fi
 printf '[full-screen-smoke] workers=%s cpu=%s load=%s memAvailableKb=%s\n' \
   "$smoke_workers" \
   "$(getconf _NPROCESSORS_ONLN 2>/dev/null || printf '?')" \
@@ -49,7 +153,9 @@ printf '[full-screen-smoke] workers=%s cpu=%s load=%s memAvailableKb=%s\n' \
   "$(awk '/MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null || printf '?')"
 set +e
 PLAYWRIGHT_HOST_PLATFORM_OVERRIDE="${PLAYWRIGHT_HOST_PLATFORM_OVERRIDE:-ubuntu24.04-x64}" \
-  npx playwright test e2e/full-screen-smoke.spec.ts \
+  "${playwright_command[@]}" test \
+  e2e/full-screen-smoke.spec.ts \
+  e2e/emission-workflow-alignment.spec.ts \
   --workers="$smoke_workers" \
   --retries="${FULL_SCREEN_SMOKE_RETRIES:-1}" \
   --reporter="${FULL_SCREEN_SMOKE_REPORTER:-list}"
@@ -61,16 +167,68 @@ node "$root_dir/scripts/finalize-full-screen-smoke.mjs"
 finalize_status=$?
 set -e
 
-set +e
-node "$root_dir/scripts/build-full-screen-quality-queue.mjs"
-quality_status=$?
-set -e
-if [[ "$quality_status" -eq 0 ]]; then
-  publish_dir="${FULL_SCREEN_QUALITY_PUBLISH_DIR:-$root_dir/../src/main/resources/static/react-app}"
-  mkdir -p "$publish_dir"
-  cp "$cache_dir/quality-report.json" "$publish_dir/full-screen-quality-report.json"
-  cp "$cache_dir/development-priority-queue.json" "$publish_dir/full-screen-development-priority-queue.json"
+# A route can occasionally miss its SPA mount while all shards are saturating
+# the runtime. Re-run only the failed routes after the parallel phase has
+# drained, with one worker, and merge successful evidence into the primary
+# result set. Real deterministic failures remain fail-closed.
+if [[ "$finalize_status" -ne 0 && "${FULL_SCREEN_SMOKE_SERIAL_RECOVERY:-true}" == "true" ]]; then
+  recovery_dir="$cache_dir/recovery"
+  recovery_manifest="$recovery_dir/manifest.json"
+  recovery_results="$recovery_dir/results"
+  rm -rf "$recovery_dir"
+  mkdir -p "$recovery_results"
+  node "$root_dir/scripts/recover-full-screen-smoke-failures.mjs" \
+    --mode prepare \
+    --manifest "$FULL_SCREEN_SMOKE_MANIFEST" \
+    --summary "${FULL_SCREEN_SMOKE_SUMMARY:-$cache_dir/summary.json}" \
+    --recoveryManifest "$recovery_manifest"
+
+  set +e
+  FULL_SCREEN_SMOKE_MANIFEST="$recovery_manifest" \
+  FULL_SCREEN_SMOKE_RESULT_DIR="$recovery_results" \
+  PLAYWRIGHT_HOST_PLATFORM_OVERRIDE="${PLAYWRIGHT_HOST_PLATFORM_OVERRIDE:-ubuntu24.04-x64}" \
+    "${playwright_command[@]}" test e2e/full-screen-smoke.spec.ts \
+    --workers=1 \
+    --retries=0 \
+    --reporter="${FULL_SCREEN_SMOKE_REPORTER:-list}"
+  recovery_status=$?
+  set -e
+
+  if [[ "$recovery_status" -eq 0 ]]; then
+    node "$root_dir/scripts/recover-full-screen-smoke-failures.mjs" \
+      --mode merge \
+      --recoveryResultDir "$recovery_results" \
+      --primaryResultDir "$result_dir"
+    set +e
+    node "$root_dir/scripts/finalize-full-screen-smoke.mjs"
+    finalize_status=$?
+    set -e
+    [[ "$finalize_status" -eq 0 ]] && test_status=0
+  fi
+fi
+
+quality_status=0
+if [[ "${FULL_SCREEN_SMOKE_SKIP_QUALITY_REFRESH:-false}" != "true" ]]; then
+  set +e
+  node "$root_dir/scripts/build-full-screen-quality-queue.mjs"
+  quality_status=$?
+  set -e
+  if [[ "$quality_status" -eq 0 ]]; then
+    publish_dir="${FULL_SCREEN_QUALITY_PUBLISH_DIR:-$root_dir/../src/main/resources/static/react-app}"
+    mkdir -p "$publish_dir"
+    cp "$cache_dir/quality-report.json" "$publish_dir/full-screen-quality-report.json"
+    cp "$cache_dir/development-priority-queue.json" "$publish_dir/full-screen-development-priority-queue.json"
+    # Vite dev runtime reads the same generated report as the packaged runtime.
+    # This prevents the management screen from showing an older successful run.
+    mkdir -p "$root_dir/public"
+    cp "$cache_dir/quality-report.json" "$root_dir/public/full-screen-quality-report.json"
+  fi
+else
+  printf '[full-screen-smoke] deploy gate skipped quality catalog refresh; nightly sweep remains authoritative\n'
 fi
 if [[ "$test_status" -ne 0 || "$finalize_status" -ne 0 || "$quality_status" -ne 0 ]]; then
   exit 1
 fi
+
+smoke_finished_at="$(date +%s)"
+printf '[full-screen-smoke] PASS elapsedSeconds=%s\n' "$((smoke_finished_at - smoke_started_at))"

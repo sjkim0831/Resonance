@@ -8,6 +8,7 @@ import { buildLocalizedPath, getNavigationEventName, getSearchParam, isEnglish, 
 import { postJsonWithSession } from "./publicEntryApi";
 import { LoginResponse, PublicFrame } from "./publicEntryShared";
 import { AppButton, AppCheckbox, AppInput, AppLinkButton } from "../app-ui/primitives";
+import { launchPortOneLogin } from "./portoneLogin";
 
 type ExternalAuthMethod = {
   providerCode: string;
@@ -46,6 +47,15 @@ type ExternalAuthCompletePayload = {
   userSe?: string;
   certified?: boolean;
   linkRequired?: boolean;
+};
+
+type MfaLoginResponse = LoginResponse & {
+  challengeId?: string;
+  destinationMasked?: string;
+  developmentCode?: string;
+  expiresInSeconds?: number;
+  redirectUrl?: string;
+  memberId?: string;
 };
 
 function isOverseasPath() {
@@ -91,8 +101,9 @@ async function completeExternalAuth(methodCode: string, txId: string, userId?: s
   );
 }
 
-export function PublicLoginPage() {
+export function PublicLoginPage({ admin = false }: { admin?: boolean } = {}) {
   const en = isEnglish();
+  const loginDestination = admin ? buildLocalizedPath("/admin", "/en/admin") : buildLocalizedPath("/home", "/en/home");
   const [userId, setUserId] = useState("");
   const [userPw, setUserPw] = useState("");
   const [saveId, setSaveId] = useState(false);
@@ -100,18 +111,18 @@ export function PublicLoginPage() {
   const [tab, setTab] = useState<"domestic" | "overseas">(() => resolveLoginTabFromLocation());
   const [submitting, setSubmitting] = useState(false);
   const [externalAuthSubmitting, setExternalAuthSubmitting] = useState("");
+  const [mfaChallengeId, setMfaChallengeId] = useState("");
+  const [mfaDestination, setMfaDestination] = useState("");
+  const [mfaDevelopmentCode, setMfaDevelopmentCode] = useState("");
+  const [mfaVerificationCode, setMfaVerificationCode] = useState("");
   const autoLoginAttemptedRef = useRef(false);
   const loginPath = useMemo(
-    () => buildLocalizedPath("/signin/loginView", "/en/signin/loginView"),
-    [en]
+    () => admin ? buildLocalizedPath("/admin/login/loginView", "/en/admin/login/loginView") : buildLocalizedPath("/signin/loginView", "/en/signin/loginView"),
+    [en, admin]
   );
-  const externalAuthState = useAsyncValue(fetchExternalAuthMethods, [en], {
-    initialValue: []
-  });
-  const externalAuthMethods = externalAuthState.value || [];
 
   function buildLoginPath(nextEnglish: boolean, nextTab: "domestic" | "overseas") {
-    const basePath = nextEnglish ? "/en/signin/loginView" : "/signin/loginView";
+    const basePath = admin ? (nextEnglish ? "/en/admin/login/loginView" : "/admin/login/loginView") : (nextEnglish ? "/en/signin/loginView" : "/signin/loginView");
     return nextTab === "overseas" ? `${basePath}?tab=overseas` : basePath;
   }
 
@@ -152,7 +163,7 @@ export function PublicLoginPage() {
       return;
     }
     autoLoginAttemptedRef.current = true;
-    void submitLogin(userId, userPw, saveId, true);
+    // Authentication popups require an explicit login click, not input changes.
   }, [autoLogin, saveId, userId, userPw]);
 
   useEffect(() => {
@@ -206,6 +217,7 @@ export function PublicLoginPage() {
       saveId,
       autoLogin
     });
+    if (submitting || externalAuthSubmitting || mfaChallengeId) return;
     await submitLogin(userId, userPw, saveId, autoLogin);
   }
 
@@ -226,23 +238,45 @@ export function PublicLoginPage() {
     }
     setSubmitting(true);
     try {
-      let body = await postJsonWithSession<LoginResponse>(buildLocalizedPath("/signin/actionLogin", "/en/signin/actionLogin"), {
+      let body = await postJsonWithSession<MfaLoginResponse>(buildLocalizedPath("/signin/actionLogin", "/en/signin/actionLogin"), {
         userId: nextUserId.trim(),
         userPw: nextUserPw,
         userSe: "ENT",
         autoLogin: nextAutoLogin
       });
+      if (body.status === "registrationPending" || body.status === "registrationRejected") {
+        const target = body.redirectUrl || buildLocalizedPath("/join/memberStatusSearch", "/join/en/memberStatusSearch");
+        navigate(target.includes("?") ? target : `${target}?memberId=${encodeURIComponent(body.memberId || nextUserId.trim())}`);
+        return;
+      }
       if (body.status === "loginFailure") {
-        body = await postJsonWithSession<LoginResponse>(buildLocalizedPath("/signin/actionLogin", "/en/signin/actionLogin"), {
+        body = await postJsonWithSession<MfaLoginResponse>(buildLocalizedPath("/signin/actionLogin", "/en/signin/actionLogin"), {
           userId: nextUserId.trim(),
           userPw: nextUserPw,
           userSe: "USR",
           autoLogin: nextAutoLogin
         });
+        if (body.status === "registrationPending" || body.status === "registrationRejected") {
+          const target = body.redirectUrl || buildLocalizedPath("/join/memberStatusSearch", "/join/en/memberStatusSearch");
+          navigate(target.includes("?") ? target : `${target}?memberId=${encodeURIComponent(body.memberId || nextUserId.trim())}`);
+          return;
+        }
         if (body.status === "loginFailure") {
           window.alert(body.errors || (en ? "Login failed." : "로그인에 실패했습니다."));
           return;
         }
+      }
+      if (body.status === "mfaRequired") {
+        setMfaChallengeId(body.challengeId || "");
+        setMfaDestination(body.destinationMasked || "");
+        setMfaDevelopmentCode(body.developmentCode || "");
+        setMfaVerificationCode("");
+        return;
+      }
+
+      if (body.status !== "loginSuccess") {
+        window.alert(body.errors || (en ? "Login was not approved." : "로그인이 승인되지 않았습니다."));
+        return;
       }
 
       if (nextSaveId) {
@@ -259,20 +293,7 @@ export function PublicLoginPage() {
       invalidateFrontendSessionCache();
       window.sessionStorage.setItem("loginUserId", body.userId || nextUserId.trim());
       window.sessionStorage.setItem("loginUserSe", body.userSe || "ENT");
-      const requestedReturnUrl = new URLSearchParams(window.location.search).get("returnUrl");
-      const safeReturnUrl = requestedReturnUrl
-        && requestedReturnUrl.startsWith("/")
-        && !requestedReturnUrl.startsWith("//")
-        && !requestedReturnUrl.includes("/signin")
-        && !requestedReturnUrl.includes("/login")
-          ? requestedReturnUrl
-          : null;
-      const redirectUrl = body.userSe === "USR"
-        ? buildLocalizedPath("/admin/", "/en/admin/")
-        : body.certified === false
-          ? buildLocalizedPath("/signin/authChoice", "/en/signin/authChoice")
-          : safeReturnUrl || buildLocalizedPath("/emission/my-tasks", "/en/emission/my-tasks");
-      navigate(redirectUrl);
+      navigate(loginDestination);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "로그인 요청 중 오류가 발생했습니다.");
     } finally {
@@ -280,9 +301,46 @@ export function PublicLoginPage() {
     }
   }
 
+  async function submitMfaLogin() {
+    if (!/^\d{6}$/.test(mfaVerificationCode)) {
+      window.alert(en ? "Enter the 6-digit verification code." : "6자리 인증번호를 입력하세요.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const body = await postJsonWithSession<MfaLoginResponse>(buildLocalizedPath("/signin/actionLogin/mfa", "/en/signin/actionLogin/mfa"), {
+        challengeId: mfaChallengeId,
+        verificationCode: mfaVerificationCode
+      });
+      if (body.status !== "loginSuccess") {
+        window.alert(body.errors || (en ? "MFA verification failed." : "MFA 인증에 실패했습니다."));
+        return;
+      }
+      invalidateFrontendSessionCache();
+      window.sessionStorage.setItem("loginUserId", body.userId || userId.trim());
+      window.sessionStorage.setItem("loginUserSe", body.userSe || "ENT");
+      navigate(loginDestination);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : (en ? "MFA verification failed." : "MFA 인증 요청 중 오류가 발생했습니다."));
+    } finally { setSubmitting(false); }
+  }
+
   async function handleExternalAuth(methodCode: string) {
     setExternalAuthSubmitting(methodCode);
     try {
+      if (methodCode === "PORTONE_UNIFIED") {
+        if (window.location.protocol === "https:" && (!userId.trim() || !userPw)) {
+          window.alert(en ? "Enter your ID and password first. The test channel cannot replace account authentication." : "아이디와 비밀번호를 먼저 입력해 주세요. 현재 테스트 채널에서는 본인인증 후에도 기존 계정의 비밀번호를 확인합니다.");
+          return;
+        }
+        const result = await launchPortOneLogin();
+        if (result.verified) {
+          await submitLogin(userId, userPw, saveId, autoLogin);
+        } else {
+          window.alert(result.message);
+        }
+        return;
+      }
       const started = await startExternalAuth(methodCode);
       if (!started.txId) {
         throw new Error(started.message || (en ? "Failed to start authentication." : "인증 시작에 실패했습니다."));
@@ -295,9 +353,7 @@ export function PublicLoginPage() {
         invalidateFrontendSessionCache();
         window.sessionStorage.setItem("loginUserId", completed.userId || "");
         window.sessionStorage.setItem("loginUserSe", completed.userSe || "ENT");
-        navigate(completed.certified === false
-          ? buildLocalizedPath("/signin/authChoice", "/en/signin/authChoice")
-          : buildLocalizedPath("/home", "/en/home"));
+        navigate(loginDestination);
 	        return;
 	      }
 
@@ -490,9 +546,21 @@ export function PublicLoginPage() {
                   </label>
                 </div>
               </div>
+              {mfaChallengeId ? (
+                <section className="rounded-lg border-2 border-[var(--kr-gov-blue)] bg-blue-50 p-5" data-login-mfa-challenge="">
+                  <h3 className="flex items-center gap-2 text-base font-black text-[var(--kr-gov-blue)]">
+                    <span className="material-symbols-outlined">verified_user</span>
+                    {en ? "Multi-factor authentication" : "다중 인증(MFA)"}
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-700">{en ? `Enter the code sent to ${mfaDestination}.` : `${mfaDestination}로 발급된 인증번호를 입력하세요.`}</p>
+                  <AppInput className="mt-4 h-14 bg-white text-center text-xl font-black tracking-[0.35em]" inputMode="numeric" maxLength={6} onChange={(event) => setMfaVerificationCode(event.target.value.replace(/\D/g, ""))} placeholder="000000" value={mfaVerificationCode} />
+                  {mfaDevelopmentCode ? <p className="mt-2 text-xs font-bold text-orange-700">{en ? "Development code" : "개발 인증번호"}: {mfaDevelopmentCode}</p> : null}
+                  <AppButton className="mt-4 w-full h-12" disabled={submitting || mfaVerificationCode.length !== 6} onClick={() => void submitMfaLogin()} type="button" variant="primary">{en ? "Verify and log in" : "인증 후 로그인"}</AppButton>
+                </section>
+              ) : null}
               <AppButton
                 className="w-full h-14 text-lg"
-                disabled={submitting}
+                disabled={submitting || !!externalAuthSubmitting || Boolean(mfaChallengeId)}
                 size="lg"
                 type="submit"
                 variant="primary"
@@ -512,65 +580,39 @@ export function PublicLoginPage() {
                   {en ? "Register" : "회원가입"}
                 </AppLinkButton>
               </div>
+              <div className="text-center">
+                <AppLinkButton className="min-h-0 border-0 bg-transparent px-0 py-0 font-bold text-[var(--kr-gov-blue)] hover:bg-transparent hover:underline" href={buildLocalizedPath("/join/memberStatusSearch", "/join/en/memberStatusSearch")} id="memberStatusLink" variant="ghost">
+                  {en ? "Check registration application status" : "가입 신청 현황 확인"}
+                </AppLinkButton>
+              </div>
               <div className="relative py-4">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-200"></div>
                 </div>
                 <div className="relative flex justify-center text-xs">
                   <span className="px-2 bg-white text-gray-400 font-bold uppercase tracking-wider">
-                    {en ? "Or Simple Authentication Login" : "또는 간편인증 로그인"}
+                    {en ? "Login verification" : "로그인 인증 안내"}
                   </span>
                 </div>
               </div>
 	              <div className="grid grid-cols-1 gap-3" data-help-id="signin-login-simple-auth">
-	                {externalAuthMethods.length > 0 ? (
-	                  <>
-                    {externalAuthMethods[0] ? (
-                      <AppButton
-                        className="w-full h-12 text-sm"
-                        disabled={!externalAuthMethods[0].available || !!externalAuthSubmitting}
-                        onClick={() => void handleExternalAuth(externalAuthMethods[0].methodCode)}
-                        type="button"
-                      >
-                        <span className="material-symbols-outlined text-blue-700">{externalAuthMethods[0].icon || "verified_user"}</span>
-                        {externalAuthSubmitting === externalAuthMethods[0].methodCode
-                          ? (en ? "Processing..." : "처리 중...")
-                          : externalAuthMethods[0].displayName}
-                      </AppButton>
-                    ) : null}
-	                    <div className="grid grid-cols-2 gap-3">
-	                      {externalAuthMethods.slice(1, 3).map((method) => (
-                        <AppButton
-                          className="h-12 text-sm"
-                          disabled={!method.available || !!externalAuthSubmitting}
-                          key={`${method.providerCode}-${method.methodCode}`}
-                          onClick={() => void handleExternalAuth(method.methodCode)}
-                          type="button"
-                        >
-                          <span className="material-symbols-outlined text-gray-600">{method.icon || "verified_user"}</span>
-                          {externalAuthSubmitting === method.methodCode
-                            ? (en ? "Processing..." : "처리 중...")
-                            : method.displayName}
-                        </AppButton>
-	                      ))}
-	                    </div>
-	                    {externalAuthMethods[0]?.statusMessage ? (
-	                      <p className="rounded-[var(--kr-gov-radius)] bg-slate-50 px-3 py-2 text-xs leading-relaxed text-[var(--kr-gov-text-secondary)]">
-	                        {externalAuthMethods[0].status === "ready" || externalAuthMethods[0].status === "mock"
-	                          ? externalAuthMethods[0].statusMessage
-	                          : (en
-	                            ? "Simple authentication SDK is loaded. Production login requires live KISA endpoint credentials."
-	                            : "간편인증 SDK가 로드되었습니다. 운영 로그인에는 KISA 라이브 엔드포인트와 이용기관 설정이 필요합니다.")}
-	                      </p>
-	                    ) : null}
-	                  </>
-	                ) : (
-                  <div className="rounded-[var(--kr-gov-radius)] border border-dashed border-[var(--kr-gov-border-light)] px-4 py-5 text-sm text-[var(--kr-gov-text-secondary)]">
-                    {externalAuthState.loading
-                      ? (en ? "Loading authentication methods..." : "인증 수단을 불러오는 중입니다...")
-                      : (externalAuthState.error || (en ? "No external authentication methods are configured." : "설정된 외부 인증 수단이 없습니다."))}
-                  </div>
-                )}
+                  <section className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-slate-50 p-4" data-testid="portone-login" aria-label={en ? "PortOne identity login" : "포트원 통합인증 로그인"}>
+                    <AppButton className="w-full min-h-12 text-sm" type="button" disabled={!!externalAuthSubmitting} onClick={() => void handleExternalAuth("PORTONE_UNIFIED")} aria-describedby="portone-login-description">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z"/><path d="m8 12 3 3 5-6"/></svg>
+                      {externalAuthSubmitting === "PORTONE_UNIFIED" ? (en ? "Processing…" : "인증 진행 중…") : (en ? "Unified identity login" : "통합인증 로그인")}
+                    </AppButton>
+                    <p id="portone-login-description" className="mt-3 text-xs leading-relaxed text-[var(--kr-gov-text-secondary)]">
+                      {en
+                        ? "Enter your ID and password, then complete unified verification. Your password and existing login policies are checked before login. The test channel does not support certificate-only login."
+                        : "아이디·비밀번호 입력 후 통합인증을 진행하면, 인증 성공 뒤 기존 비밀번호와 로그인 정책을 확인해 로그인합니다. 현재 테스트 채널에서는 인증서만으로 로그인할 수 없습니다."}
+                    </p>
+                  </section>
+                  <details className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] p-4 text-sm" data-testid="portone-login-help">
+                    <summary className="cursor-pointer font-bold">{en ? "Identity verification help" : "통합인증 이용 안내"}</summary>
+                    <p className="mt-3 leading-relaxed">{en
+                      ? "Login uses your ID and password. Unified verification is optional; please use the financial certificate for now. Existing account permissions and MFA still apply."
+                      : "로그인 버튼은 아이디·비밀번호로 로그인합니다. 통합인증은 별도 버튼으로 이용할 수 있으며, 당분간 금융인증서를 선택해 주세요. 기존 계정 권한과 MFA 정책은 유지합니다."}</p>
+                  </details>
               </div>
             </form>
           </div>
@@ -1146,7 +1188,8 @@ export function FindPasswordPage() {
       if (body.status !== "success") {
         throw new Error(body.errors || (en ? "Failed to change password." : "비밀번호 변경에 실패했습니다."));
       }
-      navigate(buildLocalizedPath("/signin/findPassword/result", "/en/signin/findPassword/result"));
+      window.sessionStorage.setItem("accountRecoveryCompletedAt", String(Date.now()));
+      window.location.assign(buildLocalizedPath("/signin/findPassword/result", "/en/signin/findPassword/result"));
     } catch (error) {
       window.alert(error instanceof Error ? error.message : (en ? "Failed to change password." : "비밀번호 변경에 실패했습니다."));
     } finally {
@@ -1314,6 +1357,20 @@ export function FindPasswordPage() {
 
 export function FindPasswordCompletePage() {
   const en = isEnglish();
+  const [resetComplete] = useState(() => {
+    const completedAt = Number(window.sessionStorage.getItem("accountRecoveryCompletedAt") || "0");
+    return Number.isFinite(completedAt) && completedAt > 0 && Date.now() - completedAt <= 5 * 60 * 1000;
+  });
+
+  useEffect(() => {
+    if (!resetComplete) {
+      window.location.replace(buildLocalizedPath("/signin/findPassword", "/en/signin/findPassword"));
+    }
+  }, [resetComplete]);
+
+  if (!resetComplete) {
+    return null;
+  }
 
   return (
     <PublicAuthShell

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-08-12T18:40:00+09:00",
+  "equipment": [
+    {"code":"casting_machine","name":"주조기","image":"casting-machine.jpg"},
+    {"code":"holding_furnace","name":"보온로","image":"holding-furnace.jpg"},
+    {"code":"turntable_furnace","name":"턴테이블로","image":"turntable-furnace.jpg"},
+    {"code":"trimming_machine","name":"트리밍","image":"trimming-machine.jpg"},
+    {"code":"cooling_unit","name":"냉각장비","image":"cooling-unit.jpg"},
+    {"code":"robot_panel","name":"로봇 제어반","image":"robot-panel.jpg"},
+    {"code":"spray_ladler","name":"스프레이 로봇·래들","image":"spray-ladler.jpg"},
+    {"code":"release_agent","name":"이형제 장치","image":"release-agent.jpg"},
+    {"code":"main_panel","name":"전체 제어반","image":"main-panel.jpg"},
+    {"code":"vacuum_unit","name":"진공장치","image":"vacuum-unit.jpg"},
+    {"code":"casting_filter","name":"주조기 필터","image":"casting-filter.jpg"},
+    {"code":"melting_furnace","name":"용해로","image":"melting-furnace.jpg"},
+    {"code":"takeout_robot","name":"취출 로봇","image":"takeout-robot.jpg"},
+    {"code":"punching_press","name":"펀칭 프레스","image":"punching-press.jpg"},
+    {"code":"ladler","name":"래들러","image":"ladler.jpg"},
+    {"code":"mold_cooling","name":"금형 고압냉각장비","image":"mold-cooling.jpg"}
+  ]
+}

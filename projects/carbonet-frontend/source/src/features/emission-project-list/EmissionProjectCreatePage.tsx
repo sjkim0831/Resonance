@@ -12,8 +12,11 @@ import {
   HomeInlineStyles,
 } from "../home-entry/HomeEntrySections";
 import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
+import { FiveLayerFormRenderer } from "../contract-runtime/FiveLayerFormRenderer";
+import { useRuntimeScreenContract } from "../contract-runtime/useRuntimeScreenContract";
+import { EMISSION_PROJECT_CREATE_CONTRACT } from "./emissionProjectCreateContract";
 
-type Readiness = { ready: boolean; sandbox?: boolean; companyApproved: boolean; activeSiteCount: number; actorCoverage: Record<string, number>; missing: string[]; siteManagementUrl: string; actorManagementUrl: string };
+type Readiness = { ready: boolean; sandbox?: boolean; companyApproved: boolean; activeSiteCount: number; actorCoverage: Record<string, number>; segregationOfDuties?: boolean; segregatedDutyAccountCount?: number; conflictingDutyAccountCount?: number; missing: string[]; siteManagementUrl: string; actorManagementUrl: string };
 type AccountOption = {
   id: string;
   displayName: string;
@@ -25,6 +28,13 @@ type AccountOption = {
 };
 type Options = { sites: string[]; owners: string[]; accounts: AccountOption[]; currentUser: string; readiness: Readiness };
 const EMPTY_READINESS:Readiness={ready:false,companyApproved:false,activeSiteCount:0,actorCoverage:{},missing:[],siteManagementUrl:"/admin/emission/site-management",actorManagementUrl:"/admin/system/actor-process"};
+const readinessMessage=(code:string,en:boolean)=>{
+  if(code==="COMPANY_NOT_APPROVED")return en?"Company approval is required.":"승인된 기업 정보가 필요합니다.";
+  if(code==="ACTIVE_SITE_REQUIRED")return en?"At least one active site is required.":"활성 사업장이 1개 이상 필요합니다.";
+  if(code.startsWith("REQUIRED_ACTOR_MISSING:"))return en?`Required actor is missing: ${code.split(":")[1]}`:`필수 담당자가 없습니다: ${code.split(":")[1]}`;
+  if(code.startsWith("SEGREGATION_OF_DUTIES_REQUIRED:"))return en?"Calculator, verifier, and approver must be three separate accounts.":"산정·검증·승인은 서로 다른 3개 계정에 배정해야 합니다.";
+  return code;
+};
 const year = new Date().getFullYear();
 const createRequestId = () => globalThis.crypto?.randomUUID?.() ?? `project-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const EMPTY = {
@@ -53,6 +63,7 @@ export function EmissionProjectCreatePage() {
   const en = isEnglish(),
     content = LOCALIZED_CONTENT[en ? "en" : "ko"],
     homeState = useAsyncValue(() => fetchHomePayload(), [en]);
+  const runtimeContract = useRuntimeScreenContract("EMISSION_PROJECT_CREATE_V1", EMISSION_PROJECT_CREATE_CONTRACT);
   const [form, setForm] = useState(EMPTY),
     [options, setOptions] = useState<Options>({ sites: [], owners: [], accounts: [], currentUser: "", readiness: EMPTY_READINESS }),
     [saving, setSaving] = useState(false),
@@ -101,14 +112,6 @@ export function EmissionProjectCreatePage() {
     const body = await r.json();
     setNameState(body.available ? "ok" : "duplicate");
   }
-  function scope(value: string) {
-    setForm((current) => ({
-      ...current,
-      scopes: current.scopes.includes(value)
-        ? current.scopes.filter((item) => item !== value)
-        : [...current.scopes, value],
-    }));
-  }
   const accountsFor = (actorCode: string) =>
     options.accounts.filter((account) =>
       account.actors.split(",").map((actor) => actor.trim()).includes(actorCode),
@@ -120,21 +123,22 @@ export function EmissionProjectCreatePage() {
     const scopeLabel = account.dataScopes && account.dataScopes !== "*" ? ` · ${account.dataScopes}` : "";
     return `${account.displayName || account.id} · ${department} · ${company} · ${account.id}${scopeLabel}`;
   };
-  const actorSelect = (
-    key: "dataOwner" | "calculator" | "verifier" | "approver",
-    actorCode: string,
-    label: string,
-    help: string,
-  ) => (
-    <label className="text-sm font-bold" key={key}>
-      {label}<span className="ml-1 text-red-600">*</span>
-      <select className={input} required value={form[key]} onChange={(event) => setForm({...form,[key]:event.target.value})}>
-        <option value="">{en ? "Select an eligible account" : "역할에 맞는 계정 선택"}</option>
-        {accountsFor(actorCode).map((account) => <option key={`${key}-${account.id}`} value={account.id}>{accountLabel(account)}</option>)}
-      </select>
-      <small className="mt-1 block font-normal text-slate-500">{help}</small>
-    </label>
-  );
+  const contractOptionSources = {
+    ACTIVE_SITES: options.sites.map((site) => ({ value: site, label: site })),
+    ...Object.fromEntries(
+      ["COMPANY_MANAGER", "SITE_DATA_OWNER", "CALCULATOR", "VERIFIER", "APPROVER"].map((actorCode) => [
+        `${actorCode}_ACCOUNTS`,
+        accountsFor(actorCode).map((account) => ({ value: account.id, label: accountLabel(account) })),
+      ]),
+    ),
+  };
+  const updateContractField = (fieldCode: string, value: unknown) => {
+    setForm((current) => ({
+      ...current,
+      [fieldCode]: fieldCode === "scopes" && Array.isArray(value) ? value.map(String) : String(value ?? ""),
+    } as typeof EMPTY));
+    if (fieldCode === "name") setNameState("");
+  };
   async function submit(event: FormEvent) {
     event.preventDefault();
     setMessage("");
@@ -206,8 +210,6 @@ export function EmissionProjectCreatePage() {
       setSaving(false);
     }
   }
-  const input =
-    "mt-2 h-12 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal outline-none focus:border-[#246beb] focus:ring-2 focus:ring-blue-100";
   return (
     <>
       <HomeInlineStyles en={en} />
@@ -249,186 +251,46 @@ export function EmissionProjectCreatePage() {
           {optionsError&&<p className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900" role="alert">{optionsError}</p>}
           {!optionsLoading&&!optionsError?<section className={`mt-5 rounded-xl border p-5 ${options.readiness.ready?"border-emerald-200 bg-emerald-50":"border-amber-300 bg-amber-50"}`} aria-label={en?"Project readiness":"프로젝트 착수 준비 진단"}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-sm font-black text-[#052b57]">{en?"Project readiness":"프로젝트 착수 준비 진단"}</p><p className="mt-1 text-sm text-slate-700">{options.readiness.ready?(en?"Company, site, and required actor checks passed.":"기업·사업장·필수 액터 검사를 모두 통과했습니다."):(en?"Resolve the blocking items before starting a governed project.":"아래 차단 항목을 해결해야 감사 가능한 프로젝트를 시작할 수 있습니다.")}</p></div><span className={`w-fit rounded-full px-3 py-1 text-xs font-black ${options.readiness.ready?"bg-emerald-700 text-white":"bg-amber-700 text-white"}`}>{options.readiness.ready?(en?"READY":"착수 가능"):(en?"ACTION REQUIRED":"조치 필요")}</span></div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3"><div className="rounded-lg bg-white p-3"><b>{en?"Company approval":"기업 승인"}</b><p className="mt-1 text-sm">{options.readiness.companyApproved?(en?"Completed":"완료"):(en?"Required":"필요")}</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Active sites":"활성 사업장"}</b><p className="mt-1 text-sm">{options.readiness.activeSiteCount}</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Required actors":"필수 액터"}</b><p className="mt-1 text-sm">{Object.values(options.readiness.actorCoverage).filter(value=>value>0).length}/5</p></div></div>
-            {!options.readiness.ready?<div className="mt-4"><ul className="space-y-1 text-sm font-bold text-amber-950">{options.readiness.missing.map(item=><li key={item}>• {item}</li>)}</ul><div className="mt-4 flex flex-wrap gap-2"><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.siteManagementUrl}>{en?"Manage sites":"사업장 관리"}</a><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.actorManagementUrl}>{en?"Manage actors":"액터·권한 관리"}</a></div></div>:null}
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><div className="rounded-lg bg-white p-3"><b>{en?"Company approval":"기업 승인"}</b><p className="mt-1 text-sm">{options.readiness.companyApproved?(en?"Completed":"완료"):(en?"Required":"필요")}</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Active sites":"활성 사업장"}</b><p className="mt-1 text-sm">{options.readiness.activeSiteCount}</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Required actors":"필수 액터"}</b><p className="mt-1 text-sm">{Object.values(options.readiness.actorCoverage).filter(value=>value>0).length}/5</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Segregation of duties":"업무분리"}</b><p className="mt-1 text-sm">{options.readiness.segregationOfDuties?(en?"Passed":"충족"):(en?"Separate accounts required":"계정 분리 필요")}</p></div></div>
+            {!options.readiness.ready?<div className="mt-4"><ul className="space-y-1 text-sm font-bold text-amber-950">{options.readiness.missing.map(item=><li key={item}>• {readinessMessage(item,en)}</li>)}</ul><div className="mt-4 flex flex-wrap gap-2"><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.siteManagementUrl}>{en?"Manage sites":"사업장 관리"}</a><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.actorManagementUrl}>{en?"Manage actors":"액터·권한 관리"}</a></div></div>:null}
           </section>:null}
-          <form className="mt-7 space-y-5" data-testid="emission-project-create-form" onSubmit={submit} noValidate>
-            <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-black text-[#052b57]">
-                1. {en ? "Basic information" : "기본정보"}
-              </h2>
-              <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                <label className="text-sm font-bold sm:col-span-2">
-                  {en ? "Project name" : "프로젝트명"}
-                  <span className="ml-1 text-red-600">*</span>
-                  <input
-                    className={input}
-                    aria-describedby="project-name-status"
-                    aria-invalid={nameState === "duplicate"}
-                    required
-                    value={form.name}
-                    onChange={(e) => {
-                      setForm({ ...form, name: e.target.value });
-                      setNameState("");
-                    }}
-                    onBlur={checkName}
-                  />
-                  {nameState && (
-                    <span
-                      id="project-name-status"
-                      className={`mt-1 block text-xs ${nameState === "ok" ? "text-blue-700" : "text-red-700"}`}
-                    >
-                      {nameState === "ok"
-                        ? en
-                          ? "Available name"
-                          : "사용 가능한 이름입니다."
-                        : en
-                          ? "Name already exists"
-                          : "이미 등록된 이름입니다."}
-                    </span>
-                  )}
-                </label>
-                <label className="text-sm font-bold">
-                  {en ? "Site" : "사업장"}
-                  <span className="ml-1 text-red-600">*</span>
-                  <select
-                    className={input}
-                    required
-                    value={form.site}
-                    onChange={(e) => setForm({ ...form, site: e.target.value })}
-                  >
-                    <option value="">{en ? "Select a registered site" : "등록 사업장 선택"}</option>
-                    {options.sites.map((v) => (
-                      <option key={v} value={v} />
-                    ))}
-                  </select>
-                </label>
-                <label className="text-sm font-bold">
-                  {en ? "Reporting year" : "보고연도"}
-                  <input
-                    className={input}
-                    min="2000"
-                    max="2100"
-                    type="number"
-                    value={form.reportingYear}
-                    onChange={(e) =>
-                      setForm({ ...form, reportingYear: e.target.value })
+          <form className="mt-7 space-y-5" data-contract-version={runtimeContract.contract.version} data-contract-source={runtimeContract.source} data-process-code={runtimeContract.contract.processSchema.processCode} data-step-code={runtimeContract.contract.processSchema.stepCode} data-testid="emission-project-create-form" onSubmit={submit} noValidate>
+            <FiveLayerFormRenderer
+              contract={runtimeContract.contract}
+              fieldMessages={{
+                name: nameState
+                  ? {
+                      text: nameState === "ok"
+                        ? (en ? "Available name" : "사용 가능한 이름입니다.")
+                        : (en ? "Name already exists" : "이미 등록된 이름입니다."),
+                      tone: nameState === "ok" ? "success" : "error",
                     }
-                  />
-                </label>
-              </div>
-            </section>
-            <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-black text-[#052b57]">
-                2. {en ? "Calculation scope" : "산정 범위"}
-              </h2>
-              <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <span className="text-sm font-bold">
-                    Scope<span className="ml-1 text-red-600">*</span>
-                  </span>
-                  <div className="mt-2 flex flex-wrap gap-3">
-                    {["Scope 1", "Scope 2", "Scope 3"].map((v) => (
-                      <label
-                        key={v}
-                        className="flex min-h-12 min-w-32 items-center gap-2 rounded-lg border border-slate-300 px-4 font-bold"
-                      >
-                        <input
-                          aria-label={v}
-                          checked={form.scopes.includes(v)}
-                          onChange={() => scope(v)}
-                          type="checkbox"
-                        />
-                        {v}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <label className="text-sm font-bold">
-                  {en ? "Start date" : "산정 시작일"}
-                  <input
-                    className={input}
-                    required
-                    type="date"
-                    value={form.periodStart}
-                    onChange={(e) =>
-                      setForm({ ...form, periodStart: e.target.value })
-                    }
-                  />
-                </label>
-                <label className="text-sm font-bold">
-                  {en ? "End date" : "산정 종료일"}
-                  <input
-                    className={input}
-                    required
-                    type="date"
-                    value={form.periodEnd}
-                    onChange={(e) =>
-                      setForm({ ...form, periodEnd: e.target.value })
-                    }
-                  />
-                </label>
-              </div>
-            </section>
-            <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-black text-[#052b57]">3. {en ? "Boundary and methodology" : "조직 경계·산정 기준"}</h2>
-              <p className="mt-2 text-sm text-slate-600">{en ? "These values are versioned with the project so later standard changes do not alter approved calculations." : "승인된 산정 결과가 기준정보 변경에 영향받지 않도록 프로젝트 생성 시점 값으로 고정합니다."}</p>
-              <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                <label className="text-sm font-bold">{en ? "Organization boundary" : "조직 경계"}<span className="ml-1 text-red-600">*</span><select className={input} value={form.organizationBoundary} onChange={e=>setForm({...form,organizationBoundary:e.target.value})}><option value="OPERATIONAL_CONTROL">{en?"Operational control":"운영 통제"}</option><option value="FINANCIAL_CONTROL">{en?"Financial control":"재무 통제"}</option><option value="EQUITY_SHARE">{en?"Equity share":"지분 할당"}</option></select></label>
-                <label className="text-sm font-bold">{en ? "Emission standard" : "적용 표준"}<span className="ml-1 text-red-600">*</span><select className={input} value={form.emissionStandard} onChange={e=>setForm({...form,emissionStandard:e.target.value})}><option value="ISO_14064_1">ISO 14064-1</option><option value="GHG_PROTOCOL">GHG Protocol</option><option value="K_ETS">{en?"K-ETS":"배출권거래제 명세서 기준"}</option></select></label>
-                <label className="text-sm font-bold">{en ? "Methodology version" : "방법론 버전"}<span className="ml-1 text-red-600">*</span><input className={input} maxLength={40} required value={form.methodologyVersion} onChange={e=>setForm({...form,methodologyVersion:e.target.value})}/></label>
-                <label className="text-sm font-bold">{en ? "Verification level" : "검증 수준"}<span className="ml-1 text-red-600">*</span><select className={input} value={form.verificationLevel} onChange={e=>setForm({...form,verificationLevel:e.target.value})}><option value="LIMITED">{en?"Limited assurance":"제한적 보증"}</option><option value="REASONABLE">{en?"Reasonable assurance":"합리적 보증"}</option></select></label>
-                <label className="text-sm font-bold">{en ? "Collection cycle" : "자료 수집 주기"}<span className="ml-1 text-red-600">*</span><select className={input} value={form.collectionCycle} onChange={e=>setForm({...form,collectionCycle:e.target.value})}><option value="MONTHLY">{en?"Monthly":"월간"}</option><option value="QUARTERLY">{en?"Quarterly":"분기"}</option><option value="ANNUAL">{en?"Annual":"연간"}</option></select></label>
-                <label className="text-sm font-bold">{en ? "Materiality threshold (%)" : "중요성 기준 (%)"}<span className="ml-1 text-red-600">*</span><input className={input} min="0" max="100" step="1" type="number" required value={form.materialityThreshold} onChange={e=>setForm({...form,materialityThreshold:e.target.value})}/><small className="mt-1 block font-normal text-slate-500">{en?"Used to prioritize omissions and verification findings.":"누락 및 검증 발견사항의 중요도 판정 기준입니다."}</small></label>
-              </div>
-            </section>
-            <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-black text-[#052b57]">
-                4. {en ? "Owner and schedule" : "담당자·일정"}
-              </h2>
-              <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                <label className="text-sm font-bold">
-                  {en ? "Project accountable manager" : "프로젝트 총괄 책임자"}
-                  <span className="ml-1 text-red-600">*</span>
-                  <select
-                    className={input}
-                    required
-                    value={form.owner}
-                    onChange={(e) =>
-                      setForm({ ...form, owner: e.target.value })
-                    }
-                  >
-                    <option value="">{en ? "Select a company manager" : "같은 회사의 기업관리자 선택"}</option>
-                    {accountsFor("COMPANY_MANAGER").map((account) => <option key={`owner-${account.id}`} value={account.id}>{accountLabel(account)}</option>)}
-                  </select>
-                  <small className="mt-1 block font-normal text-slate-500">{en ? "Owns project scope, assignments, deadlines, and final reporting." : "프로젝트 범위·담당자·마감·최종 보고를 책임합니다."}</small>
-                </label>
-                <label className="text-sm font-bold">
-                  {en ? "Due date" : "마감일"}
-                  <span className="ml-1 text-red-600">*</span>
-                  <input
-                    className={input}
-                    required
-                    type="date"
-                    value={form.dueDate}
-                    onChange={(e) =>
-                      setForm({ ...form, dueDate: e.target.value })
-                    }
-                  />
-                </label>
-              </div>
-            </section>
-            <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-black text-[#052b57]">5. {en ? "Actor assignment" : "업무 액터 배정"}</h2>
-              <p className="mt-2 text-sm text-slate-600">{en ? "Assign the accountable user for each process step. Permissions and My Tasks are generated from these assignments." : "프로세스 단계별 책임 계정을 지정합니다. 이 배정을 기준으로 권한과 내 업무가 자동 생성됩니다."}</p>
-              <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                {actorSelect("dataOwner", "SITE_DATA_OWNER", en ? "Site data owner" : "사업장 자료 담당자", en ? "Collects and submits source activity data" : "선택 사업장의 원천 활동자료 입력·증빙 제출")}
-                {actorSelect("calculator", "CALCULATOR", en ? "Emission calculator" : "배출량 산정 담당자", en ? "Maps factors and runs calculations" : "배출계수 매핑·단위 환산·배출량 산정")}
-                {actorSelect("verifier", "VERIFIER", en ? "Verifier" : "검증 담당자", en ? "Verifies results and requests corrections" : "산정 결과·증빙 검증 및 보완 요청")}
-                {actorSelect("approver", "APPROVER", en ? "Approver" : "승인 담당자", en ? "Approves the verified calculation" : "검증 완료 산정 결과의 최종 승인")}
-              </div>
-              {form.calculator&&form.verifier&&form.approver&&(form.calculator===form.verifier||form.calculator===form.approver||form.verifier===form.approver)?<p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800" role="alert">{en ? "Calculator, verifier, and approver must be different accounts. The server will reject this assignment." : "산정자·검증자·승인자는 서로 다른 계정이어야 합니다. 이 배정은 저장할 수 없습니다."}</p>:null}
-            </section>
+                  : undefined,
+              }}
+              onChange={updateContractField}
+              onFieldBlur={(fieldCode) => {
+                if (fieldCode === "name") void checkName();
+              }}
+              optionSources={contractOptionSources}
+              sectionCodes={["basic", "scope"]}
+              values={form}
+            />
+            <div className="five-layer-methodology">
+              <FiveLayerFormRenderer
+                contract={runtimeContract.contract}
+                onChange={updateContractField}
+                sectionCodes={["methodology"]}
+                values={form}
+              />
+            </div>
+            <FiveLayerFormRenderer
+              contract={runtimeContract.contract}
+              onChange={updateContractField}
+              optionSources={contractOptionSources}
+              sectionCodes={["ownership", "actors"]}
+              values={form}
+            />
+            {form.calculator&&form.verifier&&form.approver&&(form.calculator===form.verifier||form.calculator===form.approver||form.verifier===form.approver)?<p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800" role="alert">{en ? "Calculator, verifier, and approver must be different accounts. The server will reject this assignment." : "산정자·검증자·승인자는 서로 다른 계정이어야 합니다. 이 배정은 저장할 수 없습니다."}</p>:null}
             {message && (
               <p aria-live="assertive" className="rounded-lg bg-red-50 p-4 text-sm font-bold text-red-700" role="alert">
                 {message}

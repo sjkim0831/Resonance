@@ -1,0 +1,94 @@
+{
+  "testContractId": "P006_SDUI_SCENARIO_FORM_E2E",
+  "screenId": "p006-sdui-scenario-form",
+  "version": "2026.08.21.1",
+  "executionOrder": [
+    "PAGE",
+    "ACTOR",
+    "SCREEN",
+    "FUNCTION",
+    "INPUT",
+    "DATABASE_OUTPUT",
+    "RELOAD_RESTORE",
+    "VISUAL_QA"
+  ],
+  "actors": [
+    { "role": "PROJECT_ADMIN", "credentialStrategy": "EPHEMERAL_DB_SESSION", "uiExpected": "ALLOW", "apiReadExpected": 200, "apiWriteExpected": 200 },
+    { "role": "SIMULATION_OPERATOR", "credentialStrategy": "EPHEMERAL_DB_SESSION", "uiExpected": "ALLOW", "apiReadExpected": 200, "apiWriteExpected": 200 },
+    { "role": "FACTORY_DESIGNER", "credentialStrategy": "EPHEMERAL_DB_SESSION", "uiExpected": "DENY", "apiReadExpected": 403, "apiWriteExpected": 403 },
+    { "role": "REVIEWER", "credentialStrategy": "EPHEMERAL_DB_SESSION", "uiExpected": "DENY", "apiReadExpected": 403, "apiWriteExpected": 403 }
+  ],
+  "actorProvisioning": {
+    "createBefore": true,
+    "deleteInFinally": true,
+    "sessionMinutes": 45,
+    "secretsInEvidence": false
+  },
+  "negativeAuthorization": [
+    { "case": "NO_COOKIE", "apiReadExpected": 401, "apiWriteExpected": 401 },
+    { "case": "UNRELATED_COOKIE", "apiReadExpected": 401, "apiWriteExpected": 401 },
+    { "case": "BOGUS_SESSION", "apiReadExpected": 401, "apiWriteExpected": 401 },
+    { "case": "EXPIRED_SESSION", "expected": 401 },
+    { "case": "INACTIVE_ACCOUNT", "expected": 401 },
+    { "case": "DUPLICATE_SESSION_COOKIE", "expected": 401 },
+    { "case": "UNTRUSTED_ORIGIN", "postExpected": 403, "optionsExpected": 403 }
+  ],
+  "page": {
+    "path": "/projects/P006/digital-twin/sdui-scenario-form",
+    "pageId": "p006-sdui-scenario-form",
+    "menuCode": "P006_SDUI_SCENARIO_FORM",
+    "expectedRuntime": "p006-sdui-json-form-v1"
+  },
+  "input": {
+    "editableFieldCount": 34,
+    "processRowCount": 16,
+    "invalidCases": [
+      { "path": "scenarioName", "value": "", "rule": "required", "expected": "VALIDATION_ERROR" },
+      { "path": "scenarioName", "value": "가", "rule": "minLength:2", "expected": "VALIDATION_ERROR" },
+      { "path": "scenarioName", "valueLength": 201, "rule": "maxLength:200", "expected": "VALIDATION_ERROR" },
+      { "path": "inputPerHour", "value": 0, "rule": "minimum:1", "expected": "VALIDATION_ERROR" },
+      { "path": "inputPerHour", "value": 10001, "rule": "maximum:10000", "expected": "VALIDATION_ERROR" },
+      { "path": "processes.0.dwellSeconds", "value": 0, "rule": "minimum:1", "expected": "VALIDATION_ERROR" },
+      { "path": "processes.0.defectRate", "value": 0.05, "rule": "multipleOf:0.1", "expected": "VALIDATION_ERROR" }
+    ]
+  },
+  "function": {
+    "authz": "GET /projects/P006/authz",
+    "load": "GET /projects/P006/scenario-config",
+    "save": "POST /projects/P006/scenario-config",
+    "scene": "GET /r/P006/actuator/p006/factory-scenes/default",
+    "sync": "POST /projects/P006/sync-usd"
+  },
+  "databaseOutput": {
+    "database": "woosu_digital_twin",
+    "table": "dt_simulation_scenario",
+    "key": "00000000-0000-0000-0000-000000000606",
+    "columns": [
+      "scenario_name",
+      "parameters_json",
+      "status"
+    ]
+  },
+  "mutationAndRollback": {
+    "snapshotBefore": ["GET", "DATABASE"],
+    "mutatePath": "scenarioName",
+    "markerPrefix": "SDUI_QA_",
+    "restoreInFinally": true,
+    "verifyAfterMutation": ["POST_RESPONSE", "GET", "DATABASE", "RELOAD"],
+    "verifyAfterRestore": ["GET", "DATABASE", "USD_SYNC"],
+    "deepEqual": ["scenarioName", "inputPerHour", "processes", "metrics"]
+  },
+  "visualQa": {
+    "desktop": { "width": 1600, "height": 1200, "horizontalOverflow": false },
+    "mobile": { "width": 390, "height": 844, "horizontalOverflow": false },
+    "requiredCards": [
+      "help",
+      "screen-design",
+      "qa",
+      "work-guide",
+      "all-work",
+      "next-work"
+    ],
+    "artifactRoot": "/opt/resonance-data/test-evidence/p006-sdui-json-form"
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "generatedAt": "2026-08-14T01:16:34.066807+00:00",
+  "converter": "GNU LibreDWG 0.14",
+  "convertedFiles": 5,
+  "files": [
+    {
+      "code": "ladler-cell",
+      "source": "LADLER/LAYOUT/LAYOUT.dwg",
+      "entities": 32081,
+      "dimensionsRecovered": 3,
+      "decision": "PARTIAL_ONLY",
+      "reason": "Contains casting machine, furnace, ladler and safety cell"
+    },
+    {
+      "code": "trimming-jigs",
+      "source": "TRIMMING DATA mechanical jig collection DWG",
+      "entities": 0,
+      "dimensionsRecovered": 0,
+      "decision": "REFERENCE_ONLY",
+      "reason": "Custom mechanical objects were not recoverable as model-space entities"
+    },
+    {
+      "code": "plant-panels",
+      "source": "Distribution panel plant layout DWG",
+      "entities": 225005,
+      "dimensionsRecovered": 216,
+      "decision": "PARTIAL_ONLY",
+      "reason": "Factory-wide placement drawing, not one cabinet envelope"
+    },
+    {
+      "code": "vacuum-family",
+      "source": "Vacuum, high-vacuum and jet-cooler layout DWG",
+      "entities": 1631,
+      "dimensionsRecovered": 18,
+      "decision": "THREE_ASSETS_APPROVED",
+      "approvedAssets": {
+        "G0001": [
+          1350,
+          1000,
+          1700
+        ],
+        "A0042": [
+          900,
+          750,
+          1650
+        ],
+        "G0002": [
+          750,
+          600,
+          1400
+        ]
+      },
+      "reason": "All three named views have complete width, depth and height; missing catalog assemblies were generated as separate DWG-backed assets"
+    },
+    {
+      "code": "turntable-furnace",
+      "source": "TT-1800.dwg",
+      "entities": 11679,
+      "dimensionsRecovered": 0,
+      "decision": "CROSS_CHECK_PASS",
+      "matchesAsset": "A0041",
+      "reason": "Rendered geometry agrees with already approved PDF assembly dimensions"
+    }
+  ],
+  "policy": "No asset dimensions are approved unless width, depth, height and asset identity are all confirmed."
+}

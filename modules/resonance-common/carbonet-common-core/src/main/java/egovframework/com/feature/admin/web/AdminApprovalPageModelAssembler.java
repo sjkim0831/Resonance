@@ -175,6 +175,7 @@ public class AdminApprovalPageModelAssembler {
             String pageIndexParam,
             String searchKeyword,
             String sbscrbSttus,
+            String projectId,
             String result,
             Model model,
             boolean isEn,
@@ -193,6 +194,7 @@ public class AdminApprovalPageModelAssembler {
 
         String keyword = safeString(searchKeyword);
         String status = safeString(sbscrbSttus).toUpperCase(Locale.ROOT);
+        String normalizedProjectId = safeString(projectId);
         if (status.isEmpty()) {
             status = "A";
         }
@@ -209,6 +211,9 @@ public class AdminApprovalPageModelAssembler {
             Map<String, Object> searchParams = new LinkedHashMap<>();
             searchParams.put("keyword", keyword);
             searchParams.put("status", status);
+            if (!normalizedProjectId.isEmpty()) {
+                searchParams.put("projectId", normalizedProjectId);
+            }
             totalCount = entrprsManageService.searchCompanyListTotCnt(searchParams);
             int totalPages = totalCount == 0 ? 1 : (int) Math.ceil(totalCount / (double) pageSize);
             if (currentPage > totalPages) {
@@ -275,17 +280,23 @@ public class AdminApprovalPageModelAssembler {
             row.put("detailUrl", adminApprovalNavigationSupport.adminPrefix(request, locale) + "/member/company_detail?insttId=" + urlEncode(insttId));
             row.put("editUrl", adminApprovalNavigationSupport.adminPrefix(request, locale) + "/member/company_account?insttId=" + urlEncode(insttId));
             row.put("rejectReason", "");
+            row.put("applicantResponse", "");
+            row.put("reapplicationVersion", 0);
+            row.put("reapplicationSubmittedAt", "");
 
             if (!insttId.isEmpty()) {
                 try {
-                    InstitutionStatusVO institutionInfo = loadInstitutionInfoByInsttId(insttId);
+                    InstitutionStatusVO institutionInfo = loadInstitutionInfoByInsttId(insttId, normalizedProjectId);
                     row.put("rejectReason", institutionInfo == null ? "" : safeString(institutionInfo.getRjctRsn()));
+                    row.put("applicantResponse", institutionInfo == null ? "" : safeString(institutionInfo.getApplicantResponse()));
+                    row.put("reapplicationVersion", institutionInfo == null || institutionInfo.getReapplicationVersion() == null ? 0 : institutionInfo.getReapplicationVersion());
+                    row.put("reapplicationSubmittedAt", institutionInfo == null ? "" : safeString(institutionInfo.getReapplicationSubmittedAt()));
                 } catch (Exception e) {
                     log.warn("Failed to load company rejection reason. insttId={}", insttId, e);
                 }
             }
 
-            List<InsttFileVO> fileList = loadInsttFilesByInsttId(insttId);
+            List<InsttFileVO> fileList = loadInsttFilesByInsttId(insttId, normalizedProjectId);
             List<Map<String, String>> evidenceFiles = new ArrayList<>();
             for (InsttFileVO file : fileList) {
                 Map<String, String> fileRow = new LinkedHashMap<>();
@@ -319,6 +330,7 @@ public class AdminApprovalPageModelAssembler {
         model.addAttribute("endPage", endPage);
         model.addAttribute("searchKeyword", keyword);
         model.addAttribute("sbscrbSttus", status);
+        model.addAttribute("projectId", normalizedProjectId);
         model.addAttribute("memberApprovalAction", adminApprovalNavigationSupport.adminPrefix(request, locale) + "/member/company-approve");
         model.addAttribute("memberApprovalListUrl", adminApprovalNavigationSupport.adminPrefix(request, locale) + "/member/company-approve");
         model.addAttribute("memberApprovalResult", safeString(result));
@@ -384,7 +396,7 @@ public class AdminApprovalPageModelAssembler {
         model.addAttribute("memberApprovalStatusOptions", buildApprovalStatusOptions(isEn));
     }
 
-    private InstitutionStatusVO loadInstitutionInfoByInsttId(String insttId) {
+    private InstitutionStatusVO loadInstitutionInfoByInsttId(String insttId, String projectId) {
         String normalizedInsttId = safeString(insttId);
         if (normalizedInsttId.isEmpty()) {
             return null;
@@ -392,6 +404,7 @@ public class AdminApprovalPageModelAssembler {
         try {
             InsttInfoVO searchVO = new InsttInfoVO();
             searchVO.setInsttId(normalizedInsttId);
+            searchVO.setProjectId(projectId);
             return entrprsManageService.selectInsttInfoForStatus(searchVO);
         } catch (Exception e) {
             log.warn("Failed to load institution info. insttId={}", normalizedInsttId, e);
@@ -399,13 +412,15 @@ public class AdminApprovalPageModelAssembler {
         }
     }
 
-    private List<InsttFileVO> loadInsttFilesByInsttId(String insttId) {
+    private List<InsttFileVO> loadInsttFilesByInsttId(String insttId, String projectId) {
         String normalizedInsttId = safeString(insttId);
         if (normalizedInsttId.isEmpty()) {
             return Collections.emptyList();
         }
         try {
-            List<InsttFileVO> fileList = entrprsManageService.selectInsttFiles(normalizedInsttId);
+            List<InsttFileVO> fileList = projectId == null || projectId.trim().isEmpty()
+                    ? entrprsManageService.selectInsttFiles(normalizedInsttId)
+                    : entrprsManageService.selectInsttFiles(normalizedInsttId, projectId.trim());
             return fileList == null ? Collections.emptyList() : fileList;
         } catch (Exception e) {
             log.warn("Failed to load institution file list. insttId={}", normalizedInsttId, e);

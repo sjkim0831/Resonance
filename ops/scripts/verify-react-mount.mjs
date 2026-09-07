@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
+import { existsSync } from "node:fs";
 
 const require = createRequire(`${process.cwd()}/package.json`);
 const playwrightEntry = require.resolve("playwright");
@@ -16,7 +17,16 @@ const authenticatedRoutes = [
     forbiddenText: "운영 관리 대시보드",
   },
 ];
-const browser = await chromium.launch({ headless: true });
+// Prefer Playwright's managed browser, but keep the operational verifier
+// usable after npm/playwright upgrades when only the host Chromium is present.
+const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || "/snap/bin/chromium";
+const managedExecutable = chromium.executablePath();
+const browser = await chromium.launch({
+  headless: true,
+  ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || !existsSync(managedExecutable)
+    ? { executablePath }
+    : {}),
+});
 const page = await browser.newPage();
 const failures = [];
 page.on("pageerror", error => failures.push(`pageerror: ${error.message}`));

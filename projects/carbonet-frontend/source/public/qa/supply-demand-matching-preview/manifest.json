@@ -1,0 +1,29 @@
+{
+  "processCode": "SUPPLY_DEMAND_MATCHING",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "SUPPLY_DEMAND_MATCHING_S1",
+      "actorCode": "TRADE_OPERATOR",
+      "routePath": "/generated/supply-demand-matching/supply-demand-matching-s1?step=supply_demand_matching_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "SUPPLY_DEMAND_MATCHING_S2",
+      "actorCode": "TRADE_OPERATOR",
+      "routePath": "/generated/supply-demand-matching/supply-demand-matching-s2?step=supply_demand_matching_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "SUPPLY_DEMAND_MATCHING_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/supply-demand-matching/supply-demand-matching-s3?step=supply_demand_matching_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "SUPPLY_DEMAND_MATCHING_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/supply-demand-matching/supply-demand-matching-s4?step=supply_demand_matching_s4"
+    }
+  ]
+}

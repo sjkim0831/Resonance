@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "1.0.0",
+  "project": {
+    "id": "P006",
+    "code": "WOOSU_DIGITAL_TWIN",
+    "name": "Woosu Digital Twin",
+    "database": "woosu_digital_twin",
+    "databaseIsolation": "DEDICATED_DATABASE",
+    "sharedFrame": "RESONANCE_KRDS_ADMIN_V1"
+  },
+  "actors": [
+    {"code":"PROJECT_ADMIN","name":"프로젝트 관리자","permissions":["ACCOUNT_MANAGE","ASSET_MANAGE","SCENE_EDIT","SIMULATION_RUN","RESULT_APPROVE"]},
+    {"code":"FACTORY_DESIGNER","name":"공장 설계자","permissions":["ASSET_VIEW","SCENE_EDIT","ANIMATION_EDIT"]},
+    {"code":"SIMULATION_OPERATOR","name":"시뮬레이션 운영자","permissions":["SCENE_VIEW","SIMULATION_RUN","RESULT_VIEW"]},
+    {"code":"REVIEWER","name":"검토자","permissions":["SCENE_VIEW","RESULT_VIEW","RESULT_APPROVE"]}
+  ],
+  "process": {
+    "code": "FACTORY_SIMULATION_AUTHORING",
+    "steps": [
+      {"code":"ASSET_SELECT","name":"설비 선택","actor":"FACTORY_DESIGNER"},
+      {"code":"LAYOUT_AUTHOR","name":"배치·연결","actor":"FACTORY_DESIGNER"},
+      {"code":"ANIMATION_AUTHOR","name":"애니메이션 편집","actor":"FACTORY_DESIGNER"},
+      {"code":"SIMULATION_RUN","name":"시뮬레이션 실행","actor":"SIMULATION_OPERATOR"},
+      {"code":"RESULT_REVIEW","name":"결과 검토","actor":"REVIEWER"}
+    ]
+  },
+  "pages": [
+    {"id":"p006-dashboard","name":"Digital Twin 프로젝트","path":"/projects/P006/digital-twin","type":"DASHBOARD","actor":"PROJECT_ADMIN"},
+    {"id":"p006-factory-studio","name":"공장 조립 스튜디오","path":"/projects/P006/digital-twin/factory-studio","type":"STUDIO","actor":"FACTORY_DESIGNER"},
+    {"id":"p006-factory-simulator","name":"공장 시뮬레이터","path":"/projects/P006/digital-twin/factory-simulator","type":"VIEWER","actor":"SIMULATION_OPERATOR"},
+    {"id":"p006-scenarios","name":"시뮬레이션 시나리오","path":"/projects/P006/digital-twin/scenarios","type":"LIST","actor":"SIMULATION_OPERATOR"},
+    {"id":"p006-results","name":"실행 결과·병목 분석","path":"/projects/P006/digital-twin/results","type":"ANALYSIS","actor":"REVIEWER"},
+    {
+      "id": "p006-sdui-scenario-form",
+      "screenId": "p006-sdui-scenario-form",
+      "name": "시뮬레이션 시나리오 JSON Form",
+      "path": "/projects/P006/digital-twin/sdui-scenario-form",
+      "type": "SDUI_JSON_FORM",
+      "actor": "SIMULATION_OPERATOR",
+      "allowedActors": ["SIMULATION_OPERATOR", "PROJECT_ADMIN"],
+      "runtimeMode": "SDUI_JSON_FORM_HOTLOAD",
+      "runtimeId": "p006-sdui-json-form-v1",
+      "screenRef": "screens/p006-scenario-form.sdui.json",
+      "testContractRef": "screens/p006-scenario-form.process-test.json",
+      "navigation": {"label":"시나리오 JSON Form","order":90,"visible":true}
+    }
+  ],
+  "api": {
+    "runtimeBase": "/r/P006",
+    "contracts": [
+      {"code":"PROJECT_INFO","method":"GET","path":"/r/P006/api/runtime/project-info"},
+      {"code":"HEALTH","method":"GET","path":"/r/P006/actuator/health"},
+      {"code":"SCENE_LOAD","method":"GET","path":"/r/P006/actuator/p006/factory-scenes/default"},
+      {"code":"SCENE_OBJECT_SAVE","method":"POST","path":"/r/P006/actuator/p006/factory-scenes/default/objects","input":["assetCode","x","y","rotationY"],"output":["objectId","status","transform"]},
+      {"code":"SCENE_OBJECT_DELETE","method":"DELETE","path":"/r/P006/actuator/p006/factory-scenes/default/objects/{objectId}"},
+      {"code":"SCENE_AUTO_CONFIGURE","method":"POST_BATCH","path":"/r/P006/actuator/p006/factory-scenes/default/objects","input":["16 assetCodes","productionOrder","safePositions"],"output":["16 saved objects","USD sync"]},
+      {"code":"SIMULATION_RUNS","method":"GET","path":"/r/P006/api/digital-twin/simulation-runs"},
+      {"code":"P006_AUTHZ","method":"GET","path":"/projects/P006/authz","output":["actor.accountId","actor.roles","actor.permissions"],"sideEffects":false},
+      {"code":"SCENARIO_CONFIG_LOAD","method":"GET","path":"/projects/P006/scenario-config","requiredRolesAny":["PROJECT_ADMIN","SIMULATION_OPERATOR"],"requiredPermissions":["SIMULATION_RUN"],"output":["inputPerHour","processes","metrics"]},
+      {"code":"SCENARIO_CONFIG_SAVE","method":"POST","path":"/projects/P006/scenario-config","requiredRolesAny":["PROJECT_ADMIN","SIMULATION_OPERATOR"],"requiredPermissions":["SIMULATION_RUN"],"input":["scenarioName","inputPerHour","processes[].code","processes[].dwellSeconds","processes[].defectRate"],"output":["metrics.cycleSeconds","metrics.inputPerHour","metrics.goodUnitsPerHour","metrics.defectRate","metrics.yieldRate","metrics.bottleneck"]},
+      {"code":"USD_SCENE_SYNC","method":"POST","path":"/projects/P006/sync-usd","authorizationByPayload":{"scenario":"SIMULATION_RUN","scene":"SCENE_EDIT"},"input":["scene","scenario"],"output":["equipment","conveyors","animatedProducts","status"]},
+      {"code":"TELEMETRY_COMPARE_LOAD","method":"GET","path":"/projects/P006/telemetry","output":["actual","predicted","comparison.mape","comparison.grade"]},
+      {"code":"TELEMETRY_SNAPSHOT_SAVE","method":"POST","path":"/projects/P006/telemetry","input":["source","cycleSeconds","inputPerHour","goodUnitsPerHour","defectRate","yieldRate","equipmentUptime"],"output":["actual","predicted","comparison"]},
+      {"code":"TELEMETRY_COLLECTOR_STATUS","method":"GET","path":"/projects/P006/telemetry-status","output":["status","mode","checkedAt","attempts","lastSuccessAt","consecutiveSuccess"]},
+      {"code":"MES_DEMO_SIMULATOR","method":"GET","path":"/projects/P006/mes-simulator","classification":"SIMULATOR_ONLY","output":["source","metrics"]}
+    ]
+  },
+  "screenGovernance": {
+    "designSystem": "KRDS",
+    "requiredCards": ["HELP","SCREEN_DESIGN","QA","NEXT_TASK","WORK_GUIDE","ALL_WORK"],
+    "accessibility": "WCAG_2_1_AA",
+    "visualVerification": true
+  },
+  "testHarness": {
+    "order": ["PAGE","ACTOR","SCREEN","FUNCTION","INPUT","DATABASE_OUTPUT","RELOAD_RESTORE","VISUAL_QA"],
+    "requiredScenarios": ["DRAG_PLACE_SAVE_RESTORE","AUTHORITY","ISOLATION","INVALID_COORDINATE","DELETE_RECOVERY","AUTO_CONFIGURE_16_ASSETS","SCENARIO_DB_KPI_USD_SYNC","SDUI_JSON_FORM_MUTATE_DB_RELOAD_ROLLBACK","TELEMETRY_SAVE_COMPARE_RELOAD","COLLECTOR_WAITING_HEALTHY_DEGRADED","SIMULATOR_TEN_CONSECUTIVE_COLLECTIONS","REAL_MES_PREFLIGHT_ATOMIC_CUTOVER_ROLLBACK"]
+  }
+}

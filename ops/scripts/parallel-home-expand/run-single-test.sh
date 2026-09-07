@@ -1,7 +1,7 @@
 #!/bin/bash
 # Test single page execution
 
-API_KEY="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"
+API_KEY="$(head -n1 "${NVIDIA_API_KEYS_FILE:-/etc/resonance/secrets/nvidia-api-keys}")"
 MODEL="nvidia/minimaxai/minimax-m2.7"
 PROJECT_ROOT="/opt/Resonance/projects/carbonet-frontend/source"
 

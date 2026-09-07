@@ -4,13 +4,12 @@ import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchJoinCompanyStatusDetail } from "../../lib/api/join";
 import { buildLocalizedPath, getSearchParam, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { HomeButton, HomeCheckbox, HomeInput, HomeLinkButton } from "../home-ui/common";
+import { CommonJoinProcessShell } from "../../components/common-design/CommonJoinProcessShell";
 
 function getInitialQuery() {
   const params = new URLSearchParams(window.location.search);
   return {
-    bizNo: params.get("bizNo") || "",
-    appNo: params.get("appNo") || "",
-    repName: params.get("repName") || ""
+    lookupHandle: params.get("lookupHandle") || ""
   };
 }
 
@@ -32,12 +31,13 @@ const COPY = {
     bizNo: "사업자등록번호",
     appNo: "신청번호",
     repName: "대표자명",
+    registeredContact: "등록된 이메일 또는 연락처",
     bizPlaceholder: "000-00-00000 (숫자만 입력)",
     appPlaceholder: "APP-YYYYMMDD-XXX",
     repPlaceholder: "대표자 성함을 입력하세요",
-    verifyTitle: "본인확인 단계",
-    verifyDesc: "안전한 정보 조회를 위해 본인인증이 필요합니다.",
-    verifyButton: "본인인증 (휴대폰 등)",
+    contactPlaceholder: "가입 시 등록한 이메일 또는 휴대전화번호",
+    verifyTitle: "조회 확인 항목",
+    verifyDesc: "사업자등록번호 또는 신청번호, 대표자명, 가입 시 등록한 연락처가 모두 일치해야 조회됩니다.",
     agree: "조회를 위한 개인정보 수집 및 이용에 동의합니다. (필수)",
     search: "조회하기",
     appNoBadge: "신청 번호",
@@ -51,13 +51,14 @@ const COPY = {
     download: "다운로드",
     back: "뒤로가기",
     reapply: "재신청하기",
+    retrySearch: "가입 현황 다시 조회",
     home: "홈으로 이동",
     searchError: "입력하신 정보와 일치하는 신청 내역이 없습니다.",
     needAgree: "개인정보 수집 및 이용에 동의하셔야 합니다.",
     needRepName: "대표자명을 입력해주세요.",
     needBizNo: "사업자등록번호를 입력해주세요.",
     needAppNo: "신청번호를 입력해주세요.",
-    verifyAlert: "본인인증을 진행합니다.",
+    needRegisteredContact: "가입 시 등록한 이메일 또는 연락처를 입력해주세요.",
     submitted: "신청 완료",
     review: "운영자 검토 중",
     pending: "승인 대기",
@@ -90,12 +91,13 @@ const COPY = {
     bizNo: "Business Registration Number",
     appNo: "Application Number",
     repName: "Representative Name",
+    registeredContact: "Registered email or phone",
     bizPlaceholder: "000-00-00000 (numbers only)",
     appPlaceholder: "APP-YYYYMMDD-XXX",
     repPlaceholder: "Enter the representative name",
-    verifyTitle: "Identity verification",
-    verifyDesc: "Identity verification is required to securely check application information.",
-    verifyButton: "Verify identity",
+    contactPlaceholder: "Email or phone registered during application",
+    verifyTitle: "Required verification details",
+    verifyDesc: "The business or application number, representative name, and registered contact must all match.",
     agree: "I agree to the collection and use of personal information for status inquiry. (Required)",
     search: "Search",
     appNoBadge: "Application No.",
@@ -109,13 +111,14 @@ const COPY = {
     download: "Download",
     back: "Back",
     reapply: "Reapply",
+    retrySearch: "Search application status again",
     home: "Go to Home",
     searchError: "No application matched the entered information.",
     needAgree: "You must agree to the collection and use of personal information.",
     needRepName: "Please enter the representative name.",
     needBizNo: "Please enter the business registration number.",
     needAppNo: "Please enter the application number.",
-    verifyAlert: "Identity verification will be provided later.",
+    needRegisteredContact: "Please enter the registered email or phone.",
     submitted: "Submitted",
     review: "Under Review",
     pending: "Pending Approval",
@@ -146,8 +149,8 @@ function toFileName(file: DetailFile) {
   return toStringValue(file.orignlFileNm || file.streFileNm, "");
 }
 
-function toFileId(file: DetailFile) {
-  return toStringValue(file.fileId, "");
+function toDownloadToken(file: DetailFile) {
+  return toStringValue(file.downloadToken, "");
 }
 
 export function JoinCompanyStatusMigrationPage() {
@@ -156,23 +159,29 @@ export function JoinCompanyStatusMigrationPage() {
   const initialQuery = useMemo(() => getInitialQuery(), []);
   const isDetailPage = window.location.pathname.includes("companyJoinStatusDetail");
   const isGuidePage = window.location.pathname.includes("companyJoinStatusGuide");
-  const [mode, setMode] = useState<"biz" | "app">(initialQuery.appNo ? "app" : "biz");
-  const [bizNo, setBizNo] = useState(initialQuery.bizNo);
-  const [appNo, setAppNo] = useState(initialQuery.appNo);
-  const [repName, setRepName] = useState(initialQuery.repName);
+  const [mode, setMode] = useState<"biz" | "app">("biz");
+  const [bizNo, setBizNo] = useState("");
+  const [appNo, setAppNo] = useState("");
+  const [repName, setRepName] = useState("");
+  const [registeredContact, setRegisteredContact] = useState("");
   const [agreed, setAgreed] = useState(false);
   const detailState = useAsyncValue(
-    () => fetchJoinCompanyStatusDetail({
-      bizNo: initialQuery.bizNo || undefined,
-      appNo: initialQuery.appNo || undefined,
-      repName: initialQuery.repName
-    }),
-    [initialQuery.bizNo, initialQuery.appNo, initialQuery.repName, isDetailPage],
+    () => fetchJoinCompanyStatusDetail({ lookupHandle: initialQuery.lookupHandle }),
+    [initialQuery.lookupHandle, isDetailPage],
     {
-      enabled: isDetailPage && Boolean(initialQuery.repName && (initialQuery.bizNo || initialQuery.appNo)),
+      enabled: isDetailPage && Boolean(initialQuery.lookupHandle),
       onError: () => undefined
     }
   );
+
+  useEffect(() => {
+    if (!isDetailPage || initialQuery.lookupHandle) return;
+    navigate(buildLocalizedPath(
+      "/join/companyJoinStatusSearch",
+      "/join/en/companyJoinStatusSearch"
+    ));
+  }, [initialQuery.lookupHandle, isDetailPage]);
+
   const detail = detailState.value;
   const error = detailState.error;
 
@@ -192,9 +201,10 @@ export function JoinCompanyStatusMigrationPage() {
       mode,
       isDetailPage,
       isGuidePage,
-      bizNo: bizNo.trim(),
-      appNo: appNo.trim(),
-      repName: repName.trim(),
+      bizNoPresent: Boolean(bizNo.trim()),
+      appNoPresent: Boolean(appNo.trim()),
+      repNamePresent: Boolean(repName.trim()),
+      registeredContactPresent: Boolean(registeredContact.trim()),
       status,
       submitted
     });
@@ -236,38 +246,32 @@ export function JoinCompanyStatusMigrationPage() {
     window.location.href = `${targetBasePath}${search}`;
   }
 
-  function handleSearch() {
+  async function handleSearch() {
     logGovernanceScope("ACTION", "join-company-status-search", {
       mode,
-      bizNo: bizNo.trim(),
-      appNo: appNo.trim(),
-      repName: repName.trim(),
+      bizNoPresent: Boolean(bizNo.trim()),
+      appNoPresent: Boolean(appNo.trim()),
+      repNamePresent: Boolean(repName.trim()),
+      registeredContactPresent: Boolean(registeredContact.trim()),
       agreed
     });
-    if (!agreed) {
-      window.alert(copy.needAgree);
-      return;
+    if (!agreed) { window.alert(copy.needAgree); return; }
+    if (!repName.trim()) { window.alert(copy.needRepName); return; }
+    if (!registeredContact.trim()) { window.alert(copy.needRegisteredContact); return; }
+    if (mode === "biz" && !bizNo.trim()) { window.alert(copy.needBizNo); return; }
+    if (mode === "app" && !appNo.trim()) { window.alert(copy.needAppNo); return; }
+    try {
+      const lookup = await fetchJoinCompanyStatusDetail({
+        bizNo: mode === "biz" ? bizNo.trim() : undefined,
+        appNo: mode === "app" ? appNo.trim() : undefined,
+        repName: repName.trim(),
+        registeredContact: registeredContact.trim()
+      });
+      if (!lookup.lookupHandle) throw new Error(copy.searchError);
+      navigate(`${buildLocalizedPath("/join/companyJoinStatusDetail", "/join/en/companyJoinStatusDetail")}?lookupHandle=${encodeURIComponent(lookup.lookupHandle)}`);
+    } catch (lookupError) {
+      window.alert(lookupError instanceof Error ? lookupError.message : copy.searchError);
     }
-    if (!repName.trim()) {
-      window.alert(copy.needRepName);
-      return;
-    }
-    const search = new URLSearchParams();
-    search.set("repName", repName.trim());
-    if (mode === "biz") {
-      if (!bizNo.trim()) {
-        window.alert(copy.needBizNo);
-        return;
-      }
-      search.set("bizNo", bizNo.trim());
-    } else {
-      if (!appNo.trim()) {
-        window.alert(copy.needAppNo);
-        return;
-      }
-      search.set("appNo", appNo.trim());
-    }
-    navigate(`${buildLocalizedPath("/join/companyJoinStatusDetail", "/join/en/companyJoinStatusDetail")}?${search.toString()}`);
   }
 
   function renderStatusSummary() {
@@ -326,15 +330,23 @@ export function JoinCompanyStatusMigrationPage() {
 
   function renderDetailPage() {
     return (
-      <main className="flex-grow max-w-5xl mx-auto w-full py-12 px-4" id="main-content">
+      <main className="mx-auto w-full min-w-0 max-w-5xl flex-grow overflow-x-hidden px-4 py-8 sm:py-12" id="main-content">
         <div className="mb-10 text-center">
           <h2 className="text-3xl font-bold text-[var(--kr-gov-text-primary)] mb-3">{copy.detailTitle}</h2>
           <p className="text-lg text-[var(--kr-gov-text-secondary)]">{copy.detailDesc}</p>
         </div>
 
         {error ? (
-          <div className="mt-6 mb-8 p-4 bg-red-50 border border-red-200 rounded-[8px] text-red-600 font-bold text-center">
+          <div className="mt-6 mb-8 flex flex-col items-center gap-4 rounded-[8px] border border-red-200 bg-red-50 p-4 text-center text-red-600">
             <p>{error}</p>
+            <HomeButton
+              className="h-12 rounded-lg bg-[var(--kr-gov-blue)] px-6 font-bold text-white hover:bg-[var(--kr-gov-blue-hover)]"
+              onClick={() => navigate(buildLocalizedPath("/join/companyJoinStatusSearch", "/join/en/companyJoinStatusSearch"))}
+              type="button"
+              variant="primary"
+            >
+              {copy.retrySearch}
+            </HomeButton>
           </div>
         ) : null}
 
@@ -354,50 +366,50 @@ export function JoinCompanyStatusMigrationPage() {
 
         {detail?.result ? (
           <>
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-8" data-help-id="join-company-status-detail-summary">
-              <div className="bg-gray-50 px-8 py-4 border-b border-gray-200 flex justify-between items-center">
-                <span className="text-sm font-bold text-[var(--kr-gov-blue)] bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+            <div className="mb-8 min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm" data-help-id="join-company-status-detail-summary">
+              <div className="flex min-w-0 flex-col gap-2 border-b border-gray-200 bg-gray-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+                <span className="max-w-full break-all rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-sm font-bold text-[var(--kr-gov-blue)]">
                   {copy.appNoBadge}: <span>{toStringValue(result.insttId, copy.noData)}</span>
                 </span>
-                <span className="text-xs text-[var(--kr-gov-text-secondary)] font-medium">{copy.lastUpdated}: <span>{lastUpdated}</span></span>
+                <span className="max-w-full break-words text-xs font-medium text-[var(--kr-gov-text-secondary)]">{copy.lastUpdated}: <span>{lastUpdated}</span></span>
               </div>
-              <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              <div className="grid min-w-0 grid-cols-1 gap-6 p-4 sm:p-8 md:grid-cols-2 lg:grid-cols-4 lg:gap-8">
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-[var(--kr-gov-text-secondary)]">{copy.companyName}</p>
-                  <p className="text-base font-medium text-[var(--kr-gov-text-primary)]">{toStringValue(result.insttNm, copy.noData)}</p>
+                  <p className="break-words text-base font-medium text-[var(--kr-gov-text-primary)]">{toStringValue(result.insttNm, copy.noData)}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-[var(--kr-gov-text-secondary)]">{copy.businessNo}</p>
-                  <p className="text-base font-medium text-[var(--kr-gov-text-primary)]">{toStringValue(result.bizrno, copy.noData)}</p>
+                  <p className="break-all text-base font-medium text-[var(--kr-gov-text-primary)]">{toStringValue(result.bizrno, copy.noData)}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-[var(--kr-gov-text-secondary)]">{copy.representative}</p>
-                  <p className="text-base font-medium text-[var(--kr-gov-text-primary)]">{toStringValue(result.reprsntNm, copy.noData)}</p>
+                  <p className="break-words text-base font-medium text-[var(--kr-gov-text-primary)]">{toStringValue(result.reprsntNm, copy.noData)}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-[var(--kr-gov-text-secondary)]">{copy.submittedOn}</p>
-                  <p className="text-base font-medium text-[var(--kr-gov-text-primary)]">{toStringValue(result.frstRegistPnttm, copy.noData)}</p>
+                  <p className="break-words text-base font-medium text-[var(--kr-gov-text-primary)]">{toStringValue(result.frstRegistPnttm, copy.noData)}</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-10 mb-8" data-help-id="join-company-status-detail-timeline">
-              <div className="relative flex justify-between items-center max-w-3xl mx-auto mb-12">
-                <div className="relative z-10 flex flex-col items-center gap-3">
+            <div className="mb-8 min-w-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-10" data-help-id="join-company-status-detail-timeline">
+              <div className="relative mx-auto mb-8 grid min-w-0 max-w-3xl grid-cols-1 gap-3 sm:mb-12 sm:flex sm:items-center sm:justify-between sm:gap-0">
+                <div className="relative z-10 flex min-w-0 items-center gap-3 sm:flex-col">
                   <div className="w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold text-lg bg-emerald-500 text-white border-emerald-500">01</div>
                   <span className="text-sm font-bold text-[var(--kr-gov-text-primary)]">{copy.submitted}</span>
                 </div>
 
-                <div className={`flex-grow h-0.5 mx-4 ${status === "A" ? "bg-gray-200" : "bg-emerald-500"}`}></div>
+                <div className={`mx-4 hidden h-0.5 flex-grow sm:block ${status === "A" ? "bg-gray-200" : "bg-emerald-500"}`}></div>
 
-                <div className="relative z-10 flex flex-col items-center gap-3">
+                <div className="relative z-10 flex min-w-0 items-center gap-3 sm:flex-col">
                   <div className={`w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold text-lg ${status === "A" ? "bg-[var(--kr-gov-blue)] text-white border-[var(--kr-gov-blue)]" : "bg-emerald-500 text-white border-emerald-500"}`}>02</div>
                   <span className={`text-sm font-bold ${status === "A" ? "text-[var(--kr-gov-blue)]" : "text-[var(--kr-gov-text-primary)]"}`}>{copy.review}</span>
                 </div>
 
-                <div className={`flex-grow h-0.5 mx-4 ${status === "A" ? "bg-gray-200" : status === "R" || status === "X" ? "bg-red-500" : "bg-emerald-500"}`}></div>
+                <div className={`mx-4 hidden h-0.5 flex-grow sm:block ${status === "A" ? "bg-gray-200" : status === "R" || status === "X" ? "bg-red-500" : "bg-emerald-500"}`}></div>
 
-                <div className="relative z-10 flex flex-col items-center gap-3">
+                <div className="relative z-10 flex min-w-0 items-center gap-3 sm:flex-col">
                   <div className={`w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold text-lg ${status === "A" ? "bg-white text-gray-400 border-gray-200" : status === "R" || status === "X" ? "bg-red-600 text-white border-red-600" : "bg-[var(--kr-gov-blue)] text-white border-[var(--kr-gov-blue)]"}`}>03</div>
                   <span className={`text-sm font-bold ${status === "A" ? "text-gray-400" : status === "P" ? "text-emerald-600" : "text-red-600"}`}>{renderStatusLabel()}</span>
                 </div>
@@ -424,31 +436,31 @@ export function JoinCompanyStatusMigrationPage() {
               ) : null}
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-8 mb-12" data-help-id="join-company-status-detail-files">
+            <div className="mb-12 min-w-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-8" data-help-id="join-company-status-detail-files">
               <h3 className="text-lg font-bold text-[var(--kr-gov-text-primary)] mb-6 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[var(--kr-gov-text-secondary)]">description</span>
                 {copy.attachedFiles}
               </h3>
               <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
                 {files.length > 0 ? files.map((file) => {
-                  const fileId = toFileId(file);
+                  const downloadToken = toDownloadToken(file);
                   const fileName = toFileName(file) || copy.noData;
                   return (
-                    <li className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors" key={fileId || fileName}>
-                      <div className="flex items-center gap-3">
+                    <li className="flex min-w-0 flex-col items-start gap-3 p-4 transition-colors hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between" key={downloadToken || fileName}>
+                      <div className="flex min-w-0 items-center gap-3">
                         <span className="material-symbols-outlined text-gray-400">attach_file</span>
-                        <span className="text-sm font-medium text-[var(--kr-gov-text-primary)]">{fileName}</span>
+                        <span className="min-w-0 break-all text-sm font-medium text-[var(--kr-gov-text-primary)]">{fileName}</span>
                       </div>
-                      {fileId ? (
-                        <HomeButton
+                      {downloadToken ? (
+                        <HomeLinkButton
+                          aria-label={copy.download}
                           className="!min-h-0 !border-0 !bg-transparent !p-0 text-[var(--kr-gov-blue)] font-bold text-xs hover:underline hover:!bg-transparent"
-                          onClick={() => navigate(`/join/downloadInsttFile?fileId=${encodeURIComponent(fileId)}`)}
-                          type="button"
+                          href={`/join/downloadInsttFile?downloadToken=${encodeURIComponent(downloadToken)}`}
                           variant="ghost"
                         >
-                          <span className="material-symbols-outlined text-[18px]">download</span>
+                          <span aria-hidden="true" className="material-symbols-outlined text-[18px]">download</span>
                           {copy.download}
-                        </HomeButton>
+                        </HomeLinkButton>
                       ) : null}
                     </li>
                   );
@@ -460,9 +472,9 @@ export function JoinCompanyStatusMigrationPage() {
           </>
         ) : null}
 
-        <div className="flex items-center justify-center gap-4" data-help-id="join-company-status-detail-actions">
+        <div className="flex min-w-0 flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center sm:gap-4" data-help-id="join-company-status-detail-actions">
           <HomeButton
-            className="px-8 h-14 border border-[var(--kr-gov-border-light)] text-[var(--kr-gov-text-primary)] font-bold rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-lg border border-[var(--kr-gov-border-light)] px-8 font-bold text-[var(--kr-gov-text-primary)] transition-colors hover:bg-gray-50 sm:w-auto"
             onClick={() => window.history.back()}
             type="button"
             variant="secondary"
@@ -472,8 +484,8 @@ export function JoinCompanyStatusMigrationPage() {
           </HomeButton>
           {status === "R" ? (
             <HomeButton
-              className="px-10 h-14 bg-[var(--kr-gov-blue)] text-white font-bold rounded-lg hover:bg-[var(--kr-gov-blue-hover)] transition-colors flex items-center gap-2 shadow-lg shadow-blue-100"
-              onClick={() => navigate(`${buildLocalizedPath("/join/companyReapply", "/join/en/companyReapply")}?bizNo=${encodeURIComponent(toStringValue(result.bizrno, ""))}&repName=${encodeURIComponent(toStringValue(result.reprsntNm, ""))}`)}
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-[var(--kr-gov-blue)] px-10 font-bold text-white shadow-lg shadow-blue-100 transition-colors hover:bg-[var(--kr-gov-blue-hover)] sm:w-auto"
+              onClick={() => navigate(`${buildLocalizedPath("/join/companyReapply", "/join/en/companyReapply")}?lookupHandle=${encodeURIComponent(detail?.lookupHandle || initialQuery.lookupHandle)}`)}
               type="button"
               variant="primary"
             >
@@ -482,7 +494,7 @@ export function JoinCompanyStatusMigrationPage() {
             </HomeButton>
           ) : (
             <HomeButton
-              className="px-8 h-14 bg-[var(--kr-gov-blue)] text-white font-bold rounded-lg hover:bg-[var(--kr-gov-blue-hover)] transition-colors flex items-center gap-2"
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-[var(--kr-gov-blue)] px-8 font-bold text-white transition-colors hover:bg-[var(--kr-gov-blue-hover)] sm:w-auto"
               onClick={goHome}
               type="button"
               variant="primary"
@@ -704,6 +716,21 @@ export function JoinCompanyStatusMigrationPage() {
                       value={repName}
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-bold text-[var(--kr-gov-text-primary)] mb-2" htmlFor="registered-contact">
+                      {copy.registeredContact} <span className="text-red-500">*</span>
+                    </label>
+                    <HomeInput
+                      autoComplete="email"
+                      className="w-full h-14 px-4 border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] focus:ring-2 focus:ring-[var(--kr-gov-focus)] focus:border-transparent"
+                      id="registered-contact"
+                      maxLength={254}
+                      onChange={(event) => setRegisteredContact(event.target.value)}
+                      placeholder={copy.contactPlaceholder}
+                      type="text"
+                      value={registeredContact}
+                    />
+                  </div>
                 </div>
                 <div className="bg-gray-50 p-6 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)]">
                   <div className="flex items-start gap-4">
@@ -712,16 +739,7 @@ export function JoinCompanyStatusMigrationPage() {
                     </div>
                     <div className="flex-1">
                       <h4 className="font-bold text-sm mb-1">{copy.verifyTitle}</h4>
-                      <p className="text-xs text-[var(--kr-gov-text-secondary)] mb-4">{copy.verifyDesc}</p>
-                      <HomeButton
-                        className="flex items-center gap-2 px-4 py-3 bg-white border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] hover:bg-gray-50 transition-colors w-full justify-center font-bold text-sm"
-                        onClick={() => window.alert(copy.verifyAlert)}
-                        type="button"
-                        variant="secondary"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">smartphone</span>
-                        {copy.verifyButton}
-                      </HomeButton>
+                      <p className="text-xs leading-5 text-[var(--kr-gov-text-secondary)]">{copy.verifyDesc}</p>
                     </div>
                   </div>
                 </div>
@@ -752,7 +770,7 @@ export function JoinCompanyStatusMigrationPage() {
   }
 
   return (
-    <div className="bg-[var(--kr-gov-bg-gray)] text-[var(--kr-gov-text-primary)] min-h-screen flex flex-col">
+    <CommonJoinProcessShell screenId="JOIN_COMPANY_STATUS">
       <HomeLinkButton className="skip-link !min-h-0 !border-0 !bg-[var(--kr-gov-blue)] !p-3 !text-white hover:!bg-[var(--kr-gov-blue)]" href="#main-content" variant="ghost">{copy.skip}</HomeLinkButton>
 
       <div className="bg-white border-b border-[var(--kr-gov-border-light)]">
@@ -766,17 +784,17 @@ export function JoinCompanyStatusMigrationPage() {
 
       <header className="bg-white border-b border-[var(--kr-gov-border-light)] sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center gap-3 shrink-0">
-              <HomeButton className="!min-h-0 !border-0 !bg-transparent !p-0 !text-inherit hover:!bg-transparent flex items-center gap-2 focus-visible" onClick={goHome} type="button" variant="ghost">
-                <span className="material-symbols-outlined text-[32px] text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 600" }}>eco</span>
-                <div className="flex flex-col">
-                  <h1 className="text-lg font-bold tracking-tight text-[var(--kr-gov-text-primary)] leading-none">{copy.logoTitle}</h1>
-                  <p className="text-[9px] text-[var(--kr-gov-text-secondary)] font-bold uppercase tracking-wider mt-1">{copy.logoSub}</p>
+          <div className="flex h-20 min-w-0 items-center justify-between gap-2">
+            <div className="flex min-w-0 max-w-full flex-1 items-center gap-3" data-join-brand-wrapper>
+              <HomeButton className="!min-h-0 min-w-0 max-w-full overflow-hidden !border-0 !bg-transparent !p-0 !text-inherit hover:!bg-transparent flex items-center gap-2 focus-visible" data-join-brand-action onClick={goHome} type="button" variant="ghost">
+                <span className="material-symbols-outlined flex-none text-[32px] text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 600" }}>eco</span>
+                <div className="flex min-w-0 max-w-full flex-col">
+                  <h1 className="truncate text-lg font-bold leading-none tracking-tight text-[var(--kr-gov-text-primary)]">{copy.logoTitle}</h1>
+                  <p className="mt-1 hidden max-w-full truncate text-[9px] font-bold uppercase tracking-wider text-[var(--kr-gov-text-secondary)] sm:block" data-join-brand-subtitle>{copy.logoSub}</p>
                 </div>
               </HomeButton>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-none items-center gap-4">
               <div className="flex border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] overflow-hidden">
                 <HomeButton className={`px-3 py-1 text-xs font-bold ${en ? "!bg-white !text-[var(--kr-gov-text-secondary)] hover:!bg-gray-100" : "!bg-[var(--kr-gov-blue)] !text-white"}`} onClick={() => changeLanguage(false)} size="xs" type="button" variant="ghost">KO</HomeButton>
                 <HomeButton className={`px-3 py-1 text-xs font-bold border-l border-[var(--kr-gov-border-light)] ${en ? "!bg-[var(--kr-gov-blue)] !text-white" : "!bg-white !text-[var(--kr-gov-text-secondary)] hover:!bg-gray-100"}`} onClick={() => changeLanguage(true)} size="xs" type="button" variant="ghost">EN</HomeButton>
@@ -787,6 +805,6 @@ export function JoinCompanyStatusMigrationPage() {
       </header>
 
       {isGuidePage ? renderGuidePage() : isDetailPage ? renderDetailPage() : renderSearchPage()}
-    </div>
+    </CommonJoinProcessShell>
   );
 }

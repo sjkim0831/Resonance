@@ -4,6 +4,8 @@ import egovframework.com.platform.aiadmin.service.AiAdminService;
 import egovframework.com.platform.aiadmin.service.HermesService;
 import egovframework.com.platform.aiadmin.service.KrdsCodeGenerationService;
 import egovframework.com.platform.aiadmin.service.E4bGeneratorSelectionService;
+import egovframework.com.platform.aiadmin.service.NimKeyPoolClient;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -24,6 +26,7 @@ public class AiAdminController {
     private final HermesService hermesService;
     private final KrdsCodeGenerationService krdsCodeGenerationService;
     private final E4bGeneratorSelectionService e4bGeneratorSelectionService;
+    private final NimKeyPoolClient nimKeyPoolClient;
 
     @GetMapping("/dashboard")
     public String dashboardPage(HttpServletRequest request, Locale locale) { return redirectSpa("ai-dashboard", request, locale); }
@@ -66,6 +69,11 @@ public class AiAdminController {
         primeCsrfToken(request);
         String actor = request.getUserPrincipal() == null ? "SYSTEM" : request.getUserPrincipal().getName();
         return ResponseEntity.ok(e4bGeneratorSelectionService.precompile(body, actor));
+    }
+    @PostMapping("/chat/completions") @ResponseBody
+    public ResponseEntity<JsonNode> chatCompletions(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+        primeCsrfToken(request);
+        return ResponseEntity.ok(nimKeyPoolClient.chatCompletion(body));
     }
     @GetMapping("/agents/page-data") @ResponseBody
     public ResponseEntity<Map<String, Object>> agents(HttpServletRequest request, Locale locale, @RequestParam(required=false) String status) { primeCsrfToken(request); return ResponseEntity.ok(aiAdminService.buildAgentsPage(status, isEnglishRequest(request, locale))); }

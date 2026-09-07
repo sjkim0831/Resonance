@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "verifiedAt": "2026-08-19T23:28:00+09:00",
+  "hardware": "NVIDIA GeForce RTX 5090 32GB",
+  "pageLoadMs": 607.0,
+  "kit": [
+    {"count": 100, "loadMs": 725.5, "fps": 62.9, "frameMs": 15.89, "primCount": 115, "gpuMemoryMiB": 21704},
+    {"count": 300, "loadMs": 4245.5, "fps": 61.7, "frameMs": 16.21, "primCount": 315, "gpuMemoryMiB": 25892},
+    {"count": 700, "loadMs": 451.0, "fps": 63.9, "frameMs": 15.66, "primCount": 715, "gpuMemoryMiB": 25815}
+  ],
+  "web": [
+    {"count": 100, "domMs": 1.0, "fps": 43.1, "frameMs": 23.18, "lod": [100, 0, 0]},
+    {"count": 300, "domMs": 1.0, "fps": 42.8, "frameMs": 23.37, "lod": [100, 200, 0]},
+    {"count": 700, "domMs": 1.0, "fps": 40.2, "frameMs": 24.9, "lod": [100, 200, 400]}
+  ],
+  "runtimeLod": {"full": 16, "quadricProxies": 160, "originalTriangles": 7201723, "lodTriangles": 112422, "reductionPercent": 98.4},
+  "mapped700": {"sourceMappings": 574, "repeatedInstances": 126, "mappedRoots": 700, "uniqueInstanceKeys": 700, "fullReferenceInstances": 16, "lod": [16, 284, 400], "loadMs": 451.0, "fps": 63.9, "frameMs": 15.66, "gpuMemoryMiB": 25815, "missingReferences": 0},
+  "warmup": {"count": 300, "status": "READY", "coldLoadMs": 125149.9, "warmLoadMs": 4245.5, "reductionPercent": 96.6, "firstFrameMs": 317.08},
+  "checks": {"kit100": true, "kit300": true, "kit700": true, "web100": true, "web300": true, "web700": true, "lod": true, "recovery": true}
+}

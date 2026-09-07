@@ -3,7 +3,6 @@ import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import {
-  UserGovernmentBar,
   UserLanguageToggle,
   UserPortalFooter,
   UserPortalHeader
@@ -234,7 +233,7 @@ export function MypageNotificationMigrationPage() {
   const displayName = stringValue(member.applcntNm) || stringValue(page?.userId) || "-";
   const sidebarItems = [
     { label: copy.profileLabel, href: buildLocalizedPath("/mypage/profile", "/en/mypage/profile"), icon: "account_circle" },
-    { label: copy.securityLabel, href: buildLocalizedPath("/mypage/security", "/en/mypage/security"), icon: "security" },
+    { label: copy.securityLabel, href: buildLocalizedPath("/mypage/password?processCode=PROFILE_MANAGEMENT&stepCode=PROFILE_MANAGEMENT_S4&guide=1", "/en/mypage/password?processCode=PROFILE_MANAGEMENT&stepCode=PROFILE_MANAGEMENT_S4&guide=1"), icon: "security" },
     { label: copy.companyLabel, href: buildLocalizedPath("/mypage/company", "/en/mypage/company"), icon: "business" },
     { label: copy.staffLabel, href: buildLocalizedPath("/mypage/staff", "/en/mypage/staff"), icon: "groups" },
     { label: copy.notificationLabel, href: buildLocalizedPath("/mypage/notification", "/en/mypage/notification"), icon: "notifications_active", active: true }
@@ -302,9 +301,8 @@ export function MypageNotificationMigrationPage() {
   }
 
   return (
-    <div className="bg-[#f8fafc] text-[var(--kr-gov-text-primary)] min-h-screen">
+    <div className="bg-[#f8fafc] text-[var(--kr-gov-text-primary)] min-h-screen" data-mypage-theme="krds-v1">
       <a className="skip-link" href="#main-content">{copy.skip}</a>
-      <UserGovernmentBar governmentText={copy.government} guidelineText={copy.guideline} />
       <UserPortalHeader
         brandSubtitle={en ? "Notification Control Center" : "알림 제어 센터"}
         brandTitle={copy.title}

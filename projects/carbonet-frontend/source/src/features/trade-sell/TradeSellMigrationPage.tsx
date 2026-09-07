@@ -426,7 +426,7 @@ export function TradeSellMigrationPage() {
                             onClick={() => setSelectedOrderId(row.id)}
                           >
                             <td className="px-4 py-4 align-top">
-                              <input checked={active} onChange={() => setSelectedOrderId(row.id)} type="checkbox" />
+                              <input checked={active} onChange={() => setSelectedOrderId(row.id)} type="checkbox" className="krds-control-native" />
                             </td>
                             <td className="px-4 py-4 align-top text-sm font-black text-[var(--kr-gov-blue)]">{row.id}<br /><span className="text-xs font-semibold text-slate-400">{String(index + 1).padStart(3, "0")}</span></td>
                             <td className="px-4 py-4 align-top text-sm font-semibold text-slate-500">{row.time}</td>

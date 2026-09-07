@@ -1,0 +1,29 @@
+{
+  "processCode": "TRADE_EXECUTION_TRACKING",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "TRADE_EXECUTION_TRACKING_S1",
+      "actorCode": "TRADE_OPERATOR",
+      "routePath": "/generated/trade-execution-tracking/trade-execution-tracking-s1?step=trade_execution_tracking_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "TRADE_EXECUTION_TRACKING_S2",
+      "actorCode": "TRADE_OPERATOR",
+      "routePath": "/generated/trade-execution-tracking/trade-execution-tracking-s2?step=trade_execution_tracking_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "TRADE_EXECUTION_TRACKING_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/trade-execution-tracking/trade-execution-tracking-s3?step=trade_execution_tracking_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "TRADE_EXECUTION_TRACKING_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/trade-execution-tracking/trade-execution-tracking-s4?step=trade_execution_tracking_s4"
+    }
+  ]
+}

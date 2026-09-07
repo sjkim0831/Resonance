@@ -1,0 +1,29 @@
+{
+  "processCode": "TASK_TEMPLATE_MANAGEMENT",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "TASK_TEMPLATE_MANAGEMENT_S1",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/task-template-management/task-template-management-s1?step=task_template_management_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "TASK_TEMPLATE_MANAGEMENT_S2",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/task-template-management/task-template-management-s2?step=task_template_management_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "TASK_TEMPLATE_MANAGEMENT_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/task-template-management/task-template-management-s3?step=task_template_management_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "TASK_TEMPLATE_MANAGEMENT_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/task-template-management/task-template-management-s4?step=task_template_management_s4"
+    }
+  ]
+}

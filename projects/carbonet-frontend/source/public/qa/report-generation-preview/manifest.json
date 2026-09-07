@@ -1,0 +1,29 @@
+{
+  "processCode": "REPORT_GENERATION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "REPORT_GENERATION_S1",
+      "actorCode": "CALCULATOR",
+      "routePath": "/generated/report-generation/report-generation-s1?step=report_generation_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "REPORT_GENERATION_S2",
+      "actorCode": "CALCULATOR",
+      "routePath": "/generated/report-generation/report-generation-s2?step=report_generation_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "REPORT_GENERATION_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/report-generation/report-generation-s3?step=report_generation_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "REPORT_GENERATION_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/report-generation/report-generation-s4?step=report_generation_s4"
+    }
+  ]
+}

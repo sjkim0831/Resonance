@@ -1,3 +1,4 @@
+import { findGeneratedScreenSupport } from "../../generated/screen-generation/generatedScreenSupportCatalog";
 import { getPageManifest } from "./pageManifests";
 
 const HELP_SAMPLE_IMAGE = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='960' height='360' viewBox='0 0 960 360'><rect width='960' height='360' rx='24' fill='%23eef4fb'/><rect x='48' y='48' width='300' height='28' rx='14' fill='%2300378b' opacity='0.18'/><rect x='48' y='102' width='864' height='170' rx='18' fill='white'/><rect x='76' y='134' width='248' height='18' rx='9' fill='%2310233f' opacity='0.16'/><rect x='76' y='170' width='808' height='14' rx='7' fill='%23577287' opacity='0.14'/><rect x='76' y='198' width='730' height='14' rx='7' fill='%23577287' opacity='0.1'/><rect x='732' y='294' width='180' height='34' rx='17' fill='%2300378b' opacity='0.88'/></svg>";
@@ -34,6 +35,17 @@ const PAGE_HELP: Record<string, PageHelpContent> = {
       { id: "summary", title: "운영 현황 요약", body: "최근 운영 지표와 요약 통계를 확인합니다.", anchorSelector: '[data-help-id="home-summary"]', placement: "left", iconName: "monitoring", highlightStyle: "warning" }
     ]
   },
+  "mypage-company": {
+    pageId: "mypage-company",
+    title: "회사 정보·활성 상태 확인 도움말",
+    summary: "회원사 가입의 최종 승인 결과와 회사 활성화 상태를 확인합니다.",
+    items: [
+      { id: "hero", title: "가입·활성화 결과", body: "회원사 가입의 마지막 단계에서 회사 활성화 완료 여부를 확인합니다.", anchorSelector: '[data-help-id="mypage-company-hero"]', placement: "bottom", iconName: "business", highlightStyle: "focus" },
+      { id: "profile", title: "회사 기본정보", body: "가입·승인 시 등록된 법인명, 사업자등록번호, 대표자, 기관 식별자와 주소를 확인합니다.", anchorSelector: '[data-help-id="mypage-company-profile"]', placement: "right", iconName: "domain", highlightStyle: "neutral" },
+      { id: "conditions", title: "가입 완료 조건", body: "회원사 승인, 기업 테넌트 연결, 필수 기업정보 확인 여부를 실제 데이터로 자동 점검합니다.", anchorSelector: '[data-help-id="mypage-company-activation-conditions"]', placement: "right", iconName: "fact_check", highlightStyle: "success" },
+      { id: "result", title: "회원사 가입 결과", body: "가입 완료와 회사 활성화 결과를 확인합니다. 사업장 구성과 프로젝트 착수는 탄소배출 관리 업무에서 별도로 진행합니다.", anchorSelector: '[data-help-id="mypage-company-registration-result"]', placement: "left", iconName: "verified", highlightStyle: "success" }
+    ]
+  },
   "admin-home": {
     pageId: "admin-home",
     title: "관리자 홈 도움말",
@@ -42,6 +54,21 @@ const PAGE_HELP: Record<string, PageHelpContent> = {
       { id: "cards", title: "운영 요약 카드", body: "현재 회원 수, 배출량 산정 통계, 인증 심사 현황을 요약합니다.", anchorSelector: '[data-help-id="admin-home-cards"]', placement: "top", iconName: "space_dashboard", highlightStyle: "focus" },
       { id: "approvals", title: "승인 대기", body: "최근 가입 승인 대기 목록을 확인하고 전체보기로 이동할 수 있습니다.", anchorSelector: '[data-help-id="admin-home-approvals"]', placement: "right", iconName: "pending_actions", highlightStyle: "success" },
       { id: "progress", title: "심사 진행 현황", body: "단계별 심사 진행 상태와 비율을 시각적으로 확인합니다.", anchorSelector: '[data-help-id="admin-home-progress"]', placement: "left", iconName: "analytics", highlightStyle: "neutral" }
+    ]
+  },
+  "emission-my-tasks": {
+    pageId: "emission-my-tasks",
+    title: "내 업무 요약 도움말",
+    summary: "실제 배출 업무 API 범위, 실행 가능 상태, 등록된 프로세스 순서와 다음 단계 후보를 구분해 확인합니다.",
+    items: [
+      { id: "work-context", title: "업무 문맥", body: "서버가 선언한 EMISSION 범위와 로그인 계정·액터·프로젝트·기간·상태 필터를 확인합니다.", anchorSelector: '[data-help-id="emission-my-tasks-work-context"]', placement: "top", iconName: "filter_alt", highlightStyle: "focus" },
+      { id: "today-status", title: "오늘의 업무 상태", body: "실제 마감일과 상태 필드로 처리 필요, 오늘 마감, 지연, 진행 중, 차단 건수를 집계합니다.", anchorSelector: '[data-help-id="emission-my-tasks-today-status"]', placement: "bottom", iconName: "today", highlightStyle: "neutral" },
+      { id: "next-action", title: "가장 먼저 할 일", body: "서버가 실행 가능으로 응답한 업무의 입력·출력·완료 조건과 화면 추정 우선순위를 함께 검토합니다.", anchorSelector: '[data-help-id="emission-my-tasks-next-action"]', placement: "right", iconName: "play_circle", highlightStyle: "focus" },
+      { id: "task-queue", title: "내 처리 대기함", body: "업무, 프로세스 단계, 프로젝트, 담당 계정·액터, 상태, 마감과 허용된 실행 링크를 표에서 확인합니다.", anchorSelector: '[data-help-id="emission-my-tasks-task-queue"]', placement: "top", iconName: "view_list", highlightStyle: "neutral" },
+      { id: "process-progress", title: "프로세스 진행 현황", body: "선택 업무와 같은 프로젝트의 등록 업무 원장 순서를 봅니다. 실제 다음 단계는 실행 결과·보완·권한·선행조건에 따라 달라질 수 있습니다.", anchorSelector: '[data-help-id="emission-my-tasks-process-progress"]', placement: "left", iconName: "account_tree", highlightStyle: "success" },
+      { id: "risks", title: "지연·위험·예외", body: "마감 경과, 명시 계정 배정 없음, 서버 차단 상태처럼 API가 직접 제공하거나 실제 필드로 판정 가능한 항목만 표시합니다.", anchorSelector: '[data-help-id="emission-my-tasks-risks"]', placement: "top", iconName: "warning", highlightStyle: "warning" },
+      { id: "handoff-activity", title: "최근 인계와 활동", body: "업무 알림과 읽음 상태를 확인하며 표기 시각은 한국 표준시 기준으로 변환됩니다.", anchorSelector: '[data-help-id="emission-my-tasks-handoff-activity"]', placement: "right", iconName: "notifications", highlightStyle: "neutral" },
+      { id: "next-guidance", title: "다음 업무 안내", body: "API에 등록된 다음 단계 후보와 액터를 확인합니다. 확정 분기가 아니므로 전체 업무 보기에서 현재 프로세스 계약을 함께 검토합니다.", anchorSelector: '[data-help-id="emission-my-tasks-next-guidance"]', placement: "left", iconName: "route", highlightStyle: "focus" }
     ]
   },
   "emission-data-input": {
@@ -130,6 +157,7 @@ const PAGE_HELP: Record<string, PageHelpContent> = {
       { id: "hero", title: "전략 제언 헤더", body: "현재 감축 전략과 보고서 내보내기 진입점을 상단에서 확인합니다.", anchorSelector: '[data-help-id="emission-simulate-hero"]', placement: "top", iconName: "lightbulb", highlightStyle: "focus" },
       { id: "recommendations", title: "전략 추천 카드", body: "에너지 믹스, 기술 투자, 비용 최적화, 규제 대응 권고안을 카드로 확인합니다.", anchorSelector: '[data-help-id="emission-simulate-recommendations"]', placement: "bottom", iconName: "analytics", highlightStyle: "success" },
       { id: "chart", title: "예측 곡선 차트", body: "현행 유지선과 시나리오 적용선을 비교하며 연도별 감축 경로를 검토합니다.", anchorSelector: '[data-help-id="emission-simulate-chart"]', placement: "left", iconName: "show_chart", highlightStyle: "warning" },
+      { id: "history", title: "저장 시나리오 증거", body: "프로젝트 원장에서 버전·입력값·예상 감축량·입력 해시를 다시 읽어 저장 결과를 검증합니다.", anchorSelector: '[data-help-id="emission-simulate-history"]', placement: "top", iconName: "history", highlightStyle: "success" },
       { id: "builder", title: "시나리오 빌더", body: "기술 투자, 효율 개선, 재생에너지 전환, CCUS 규모를 조정해 예상 감축량을 계산합니다.", anchorSelector: '[data-help-id="emission-simulate-builder"]', placement: "left", iconName: "tune", highlightStyle: "neutral" }
     ]
   },
@@ -1489,12 +1517,12 @@ const PAGE_HELP: Record<string, PageHelpContent> = {
   },
   "dept-role": {
     pageId: "dept-role",
-    title: "부서 권한 맵핑 도움말",
-    summary: "회사, 부서 기본 권한, 회원 예외 권한과 권한 그룹 프로필 미리보기를 함께 확인합니다.",
+    title: "부서·회원 권한 할당 도움말",
+    summary: "회사를 선택하고 부서 기본 권한과 회원별 권한을 할당·저장합니다.",
     items: [
-      { id: "company", title: "회사 선택", body: "대상 회사 범위를 선택하면 부서와 회원 권한 매핑이 함께 갱신됩니다.", anchorSelector: '[data-help-id="dept-role-company"]' },
-      { id: "departments", title: "부서 기본 권한", body: "부서별 기본 권한 그룹을 배정하고 저장합니다.", anchorSelector: '[data-help-id="dept-role-departments"]' },
-      { id: "members", title: "회원 예외 권한", body: "회원별로 기본 권한에서 벗어난 예외 권한 그룹을 지정합니다.", anchorSelector: '[data-help-id="dept-role-members"]' },
+      { id: "company", title: "회사 선택", body: "대상 회사를 선택하면 부서와 회원 권한 할당 목록이 함께 갱신됩니다.", anchorSelector: '[data-help-id="dept-role-company"]' },
+      { id: "departments", title: "부서 기본 권한 할당", body: "기존 부서별 기본 권한 그룹을 선택하고 할당 결과를 저장합니다.", anchorSelector: '[data-help-id="dept-role-departments"]' },
+      { id: "members", title: "회원별 권한 할당", body: "회원을 검색하고 개별 권한 그룹을 선택해 할당 결과를 저장합니다.", anchorSelector: '[data-help-id="dept-role-members"]' },
       { id: "profile-preview", title: "권한 그룹 프로필 미리보기", body: "선택한 권한 그룹이 회원 수정 화면에서 어떤 업무 역할과 우선 제공 업무로 표시될지 확인합니다.", anchorSelector: '[data-help-id="dept-role-role-profile"]' }
     ]
   },
@@ -2079,7 +2107,34 @@ const PAGE_HELP: Record<string, PageHelpContent> = {
   }
 };
 
+function generatedPageHelp(pageIdOrPath: string): PageHelpContent | null {
+  const entry = findGeneratedScreenSupport(pageIdOrPath);
+  const help = entry?.support?.help;
+  if (!help || !Array.isArray(help.items) || help.items.length === 0) {
+    return null;
+  }
+  return {
+    pageId: String(help.pageId || entry.pageId || pageIdOrPath),
+    title: String(help.title || "화면 도움말"),
+    summary: String(help.summary || "등록된 설계 계약을 기준으로 화면을 안내합니다."),
+    items: help.items.map((item, index) => ({
+      id: String(item.id || `${entry.pageId}-item-${index + 1}`),
+      title: String(item.title || ""),
+      body: String(item.body || ""),
+      anchorSelector: item.anchorSelector ? String(item.anchorSelector) : undefined,
+      placement: item.placement ? String(item.placement) as HelpItem["placement"] : undefined,
+      imageUrl: item.imageUrl ? String(item.imageUrl) : undefined,
+      iconName: item.iconName ? String(item.iconName) : undefined,
+      highlightStyle: item.highlightStyle ? String(item.highlightStyle) as HelpItem["highlightStyle"] : undefined,
+      ctaLabel: item.ctaLabel ? String(item.ctaLabel) : undefined,
+      ctaUrl: item.ctaUrl ? String(item.ctaUrl) : undefined
+    }))
+  };
+}
+
 export function getPageHelp(pageId: string): PageHelpContent {
+  const generated = generatedPageHelp(pageId);
+  if (generated) return generated;
   const explicit = PAGE_HELP[pageId];
   if (explicit) {
     return explicit;

@@ -292,7 +292,7 @@ function ComponentModal({ component, onSave, onClose }: ComponentModalProps) {
               <input
                 type="checkbox"
                 checked={form.isContainer || false}
-                onChange={e => setForm({ ...form, isContainer: e.target.checked })}
+                onChange={e => setForm({ ...form, isContainer: e.target.checked })} className="krds-control-native"
               />
               <span className="text-sm">컨테이너 (자식 포함 가능)</span>
             </label>
@@ -300,7 +300,7 @@ function ComponentModal({ component, onSave, onClose }: ComponentModalProps) {
               <input
                 type="checkbox"
                 checked={form.isReusable ?? true}
-                onChange={e => setForm({ ...form, isReusable: e.target.checked })}
+                onChange={e => setForm({ ...form, isReusable: e.target.checked })} className="krds-control-native"
               />
               <span className="text-sm">재사용 가능</span>
             </label>

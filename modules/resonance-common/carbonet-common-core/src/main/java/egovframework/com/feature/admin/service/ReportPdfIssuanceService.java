@@ -31,6 +31,7 @@ public class ReportPdfIssuanceService {
     private static final Duration RENDER_TIMEOUT = Duration.ofSeconds(45);
 
     private final ReportVerificationRegistryService registryService;
+    private final CertificateAuthenticityService authenticityService;
 
     @Value("${carbonet.report.chromium-bin:${CARBONET_CHROMIUM_BIN:/usr/bin/google-chrome}}")
     private String chromiumBin;
@@ -40,14 +41,43 @@ public class ReportPdfIssuanceService {
         if (!(recordValue instanceof Map<?, ?> rawRecord)) {
             throw new IllegalArgumentException("A report verification record is required.");
         }
-        @SuppressWarnings("unchecked")
-        Map<String, Object> record = (Map<String, Object>) rawRecord;
+        Map<String, Object> record = new LinkedHashMap<>();
+        rawRecord.forEach((key, value) -> record.put(String.valueOf(key), value));
+        ReportIssuanceContractValidator.validate(record);
+        String originalIntegrityCode = String.valueOf(record.getOrDefault("integrityCode", ""));
+        String signedIntegrityCode = authenticityService.signDataset(
+                String.valueOf(record.get("certificateId")),
+                String.valueOf(record.get("payloadHash")),
+                String.valueOf(record.getOrDefault("datasetHash", record.get("payloadHash"))));
+        record.put("integrityCode", signedIntegrityCode);
         String html = String.valueOf(request.getOrDefault("html", ""));
+        if (originalIntegrityCode.isBlank() || !html.contains(originalIntegrityCode)) {
+            throw new IllegalArgumentException("The visible report integrity code is missing from the HTML.");
+        }
+        html = html.replace(originalIntegrityCode, signedIntegrityCode);
         validateHtml(html);
+        Object ocrEvidenceValue = request.get("ocrEvidence");
+        if (!(ocrEvidenceValue instanceof Map<?, ?> rawOcrEvidence)) {
+            throw new IllegalArgumentException("The complete visible-report OCR evidence is required.");
+        }
+        Map<String, Object> ocrEvidence = new LinkedHashMap<>();
+        rawOcrEvidence.forEach((key, value) -> ocrEvidence.put(String.valueOf(key), value));
+        ocrEvidence.put("integrityCode", signedIntegrityCode);
+
+        ReportVerificationRegistryService.ExistingIssuedPdf existing =
+                registryService.loadIssuedPdfIfSame(record);
+        if (existing != null) {
+            try (PDDocument document = PDDocument.load(existing.bytes())) {
+                return new IssuedPdf(existing.bytes(), String.valueOf(record.get("certificateId")),
+                        document.getNumberOfPages(), existing.pdfSha256());
+            } catch (IOException exception) {
+                throw new IllegalStateException("The existing issued PDF could not be read.", exception);
+            }
+        }
 
         byte[] pdf = render(html);
         Map<String, Object> visualProfile = buildVisualProfile(pdf);
-        Map<String, Object> issuance = registryService.issuePdf(record, actorId, visualProfile, pdf);
+        Map<String, Object> issuance = registryService.issuePdf(record, actorId, visualProfile, pdf, ocrEvidence);
         return new IssuedPdf(pdf, String.valueOf(record.get("certificateId")),
                 ((List<?>) visualProfile.get("pages")).size(), String.valueOf(issuance.get("pdfSha256")));
     }

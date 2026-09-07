@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import {
-  UserGovernmentBar,
   UserLanguageToggle,
   UserPortalFooter,
   UserPortalHeader
@@ -8,6 +8,7 @@ import {
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { MypageKrdsLayout } from "../../components/mypage/MypageKrdsLayout";
 
 const COPY = {
   ko: {
@@ -20,7 +21,7 @@ const COPY = {
     subtitle: "개인정보 보호를 위해 주기적으로 비밀번호를 변경해 주세요.",
     securityLabel: "계정 보안 상태",
     securityValue: "정상",
-    menuTitle: "Profile Hub Menu",
+    menuTitle: "마이페이지 메뉴",
     menuProfile: "개인 정보",
     menuPassword: "비밀번호 변경",
     menuNotification: "알림 설정",
@@ -49,6 +50,14 @@ const COPY = {
     submit: "비밀번호 변경",
     forgot: "비밀번호를 잊으셨나요?",
     recovery: "계정 복구 및 본인 확인 센터",
+    mfaTitle: "다중 인증(MFA) 관리",
+    mfaSubtitle: "비밀번호 외에 이메일 인증번호를 한 번 더 확인하여 계정을 보호합니다.",
+    mfaEnabled: "활성화",
+    mfaDisabled: "미사용",
+    mfaRequest: "인증번호 받기",
+    mfaVerify: "인증하고 활성화",
+    mfaDisable: "MFA 해제",
+    mfaCode: "6자리 인증번호",
     footerOrg: "CCUS 통합관리본부",
     footerAddress: "(04551) 서울특별시 중구 세종대로 110 | 대표전화: 02-1234-5678 (평일 09:00~18:00)",
     footerLinks: ["개인정보처리방침", "이용약관", "사이트맵"],
@@ -96,6 +105,14 @@ const COPY = {
     submit: "Update Password",
     forgot: "Forgot your password?",
     recovery: "Account Recovery & Identity Verification Center",
+    mfaTitle: "Multi-factor authentication (MFA)",
+    mfaSubtitle: "Protect your account with an email verification code in addition to your password.",
+    mfaEnabled: "Enabled",
+    mfaDisabled: "Disabled",
+    mfaRequest: "Request code",
+    mfaVerify: "Verify and enable",
+    mfaDisable: "Disable MFA",
+    mfaCode: "6-digit verification code",
     footerOrg: "CCUS Integrated Management HQ",
     footerAddress: "(04551) 110 Sejong-daero, Jung-gu, Seoul | Main Contact: +82 2-1234-5678",
     footerLinks: ["Privacy Policy", "Terms of Service", "Sitemap"],
@@ -151,13 +168,96 @@ export function MypagePasswordMigrationPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [mfaDestination, setMfaDestination] = useState("");
+  const [mfaChallengeId, setMfaChallengeId] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaDevelopmentCode, setMfaDevelopmentCode] = useState("");
+  const [mfaBusy, setMfaBusy] = useState(false);
+  const [mfaMessage, setMfaMessage] = useState("");
   const name = useMemo(() => session.value?.userId || (en ? "Hyunjang Lee" : "이현장 관리자"), [en, session.value?.userId]);
   const strength = strengthState(newPassword, en);
+
+  const apiPrefix = en ? "/api/en/mypage" : "/api/mypage";
+  const formPost = async (path: string, values: Record<string, string>) => {
+    const response = await fetch(`${apiPrefix}${path}`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+      body: new URLSearchParams(values)
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  };
+
+  const loadMfa = async () => {
+    try {
+      const response = await fetch(`${apiPrefix}/mfa`, { credentials: "include" });
+      const data = await response.json();
+      if (data?.redirectUrl) return navigate(data.redirectUrl);
+      setMfaEnabled(Boolean(data?.mfaEnabled));
+      setMfaDestination(String(data?.destinationMasked || ""));
+    } catch {
+      setMfaMessage(en ? "Unable to load MFA status." : "MFA 상태를 불러오지 못했습니다.");
+    }
+  };
+
+  useEffect(() => { void loadMfa(); }, [apiPrefix]);
+
+  const submitPassword = async (event: FormEvent) => {
+    event.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage(en ? "The new passwords do not match." : "새 비밀번호 확인이 일치하지 않습니다.");
+      return;
+    }
+    setPasswordBusy(true);
+    try {
+      const data = await formPost("/password", { currentPassword, newPassword, confirmPassword });
+      setPasswordMessage(String(data?.message || ""));
+      if (data?.saved) setTimeout(() => navigate(en ? "/en/signin/loginView" : "/signin/loginView"), 800);
+    } catch {
+      setPasswordMessage(en ? "Password update failed." : "비밀번호 변경 요청에 실패했습니다.");
+    } finally { setPasswordBusy(false); }
+  };
+
+  const requestMfa = async () => {
+    setMfaBusy(true);
+    try {
+      const data = await formPost("/mfa/request", {});
+      setMfaChallengeId(String(data?.challengeId || ""));
+      setMfaDevelopmentCode(String(data?.developmentCode || ""));
+      setMfaMessage(String(data?.message || ""));
+    } catch { setMfaMessage(en ? "Code request failed." : "인증번호 요청에 실패했습니다."); }
+    finally { setMfaBusy(false); }
+  };
+
+  const verifyMfa = async () => {
+    setMfaBusy(true);
+    try {
+      const data = await formPost("/mfa/verify", { challengeId: mfaChallengeId, verificationCode: mfaCode });
+      setMfaEnabled(Boolean(data?.mfaEnabled));
+      setMfaMessage(String(data?.message || ""));
+      if (data?.saved) { setMfaCode(""); setMfaChallengeId(""); setMfaDevelopmentCode(""); }
+    } catch { setMfaMessage(en ? "Verification failed." : "인증 확인에 실패했습니다."); }
+    finally { setMfaBusy(false); }
+  };
+
+  const disableMfa = async () => {
+    setMfaBusy(true);
+    try {
+      const data = await formPost("/mfa/disable", { currentPassword });
+      setMfaEnabled(Boolean(data?.mfaEnabled));
+      setMfaMessage(String(data?.message || ""));
+    } catch { setMfaMessage(en ? "Unable to disable MFA." : "MFA 해제에 실패했습니다."); }
+    finally { setMfaBusy(false); }
+  };
 
   logGovernanceScope("PAGE", "mypage-password", {});
 
   return (
-    <div
+    <div data-mypage-theme="krds-v1"
       className="min-h-screen bg-[#f4f7fa] text-[var(--kr-gov-text-primary)]"
       style={{
         ["--kr-gov-blue" as string]: "#00378b",
@@ -173,7 +273,6 @@ export function MypagePasswordMigrationPage() {
       <a className="sr-only focus:not-sr-only focus:absolute focus:left-0 focus:top-0 focus:z-[100] focus:bg-[var(--kr-gov-blue)] focus:p-3 focus:text-white" href="#main-content">
         {copy.skip}
       </a>
-      <UserGovernmentBar governmentText={copy.government} guidelineText={copy.guideline} />
       <UserPortalHeader
         brandTitle={copy.brandTitle}
         brandSubtitle={copy.brandSubtitle}
@@ -188,34 +287,16 @@ export function MypagePasswordMigrationPage() {
           </>
         )}
       />
-      <main className="min-h-screen pb-20" id="main-content">
-        <section className="relative overflow-hidden bg-slate-900 pb-24 pt-12" data-help-id="mypage-password-hero">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-10"
-            style={{
-              backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.9) 1px, transparent 0)",
-              backgroundSize: "30px 30px"
-            }}
-          />
-          <div className="relative z-10 mx-auto flex max-w-[1440px] items-end gap-6 px-4 text-white lg:px-8">
-            <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-white/10 bg-indigo-500 shadow-2xl">
-              <span className="material-symbols-outlined text-[40px] text-white">manage_accounts</span>
-            </div>
-            <div className="flex-1 pb-1">
-              <h2 className="text-3xl font-black">{copy.brandTitle}</h2>
-              <p className="mt-1 flex items-center gap-2 text-sm font-bold text-indigo-300">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                {copy.securityLabel}: <span className="text-white">{copy.securityValue}</span>
-              </p>
-            </div>
-          </div>
-        </section>
-        <section className="relative z-20 mx-auto -mt-12 max-w-[1440px] px-4 lg:px-8">
-          <div className="flex flex-col gap-8 lg:flex-row">
-            <aside className="w-full shrink-0 lg:w-72" data-help-id="mypage-password-menu">
+      <MypageKrdsLayout
+        breadcrumb={copy.title}
+        title={copy.title}
+        description={copy.subtitle}
+        statusLabel={copy.securityLabel}
+        statusValue={copy.securityValue}
+        sidebar={(
+          <div data-help-id="mypage-password-menu">
               <div className="rounded-lg border border-[var(--kr-gov-border-light)] bg-white p-4 shadow-sm">
-                <p className="mb-2 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-gray-400">{copy.menuTitle}</p>
+                <p className="mb-2 px-4 py-2 text-xs font-black text-[#052b57]">{copy.menuTitle}</p>
                 <div className="space-y-1">
                   <MenuItem icon="person" label={copy.menuProfile} onClick={() => navigate(buildLocalizedPath("/mypage/profile", "/en/mypage/profile"))} />
                   <MenuItem active icon="lock_reset" label={copy.menuPassword} />
@@ -230,26 +311,15 @@ export function MypagePasswordMigrationPage() {
                   {copy.helpTitle}
                 </h4>
                 <p className="mb-4 text-[12px] leading-relaxed text-indigo-700">{copy.helpBody}</p>
-                <a className="text-xs font-black text-indigo-600 underline" href="#">{copy.helpLink}</a>
+                <a className="text-xs font-black text-[#246beb] underline" href="/support/faq">{copy.helpLink}</a>
               </div>
-            </aside>
-            <div className="flex-1">
-              <div className="overflow-hidden rounded-lg border border-[var(--kr-gov-border-light)] bg-white shadow-sm">
-                <div className="border-b border-gray-100 bg-white p-8">
-                  <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-                    <div>
-                      <h3 className="mb-1 text-2xl font-black text-[var(--kr-gov-text-primary)]">{copy.title}</h3>
-                      <p className="text-sm text-[var(--kr-gov-text-secondary)]">{copy.subtitle}</p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-[11px] font-bold uppercase tracking-tight text-gray-400">{copy.lastUpdated}</span>
-                      <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-black text-gray-700">2026.04.02 21:47</span>
-                    </div>
-                  </div>
-                </div>
+          </div>
+        )}
+      >
+                <div className="border-b border-slate-200 bg-slate-50 px-6 py-4 text-right"><span className="text-xs font-bold text-slate-500">{copy.lastUpdated}</span><strong className="ml-3 text-sm text-[#052b57]">2026.04.02 21:47</strong></div>
                 <div className="p-8 lg:p-12" data-help-id="mypage-password-form">
                   <div className="mx-auto max-w-xl">
-                    <form className="space-y-8" onSubmit={(event) => event.preventDefault()}>
+                    <form className="space-y-8" onSubmit={submitPassword}>
                       <div className="space-y-6">
                         <div className="space-y-2">
                           <label className="block text-sm font-bold text-gray-700" htmlFor="current-pw">{copy.currentPassword}</label>
@@ -293,9 +363,37 @@ export function MypagePasswordMigrationPage() {
                       </div>
                       <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                         <button className="flex-1 rounded-[var(--kr-gov-radius)] border border-gray-200 px-6 py-4 font-bold text-gray-600 transition-colors hover:bg-gray-50" type="button">{copy.cancel}</button>
-                        <button className="flex-[2] rounded-[var(--kr-gov-radius)] bg-[var(--kr-gov-blue)] px-6 py-4 font-bold text-white shadow-lg shadow-blue-900/20 transition-all hover:bg-[var(--kr-gov-blue-hover)]" type="submit">{copy.submit}</button>
+                        <button disabled={passwordBusy} className="flex-[2] rounded-[var(--kr-gov-radius)] bg-[var(--kr-gov-blue)] px-6 py-4 font-bold text-white shadow-lg shadow-blue-900/20 transition-all hover:bg-[var(--kr-gov-blue-hover)] disabled:opacity-50" type="submit">{passwordBusy ? "..." : copy.submit}</button>
                       </div>
+                      {passwordMessage && <p className="rounded-lg bg-blue-50 p-3 text-sm font-bold text-blue-900" role="status">{passwordMessage}</p>}
                     </form>
+                    <section className="mt-12 border-t border-gray-200 pt-10" data-help-id="mypage-mfa-management">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <h4 className="text-xl font-black">{copy.mfaTitle}</h4>
+                          <p className="mt-1 text-sm text-gray-500">{copy.mfaSubtitle}</p>
+                        </div>
+                        <span className={`rounded-full px-3 py-1 text-xs font-black ${mfaEnabled ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-600"}`}>
+                          {mfaEnabled ? copy.mfaEnabled : copy.mfaDisabled}
+                        </span>
+                      </div>
+                      <ol className="mt-6 grid gap-2 text-xs font-bold text-gray-600 sm:grid-cols-4">
+                        {[en ? "1. Check status" : "1. 상태 확인", en ? "2. Request code" : "2. 인증번호 요청", en ? "3. Verify code" : "3. 인증번호 확인", en ? "4. Enable" : "4. 활성화"].map((step) => <li key={step} className="rounded-lg border bg-gray-50 p-3">{step}</li>)}
+                      </ol>
+                      <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-5">
+                        <p className="text-sm font-bold">{mfaDestination || (en ? "Registered email" : "등록 이메일")}</p>
+                        {!mfaEnabled ? (
+                          <div className="mt-4 space-y-3">
+                            <button disabled={mfaBusy} onClick={requestMfa} type="button" className="rounded-lg bg-[var(--kr-gov-blue)] px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{copy.mfaRequest}</button>
+                            {mfaChallengeId && <div className="flex flex-col gap-2 sm:flex-row"><input aria-label={copy.mfaCode} maxLength={6} inputMode="numeric" value={mfaCode} onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, ""))} placeholder={copy.mfaCode} className="flex-1 rounded-lg border px-4 py-3" /><button disabled={mfaBusy || mfaCode.length !== 6} onClick={verifyMfa} type="button" className="rounded-lg border border-[var(--kr-gov-blue)] px-5 py-3 text-sm font-bold text-[var(--kr-gov-blue)] disabled:opacity-50">{copy.mfaVerify}</button></div>}
+                            {mfaDevelopmentCode && <p className="text-xs font-bold text-orange-700">{en ? "Development verification code" : "개발 인증번호"}: {mfaDevelopmentCode}</p>}
+                          </div>
+                        ) : (
+                          <button disabled={mfaBusy || !currentPassword} onClick={disableMfa} type="button" className="mt-4 rounded-lg border border-red-300 px-5 py-3 text-sm font-bold text-red-700 disabled:opacity-50">{copy.mfaDisable}</button>
+                        )}
+                        {mfaMessage && <p className="mt-3 text-sm font-bold text-gray-700" role="status">{mfaMessage}</p>}
+                      </div>
+                    </section>
                     <div className="mt-12 border-t border-gray-100 pt-8 text-center">
                       <p className="mb-4 text-sm text-gray-500">{copy.forgot}</p>
                       <a className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-6 py-2 text-xs font-bold text-gray-600 transition-all hover:border-[var(--kr-gov-blue)] hover:text-[var(--kr-gov-blue)]" href="#">
@@ -305,11 +403,7 @@ export function MypagePasswordMigrationPage() {
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
+      </MypageKrdsLayout>
       <UserPortalFooter orgName={copy.footerOrg} addressLine={copy.footerAddress} footerLinks={[...copy.footerLinks]} copyright={copy.footerCopyright} lastModifiedLabel={copy.footerLastModifiedLabel} waAlt={copy.footerWaAlt} serviceLine={copy.footerServiceLine} />
     </div>
   );

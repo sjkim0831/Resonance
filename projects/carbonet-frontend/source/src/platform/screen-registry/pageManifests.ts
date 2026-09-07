@@ -706,9 +706,12 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
     layoutVersion: "v1",
     designTokenVersion: "krds-current",
     components: [
-      { componentId: "JoinCompanyReapplyLookup", instanceKey: "join-company-reapply-lookup", layoutZone: "actions", propsSummary: ["bizNo", "repName"] },
-      { componentId: "JoinCompanyReapplyForm", instanceKey: "join-company-reapply-form", layoutZone: "content", propsSummary: ["agencyName", "representativeName", "chargerName", "chargerEmail", "chargerTel"] },
-      { componentId: "JoinCompanyReapplyFiles", instanceKey: "join-company-reapply-files", layoutZone: "content", propsSummary: ["uploadRows", "fileCount"] }
+      { componentId: "JoinCompanyReapplyLookup", instanceKey: "join-company-reapply-lookup", layoutZone: "actions", propsSummary: ["bizNo", "repName", "reapplyTokenPresent"] },
+      { componentId: "JoinCompanyReapplyRejection", instanceKey: "join-company-reapply-rejection", layoutZone: "content", propsSummary: ["rejectionReason", "rejectedAt"] },
+      { componentId: "JoinCompanyReapplyInformation", instanceKey: "join-company-reapply-information", layoutZone: "content", propsSummary: ["agencyName", "representativeName", "chargerName", "chargerEmail", "chargerTel", "companyAddress"] },
+      { componentId: "JoinCompanyReapplyFiles", instanceKey: "join-company-reapply-files", layoutZone: "content", propsSummary: ["uploadRows", "fileCount", "maxFileSizeMb"] },
+      { componentId: "JoinCompanyReapplySubmit", instanceKey: "join-company-reapply-submit", layoutZone: "actions", propsSummary: ["submitting", "submitted"] },
+      { componentId: "JoinCompanyReapplyStatus", instanceKey: "join-company-reapply-status", layoutZone: "content", propsSummary: ["companyName", "status", "submittedAt", "statusLookupPath", "newLookupAction"] }
     ]
   },
   "my-inquiry": {
@@ -903,13 +906,13 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
     routePath: "/mypage/company",
     menuCode: "HMENU_MYPAGE_COMPANY",
     domainCode: "home",
-    layoutVersion: "v1",
+    layoutVersion: "v2",
     designTokenVersion: "krds-current",
     components: [
-      { componentId: "MypageCompanyHero", instanceKey: "mypage-company-hero", layoutZone: "header", propsSummary: ["companyName", "siteCount", "searchKeyword"] },
-      { componentId: "MypageCompanyProfile", instanceKey: "mypage-company-profile", layoutZone: "content", propsSummary: ["companyName", "representative", "businessNumber"] },
-      { componentId: "MypageCompanySites", instanceKey: "mypage-company-sites", layoutZone: "content", propsSummary: ["siteCode", "siteStatus", "lastUpdated"] },
-      { componentId: "MypageCompanyContacts", instanceKey: "mypage-company-contacts", layoutZone: "sidebar", propsSummary: ["contactName", "role", "accessScope"] }
+      { componentId: "MypageCompanyActivationHero", instanceKey: "mypage-company-hero", layoutZone: "header", propsSummary: ["processCode", "stepCode", "activationStatus"] },
+      { componentId: "MypageCompanyProfile", instanceKey: "mypage-company-profile", layoutZone: "content", propsSummary: ["companyName", "businessNumber", "representative", "institutionId", "address", "approvedAt"] },
+      { componentId: "MypageCompanyActivationConditions", instanceKey: "mypage-company-activation-conditions", layoutZone: "content", propsSummary: ["approvalReady", "tenantReady", "evidenceReady"] },
+      { componentId: "MypageCompanyNextTask", instanceKey: "mypage-company-next-task", layoutZone: "sidebar", propsSummary: ["readyCount", "allReady", "nextPath"] }
     ]
   },
   "mypage-password": {
@@ -917,12 +920,27 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
     routePath: "/mypage/password",
     menuCode: "HMENU_MYPAGE_PASSWORD",
     domainCode: "home",
+    layoutVersion: "v2",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "MYPAGE_KRDS_LAYOUT_V1", instanceKey: "mypage-krds-layout", layoutZone: "content", propsSummary: ["breadcrumb", "title", "description", "securityStatus", "sidebar"] },
+      { componentId: "MYPAGE_PAGE_HEADER", instanceKey: "mypage-page-header", layoutZone: "header", propsSummary: ["pageTitle", "description", "securityStatus"] },
+      { componentId: "MYPAGE_SIDE_NAVIGATION", instanceKey: "mypage-side-navigation", layoutZone: "sidebar", propsSummary: ["activeMenu", "helpText"] },
+      { componentId: "MypagePasswordForm", instanceKey: "mypage-password-form", layoutZone: "content", propsSummary: ["currentPassword", "newPassword", "confirmPassword"] }
+    ]
+  },
+  "mypage-personal-data": {
+    pageId: "mypage-personal-data",
+    routePath: "/mypage/personal-data",
+    menuCode: "HMENU_MYPAGE_PERSONAL_DATA",
+    domainCode: "home",
     layoutVersion: "v1",
     designTokenVersion: "krds-current",
     components: [
-      { componentId: "MypagePasswordHero", instanceKey: "mypage-password-hero", layoutZone: "header", propsSummary: ["securityStatus", "userName"] },
-      { componentId: "MypagePasswordMenu", instanceKey: "mypage-password-menu", layoutZone: "sidebar", propsSummary: ["activeMenu", "helpText"] },
-      { componentId: "MypagePasswordForm", instanceKey: "mypage-password-form", layoutZone: "content", propsSummary: ["currentPassword", "newPassword", "confirmPassword"] }
+      { componentId: "PersonalDataRightsHero", instanceKey: "mypage-personal-data-hero", layoutZone: "header", propsSummary: ["memberId", "selfOnly"] },
+      { componentId: "PersonalDataScope", instanceKey: "mypage-personal-data-scope", layoutZone: "content", propsSummary: ["allowedFields", "excludedFields"] },
+      { componentId: "PersonalDataCorrectionRoutes", instanceKey: "mypage-personal-data-correction", layoutZone: "actions", propsSummary: ["profile", "contact", "company"] },
+      { componentId: "PersonalDataExportAudit", instanceKey: "mypage-personal-data-audit", layoutZone: "content", propsSummary: ["sha256", "downloadedAt"] }
     ]
   },
   "edu-my-course": {
@@ -986,6 +1004,26 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "EmissionDashboardHero", instanceKey: "emission-dashboard-hero", layoutZone: "header", propsSummary: ["overallProgress", "needsAction", "readyCount"] },
       { componentId: "EmissionDashboardEightSections", instanceKey: "emission-index-eight-section-dashboard", layoutZone: "content", propsSummary: ["sections", "metric", "progress", "adminLinks"] },
       { componentId: "EmissionDashboardQuickActions", instanceKey: "emission-dashboard-quick-actions", layoutZone: "actions", propsSummary: ["continueTask", "dataInput", "reportSubmit"] }
+    ]
+  },
+  "emission-my-tasks": {
+    pageId: "emission-my-tasks",
+    routePath: "/emission/my-tasks",
+    menuCode: "H1010102",
+    domainCode: "home",
+    layoutVersion: "v2",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "COMMON_USER_GNB", instanceKey: "emission-my-tasks-user-gnb", layoutZone: "header", propsSummary: ["homeMenu", "isLoggedIn", "language"] },
+      { componentId: "MyWorkContextFilters", instanceKey: "emission-my-tasks-work-context", layoutZone: "actions", propsSummary: ["runtimeScope", "project", "period", "status"] },
+      { componentId: "MyWorkTodayStatus", instanceKey: "emission-my-tasks-today-status", layoutZone: "content", propsSummary: ["needsAction", "dueToday", "overdue", "inProgress", "blocked"] },
+      { componentId: "MyWorkNextAction", instanceKey: "emission-my-tasks-next-action", layoutZone: "content", propsSummary: ["actionableTask", "requiredInputs", "expectedOutput", "estimatedPriority"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "emission-my-tasks-task-queue", layoutZone: "content", propsSummary: ["tasks", "status", "actorCode", "targetUrl"] },
+      { componentId: "MyWorkProcessProgress", instanceKey: "emission-my-tasks-process-progress", layoutZone: "content", propsSummary: ["registeredSteps", "pendingPredecessors", "openFullWorkflow"] },
+      { componentId: "MyWorkRiskSummary", instanceKey: "emission-my-tasks-risks", layoutZone: "content", propsSummary: ["overdue", "assignee", "blockedReason"] },
+      { componentId: "MyWorkHandoffActivity", instanceKey: "emission-my-tasks-handoff-activity", layoutZone: "content", propsSummary: ["notifications", "unreadNotificationCount"] },
+      { componentId: "MyWorkNextGuidance", instanceKey: "emission-my-tasks-next-guidance", layoutZone: "actions", propsSummary: ["registeredNextTaskName", "registeredNextActorCode", "openFullWorkflow"] },
+      { componentId: "GLOBAL_SCREEN_SUPPORT", instanceKey: "emission-my-tasks-global-support", layoutZone: "actions", propsSummary: ["HELP", "DESIGN", "QA", "GUIDE", "ALL_WORK"] }
     ]
   },
   "emission-project-list": {
@@ -1097,6 +1135,7 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "EmissionSimulateHero", instanceKey: "emission-simulate-hero", layoutZone: "header", propsSummary: ["engineStatus", "recommendationCount"] },
       { componentId: "EmissionSimulateRecommendations", instanceKey: "emission-simulate-recommendations", layoutZone: "content", propsSummary: ["recommendations", "category", "title"] },
       { componentId: "EmissionSimulateChart", instanceKey: "emission-simulate-chart", layoutZone: "content", propsSummary: ["scenarioId", "forecastCurve", "capLine"] },
+      { componentId: "EmissionSimulateHistory", instanceKey: "emission-simulate-history", layoutZone: "content", propsSummary: ["latestCalculation", "scenarios", "inputHash", "version"] },
       { componentId: "EmissionSimulateBuilder", instanceKey: "emission-simulate-builder", layoutZone: "actions", propsSummary: ["techInvestment", "efficiencyGain", "renewableRate", "ccusScale"] }
     ]
   },

@@ -9,33 +9,438 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.PriorityQueue;
 import java.util.UUID;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
+import java.math.BigDecimal;
 import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
 public class ActorProcessGovernanceService {
+    static final int SYSTEM_TEST_REPORT_COMPACT_JSON_LIMIT_BYTES = 2048;
+    private static final Set<String> SYSTEM_TEST_REPORT_LARGE_JSON_FIELDS = Set.of(
+        "latestPreInputJson", "latestEvidenceJson", "latestInput", "latestOutput", "evidenceJson",
+        "actualInput", "actualOutput", "actualEvidenceJson",
+        "simulationEvidenceJson", "fixtureSuiteCasesJson", "businessEvidenceJson", "screenFunctionInventoryJson",
+        "scopedReviewInventoryJson", "reviewScopesJson", "nextDestinationsJson"
+    );
+    private static final Set<String> PROFESSIONAL_CONTRACT_STATUSES = Set.of(
+        "DRAFT", "REVIEW_REQUIRED", "DESIGN_COMPLETE", "APPROVED", "VERIFIED"
+    );
+    private static final String DESIGN_AUTOMATION_NAMESPACE =
+        "CARBONET_DESIGN_AUTOMATION_V1";
+    private static final String SOURCE_IMMEDIATE_ACTIVATION_POLICY =
+        "SOURCE_IMMEDIATE_V1";
+    private static final Set<String> SOURCE_IMMEDIATE_DESIGN_ASSET_TYPES = Set.of(
+        "THEME", "SECTION", "COMPONENT", "SCREEN"
+    );
+    static final String COMPOSITE_DESIGN_SOURCE_SQL="""
+        select contract.contract_id as "contractId",contract.audience,
+               target.direct_identity as "directIdentity",
+               target.active_binding as "activeBinding",
+               target.binding_count as "bindingCount",
+               target.binding_actor_count as "bindingActorCount",
+               coalesce(target.binding_actor_code,'') as "bindingActorCode",
+               contract.actor_code as "contractActorCode",
+               contract.business_purpose as "businessPurpose",
+               contract.entry_condition as "entryCondition",contract.exit_condition as "exitCondition",
+               contract.kpi_contract as "kpiContract",contract.section_contract as "sectionContract",
+               contract.field_contract as "fieldContract",contract.command_contract as "commandContract",
+               contract.state_contract as "stateContract",contract.api_contract as "apiContract",
+               contract.data_contract as "dataContract",contract.evidence_contract as "evidenceContract",
+               contract.permission_codes as "permissionCodes",
+               contract.responsive_contract as "responsiveContract",
+               contract.accessibility_contract as "accessibilityContract",
+               contract.security_contract as "securityContract",
+               process.domain_code as "workTypeCode",
+               coalesce(process.owner_actor_code,'') as "ownerActorCode",
+               process.process_version as "processVersion",
+               step.step_order as "stepOrder",step.actor_code as "stepActorCode",
+               step.command_code as "stepCommandCode",step.from_state as "stepFromState",
+               step.to_state as "stepToState",step.completion_rule as "stepCompletionRule",
+               step.input_contract as "stepInputContract",step.output_contract as "stepOutputContract",
+               step.api_contract as "stepApiContract",
+               step.requires_notification as "requiresNotification",
+               blueprint.blueprint_id as "blueprintId",blueprint.actor_code as "blueprintActorCode",
+               blueprint.implementation_strategy as "implementationStrategy",
+               blueprint.transition_status as "transitionStatus",
+               blueprint.source_reference as "sourceReference",
+               blueprint.specification_json as "specificationJson",
+               coalesce(nullif(framework_try_jsonb(blueprint.specification_json)->>'layout',''),
+                 (select min(resource.layout_type) from framework_screen_resource resource
+                   where resource.route_key=lower(split_part(contract.route_path,'?',1))
+                   having count(distinct resource.layout_type)=1)) as "currentLayout",
+               nullif(framework_try_jsonb(blueprint.specification_json)->>'theme','') as "currentTheme",
+               coalesce(framework_try_jsonb(blueprint.specification_json)->'assetBindings','[]'::jsonb)::text
+                 as "currentAssetBindings",
+               (select count(*) from framework_screen_blueprint candidate
+                 where candidate.validation_status='VALID'
+                   and upper(candidate.process_code)=upper(contract.process_code)
+                   and upper(candidate.step_code)=upper(contract.step_code)
+                   and upper(candidate.audience)=upper(contract.audience)
+                   and lower(split_part(candidate.route_path,'?',1))=
+                       lower(split_part(contract.route_path,'?',1)))::integer as "candidateCount",
+               (select count(*) from framework_screen_blueprint candidate
+                 where candidate.validation_status='VALID'
+                   and upper(candidate.process_code)=upper(contract.process_code)
+                   and upper(candidate.step_code)=upper(contract.step_code)
+                   and upper(candidate.audience)=upper(contract.audience)
+                   and lower(split_part(candidate.route_path,'?',1))=
+                       lower(split_part(contract.route_path,'?',1))
+                   and candidate.transition_status='CONTRACT_LINKED'
+                   and lower(btrim(coalesce(candidate.source_reference,''))) in(
+                     'professional_screen_contract:'||contract.contract_id,
+                     'framework_professional_screen_contract:'||contract.contract_id))::integer
+                 as "explicitCount",
+               (select count(*) from framework_screen_blueprint candidate
+                 where candidate.validation_status='VALID'
+                   and upper(candidate.process_code)=upper(contract.process_code)
+                   and upper(candidate.step_code)=upper(contract.step_code)
+                   and upper(candidate.audience)=upper(contract.audience)
+                   and lower(split_part(candidate.route_path,'?',1))=
+                       lower(split_part(contract.route_path,'?',1))
+                   and candidate.implementation_strategy='ADOPT_EXISTING')::integer as "adoptCount",
+               (select count(distinct assignment.assignment_id)
+                  from framework_account_actor_assignment assignment
+                  join framework_actor_definition actor on actor.actor_code=assignment.actor_code
+                   and actor.use_at='Y'
+                  left join comtnemplyrinfo employee
+                    on lower(employee.emplyr_id)=lower(assignment.account_id)
+                  left join comtnentrprsmber member
+                    on lower(member.entrprs_mber_id)=lower(assignment.account_id)
+                 where assignment.actor_code=? and assignment.assignment_status='ACTIVE'
+                   and (assignment.valid_from is null or assignment.valid_from<=current_date)
+                   and (assignment.valid_until is null or assignment.valid_until>=current_date)
+                   and coalesce(employee.emplyr_sttus_code,member.entrprs_mber_sttus,'') in('P','A')
+                   and exists(select 1 from comtnemplyrscrtyestbs security
+                     where security.scrty_dtrmn_trget_id=coalesce(employee.esntl_id,member.esntl_id)
+                       and nullif(btrim(security.author_code),'') is not null)
+                   and (assignment.project_id='*' or exists(
+                     select 1 from framework_project_actor_assignment project_assignment
+                      where project_assignment.project_id=assignment.project_id
+                        and project_assignment.actor_code=assignment.actor_code
+                        and lower(project_assignment.user_id)=lower(assignment.account_id)
+                        and project_assignment.active_yn='Y')))::integer
+                 as "activeAccountCount"
+          from framework_professional_screen_contract contract
+          join framework_composite_design_target_identity target
+            on target.contract_id=contract.contract_id and target.contract_count=1
+          join framework_process_definition process
+            on process.process_code=contract.process_code
+          join framework_process_step step
+            on step.process_code=contract.process_code
+           and step.step_code=contract.step_code
+          join framework_screen_blueprint blueprint
+            on blueprint.blueprint_id=? and blueprint.validation_status='VALID'
+           and upper(blueprint.process_code)=upper(contract.process_code)
+           and upper(blueprint.step_code)=upper(contract.step_code)
+           and upper(blueprint.audience)=upper(contract.audience)
+           and lower(split_part(blueprint.route_path,'?',1))=lower(split_part(contract.route_path,'?',1))
+         where contract.contract_id=? and contract.process_code=? and contract.step_code=?
+           and upper(contract.audience)=? and lower(split_part(contract.route_path,'?',1))=lower(?)
+         for update of contract,blueprint
+        """;
     private final JdbcTemplate jdbc;
     private final ScreenDevelopmentNoteService screenDevelopmentNoteService;
     private final CodexProvisioningService codexProvisioningService;
+    private final ScreenContractRuntimeService screenContractRuntimeService;
+
+    public List<Map<String, Object>> dashboardDataset(String dataset) {
+        if("professionalScreenContracts".equals(dataset)){
+            return jdbc.queryForList("""
+                select readiness.*,
+                       contract.permission_codes::text as canonical_permission_codes,
+                       coalesce(nullif(framework_try_jsonb(blueprint.specification_json)->>'layout',''),
+                         resource.layout_type) as layout_code,
+                       coalesce(nullif(framework_try_jsonb(blueprint.specification_json)->>'theme',''),
+                         'KRDS_GOV_DEFAULT') as theme_code
+                  from framework_professional_screen_readiness readiness
+                  join framework_professional_screen_contract contract using(contract_id)
+                  left join framework_screen_resource resource
+                    on resource.route_key=lower(split_part(contract.route_path,'?',1))
+                  left join lateral(
+                    select candidate.specification_json
+                      from framework_screen_blueprint candidate
+                     where candidate.process_code=contract.process_code
+                       and candidate.step_code=contract.step_code
+                       and upper(candidate.audience)=upper(contract.audience)
+                       and lower(split_part(candidate.route_path,'?',1))=
+                           lower(split_part(contract.route_path,'?',1))
+                       and candidate.validation_status='VALID'
+                     order by case when candidate.transition_status='CONTRACT_LINKED'
+                         and lower(candidate.source_reference) in(
+                           'framework_professional_screen_contract:'||contract.contract_id,
+                           'professional_screen_contract:'||contract.contract_id)
+                         then 0 else 1 end,candidate.blueprint_id
+                     limit 1
+                  ) blueprint on true
+                 order by contract.process_code,contract.step_code,contract.audience
+                """).stream().map(this::professionalContractDashboardRow).toList();
+        }
+        if ("processExecutions".equals(dataset)) {
+            return jdbc.queryForList("""
+                select execution.*,step.actor_code as current_actor_code,
+                       case
+                         when execution.process_code<>'EMISSION_PROJECT' then false
+                         when project.project_id is null then true
+                         else false
+                       end as domain_orphaned
+                  from framework_process_execution execution
+                  left join emission_project_registry project
+                    on project.project_id=execution.project_id
+                   and project.tenant_id=execution.tenant_id
+                  left join framework_process_step step
+                    on step.process_code=execution.process_code
+                   and step.step_code=execution.current_step_code
+                 order by execution.updated_at desc
+                 limit 1000
+                """).stream().map(this::camelCaseColumns).toList();
+        }
+        if ("emissionProjectTasks".equals(dataset)) {
+            return jdbc.queryForList("""
+                select task.task_id as "taskId",
+                       task.project_id as "projectId",
+                       project.tenant_id as "tenantId",
+                       project.project_name as "projectName",
+                       task.task_code as "taskCode",
+                       task.task_name as "taskName",
+                       task.step_order as "stepOrder",
+                       task.task_status as "taskStatus",
+                       task.process_code as "processCode",
+                       task.process_step_code as "processStepCode",
+                       task.actor_code as "actorCode",
+                       task.assignee_id as "assigneeId",
+                       task.priority,
+                       task.due_date as "dueDate",
+                       task.predecessor_codes as "predecessorCodes",
+                       task.completion_rule as "completionRule",
+                       task.blocked_reason as "blockedReason",
+                       task.target_url as "targetUrl",
+                       task.started_at as "startedAt",
+                       task.completed_at as "completedAt",
+                       task.completed_by as "completedBy",
+                       (task.task_status='DONE') as "completionSatisfied",
+                       case
+                         when task.task_status='DONE' then
+                           concat('완료',case when task.completed_by is not null
+                             then concat(' · ',task.completed_by) else '' end)
+                         when coalesce(task.blocked_reason,'')<>'' then task.blocked_reason
+                         else coalesce(task.completion_rule,'완료 조건 확인 필요')
+                       end as "completionEvidence",
+                       next_task.task_name as "nextTaskName",
+                       next_task.actor_code as "nextActorCode",
+                       next_task.target_url as "nextTaskUrl"
+                  from emission_project_task task
+                  join emission_project_registry project
+                    on project.project_id=task.project_id
+                  left join lateral (
+                    select following.task_name,following.actor_code,following.target_url
+                      from emission_project_task following
+                     where following.project_id=task.project_id
+                       and following.step_order>task.step_order
+                     order by following.step_order
+                     limit 1
+                  ) next_task on true
+                 order by project.project_id,task.step_order,task.task_id
+                 limit 2000
+                """);
+        }
+        String relation = switch (dataset) {
+            case "actors" -> "framework_actor_definition";
+            case "workTypes" -> "framework_business_work_type";
+            case "processes" -> "framework_process_definition";
+            case "steps" -> "framework_process_step";
+            case "screenBlueprints" -> "framework_screen_blueprint";
+            case "screenArchetypeBindings" -> "framework_screen_process_archetype_binding";
+            case "professionalScreenContracts" -> "framework_professional_screen_readiness";
+            case "cases" -> "framework_simulation_case";
+            case "referenceAssets" -> "framework_reference_asset";
+            case "designValidationRuns" -> "framework_process_design_validation_run";
+            case "processDevelopmentProgress" -> "framework_process_development_progress";
+            case "developmentJobs" -> "framework_development_job";
+            case "screenDevelopmentGates" -> "framework_screen_development_gate_run";
+            case "backendProcessReadiness" -> "framework_process_design_assurance_matrix";
+            case "pageDesigns" -> "framework_page_design_readiness";
+            case "qualityGateResults" -> "framework_development_job_gate_result";
+            case "artifacts" -> "framework_process_artifact";
+            case "deliveryQueue" -> "framework_design_delivery_revision";
+            case "processExecutionEvents" -> "framework_process_execution_event";
+            case "assignments" -> "framework_account_actor_assignment";
+            case "projectCompletionRuns" -> "framework_project_completion_run";
+            case "automationMetrics" -> "framework_automation_metric";
+            case "customerJourneyGaps" -> "framework_customer_journey_gap";
+            case "developmentEvents" -> "framework_development_job_event";
+            case "rollbackRequests" -> "framework_development_rollback_request";
+            default -> "";
+        };
+        if (relation.isBlank()) {
+            return List.of();
+        }
+        return jdbc.queryForList("select * from " + relation + " limit 1000")
+                .stream()
+                .map(this::camelCaseColumns)
+                .toList();
+    }
+
+    public List<Map<String,Object>> dashboardDataset(String dataset,String accountId) {
+        String account=accountId==null?"":accountId.trim();
+        if(account.isBlank())throw new SecurityException("Authenticated control-plane account is required.");
+        List<Map<String,Object>> rows=dashboardDataset(dataset);
+        if(isControlPlaneAdministrator(account))return rows;
+        List<Map<String,Object>> assignments=jdbc.queryForList("""
+            select assignment.actor_code as "actorCode",assignment.project_id as "projectId"
+              from framework_account_actor_assignment assignment
+              join framework_actor_definition actor
+                on actor.actor_code=assignment.actor_code and actor.use_at='Y'
+             where lower(assignment.account_id)=lower(?) and assignment.assignment_status='ACTIVE'
+               and (assignment.valid_from is null or assignment.valid_from<=current_date)
+               and (assignment.valid_until is null or assignment.valid_until>=current_date)
+            """,account);
+        Set<String> actors=assignments.stream()
+                .map(row->String.valueOf(row.get("actorCode"))).collect(java.util.stream.Collectors.toSet());
+        Set<String> projects=assignments.stream()
+                .map(row->String.valueOf(row.get("projectId"))).collect(java.util.stream.Collectors.toSet());
+        Set<String> processes=dashboardDataset("steps").stream()
+                .filter(row->actors.contains(String.valueOf(row.get("actorCode"))))
+                .map(row->String.valueOf(row.get("processCode")))
+                .collect(java.util.stream.Collectors.toSet());
+        Set<String> executionIds=new HashSet<>();
+        if(!projects.isEmpty()){
+            dashboardDataset("processExecutions").stream()
+                    .filter(row->projects.contains("*")||projects.contains(String.valueOf(row.get("projectId"))))
+                    .filter(row->actors.contains(String.valueOf(row.get("currentActorCode"))))
+                    .map(row->String.valueOf(row.get("executionId"))).forEach(executionIds::add);
+        }
+        return rows.stream().filter(row->switch(dataset){
+            case "actors" -> actors.contains(String.valueOf(row.get("actorCode")));
+            case "assignments" -> account.equalsIgnoreCase(String.valueOf(row.get("accountId")));
+            case "processes","cases","artifacts","developmentJobs" ->
+                    processes.contains(String.valueOf(row.get("processCode")));
+            case "steps" -> actors.contains(String.valueOf(row.get("actorCode")))
+                    && processes.contains(String.valueOf(row.get("processCode")));
+            case "processExecutions" -> (projects.contains("*")
+                    ||projects.contains(String.valueOf(row.get("projectId"))))
+                    && actors.contains(String.valueOf(row.get("currentActorCode")))
+                    && !Boolean.TRUE.equals(row.get("domainOrphaned"));
+            case "processExecutionEvents" -> executionIds.contains(String.valueOf(row.get("executionId")));
+            case "emissionProjectTasks" -> (projects.contains("*")
+                    || projects.contains(String.valueOf(row.get("projectId"))));
+            case "workTypes" -> true;
+            default -> false;
+        }).toList();
+    }
+
+    public boolean isControlPlaneAdministrator(String accountId) {
+        Integer count=jdbc.queryForObject("""
+            select count(*)
+              from comtnemplyrscrtyestbs security
+              left join comtnemplyrinfo employee
+                on employee.esntl_id=security.scrty_dtrmn_trget_id
+              left join comtnentrprsmber member
+                on member.esntl_id=security.scrty_dtrmn_trget_id
+             where ((lower(coalesce(employee.emplyr_id,''))=lower(?)
+                       and upper(coalesce(employee.emplyr_sttus_code,'')) in ('P','A'))
+                 or (lower(coalesce(member.entrprs_mber_id,''))=lower(?)
+                       and upper(coalesce(member.entrprs_mber_sttus,'')) in ('P','A')))
+               and security.author_code='ROLE_SYSTEM_MASTER'
+            """,Integer.class,accountId,accountId);
+        return count!=null&&count>0;
+    }
+
+    private void lockCommonDesignSystemAdministrator(String accountId){
+        if(accountId==null||accountId.isBlank()||!accountId.equals(accountId.trim())
+                ||accountId.length()>120)
+            throw new SecurityException("SYSTEM_ADMIN_ACCOUNT_REQUIRED");
+        List<Map<String,Object>> accounts=jdbc.queryForList("""
+            with employee_account as materialized (
+              select esntl_id,'EMPLOYEE' account_type,
+                     upper(coalesce(emplyr_sttus_code,'')) account_status
+                from comtnemplyrinfo
+               where lower(emplyr_id)=lower(?)
+               for update
+            ), enterprise_account as materialized (
+              select esntl_id,'ENTERPRISE' account_type,
+                     upper(coalesce(entrprs_mber_sttus,'')) account_status
+                from comtnentrprsmber
+               where lower(entrprs_mber_id)=lower(?)
+               for update
+            )
+            select * from employee_account
+            union all
+            select * from enterprise_account
+            """,accountId,accountId);
+        if(accounts.size()!=1||!java.util.Set.of("P","A").contains(
+                String.valueOf(accounts.get(0).get("account_status"))))
+            throw new SecurityException("SYSTEM_ADMIN_ACCOUNT_AUTHORITY_REQUIRED");
+        List<Map<String,Object>> roles=jdbc.queryForList("""
+            select scrty_dtrmn_trget_id,author_code
+              from comtnemplyrscrtyestbs
+             where scrty_dtrmn_trget_id=?
+             for update
+            """,accounts.get(0).get("esntl_id"));
+        if(roles.size()!=1||!"ROLE_SYSTEM_MASTER".equals(
+                String.valueOf(roles.get(0).get("author_code"))))
+            throw new SecurityException(
+            "SYSTEM_ADMIN_ACCOUNT_AUTHORITY_REQUIRED");
+    }
+
+    private void lockCommonDesignGlobalSource(){
+        jdbc.query("select pg_advisory_xact_lock(hashtextextended(?,0))",row->{},
+            "COMMON_DESIGN_GLOBAL_SOURCE_GRAPH_V1");
+    }
+
+    private Map<String, Object> camelCaseColumns(Map<String, Object> row) {
+        Map<String, Object> converted = new LinkedHashMap<>();
+        row.forEach((key, value) -> {
+            StringBuilder name = new StringBuilder();
+            boolean upper = false;
+            for (char character : key.toCharArray()) {
+                if (character == '_') {
+                    upper = true;
+                } else {
+                    name.append(upper ? Character.toUpperCase(character) : character);
+                    upper = false;
+                }
+            }
+            converted.put(name.toString(), value);
+        });
+        return converted;
+    }
+
+    private Map<String,Object> professionalContractDashboardRow(Map<String,Object> row){
+        Map<String,Object> converted=camelCaseColumns(row);
+        Object canonicalPermissionCodes=converted.remove("canonicalPermissionCodes");
+        if(canonicalPermissionCodes==null){
+            throw new IllegalStateException("PROFESSIONAL_PERMISSION_CODES_NOT_PROJECTED");
+        }
+        converted.put("permissionCodes",String.valueOf(canonicalPermissionCodes));
+        return converted;
+    }
 
     public Map<String,Object> dashboard() {
         Map<String,Object> out=new LinkedHashMap<>();
         out.put("actors",jdbc.queryForList("select actor_code as \"actorCode\",actor_name as \"actorName\",actor_name_en as \"actorNameEn\",actor_type as \"actorType\",purpose,capability_codes as \"capabilityCodes\",responsibility_text as responsibility,accountability_text as accountability,competency_requirements as competency,conflict_actor_codes as \"conflictActorCodes\",max_concurrent_assignments as \"maxConcurrentAssignments\",review_cycle_days as \"reviewCycleDays\",delegation_allowed as \"delegationAllowed\",use_at as \"useAt\" from framework_actor_definition order by actor_type,actor_code"));
         out.put("workTypes",jdbc.queryForList("select w.work_type_code as \"workTypeCode\",w.work_type_name as \"workTypeName\",w.work_type_name_en as \"workTypeNameEn\",w.description,w.sort_order as \"sortOrder\",w.use_at as \"useAt\",count(p.process_code) as \"processCount\",count(p.process_code) filter(where p.process_status='DEVELOPMENT_READY') as \"readyCount\",count(p.process_code) filter(where p.process_status='IN_DEVELOPMENT') as \"inDevelopmentCount\",count(p.process_code) filter(where p.process_status='DRAFT') as \"draftCount\" from framework_business_work_type w left join framework_process_definition p on upper(p.domain_code)=w.work_type_code group by w.work_type_code,w.work_type_name,w.work_type_name_en,w.description,w.sort_order,w.use_at order by w.sort_order,w.work_type_code"));
         out.put("assignments",jdbc.queryForList("select assignment_id as \"assignmentId\",account_id as \"accountId\",tenant_id as \"tenantId\",project_id as \"projectId\",actor_code as \"actorCode\",data_scope as \"dataScope\",valid_from as \"validFrom\",valid_until as \"validUntil\",assignment_status as \"status\" from framework_account_actor_assignment order by assignment_id desc limit 200"));
+        out.put("deliveryBlueprints",jdbc.queryForList("select blueprint_code as \"blueprintCode\",blueprint_name as \"blueprintName\",blueprint_version as \"blueprintVersion\",domain_code as \"domainCode\",blueprint_status as \"blueprintStatus\",specification_hash as \"specificationHash\",specification::text as specification,approved_by as \"approvedBy\",approved_at as \"approvedAt\",updated_at as \"updatedAt\" from framework_project_delivery_blueprint order by updated_at desc"));
+        out.put("deliveryReleases",jdbc.queryForList("select release_id as \"releaseId\",release_code as \"releaseCode\",blueprint_code as \"blueprintCode\",blueprint_version as \"blueprintVersion\",tenant_id as \"tenantId\",project_id as \"projectId\",release_status as \"releaseStatus\",validation_result::text as \"validationResult\",generation_result::text as \"generationResult\",requested_by as \"requestedBy\",created_at as \"createdAt\",promoted_at as \"promotedAt\" from framework_project_delivery_release order by created_at desc limit 100"));
+        out.put("deliveryProjects",jdbc.queryForList("select project_id as \"projectId\",tenant_id as \"tenantId\",project_name as \"projectName\",project_status as \"projectStatus\" from emission_project_registry where project_status<>'DELETED' order by created_at desc limit 200"));
+        out.put("designSelfHealingRuns",jdbc.queryForList("select run_id as \"runId\",route_key as \"routePath\",affected_process_codes as \"affectedProcessCodes\",run_status as \"runStatus\",regenerated_process_count as \"regeneratedProcessCount\",generated_screen_count as \"generatedScreenCount\",invalid_screen_count as \"invalidScreenCount\",build_required as \"buildRequired\",rollback_policy as \"rollbackPolicy\",executed_by as \"executedBy\",started_at as \"startedAt\",completed_at as \"completedAt\" from framework_design_self_healing_run order by started_at desc limit 20"));
         out.put("actorAccountReadiness",jdbc.queryForList("select assignment.account_id as \"accountId\",assignment.actor_code as \"actorCode\",assignment.tenant_id as \"tenantId\",assignment.project_id as \"projectId\",case when employee.emplyr_id is not null then 'EMPLOYEE' when member.entrprs_mber_id is not null then 'ENTERPRISE' else 'MISSING' end as \"accountType\",coalesce(security.author_code,'') as \"authorityCode\",case when assignment.project_id='*' then 'GLOBAL' when project_assignment.assignment_id is not null then 'READY' else 'DRIFT' end as \"workflowBinding\",case when coalesce(employee.emplyr_sttus_code,member.entrprs_mber_sttus,'') in ('P','A') and security.author_code is not null and (assignment.project_id='*' or project_assignment.assignment_id is not null) then 'READY' else 'CHECK_REQUIRED' end as \"readiness\" from framework_account_actor_assignment assignment left join comtnemplyrinfo employee on lower(employee.emplyr_id)=lower(assignment.account_id) left join comtnentrprsmber member on lower(member.entrprs_mber_id)=lower(assignment.account_id) left join comtnemplyrscrtyestbs security on security.scrty_dtrmn_trget_id=coalesce(employee.esntl_id,member.esntl_id) left join framework_project_actor_assignment project_assignment on project_assignment.project_id=assignment.project_id and project_assignment.actor_code=assignment.actor_code and lower(project_assignment.user_id)=lower(assignment.account_id) and project_assignment.active_yn='Y' where assignment.assignment_status='ACTIVE' order by case when assignment.project_id='*' then 1 else 0 end,assignment.project_id,assignment.actor_code,assignment.account_id limit 300"));
         out.put("processes",jdbc.queryForList("select p.process_code as \"processCode\",p.process_name as \"processName\",p.domain_code as \"domainCode\",p.process_version as \"version\",p.parent_process_code as \"parentProcessCode\",p.process_level as \"processLevel\",p.automation_mode as \"automationMode\",p.development_order as \"developmentOrder\",p.prerequisite_codes as \"prerequisiteCodes\",p.goal,p.start_condition as \"startCondition\",p.completion_condition as \"completionCondition\",p.process_status as \"status\",p.owner_actor_code as \"ownerActorCode\",p.risk_level as \"riskLevel\",p.sla_hours as \"slaHours\",p.review_cycle_days as \"reviewCycleDays\",p.regulation_refs as \"regulationRefs\",p.lifecycle_status as \"lifecycleStatus\",p.effective_from as \"effectiveFrom\",p.effective_until as \"effectiveUntil\",count(distinct s.step_id) as \"stepCount\",count(distinct c.case_code) as \"caseCount\",count(distinct c.case_code) filter(where c.case_status='APPROVED') as \"approvedCaseCount\",count(distinct r.run_id) filter(where r.result='PASSED') as \"passedRuns\",(select count(*) from framework_process_artifact a where a.process_code=p.process_code and a.required) as \"artifactCount\",(select count(*) from framework_process_artifact a where a.process_code=p.process_code and a.required and a.delivery_status='VERIFIED') as \"verifiedArtifactCount\" from framework_process_definition p left join framework_process_step s on s.process_code=p.process_code left join framework_simulation_case c on c.process_code=p.process_code left join framework_simulation_run r on r.case_code=c.case_code group by p.process_code order by p.development_order,p.process_code"));
-        out.put("steps",jdbc.queryForList("select step_id as \"stepId\",process_code as \"processCode\",step_order as \"stepOrder\",step_code as \"stepCode\",step_name as \"stepName\",parent_step_code as \"parentStepCode\",step_type as \"stepType\",actor_code as \"actorCode\",from_state as \"fromState\",command_code as \"commandCode\",to_state as \"toState\",completion_rule as \"completionRule\",requirement_text as \"requirementText\",input_contract as \"inputContract\",output_contract as \"outputContract\",requires_user_page as \"requiresUserPage\",requires_admin_page as \"requiresAdminPage\",requires_api as \"requiresApi\",requires_database as \"requiresDatabase\",requires_notification as \"requiresNotification\",automation_status as \"automationStatus\",user_path as \"userPath\",admin_path as \"adminPath\",api_contract as \"apiContract\" from framework_process_step order by process_code,step_order"));
+        out.put("steps",jdbc.queryForList("select step_id as \"stepId\",process_code as \"processCode\",step_order as \"stepOrder\",step_code as \"stepCode\",step_name as \"stepName\",parent_step_code as \"parentStepCode\",step_type as \"stepType\",actor_code as \"actorCode\",from_state as \"fromState\",command_code as \"commandCode\",to_state as \"toState\",completion_rule as \"completionRule\",requirement_text as \"requirementText\",input_contract as \"inputContract\",output_contract as \"outputContract\",requires_user_page as \"requiresUserPage\",requires_admin_page as \"requiresAdminPage\",requires_api as \"requiresApi\",requires_database as \"requiresDatabase\",requires_notification as \"requiresNotification\",automation_status as \"automationStatus\",user_path as \"userPath\",admin_path as \"adminPath\",api_contract as \"apiContract\",sla_hours as \"slaHours\",escalation_actor_code as \"escalationActorCode\",evidence_required as \"evidenceRequired\",evidence_types as \"evidenceTypes\",segregation_actor_codes as \"segregationActorCodes\",rollback_command_code as \"rollbackCommandCode\",decision_rule as \"decisionRule\" from framework_process_step order by process_code,step_order"));
         out.put("stepExecutionSpecs",jdbc.queryForList("select process_code as \"processCode\",step_code as \"stepCode\",spec_version as \"specVersion\",field_contract::text as \"fieldContract\",command_contract::text as \"commandContract\",test_contract::text as \"testContract\",guide_contract::text as \"guideContract\",design_status as \"designStatus\",approval_status as \"approvalStatus\",generation_status as \"generationStatus\" from framework_step_execution_spec order by process_code,step_code"));
         out.put("cases",jdbc.queryForList("select case_code as \"caseCode\",process_code as \"processCode\",case_name as \"caseName\",case_type as \"caseType\",preconditions,steps_json as \"stepsJson\",assertions_json as \"assertionsJson\",case_status as \"status\" from framework_simulation_case order by process_code,case_code"));
         out.put("runs",jdbc.queryForList("select run_id as \"runId\",case_code as \"caseCode\",process_version as \"processVersion\",result,failure_reason as \"failureReason\",executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_simulation_run order by run_id desc limit 100"));
@@ -51,6 +456,7 @@ public class ActorProcessGovernanceService {
         out.put("qualityGateResults",jdbc.queryForList("select result_id as \"resultId\",job_id as \"jobId\",gate_code as \"gateCode\",result,summary,evidence_ref as \"evidenceRef\",checked_at as \"executedAt\" from framework_development_job_gate_result order by result_id desc limit 300"));
         out.put("processDevelopmentProgress",jdbc.queryForList("select process_code as \"processCode\",required_jobs as \"requiredJobs\",verified_jobs as \"verifiedJobs\",failed_jobs as \"failedJobs\",parallel_jobs as \"parallelJobs\",completion_percent as \"completionPercent\" from framework_process_development_progress order by process_code"));
         out.put("developmentEvents",jdbc.queryForList("select e.event_id as \"eventId\",e.job_id as \"jobId\",e.event_type as \"eventType\",e.from_status as \"fromStatus\",e.to_status as \"toStatus\",e.worker_id as \"workerId\",e.created_at as \"createdAt\" from framework_development_job_event e order by e.event_id desc limit 200"));
+        out.put("rollbackRequests",jdbc.queryForList("select rollback_request_id as \"rollbackRequestId\",source_job_id as \"sourceJobId\",rollback_job_id as \"rollbackJobId\",rollback_ref as \"rollbackRef\",request_reason as \"requestReason\",request_status as \"requestStatus\",preflight_status as \"preflightStatus\",preflight_summary as \"preflightSummary\",requested_by as \"requestedBy\",requested_at as \"requestedAt\",approved_by as \"approvedBy\",approved_at as \"approvedAt\",completed_at as \"completedAt\" from framework_development_rollback_request order by rollback_request_id desc limit 200"));
         out.put("screenDevelopmentGates",jdbc.queryForList("select gate_run_id as \"gateRunId\",process_code as \"processCode\",step_code as \"stepCode\",route_path as \"routePath\",page_id as \"pageId\",gate_status as \"gateStatus\",readiness_score as \"readinessScore\",design_note_passed as \"designNotePassed\",selected_mockup_passed as \"selectedMockupPassed\",actor_contract_passed as \"actorContractPassed\",safety_tests_passed as \"safetyTestsPassed\",design_asset_checked as \"designAssetChecked\",failure_summary as \"failureSummary\",executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_screen_development_gate_run order by gate_run_id desc limit 300"));
         out.put("commonFeaturePackages",jdbc.queryForList("select feature_code as \"featureCode\",feature_name as \"featureName\",feature_version as \"featureVersion\",feature_category as \"featureCategory\",description,api_contract as \"apiContract\",data_contract as \"dataContract\",ui_contract as \"uiContract\",event_contract as \"eventContract\",permission_contract as \"permissionContract\",test_contract as \"testContract\",install_strategy as \"installStrategy\" from framework_common_feature_package where active_yn='Y' order by feature_category,feature_code"));
         out.put("screenFeatureBindings",jdbc.queryForList("select process_code as \"processCode\",step_code as \"stepCode\",audience,route_path as \"routePath\",feature_code as \"featureCode\",binding_options as \"bindingOptions\",required_yn as \"requiredYn\" from framework_screen_feature_binding order by process_code,step_code,audience,route_path,feature_code"));
@@ -58,8 +464,9 @@ public class ActorProcessGovernanceService {
         out.put("designValidationRuns",jdbc.queryForList("select validation_run_id as \"validationRunId\",process_code as \"processCode\",validation_status as \"validationStatus\",blocker_count as \"blockerCount\",warning_count as \"warningCount\",result_json as \"resultJson\",source_fingerprint as \"sourceFingerprint\",executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_process_design_validation_run order by validation_run_id desc limit 100"));
         out.put("designAssurance",jdbc.queryForList("select process_code as \"processCode\",process_name as \"processName\",domain_code as \"domainCode\",assurance_status as \"assuranceStatus\",design_accuracy_score as \"designAccuracyScore\",design_blocker_count as \"designBlockerCount\",step_count as \"stepCount\",missing_actor_binding_count+unknown_actor_count as \"actorContractGaps\",incomplete_transition_count+unreachable_next_state_count as \"stateFlowGaps\",incomplete_business_rule_count as \"businessRuleGaps\",incomplete_data_contract_count as \"dataContractGaps\",missing_user_route_count+missing_admin_route_count as \"routeGaps\",missing_user_screen_contract_count+missing_admin_screen_contract_count as \"screenContractGaps\",missing_api_contract_count as \"apiContractGaps\",safety_test_type_count as \"safetyTestTypeCount\",approved_safety_test_type_count as \"approvedSafetyTestTypeCount\",required_job_count as \"requiredJobCount\",verified_job_count as \"verifiedJobCount\",blocked_job_count as \"blockedJobCount\",next_action as \"nextAction\" from framework_process_design_assurance_matrix order by design_blocker_count desc,design_accuracy_score,process_code"));
         out.put("designAssuranceSummary",jdbc.queryForMap("select count(*) as \"processCount\",count(*) filter(where assurance_status='IMPLEMENTATION_VERIFIED') as \"verifiedCount\",count(*) filter(where assurance_status='DESIGN_BLOCKED') as \"blockedCount\",count(*) filter(where assurance_status in ('IMPLEMENTATION_PENDING','REVIEW_REQUIRED')) as \"pendingCount\",coalesce(round(avg(design_accuracy_score),1),0) as \"averageAccuracyScore\" from framework_process_design_assurance_matrix"));
+        out.put("executableScreenSummary",jdbc.queryForMap("select count(*) as \"screenCount\",count(*) filter(where design_ready) as \"designReadyCount\",count(*) filter(where executable_status='IMPLEMENTATION_PENDING') as \"implementationPendingCount\",count(*) filter(where executable_status='VERIFIED') as \"verifiedCount\",count(*) filter(where executable_status='DESIGN_BLOCKED') as \"blockedCount\" from framework_executable_screen_design_gate"));
         out.put("professionalDesignGraphSummary",jdbc.queryForMap("select process_count as \"processCount\",step_count as \"stepCount\",ready_step_count as \"readyStepCount\",blocked_step_count as \"blockedStepCount\",screen_binding_count as \"screenBindingCount\",capability_binding_count as \"capabilityBindingCount\",test_binding_count as \"testBindingCount\" from framework_professional_design_graph_summary"));
-        out.put("professionalDesignGraphBlockers",jdbc.queryForList("select q.process_code as \"processCode\",p.process_name as \"processName\",q.step_code as \"stepCode\",s.step_name as \"stepName\",q.blocker_codes as \"blockerCodes\",q.screen_binding_count as \"screenBindingCount\",q.capability_count as \"capabilityCount\",q.input_count as \"inputCount\",q.output_count as \"outputCount\",q.test_family_count as \"testFamilyCount\" from framework_professional_design_graph_quality q join framework_process_definition p using(process_code) join framework_process_step s using(process_code,step_code) where q.design_status='BLOCKED' order by p.development_order,s.step_order"));
+        out.put("professionalDesignGraphBlockers",jdbc.queryForList("select q.process_code as \"processCode\",p.process_name as \"processName\",q.step_code as \"stepCode\",s.step_name as \"stepName\",array_to_string(q.blocker_codes, ', ') as \"blockerCodes\",q.screen_binding_count as \"screenBindingCount\",q.capability_count as \"capabilityCount\",q.input_count as \"inputCount\",q.output_count as \"outputCount\",q.test_family_count as \"testFamilyCount\" from framework_professional_design_graph_quality q join framework_process_definition p using(process_code) join framework_process_step s using(process_code,step_code) where q.design_status='BLOCKED' order by p.development_order,s.step_order"));
         out.put("sharedProfessionalScreens",jdbc.queryForList("select r.screen_resource_id as \"screenResourceId\",r.route_key as \"routePath\",r.screen_name as \"screenName\",r.implementation_status as \"implementationStatus\",count(distinct b.process_code) as \"processCount\",count(distinct (b.process_code,b.step_code)) as \"stepCount\" from framework_screen_resource r join framework_process_step_screen_binding b using(screen_resource_id) where b.binding_status='ACTIVE' group by r.screen_resource_id having count(distinct (b.process_code,b.step_code))>1 order by count(distinct (b.process_code,b.step_code)) desc,r.route_key limit 100"));
         out.put("professionalDesignGenerationRuns",jdbc.queryForList("select run_id as \"runId\",requested_process_code as \"requestedProcessCode\",run_status as \"runStatus\",generated_process_count as \"generatedProcessCount\",generated_step_count as \"generatedStepCount\",generated_screen_count as \"generatedScreenCount\",blocker_count as \"blockerCount\",duration_ms as \"durationMs\",requested_by as \"requestedBy\",started_at as \"startedAt\",completed_at as \"completedAt\" from framework_design_generation_run order by run_id desc limit 20"));
         out.put("projectProcessDeliveryPlan",jdbc.queryForList("select delivery_order as \"deliveryOrder\",process_code as \"processCode\",process_name as \"processName\",domain_code as \"domainCode\",step_count as \"stepCount\",project_count as \"projectCount\",assurance_status as \"assuranceStatus\",design_accuracy_score as \"designAccuracyScore\",next_action as \"nextAction\",selection_status as \"selectionStatus\" from framework_project_process_sequential_delivery order by delivery_order"));
@@ -75,7 +482,7 @@ public class ActorProcessGovernanceService {
         out.put("generationBatches",jdbc.queryForList("select batch_id as \"batchId\",batch_code as \"batchCode\",batch_name as \"batchName\",process_code as \"processCode\",requested_count as \"requestedCount\",compiled_count as \"compiledCount\",valid_count as \"validCount\",invalid_count as \"invalidCount\",queued_count as \"queuedCount\",batch_status as \"batchStatus\",dry_run as \"dryRun\",requested_by as \"requestedBy\",created_at as \"createdAt\",completed_at as \"completedAt\" from framework_screen_generation_batch order by batch_id desc limit 30"));
         out.put("professionalReadiness",jdbc.queryForList("select process_code as \"processCode\",process_name as \"processName\",lifecycle_status as \"lifecycleStatus\",risk_level as \"riskLevel\",readiness_score as \"readinessScore\",readiness_gaps as \"readinessGaps\",step_count as \"stepCount\",scenario_type_count as \"scenarioTypeCount\",approved_case_count as \"approvedCaseCount\",case_count as \"caseCount\" from framework_process_professional_readiness order by readiness_score,process_code"));
         out.put("professionalSummary",jdbc.queryForMap("select count(*) as \"totalProcesses\",count(*) filter(where readiness_score=100) as \"expertReadyProcesses\",count(*) filter(where readiness_score<80) as \"highRiskProcesses\",coalesce(round(avg(readiness_score),1),0) as \"averageScore\" from framework_process_professional_readiness"));
-        out.put("professionalScreenContracts",jdbc.queryForList("select contract_id as \"contractId\",process_code as \"processCode\",step_code as \"stepCode\",audience,route_path as \"routePath\",screen_name as \"screenName\",actor_code as \"actorCode\",business_purpose as \"businessPurpose\",entry_condition as \"entryCondition\",exit_condition as \"exitCondition\",kpi_contract as \"kpiContract\",section_contract as \"sectionContract\",field_contract as \"fieldContract\",command_contract as \"commandContract\",state_contract as \"stateContract\",api_contract as \"apiContract\",data_contract as \"dataContract\",evidence_contract as \"evidenceContract\",api_verified as \"apiVerified\",database_verified as \"databaseVerified\",authority_verified as \"authorityVerified\",responsive_verified as \"responsiveVerified\",accessibility_verified as \"accessibilityVerified\",exception_states_verified as \"exceptionStatesVerified\",audit_evidence_ref as \"auditEvidenceRef\",contract_status as \"contractStatus\",readiness_score as \"readinessScore\",readiness_gaps as \"readinessGaps\" from framework_professional_screen_readiness order by process_code,step_code,audience"));
+        out.put("professionalScreenContracts",jdbc.queryForList("select contract_id as \"contractId\",process_code as \"processCode\",step_code as \"stepCode\",audience,route_path as \"routePath\",screen_name as \"screenName\",actor_code as \"actorCode\",business_purpose as \"businessPurpose\",entry_condition as \"entryCondition\",exit_condition as \"exitCondition\",kpi_contract as \"kpiContract\",section_contract as \"sectionContract\",field_contract as \"fieldContract\",command_contract as \"commandContract\",state_contract as \"stateContract\",api_contract as \"apiContract\",data_contract as \"dataContract\",evidence_contract as \"evidenceContract\",responsive_contract as \"responsiveContract\",accessibility_contract as \"accessibilityContract\",security_contract as \"securityContract\",api_verified as \"apiVerified\",database_verified as \"databaseVerified\",authority_verified as \"authorityVerified\",responsive_verified as \"responsiveVerified\",accessibility_verified as \"accessibilityVerified\",exception_states_verified as \"exceptionStatesVerified\",audit_evidence_ref as \"auditEvidenceRef\",contract_status as \"contractStatus\",readiness_score as \"readinessScore\",readiness_gaps as \"readinessGaps\" from framework_professional_screen_readiness order by process_code,step_code,audience"));
         out.put("professionalScreenSummary",jdbc.queryForMap("select count(*) as \"totalScreens\",count(*) filter(where readiness_score=100) as \"completeScreens\",count(*) filter(where readiness_score<100) as \"blockedScreens\",coalesce(round(avg(readiness_score),1),0) as \"averageScore\" from framework_professional_screen_readiness"));
         out.put("pageDesigns",jdbc.queryForList("select page_design_id as \"pageDesignId\",process_code as \"processCode\",step_code as \"stepCode\",audience,page_code as \"pageCode\",page_title as \"pageTitle\",page_purpose as \"pagePurpose\",screen_type as \"screenType\",planned_route_path as \"plannedRoutePath\",coalesce(actual_route_path,'') as \"actualRoutePath\",route_status as \"routeStatus\",primary_entity as \"primaryEntity\",actor_code as \"actorCode\",coalesce(upstream_step_code,'') as \"upstreamStepCode\",coalesce(downstream_step_code,'') as \"downstreamStepCode\",field_count as \"fieldCount\",required_field_count as \"requiredFieldCount\",list_field_count as \"listFieldCount\",search_field_count as \"searchFieldCount\",db_resolved_field_count as \"dbResolvedFieldCount\",implementation_field_count as \"implementationFieldCount\",evidence_field_count as \"evidenceFieldCount\",field_summary as \"fieldSummary\",readiness_status as \"readinessStatus\" from framework_page_design_readiness order by process_code,step_code,audience limit 2000"));
         out.put("pageDesignSummary",jdbc.queryForMap("select page_count as \"pageCount\",implemented_page_count as \"implementedPageCount\",design_only_page_count as \"designOnlyPageCount\",field_count as \"fieldCount\",required_field_count as \"requiredFieldCount\",db_resolved_field_count as \"dbResolvedFieldCount\",implementation_field_count as \"implementationFieldCount\",incomplete_page_count as \"incompletePageCount\",handoff_count as \"handoffCount\" from framework_page_design_summary"));
@@ -90,11 +497,272 @@ public class ActorProcessGovernanceService {
         out.put("customerJourneySummary",jdbc.queryForMap("select total_gaps as \"totalGaps\",blocker_gaps as \"blockerGaps\",warning_gaps as \"warningGaps\",dead_menu_gaps as \"deadMenuGaps\",task_route_gaps as \"taskRouteGaps\",registration_gaps as \"registrationGaps\" from framework_customer_journey_quality_summary"));
         out.put("actorProcessMenus",jdbc.queryForList("select menu_code as \"menuCode\",menu_nm as \"menuName\",menu_url as \"menuUrl\",audience,process_code as \"processCode\",step_code as \"stepCode\",actor_code as \"actorCode\",binding_status as \"bindingStatus\" from framework_actor_process_menu_coverage order by audience,menu_code"));
         out.put("actorProcessMenuSummary",jdbc.queryForMap("select navigable_menu_count as \"navigableMenuCount\",bound_menu_count as \"boundMenuCount\",missing_menu_count as \"missingMenuCount\",connected_process_count as \"connectedProcessCount\",connected_actor_count as \"connectedActorCount\" from framework_actor_process_menu_summary"));
+        out.put("processArchetypes",jdbc.queryForList("select a.archetype_code as \"archetypeCode\",a.archetype_name as \"archetypeName\",a.category_code as \"categoryCode\",a.purpose,a.input_contract::text as \"inputContract\",a.output_contract::text as \"outputContract\",a.command_contract::text as \"commandContract\",a.state_contract::text as \"stateContract\",a.exception_contract::text as \"exceptionContract\",a.test_contract::text as \"testContract\",array_to_string(a.recommended_screen_types,', ') as \"recommendedScreenTypes\",c.screen_count as \"screenCount\",c.process_count as \"processCount\",c.actor_count as \"actorCount\",c.primary_binding_count as \"primaryBindingCount\" from framework_process_archetype a join framework_process_archetype_coverage c using(archetype_code) where a.active_yn='Y' order by a.sort_order,a.archetype_code"));
+        out.put("screenArchetypeBindings",jdbc.queryForList("select binding_id as \"bindingId\",route_path as \"routePath\",archetype_code as \"archetypeCode\",binding_role as \"bindingRole\",process_code as \"processCode\",step_code as \"stepCode\",actor_code as \"actorCode\",entry_condition as \"entryCondition\",completion_condition as \"completionCondition\",binding_options::text as \"bindingOptions\",sort_order as \"sortOrder\",created_by as \"createdBy\",updated_at as \"updatedAt\" from framework_screen_process_archetype_binding where active_yn='Y' order by route_path,case binding_role when 'PRIMARY' then 0 else 1 end,sort_order,binding_id"));
         out.put("backendProcessReadiness",jdbc.queryForList("select process_code as \"processCode\",process_name as \"processName\",domain_code as \"domainCode\",owner_actor_code as \"ownerActorCode\",step_count as \"stepCount\",contracted_steps as \"contractedSteps\",passed_backend_tests as \"passedBackendTests\",backend_test_count as \"backendTestCount\",backend_readiness_score as \"backendReadinessScore\",backend_gaps as \"backendGaps\" from framework_backend_process_readiness order by backend_readiness_score,process_code"));
         out.put("backendProcessSummary",jdbc.queryForMap("select count(*) as \"processCount\",count(*) filter(where backend_readiness_score=100) as \"completeCount\",count(*) filter(where backend_readiness_score<100) as \"incompleteCount\",coalesce(round(avg(backend_readiness_score),1),0) as \"averageScore\" from framework_backend_process_readiness"));
         out.put("deliveryQueue",jdbc.queryForList("select process_code as \"processCode\",process_name as \"processName\",domain_code as \"domainCode\",development_order as \"developmentOrder\",process_status as \"processStatus\",step_count as \"stepCount\",actor_bound_steps as \"actorBoundSteps\",test_count as \"testCount\",test_type_count as \"testTypeCount\",passed_tests as \"passedTests\",required_tasks as \"requiredTasks\",completed_tasks as \"completedTasks\",blocked_tasks as \"blockedTasks\",required_artifacts as \"requiredArtifacts\",verified_artifacts as \"verifiedArtifacts\",screen_contracts as \"screenContracts\",ready_screens as \"readyScreens\",completion_score as \"completionScore\",next_action as \"nextAction\",delivery_priority as priority from framework_process_delivery_priority_queue order by case delivery_priority when 'BLOCKER' then 0 when 'HIGH' then 1 when 'MEDIUM' then 2 when 'LOW' then 3 else 4 end,development_order,process_code"));
         out.put("deliverySummary",jdbc.queryForMap("select count(*) as \"totalProcesses\",count(*) filter(where next_action='COMPLETE') as \"completeProcesses\",count(*) filter(where delivery_priority='BLOCKER') as blockers,count(*) filter(where delivery_priority='HIGH') as \"highPriority\",coalesce(round(avg(completion_score),1),0) as \"averageScore\" from framework_process_delivery_priority_queue"));
         out.put("summary",jdbc.queryForMap("select count(*) as \"processCount\",count(*) filter(where process_status='DEVELOPMENT_READY') as \"readyCount\",count(*) filter(where process_status<>'DEVELOPMENT_READY') as \"draftCount\",coalesce(round(100.0*count(*) filter(where process_status='DEVELOPMENT_READY')/nullif(count(*),0)),0) as \"readinessPercent\" from framework_process_definition"));
+        return out;
+    }
+
+    /**
+     * Small, bounded bootstrap payload for the interactive control plane.
+     * The complete dashboard contains large design and evidence datasets and can
+     * exceed the browser/gateway response deadline.  Keep the first paint and
+     * project-delivery transaction independent from those optional datasets.
+     */
+    public Map<String,Object> dashboardCore() {
+        Map<String,Object> out=new LinkedHashMap<>();
+        out.put("actors", dashboardDataset("actors"));
+        out.put("workTypes", dashboardDataset("workTypes"));
+        out.put("assignments", dashboardDataset("assignments"));
+        out.put("processes", dashboardDataset("processes"));
+        out.put("steps", dashboardDataset("steps"));
+        out.put("cases", dashboardDataset("cases"));
+        out.put("artifacts", dashboardDataset("artifacts"));
+        out.put("developmentJobs", dashboardDataset("developmentJobs"));
+        out.put("processExecutions", dashboardDataset("processExecutions"));
+        out.put("processClosing", processClosingStatus());
+        out.put("deliveryBlueprints",jdbc.queryForList("select blueprint_code as \"blueprintCode\",blueprint_name as \"blueprintName\",blueprint_version as \"blueprintVersion\",domain_code as \"domainCode\",blueprint_status as \"blueprintStatus\",specification_hash as \"specificationHash\",specification::text as specification,approved_by as \"approvedBy\",approved_at as \"approvedAt\",updated_at as \"updatedAt\" from framework_project_delivery_blueprint order by updated_at desc"));
+        out.put("deliveryReleases",jdbc.queryForList("select release_id as \"releaseId\",release_code as \"releaseCode\",blueprint_code as \"blueprintCode\",blueprint_version as \"blueprintVersion\",tenant_id as \"tenantId\",project_id as \"projectId\",release_status as \"releaseStatus\",validation_result::text as \"validationResult\",generation_result::text as \"generationResult\",requested_by as \"requestedBy\",created_at as \"createdAt\",promoted_at as \"promotedAt\" from framework_project_delivery_release order by created_at desc limit 100"));
+        out.put("deliveryProjects",jdbc.queryForList("select project_id as \"projectId\",tenant_id as \"tenantId\",project_name as \"projectName\",project_status as \"projectStatus\" from emission_project_registry where project_status<>'DELETED' order by created_at desc limit 200"));
+        out.put("summary",Map.of(
+                "readyCount",jdbc.queryForObject("select count(*) from framework_process_definition where process_status='DEVELOPMENT_READY'",Long.class),
+                "readinessPercent",jdbc.queryForObject("select case when count(*)=0 then 0 else round(100.0*count(*) filter(where process_status='DEVELOPMENT_READY')/count(*),1) end from framework_process_definition",BigDecimal.class)));
+        return out;
+    }
+
+    /**
+     * Separates process-design closure from implementation completion.
+     * A process is design-closed only when its actor, state, business rule,
+     * input/output, route, API, evidence, sequence and five safety-test
+     * contracts have no blocker. Implementation evidence is reported as a
+     * separate downstream gate and can never make an incomplete design look
+     * closed.
+     */
+    public Map<String,Object> processClosingStatus() {
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+            select process_code as "processCode",process_name as "processName",
+                   domain_code as "domainCode",step_count as "stepCount",
+                   design_blocker_count as "designBlockerCount",
+                   approved_safety_test_type_count as "approvedSafetyTestTypeCount",
+                   missing_actor_binding_count+unknown_actor_count as "actorGaps",
+                   incomplete_transition_count+unreachable_next_state_count as "stateGaps",
+                   incomplete_business_rule_count as "businessRuleGaps",
+                   incomplete_data_contract_count as "dataContractGaps",
+                   missing_user_route_count+missing_admin_route_count as "routeGaps",
+                   missing_user_screen_contract_count+missing_admin_screen_contract_count as "screenContractGaps",
+                   missing_api_contract_count as "apiContractGaps",
+                   missing_evidence_contract_count as "evidenceGaps",
+                   missing_sequence_count as "sequenceGaps",
+                   required_job_count as "requiredJobs",verified_job_count as "verifiedJobs",
+                   definition_locked as "implementationSourceLocked",
+                   case
+                     when design_blocker_count=0 and approved_safety_test_type_count=5 then 'PROCESS_DESIGN_CLOSED'
+                     when design_blocker_count=0 then 'SAFETY_REVIEW_REQUIRED'
+                     else 'PROCESS_DESIGN_BLOCKED'
+                   end as "closingStatus",
+                   case
+                     when design_blocker_count=0 and approved_safety_test_type_count=5 then 'SCREEN_DESIGN_CLOSING'
+                     else coalesce(nullif(next_action,''),'PROCESS_DESIGN_REPAIR')
+                   end as "nextAction"
+              from framework_process_design_assurance_matrix
+             order by case when design_blocker_count=0 and approved_safety_test_type_count=5 then 1 else 0 end,
+                      design_blocker_count desc,process_code
+            """);
+        Map<String,Object> summary=jdbc.queryForMap("""
+            select count(*) as "totalProcesses",coalesce(sum(step_count),0) as "totalSteps",
+                   count(*) filter(where design_blocker_count=0 and approved_safety_test_type_count=5) as "closedProcesses",
+                   count(*) filter(where design_blocker_count=0 and approved_safety_test_type_count<5) as "reviewRequiredProcesses",
+                   count(*) filter(where design_blocker_count>0) as "blockedProcesses",
+                   coalesce(sum(design_blocker_count),0) as "structuralBlockers",
+                   coalesce(sum(missing_user_route_count+missing_admin_route_count),0) as "missingRoutes",
+                   count(*) filter(where assurance_status='IMPLEMENTATION_VERIFIED') as "implementationClosedProcesses"
+              from framework_process_design_assurance_matrix
+            """);
+        return Map.of("summary",summary,"rows",rows,"evaluatedAt",java.time.Instant.now().toString());
+    }
+
+    @Transactional
+    public Map<String,Object> auditProcessClosing(String actor) {
+        jdbc.queryForMap("select * from framework_audit_all_process_designs(?)",actor);
+        Map<String,Object> result=new LinkedHashMap<>(processClosingStatus());
+        result.put("success",true);
+        result.put("auditedBy",actor);
+        return result;
+    }
+
+    @Transactional
+    public Map<String,Object> bindScreenProcessArchetype(Map<String,Object> body,String actor){
+        if(actor==null||actor.isBlank()||!actor.equals(actor.trim())||actor.length()>100)
+            throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
+        String route=ScreenDevelopmentNoteService.cleanRoute(req(body,"routePath"));
+        String archetype=req(body,"archetypeCode").trim().toUpperCase(Locale.ROOT);
+        String role=def(body,"bindingRole","PRIMARY").trim().toUpperCase(Locale.ROOT);
+        String process=req(body,"processCode").trim().toUpperCase(Locale.ROOT);
+        String step=req(body,"stepCode").trim().toUpperCase(Locale.ROOT);
+        String actorCode=req(body,"actorCode").trim().toUpperCase(Locale.ROOT);
+        String entryCondition=req(body,"entryCondition").trim();
+        String completionCondition=req(body,"completionCondition").trim();
+        String bindingOptions=def(body,"bindingOptions","{}");
+        if(!Set.of("PRIMARY","SUBPROCESS","EXCEPTION","COMMON").contains(role))throw new IllegalArgumentException("Unsupported bindingRole: "+role);
+        validateJsonObject(bindingOptions,"bindingOptions");
+        lockCanonicalProcessPublication(process);
+        List<Map<String,Object>> archetypes=jdbc.queryForList("""
+            select archetype_code as "archetypeCode",archetype_name as "archetypeName",
+                   category_code as "categoryCode",purpose,
+                   input_contract::text as "inputContract",
+                   output_contract::text as "outputContract",
+                   command_contract::text as "commandContract",
+                   state_contract::text as "stateContract",
+                   exception_contract::text as "exceptionContract",
+                   test_contract::text as "testContract"
+              from framework_process_archetype
+             where archetype_code=? and active_yn='Y' for update
+            """,archetype);
+        if(archetypes.size()!=1)throw new IllegalArgumentException(
+            "ACTIVE_ARCHETYPE_NOT_EXACT: "+archetype);
+        Integer screenCount=jdbc.queryForObject("select count(*) from framework_screen_resource where route_key=lower(split_part(?,'?',1))",Integer.class,route);
+        if(screenCount==null||screenCount!=1)throw new IllegalArgumentException(
+            "REGISTERED_SCREEN_NOT_EXACT: "+route+" / "+screenCount);
+        List<Map<String,Object>> steps=jdbc.queryForList("""
+            select actor_code as "actorCode",upper(case
+                     when lower(split_part(user_path,'?',1))=lower(?) then 'USER'
+                     when lower(split_part(admin_path,'?',1))=lower(?) then 'ADMIN'
+                   end) as audience
+              from framework_process_step
+             where process_code=? and step_code=? for update
+            """,route,route,process,step);
+        if(steps.size()!=1)throw new IllegalArgumentException(
+            "REGISTERED_PROCESS_STEP_NOT_EXACT: "+process+" / "+step);
+        if(!actorCode.equals(String.valueOf(steps.get(0).get("actorCode"))))
+            throw new IllegalArgumentException("CANONICAL_STEP_ACTOR_REQUIRED: "+
+                steps.get(0).get("actorCode"));
+        String audience=String.valueOf(steps.get(0).getOrDefault("audience", ""));
+        if(!Set.of("USER","ADMIN").contains(audience))throw new IllegalArgumentException(
+            "CANONICAL_STEP_ROUTE_REQUIRED: "+route);
+        Integer actorCount=jdbc.queryForObject("select count(*) from framework_actor_definition where actor_code=? and use_at='Y'",Integer.class,actorCode);
+        if(actorCount==null||actorCount!=1)throw new IllegalArgumentException(
+            "ACTIVE_ACTOR_NOT_EXACT: "+actorCode);
+        List<Map<String,Object>> primary=jdbc.queryForList("""
+            select binding_id as "bindingId",archetype_code as "archetypeCode",
+                   process_code as "processCode",step_code as "stepCode"
+              from framework_screen_process_archetype_binding
+             where route_path=? and binding_role='PRIMARY' and active_yn='Y'
+             for update
+            """,route);
+        if("PRIMARY".equals(role)&&primary.stream().anyMatch(existing->
+                !archetype.equals(String.valueOf(existing.get("archetypeCode")))
+                ||!process.equals(String.valueOf(existing.get("processCode")))
+                ||!step.equals(String.valueOf(existing.get("stepCode")))))
+            throw new IllegalStateException("PRIMARY_ARCHETYPE_BINDING_CONFLICT");
+        int sortOrder=integerOr(body,"sortOrder",1);
+        List<Map<String,Object>> written=jdbc.queryForList("""
+            insert into framework_screen_process_archetype_binding(
+              route_path,archetype_code,binding_role,process_code,step_code,actor_code,
+              entry_condition,completion_condition,binding_options,sort_order,created_by)
+            values(?,?,?,?,?,?,?,?,?::jsonb,?,?)
+            on conflict(route_path,archetype_code,process_code,step_code) do update set
+              binding_role=excluded.binding_role,actor_code=excluded.actor_code,
+              entry_condition=excluded.entry_condition,
+              completion_condition=excluded.completion_condition,
+              binding_options=excluded.binding_options,sort_order=excluded.sort_order,
+              active_yn='Y',created_by=excluded.created_by,updated_at=current_timestamp
+            where framework_screen_process_archetype_binding.binding_role is distinct from excluded.binding_role
+               or framework_screen_process_archetype_binding.actor_code is distinct from excluded.actor_code
+               or framework_screen_process_archetype_binding.entry_condition is distinct from excluded.entry_condition
+               or framework_screen_process_archetype_binding.completion_condition is distinct from excluded.completion_condition
+               or framework_screen_process_archetype_binding.binding_options is distinct from excluded.binding_options
+               or framework_screen_process_archetype_binding.sort_order is distinct from excluded.sort_order
+               or framework_screen_process_archetype_binding.active_yn<>'Y'
+            returning binding_id as "bindingId"
+            """,route,archetype,role,process,step,actorCode,entryCondition,
+            completionCondition,bindingOptions,sortOrder,actor);
+        boolean bindingChanged=!written.isEmpty();
+        List<Map<String,Object>> contracts=jdbc.queryForList("""
+            select contract_id as "contractId"
+              from framework_professional_screen_contract
+             where process_code=? and step_code=? and actor_code=?
+               and upper(audience)=? and lower(split_part(route_path,'?',1))=lower(?)
+             for update
+            """,process,step,actorCode,audience,route);
+        if(contracts.size()!=1)throw new IllegalStateException(
+            "ARCHETYPE_CANONICAL_CONTRACT_NOT_EXACT: "+contracts.size());
+        long contractId=((Number)contracts.get(0).get("contractId")).longValue();
+        Map<String,Object> identity=canonicalGenerationIdentity(contractId);
+        Map<String,Object> archetypeContract=new LinkedHashMap<>();
+        archetypeContract.put("schemaVersion","carbonet.screen-archetype-binding/v1");
+        archetypeContract.put("archetypeCode",archetype);
+        archetypeContract.put("bindingRole",role);
+        archetypeContract.put("processCode",process);archetypeContract.put("stepCode",step);
+        archetypeContract.put("actorCode",actorCode);archetypeContract.put("routePath",route);
+        archetypeContract.put("entryCondition",entryCondition);
+        archetypeContract.put("completionCondition",completionCondition);
+        archetypeContract.put("bindingOptions",jsonMap(bindingOptions));
+        Map<String,Object> archetypeRow=archetypes.get(0);
+        for(String field:List.of("archetypeName","categoryCode","purpose"))
+            archetypeContract.put(field,archetypeRow.get(field));
+        for(String field:List.of("inputContract","outputContract","commandContract",
+                "stateContract","exceptionContract","testContract"))
+            archetypeContract.put(field,jsonValue(String.valueOf(archetypeRow.get(field))));
+        String archetypeJson=toJson(archetypeContract);
+        int blueprintUpdated=jdbc.update("""
+            update framework_screen_blueprint
+               set specification_json=jsonb_set(
+                     framework_try_jsonb(specification_json),'{processArchetype}',?::jsonb,true)::text,
+                   updated_at=current_timestamp
+             where blueprint_id=? and validation_status='VALID'
+               and framework_try_jsonb(specification_json)->'processArchetype'
+                   is distinct from ?::jsonb
+            """,archetypeJson,identity.get("blueprintId"),archetypeJson);
+        if(blueprintUpdated<0||blueprintUpdated>1)throw new IllegalStateException(
+            "ARCHETYPE_BLUEPRINT_PROJECTION_NOT_EXACT");
+        Map<String,Object> trigger=new LinkedHashMap<>();
+        trigger.put("triggerType","SCREEN_ARCHETYPE_BINDING");
+        trigger.put("stepCode",step);trigger.put("routePath",route);
+        trigger.put("audience",audience);
+        Map<String,Object> generation=refreshAndQueueCanonicalProcess(
+            process,actor,trigger,()->Map.of(
+                "contractId",contractId,"blueprintId",identity.get("blueprintId"),
+                "archetypeCode",archetype,"endpointExpected",1));
+        int jobCount=generation.get("jobCount") instanceof Number number
+            ?number.intValue():0;
+        int endpointExpected=generation.get("endpointExpected") instanceof Number number
+            ?number.intValue():0;
+        if(jobCount!=1||endpointExpected<1
+                ||!str(generation,"sourceHash").matches("[0-9a-f]{64}"))
+            throw new IllegalStateException("ARCHETYPE_SOURCE_GENERATION_NOT_EXACT");
+        Map<String,Object> coverage=jdbc.queryForMap("select count(*) as \"bindingCount\",count(*) filter(where binding_role='PRIMARY') as \"primaryCount\",count(distinct archetype_code) as \"archetypeCount\" from framework_screen_process_archetype_binding where route_path=? and active_yn='Y'",route);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("routePath",route);
+        result.put("archetypeCode",archetype);result.put("bindingRole",role);
+        result.put("coverage",coverage);result.put("sourceChanged",bindingChanged||blueprintUpdated==1);
+        result.put("sourceCommitted",bindingChanged||blueprintUpdated==1);
+        result.put("mutationKind","SOURCE_IMMEDIATE");
+        result.put("activationPolicy",SOURCE_IMMEDIATE_ACTIVATION_POLICY);
+        result.put("status",generation.get("status"));
+        result.put("generationQueued",generation.get("generationQueued"));
+        result.put("jobCount",jobCount);result.put("jobId",generation.get("jobId"));
+        result.put("endpointExpected",endpointExpected);
+        result.put("sourceHash",generation.get("sourceHash"));
+        result.put("designHash",generation.get("designHash"));
+        result.put("generation",generation);
+        return result;
+    }
+
+    public Map<String,Object> executableScreens(String requestedStatus,int requestedPage,int requestedSize) {
+        String status=requestedStatus==null?"":requestedStatus.trim().toUpperCase(Locale.ROOT);
+        int page=Math.max(0,requestedPage);
+        int size=Math.max(1,Math.min(requestedSize,200));
+        int offset=page*size;
+        Map<String,Object> out=new LinkedHashMap<>();
+        out.put("summary",jdbc.queryForMap("select count(*) as \"screenCount\",count(*) filter(where design_ready) as \"designReadyCount\",count(*) filter(where executable_status='IMPLEMENTATION_PENDING') as \"implementationPendingCount\",count(*) filter(where executable_status='VERIFIED') as \"verifiedCount\",count(*) filter(where executable_status='DESIGN_BLOCKED') as \"blockedCount\" from framework_executable_screen_design_gate"));
+        out.put("page",page);
+        out.put("size",size);
+        out.put("total",jdbc.queryForObject("select count(*) from framework_vertical_screen_design_map where (?='' or executable_status=?)",Long.class,status,status));
+        out.put("items",jdbc.queryForList("select global_sequence as \"globalSequence\",page_design_id as \"pageDesignId\",page_code as \"pageCode\",page_title as \"pageTitle\",process_code as \"processCode\",process_name as \"processName\",step_order as \"stepOrder\",step_code as \"stepCode\",step_name as \"stepName\",audience,actor_code as \"actorCode\",route_key as \"routeKey\",executable_status as \"executableStatus\",array_to_string(blocker_codes, ', ') as \"blockerCodes\",next_action as \"nextAction\",previous_page_design_id as \"previousPageDesignId\",next_page_design_id as \"nextPageDesignId\" from framework_vertical_screen_design_map where (?='' or executable_status=?) order by global_sequence limit ? offset ?",status,status,size,offset));
         return out;
     }
 
@@ -116,13 +784,13 @@ public class ActorProcessGovernanceService {
     public Map<String,Object> processDesign(String requestedProcess) {
         String process=req(Map.of("processCode",requestedProcess),"processCode");
         List<Map<String,Object>> definitions=jdbc.queryForList(
-            "select process_code as \"processCode\",process_name as \"processName\",process_status as \"processStatus\",risk_level as \"riskLevel\" " +
+            "select process_code as \"processCode\",process_name as \"processName\",domain_code as \"domainCode\",goal,start_condition as \"startCondition\",completion_condition as \"completionCondition\",owner_actor_code as \"ownerActorCode\",process_status as \"processStatus\",risk_level as \"riskLevel\",sla_hours as \"slaHours\",review_cycle_days as \"reviewCycleDays\" " +
             "from framework_process_definition where process_code=?",
             process
         );
         if(definitions.isEmpty())throw new IllegalArgumentException("프로세스가 존재하지 않습니다: "+process);
         List<Map<String,Object>> steps=jdbc.queryForList(
-            "select process_code as \"processCode\",step_code as \"stepCode\",step_name as \"stepName\",step_order as \"stepOrder\",actor_code as \"actorCode\",requirement_text as \"requirementText\",completion_rule as \"completionRule\",user_path as \"userPath\",admin_path as \"adminPath\" " +
+            "select process_code as \"processCode\",step_code as \"stepCode\",step_name as \"stepName\",step_order as \"stepOrder\",actor_code as \"actorCode\",from_state as \"fromState\",command_code as \"commandCode\",to_state as \"toState\",requirement_text as \"requirementText\",completion_rule as \"completionRule\",input_contract as \"inputContract\",output_contract as \"outputContract\",user_path as \"userPath\",admin_path as \"adminPath\",api_contract as \"apiContract\" " +
             "from framework_process_step where process_code=? order by step_order",
             process
         );
@@ -136,14 +804,35 @@ public class ActorProcessGovernanceService {
             "from framework_professional_screen_design_readiness where process_code=? order by step_code,audience,route_path",
             process
         );
-        return Map.of(
-            "success",true,
-            "process",definitions.get(0),
-            "stepCount",steps.size(),
-            "steps",steps,
-            "stepExecutionSpecs",specs,
-            "professionalScreens",screens
+        List<Map<String,Object>> cases=jdbc.queryForList(
+            "select case_code as \"caseCode\",process_code as \"processCode\",case_name as \"caseName\",case_type as \"caseType\",case_status as \"status\" from framework_simulation_case where process_code=? order by case_code",
+            process
         );
+        List<Map<String,Object>> jobs=jdbc.queryForList(
+            "select job_id as \"jobId\",process_code as \"processCode\",step_code as \"stepCode\",job_type as \"jobType\",job_name as \"jobName\",target_path as \"targetPath\",job_status as \"jobStatus\" from framework_development_job where process_code=? order by step_code,job_id limit 100",
+            process
+        );
+        List<Map<String,Object>> progress=jdbc.queryForList(
+            "select process_code as \"processCode\",required_jobs as \"requiredJobs\",verified_jobs as \"verifiedJobs\",failed_jobs as \"failedJobs\",completion_percent as \"completionPercent\" from framework_process_development_progress where process_code=?",
+            process
+        );
+        List<Map<String,Object>> assurance=jdbc.queryForList(
+            "select process_code as \"processCode\",assurance_status as \"assuranceStatus\",design_accuracy_score as \"designAccuracyScore\",design_blocker_count as \"designBlockerCount\" from framework_process_design_assurance_matrix where process_code=?",
+            process
+        );
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);
+        result.put("process",definitions.get(0));
+        result.put("processes",definitions);
+        result.put("stepCount",steps.size());
+        result.put("steps",steps);
+        result.put("stepExecutionSpecs",specs);
+        result.put("professionalScreens",screens);
+        result.put("cases",cases);
+        result.put("developmentJobs",jobs);
+        result.put("processDevelopmentProgress",progress);
+        result.put("designAssurance",assurance);
+        return result;
     }
 
     @Transactional
@@ -190,16 +879,62 @@ public class ActorProcessGovernanceService {
         Map<String,Object> item=jdbc.queryForMap("select * from framework_page_development_master where item_id=?",itemId);
         item.put("design_gate_issues",sqlArrayText(item.get("design_gate_issues")));
         long screenId=((Number)item.get("screen_resource_id")).longValue();
-        List<Map<String,Object>> bindings=jdbc.queryForList("select b.binding_id as \"bindingId\",b.process_code as \"processCode\",p.process_name as \"processName\",b.step_code as \"stepCode\",s.step_name as \"stepName\",b.actor_code as \"actorCode\",a.actor_name as \"actorName\",b.audience,b.entry_mode as \"entryMode\",b.context_contract as \"contextContract\",b.visibility_contract as \"visibilityContract\",b.completion_contract as \"completionContract\",b.guide_contract as \"guideContract\" from framework_process_step_screen_binding b join framework_process_definition p using(process_code) join framework_process_step s using(process_code,step_code) left join framework_actor_definition a on a.actor_code=b.actor_code where b.screen_resource_id=? and b.binding_status='ACTIVE' order by p.development_order,s.step_order,b.audience",screenId);
+        List<Map<String,Object>> bindings=jdbc.queryForList("select b.binding_id as \"bindingId\",b.process_code as \"processCode\",p.process_name as \"processName\",b.step_code as \"stepCode\",s.step_name as \"stepName\",s.step_order as \"stepOrder\",s.command_code as \"commandCode\",b.actor_code as \"actorCode\",a.actor_name as \"actorName\",b.audience,b.entry_mode as \"entryMode\",b.context_contract as \"contextContract\",b.visibility_contract as \"visibilityContract\",b.completion_contract as \"completionContract\",b.guide_contract as \"guideContract\" from framework_process_step_screen_binding b join framework_process_definition p using(process_code) join framework_process_step s using(process_code,step_code) left join framework_actor_definition a on a.actor_code=b.actor_code where b.screen_resource_id=? and b.binding_status='ACTIVE' order by p.development_order,s.step_order,b.audience",screenId);
         List<Map<String,Object>> capabilities=jdbc.queryForList("select capability_code as \"capabilityCode\",capability_name as \"capabilityName\",capability_type as \"capabilityType\",command_contract as \"commandContract\",error_contract as \"errorContract\",evidence_contract as \"evidenceContract\",implementation_status as \"implementationStatus\" from framework_screen_capability where screen_resource_id=? order by capability_code",screenId);
         List<Map<String,Object>> fields=jdbc.queryForList("select data_element_code as \"dataElementCode\",field_code as \"fieldCode\",field_name as \"fieldName\",control_type as \"controlType\",api_property as \"apiProperty\",source_table as \"sourceTable\",source_column as \"sourceColumn\",required as \"required\",lineage_status as \"lineageStatus\" from framework_screen_data_binding where screen_resource_id=? order by data_element_code,field_code",screenId);
-        List<Map<String,Object>> tests=jdbc.queryForList("select distinct t.case_code as \"caseCode\",t.case_name as \"caseName\",t.case_type as \"caseType\",t.case_status as \"caseStatus\" from framework_process_step_screen_binding b join framework_step_test_binding x on x.process_code=b.process_code and x.step_code=b.step_code join framework_simulation_case t on t.case_code=x.case_code where b.screen_resource_id=? and b.binding_status='ACTIVE' order by t.case_type,t.case_code",screenId);
-        List<Map<String,Object>> contracts=jdbc.queryForList("select contract_id as \"contractId\",process_code as \"processCode\",step_code as \"stepCode\",audience,route_path as \"routePath\",screen_name as \"screenName\",actor_code as \"actorCode\",business_purpose as \"businessPurpose\",entry_condition as \"entryCondition\",exit_condition as \"exitCondition\",kpi_contract as \"kpiContract\",section_contract as \"sectionContract\",field_contract as \"fieldContract\",command_contract as \"commandContract\",state_contract as \"stateContract\",api_contract as \"apiContract\",data_contract as \"dataContract\",evidence_contract as \"evidenceContract\",responsive_contract as \"responsiveContract\",accessibility_contract as \"accessibilityContract\",security_contract as \"securityContract\",api_verified as \"apiVerified\",database_verified as \"databaseVerified\",authority_verified as \"authorityVerified\",responsive_verified as \"responsiveVerified\",accessibility_verified as \"accessibilityVerified\",exception_states_verified as \"exceptionStatesVerified\",audit_evidence_ref as \"auditEvidenceRef\",contract_status as \"contractStatus\" from framework_professional_screen_contract where lower(split_part(route_path,'?',1))=(select route_key from framework_screen_resource where screen_resource_id=?) order by process_code,step_code,audience,contract_id",screenId);
+        List<Map<String,Object>> stepFields=jdbc.queryForList("select spec.process_code as \"processCode\",spec.step_code as \"stepCode\",field->>'fieldCode' as \"fieldCode\",field->>'fieldName' as \"fieldName\",field->>'fieldGroup' as \"fieldGroup\",coalesce((field->>'fieldOrder')::int,0) as \"fieldOrder\",field->>'controlType' as \"controlType\",field->>'apiProperty' as \"apiProperty\",field->>'sourceTable' as \"sourceTable\",field->>'sourceColumn' as \"sourceColumn\",coalesce((field->>'required')::boolean,false) as \"required\",field->>'mappingStatus' as \"lineageStatus\",field->>'dataType' as \"dataType\",field->'validation' as \"validation\" from framework_step_execution_spec spec cross join lateral jsonb_array_elements(coalesce(spec.field_contract->'fields','[]'::jsonb)) field where exists(select 1 from framework_process_step_screen_binding b where b.screen_resource_id=? and b.process_code=spec.process_code and b.step_code=spec.step_code and b.binding_status='ACTIVE') and lower(split_part(field->>'route','?',1))=(select route_key from framework_screen_resource where screen_resource_id=?) order by spec.process_code,spec.step_code,coalesce((field->>'fieldOrder')::int,0),field->>'fieldCode'",screenId,screenId);
+        List<Map<String,Object>> tests=jdbc.queryForList("select distinct b.process_code as \"processCode\",b.step_code as \"stepCode\",t.case_code as \"caseCode\",t.case_name as \"caseName\",t.case_type as \"caseType\",t.case_status as \"caseStatus\" from framework_process_step_screen_binding b join framework_step_test_binding x on x.process_code=b.process_code and x.step_code=b.step_code join framework_simulation_case t on t.case_code=x.case_code where b.screen_resource_id=? and b.binding_status='ACTIVE' order by b.process_code,b.step_code,t.case_type,t.case_code",screenId);
+        List<Map<String,Object>> contracts=jdbc.queryForList("select contract_id as \"contractId\",process_code as \"processCode\",step_code as \"stepCode\",audience,route_path as \"routePath\",screen_name as \"screenName\",actor_code as \"actorCode\",permission_codes::text as \"permissionCodes\",business_purpose as \"businessPurpose\",entry_condition as \"entryCondition\",exit_condition as \"exitCondition\",kpi_contract as \"kpiContract\",section_contract as \"sectionContract\",field_contract as \"fieldContract\",command_contract as \"commandContract\",state_contract as \"stateContract\",api_contract as \"apiContract\",data_contract as \"dataContract\",evidence_contract as \"evidenceContract\",responsive_contract as \"responsiveContract\",accessibility_contract as \"accessibilityContract\",security_contract as \"securityContract\",api_verified as \"apiVerified\",database_verified as \"databaseVerified\",authority_verified as \"authorityVerified\",responsive_verified as \"responsiveVerified\",accessibility_verified as \"accessibilityVerified\",exception_states_verified as \"exceptionStatesVerified\",audit_evidence_ref as \"auditEvidenceRef\",contract_status as \"contractStatus\" from framework_professional_screen_contract where lower(split_part(route_path,'?',1))=(select route_key from framework_screen_resource where screen_resource_id=?) order by process_code,step_code,audience,contract_id",screenId);
         List<Map<String,Object>> assets=jdbc.queryForList("select a.asset_layer as \"assetLayer\",a.asset_ref as \"assetRef\",a.management_route as \"managementRoute\",a.decision,a.evidence_ref as \"evidenceRef\",a.protected as \"protected\" from framework_screen_asset_assembly a join framework_professional_screen_contract c using(contract_id) where lower(split_part(c.route_path,'?',1))=(select route_key from framework_screen_resource where screen_resource_id=?) order by a.asset_layer,a.asset_ref",screenId);
-        List<Map<String,Object>> blueprints=jdbc.queryForList("select blueprint_id as \"blueprintId\",blueprint_code as \"blueprintCode\",process_code as \"processCode\",step_code as \"stepCode\",audience,screen_type as \"screenType\",template_code as \"templateCode\",validation_status as \"validationStatus\",validation_message as \"validationMessage\" from framework_screen_blueprint where lower(split_part(route_path,'?',1))=(select route_key from framework_screen_resource where screen_resource_id=?) order by process_code,step_code,audience,blueprint_id",screenId);
+        List<Map<String,Object>> blueprints=jdbc.queryForList("""
+            with candidates as materialized (
+              select b.blueprint_id,c.contract_id,
+                     (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
+                       'framework_professional_screen_contract:'||c.contract_id,
+                       'professional_screen_contract:'||c.contract_id)) explicit_link,
+                     count(*) over(partition by c.contract_id) candidate_count,
+                     count(*) filter(where b.transition_status='CONTRACT_LINKED'
+                       and lower(b.source_reference) in(
+                         'framework_professional_screen_contract:'||c.contract_id,
+                         'professional_screen_contract:'||c.contract_id))
+                       over(partition by c.contract_id) explicit_count
+                from framework_professional_screen_contract c
+                join framework_screen_blueprint b
+                  on b.process_code=c.process_code and b.step_code=c.step_code
+                 and upper(b.audience)=upper(c.audience)
+                 and lower(split_part(b.route_path,'?',1))=lower(split_part(c.route_path,'?',1))
+               where b.validation_status='VALID'
+                 and lower(split_part(b.route_path,'?',1))=
+                   (select route_key from framework_screen_resource where screen_resource_id=?)
+            ), authority as materialized (
+              select blueprint_id,contract_id from candidates
+               where (explicit_count=1 and explicit_link)
+                  or (explicit_count=0 and candidate_count=1)
+            )
+            select b.blueprint_id as "blueprintId",b.blueprint_code as "blueprintCode",
+                   c.contract_id as "contractId",b.process_code as "processCode",
+                   b.step_code as "stepCode",b.audience,b.screen_type as "screenType",
+                   b.template_code as "templateCode",b.specification_json as "specificationJson",
+                   coalesce(nullif(framework_try_jsonb(b.specification_json)->>'layout',''),
+                     (select min(r.layout_type) from framework_screen_resource r
+                       where r.route_key=lower(split_part(b.route_path,'?',1)) having count(*)=1)) as "layout",
+                   coalesce(nullif(framework_try_jsonb(b.specification_json)->>'theme',''),
+                     'KRDS_GOV_DEFAULT') as "theme",
+                   b.validation_status as "validationStatus",b.validation_message as "validationMessage"
+              from authority selected
+              join framework_screen_blueprint b using(blueprint_id)
+              join framework_professional_screen_contract c using(contract_id)
+             order by b.process_code,b.step_code,b.audience,b.blueprint_id
+            """,screenId);
+        List<Map<String,Object>> registeredLayouts=jdbc.queryForList(
+            "select distinct layout_type as code from framework_screen_resource where nullif(btrim(layout_type),'') is not null order by layout_type");
+        List<Map<String,Object>> registeredThemes=jdbc.queryForList(
+            "select theme_id as code from comtnthemedefinition where use_at='Y' and is_active='Y' order by theme_id");
         Map<String,Object> designGate=jdbc.queryForMap("select design_gate_status as \"status\",design_gate_score as \"score\",design_gate_issues as \"issues\",actor_passed as \"actorPassed\",process_passed as \"processPassed\",contract_passed as \"contractPassed\",lineage_passed as \"lineagePassed\",transition_passed as \"transitionPassed\",authority_passed as \"authorityPassed\",version_passed as \"versionPassed\",exception_passed as \"exceptionPassed\",admin_counterpart_passed as \"adminCounterpartPassed\",test_passed as \"testPassed\" from framework_page_design_assurance where screen_resource_id=?",screenId);
         designGate.put("issues",sqlArrayText(designGate.get("issues")));
-        return Map.of("success",true,"item",item,"designGate",designGate,"bindings",bindings,"contracts",contracts,"capabilities",capabilities,"fields",fields,"tests",tests,"assets",assets,"blueprints",blueprints);
+        Map<String,Object> detail=new LinkedHashMap<>();
+        detail.put("success",true);detail.put("item",item);detail.put("designGate",designGate);detail.put("bindings",bindings);detail.put("contracts",contracts);detail.put("capabilities",capabilities);detail.put("fields",fields);detail.put("stepFields",stepFields);detail.put("tests",tests);detail.put("assets",assets);detail.put("blueprints",blueprints);detail.put("registeredLayouts",registeredLayouts);detail.put("registeredThemes",registeredThemes);
+        return detail;
     }
 
     /**
@@ -211,184 +946,782 @@ public class ActorProcessGovernanceService {
      * when no evidence exists the truthful state is NOT_RUN.
      */
     public Map<String,Object> systemProcessTestReport(String domainCode,String processCode,String requestedResult){
+        return systemProcessTestReport(domainCode,processCode,requestedResult,false,0,2000);
+    }
+
+    public Map<String,Object> systemProcessTestReport(String domainCode,String processCode,String requestedResult,boolean compact){
+        return systemProcessTestReport(domainCode,processCode,requestedResult,compact,0,2000);
+    }
+
+    /**
+     * Loads exactly one complete step row for human screen/function review.
+     *
+     * Compact catalogue rows intentionally omit large inventories and therefore
+     * are never review-authoritative.  This endpoint reuses the same redacted
+     * report projection with a one-row structural page so the caller receives
+     * the complete screen/function and scoped-review inventories without
+     * materialising every process step.
+     */
+    public Map<String,Object> systemProcessTestReportStepDetail(String processCode,String stepCode){
+        String process=processCode==null?"":processCode.trim().toUpperCase(Locale.ROOT);
+        String step=stepCode==null?"":stepCode.trim().toUpperCase(Locale.ROOT);
+        if(process.isBlank()||step.isBlank())
+            throw new IllegalArgumentException("processCode and stepCode are required");
+
+        List<Map<String,Object>> positions=jdbc.queryForList("""
+            select ordinal
+              from (
+                select s.step_code,row_number() over(order by s.step_order,s.step_code)::integer ordinal
+                  from framework_process_step s
+                 where s.process_code=?
+              ) ranked
+             where step_code=?
+            """,process,step);
+        if(positions.size()!=1)throw new java.util.NoSuchElementException("SYSTEM_TEST_REPORT_STEP_NOT_FOUND");
+        int ordinal=((Number)positions.get(0).get("ordinal")).intValue();
+        if(ordinal<1)throw new java.util.NoSuchElementException("SYSTEM_TEST_REPORT_STEP_NOT_FOUND");
+
+        Map<String,Object> report=systemProcessTestReport("",process,"",false,ordinal-1,1);
+        Object rawItems=report.get("items");
+        if(!(rawItems instanceof List<?> rows)||rows.size()!=1||!(rows.get(0) instanceof Map<?,?> rawRow))
+            throw new java.util.NoSuchElementException("SYSTEM_TEST_REPORT_STEP_NOT_FOUND");
+        Map<String,Object> item=new LinkedHashMap<>();
+        rawRow.forEach((key,value)->item.put(String.valueOf(key),value));
+        if(!step.equalsIgnoreCase(String.valueOf(item.getOrDefault("stepCode",""))))
+            throw new java.util.NoSuchElementException("SYSTEM_TEST_REPORT_STEP_NOT_FOUND");
+        boolean complete=SYSTEM_TEST_REPORT_LARGE_JSON_FIELDS.stream()
+                .map(item::get).filter(java.util.Objects::nonNull).map(String::valueOf)
+                .noneMatch(value->value.contains("\"omitted\":true"));
+        if(!complete)throw new IllegalStateException("SYSTEM_TEST_REPORT_STEP_DETAIL_INCOMPLETE");
+        item.put("reviewCriticalFieldsComplete",true);
+        item.put("reviewAllowed",true);
+
+        Map<String,Object> detail=new LinkedHashMap<>();
+        detail.put("success",true);
+        detail.put("detailMode","SELECTED_STEP_FULL");
+        detail.put("reviewCriticalFieldsComplete",true);
+        detail.put("item",item);
+        return detail;
+    }
+
+    public Map<String,Object> systemProcessTestReport(String domainCode,String processCode,String requestedResult,boolean compact,int requestedPage,int requestedSize){
         String domain=domainCode==null?"":domainCode.trim().toUpperCase(Locale.ROOT);
         String process=processCode==null?"":processCode.trim().toUpperCase(Locale.ROOT);
         String result=normalizeSystemTestResult(requestedResult);
+        int page=Math.max(0,requestedPage),size=Math.max(1,Math.min(requestedSize,200)),offset=page*size;
+        Integer structuralTotal=jdbc.queryForObject("""
+            select count(*) from framework_process_definition p join framework_process_step s using(process_code)
+             where (?='' or upper(p.domain_code)=?) and (?='' or p.process_code=?)
+            """,Integer.class,domain,domain,process,process);
+        int totalStepCount=structuralTotal==null?0:structuralTotal;
 
         List<Map<String,Object>> items=jdbc.queryForList("""
-            select p.domain_code as "domainCode",coalesce(w.work_type_name,p.domain_code) as "domainName",
-                   p.process_code as "processCode",p.process_name as "processName",p.process_status as "processStatus",
-                   p.development_order as "processOrder",p.development_order as "developmentOrder",s.step_order as "stepOrder",s.step_code as "stepCode",
-                   s.step_name as "stepName",coalesce(s.parent_step_code,'') as "parentStepCode",s.step_type as "stepType",
-                   s.actor_code as "actorCode",coalesce(a.actor_name,s.actor_code) as "actorName",
-                   s.from_state as "fromState",s.command_code as "commandCode",s.to_state as "toState",
-                   s.requirement_text as "requirementText",s.completion_rule as "completionRule",
-                   coalesce(s.input_contract,'{}') as "inputContract",coalesce(s.output_contract,'{}') as "outputContract",
-                   s.requires_user_page as "requiresUserPage",s.requires_admin_page as "requiresAdminPage",
-                   s.requires_api as "requiresApi",s.requires_database as "requiresDatabase",
-                   s.requires_notification as "requiresNotification",coalesce(s.user_path,'') as "userPath",
-                   coalesce(s.admin_path,'') as "adminPath",coalesce(s.api_contract,'') as "apiContract",
-                   coalesce(screen.audience,case when coalesce(s.user_path,'')<>'' then 'USER' when coalesce(s.admin_path,'')<>'' then 'ADMIN' else 'UNBOUND' end) as audience,
-                   coalesce(screen.entry_mode,'UNBOUND') as "entryMode",screen.screen_resource_id as "screenResourceId",
-                   coalesce(screen.route_key,nullif(s.user_path,''),nullif(s.admin_path,''),'') as "routePath",
-                   coalesce(screen.screen_name,s.step_name) as "screenName",coalesce(screen.screen_type,'UNREGISTERED') as "screenType",
+            with report_options as (select ?::boolean compact,?::int compact_limit_bytes), runtime_release as materialized (
+              select source_commit,framework_runtime_release_identity_hash(runtime) runtime_identity_hash
+                from framework_runtime_release_state runtime
+               where release_key='CARBONET_RUNTIME' and health_status='UP'
+            ), scoped_step_inventory as materialized (
+              select p.domain_code,p.process_name,p.process_status,p.process_version,p.development_order,
+                     coalesce(sequence.workflow_order,p.development_order) workflow_order,
+                     coalesce(sequence.workflow_phase,'UNSEQUENCED') workflow_phase,
+                     coalesce(sequence.process_role,'CORE') process_role,sequence.next_process_code,
+                     s.*,coalesce(a.actor_name,s.actor_code) actor_name,coalesce(w.work_type_name,p.domain_code) domain_name,
+                     coalesce(a.capability_codes,'') actor_capability_codes,
+                     coalesce(w.sort_order,9999) domain_order,to_jsonb(s)::text step_contract_json
+                from framework_process_definition p
+                join framework_process_step s using(process_code)
+                left join framework_actor_definition a on a.actor_code=s.actor_code
+                left join framework_business_work_type w on w.work_type_code=upper(p.domain_code)
+                left join framework_business_process_sequence sequence on sequence.process_code=p.process_code
+               where (?='' or upper(p.domain_code)=?) and (?='' or p.process_code=?)
+            ), scoped_steps as materialized (
+              select * from scoped_step_inventory
+               order by domain_order,workflow_order,process_code,step_order,step_code
+               limit ? offset ?
+            ), scoped_screen_ids as materialized (
+              select distinct b.screen_resource_id
+                from scoped_steps scoped
+                join framework_process_step_screen_binding b
+                  on b.process_code=scoped.process_code and b.step_code=scoped.step_code
+                 and b.binding_status='ACTIVE'
+               where b.screen_resource_id is not null
+            ), scoped_routes as materialized (
+              select distinct screen.route_key
+                from scoped_screen_ids scoped join framework_screen_resource screen using(screen_resource_id)
+            ), screen_data_hash as (
+              select d.screen_resource_id,md5(coalesce(string_agg(to_jsonb(d)::text,'|' order by d.data_element_code,d.field_code),'')) data_hash,
+                     count(*)::integer data_field_count
+                from scoped_screen_ids scoped join framework_screen_data_binding d using(screen_resource_id)
+               group by d.screen_resource_id
+            ), screen_capability_hash as (
+              select c.screen_resource_id,md5(coalesce(string_agg(to_jsonb(c)::text,'|' order by c.capability_code),'')) capability_hash,
+                     count(*) capability_count,string_agg(distinct c.capability_name,', ' order by c.capability_name) capability_names,
+                     string_agg(distinct c.capability_code,', ' order by c.capability_code) capability_codes
+                from scoped_screen_ids scoped join framework_screen_capability c using(screen_resource_id)
+               group by c.screen_resource_id
+            ), step_test_hash as (
+              select b.process_code,b.step_code,
+                     md5(coalesce(string_agg(to_jsonb(b)::text||'~'||to_jsonb(c)::text,'|' order by b.case_code),'')) test_hash,
+                     count(*) scenario_count,
+                     count(*) filter(where c.case_status in('APPROVED','VERIFIED')) approved_scenario_count
+                from scoped_steps scoped join framework_step_test_binding b using(process_code,step_code)
+                join framework_simulation_case c using(case_code)
+               group by b.process_code,b.step_code
+            ), step_spec_hash as (
+              select e.process_code,e.step_code,md5(to_jsonb(e)::text) spec_hash
+                from scoped_steps scoped join framework_step_execution_spec e using(process_code,step_code)
+            ), professional_contract_hash as (
+              select lower(split_part(c.route_path,'?',1)) route_key,
+                     md5(coalesce(string_agg(to_jsonb(c)::text,'|' order by c.process_code,c.step_code,c.audience,c.contract_id),'')) contract_hash
+                from scoped_routes scoped join framework_professional_screen_contract c
+                  on lower(split_part(c.route_path,'?',1))=scoped.route_key
+               group by lower(split_part(c.route_path,'?',1))
+            ), fixture_hash as (
+              select t.screen_resource_id,t.process_code,t.step_code,t.capability_code,
+                     md5(coalesce(string_agg(to_jsonb(t)::text,'|' order by t.test_case_id),'')) fixture_hash
+                from scoped_screen_ids scoped join framework_screen_workflow_test_case t using(screen_resource_id)
+                join scoped_steps step_scope using(process_code,step_code)
+               where t.active=true
+               group by t.screen_resource_id,t.process_code,t.step_code,t.capability_code
+            ), binding_targets as (
+              select ss.*,b.binding_id,b.audience,b.entry_mode,to_jsonb(b)::text binding_contract_json,
+                      r.screen_resource_id,r.route_key,r.screen_name,r.screen_type,r.implementation_status,to_jsonb(r)::text screen_contract_json,
+                      c.capability_id,coalesce(c.capability_code,'ALL') capability_code,c.capability_name,c.capability_type,
+                      coalesce(c.command_contract,'{}'::jsonb) capability_command_contract,
+                      coalesce(dh.data_hash,'') data_hash,coalesce(dh.data_field_count,0) data_field_count,coalesce(ch.capability_hash,'') capability_hash,
+                     coalesce(th.test_hash,'') test_hash,coalesce(th.scenario_count,0) scenario_count,
+                     coalesce(th.approved_scenario_count,0) approved_scenario_count,coalesce(sh.spec_hash,'') spec_hash,
+                     coalesce(ph.contract_hash,'') professional_hash,
+                      coalesce(fh.fixture_hash,all_fixture.fixture_hash,'') fixture_hash
+                from scoped_steps ss
+                left join framework_process_step_screen_binding b
+                  on b.process_code=ss.process_code and b.step_code=ss.step_code and b.binding_status='ACTIVE'
+                left join framework_screen_resource r using(screen_resource_id)
+                left join framework_screen_capability c using(screen_resource_id)
+                left join screen_data_hash dh using(screen_resource_id)
+                left join screen_capability_hash ch using(screen_resource_id)
+                left join step_test_hash th on th.process_code=ss.process_code and th.step_code=ss.step_code
+                left join step_spec_hash sh on sh.process_code=ss.process_code and sh.step_code=ss.step_code
+                left join professional_contract_hash ph on ph.route_key=r.route_key
+                left join fixture_hash fh on fh.screen_resource_id=r.screen_resource_id and fh.process_code=ss.process_code
+                 and fh.step_code=ss.step_code and fh.capability_code=coalesce(c.capability_code,'ALL')
+                left join fixture_hash all_fixture on all_fixture.screen_resource_id=r.screen_resource_id and all_fixture.process_code=ss.process_code
+                 and all_fixture.step_code=ss.step_code and all_fixture.capability_code='ALL'
+            ), target_fingerprints as (
+              select bt.*,md5(concat_ws('|',bt.process_version,bt.step_contract_json,coalesce(bt.binding_contract_json,''),
+                       coalesce(bt.screen_contract_json,''),bt.audience,bt.capability_code,bt.data_hash,bt.capability_hash,
+                       bt.test_hash,bt.spec_hash,bt.professional_hash,bt.fixture_hash)) contract_fingerprint
+                from binding_targets bt
+            ), screen_scope_fingerprints as (
+              select process_code,step_code,screen_resource_id,
+                     md5(coalesce(string_agg(contract_fingerprint,'|' order by audience,capability_code),'')) screen_contract_fingerprint
+                from target_fingerprints
+               where binding_id is not null
+               group by process_code,step_code,screen_resource_id
+            ), capability_scope_fingerprints as (
+              select process_code,step_code,screen_resource_id,capability_code,
+                     md5(coalesce(string_agg(contract_fingerprint,'|' order by audience),'')) capability_contract_fingerprint
+                from target_fingerprints
+               where binding_id is not null
+               group by process_code,step_code,screen_resource_id,capability_code
+            ), target_latest as (
+              select target.*,run.run_id,run.result,run.passed_check_count,run.total_check_count,
+                     array_to_string(run.blocker_codes,', ') blocker_codes,
+                     coalesce(run.evidence_json->>'preInputJson','{}') pre_input_json,
+                     run.evidence_json::text evidence_json,run.executed_by,run.executed_at
+                from target_fingerprints target
+                left join lateral (
+                  select candidate.*
+                    from (
+                      (select evidence.run_id,evidence.result,evidence.passed_check_count,evidence.total_check_count,
+                              evidence.blocker_codes,evidence.evidence_json,evidence.executed_by,evidence.executed_at
+                         from framework_screen_workflow_test_run evidence
+                        where evidence.audit_batch_id is null
+                          and evidence.screen_resource_id=target.screen_resource_id
+                          and evidence.process_code=target.process_code and evidence.step_code=target.step_code
+                          and evidence.capability_code=target.capability_code
+                          and coalesce(evidence.evidence_json->>'audience','')=coalesce(target.audience,'')
+                          and evidence.evidence_json ?? 'contractFingerprint'
+                          and evidence.evidence_json->>'contractFingerprint'=target.contract_fingerprint
+                          and not exists (
+                            select 1 from framework_screen_workflow_audit_incident_run incident_run
+                             where incident_run.run_id=evidence.run_id
+                          )
+                        order by evidence.executed_at desc,evidence.run_id desc limit 1)
+                      union all
+                      (select evidence.run_id,evidence.result,evidence.passed_check_count,evidence.total_check_count,
+                              evidence.blocker_codes,evidence.evidence_json,evidence.executed_by,evidence.executed_at
+                         from framework_screen_workflow_test_run evidence
+                         join framework_screen_workflow_audit_batch audit_batch
+                           on audit_batch.audit_batch_id=evidence.audit_batch_id
+                          and audit_batch.batch_status='COMPLETE'
+                        where evidence.audit_batch_id is not null
+                          and evidence.screen_resource_id=target.screen_resource_id
+                          and evidence.process_code=target.process_code and evidence.step_code=target.step_code
+                          and evidence.capability_code=target.capability_code
+                          and coalesce(evidence.evidence_json->>'audience','')=coalesce(target.audience,'')
+                          and evidence.evidence_json ?? 'contractFingerprint'
+                          and evidence.evidence_json->>'contractFingerprint'=target.contract_fingerprint
+                        order by evidence.executed_at desc,evidence.run_id desc limit 1)
+                    ) candidate
+                   order by candidate.executed_at desc,candidate.run_id desc limit 1
+                ) run on true
+            ), step_rollup as (
+              select process_code,step_code,
+                     md5(coalesce(string_agg(contract_fingerprint,'|' order by screen_resource_id,audience,capability_code),'')) operational_target_fingerprint,
+                     count(distinct screen_resource_id) filter(where binding_id is not null) screen_count,
+                     count(*) filter(where binding_id is not null) target_count,
+                     count(*) filter(where binding_id is not null and run_id is not null) tested_target_count,
+                     count(distinct capability_id) capability_count,
+                     string_agg(distinct route_key,', ' order by route_key) filter(where route_key is not null) screen_routes,
+                     string_agg(distinct implementation_status,', ' order by implementation_status) filter(where implementation_status is not null) implementation_statuses,
+                     string_agg(distinct capability_name,', ' order by capability_name) filter(where capability_name is not null) capability_names,
+                     string_agg(distinct capability_code,', ' order by capability_code) filter(where capability_code is not null) capability_codes,
+                     coalesce(jsonb_agg(jsonb_build_object(
+                       'screenResourceId',screen_resource_id,'screenName',screen_name,'routePath',route_key,
+                       'audience',audience,'entryMode',entry_mode,'capabilityCode',capability_code,
+                       'capabilityName',coalesce(capability_name,capability_code),'capabilityType',coalesce(capability_type,'UNREGISTERED'),
+                       'commandContract',capability_command_contract,'dataFieldCount',data_field_count)
+                       order by case entry_mode when 'PRIMARY' then 0 else 1 end,
+                                case audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,
+                                route_key,capability_code) filter(where binding_id is not null),'[]'::jsonb)::text screen_function_inventory_json,
+                     max(scenario_count) scenario_count,max(approved_scenario_count) approved_scenario_count,
+                     count(*) filter(where binding_id is not null and implementation_status not in('IMPLEMENTED','VERIFIED')) unready_screen_target_count,
+                     case when count(*) filter(where binding_id is not null)=0 then 'NOT_RUN'
+                          when count(*) filter(where binding_id is not null and result='BLOCKED')>0 then 'BLOCKED'
+                          when count(*) filter(where binding_id is not null and run_id is null)>0 then 'NOT_RUN'
+                          when count(*) filter(where binding_id is not null and result='PASSED')=count(*) filter(where binding_id is not null) then 'PASSED'
+                          else 'NOT_RUN' end test_state
+                from target_latest group by process_code,step_code
+            ), primary_screen as (
+              select distinct on (process_code,step_code) process_code,step_code,audience,entry_mode,screen_resource_id,route_key,screen_name,screen_type,implementation_status
+                from target_fingerprints where binding_id is not null
+               order by process_code,step_code,case entry_mode when 'PRIMARY' then 0 else 1 end,
+                        case audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,route_key
+            ), latest_step_run as (
+              select distinct on (process_code,step_code) process_code,step_code,run_id,coalesce(result,'NOT_RUN') result,passed_check_count,total_check_count,
+                     blocker_codes,pre_input_json,evidence_json,executed_by,executed_at,screen_resource_id,route_key,audience,capability_code
+                from target_latest
+               order by process_code,step_code,
+                        case coalesce(result,'NOT_RUN') when 'ERROR' then 0 when 'BLOCKED' then 1 when 'NOT_RUN' then 2 else 3 end,
+                        executed_at desc nulls last,run_id desc nulls last,route_key,capability_code
+            ), latest_simulation as (
+              select distinct on (b.process_code,b.step_code) b.process_code,b.step_code,b.trace_scope,run.run_id,run.result,
+                     run.process_version,sim.case_code,sim.case_type,coalesce(run.evidence_json,'{}') evidence_json,
+                     run.executed_by,run.executed_at
+                from framework_step_test_binding b
+                join scoped_steps scoped on scoped.process_code=b.process_code and scoped.step_code=b.step_code
+                join framework_simulation_case sim using(case_code)
+                 join framework_simulation_run run using(case_code)
+                order by b.process_code,b.step_code,run.executed_at desc,run.run_id desc
+            ), current_business_e2e as materialized (
+              select evidence.*
+                from framework_current_business_e2e_evidence evidence
+                join scoped_steps scoped using(process_code,step_code)
+            ), fixture_suite_cases as (
+              select b.process_code,b.step_code,sim.case_code,sim.case_name,sim.case_type,sim.case_status,b.trace_scope,
+                     scoped.process_version as current_process_version,run.run_id,run.result,run.process_version as run_process_version,
+                     run.executed_by,run.executed_at
+                from framework_step_test_binding b
+                join scoped_steps scoped on scoped.process_code=b.process_code and scoped.step_code=b.step_code
+                join framework_simulation_case sim using(case_code)
+                left join lateral (
+                  select r.run_id,r.result,r.process_version,r.executed_by,r.executed_at
+                    from framework_simulation_run r where r.case_code=sim.case_code
+                   order by r.executed_at desc,r.run_id desc limit 1
+                ) run on true
+               where sim.case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY')
+                 and sim.case_status not in('RETIRED','INACTIVE','DISABLED')
+            ), fixture_suite_rollup as (
+              select process_code,step_code,count(*) fixture_suite_case_count,count(distinct case_type) fixture_suite_covered_type_count,
+                     count(*) filter(where case_status in('APPROVED','VERIFIED')) fixture_suite_approved_case_count,
+                     count(*) filter(where run_id is not null and run_process_version=current_process_version) fixture_suite_current_run_count,
+                     count(*) filter(where run_id is not null and run_process_version<>current_process_version) fixture_suite_stale_run_count,
+                     count(*) filter(where run_id is null) fixture_suite_not_run_count,
+                     count(*) filter(where run_id is not null and run_process_version=current_process_version and result in('PASSED','PASS','SUCCESS','VERIFIED','COMPLETED')) fixture_suite_passed_run_count,
+                     count(*) filter(where run_id is not null and run_process_version=current_process_version and result not in('PASSED','PASS','SUCCESS','VERIFIED','COMPLETED')) fixture_suite_blocked_run_count,
+                     string_agg(distinct case_type,', ' order by case_type) fixture_suite_covered_types,
+                     concat_ws(', ',
+                       case when count(*) filter(where case_type='HAPPY_PATH')=0 then 'HAPPY_PATH' end,
+                       case when count(*) filter(where case_type='AUTHORITY')=0 then 'AUTHORITY' end,
+                       case when count(*) filter(where case_type='ISOLATION')=0 then 'ISOLATION' end,
+                       case when count(*) filter(where case_type='EXCEPTION')=0 then 'EXCEPTION' end,
+                       case when count(*) filter(where case_type='RECOVERY')=0 then 'RECOVERY' end) fixture_suite_missing_types,
+                     jsonb_agg(jsonb_build_object('caseCode',case_code,'caseName',case_name,'caseType',case_type,'caseStatus',case_status,
+                       'traceScope',trace_scope,'latestRunId',run_id,'latestResult',coalesce(result,'NOT_RUN'),
+                       'currentVersion',run_id is not null and run_process_version=current_process_version,
+                       'executedBy',coalesce(executed_by,''),'executedAt',executed_at) order by case_type,case_code)::text fixture_suite_cases_json
+                from fixture_suite_cases group by process_code,step_code
+            ), filtered_steps as (
+              select scoped.*,rollup.screen_count,rollup.target_count,rollup.tested_target_count,rollup.capability_count,
+                     rollup.screen_routes,rollup.implementation_statuses,rollup.capability_names,rollup.capability_codes,rollup.scenario_count,
+                     rollup.operational_target_fingerprint,rollup.screen_function_inventory_json,
+                     rollup.approved_scenario_count,rollup.unready_screen_target_count,rollup.test_state
+                from scoped_steps scoped join step_rollup rollup using(process_code,step_code)
+               where (?='' or rollup.test_state=?)
+            ), scope_metrics as materialized (
+              select count(distinct target.screen_resource_id) filter(where target.binding_id is not null) scope_screen_count,
+                     count(distinct target.route_key) filter(where target.binding_id is not null) scope_route_count,
+                     count(distinct target.capability_id) scope_capability_count,
+                     count(distinct (target.process_code,target.step_code,target.binding_id,target.capability_code)) filter(where target.binding_id is not null) scope_target_count
+                from target_fingerprints target join filtered_steps filtered using(process_code,step_code)
+            )
+            select p.domain_code as "domainCode",coalesce(w.work_type_name,p.domain_code) as "domainName",p.domain_order as "domainOrder",
+                   p.process_code as "processCode",p.process_name as "processName",p.process_status as "processStatus",p.process_version as "processVersion",
+                   p.workflow_order as "processOrder",p.workflow_order as "workflowOrder",p.development_order as "developmentOrder",
+                   p.workflow_phase as "workflowPhase",p.process_role as "processRole",p.step_order as "stepOrder",p.step_code as "stepCode",
+                   p.step_name as "stepName",coalesce(p.parent_step_code,'') as "parentStepCode",p.step_type as "stepType",
+                   p.actor_code as "actorCode",p.actor_name as "actorName",p.actor_capability_codes as "actorCapabilityCodes",
+                   coalesce(accounts.assigned_account_count,0) as "assignedAccountCount",coalesce(accounts.assigned_account_ids,'') as "assignedAccountIds",
+                   'GLOBAL_ACTIVE_ACTOR_CANDIDATES' as "assignmentScope",
+                   p.from_state as "fromState",p.command_code as "commandCode",p.step_name as "commandName",p.to_state as "toState",
+                   p.requirement_text as "requirementText",p.completion_rule as "completionRule",
+                   coalesce(p.input_contract,'{}') as "inputContract",coalesce(p.output_contract,'{}') as "outputContract",
+                   p.requires_user_page as "requiresUserPage",p.requires_admin_page as "requiresAdminPage",p.requires_api as "requiresApi",
+                   p.requires_database as "requiresDatabase",p.requires_notification as "requiresNotification",coalesce(p.user_path,'') as "userPath",
+                   coalesce(p.admin_path,'') as "adminPath",coalesce(p.api_contract,'') as "apiContract",
+                   coalesce(screen.audience,'UNBOUND') as audience,coalesce(screen.entry_mode,'UNBOUND') as "entryMode",
+                   screen.screen_resource_id as "screenResourceId",coalesce(
+                     case
+                       when lower(split_part(coalesce(p.user_path,''),'?',1))=screen.route_key then split_part(p.user_path,'?',1)
+                       when lower(split_part(coalesce(p.admin_path,''),'?',1))=screen.route_key then split_part(p.admin_path,'?',1)
+                       else null
+                     end,screen.route_key,'') as "routePath",
+                   coalesce(screen.screen_name,p.step_name) as "screenName",coalesce(screen.screen_type,'UNREGISTERED') as "screenType",
                    coalesce(screen.implementation_status,'DESIGN_ONLY') as "implementationStatus",
-                   coalesce((select count(distinct bound.screen_resource_id) from framework_process_step_screen_binding bound where bound.process_code=s.process_code and bound.step_code=s.step_code and bound.binding_status='ACTIVE'),0) as "screenCount",
-                   coalesce((select string_agg(distinct resource.route_key,', ' order by resource.route_key) from framework_process_step_screen_binding bound join framework_screen_resource resource using(screen_resource_id) where bound.process_code=s.process_code and bound.step_code=s.step_code and bound.binding_status='ACTIVE'),'') as "screenRoutes",
-                   coalesce((select string_agg(distinct resource.implementation_status,', ' order by resource.implementation_status) from framework_process_step_screen_binding bound join framework_screen_resource resource using(screen_resource_id) where bound.process_code=s.process_code and bound.step_code=s.step_code and bound.binding_status='ACTIVE'),'') as "implementationStatuses",
-                   coalesce((select count(distinct cap.capability_id) from framework_process_step_screen_binding bound join framework_screen_capability cap using(screen_resource_id) where bound.process_code=s.process_code and bound.step_code=s.step_code and bound.binding_status='ACTIVE'),0) as "capabilityCount",
-                   coalesce((select string_agg(distinct cap.capability_name,', ' order by cap.capability_name) from framework_process_step_screen_binding bound join framework_screen_capability cap using(screen_resource_id) where bound.process_code=s.process_code and bound.step_code=s.step_code and bound.binding_status='ACTIVE'),'') as "capabilityNames",
-                   coalesce((select count(*) from framework_step_test_binding stb where stb.process_code=s.process_code and stb.step_code=s.step_code),0) as "scenarioCount",
-                   coalesce((select count(*) from framework_step_test_binding stb join framework_simulation_case sc on sc.case_code=stb.case_code where stb.process_code=s.process_code and stb.step_code=s.step_code and sc.case_status in('APPROVED','VERIFIED')),0) as "approvedScenarioCount",
+                   p.screen_count as "screenCount",coalesce(p.screen_routes,'') as "screenRoutes",
+                   coalesce(p.implementation_statuses,'') as "implementationStatuses",p.capability_count as "capabilityCount",
+                   coalesce(p.capability_names,'') as "capabilityNames",coalesce(p.capability_codes,'') as "functionCodes",p.target_count as "auditTargetCount",
+                   case when options.compact and octet_length(coalesce(p.screen_function_inventory_json,'[]'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(p.screen_function_inventory_json,'[]')))::text
+                        else coalesce(p.screen_function_inventory_json,'[]') end as "screenFunctionInventoryJson",
+                   p.tested_target_count as "auditedTargetCount",p.scenario_count as "scenarioCount",p.approved_scenario_count as "approvedScenarioCount",
                    latest.run_id as "latestRunId",latest.result as "latestResult",
                    latest.passed_check_count as "latestPassedCheckCount",latest.total_check_count as "latestTotalCheckCount",
-                   coalesce(latest.blocker_codes,'') as "latestBlockerCodes",coalesce(latest.pre_input_json,'{}') as "latestPreInputJson",
-                   coalesce(latest.evidence_json,'{}') as "latestEvidenceJson",coalesce(latest.executed_by,'') as "latestExecutedBy",
-                   latest.executed_at as "latestExecutedAt",coalesce(latest.pre_input_json,'{}') as "latestInput",
-                   coalesce(latest.evidence_json,'{}') as "latestOutput",coalesce(latest.evidence_json,'{}') as "evidenceJson",
+                   coalesce(latest.blocker_codes,'') as "latestBlockerCodes",
+                   case when options.compact and octet_length(coalesce(latest.pre_input_json,'{}'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(latest.pre_input_json,'{}')))::text
+                        else coalesce(latest.pre_input_json,'{}') end as "latestPreInputJson",
+                   case when options.compact and octet_length(coalesce(latest.evidence_json,'{}'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(latest.evidence_json,'{}')))::text
+                        else coalesce(latest.evidence_json,'{}') end as "latestEvidenceJson",coalesce(latest.executed_by,'') as "latestExecutedBy",
+                   latest.executed_at as "latestExecutedAt",
+                   case when options.compact and octet_length(coalesce(latest.pre_input_json,'{}'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(latest.pre_input_json,'{}')))::text
+                        else coalesce(latest.pre_input_json,'{}') end as "latestInput",
+                   case when options.compact and octet_length(coalesce(latest.evidence_json,'{}'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(latest.evidence_json,'{}')))::text
+                        else coalesce(latest.evidence_json,'{}') end as "latestOutput",
+                   case when options.compact and octet_length(coalesce(latest.evidence_json,'{}'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(latest.evidence_json,'{}')))::text
+                        else coalesce(latest.evidence_json,'{}') end as "evidenceJson",
                    coalesce(latest.executed_by,'') as "executedBy",latest.executed_at as "executedAt",
-                   business.run_id as "latestBusinessRunId",coalesce(business.result,'NOT_RUN') as "businessTestResult",
-                   coalesce(business.case_code,'') as "businessCaseCode",coalesce(business.case_type,'') as "businessCaseType",
-                   coalesce(business.evidence_json,'{}') as "businessEvidenceJson",coalesce(business.executed_by,'') as "businessExecutedBy",
-                   business.executed_at as "businessExecutedAt",
-                   coalesce(latest.result,'NOT_RUN') as "testState"
-              from framework_process_definition p
-              join framework_process_step s on s.process_code=p.process_code
+                   coalesce(sim.run_id,0) as "latestSimulationRunId",coalesce(sim.result,'NOT_RUN') as "simulationTestResult",
+                   coalesce(sim.case_code,'') as "simulationCaseCode",coalesce(sim.case_type,'') as "simulationCaseType",
+                   coalesce(sim.trace_scope,'') as "simulationTraceScope",coalesce(sim.process_version,'') as "simulationProcessVersion",
+                   (sim.run_id is not null and sim.process_version=p.process_version) as "simulationCurrentVersion",
+                   case when options.compact and octet_length(coalesce(sim.evidence_json,'{}')::text)>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(sim.evidence_json,'{}')::text))::text
+                        else coalesce(sim.evidence_json,'{}')::text end as "simulationEvidenceJson",coalesce(sim.executed_by,'') as "simulationExecutedBy",
+                   sim.executed_at as "simulationExecutedAt",
+                   5 as "fixtureSuiteRequiredTypeCount",coalesce(suite.fixture_suite_covered_type_count,0) as "fixtureSuiteCoveredTypeCount",
+                   coalesce(suite.fixture_suite_case_count,0) as "fixtureSuiteCaseCount",coalesce(suite.fixture_suite_case_count,0) as "fixtureSuiteActiveCaseCount",coalesce(suite.fixture_suite_approved_case_count,0) as "fixtureSuiteApprovedCaseCount",
+                   coalesce(suite.fixture_suite_current_run_count,0) as "fixtureSuiteCurrentRunCount",coalesce(suite.fixture_suite_stale_run_count,0) as "fixtureSuiteStaleRunCount",
+                   coalesce(suite.fixture_suite_not_run_count,0) as "fixtureSuiteNotRunCount",coalesce(suite.fixture_suite_passed_run_count,0) as "fixtureSuitePassedRunCount",
+                   coalesce(suite.fixture_suite_blocked_run_count,0) as "fixtureSuiteBlockedRunCount",
+                   coalesce(suite.fixture_suite_covered_types,'') as "fixtureSuiteCoveredTypes",coalesce(suite.fixture_suite_missing_types,'HAPPY_PATH, AUTHORITY, ISOLATION, EXCEPTION, RECOVERY') as "fixtureSuiteMissingTypes",
+                   case when options.compact and octet_length(coalesce(suite.fixture_suite_cases_json,'[]'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(suite.fixture_suite_cases_json,'[]')))::text
+                        else coalesce(suite.fixture_suite_cases_json,'[]') end as "fixtureSuiteCasesJson",
+                   case when coalesce(suite.fixture_suite_covered_type_count,0)=5 then 'COMPLETE' when coalesce(suite.fixture_suite_covered_type_count,0)>0 then 'PARTIAL' else 'MISSING' end as "fixtureSuiteCoverageState",
+                   case when coalesce(suite.fixture_suite_case_count,0)=0 then 'NOT_RUN'
+                        when coalesce(suite.fixture_suite_blocked_run_count,0)>0 then 'BLOCKED'
+                        when coalesce(suite.fixture_suite_current_run_count,0)=coalesce(suite.fixture_suite_case_count,0)
+                         and coalesce(suite.fixture_suite_passed_run_count,0)=coalesce(suite.fixture_suite_case_count,0) then 'PASSED'
+                        else 'NOT_RUN' end as "fixtureSuiteExecutionState",
+                    coalesce(business.business_test_result,'NOT_RUN') as "businessTestResult",
+                    coalesce(business.business_evidence_status,'RUNTIME_COMMIT_UNAVAILABLE') as "businessEvidenceStatus",
+                    coalesce(business.qa_run_id::text,'') as "businessCaseCode",
+                    case when options.compact and octet_length(coalesce(business.evidence_json,'{}')::text)>options.compact_limit_bytes
+                         then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(business.evidence_json,'{}')::text))::text
+                         else coalesce(business.evidence_json,'{}')::text end as "businessEvidenceJson",
+                    coalesce(business.executed_by,'') as "businessExecutedBy",business.executed_at as "businessExecutedAt",
+                    coalesce(business.evidence_process_version,'') as "businessProcessVersion",
+                    coalesce(business.source_commit,'') as "businessSourceCommit",
+                    coalesce(business.contract_fingerprint,'') as "businessContractFingerprint",
+                    coalesce(business.current_contract_fingerprint,'') as "currentBusinessContractFingerprint",
+                    coalesce(business.current_runtime_source_commit,'') as "currentRuntimeSourceCommit",
+                    coalesce(business.execution_environment,'') as "businessExecutionEnvironment",
+                    coalesce(business.evidence_uri,'') as "businessEvidenceUri",
+                    coalesce(business.evidence_hash,'') as "businessEvidenceHash",
+                    coalesce(business.current_version,false) as "businessCurrentVersion",
+                   case
+                     when coalesce(business.business_test_result,'NOT_RUN') in('PASSED','BLOCKED') then 'BUSINESS_E2E'
+                     when latest.run_id is not null or (sim.run_id is not null and sim.process_version=p.process_version) then 'CONTRACT_SIMULATION'
+                     else 'DESIGN' end as "evidenceTier",
+                   case
+                     when coalesce(business.business_test_result,'NOT_RUN') in('PASSED','BLOCKED') then business.business_test_result
+                     when coalesce(latest.result,'NOT_RUN') in('PASSED','BLOCKED') then latest.result
+                     when sim.process_version=p.process_version and coalesce(sim.result,'NOT_RUN') in('PASSED','BLOCKED') then sim.result
+                     else 'NOT_RUN' end as "actualResult",
+                   case when coalesce(business.business_test_result,'NOT_RUN') in('PASSED','BLOCKED')
+                        then coalesce(business.evidence_json->'input','{}'::jsonb)::text else coalesce(latest.pre_input_json,'{}') end as "actualInput",
+                   case when coalesce(business.business_test_result,'NOT_RUN') in('PASSED','BLOCKED')
+                        then coalesce(business.evidence_json->'output',business.evidence_json,'{}'::jsonb)::text
+                        when latest.run_id is not null then coalesce(latest.evidence_json,'{}')
+                        when sim.process_version=p.process_version then coalesce(sim.evidence_json,'{}')::text
+                        else '{}' end as "actualOutput",
+                   case when coalesce(business.business_test_result,'NOT_RUN') in('PASSED','BLOCKED') then coalesce(business.evidence_json,'{}')::text
+                        when latest.run_id is not null then coalesce(latest.evidence_json,'{}')
+                        when sim.process_version=p.process_version then coalesce(sim.evidence_json,'{}')::text
+                        else '{}' end as "actualEvidenceJson",
+                   next_work.next_process_code as "nextProcessCode",coalesce(next_work.next_process_name,'') as "nextProcessName",
+                   next_work.next_step_code as "nextStepCode",coalesce(next_work.next_step_name,'') as "nextStepName",
+                   coalesce(next_screen.route_path,'') as "nextRoutePath",coalesce(next_work.transition_source,'WORKFLOW_COMPLETE') as "nextTransitionSource",
+                   coalesce(next_work.transition_authoritative,false) as "nextTransitionAuthoritative",
+                   case when coalesce(next_work.transition_authoritative,false) then 'AUTHORITATIVE_EDGE' else 'GUIDE_ONLY' end as "nextTransitionMode",
+                   coalesce(destinations.destination_count,0) as "nextDestinationCount",
+                   coalesce(destinations.destination_count,0)>1 as "nextHasBranching",
+                   coalesce(destinations.destinations_json,'[]') as "nextDestinationsJson",
+                   operational.contract_fingerprint as "contractFingerprint",
+                   review.review_id as "reviewId",coalesce(review.review_status,'PENDING') as "reviewStatus",
+                   coalesce(review.review_note,'') as "reviewNote",coalesce(review.reviewed_by,'') as "reviewedBy",
+                   review.reviewed_at as "reviewedAt",coalesce(review.source_commit,'') as "reviewSourceCommit",
+                   coalesce(review.runtime_identity_hash,'') as "reviewRuntimeIdentityHash",
+                   review.linked_job_id as "reviewLinkedJobId",review.screen_resource_id as "reviewScreenResourceId",
+                   coalesce(review.capability_code,'ALL') as "reviewCapabilityCode",
+                   (review.review_id is not null
+                    and review.contract_fingerprint=operational.contract_fingerprint
+                    and review.source_commit=coalesce(runtime.source_commit,'')
+                    and review.runtime_identity_hash=runtime.runtime_identity_hash
+                    and runtime.runtime_identity_hash is not null) as "reviewCurrentVersion",
+                   'HUMAN_REVIEW_ONLY' as "reviewEvidenceScope",
+                   case when options.compact and octet_length(coalesce(scoped_reviews.inventory_json,'[]'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(scoped_reviews.inventory_json,'[]')))::text
+                        else coalesce(scoped_reviews.inventory_json,'[]') end as "scopedReviewInventoryJson",
+                   case when options.compact and octet_length(coalesce(scoped_reviews.inventory_json,'[]'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(scoped_reviews.inventory_json,'[]')))::text
+                        else coalesce(scoped_reviews.inventory_json,'[]') end as "reviewScopesJson",
+                   p.test_state as "testState",latest.screen_resource_id as "latestAuditScreenResourceId",
+                   coalesce(latest.route_key,'') as "latestAuditRoutePath",coalesce(latest.audience,'') as "latestAuditAudience",
+                   coalesce(latest.capability_code,'') as "latestAuditCapabilityCode",
+                   metrics.scope_screen_count as "scopeScreenCount",metrics.scope_route_count as "scopeRouteCount",
+                   metrics.scope_capability_count as "scopeCapabilityCount",metrics.scope_target_count as "scopeTargetCount"
+              from filtered_steps p
               left join framework_business_work_type w on w.work_type_code=upper(p.domain_code)
-              left join framework_actor_definition a on a.actor_code=s.actor_code
+              left join primary_screen screen using(process_code,step_code)
+              left join latest_step_run latest using(process_code,step_code)
+               left join latest_simulation sim using(process_code,step_code)
+              left join current_business_e2e business using(process_code,step_code)
+              left join fixture_suite_rollup suite using(process_code,step_code)
               left join lateral (
-                   select b.audience,b.entry_mode,sr.screen_resource_id,sr.route_key,sr.screen_name,sr.screen_type,sr.implementation_status
-                     from framework_process_step_screen_binding b join framework_screen_resource sr using(screen_resource_id)
-                    where b.process_code=s.process_code and b.step_code=s.step_code and b.binding_status='ACTIVE'
-                    order by case b.entry_mode when 'PRIMARY' then 0 else 1 end,
-                             case b.audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,sr.route_key limit 1
-              ) screen on true
+                select count(distinct assignment.account_id)::integer assigned_account_count,
+                       string_agg(distinct assignment.account_id,', ' order by assignment.account_id) assigned_account_ids,
+                       md5(coalesce(string_agg(to_jsonb(assignment)::text,'|' order by assignment.account_id,assignment.tenant_id,assignment.project_id,assignment.assignment_id),'')) assignment_fingerprint
+                  from framework_account_actor_assignment assignment
+                  join framework_actor_definition assigned_actor
+                    on assigned_actor.actor_code=assignment.actor_code and assigned_actor.use_at='Y'
+                 where assignment.actor_code=p.actor_code and assignment.assignment_status='ACTIVE'
+                   and (assignment.valid_from is null or assignment.valid_from<=current_date)
+                   and (assignment.valid_until is null or assignment.valid_until>=current_date)
+              ) accounts on true
               left join lateral (
-                   select r.run_id,r.result,r.passed_check_count,r.total_check_count,
-                          array_to_string(r.blocker_codes,', ') as blocker_codes,
-                          coalesce(r.evidence_json->>'preInputJson','{}') as pre_input_json,
-                          r.evidence_json::text as evidence_json,r.executed_by,r.executed_at
-                     from framework_screen_workflow_test_run r
-                    where r.process_code=s.process_code and r.step_code=s.step_code
-                      and exists(select 1 from framework_process_step_screen_binding bound where bound.process_code=s.process_code and bound.step_code=s.step_code and bound.screen_resource_id=r.screen_resource_id and bound.binding_status='ACTIVE')
-                    order by r.executed_at desc,r.run_id desc limit 1
-              ) latest on true
+                select candidate.next_process_code,candidate.next_process_name,candidate.next_step_code,candidate.next_step_name,
+                       candidate.transition_source,candidate.transition_authoritative
+                  from (
+                    (select p.process_code next_process_code,p.process_name next_process_name,target.step_code next_step_code,
+                           target.step_name next_step_name,'PROCESS_FLOW_EDGE' transition_source,true transition_authoritative,0 priority,target.step_order
+                      from framework_process_flow_edge edge
+                      join framework_process_step target on target.process_code=edge.process_code and target.step_code=edge.to_step_code
+                     where edge.process_code=p.process_code and edge.from_step_code=p.step_code and edge.use_at='Y'
+                       and edge.review_status='VERIFIED'
+                     order by case edge.edge_type when 'NEXT' then 0 when 'PARALLEL' then 1 else 2 end,target.step_order,edge.edge_id
+                     limit 1)
+                    union all
+                    (select p.process_code,p.process_name,target.step_code,target.step_name,'STEP_ORDER',false,1,target.step_order
+                      from framework_process_step target
+                     where target.process_code=p.process_code and target.step_order>p.step_order
+                     order by target.step_order limit 1)
+                    union all
+                    (select next_process.process_code,next_process.process_name,target.step_code,target.step_name,'PROCESS_SEQUENCE',false,2,target.step_order
+                      from framework_process_definition next_process
+                      join framework_process_step target on target.process_code=next_process.process_code
+                     where next_process.process_code=p.next_process_code
+                     order by target.step_order limit 1)
+                  ) candidate
+                 order by candidate.priority,candidate.step_order limit 1
+              ) next_work on true
               left join lateral (
-                   select run.run_id,run.result,sim.case_code,sim.case_type,coalesce(run.evidence_json,'{}') as evidence_json,
-                          run.executed_by,run.executed_at
-                     from framework_step_test_binding test_binding
-                     join framework_simulation_case sim on sim.case_code=test_binding.case_code
-                     join framework_simulation_run run on run.case_code=sim.case_code
-                    where test_binding.process_code=s.process_code and test_binding.step_code=s.step_code
-                    order by run.executed_at desc,run.run_id desc limit 1
-              ) business on true
-             where (?='' or upper(p.domain_code)=?) and (?='' or p.process_code=?)
-               and (?='' or coalesce(latest.result,'NOT_RUN')=?)
-             order by coalesce(w.sort_order,9999),p.development_order,p.process_code,s.step_order
-            """,domain,domain,process,process,result,result);
+                select coalesce(case when binding.audience='ADMIN' then target.admin_path else target.user_path end,
+                                target.user_path,target.admin_path,screen.route_key,'') route_path
+                  from framework_process_step target
+                  left join framework_process_step_screen_binding binding on binding.process_code=target.process_code
+                    and binding.step_code=target.step_code and binding.binding_status='ACTIVE'
+                  left join framework_screen_resource screen using(screen_resource_id)
+                 where target.process_code=next_work.next_process_code and target.step_code=next_work.next_step_code
+                 order by case binding.entry_mode when 'PRIMARY' then 0 else 1 end,
+                          case binding.audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end
+                 limit 1
+              ) next_screen on true
+              left join lateral (
+                select count(*)::integer destination_count,
+                       jsonb_agg(jsonb_build_object(
+                         'edgeId',edge.edge_id,'edgeType',edge.edge_type,'conditionCode',edge.condition_code,
+                         'conditionContract',edge.condition_contract,'edgeActorCode',edge.actor_code,
+                         'targetActorCode',target.actor_code,'sourceKind',edge.source_kind,
+                         'nextProcessCode',edge.process_code,'nextStepCode',target.step_code,'nextStepName',target.step_name,
+                         'userRoutePath',coalesce(target.user_path,''),'adminRoutePath',coalesce(target.admin_path,''),
+                         'routePath',case
+                           when nullif(btrim(coalesce(target.user_path,'')),'') is null
+                            and nullif(btrim(coalesce(target.admin_path,'')),'') is null then null
+                           when nullif(btrim(coalesce(target.user_path,'')),'') is null then target.admin_path
+                           when nullif(btrim(coalesce(target.admin_path,'')),'') is null then target.user_path
+                           when btrim(target.user_path)=btrim(target.admin_path) then target.user_path
+                           else null end,
+                         'routeResolution',case
+                           when nullif(btrim(coalesce(target.user_path,'')),'') is null
+                            and nullif(btrim(coalesce(target.admin_path,'')),'') is null then 'MISSING'
+                           when nullif(btrim(coalesce(target.user_path,'')),'') is not null
+                            and nullif(btrim(coalesce(target.admin_path,'')),'') is not null
+                            and btrim(target.user_path)<>btrim(target.admin_path) then 'MULTIPLE_CANDIDATES'
+                           else 'SINGLE' end,
+                         'screenRouteInventory',coalesce(screen_routes.route_inventory,'[]'::jsonb),'authoritative',true)
+                         order by case edge.edge_type when 'NEXT' then 0 when 'PARALLEL' then 1 else 2 end,
+                                  target.step_order,edge.edge_id)::text destinations_json
+                  from framework_process_flow_edge edge
+                  join framework_process_step target on target.process_code=edge.process_code and target.step_code=edge.to_step_code
+                  left join lateral (
+                    select coalesce(jsonb_agg(jsonb_build_object(
+                             'audience',inventory.audience,'entryMode',inventory.entry_mode,
+                             'screenResourceId',inventory.screen_resource_id,'routePath',inventory.route_key)
+                             order by case inventory.entry_mode when 'PRIMARY' then 0 else 1 end,
+                                      case inventory.audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,
+                                      inventory.route_key),'[]'::jsonb) route_inventory
+                      from (
+                        select distinct binding.audience,binding.entry_mode,screen.screen_resource_id,screen.route_key
+                          from framework_process_step_screen_binding binding
+                          join framework_screen_resource screen using(screen_resource_id)
+                         where binding.process_code=target.process_code and binding.step_code=target.step_code
+                           and binding.binding_status='ACTIVE'
+                      ) inventory
+                  ) screen_routes on true
+                 where edge.process_code=p.process_code and edge.from_step_code=p.step_code
+                   and edge.use_at='Y' and edge.review_status='VERIFIED'
+              ) destinations on true
+              cross join lateral (
+                select md5(concat_ws('|',p.domain_code,p.domain_name,p.domain_order,p.process_code,p.process_name,
+                       p.workflow_order,p.workflow_phase,p.process_role,p.process_version,p.step_contract_json,p.operational_target_fingerprint,
+                       p.actor_code,p.actor_capability_codes,coalesce(accounts.assignment_fingerprint,''),
+                       coalesce(next_work.next_process_code,''),coalesce(next_work.next_step_code,''),
+                       coalesce(next_work.transition_source,'WORKFLOW_COMPLETE'),coalesce(next_work.transition_authoritative,false)::text,
+                       coalesce(next_screen.route_path,''),coalesce(destinations.destinations_json,'[]'))) contract_fingerprint
+              ) operational
+              left join lateral (
+                select usage.review_id,usage.review_status,usage.review_note,usage.contract_fingerprint,usage.source_commit,
+                       usage.runtime_identity_hash,
+                       usage.linked_job_id,usage.screen_resource_id,usage.capability_code,usage.reviewed_by,usage.reviewed_at
+                  from framework_system_usage_review usage
+                 where usage.process_code=p.process_code and usage.step_code=p.step_code
+                   and usage.screen_resource_id is null and usage.capability_code='ALL'
+                 order by usage.reviewed_at desc,usage.review_id desc limit 1
+              ) review on true
+              left join lateral (
+                select coalesce(jsonb_agg(jsonb_build_object(
+                         'reviewId',scoped.review_id,'screenResourceId',scoped.screen_resource_id,
+                         'capabilityCode',scoped.capability_code,'reviewStatus',scoped.review_status,
+                         'reviewNote',scoped.review_note,'reviewedBy',scoped.reviewed_by,'reviewedAt',scoped.reviewed_at,
+                         'reviewSourceCommit',scoped.source_commit,'reviewRuntimeIdentityHash',scoped.runtime_identity_hash,
+                         'linkedJobId',scoped.linked_job_id,
+                         'scopeType',case when scoped.screen_resource_id is null then 'STEP'
+                                          when scoped.capability_code='ALL' then 'SCREEN' else 'FUNCTION' end,
+                         'currentVersion',scoped.current_version)
+                         order by scoped.screen_resource_id nulls first,scoped.capability_code),'[]'::jsonb)::text inventory_json
+                  from (
+                    select distinct on (usage.screen_resource_id,usage.capability_code) usage.*,
+                           (usage.source_commit=coalesce((select source_commit from runtime_release),'')
+                            and usage.runtime_identity_hash=(select runtime_identity_hash from runtime_release)
+                            and (select runtime_identity_hash from runtime_release) is not null and
+                            case when usage.screen_resource_id is null
+                                 then usage.contract_fingerprint=operational.contract_fingerprint
+                                 when usage.capability_code<>'ALL' then exists(
+                                   select 1 from capability_scope_fingerprints capability_scope
+                                    where capability_scope.process_code=usage.process_code and capability_scope.step_code=usage.step_code
+                                      and capability_scope.screen_resource_id=usage.screen_resource_id
+                                      and capability_scope.capability_code=usage.capability_code
+                                      and capability_scope.capability_contract_fingerprint=usage.contract_fingerprint)
+                                 else exists(
+                                   select 1 from screen_scope_fingerprints screen_scope
+                                    where screen_scope.process_code=usage.process_code and screen_scope.step_code=usage.step_code
+                                      and screen_scope.screen_resource_id=usage.screen_resource_id
+                                      and screen_scope.screen_contract_fingerprint=usage.contract_fingerprint)
+                                 end) current_version
+                      from framework_system_usage_review usage
+                     where usage.process_code=p.process_code and usage.step_code=p.step_code
+                     order by usage.screen_resource_id nulls first,usage.capability_code,usage.reviewed_at desc,usage.review_id desc
+                  ) scoped
+              ) scoped_reviews on true
+              left join runtime_release runtime on true
+              cross join scope_metrics metrics
+              cross join report_options options
+             order by p.domain_order,p.workflow_order,p.process_code,p.step_order,p.step_code
+            """,compact,SYSTEM_TEST_REPORT_COMPACT_JSON_LIMIT_BYTES,domain,domain,process,process,size,offset,result,result);
 
-        String stateCte="""
-            with scoped_steps as (
-              select p.domain_code,p.process_code,p.process_name,p.process_status,p.development_order,s.step_code,s.step_order
-                from framework_process_definition p join framework_process_step s on s.process_code=p.process_code
-               where (?='' or upper(p.domain_code)=?) and (?='' or p.process_code=?)
-            ), binding_runs as (
-              select ss.*,b.binding_id,latest.result
-                from scoped_steps ss
-                left join framework_process_step_screen_binding b on b.process_code=ss.process_code and b.step_code=ss.step_code and b.binding_status='ACTIVE'
-                left join lateral (
-                  select r.result from framework_screen_workflow_test_run r
-                   where r.screen_resource_id=b.screen_resource_id and r.process_code=ss.process_code and r.step_code=ss.step_code
-                   order by r.executed_at desc,r.run_id desc limit 1
-                ) latest on true
-            ), step_state as (
-              select domain_code,process_code,process_name,process_status,development_order,step_code,step_order,
-                     case when count(*) filter(where result='BLOCKED')>0 then 'BLOCKED'
-                          when count(binding_id)=0 or count(*) filter(where result is null)>0 then 'NOT_RUN'
-                          when count(*) filter(where result='PASSED')=count(*) then 'PASSED' else 'NOT_RUN' end as test_state
-                from binding_runs group by domain_code,process_code,process_name,process_status,development_order,step_code,step_order
-            )
-            """;
-        List<Map<String,Object>> processes=jdbc.queryForList(stateCte+"""
-            select ss.domain_code as "domainCode",ss.process_code as "processCode",ss.process_name as "processName",
-                   ss.process_status as "processStatus",ss.development_order as "developmentOrder",count(*) as "stepCount",
-                   (select count(*) from framework_simulation_case sc where sc.process_code=ss.process_code) as "scenarioCount",
-                   count(*) filter(where ss.test_state<>'NOT_RUN') as "testedStepCount",
-                   count(*) filter(where ss.test_state='PASSED') as "passedStepCount",
-                   count(*) filter(where ss.test_state='BLOCKED') as "blockedStepCount",
-                   count(*) filter(where ss.test_state='NOT_RUN') as "untestedStepCount"
-              from step_state ss group by ss.domain_code,ss.process_code,ss.process_name,ss.process_status,ss.development_order
-             order by ss.development_order,ss.process_code
-            """,domain,domain,process,process);
-        List<Map<String,Object>> workTypes=jdbc.queryForList(stateCte+"""
-            select ss.domain_code as "workTypeCode",coalesce(w.work_type_name,ss.domain_code) as "workTypeName",
-                   coalesce(w.sort_order,9999) as "sortOrder",count(distinct ss.process_code) as "processCount",count(*) as "stepCount",
-                   count(*) filter(where ss.test_state<>'NOT_RUN') as "testedStepCount",
-                   count(*) filter(where ss.test_state='PASSED') as "passedStepCount",
-                   count(*) filter(where ss.test_state='BLOCKED') as "blockedStepCount",
-                   count(*) filter(where ss.test_state='NOT_RUN') as "untestedStepCount"
-              from step_state ss left join framework_business_work_type w on w.work_type_code=upper(ss.domain_code)
-             group by ss.domain_code,w.work_type_name,w.sort_order order by coalesce(w.sort_order,9999),ss.domain_code
-            """,domain,domain,process,process);
-        Map<String,Object> summary=jdbc.queryForMap(stateCte+"""
-            select count(distinct ss.domain_code) as "workTypeCount",count(distinct ss.process_code) as "processCount",
-                   count(*) as "stepCount",
-                   (select count(distinct b.screen_resource_id) from scoped_steps x join framework_process_step_screen_binding b on b.process_code=x.process_code and b.step_code=x.step_code and b.binding_status='ACTIVE') as "screenCount",
-                   (select count(distinct sr.route_key) from scoped_steps x join framework_process_step_screen_binding b on b.process_code=x.process_code and b.step_code=x.step_code and b.binding_status='ACTIVE' join framework_screen_resource sr using(screen_resource_id)) as "routeCount",
-                   (select count(distinct cap.capability_id) from scoped_steps x join framework_process_step_screen_binding b on b.process_code=x.process_code and b.step_code=x.step_code and b.binding_status='ACTIVE' join framework_screen_capability cap using(screen_resource_id)) as "capabilityCount",
-                   (select count(distinct sc.case_code) from scoped_steps x join framework_simulation_case sc on sc.process_code=x.process_code) as "scenarioCount",
-                   count(*) filter(where ss.test_state<>'NOT_RUN') as "testedStepCount",
-                   count(*) filter(where ss.test_state='PASSED') as "passedStepCount",
-                   count(*) filter(where ss.test_state='BLOCKED') as "blockedStepCount",
-                   count(*) filter(where ss.test_state='NOT_RUN') as "untestedStepCount"
-              from step_state ss
-            """,domain,domain,process,process);
-        int routed=0,passedItems=0,blockedItems=0,notRunItems=0,verifiedContracts=0;
+        Map<String,Map<String,Object>> processIndex=new LinkedHashMap<>(),workTypeIndex=new LinkedHashMap<>();
         Set<String> reportedProcesses=new HashSet<>();
+        int routed=0,passedItems=0,blockedItems=0,notRunItems=0,verifiedContracts=0;
+        long auditedContractTargets=0;
+        int fixtureSuiteBindingCount=0,fixtureSuiteCompleteStepCount=0,fixtureSuiteIncompleteStepCount=0,fixtureSuiteCurrentRunCount=0;
+        int businessPassedSteps=0,businessBlockedSteps=0,businessNotRunSteps=0,businessFingerprintUnavailableSteps=0,businessRuntimeCommitUnavailableSteps=0;
+        Map<String,List<String>> businessStatesByProcess=new LinkedHashMap<>();
         for(Map<String,Object> item:items){
-            reportedProcesses.add(String.valueOf(item.get("processCode")));
-            if(!String.valueOf(item.getOrDefault("routePath","")).isBlank()||!String.valueOf(item.getOrDefault("userPath","")).isBlank()||!String.valueOf(item.getOrDefault("adminPath","")).isBlank())routed++;
+            String processKey=String.valueOf(item.get("processCode")),workTypeKey=String.valueOf(item.get("domainCode"));
+            reportedProcesses.add(processKey);
+            int screenCount=((Number)item.getOrDefault("screenCount",0)).intValue();
+            if(screenCount>0)routed++;
             String state=String.valueOf(item.getOrDefault("testState","NOT_RUN"));
             if("PASSED".equals(state))passedItems++;else if("BLOCKED".equals(state))blockedItems++;else notRunItems++;
-            if(Set.of("IMPLEMENTED","VERIFIED").contains(String.valueOf(item.get("implementationStatus")))
-                &&!String.valueOf(item.getOrDefault("inputContract","")).isBlank()
-                &&!String.valueOf(item.getOrDefault("outputContract","")).isBlank())verifiedContracts++;
+            boolean allScreensReady=screenCount>0&&!String.valueOf(item.getOrDefault("implementationStatuses","")).matches(".*(DESIGN_ONLY|DESIGNED|PLANNED|BLOCKED).*" );
+            if(allScreensReady&&meaningfulSystemContract(item.get("inputContract"))&&meaningfulSystemContract(item.get("outputContract"))
+                &&(!Boolean.TRUE.equals(item.get("requiresApi"))||meaningfulSystemContract(item.get("apiContract"))))verifiedContracts++;
+            fixtureSuiteBindingCount+=((Number)item.getOrDefault("fixtureSuiteCaseCount",0)).intValue();
+            fixtureSuiteCurrentRunCount+=((Number)item.getOrDefault("fixtureSuiteCurrentRunCount",0)).intValue();
+            auditedContractTargets+=((Number)item.getOrDefault("auditedTargetCount",0)).longValue();
+            if("COMPLETE".equals(item.get("fixtureSuiteCoverageState")))fixtureSuiteCompleteStepCount++;else fixtureSuiteIncompleteStepCount++;
+            String businessState=String.valueOf(item.getOrDefault("businessTestResult","NOT_RUN"));
+            if("PASSED".equals(businessState))businessPassedSteps++;
+            else if("BLOCKED".equals(businessState))businessBlockedSteps++;
+            else{businessState="NOT_RUN";businessNotRunSteps++;}
+            if("CONTRACT_FINGERPRINT_UNAVAILABLE".equals(item.get("businessEvidenceStatus")))businessFingerprintUnavailableSteps++;
+            if("RUNTIME_COMMIT_UNAVAILABLE".equals(item.get("businessEvidenceStatus")))businessRuntimeCommitUnavailableSteps++;
+            businessStatesByProcess.computeIfAbsent(processKey,key->new ArrayList<>()).add(businessState);
+            Map<String,Object> processRow=processIndex.computeIfAbsent(processKey,key->newSystemAggregate(item,"PROCESS"));
+            processRow.put("scenarioCount",Math.max(((Number)processRow.get("scenarioCount")).intValue(),((Number)item.getOrDefault("scenarioCount",0)).intValue()));
+            incrementSystemAggregate(processRow,state);
+            Map<String,Object> workTypeRow=workTypeIndex.computeIfAbsent(workTypeKey,key->newSystemAggregate(item,"WORK_TYPE"));
+            incrementSystemAggregate(workTypeRow,state);
+            @SuppressWarnings("unchecked") Set<String> processCodes=(Set<String>)workTypeRow.computeIfAbsent("_processCodes",key->new HashSet<String>());
+            processCodes.add(processKey);workTypeRow.put("processCount",processCodes.size());
         }
-        summary.put("processCount",reportedProcesses.size());summary.put("stepCount",items.size());summary.put("routedStepCount",routed);
-        summary.put("passedCount",passedItems);summary.put("blockedCount",blockedItems);summary.put("notRunCount",notRunItems);
+        List<Map<String,Object>> processes=new ArrayList<>(processIndex.values());
+        List<Map<String,Object>> workTypes=new ArrayList<>(workTypeIndex.values());
+        workTypes.forEach(row->row.remove("_processCodes"));
+        int e2eCoveredProcesses=0,e2ePassedProcesses=0,e2eBlockedProcesses=0;
+        for(List<String> states:businessStatesByProcess.values()){
+            boolean allCurrent=!states.isEmpty()&&states.stream().noneMatch("NOT_RUN"::equals);
+            boolean allPassed=!states.isEmpty()&&states.stream().allMatch("PASSED"::equals);
+            boolean anyBlocked=states.stream().anyMatch("BLOCKED"::equals);
+            if(allCurrent)e2eCoveredProcesses++;
+            if(allPassed)e2ePassedProcesses++;
+            if(anyBlocked)e2eBlockedProcesses++;
+        }
+        Map<String,Object> summary=new LinkedHashMap<>();
+        summary.put("workTypeCount",workTypes.size());summary.put("processCount",reportedProcesses.size());summary.put("stepCount",items.size());
+        summary.put("totalStepCount",totalStepCount);summary.put("pageReturnedStepCount",items.size());
+        summary.put("screenCount",items.isEmpty()?0:items.get(0).get("scopeScreenCount"));
+        summary.put("routeCount",items.isEmpty()?0:items.get(0).get("scopeRouteCount"));
+        summary.put("capabilityCount",items.isEmpty()?0:items.get(0).get("scopeCapabilityCount"));
+        summary.put("auditTargetCount",items.isEmpty()?0:items.get(0).get("scopeTargetCount"));
+        long requiredContractTargets=items.isEmpty()?0:((Number)items.get(0).getOrDefault("scopeTargetCount",0)).longValue();
+        summary.put("requiredAuditTargetCount",requiredContractTargets);summary.put("auditedCapabilityTargetCount",auditedContractTargets);
+        summary.put("auditCoveragePercent",requiredContractTargets==0?100.0:Math.round(auditedContractTargets*10000.0/requiredContractTargets)/100.0);
+        summary.put("auditCoverageState",requiredContractTargets==0||auditedContractTargets>=requiredContractTargets?"COMPLETE":auditedContractTargets==0?"NOT_RUN":"PARTIAL");
+        summary.put("routedStepCount",routed);summary.put("passedCount",passedItems);summary.put("blockedCount",blockedItems);summary.put("notRunCount",notRunItems);
         summary.put("verifiedContractCount",verifiedContracts);summary.put("totalContractCount",items.size());summary.put("matchedItemCount",items.size());
-        Map<String,Object> e2eSummary=jdbc.queryForMap("""
-            with scoped_steps as (
-              select p.process_code,s.step_code
-                from framework_process_definition p join framework_process_step s on s.process_code=p.process_code
-               where (?='' or upper(p.domain_code)=?) and (?='' or p.process_code=?)
-            ), step_evidence as (
-              select scoped.process_code,scoped.step_code,
-                     (select run.result
-                        from framework_step_test_binding test_binding
-                        join framework_simulation_case sim on sim.case_code=test_binding.case_code
-                        join framework_simulation_run run on run.case_code=sim.case_code
-                       where test_binding.process_code=scoped.process_code and test_binding.step_code=scoped.step_code
-                       order by run.executed_at desc,run.run_id desc limit 1) as latest_result
-                from scoped_steps scoped
-            ), process_evidence as (
-              select process_code,count(*) as step_count,count(*) filter(where latest_result is not null) as covered_step_count,
-                     count(*) filter(where latest_result='PASSED') as passed_step_count,
-                     count(*) filter(where latest_result is not null and latest_result<>'PASSED') as failed_step_count
-                from step_evidence group by process_code
-            )
-            select count(*) filter(where covered_step_count>0) as "e2eCoveredProcessCount",
-                   count(*) filter(where covered_step_count=0) as "e2eUncoveredProcessCount",
-                   count(*) filter(where covered_step_count=step_count and passed_step_count=step_count) as "e2ePassedProcessCount",
-                   count(*) filter(where covered_step_count>0 and (covered_step_count<step_count or passed_step_count<step_count or failed_step_count>0)) as "e2eBlockedProcessCount"
-              from process_evidence
-            """,domain,domain,process,process);
-        summary.putAll(e2eSummary);
+        summary.put("e2eCoveredProcessCount",e2eCoveredProcesses);summary.put("e2eUncoveredProcessCount",reportedProcesses.size()-e2eCoveredProcesses);
+        summary.put("e2ePassedProcessCount",e2ePassedProcesses);summary.put("e2eBlockedProcessCount",e2eBlockedProcesses);
+        summary.put("e2eCurrentEvidenceStepCount",businessPassedSteps+businessBlockedSteps);
+        summary.put("e2ePassedStepCount",businessPassedSteps);summary.put("e2eBlockedStepCount",businessBlockedSteps);summary.put("e2eNotRunStepCount",businessNotRunSteps);
+        summary.put("e2eContractFingerprintUnavailableStepCount",businessFingerprintUnavailableSteps);
+        summary.put("e2eRuntimeCommitUnavailableStepCount",businessRuntimeCommitUnavailableSteps);
+        summary.put("businessEvidenceStatus",businessRuntimeCommitUnavailableSteps>0?"RUNTIME_COMMIT_UNAVAILABLE":businessFingerprintUnavailableSteps>0?"CONTRACT_FINGERPRINT_UNAVAILABLE":businessBlockedSteps>0?"CURRENT_VERSION_FAILED":businessPassedSteps==items.size()&&!items.isEmpty()?"CURRENT_VERSION_PASS":businessPassedSteps>0?"PARTIAL_CURRENT_VERSION_EVIDENCE":"NO_CURRENT_VERSION_EVIDENCE");
+        summary.put("fixtureSuiteRequiredTypeCount",5);summary.put("fixtureSuiteBindingCount",fixtureSuiteBindingCount);
+        summary.put("fixtureSuiteCompleteStepCount",fixtureSuiteCompleteStepCount);summary.put("fixtureSuiteIncompleteStepCount",fixtureSuiteIncompleteStepCount);
+        summary.put("fixtureSuiteCurrentRunCount",fixtureSuiteCurrentRunCount);summary.put("fixtureSuiteMode","INVENTORY_AND_SIMULATION_EVIDENCE_ONLY");
+        summary.put("auditTargetMode","ACTIVE_BINDING_CAPABILITY");
+        summary.put("summaryScope","PAGE");summary.put("resultFilterMode","WITHIN_STRUCTURAL_PAGE");
         Map<String,Object> filters=new LinkedHashMap<>();filters.put("domainCode",domain);filters.put("processCode",process);filters.put("result",result);
+        List<Map<String,Object>> sanitizedItems=items.stream().map(ActorProcessGovernanceService::redactSystemTestItem).toList();
+        List<Map<String,Object>> responseItems=compact?sanitizedItems.stream().map(ActorProcessGovernanceService::compactSystemTestItem).toList():sanitizedItems;
         Map<String,Object> report=new LinkedHashMap<>();report.put("success",true);report.put("generatedAt",java.time.Instant.now().toString());
-        report.put("auditMode","CONTRACT_ONLY");report.put("filters",filters);report.put("summary",summary);
-        report.put("workTypes",workTypes);report.put("processes",processes);report.put("items",items);
+        report.put("compact",compact);
+        report.put("pagination",Map.of(
+            "page",page,"size",size,"returnedItemCount",items.size(),"totalStepCount",totalStepCount,
+            "hasNext",offset+size<totalStepCount,"mode","STRUCTURAL_SCOPE"
+        ));
+        report.put("orderContract",Map.of(
+            "scope","WORK_TYPE_PROCESS_STEP",
+            "fields",List.of("domainOrder","workflowOrder","processCode","stepOrder","stepCode"),
+            "direction","ASC"
+        ));
+        report.put("auditMode","CONTRACT_ONLY");report.put("businessFunctionsExecuted",false);report.put("filters",filters);report.put("summary",summary);
+        report.put("workTypes",workTypes);report.put("processes",processes);report.put("items",responseItems);
         return report;
+    }
+
+    static Map<String,Object> compactSystemTestItem(Map<String,Object> source){
+        Map<String,Object> compacted=new LinkedHashMap<>(source);
+        for(String field:SYSTEM_TEST_REPORT_LARGE_JSON_FIELDS){
+            Object value=compacted.get(field);
+            if(value==null)continue;
+            String raw=value instanceof String text?text:toJson(value);
+            int byteLength=raw.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+            if(byteLength<=SYSTEM_TEST_REPORT_COMPACT_JSON_LIMIT_BYTES)continue;
+            compacted.put(field,toJson(Map.of(
+                "compact",true,"omitted",true,"byteLength",byteLength,"sha256",sha256Hex(raw)
+            )));
+        }
+        // A compact catalogue row is navigation/summary data, not enough
+        // evidence to approve or reject a concrete screen/function scope.
+        compacted.put("reviewCriticalFieldsComplete",false);
+        compacted.put("reviewAllowed",false);
+        return compacted;
+    }
+
+    private static final Set<String> SYSTEM_REPORT_SECRET_KEY_FRAGMENTS=Set.of(
+        "password","passwd","pwd","accesstoken","refreshtoken","token","authorization","cookie",
+        "secret","otp","proof","developmentcode","verificationcode","apikey","privatekey","credential",
+        "sessionid","csrf","jwt"
+    );
+    private static final Set<String> SYSTEM_REPORT_EVIDENCE_FIELDS=Set.of(
+        "actualInput","actualOutput","actualEvidenceJson","latestPreInputJson","latestEvidenceJson",
+        "latestInput","latestOutput","evidenceJson","simulationEvidenceJson","businessEvidenceJson",
+        "fixtureSuiteCasesJson","screenFunctionInventoryJson","scopedReviewInventoryJson","reviewScopesJson","nextDestinationsJson"
+    );
+
+    static Map<String,Object> redactSystemTestItem(Map<String,Object> source){
+        Map<String,Object> redacted=new LinkedHashMap<>(source);
+        for(String field:SYSTEM_REPORT_EVIDENCE_FIELDS){
+            Object value=redacted.get(field);
+            if(value==null)continue;
+            redacted.put(field,redactSystemReportEvidence(value));
+        }
+        return redacted;
+    }
+
+    private static String redactSystemReportEvidence(Object value){
+        String raw=value instanceof String text?text:toJson(value);
+        try{
+            com.fasterxml.jackson.databind.ObjectMapper mapper=new com.fasterxml.jackson.databind.ObjectMapper();
+            com.fasterxml.jackson.databind.JsonNode parsed=mapper.readTree(raw);
+            if(parsed==null)return "{}";
+            redactSystemReportNode(parsed);
+            return mapper.writeValueAsString(parsed);
+        }catch(Exception ignored){
+            return "{\"redacted\":true,\"reason\":\"UNPARSEABLE_EVIDENCE\"}";
+        }
+    }
+
+    private static void redactSystemReportNode(com.fasterxml.jackson.databind.JsonNode node){
+        if(node instanceof com.fasterxml.jackson.databind.node.ObjectNode object){
+            List<String> fields=new ArrayList<>();object.fieldNames().forEachRemaining(fields::add);
+            for(String field:fields){
+                String normalized=field.replaceAll("[^A-Za-z0-9]","").toLowerCase(Locale.ROOT);
+                boolean secret=SYSTEM_REPORT_SECRET_KEY_FRAGMENTS.stream().anyMatch(normalized::contains);
+                if(secret)object.put(field,"[REDACTED]");else redactSystemReportNode(object.get(field));
+            }
+        }else if(node instanceof com.fasterxml.jackson.databind.node.ArrayNode array){
+            array.forEach(ActorProcessGovernanceService::redactSystemReportNode);
+        }
     }
 
     /**
@@ -397,48 +1730,466 @@ public class ActorProcessGovernanceService {
      * transitions, and therefore must never be presented as business E2E.
      */
     @Transactional
+    public Map<String,Object> startSystemProcessContractAuditBatch(Map<String,Object> body,String requestedBy){
+        int pageSize=Math.max(1,Math.min(integerOr(body,"pageSize",250),500));
+        Map<String,Object> batch=jsonMap(jdbc.queryForObject(
+                "select framework_start_screen_workflow_audit_batch(?,?)::text",String.class,requestedBy,pageSize));
+        batch.put("batchStatus",batch.get("status"));
+        return Map.of("success",true,"batch",batch);
+    }
+
+    @Transactional
+    public Map<String,Object> completeSystemProcessContractAuditBatch(UUID auditBatchId,String requestedBy){
+        Map<String,Object> batch=jsonMap(jdbc.queryForObject(
+                "select framework_complete_screen_workflow_audit_batch(?,?)::text",String.class,auditBatchId,requestedBy));
+        batch.put("batchStatus",batch.get("status"));
+        batch.put("stagedPageCount",batch.get("pageCount"));
+        batch.put("stagedTargetCount",batch.get("targetCount"));
+        return Map.of("success",true,"batch",batch);
+    }
+
+    @Transactional
+    public Map<String,Object> failSystemProcessContractAuditBatch(UUID auditBatchId,Map<String,Object> body,String requestedBy){
+        String failureCode=def(body,"failureCode","AUDIT_EXECUTION_FAILED");
+        String failureDetail=str(body,"failureDetail");
+        Map<String,Object> batch=jsonMap(jdbc.queryForObject(
+                "select framework_fail_screen_workflow_audit_batch(?,?,?,?)::text",String.class,
+                auditBatchId,requestedBy,failureCode,failureDetail));
+        batch.put("batchStatus",batch.get("status"));
+        return Map.of("success",true,"batch",batch);
+    }
+
+    @Transactional
     public Map<String,Object> auditSystemProcessContracts(Map<String,Object> body,String executedBy){
         String domain=str(body,"domainCode").toUpperCase(Locale.ROOT);
         String process=str(body,"processCode").toUpperCase(Locale.ROOT);
+        String step=str(body,"stepCode").toUpperCase(Locale.ROOT);
+        boolean compactResponse=bool(body,"compact")||"SUMMARY".equalsIgnoreCase(str(body,"responseMode"));
         int maxSteps=Math.max(1,Math.min(integerOr(body,"maxSteps",1000),2000));
-        List<Map<String,Object>> targets=jdbc.queryForList("""
-            select m.item_id as "itemId",screen.screen_resource_id as "screenResourceId",s.process_code as "processCode",s.step_code as "stepCode"
-              from framework_process_step s join framework_process_definition p on p.process_code=s.process_code
+        int targetOffset=Math.max(0,integerOr(body,"targetOffset",0));
+        int maxTargets=Math.max(1,Math.min(integerOr(body,"maxTargets",250),500));
+        String auditBatchId=str(body,"auditBatchId").trim();
+        Map<String,Object> auditBatch=null;
+        int auditPageNumber=-1;
+        if(!auditBatchId.isBlank()){
+            UUID.fromString(auditBatchId);
+            List<Map<String,Object>> batches=jdbc.queryForList("""
+                select audit_batch_id::text as "auditBatchId",source_commit as "sourceCommit",
+                       runtime_identity_hash as "runtimeIdentityHash",catalog_fingerprint as "catalogFingerprint",
+                       target_inventory_fingerprint as "targetInventoryFingerprint",
+                       expected_page_count as "expectedPageCount",expected_target_count as "expectedTargetCount",
+                       page_size as "pageSize",batch_status as "batchStatus",requested_by as "requestedBy"
+                  from framework_screen_workflow_audit_batch where audit_batch_id=cast(? as uuid)
+                """,auditBatchId);
+            if(batches.size()!=1)throw new IllegalArgumentException("SCREEN_WORKFLOW_AUDIT_BATCH_NOT_FOUND");
+            auditBatch=batches.get(0);
+            if(!"RUNNING".equals(auditBatch.get("batchStatus"))||!executedBy.equals(auditBatch.get("requestedBy")))
+                throw new SecurityException("SCREEN_WORKFLOW_AUDIT_BATCH_OR_ACTOR_MISMATCH");
+            if(!domain.isBlank()||!process.isBlank()||!step.isBlank()||body.containsKey("maxSteps"))
+                throw new IllegalArgumentException("HOURLY_ALL_PROCESS_BATCH_REQUIRES_UNFILTERED_CANONICAL_SCOPE");
+            if(((Number)auditBatch.get("pageSize")).intValue()!=maxTargets||targetOffset%maxTargets!=0)
+                throw new IllegalArgumentException("SCREEN_WORKFLOW_AUDIT_PAGE_GEOMETRY_MISMATCH");
+            domain="";process="";step="";maxSteps=Integer.MAX_VALUE;
+            auditPageNumber=targetOffset/maxTargets;
+        }
+        List<Map<String,Object>> targets;
+        if(auditBatch!=null){
+            targets=jdbc.queryForList("""
+                select m.item_id as "itemId",target.binding_id as "bindingId",target.audience,
+                       case when target.binding_id is null then null else 'ACTIVE' end as "bindingStatus",
+                       target.screen_resource_id as "screenResourceId",target.route_key as "routePath",
+                       screen.screen_name as "screenName",screen.implementation_status as "implementationStatus",
+                       target.process_code as "processCode",target.step_code as "stepCode",
+                       target.capability_code as "capabilityCode",fixture.test_case_id as "testCaseId",
+                       fixture.pre_input_json as "fixturePreInputJson",fixture.expected_result as "fixtureExpectedResult",
+                       fixture.expected_state as "fixtureExpectedState",batch.expected_target_count as "totalEligibleTargetCount",
+                       target.target_ordinal as "auditTargetOrdinal",target.target_key as "auditTargetKey"
+                  from framework_screen_workflow_audit_batch_target target
+                  join framework_screen_workflow_audit_batch batch using(audit_batch_id)
+                  left join framework_screen_resource screen using(screen_resource_id)
+                  left join lateral (
+                     select master.item_id from framework_page_development_item master
+                      where master.screen_resource_id=target.screen_resource_id
+                      order by case master.design_status when 'VERIFIED' then 0 else 1 end,
+                               master.sequence_no,master.item_id limit 1
+                   ) m on true
+                  left join lateral (
+                     select test.test_case_id,test.pre_input_json::text pre_input_json,
+                            test.expected_result,coalesce(test.expected_state,'') expected_state
+                       from framework_screen_workflow_test_case test
+                      where test.screen_resource_id=target.screen_resource_id
+                        and test.process_code=target.process_code and test.step_code=target.step_code
+                        and test.capability_code in(target.capability_code,'ALL')
+                        and test.expected_result='PASSED' and test.active=true
+                      order by case when test.capability_code=target.capability_code then 0 else 1 end,
+                               test.updated_at desc,test.test_case_id desc limit 1
+                   ) fixture on true
+                 where target.audit_batch_id=cast(? as uuid) and target.target_ordinal>=?
+                 order by target.target_ordinal limit ?
+                """,auditBatchId,(long)targetOffset,maxTargets+1);
+        }else{
+            targets=jdbc.queryForList("""
+            with scoped_steps as materialized (
+              select p.development_order,s.process_code,s.step_code,s.step_order
+                from framework_process_step s join framework_process_definition p on p.process_code=s.process_code
+               where (?='' or upper(p.domain_code)=?) and (?='' or s.process_code=?) and (?='' or s.step_code=?)
+               order by p.development_order,s.process_code,s.step_order,s.step_code limit ?
+            )
+            , eligible_targets as materialized (
+              select scoped.development_order,scoped.step_order,scoped.process_code,scoped.step_code,
+                     b.binding_id,b.audience,b.binding_status,b.entry_mode,
+                     screen.screen_resource_id,screen.route_key,screen.screen_name,screen.implementation_status,
+                     coalesce(capability.capability_code,'ALL') capability_code,
+                     count(*) over() total_eligible_target_count
+                from scoped_steps scoped
+                left join framework_process_step_screen_binding b
+                  on b.process_code=scoped.process_code and b.step_code=scoped.step_code
+                 and b.binding_status='ACTIVE'
+                left join framework_screen_resource screen using(screen_resource_id)
+                left join framework_screen_capability capability using(screen_resource_id)
+            ), paged_targets as materialized (
+              select * from eligible_targets
+               order by development_order,process_code,step_order,step_code,
+                        case entry_mode when 'PRIMARY' then 0 else 1 end,
+                        case audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,
+                        route_key,binding_id,capability_code
+               limit ? offset ?
+            )
+            select m.item_id as "itemId",target.binding_id as "bindingId",target.audience,
+                   target.binding_status as "bindingStatus",target.screen_resource_id as "screenResourceId",
+                   target.route_key as "routePath",target.screen_name as "screenName",
+                   target.implementation_status as "implementationStatus",target.process_code as "processCode",
+                   target.step_code as "stepCode",target.capability_code as "capabilityCode",
+                   fixture.test_case_id as "testCaseId",fixture.pre_input_json as "fixturePreInputJson",
+                   fixture.expected_result as "fixtureExpectedResult",fixture.expected_state as "fixtureExpectedState",
+                   target.total_eligible_target_count as "totalEligibleTargetCount"
+              from paged_targets target
               left join lateral (
-                select b.screen_resource_id from framework_process_step_screen_binding b
-                 where b.process_code=s.process_code and b.step_code=s.step_code and b.binding_status='ACTIVE'
-                 order by case b.entry_mode when 'PRIMARY' then 0 else 1 end,
-                          case b.audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,b.screen_resource_id limit 1
-              ) screen on true
-              left join framework_page_development_master m on m.screen_resource_id=screen.screen_resource_id
-             where (?='' or upper(p.domain_code)=?) and (?='' or s.process_code=?)
-             order by p.development_order,s.process_code,s.step_order limit ?
-            """,domain,domain,process,process,maxSteps);
+                 select master.item_id from framework_page_development_item master
+                 where master.screen_resource_id=target.screen_resource_id
+                 order by case master.design_status when 'VERIFIED' then 0 else 1 end,master.sequence_no,master.item_id limit 1
+               ) m on true
+              left join lateral (
+                 select test.test_case_id,test.pre_input_json::text pre_input_json,
+                        test.expected_result,coalesce(test.expected_state,'') expected_state
+                   from framework_screen_workflow_test_case test
+                  where test.screen_resource_id=target.screen_resource_id
+                    and test.process_code=target.process_code and test.step_code=target.step_code
+                    and test.capability_code in(target.capability_code,'ALL')
+                    and test.expected_result='PASSED' and test.active=true
+                  order by case when test.capability_code=target.capability_code then 0 else 1 end,
+                           test.updated_at desc,test.test_case_id desc limit 1
+               ) fixture on true
+             order by target.development_order,target.process_code,target.step_order,target.step_code,
+                      case target.entry_mode when 'PRIMARY' then 0 else 1 end,
+                      case target.audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,
+                      target.route_key,target.binding_id,target.capability_code
+            """,domain,domain,process,process,step,step,maxSteps,maxTargets+1,targetOffset);
+        }
+        boolean hasMore=targets.size()>maxTargets;
+        long totalEligibleTargetCount=auditBatch==null
+                ?(targets.isEmpty()?0L:targets.get(0).get("totalEligibleTargetCount") instanceof Number total?total.longValue():targetOffset+targets.size())
+                :((Number)auditBatch.get("expectedTargetCount")).longValue();
+        if(hasMore)targets=new ArrayList<>(targets.subList(0,maxTargets));
         List<Map<String,Object>> runs=new ArrayList<>();
+        ContractAuditQueryCache auditCache=new ContractAuditQueryCache();
         int passed=0,blocked=0,errors=0;
-        for(Map<String,Object> target:targets){
+        Set<String> auditedSteps=new HashSet<>(),auditedBindings=new HashSet<>();
+        for(int targetIndex=0;targetIndex<targets.size();targetIndex++){
+            Map<String,Object> target=targets.get(targetIndex);
+            if(auditBatch!=null){
+                long expectedOrdinal=(long)targetOffset+targetIndex;
+                long snapshotOrdinal=((Number)target.get("auditTargetOrdinal")).longValue();
+                String snapshotKey=String.valueOf(target.get("auditTargetKey"));
+                String computedTargetKey=sha256Hex(String.join("\u001f",
+                        auditTargetPart(target.get("screenResourceId")),auditTargetPart(target.get("processCode")),
+                        auditTargetPart(target.get("stepCode")),auditTargetPart(target.get("bindingId")),
+                        auditTargetPart(target.get("audience")),auditTargetPart(target.get("routePath")),
+                        auditTargetPart(target.get("capabilityCode"))));
+                if(snapshotOrdinal!=expectedOrdinal||!snapshotKey.equals(computedTargetKey))
+                    throw new IllegalStateException("SCREEN_WORKFLOW_AUDIT_TARGET_SNAPSHOT_MISMATCH");
+                target.put("_auditBatchId",auditBatchId);
+                target.put("_auditSourceCommit",auditBatch.get("sourceCommit"));
+                target.put("_auditRuntimeIdentityHash",auditBatch.get("runtimeIdentityHash"));
+                target.put("_auditPageNumber",auditPageNumber);
+                target.put("_auditTargetOrdinal",snapshotOrdinal);
+                target.put("_auditTargetKey",snapshotKey);
+            }
+            auditedSteps.add(target.get("processCode")+"|"+target.get("stepCode"));
+            if(target.get("bindingId")!=null)auditedBindings.add(String.valueOf(target.get("bindingId")));
             if(target.get("screenResourceId")==null||target.get("itemId")==null){
                 errors++;Map<String,Object> failure=new LinkedHashMap<>(target);failure.put("result","ERROR");
                 failure.put("message",target.get("screenResourceId")==null?"ACTIVE_SCREEN_BINDING_NOT_FOUND":"SCREEN_DEVELOPMENT_ITEM_NOT_FOUND");runs.add(failure);continue;
             }
+            if("DRAFT".equals(target.get("bindingStatus"))){
+                blocked++;Map<String,Object> pending=new LinkedHashMap<>(target);pending.put("result","BLOCKED");
+                pending.put("message","WORKFLOW_EVIDENCE_PENDING");runs.add(pending);continue;
+            }
             Map<String,Object> request=new LinkedHashMap<>();
             request.put("itemId",target.get("itemId"));request.put("processCode",target.get("processCode"));
-            request.put("stepCode",target.get("stepCode"));request.put("capabilityCode","ALL");
-            List<Map<String,Object>> fixtures=jdbc.queryForList("select test_case_id as \"testCaseId\" from framework_screen_workflow_test_case where screen_resource_id=? and process_code=? and step_code=? and capability_code='ALL' and active=true order by updated_at desc,test_case_id desc limit 1",target.get("screenResourceId"),target.get("processCode"),target.get("stepCode"));
-            if(fixtures.isEmpty())request.put("preInputJson","{}");else request.put("testCaseId",fixtures.get(0).get("testCaseId"));
+            request.put("stepCode",target.get("stepCode"));request.put("capabilityCode",target.get("capabilityCode"));
+            request.put("audience",target.get("audience"));
+            if(target.get("testCaseId")==null)request.put("preInputJson","{}");else request.put("testCaseId",target.get("testCaseId"));
             try{
-                Map<String,Object> run=runDeterministicScreenWorkflowTest(request,executedBy);
+                Map<String,Object> run=runDeterministicScreenWorkflowTest(request,executedBy,target,auditCache);
                 runs.add(run);if("PASSED".equals(run.get("result")))passed++;else blocked++;
             }catch(Exception e){
                 errors++;Map<String,Object> failure=new LinkedHashMap<>(target);failure.put("result","ERROR");
                 failure.put("message",e.getMessage()==null?"CONTRACT_AUDIT_FAILED":e.getMessage());runs.add(failure);
             }
         }
-        Map<String,Object> filters=new LinkedHashMap<>();filters.put("domainCode",domain);filters.put("processCode",process);filters.put("maxSteps",maxSteps);
-        Map<String,Object> response=new LinkedHashMap<>();response.put("success",errors==0);response.put("auditMode","CONTRACT_ONLY");
-        response.put("businessFunctionsExecuted",false);response.put("filters",filters);response.put("targetCount",targets.size());response.put("auditedStepCount",targets.size());
-        response.put("passedCount",passed);response.put("blockedCount",blocked);response.put("errorCount",errors);response.put("runs",runs);
+        Map<String,Object> filters=new LinkedHashMap<>();filters.put("domainCode",domain);filters.put("processCode",process);filters.put("stepCode",step);filters.put("maxSteps",maxSteps);
+        filters.put("targetOffset",targetOffset);filters.put("maxTargets",maxTargets);
+        String outcome=errors>0?"ERROR":blocked>0?"BLOCKED":targets.isEmpty()?"BLOCKED":"PASSED";
+        Map<String,Object> response=new LinkedHashMap<>();response.put("success",true);response.put("outcome",outcome);response.put("result",outcome);response.put("auditMode","CONTRACT_ONLY");
+        response.put("businessFunctionsExecuted",false);response.put("compact",compactResponse);response.put("filters",filters);response.put("targetCount",targets.size());
+        response.put("auditTargetMode","ACTIVE_BINDING_CAPABILITY");
+        response.put("targetOffset",targetOffset);response.put("maxTargets",maxTargets);response.put("hasMore",hasMore);
+        response.put("totalEligibleTargetCount",totalEligibleTargetCount);
+        response.put("coveredTargetCount",Math.min(totalEligibleTargetCount,(long)targetOffset+targets.size()));
+        response.put("targetCoverageState",hasMore?"PARTIAL":"COMPLETE");
+        response.put("nextTargetOffset",hasMore?targetOffset+targets.size():null);
+        response.put("auditedStepCount",auditedSteps.size());response.put("auditedBindingCount",auditedBindings.size());
+        response.put("auditedCapabilityTargetCount",targets.stream().filter(row->row.get("screenResourceId")!=null).count());
+        response.put("passedCount",passed);response.put("blockedCount",blocked);response.put("errorCount",errors);
+        if(auditBatch!=null){
+            Map<String,Object> pageReceipt=jsonMap(jdbc.queryForObject(
+                    "select framework_record_screen_workflow_audit_page(cast(? as uuid),?,?,?,?,?,?,?,?)::text",
+                    String.class,auditBatchId,executedBy,auditPageNumber,targetOffset,totalEligibleTargetCount,
+                    passed,blocked,errors,hasMore));
+            response.put("auditBatchId",auditBatchId);response.put("auditPageNumber",auditPageNumber);
+            response.put("auditSourceCommit",auditBatch.get("sourceCommit"));
+            response.put("auditRuntimeIdentityHash",auditBatch.get("runtimeIdentityHash"));
+            response.put("auditCatalogFingerprint",auditBatch.get("catalogFingerprint"));
+            response.put("auditTargetInventoryFingerprint",auditBatch.get("targetInventoryFingerprint"));
+            response.put("auditPageFingerprint",pageReceipt.get("pageFingerprint"));
+        }
+        if(compactResponse){
+            Map<String,Object> diagnostics=compactContractAuditDiagnostics(runs);
+            response.putAll(diagnostics);
+            response.put("runs",diagnostics.get("failureSamples"));
+        }else{
+            response.put("runs",runs);
+        }
         return response;
+    }
+
+    /**
+     * Persists an append-only human design/usability decision for one report row.
+     * This record is deliberately separate from immutable runtime evidence and
+     * therefore cannot promote DESIGN or CONTRACT_SIMULATION to BUSINESS_E2E.
+     */
+    @Transactional
+    public Map<String,Object> saveSystemUsageReview(Map<String,Object> body,String reviewedBy){
+        String reviewer=reviewedBy==null?"":reviewedBy.trim();
+        if(reviewer.isBlank())throw new SecurityException("AUTHENTICATED_REVIEWER_REQUIRED");
+        String process=req(body,"processCode").trim().toUpperCase(Locale.ROOT);
+        String step=req(body,"stepCode").trim().toUpperCase(Locale.ROOT);
+        String status=req(body,"reviewStatus").trim().toUpperCase(Locale.ROOT);
+        String note=str(body,"reviewNote").trim();
+        Object rawScreen=body.get("screenResourceId");
+        Long screenId=rawScreen==null||String.valueOf(rawScreen).isBlank()?null:Long.parseLong(String.valueOf(rawScreen));
+        if(screenId!=null&&screenId<=0)throw new IllegalArgumentException("screenResourceId must be a positive number");
+        String capability=def(body,"capabilityCode","ALL").trim().toUpperCase(Locale.ROOT);
+        if(capability.isBlank())capability="ALL";
+        if(!Set.of("APPROVED","CHANGE_REQUESTED").contains(status))
+            throw new IllegalArgumentException("reviewStatus must be APPROVED or CHANGE_REQUESTED");
+        if("CHANGE_REQUESTED".equals(status)&&note.isBlank())
+            throw new IllegalArgumentException("reviewNote is required for CHANGE_REQUESTED");
+        if(screenId==null&&!"ALL".equals(capability))
+            throw new IllegalArgumentException("screenResourceId is required for a capability review");
+        String scopeFingerprint="";
+        if(screenId!=null){
+            Integer bindingCount=jdbc.queryForObject("""
+                select count(*) from framework_process_step_screen_binding
+                 where process_code=? and step_code=? and screen_resource_id=? and binding_status='ACTIVE'
+                """,Integer.class,process,step,screenId);
+            if(bindingCount==null||bindingCount==0)
+                throw new IllegalArgumentException("ACTIVE_SCREEN_BINDING_NOT_FOUND: "+process+" / "+step+" / "+screenId);
+            if(!"ALL".equals(capability)){
+                Integer capabilityCount=jdbc.queryForObject("select count(*) from framework_screen_capability where screen_resource_id=? and capability_code=?",
+                        Integer.class,screenId,capability);
+                if(capabilityCount==null||capabilityCount==0)
+                    throw new IllegalArgumentException("SCREEN_CAPABILITY_NOT_FOUND: "+screenId+" / "+capability);
+            }
+            scopeFingerprint="ALL".equals(capability)
+                    ?screenReviewFingerprint(screenId,process,step)
+                    :capabilityReviewFingerprint(screenId,process,step,capability);
+        }
+        List<Map<String,Object>> contract=jdbc.queryForList("""
+            select p.process_version as "processVersion",
+                   runtime.source_commit as "sourceCommit",
+                   framework_runtime_release_identity_hash(runtime) as "runtimeIdentityHash"
+              from framework_process_definition p
+              join framework_process_step s using(process_code)
+              join framework_runtime_release_state runtime
+                on runtime.release_key='CARBONET_RUNTIME' and runtime.health_status='UP'
+             where p.process_code=? and s.step_code=?
+             for share of runtime
+            """,process,step);
+        if(contract.size()!=1)throw new IllegalArgumentException("PROCESS_STEP_NOT_FOUND: "+process+" / "+step);
+        String version=String.valueOf(contract.get(0).get("processVersion"));
+        Object rawFingerprint;
+        if(screenId==null){
+            Map<String,Object> detail=systemProcessTestReportStepDetail(process,step);
+            @SuppressWarnings("unchecked") Map<String,Object> detailItem=(Map<String,Object>)detail.get("item");
+            rawFingerprint=detailItem==null?null:detailItem.get("contractFingerprint");
+        }else rawFingerprint=scopeFingerprint;
+        if(rawFingerprint==null||String.valueOf(rawFingerprint).isBlank())
+            throw new IllegalStateException("Current operational contract fingerprint is unavailable; review was not recorded: "+process+" / "+step);
+        Object rawSourceCommit=contract.get(0).get("sourceCommit");
+        if(rawSourceCommit==null||!String.valueOf(rawSourceCommit).matches("[0-9a-f]{40}"))
+            throw new IllegalStateException("Current healthy runtime commit is unavailable; review was not recorded");
+        Object rawRuntimeIdentityHash=contract.get(0).get("runtimeIdentityHash");
+        if(rawRuntimeIdentityHash==null||!String.valueOf(rawRuntimeIdentityHash).matches("[0-9a-f]{64}"))
+            throw new IllegalStateException("Current healthy runtime identity is unavailable; review was not recorded");
+        String idempotency=str(body,"idempotencyKey").trim();
+        if(idempotency.isBlank())idempotency=sha256Hex(String.join("|",process,step,String.valueOf(screenId),capability,status,note,version,
+                String.valueOf(rawFingerprint),String.valueOf(rawSourceCommit),String.valueOf(rawRuntimeIdentityHash),reviewer));
+        if(idempotency.length()>128)throw new IllegalArgumentException("idempotencyKey must be 128 characters or less");
+        jdbc.queryForObject("select count(*) from (select pg_advisory_xact_lock(hashtextextended(?,0))) lock",
+                Integer.class,idempotency);
+        List<Map<String,Object>> existing=jdbc.queryForList("""
+            select review_id as "reviewId",process_code as "processCode",step_code as "stepCode",
+                   screen_resource_id as "screenResourceId",capability_code as "capabilityCode",
+                   review_status as "reviewStatus",review_note as "reviewNote",process_version as "processVersion",
+                   contract_fingerprint as "contractFingerprint",source_commit as "reviewSourceCommit",
+                   runtime_identity_hash as "reviewRuntimeIdentityHash",
+                   linked_job_id as "linkedJobId",reviewed_by as "reviewedBy",reviewed_at as "reviewedAt"
+              from framework_system_usage_review where idempotency_key=?
+            """,idempotency);
+        if(!existing.isEmpty()){
+            Map<String,Object> prior=new LinkedHashMap<>(existing.get(0));
+            long priorScreen=prior.get("screenResourceId") instanceof Number number?number.longValue():0L;
+            long requestedScreen=screenId==null?0L:screenId;
+            if(!process.equals(prior.get("processCode"))||!step.equals(prior.get("stepCode"))
+                    ||requestedScreen!=priorScreen||!capability.equals(prior.get("capabilityCode"))
+                    ||!status.equals(prior.get("reviewStatus"))||!note.equals(prior.get("reviewNote"))
+                    ||!version.equals(prior.get("processVersion"))
+                    ||!String.valueOf(rawFingerprint).equals(prior.get("contractFingerprint"))
+                    ||!String.valueOf(rawSourceCommit).equals(prior.get("reviewSourceCommit"))
+                    ||!String.valueOf(rawRuntimeIdentityHash).equals(prior.get("reviewRuntimeIdentityHash"))
+                    ||!reviewer.equals(prior.get("reviewedBy")))
+                throw new IllegalArgumentException("IDEMPOTENCY_KEY_REUSE_MISMATCH");
+            prior.put("reviewCurrentVersion",String.valueOf(rawFingerprint).equals(prior.get("contractFingerprint"))
+                    &&String.valueOf(rawSourceCommit).equals(prior.get("reviewSourceCommit"))
+                    &&String.valueOf(rawRuntimeIdentityHash).equals(prior.get("reviewRuntimeIdentityHash")));
+            prior.put("reviewScreenResourceId",prior.remove("screenResourceId"));
+            prior.put("reviewCapabilityCode",prior.remove("capabilityCode"));
+            prior.put("reviewEvidenceScope","HUMAN_REVIEW_ONLY");prior.put("idempotent",true);
+            prior.put("nextAction","CHANGE_REQUESTED".equals(prior.get("reviewStatus"))?"DEVELOPMENT_REVIEW_PENDING":"NONE");
+            return Map.of("success",true,"review",prior);
+        }
+        Long reviewId=jdbc.queryForObject("""
+            insert into framework_system_usage_review(process_code,step_code,screen_resource_id,capability_code,idempotency_key,review_status,review_note,
+                   process_version,contract_fingerprint,source_commit,runtime_identity_hash,reviewed_by)
+            values(?,?,?,?,?,?,?,?,?,?,?,?) returning review_id
+            """,Long.class,process,step,screenId,capability,idempotency,status,note,version,String.valueOf(rawFingerprint),String.valueOf(rawSourceCommit),String.valueOf(rawRuntimeIdentityHash),reviewer);
+        Long linkedJobId=null;
+        if("CHANGE_REQUESTED".equals(status)){
+            String targetPath="design-review/"+process.toLowerCase(Locale.ROOT)+"/"+step.toLowerCase(Locale.ROOT)+"/"+idempotency;
+            String specification=toJson(Map.of(
+                    "reviewId",reviewId,"reviewNote",note,"processVersion",version,
+                    "contractFingerprint",String.valueOf(rawFingerprint),"sourceCommit",String.valueOf(rawSourceCommit),
+                    "runtimeIdentityHash",String.valueOf(rawRuntimeIdentityHash),
+                    "screenResourceId",screenId==null?0L:screenId,"capabilityCode",capability,
+                    "approvalPolicy","MANUAL_APPROVAL_REQUIRED","autoDeploy",false));
+            linkedJobId=jdbc.queryForObject("""
+                insert into framework_development_job(process_code,step_code,job_type,job_name,target_path,
+                       specification_json,job_status,approval_status,created_by)
+                values(?,?,'DESIGN_REVIEW','실사용 검수 변경 요청',?,?,'PLANNED','PENDING',?)
+                on conflict(process_code,step_code,job_type,target_path) do update set
+                  job_name=excluded.job_name,specification_json=excluded.specification_json,
+                  job_status=case when framework_development_job.job_status in('VERIFIED','COMPLETED')
+                                  then framework_development_job.job_status else 'PLANNED' end,
+                  approval_status=case when framework_development_job.job_status in('VERIFIED','COMPLETED')
+                                       then framework_development_job.approval_status else 'PENDING' end,
+                  updated_at=current_timestamp
+                returning job_id
+                """,Long.class,process,step,targetPath,specification,reviewer);
+            jdbc.update("update framework_system_usage_review set linked_job_id=? where review_id=?",linkedJobId,reviewId);
+            event(linkedJobId,"REVIEW_CHANGE_REQUESTED",null,"PLANNED",reviewer,toJson(Map.of(
+                    "reviewId",reviewId,"contractFingerprint",String.valueOf(rawFingerprint),
+                    "sourceCommit",String.valueOf(rawSourceCommit),"runtimeIdentityHash",String.valueOf(rawRuntimeIdentityHash),
+                    "approvalStatus","PENDING")));
+        }
+        Map<String,Object> review=new LinkedHashMap<>();
+        review.put("reviewId",reviewId);review.put("processCode",process);review.put("stepCode",step);
+        review.put("reviewStatus",status);review.put("reviewNote",note);review.put("processVersion",version);
+        review.put("reviewScreenResourceId",screenId);review.put("reviewCapabilityCode",capability);
+        review.put("reviewedBy",reviewer);review.put("reviewSourceCommit",String.valueOf(rawSourceCommit));
+        review.put("reviewRuntimeIdentityHash",String.valueOf(rawRuntimeIdentityHash));review.put("reviewCurrentVersion",true);
+        review.put("linkedJobId",linkedJobId);review.put("idempotent",false);
+        review.put("nextAction","CHANGE_REQUESTED".equals(status)?"DEVELOPMENT_REVIEW_PENDING":"NONE");
+        review.put("reviewEvidenceScope","HUMAN_REVIEW_ONLY");
+        return Map.of("success",true,"review",review);
+    }
+
+    /**
+     * Produces a bounded diagnostics envelope for the paged audit endpoint.
+     * Full immutable evidence remains persisted in framework_screen_workflow_test_run;
+     * this response intentionally carries only aggregate reasons and small failure
+     * samples so an hourly auditor never transfers every per-check evidence payload.
+     */
+    static Map<String,Object> compactContractAuditDiagnostics(List<Map<String,Object>> runs){
+        Map<String,Integer> resultCounts=new TreeMap<>();
+        Map<String,Integer> reasons=new HashMap<>();
+        List<Map<String,Object>> errorSamples=new ArrayList<>(),blockedSamples=new ArrayList<>();
+        for(Map<String,Object> run:runs){
+            String result=String.valueOf(run.getOrDefault("result","UNKNOWN")).trim().toUpperCase(Locale.ROOT);
+            if(result.isBlank())result="UNKNOWN";
+            resultCounts.merge(result,1,Integer::sum);
+            if("ERROR".equals(result)){
+                String reason=boundedAuditText(run.get("message"),256,"CONTRACT_AUDIT_FAILED");
+                reasons.merge(reason,1,Integer::sum);
+                if(errorSamples.size()<5)errorSamples.add(compactContractAuditFailure(run,reason));
+            }else if("BLOCKED".equals(result)){
+                List<String> blockerCodes=compactAuditBlockerCodes(run.get("blockerCodes"));
+                if(blockerCodes.isEmpty())reasons.merge("CONTRACT_BLOCKED",1,Integer::sum);
+                else blockerCodes.forEach(reason->reasons.merge(reason,1,Integer::sum));
+                if(blockedSamples.size()<5)blockedSamples.add(compactContractAuditFailure(run,blockerCodes.isEmpty()?"CONTRACT_BLOCKED":String.join(",",blockerCodes)));
+            }
+        }
+        Map<String,Integer> reasonCounts=new LinkedHashMap<>();
+        reasons.entrySet().stream()
+            .sorted((left,right)->{
+                int byCount=Integer.compare(right.getValue(),left.getValue());
+                return byCount!=0?byCount:left.getKey().compareTo(right.getKey());
+            })
+            .limit(20)
+            .forEach(entry->reasonCounts.put(entry.getKey(),entry.getValue()));
+        List<Map<String,Object>> failureSamples=new ArrayList<>(errorSamples);
+        failureSamples.addAll(blockedSamples);
+        Map<String,Object> diagnostics=new LinkedHashMap<>();
+        diagnostics.put("runCount",runs.size());diagnostics.put("runResultCounts",resultCounts);
+        diagnostics.put("reasonCounts",reasonCounts);diagnostics.put("errorSamples",errorSamples);
+        diagnostics.put("blockedSamples",blockedSamples);diagnostics.put("failureSamples",failureSamples);
+        diagnostics.put("runsOmittedCount",Math.max(0,runs.size()-failureSamples.size()));
+        return diagnostics;
+    }
+
+    private static Map<String,Object> compactContractAuditFailure(Map<String,Object> run,String reason){
+        Map<String,Object> sample=new LinkedHashMap<>();
+        for(String field:List.of("runId","screenResourceId","processCode","stepCode","routePath","audience","capabilityCode","result")){
+            Object value=run.get(field);
+            if(value!=null)sample.put(field,value instanceof String?boundedAuditText(value,512,""):value);
+        }
+        sample.put("reason",boundedAuditText(reason,512,"CONTRACT_AUDIT_FAILED"));
+        sample.put("message",boundedAuditText(run.get("message"),512,""));
+        sample.put("blockerCodes",compactAuditBlockerCodes(run.get("blockerCodes")));
+        return sample;
+    }
+
+    private static List<String> compactAuditBlockerCodes(Object value){
+        if(value==null)return List.of();
+        Collection<?> values=value instanceof Collection<?> collection?collection:List.of(String.valueOf(value).split(","));
+        return values.stream().map(item->boundedAuditText(item,96,"")).filter(item->!item.isBlank()).distinct().limit(20).toList();
+    }
+
+    private static String boundedAuditText(Object value,int maxLength,String fallback){
+        String text=value==null?"":String.valueOf(value).trim();
+        if(text.isBlank())return fallback;
+        return text.length()<=maxLength?text:text.substring(0,maxLength)+"...";
     }
 
     private static String normalizeSystemTestResult(String value){
@@ -448,6 +2199,46 @@ public class ActorProcessGovernanceService {
         return result;
     }
 
+    private static boolean meaningfulSystemContract(Object value){
+        if(value==null)return false;
+        String contract=String.valueOf(value).trim();
+        return !contract.isEmpty()&&!Set.of("{}","[]","null","undefined","-","n/a","todo","tbd").contains(contract.toLowerCase(Locale.ROOT));
+    }
+
+    private static Map<String,Object> newSystemAggregate(Map<String,Object> item,String type){
+        Map<String,Object> row=new LinkedHashMap<>();
+        if("WORK_TYPE".equals(type)){
+            row.put("workTypeCode",item.get("domainCode"));row.put("domainCode",item.get("domainCode"));
+            row.put("workTypeName",item.get("domainName"));row.put("domainName",item.get("domainName"));
+            row.put("sortOrder",item.getOrDefault("domainOrder",9999));row.put("processCount",0);
+        }else{
+            row.put("domainCode",item.get("domainCode"));row.put("processCode",item.get("processCode"));
+            row.put("processName",item.get("processName"));row.put("processStatus",item.get("processStatus"));
+            row.put("developmentOrder",item.get("developmentOrder"));row.put("scenarioCount",0);
+        }
+        row.put("stepCount",0);row.put("testedStepCount",0);row.put("passedStepCount",0);
+        row.put("blockedStepCount",0);row.put("untestedStepCount",0);
+        return row;
+    }
+
+    private static void incrementSystemAggregate(Map<String,Object> row,String state){
+        row.put("stepCount",((Number)row.get("stepCount")).intValue()+1);
+        if(!"NOT_RUN".equals(state))row.put("testedStepCount",((Number)row.get("testedStepCount")).intValue()+1);
+        if("PASSED".equals(state))row.put("passedStepCount",((Number)row.get("passedStepCount")).intValue()+1);
+        else if("BLOCKED".equals(state))row.put("blockedStepCount",((Number)row.get("blockedStepCount")).intValue()+1);
+        else row.put("untestedStepCount",((Number)row.get("untestedStepCount")).intValue()+1);
+    }
+
+    /** Request-local cache used only by the bounded bulk contract auditor. */
+    private static final class ContractAuditQueryCache {
+        final Map<String,Map<String,Object>> transitionByStep=new HashMap<>();
+        final Map<Long,Map<String,Object>> gateByScreen=new HashMap<>();
+        final Map<Long,Map<String,Object>> fieldSummaryByScreen=new HashMap<>();
+        final Map<Long,Map<String,Object>> capabilitySummaryByScreen=new HashMap<>();
+        final Map<String,Map<String,Object>> testSummaryByStep=new HashMap<>();
+        final Map<String,Map<String,Object>> preInputSummary=new HashMap<>();
+    }
+
     /**
      * Executes the screen closing gate without an AI call. The result is derived
      * only from versioned actor/process/screen/data/test contracts and is stored
@@ -455,25 +2246,57 @@ public class ActorProcessGovernanceService {
      */
     @Transactional
     public Map<String,Object> runDeterministicScreenWorkflowTest(Map<String,Object> body,String executedBy){
+        return runDeterministicScreenWorkflowTest(body,executedBy,null,null);
+    }
+
+    private Map<String,Object> runDeterministicScreenWorkflowTest(Map<String,Object> body,String executedBy,
+                                                                   Map<String,Object> trustedAuditTarget,
+                                                                   ContractAuditQueryCache auditCache){
         long itemId=Long.parseLong(req(body,"itemId"));
         String process=req(body,"processCode").trim().toUpperCase(Locale.ROOT);
         String step=req(body,"stepCode").trim().toUpperCase(Locale.ROOT);
         String capability=def(body,"capabilityCode","ALL").trim().toUpperCase(Locale.ROOT);
-        Map<String,Object> item=jdbc.queryForMap("select screen_resource_id,route_key,screen_name,implementation_status from framework_page_development_master where item_id=?",itemId);
+        Map<String,Object> item=trustedAuditTarget==null
+            ?jdbc.queryForMap("select screen_resource_id,route_key,screen_name,implementation_status from framework_page_development_master where item_id=?",itemId)
+            :Map.of("screen_resource_id",trustedAuditTarget.get("screenResourceId"),
+                    "route_key",trustedAuditTarget.get("routePath"),
+                    "screen_name",trustedAuditTarget.get("screenName"),
+                    "implementation_status",trustedAuditTarget.get("implementationStatus"));
         long screenId=((Number)item.get("screen_resource_id")).longValue();
         String route=String.valueOf(item.get("route_key"));
-        Integer bindingCount=jdbc.queryForObject("select count(*) from framework_process_step_screen_binding where screen_resource_id=? and process_code=? and step_code=? and binding_status='ACTIVE'",Integer.class,screenId,process,step);
+        String audience=def(body,"audience","").trim().toUpperCase(Locale.ROOT);
+        if(audience.isBlank()&&trustedAuditTarget==null){
+            List<String> audiences=jdbc.queryForList("select audience from framework_process_step_screen_binding where screen_resource_id=? and process_code=? and step_code=? and binding_status='ACTIVE' order by case entry_mode when 'PRIMARY' then 0 else 1 end,case audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end limit 1",String.class,screenId,process,step);
+            if(!audiences.isEmpty())audience=audiences.get(0);
+        }
+        Integer bindingCount=trustedAuditTarget==null
+            ?jdbc.queryForObject("select count(*) from framework_process_step_screen_binding where screen_resource_id=? and process_code=? and step_code=? and audience=? and binding_status='ACTIVE'",Integer.class,screenId,process,step,audience)
+            :1;
         if(bindingCount==null||bindingCount==0)throw new IllegalArgumentException("SCREEN_PROCESS_BINDING_NOT_FOUND: "+process+" / "+step+" / "+route);
-        Integer selectedCapabilityCount="ALL".equals(capability)?1:jdbc.queryForObject("select count(*) from framework_screen_capability where screen_resource_id=? and capability_code=?",Integer.class,screenId,capability);
+        Integer selectedCapabilityCount=trustedAuditTarget==null
+            ?("ALL".equals(capability)?1:jdbc.queryForObject("select count(*) from framework_screen_capability where screen_resource_id=? and capability_code=?",Integer.class,screenId,capability))
+            :1;
         if(selectedCapabilityCount==null||selectedCapabilityCount==0)throw new IllegalArgumentException("SCREEN_CAPABILITY_NOT_FOUND: "+capability);
         String requestedCaseId=str(body,"testCaseId");
         Long testCaseId=requestedCaseId.isBlank()?null:Long.parseLong(requestedCaseId);
         String preInputJson=def(body,"preInputJson","{}");
+        String expectedResult="",expectedState="";
         if(testCaseId!=null){
-            Map<String,Object> fixture=jdbc.queryForMap("select pre_input_json::text as pre_input_json from framework_screen_workflow_test_case where test_case_id=? and screen_resource_id=? and process_code=? and step_code=? and capability_code in (?, 'ALL') and active=true",testCaseId,screenId,process,step,capability);
+            Map<String,Object> fixture=trustedAuditTarget==null
+                ?jdbc.queryForMap("select pre_input_json::text as pre_input_json,expected_result,coalesce(expected_state,'') expected_state from framework_screen_workflow_test_case where test_case_id=? and screen_resource_id=? and process_code=? and step_code=? and capability_code in (?, 'ALL') and active=true",testCaseId,screenId,process,step,capability)
+                :Map.of("pre_input_json",trustedAuditTarget.getOrDefault("fixturePreInputJson","{}"),
+                        "expected_result",trustedAuditTarget.getOrDefault("fixtureExpectedResult","PASSED"),
+                        "expected_state",trustedAuditTarget.getOrDefault("fixtureExpectedState",""));
             if(!body.containsKey("preInputJson"))preInputJson=String.valueOf(fixture.get("pre_input_json"));
+            expectedResult=String.valueOf(fixture.get("expected_result"));expectedState=String.valueOf(fixture.get("expected_state"));
         }
         validateJsonObject(preInputJson,"preInputJson");
+        String stepKey=process+'|'+step;
+        Map<String,Object> transition=auditCache==null
+            ?jdbc.queryForMap("select from_state,to_state from framework_process_step where process_code=? and step_code=?",process,step)
+            :auditCache.transitionByStep.computeIfAbsent(stepKey,key->jdbc.queryForMap("select from_state,to_state from framework_process_step where process_code=? and step_code=?",process,step));
+        String contractFingerprint=screenContractFingerprint(screenId,process,step,audience,capability);
+        String preferredAudience=preferredScreenContractAudience(audience);
 
         List<Map<String,Object>> checks=new ArrayList<>();
         addScreenCheck(checks,"ROUTE_REGISTERED","화면 경로 등록",true,route);
@@ -481,7 +2304,9 @@ public class ActorProcessGovernanceService {
         addScreenCheck(checks,"SCREEN_IMPLEMENTED","화면 구현",Set.of("IMPLEMENTED","VERIFIED").contains(implementation),implementation);
         addScreenCheck(checks,"CAPABILITY_SELECTED","선택 기능 계약",selectedCapabilityCount>0,capability);
 
-        Map<String,Object> gate=jdbc.queryForMap("select design_gate_status,design_gate_score,design_gate_issues,actor_passed,process_passed,contract_passed,lineage_passed,transition_passed,authority_passed,version_passed,exception_passed,admin_counterpart_passed,test_passed from framework_page_design_assurance where screen_resource_id=?",screenId);
+        Map<String,Object> gate=auditCache==null
+            ?jdbc.queryForMap("select design_gate_status,design_gate_score,design_gate_issues,actor_passed,process_passed,contract_passed,lineage_passed,transition_passed,authority_passed,version_passed,exception_passed,admin_counterpart_passed,test_passed from framework_page_design_assurance where screen_resource_id=?",screenId)
+            :auditCache.gateByScreen.computeIfAbsent(screenId,key->jdbc.queryForMap("select design_gate_status,design_gate_score,design_gate_issues,actor_passed,process_passed,contract_passed,lineage_passed,transition_passed,authority_passed,version_passed,exception_passed,admin_counterpart_passed,test_passed from framework_page_design_assurance where screen_resource_id=?",screenId));
         addScreenCheck(checks,"ACTOR_CONTRACT","액터 계약",Boolean.TRUE.equals(gate.get("actor_passed")),"");
         addScreenCheck(checks,"PROCESS_CONTRACT","프로세스 계약",Boolean.TRUE.equals(gate.get("process_passed")),"");
         addScreenCheck(checks,"SCREEN_CONTRACT","화면 계약",Boolean.TRUE.equals(gate.get("contract_passed")),"");
@@ -492,39 +2317,267 @@ public class ActorProcessGovernanceService {
         addScreenCheck(checks,"EXCEPTION_RECOVERY","예외·복구",Boolean.TRUE.equals(gate.get("exception_passed")),"");
         addScreenCheck(checks,"ADMIN_COUNTERPART","사용자·관리자 대응",Boolean.TRUE.equals(gate.get("admin_counterpart_passed")),"");
 
-        Map<String,Object> fieldSummary=jdbc.queryForMap("select count(*) as total,count(*) filter(where required) as required,count(*) filter(where required and (coalesce(source_table,'')='' or coalesce(source_column,'')='' or lineage_status not in('DB_RESOLVED','IMPLEMENTATION_VERIFIED'))) as unresolved_required,count(*) filter(where coalesce(api_property,'')='') as api_gaps from framework_screen_data_binding where screen_resource_id=?",screenId);
+        Map<String,Object> fieldSummary=auditCache==null
+            ?jdbc.queryForMap("select count(*) as total,count(*) filter(where required) as required,count(*) filter(where required and (coalesce(source_table,'')='' or coalesce(source_column,'')='' or lineage_status not in('DB_RESOLVED','IMPLEMENTATION_VERIFIED'))) as unresolved_required,count(*) filter(where coalesce(api_property,'')='') as api_gaps from framework_screen_data_binding where screen_resource_id=?",screenId)
+            :auditCache.fieldSummaryByScreen.computeIfAbsent(screenId,key->jdbc.queryForMap("select count(*) as total,count(*) filter(where required) as required,count(*) filter(where required and (coalesce(source_table,'')='' or coalesce(source_column,'')='' or lineage_status not in('DB_RESOLVED','IMPLEMENTATION_VERIFIED'))) as unresolved_required,count(*) filter(where coalesce(api_property,'')='') as api_gaps from framework_screen_data_binding where screen_resource_id=?",screenId));
         int fieldCount=((Number)fieldSummary.get("total")).intValue();
         int unresolvedRequired=((Number)fieldSummary.get("unresolved_required")).intValue();
         int apiGaps=((Number)fieldSummary.get("api_gaps")).intValue();
         addScreenCheck(checks,"FIELD_CONTRACT","필드 계약",fieldCount>0&&unresolvedRequired==0&&apiGaps==0,toJson(fieldSummary));
 
-        Map<String,Object> preInputSummary=jdbc.queryForMap("select count(*) filter(where required) as required,count(*) filter(where required and (not jsonb_exists(?::jsonb,field_code) or trim(coalesce(jsonb_extract_path_text(?::jsonb,field_code),''))='')) as missing_required from (select distinct field->>'fieldCode' as field_code,coalesce((field->>'required')::boolean,false) as required from framework_step_execution_spec spec cross join lateral jsonb_array_elements(coalesce(spec.field_contract->'fields','[]'::jsonb)) field where spec.process_code=? and spec.step_code=? and lower(split_part(field->>'route','?',1))=?) scoped",preInputJson,preInputJson,process,step,route);
+        final String auditPreInputJson=preInputJson;
+        String preInputKey=stepKey+'|'+screenId+'|'+preferredAudience+'|'+auditPreInputJson;
+        Map<String,Object> preInputSummary=auditCache==null?jdbc.queryForMap("""
+            with required_fields as (
+              select distinct field->>'fieldCode' field_code
+                from framework_step_execution_spec spec
+                cross join lateral jsonb_array_elements(framework_step_contract_fields(spec.field_contract,?)) field
+               where spec.process_code=? and spec.step_code=?
+                 and nullif(field->>'fieldCode','') is not null
+                 and coalesce((field->>'required')::boolean,false)
+                 and coalesce((field->>'editable')::boolean,false)
+            )
+            select (select count(*) from framework_step_execution_spec where process_code=? and step_code=?) spec_count,
+                   count(*) required,
+                   count(*) filter(where not jsonb_exists(?::jsonb,required.field_code)
+                     or trim(coalesce(jsonb_extract_path_text(?::jsonb,required.field_code),''))='') missing_required,
+                   count(*) filter(where binding.field_code is null) unmapped_required
+              from required_fields required
+              left join framework_screen_data_binding binding
+                on binding.screen_resource_id=? and binding.field_code=required.field_code
+            """,preferredAudience,process,step,process,step,preInputJson,preInputJson,screenId)
+            :auditCache.preInputSummary.computeIfAbsent(preInputKey,key->jdbc.queryForMap("""
+                with required_fields as (
+                  select distinct field->>'fieldCode' field_code
+                    from framework_step_execution_spec spec
+                    cross join lateral jsonb_array_elements(framework_step_contract_fields(spec.field_contract,?)) field
+                   where spec.process_code=? and spec.step_code=?
+                     and nullif(field->>'fieldCode','') is not null
+                     and coalesce((field->>'required')::boolean,false)
+                     and coalesce((field->>'editable')::boolean,false)
+                )
+                select (select count(*) from framework_step_execution_spec where process_code=? and step_code=?) spec_count,
+                       count(*) required,
+                       count(*) filter(where not jsonb_exists(?::jsonb,required.field_code)
+                         or trim(coalesce(jsonb_extract_path_text(?::jsonb,required.field_code),''))='') missing_required,
+                       count(*) filter(where binding.field_code is null) unmapped_required
+                  from required_fields required
+                  left join framework_screen_data_binding binding
+                    on binding.screen_resource_id=? and binding.field_code=required.field_code
+                """,preferredAudience,process,step,process,step,auditPreInputJson,auditPreInputJson,screenId));
+        int specCount=((Number)preInputSummary.get("spec_count")).intValue();
         int requiredInputs=((Number)preInputSummary.get("required")).intValue();
         int missingInputs=((Number)preInputSummary.get("missing_required")).intValue();
-        addScreenCheck(checks,"PREINPUT_REQUIRED","필수 선입력",requiredInputs==0||missingInputs==0,toJson(preInputSummary));
+        int unmappedInputs=((Number)preInputSummary.get("unmapped_required")).intValue();
+        addScreenCheck(checks,"STEP_EXECUTION_SPEC","단계 실행 명세",specCount==1,toJson(preInputSummary));
+        addScreenCheck(checks,"PREINPUT_FIELD_SCOPE","필수 입력 필드 연결",unmappedInputs==0,toJson(preInputSummary));
+        addScreenCheck(checks,"PREINPUT_REQUIRED","필수 선입력",missingInputs==0,toJson(preInputSummary));
 
-        Map<String,Object> capabilitySummary=jdbc.queryForMap("select count(*) as total,count(*) filter(where implementation_status in('IMPLEMENTED','VERIFIED')) as implemented from framework_screen_capability where screen_resource_id=?",screenId);
+        Map<String,Object> capabilitySummary=auditCache==null
+            ?jdbc.queryForMap("select count(*) as total,count(*) filter(where implementation_status in('IMPLEMENTED','VERIFIED')) as implemented from framework_screen_capability where screen_resource_id=?",screenId)
+            :auditCache.capabilitySummaryByScreen.computeIfAbsent(screenId,key->jdbc.queryForMap("select count(*) as total,count(*) filter(where implementation_status in('IMPLEMENTED','VERIFIED')) as implemented from framework_screen_capability where screen_resource_id=?",screenId));
         int capabilityCount=((Number)capabilitySummary.get("total")).intValue();
         int implementedCapabilities=((Number)capabilitySummary.get("implemented")).intValue();
         addScreenCheck(checks,"CAPABILITIES","화면 기능",capabilityCount>0&&capabilityCount==implementedCapabilities,toJson(capabilitySummary));
 
-        Map<String,Object> testSummary=jdbc.queryForMap("select count(distinct c.case_type) filter(where c.case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY')) as bound_types,count(distinct c.case_type) filter(where c.case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY') and c.case_status in('APPROVED','VERIFIED')) as approved_types from framework_step_test_binding b join framework_simulation_case c on c.case_code=b.case_code where b.process_code=? and b.step_code=?",process,step);
+        Map<String,Object> testSummary=auditCache==null
+            ?jdbc.queryForMap("select count(distinct c.case_type) filter(where c.case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY')) as bound_types,count(distinct c.case_type) filter(where c.case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY') and c.case_status in('APPROVED','VERIFIED')) as approved_types from framework_step_test_binding b join framework_simulation_case c on c.case_code=b.case_code where b.process_code=? and b.step_code=?",process,step)
+            :auditCache.testSummaryByStep.computeIfAbsent(stepKey,key->jdbc.queryForMap("select count(distinct c.case_type) filter(where c.case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY')) as bound_types,count(distinct c.case_type) filter(where c.case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY') and c.case_status in('APPROVED','VERIFIED')) as approved_types from framework_step_test_binding b join framework_simulation_case c on c.case_code=b.case_code where b.process_code=? and b.step_code=?",process,step));
         int boundTypes=((Number)testSummary.get("bound_types")).intValue();
         int approvedTypes=((Number)testSummary.get("approved_types")).intValue();
         addScreenCheck(checks,"FIVE_SAFETY_TESTS","5종 안전 테스트",boundTypes==5&&approvedTypes==5,toJson(testSummary));
 
+        List<String> observedBlockers=checks.stream().filter(row->!Boolean.TRUE.equals(row.get("passed"))).map(row->String.valueOf(row.get("code"))).toList();
+        String observedResult=observedBlockers.isEmpty()?"PASSED":"BLOCKED";
+        String observedState="PASSED".equals(observedResult)?String.valueOf(transition.get("to_state")):String.valueOf(transition.get("from_state"));
+        boolean hasFixture=testCaseId!=null;
+        boolean expectedResultMatches=!hasFixture||expectedResult.equals(observedResult);
+        boolean expectedStateMatches=!hasFixture||expectedState.isBlank()||expectedState.equals(observedState);
+        String fixtureAssertionResult=!hasFixture?"NOT_RUN":expectedResultMatches&&expectedStateMatches?"PASSED":"BLOCKED";
+        if(hasFixture){
+            addScreenCheck(checks,"EXPECTED_RESULT","기대 결과",expectedResultMatches,expectedResult+" / "+observedResult);
+            addScreenCheck(checks,"EXPECTED_STATE","기대 상태",expectedStateMatches,expectedState+" / "+observedState);
+        }
+        List<String> blockers=new ArrayList<>(observedBlockers);
+        if(hasFixture){
+            if(!expectedResultMatches)blockers.add("EXPECTED_RESULT");
+            if(!expectedStateMatches)blockers.add("EXPECTED_STATE");
+        }
+        String result="PASSED".equals(observedResult)&&(!hasFixture||"PASSED".equals(fixtureAssertionResult))?"PASSED":"BLOCKED";
         int passed=(int)checks.stream().filter(row->Boolean.TRUE.equals(row.get("passed"))).count();
-        List<String> blockers=checks.stream().filter(row->!Boolean.TRUE.equals(row.get("passed"))).map(row->String.valueOf(row.get("code"))).toList();
-        String result=blockers.isEmpty()?"PASSED":"BLOCKED";
-        Map<String,Object> evidenceMap=new LinkedHashMap<>();evidenceMap.put("itemId",itemId);evidenceMap.put("screenResourceId",screenId);evidenceMap.put("processCode",process);evidenceMap.put("stepCode",step);evidenceMap.put("capabilityCode",capability);evidenceMap.put("routePath",route);evidenceMap.put("testCaseId",testCaseId);evidenceMap.put("preInputJson",preInputJson);evidenceMap.put("checks",checks);
+        Map<String,Object> evidenceMap=new LinkedHashMap<>();evidenceMap.put("evidenceType","CONTRACT_SIMULATION");evidenceMap.put("businessFunctionsExecuted",false);evidenceMap.put("itemId",itemId);evidenceMap.put("screenResourceId",screenId);evidenceMap.put("processCode",process);evidenceMap.put("stepCode",step);evidenceMap.put("audience",audience);evidenceMap.put("capabilityCode",capability);evidenceMap.put("routePath",route);evidenceMap.put("contractFingerprint",contractFingerprint);evidenceMap.put("testCaseId",testCaseId);evidenceMap.put("preInputJson",preInputJson);evidenceMap.put("expectedResult",expectedResult);evidenceMap.put("expectedState",expectedState);evidenceMap.put("observedContractResult",observedResult);evidenceMap.put("observedState",observedState);evidenceMap.put("observedBlockerCodes",observedBlockers);evidenceMap.put("fixtureAssertionResult",fixtureAssertionResult);evidenceMap.put("checks",checks);
+        Object rawAuditBatchId=trustedAuditTarget==null?null:trustedAuditTarget.get("_auditBatchId");
+        if(rawAuditBatchId!=null){
+            evidenceMap.put("auditBatchId",String.valueOf(rawAuditBatchId));
+            evidenceMap.put("auditSourceCommit",String.valueOf(trustedAuditTarget.get("_auditSourceCommit")));
+            evidenceMap.put("auditRuntimeIdentityHash",String.valueOf(trustedAuditTarget.get("_auditRuntimeIdentityHash")));
+            evidenceMap.put("auditPageNumber",trustedAuditTarget.get("_auditPageNumber"));
+            evidenceMap.put("auditTargetOrdinal",trustedAuditTarget.get("_auditTargetOrdinal"));
+            evidenceMap.put("auditTargetKey",trustedAuditTarget.get("_auditTargetKey"));
+            evidenceMap.put("auditBindingId",trustedAuditTarget.get("bindingId"));
+        }
         String evidence=toJson(evidenceMap);
-        Long runId=jdbc.queryForObject("insert into framework_screen_workflow_test_run(screen_resource_id,process_code,step_code,capability_code,route_key,result,passed_check_count,total_check_count,blocker_codes,evidence_json,executed_by,test_case_id) values(?,?,?,?,?,?,?,?,case when ?='' then ARRAY[]::text[] else string_to_array(?,',') end,?::jsonb,?,?) returning run_id",Long.class,screenId,process,step,capability,route,result,passed,checks.size(),String.join(",",blockers),String.join(",",blockers),evidence,executedBy,testCaseId);
+        Long runId;
+        if(rawAuditBatchId==null){
+            runId=jdbc.queryForObject("insert into framework_screen_workflow_test_run(screen_resource_id,process_code,step_code,capability_code,route_key,result,passed_check_count,total_check_count,blocker_codes,evidence_json,executed_by,test_case_id) values(?,?,?,?,?,?,?,?,case when ?='' then ARRAY[]::text[] else string_to_array(?,',') end,?::jsonb,?,?) returning run_id",Long.class,screenId,process,step,capability,route,result,passed,checks.size(),String.join(",",blockers),String.join(",",blockers),evidence,executedBy,testCaseId);
+        }else{
+            runId=jdbc.queryForObject("insert into framework_screen_workflow_test_run(screen_resource_id,process_code,step_code,capability_code,route_key,result,passed_check_count,total_check_count,blocker_codes,evidence_json,executed_by,test_case_id,audit_batch_id,audit_source_commit,audit_runtime_identity_hash,audit_page_number,audit_target_ordinal,audit_target_key) values(?,?,?,?,?,?,?,?,case when ?='' then ARRAY[]::text[] else string_to_array(?,',') end,?::jsonb,?,?,cast(? as uuid),?,?,?,?,?) returning run_id",Long.class,screenId,process,step,capability,route,result,passed,checks.size(),String.join(",",blockers),String.join(",",blockers),evidence,executedBy,testCaseId,String.valueOf(rawAuditBatchId),String.valueOf(trustedAuditTarget.get("_auditSourceCommit")),String.valueOf(trustedAuditTarget.get("_auditRuntimeIdentityHash")),trustedAuditTarget.get("_auditPageNumber"),trustedAuditTarget.get("_auditTargetOrdinal"),trustedAuditTarget.get("_auditTargetKey"));
+        }
         Map<String,Object> response=new LinkedHashMap<>();
         response.put("success",true);response.put("runId",runId);response.put("result",result);
         response.put("passedCheckCount",passed);response.put("totalCheckCount",checks.size());
         response.put("blockerCodes",blockers);response.put("checks",checks);response.put("routePath",route);
-        response.put("processCode",process);response.put("stepCode",step);response.put("capabilityCode",capability);response.put("executedBy",executedBy);
+        response.put("processCode",process);response.put("stepCode",step);response.put("audience",audience);response.put("capabilityCode",capability);
+        response.put("contractFingerprint",contractFingerprint);response.put("expectedResult",expectedResult);response.put("expectedState",expectedState);
+        response.put("observedContractResult",observedResult);response.put("observedState",observedState);response.put("fixtureAssertionResult",fixtureAssertionResult);response.put("executedBy",executedBy);
+        if(rawAuditBatchId!=null){response.put("auditBatchId",rawAuditBatchId);response.put("auditPageNumber",trustedAuditTarget.get("_auditPageNumber"));response.put("auditTargetOrdinal",trustedAuditTarget.get("_auditTargetOrdinal"));}
         return response;
+    }
+
+    private String screenContractFingerprint(long screenId,String process,String step,String audience,String capability){
+        List<String> fingerprints=jdbc.queryForList("""
+            select md5(concat_ws('|',p.process_version,to_jsonb(s)::text,to_jsonb(binding)::text,to_jsonb(screen)::text,
+                     binding.audience,?,
+                     coalesce((select md5(string_agg(to_jsonb(data_binding)::text,'|' order by data_binding.data_element_code,data_binding.field_code))
+                                 from framework_screen_data_binding data_binding where data_binding.screen_resource_id=?),''),
+                     coalesce((select md5(string_agg(to_jsonb(screen_capability)::text,'|' order by screen_capability.capability_code))
+                                 from framework_screen_capability screen_capability where screen_capability.screen_resource_id=?),''),
+                     coalesce((select md5(string_agg(to_jsonb(test_binding)::text||'~'||to_jsonb(simulation_case)::text,'|' order by test_binding.case_code))
+                                 from framework_step_test_binding test_binding join framework_simulation_case simulation_case using(case_code)
+                                where test_binding.process_code=? and test_binding.step_code=?),''),
+                     coalesce((select md5(to_jsonb(execution_spec)::text) from framework_step_execution_spec execution_spec
+                                where execution_spec.process_code=? and execution_spec.step_code=?),''),
+                     coalesce((select md5(string_agg(to_jsonb(professional_contract)::text,'|' order by professional_contract.process_code,
+                                         professional_contract.step_code,professional_contract.audience,professional_contract.contract_id))
+                                 from framework_professional_screen_contract professional_contract
+                                where lower(split_part(professional_contract.route_path,'?',1))=screen.route_key),''),
+                     coalesce((select md5(string_agg(to_jsonb(fixture)::text,'|' order by fixture.test_case_id))
+                                 from framework_screen_workflow_test_case fixture
+                                where fixture.screen_resource_id=? and fixture.process_code=? and fixture.step_code=?
+                                  and fixture.capability_code=? and fixture.active=true),
+                              (select md5(string_agg(to_jsonb(fixture)::text,'|' order by fixture.test_case_id))
+                                 from framework_screen_workflow_test_case fixture
+                                where fixture.screen_resource_id=? and fixture.process_code=? and fixture.step_code=?
+                                  and fixture.capability_code='ALL' and fixture.active=true),'')
+                   ))
+              from framework_process_definition p
+              join framework_process_step s on s.process_code=p.process_code
+              join framework_process_step_screen_binding binding on binding.process_code=s.process_code and binding.step_code=s.step_code
+              join framework_screen_resource screen using(screen_resource_id)
+             where p.process_code=? and s.step_code=? and binding.screen_resource_id=? and binding.audience=?
+               and binding.binding_status='ACTIVE'
+            """,String.class,capability,screenId,screenId,process,step,process,step,
+            screenId,process,step,capability,screenId,process,step,process,step,screenId,audience);
+        if(fingerprints.size()!=1)throw new IllegalStateException(fingerprints.isEmpty()?"SCREEN_CONTRACT_FINGERPRINT_NOT_FOUND":"SCREEN_CONTRACT_FINGERPRINT_AMBIGUOUS");
+        return fingerprints.get(0);
+    }
+
+    private String screenReviewFingerprint(long screenId,String process,String step){
+        List<String> audiences=jdbc.queryForList("""
+            select distinct audience from framework_process_step_screen_binding
+             where process_code=? and step_code=? and screen_resource_id=? and binding_status='ACTIVE'
+             order by audience
+            """,String.class,process,step,screenId);
+        if(audiences.isEmpty())throw new IllegalStateException("SCREEN_CONTRACT_FINGERPRINT_NOT_FOUND");
+        List<String> capabilities=jdbc.queryForList("""
+            select capability_code from framework_screen_capability
+             where screen_resource_id=? order by capability_code
+            """,String.class,screenId);
+        if(capabilities.isEmpty())capabilities=List.of("ALL");
+        List<String> fingerprints=new ArrayList<>();
+        for(String audience:audiences)for(String capability:capabilities)
+            fingerprints.add(screenContractFingerprint(screenId,process,step,audience,capability));
+        return aggregateReviewFingerprints(fingerprints);
+    }
+
+    private String capabilityReviewFingerprint(long screenId,String process,String step,String capability){
+        List<String> audiences=jdbc.queryForList("""
+            select distinct audience from framework_process_step_screen_binding
+             where process_code=? and step_code=? and screen_resource_id=? and binding_status='ACTIVE'
+             order by audience
+            """,String.class,process,step,screenId);
+        if(audiences.isEmpty())throw new IllegalStateException("SCREEN_CONTRACT_FINGERPRINT_NOT_FOUND");
+        List<String> fingerprints=new ArrayList<>();
+        for(String audience:audiences)
+            fingerprints.add(screenContractFingerprint(screenId,process,step,audience,capability));
+        return aggregateReviewFingerprints(fingerprints);
+    }
+
+    static String aggregateReviewFingerprints(List<String> orderedFingerprints){
+        if(orderedFingerprints==null||orderedFingerprints.isEmpty())
+            throw new IllegalArgumentException("At least one review fingerprint is required");
+        return md5Hex(String.join("|",orderedFingerprints));
+    }
+
+    static String preferredScreenContractAudience(String audience){
+        String normalized=audience==null?"":audience.trim().toUpperCase(Locale.ROOT);
+        return Set.of("USER","ADMIN","PUBLIC").contains(normalized)?normalized:"USER";
+    }
+
+    public Map<String,Object> screenWorkflowTestCases(long screenResourceId,String processCode,String stepCode,String capabilityCode){
+        String process=req(Map.of("processCode",processCode),"processCode").trim().toUpperCase(Locale.ROOT);
+        String step=req(Map.of("stepCode",stepCode),"stepCode").trim().toUpperCase(Locale.ROOT);
+        String capability=capabilityCode==null||capabilityCode.isBlank()?"ALL":capabilityCode.trim().toUpperCase(Locale.ROOT);
+        List<Map<String,Object>> rows=jdbc.queryForList("select test_case_id as \"testCaseId\",capability_code as \"capabilityCode\",case_type as \"caseType\",case_order as \"caseOrder\",case_name as \"caseName\",case_description as \"caseDescription\",pre_input_json::text as \"preInputJson\",expected_output_json::text as \"expectedOutputJson\",action_sequence_json::text as \"actionSequenceJson\",expected_result as \"expectedResult\",coalesce(expected_state,'') as \"expectedState\",updated_by as \"updatedBy\",updated_at as \"updatedAt\" from framework_screen_workflow_test_case where screen_resource_id=? and process_code=? and step_code=? and capability_code in (?, 'ALL') and active=true order by case when capability_code=? then 0 else 1 end,case_order,test_case_id",screenResourceId,process,step,capability,capability);
+        return Map.of("success",true,"count",rows.size(),"items",rows);
+    }
+
+    public Map<String,Object> qaProcessCaseCatalog(String processCode,String stepCode){
+        String process=req(Map.of("processCode",processCode),"processCode").trim().toUpperCase(Locale.ROOT);
+        String step=stepCode==null?"":stepCode.trim().toUpperCase(Locale.ROOT);
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+            select process_code as \"processCode\",step_code as \"stepCode\",step_order as \"stepOrder\",step_name as \"stepName\",
+                   case_code as \"caseCode\",case_name as \"caseName\",case_type as \"caseType\",preconditions,
+                   steps_json::text as \"actionSequenceJson\",assertions_json::text as \"assertionsJson\",case_status as \"caseStatus\",automated,
+                   screen_resource_id as \"screenResourceId\",coalesce(route_key,'') as \"routePath\",coalesce(screen_name,'') as \"screenName\",
+                   item_id as \"itemId\",test_case_id as \"testCaseId\",coalesce(capability_code,'ALL') as \"capabilityCode\",
+                   coalesce(pre_input_json,'{}'::jsonb)::text as \"preInputJson\",coalesce(expected_result,case when case_type='HAPPY_PATH' then 'PASSED' else 'BLOCKED' end) as \"expectedResult\",
+                   coalesce(expected_state,'') as \"expectedState\",coalesce(expected_output_json,'{}'::jsonb)::text as \"expectedOutputJson\",
+                   coalesce(action_sequence_json,'[]'::jsonb)::text as \"actionSequenceJson\",coalesce(case_description,'') as \"caseDescription\",case_origin as \"caseOrigin\",reuse_count as \"reuseCount\"
+              from framework_qa_process_case_catalog
+             where process_code=? and (?='' or step_code=?)
+             order by step_order,case case_type when 'HAPPY_PATH' then 1 when 'AUTHORITY' then 2 when 'ISOLATION' then 3 when 'EXCEPTION' then 4 else 5 end,case_code
+            """,process,step,step);
+        long configured=rows.stream().filter(row->row.get("testCaseId")!=null).count();
+        return Map.of("success",true,"processCode",process,"count",rows.size(),"configuredCount",configured,"items",rows);
+    }
+
+    public Map<String,Object> qaProcessTestSession(String processCode,String projectId){
+        String process=req(Map.of("processCode",processCode),"processCode").trim().toUpperCase(Locale.ROOT),project=projectId==null?"":projectId.trim();
+        List<Map<String,Object>> rows=jdbc.queryForList("select session_id as \"sessionId\",project_id as \"projectId\",process_code as \"processCode\",session_status as \"sessionStatus\",coalesce(current_step_code,'') as \"currentStepCode\",coalesce(current_case_code,'') as \"currentCaseCode\",current_case_index as \"currentCaseIndex\",total_case_count as \"totalCaseCount\",completed_case_count as \"completedCaseCount\",working_input_json::text as \"workingInputJson\",result_history_json::text as \"resultHistoryJson\",updated_at as \"updatedAt\" from framework_qa_process_test_session where process_code=? and project_id=? order by updated_at desc limit 1",process,project);
+        return rows.isEmpty()?Map.of("success",true,"exists",false):Map.of("success",true,"exists",true,"session",rows.get(0));
+    }
+
+    @Transactional
+    public Map<String,Object> saveQaProcessTestSession(Map<String,Object> body,String actor){
+        String process=req(body,"processCode").trim().toUpperCase(Locale.ROOT),project=str(body,"projectId").trim();
+        String status=def(body,"sessionStatus","PAUSED").trim().toUpperCase(Locale.ROOT);
+        if(!Set.of("READY","RUNNING","PAUSED","COMPLETED","FAILED","RESET").contains(status))throw new IllegalArgumentException("INVALID_QA_SESSION_STATUS");
+        String input=def(body,"workingInputJson","{}"),history=def(body,"resultHistoryJson","[]");validateJsonObject(input,"workingInputJson");validateJsonArray(history,"resultHistoryJson");
+        UUID sessionId=str(body,"sessionId").isBlank()?UUID.randomUUID():UUID.fromString(str(body,"sessionId"));
+        String fingerprint=jdbc.queryForObject("select md5(coalesce(string_agg(concat_ws('|',step_code,case_code,case_status,automated::text),'|' order by step_order,case_code),'')) from framework_qa_process_case_catalog where process_code=?",String.class,process);
+        jdbc.update("insert into framework_qa_process_test_session(session_id,project_id,process_code,session_status,current_step_code,current_case_code,current_case_index,total_case_count,completed_case_count,working_input_json,result_history_json,source_fingerprint,created_by,updated_by) values(?,?,?,?,nullif(?,''),nullif(?,''),?,?,?,?::jsonb,?::jsonb,?,?,?) on conflict(session_id) do update set session_status=excluded.session_status,current_step_code=excluded.current_step_code,current_case_code=excluded.current_case_code,current_case_index=excluded.current_case_index,total_case_count=excluded.total_case_count,completed_case_count=excluded.completed_case_count,working_input_json=excluded.working_input_json,result_history_json=excluded.result_history_json,source_fingerprint=excluded.source_fingerprint,updated_by=excluded.updated_by,updated_at=current_timestamp",sessionId,project,process,status,str(body,"currentStepCode"),str(body,"currentCaseCode"),integerOr(body,"currentCaseIndex",0),integerOr(body,"totalCaseCount",0),integerOr(body,"completedCaseCount",0),input,history,fingerprint,actor,actor);
+        return Map.of("success",true,"sessionId",sessionId,"sessionStatus",status,"processCode",process,"projectId",project);
+    }
+
+    @Transactional
+    public Map<String,Object> saveScreenWorkflowTestCase(Map<String,Object> body,String actor){
+        long screenId=Long.parseLong(req(body,"screenResourceId"));
+        String process=req(body,"processCode").trim().toUpperCase(Locale.ROOT),step=req(body,"stepCode").trim().toUpperCase(Locale.ROOT);
+        String capability=def(body,"capabilityCode","ALL").trim().toUpperCase(Locale.ROOT);
+        String name=req(body,"caseName").trim(),preInput=def(body,"preInputJson","{}"),expected=def(body,"expectedResult","PASSED").trim().toUpperCase(Locale.ROOT),expectedState=str(body,"expectedState");
+        String caseType=def(body,"caseType","HAPPY_PATH").trim().toUpperCase(Locale.ROOT),description=str(body,"caseDescription");
+        String expectedOutput=def(body,"expectedOutputJson","{}"),actionSequence=def(body,"actionSequenceJson","[]");
+        validateJsonObject(preInput,"preInputJson");
+        validateJsonObject(expectedOutput,"expectedOutputJson");validateJsonArray(actionSequence,"actionSequenceJson");
+        if(!Set.of("PASSED","BLOCKED").contains(expected))throw new IllegalArgumentException("expectedResult must be PASSED or BLOCKED");
+        if(!Set.of("HAPPY_PATH","AUTHORITY","ISOLATION","EXCEPTION","RECOVERY").contains(caseType))throw new IllegalArgumentException("INVALID_QA_CASE_TYPE");
+        Integer bindingCount=jdbc.queryForObject("select count(*) from framework_process_step_screen_binding where screen_resource_id=? and process_code=? and step_code=? and binding_status='ACTIVE'",Integer.class,screenId,process,step);
+        if(bindingCount==null||bindingCount==0)throw new IllegalArgumentException("SCREEN_PROCESS_BINDING_NOT_FOUND");
+        Integer capabilityCount="ALL".equals(capability)?1:jdbc.queryForObject("select count(*) from framework_screen_capability where screen_resource_id=? and capability_code=?",Integer.class,screenId,capability);
+        if(capabilityCount==null||capabilityCount==0)throw new IllegalArgumentException("SCREEN_CAPABILITY_NOT_FOUND");
+        Long id=jdbc.queryForObject("insert into framework_screen_workflow_test_case(screen_resource_id,process_code,step_code,capability_code,case_type,case_order,case_name,case_description,pre_input_json,expected_output_json,action_sequence_json,expected_result,expected_state,created_by,updated_by) values(?,?,?,?,?,?,?,?,?::jsonb,?::jsonb,?::jsonb,?,nullif(?,''),?,?) on conflict(screen_resource_id,process_code,step_code,capability_code,case_name) do update set case_type=excluded.case_type,case_order=excluded.case_order,case_description=excluded.case_description,pre_input_json=excluded.pre_input_json,expected_output_json=excluded.expected_output_json,action_sequence_json=excluded.action_sequence_json,expected_result=excluded.expected_result,expected_state=excluded.expected_state,active=true,updated_by=excluded.updated_by,updated_at=current_timestamp returning test_case_id",Long.class,screenId,process,step,capability,caseType,integerOr(body,"caseOrder",1),name,description,preInput,expectedOutput,actionSequence,expected,expectedState,actor,actor);
+        return Map.of("success",true,"testCaseId",id,"caseName",name,"processCode",process,"stepCode",step,"capabilityCode",capability,"screenResourceId",screenId);
     }
 
     private void addScreenCheck(List<Map<String,Object>> checks,String code,String name,boolean passed,String evidence){
@@ -560,6 +2613,7 @@ public class ActorProcessGovernanceService {
      */
     @Transactional public Map<String,Object> executeDesignDirectDevelopment(Map<String,Object>b,String actor){
         String process=req(b,"processCode");
+        if(!str(b,"stepCode").isBlank())return enqueueCanonicalFullStackGeneration(b,actor);
         boolean force=bool(b,"force");
         String processHash=jdbc.queryForObject("select md5(concat_ws('|',p.process_code,p.process_version,p.domain_code,p.goal,p.start_condition,p.completion_condition,p.automation_mode,coalesce(string_agg(concat_ws('~',s.step_order,s.step_code,s.step_name,s.actor_code,s.from_state,s.command_code,s.to_state,s.completion_rule,s.requirement_text,s.input_contract,s.output_contract,s.requires_user_page,s.requires_admin_page,s.requires_api,s.requires_database,s.requires_notification,s.user_path,s.admin_path,s.api_contract),'|' order by s.step_order,s.step_code),''))) from framework_process_definition p left join framework_process_step s on s.process_code=p.process_code where p.process_code=? group by p.process_code,p.process_version,p.domain_code,p.goal,p.start_condition,p.completion_condition,p.automation_mode",String.class,process);
         if(processHash==null)throw new IllegalArgumentException("프로세스를 찾을 수 없습니다: "+process);
@@ -581,48 +2635,1879 @@ public class ActorProcessGovernanceService {
     }
 
     /**
-     * Saves a route design and recompiles every bound process in one
-     * transaction. Renderable blueprint contracts are returned immediately so
-     * metadata-driven pages do not require a frontend rebuild.
+     * Reprojects the authoritative structured screen contract into the existing
+     * step execution specification and queues the existing deterministic full
+     * stack worker.  The queue identity contains both immutable design heads;
+     * account assignments and permission grants remain runtime-only, while
+     * permission requirements are copied into the generated authority contract.
      */
-    @Transactional public Map<String,Object> saveDesignAndGenerate(Map<String,Object> body,String actor){
-        Map<String,Object> note=screenDevelopmentNoteService.save(body,actor);
+    private Map<String,Object> enqueueCanonicalFullStackGeneration(Map<String,Object> body,String actor){
+        String process=req(body,"processCode");
+        String step=req(body,"stepCode");
         String route=ScreenDevelopmentNoteService.cleanRoute(req(body,"routePath"));
-        List<String> processes=jdbc.queryForList(
-            "select distinct process_code from ("+
-            "select process_code from framework_professional_screen_contract where lower(split_part(route_path,'?',1))=lower(?) "+
-            "union all select process_code from framework_screen_blueprint where lower(split_part(route_path,'?',1))=lower(?)"+
-            ") p where process_code is not null and trim(process_code)<>'' order by process_code",
-            String.class,route,route);
-        List<Map<String,Object>> deliveries=new java.util.ArrayList<>();
-        for(String process:processes){
-            deliveries.add(autoImplementCompletedDesign(process,actor));
-            generateProfessionalDesignGraph(process,actor);
+        String audience=req(body,"audience").toUpperCase(Locale.ROOT);
+        String designHash=req(body,"designHash").toLowerCase(Locale.ROOT);
+        if(!Set.of("USER","ADMIN").contains(audience))
+            throw new IllegalArgumentException("audience must be USER or ADMIN");
+        if(!designHash.matches("[0-9a-f]{64}"))
+            throw new IllegalArgumentException("designHash must be a SHA-256 value");
+
+        Map<String,Object> trigger=new LinkedHashMap<>();
+        trigger.put("triggerType","PROFESSIONAL_SCREEN_CONTRACT");
+        trigger.put("stepCode",step);trigger.put("routePath",route);
+        trigger.put("audience",audience);trigger.put("designHash",designHash);
+        return refreshAndQueueCanonicalProcess(process,actor,trigger,()->{
+          List<Map<String,Object>> refreshed=jdbc.queryForList("""
+            with blueprint_candidates as materialized (
+              select c.contract_id,c.process_code,c.step_code,upper(c.audience) audience,
+                     lower(split_part(c.route_path,'?',1)) route_path,c.screen_name,
+                     c.actor_code contract_actor,b.actor_code blueprint_actor,
+                     c.business_purpose,c.entry_condition,c.exit_condition,
+                     framework_strict_jsonb_array(c.section_contract) sections,
+                     framework_strict_jsonb_array(c.field_contract) fields,
+                     framework_strict_jsonb_array(c.command_contract) commands,
+                     framework_strict_jsonb_array(c.state_contract) states,
+                     framework_strict_jsonb_array(c.api_contract) apis,
+                     framework_strict_jsonb_array(c.data_contract) data_contract,
+                     framework_strict_jsonb_array(c.evidence_contract) evidence,
+                     c.responsive_contract,c.accessibility_contract,c.security_contract,
+                     b.page_id,b.page_name,b.screen_type,b.template_code,
+                     framework_try_jsonb(b.specification_json) blueprint_spec,
+                     (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
+                       'framework_professional_screen_contract:'||c.contract_id,
+                       'professional_screen_contract:'||c.contract_id)) explicit_link,
+                     count(*) over(partition by c.contract_id) candidate_count,
+                     count(*) filter(where b.transition_status='CONTRACT_LINKED'
+                       and lower(b.source_reference) in(
+                         'framework_professional_screen_contract:'||c.contract_id,
+                         'professional_screen_contract:'||c.contract_id))
+                       over(partition by c.contract_id) explicit_count
+                from framework_professional_screen_contract c
+                join framework_screen_blueprint b
+                  on b.process_code=c.process_code and b.step_code=c.step_code
+                 and upper(b.audience)=upper(c.audience)
+                 and lower(split_part(b.route_path,'?',1))=lower(split_part(c.route_path,'?',1))
+                 and b.validation_status='VALID'
+               where c.process_code=? and c.step_code=?
+            ), contract_source as materialized (
+              select candidate.*,
+                     case
+                       when nullif(btrim(blueprint_spec->>'layout'),'') is not null then
+                         case when (select count(distinct resource.layout_type)
+                             from framework_screen_resource resource
+                             where resource.layout_type=blueprint_spec->>'layout')=1
+                           then blueprint_spec->>'layout' end
+                       else (select min(resource.layout_type)
+                               from framework_screen_resource resource
+                              where resource.route_key=route_path
+                             having count(*)=1)
+                     end layout_code,
+                     case
+                       when nullif(btrim(blueprint_spec->>'theme'),'') is not null then
+                         case when (select count(*) from comtnthemedefinition theme
+                             where theme.theme_id=blueprint_spec->>'theme'
+                               and theme.use_at='Y' and theme.is_active='Y')=1
+                           then blueprint_spec->>'theme' end
+                       when (select count(*) from comtnthemedefinition theme
+                         where theme.theme_id='KRDS_GOV_DEFAULT'
+                           and theme.use_at='Y' and theme.is_active='Y')=1
+                         then 'KRDS_GOV_DEFAULT'
+                     end theme_code
+                from blueprint_candidates candidate
+               where jsonb_typeof(blueprint_spec)='object'
+                 and ((explicit_count=1 and explicit_link)
+                   or (explicit_count=0 and candidate_count=1))
+            ), step_authority as materialized (
+              select actor_code,command_code,from_state,to_state,requires_api,api_contract,
+                     requires_user_page,requires_admin_page,
+                     lower(split_part(coalesce(user_path,''),'?',1)) user_route,
+                     lower(split_part(coalesce(admin_path,''),'?',1)) admin_route
+                from framework_process_step
+               where process_code=? and step_code=?
+            ), exact_identity as (
+              select (select count(*) from framework_professional_screen_contract c
+                       where c.process_code=? and c.step_code=?) contract_count,
+                     authority.requires_user_page,authority.requires_admin_page,
+                     (select count(*) from contract_source) valid_identity_count,
+                     (select count(*) from contract_source source
+                       where source.contract_actor=authority.actor_code
+                         and source.blueprint_actor=authority.actor_code
+                         and ((source.audience='USER' and source.route_path=authority.user_route)
+                           or (source.audience='ADMIN' and source.route_path=authority.admin_route))) coherent_count,
+                     (select count(*) from contract_source source
+                       where source.audience='USER' and source.route_path=authority.user_route
+                         and source.contract_actor=authority.actor_code
+                         and source.blueprint_actor=authority.actor_code) user_audience_count,
+                     (select count(*) from contract_source source
+                       where source.audience='ADMIN' and source.route_path=authority.admin_route
+                         and source.contract_actor=authority.actor_code
+                         and source.blueprint_actor=authority.actor_code) admin_audience_count,
+                     (select count(*) from contract_source where jsonb_array_length(sections)>0
+                       and jsonb_array_length(fields)>0 and jsonb_array_length(commands)>0
+                       and jsonb_array_length(states)>0 and jsonb_array_length(apis)>0
+                       and jsonb_array_length(data_contract)>0
+                       and not exists(select 1 from jsonb_array_elements(sections) item
+                         where jsonb_typeof(item)<>'object')
+                       and not exists(select 1 from jsonb_array_elements(fields) item
+                         where jsonb_typeof(item)<>'object')
+                       and not exists(select 1 from jsonb_array_elements(commands) item
+                         where jsonb_typeof(item)<>'object')
+                       and not exists(select 1 from jsonb_array_elements(states) item
+                         where jsonb_typeof(item)<>'object')
+                       and not exists(select 1 from jsonb_array_elements(apis) item
+                         where jsonb_typeof(item)<>'object')
+                       and not exists(select 1 from jsonb_array_elements(data_contract) item
+                         where jsonb_typeof(item)<>'object')
+                       and layout_code~'^[A-Z][A-Z0-9_]{1,79}$'
+                       and theme_code~'^[A-Z][A-Z0-9_]{1,79}$'
+                       and template_code~'^[A-Z][A-Z0-9_:-]{1,119}$') complete_count
+                from step_authority authority
+            ), screens as (
+              select jsonb_agg(jsonb_build_object(
+                       'pageCode',coalesce(nullif(page_id,''),process_code||'_'||step_code||'_'||audience),
+                       'plannedRoute',route_path,'actualRoute',route_path,'routeStatus','IMPLEMENTED',
+                       'audience',audience,'screenType',coalesce(nullif(screen_type,''),'WORKSPACE'),
+                       'templateCode',template_code,'layout',layout_code,'theme',theme_code,
+                       'title',coalesce(nullif(page_name,''),screen_name),'purpose',business_purpose,
+                       'entryCondition',entry_condition,'exitCondition',exit_condition,
+                       'sections',sections,'fields',fields,
+                       'commands',framework_merge_primary_contract_marker(
+                         commands,'PRIMARY_STEP_COMMAND',jsonb_build_object(
+                           'commandCode',authority.command_code,'actorCode',authority.actor_code,
+                           'entryState',authority.from_state,'resultState',authority.to_state,
+                           'serverAuthorization',true,'validationRequired',true,'auditRequired',true)),
+                       'states',states,
+                       'apis',framework_merge_primary_contract_marker(
+                         apis,'PRIMARY_STEP_API',case when authority.requires_api
+                           then jsonb_build_object('declaredContract',coalesce(
+                             framework_try_jsonb(authority.api_contract),to_jsonb(authority.api_contract)),
+                             'actorCode',authority.actor_code,'commandCode',authority.command_code,
+                             'transactional',true,'tenantGuard',true,'projectGuard',true,
+                             'actorGuard',true,'idempotencyKey',true,'rowVersion',true) end),
+                       'data',data_contract,'evidence',evidence,
+                       'responsiveContract',responsive_contract,
+                       'accessibilityContract',accessibility_contract,
+                       'securityContract',security_contract,'exceptions',states)
+                     order by audience,route_path,contract_id) value
+                from contract_source cross join step_authority authority
+            ), fields as (
+              select coalesce(jsonb_agg(field.value||jsonb_build_object(
+                       'audience',source.audience,'route',source.route_path)
+                     order by source.audience,source.route_path,source.contract_id,field.ordinality),'[]'::jsonb) value,
+                     count(*) filter(where jsonb_typeof(field.value)<>'object') invalid_count
+                from contract_source source
+                cross join lateral jsonb_array_elements(source.fields)
+                  with ordinality field(value,ordinality)
+            ), commands as (
+              select framework_merge_primary_contract_marker(
+                       coalesce(jsonb_agg(command.value||jsonb_build_object(
+                       'audience',source.audience,'routePath',source.route_path)
+                     order by source.audience,source.route_path,source.contract_id,command.ordinality),'[]'::jsonb),
+                       'PRIMARY_STEP_COMMAND',jsonb_build_object(
+                         'commandCode',authority.command_code,'actorCode',authority.actor_code,
+                         'entryState',authority.from_state,'resultState',authority.to_state,
+                         'serverAuthorization',true,'validationRequired',true,
+                         'auditRequired',true)) value,
+                     count(*) filter(where jsonb_typeof(command.value)<>'object') invalid_count
+                from contract_source source
+                cross join step_authority authority
+                cross join lateral jsonb_array_elements(source.commands)
+                  with ordinality command(value,ordinality)
+               group by authority.command_code,authority.actor_code,
+                 authority.from_state,authority.to_state
+            ), apis as (
+              select framework_merge_primary_contract_marker(
+                       coalesce(jsonb_agg(api.value||jsonb_build_object(
+                       'audience',source.audience,'routePath',source.route_path)
+                     order by source.audience,source.route_path,source.contract_id,api.ordinality),'[]'::jsonb),
+                       'PRIMARY_STEP_API',case when authority.requires_api then jsonb_build_object(
+                         'declaredContract',coalesce(framework_try_jsonb(authority.api_contract),
+                           to_jsonb(authority.api_contract)),'actorCode',authority.actor_code,
+                         'commandCode',authority.command_code,'transactional',true,
+                         'tenantGuard',true,'projectGuard',true,'actorGuard',true,
+                         'idempotencyKey',true,'rowVersion',true) end) value,
+                     count(*) filter(where jsonb_typeof(api.value)<>'object') invalid_count
+                from contract_source source
+                cross join step_authority authority
+                cross join lateral jsonb_array_elements(source.apis)
+                  with ordinality api(value,ordinality)
+               group by authority.requires_api,authority.api_contract,
+                 authority.actor_code,authority.command_code
+            ), permissions as (
+              select framework_step_permission_requirements(?,?) value
+            ), refreshed as (
+               update framework_step_execution_spec spec
+                  set spec_version=spec.spec_version+1,
+                      screen_contract=screens.value,
+                     field_contract=jsonb_build_object('schemaVersion',1,
+                       'contractType','STEP_FIELDS','fields',fields.value),
+                     command_contract=commands.value,api_contract=apis.value,
+                      actor_contract=jsonb_set(spec.actor_contract,'{permissions}',permissions.value,true),
+                      design_status=case when
+                        (not coalesce(identity.requires_user_page,false)
+                          or identity.user_audience_count>0)
+                        and (not coalesce(identity.requires_admin_page,false)
+                          or identity.admin_audience_count>0)
+                        then 'DESIGN_COMPLETE' else 'DESIGN_BLOCKED' end,
+                      approval_status=case when
+                        (not coalesce(identity.requires_user_page,false)
+                          or identity.user_audience_count>0)
+                        and (not coalesce(identity.requires_admin_page,false)
+                          or identity.admin_audience_count>0)
+                        then 'APPROVED' else 'REVIEW_REQUIRED' end,
+                      generation_status=case when
+                        (not coalesce(identity.requires_user_page,false)
+                          or identity.user_audience_count>0)
+                        and (not coalesce(identity.requires_admin_page,false)
+                          or identity.admin_audience_count>0)
+                        then 'READY' else 'BLOCKED' end,
+                      blocker_codes=case when
+                        (not coalesce(identity.requires_user_page,false)
+                          or identity.user_audience_count>0)
+                        and (not coalesce(identity.requires_admin_page,false)
+                          or identity.admin_audience_count>0)
+                        then '[]'::jsonb else '["PAGE_DESIGN_MISSING"]'::jsonb end,
+                      approved_by=case when
+                        (not coalesce(identity.requires_user_page,false)
+                          or identity.user_audience_count>0)
+                        and (not coalesce(identity.requires_admin_page,false)
+                          or identity.admin_audience_count>0)
+                        then ? end,
+                      approved_at=case when
+                        (not coalesce(identity.requires_user_page,false)
+                          or identity.user_audience_count>0)
+                        and (not coalesce(identity.requires_admin_page,false)
+                          or identity.admin_audience_count>0)
+                        then current_timestamp end,updated_at=current_timestamp
+                from screens,fields,commands,apis,permissions,exact_identity identity
+               where spec.process_code=? and spec.step_code=?
+                 and identity.contract_count>0
+                 and identity.valid_identity_count=identity.contract_count
+                 and identity.coherent_count=identity.contract_count
+                 and identity.complete_count=identity.contract_count
+                 and fields.invalid_count=0 and commands.invalid_count=0 and apis.invalid_count=0
+                 and (spec.screen_contract is distinct from screens.value
+                   or spec.field_contract is distinct from jsonb_build_object(
+                     'schemaVersion',1,'contractType','STEP_FIELDS','fields',fields.value)
+                   or spec.command_contract is distinct from commands.value
+                   or spec.api_contract is distinct from apis.value
+                    or spec.actor_contract->'permissions' is distinct from permissions.value
+                    or spec.design_status is distinct from case when
+                      (not coalesce(identity.requires_user_page,false)
+                        or identity.user_audience_count>0)
+                      and (not coalesce(identity.requires_admin_page,false)
+                        or identity.admin_audience_count>0)
+                      then 'DESIGN_COMPLETE' else 'DESIGN_BLOCKED' end
+                    or spec.approval_status is distinct from case when
+                      (not coalesce(identity.requires_user_page,false)
+                        or identity.user_audience_count>0)
+                      and (not coalesce(identity.requires_admin_page,false)
+                        or identity.admin_audience_count>0)
+                      then 'APPROVED' else 'REVIEW_REQUIRED' end)
+              returning jsonb_array_length(spec.api_contract) endpoint_expected
+            )
+            select endpoint_expected as "endpointExpected" from refreshed
+            union all
+            select jsonb_array_length(spec.api_contract) as "endpointExpected"
+              from framework_step_execution_spec spec,exact_identity identity,fields,commands,apis
+             where spec.process_code=? and spec.step_code=?
+               and identity.contract_count>0
+               and identity.valid_identity_count=identity.contract_count
+               and identity.coherent_count=identity.contract_count
+               and identity.complete_count=identity.contract_count
+               and fields.invalid_count=0 and commands.invalid_count=0 and apis.invalid_count=0
+               and not exists(select 1 from refreshed)
+            """,process,step,process,step,process,step,process,step,
+            actor,process,step,process,step);
+          if(refreshed.size()!=1)throw new IllegalStateException(
+              "STRUCTURED_GENERATION_SPEC_NOT_EXACT: "+process+" / "+step);
+          return new LinkedHashMap<>(refreshed.get(0));
+        });
+    }
+
+    private void lockCanonicalProcessPublication(String process){
+        jdbc.query("select pg_advisory_xact_lock(hashtextextended("+
+            "'CANONICAL_PROCESS_PUBLICATION_V1:'||upper(btrim(?)),0))",rs->{},process);
+    }
+
+    void lockCompositeProcessAuthority(String process){
+        lockCompositeProcessAuthority(process,Set.of());
+    }
+
+    void lockCompositeProcessAuthority(String process,Collection<String> requestedActors){
+        java.util.SortedSet<String> before=compositeProcessActorSet(process);
+        before.addAll(compositeDocumentActorSet(process));before.addAll(requestedActors);
+        Map<String,String> locked=lockActorDefinitions(before);
+        if(!locked.keySet().equals(before))throw new IllegalStateException(
+            "COMPOSITE_PROCESS_ACTOR_DEFINITION_NOT_EXACT");
+        lockCanonicalProcessPublication(process);
+        java.util.SortedSet<String> after=compositeProcessActorSet(process);
+        after.addAll(compositeDocumentActorSet(process));after.addAll(requestedActors);
+        if(!before.equals(after))throw new IllegalStateException(
+            "COMPOSITE_PROCESS_ACTOR_SET_CHANGED_RETRY");
+    }
+
+    private java.util.SortedSet<String> compositeDocumentActorSet(String process){
+        return new java.util.TreeSet<>(jdbc.queryForList("""
+            with documents as materialized (
+              select framework_try_jsonb(content) axis
+                from integrated_design_document where process_code=? and active_yn='Y'
+                 and document_type='ACTOR_RACI'
+            )
+            select actor_code from (
+              select axis#>>'{payload,actorCode}' actor_code from documents
+              union select axis#>>'{payload,ownerActorCode}' from documents
+              union select jsonb_array_elements_text(case when jsonb_typeof(
+                axis#>'{payload,responsibleActorCodes}')='array'
+                then axis#>'{payload,responsibleActorCodes}' else '[]'::jsonb end) from documents
+            ) actors where actor_code~'^[A-Z][A-Z0-9_:-]{1,59}$'
+             order by actor_code collate "C"
+            """,String.class,process));
+    }
+
+    private java.util.SortedSet<String> compositeProcessActorSet(String process){
+        List<String> rows=jdbc.queryForList("""
+            select actor_code from (
+              select process.owner_actor_code actor_code
+                from framework_process_definition process where process.process_code=?
+              union
+              select step.actor_code from framework_process_step step where step.process_code=?
+              union
+              select step.escalation_actor_code from framework_process_step step
+               where step.process_code=?
+              union
+              select actor.actor_code
+                from framework_process_step step
+                cross join lateral unnest(regexp_split_to_array(
+                  coalesce(nullif(btrim(step.segregation_actor_codes),''),'__NONE__'),
+                  '[[:space:]]*,[[:space:]]*')) actor(actor_code)
+               where step.process_code=? and actor.actor_code<>'__NONE__'
+              union
+              select contract.actor_code from framework_professional_screen_contract contract
+               where contract.process_code=?
+            ) referenced
+             where nullif(btrim(actor_code),'') is not null
+             order by actor_code collate "C"
+            """,String.class,process,process,process,process,process);
+        return new java.util.TreeSet<>(rows);
+    }
+
+    /**
+     * Requirement imports can mutate global actor definitions shared by several
+     * processes.  Resolve that complete committed impact set before the first
+     * mutation and acquire the same publication locks in one canonical order.
+     * This prevents two imports with opposite main/related process directions
+     * from taking X then Y / Y then X and deadlocking.
+     */
+    @Transactional public List<String> lockRequirementImportProcesses(
+            String mainProcess,java.util.Collection<String> actorCodes){
+        String main=req(Map.of("processCode",mainProcess),"processCode")
+            .trim().toUpperCase(Locale.ROOT);
+        if(!main.matches("^[A-Z][A-Z0-9_:-]{1,79}$"))
+            throw new IllegalArgumentException("INVALID_PROCESS_CODE: "+main);
+        if(actorCodes==null||actorCodes.isEmpty())
+            throw new IllegalArgumentException("REQUIREMENT_ACTOR_SET_REQUIRED");
+        java.util.SortedSet<String> actors=new java.util.TreeSet<>();
+        for(String raw:actorCodes){
+            String actor=raw==null?"":raw.trim().toUpperCase(Locale.ROOT);
+            if(!actor.matches("^[A-Z][A-Z0-9_]{1,59}$"))
+                throw new IllegalArgumentException("INVALID_ACTOR_CODE: "+actor);
+            actors.add(actor);
         }
-        List<Map<String,Object>> outputs=jdbc.queryForList(
-            "select blueprint_id as \"blueprintId\",blueprint_code as \"blueprintCode\",process_code as \"processCode\",step_code as \"stepCode\",audience,page_id as \"pageId\",route_path as \"routePath\",screen_type as \"screenType\",template_code as \"templateCode\",specification_json as \"specificationJson\",traceability_json as \"traceabilityJson\",validation_status as \"validationStatus\",validation_message as \"validationMessage\" from framework_screen_blueprint where lower(split_part(route_path,'?',1))=lower(?) order by audience,blueprint_id",
-            route);
-        Map<String,Object> result=new LinkedHashMap<>();
-        result.put("success",true);result.put("note",note);result.put("routePath",route);
-        result.put("processCodes",processes);result.put("deliveries",deliveries);result.put("codeOutputs",outputs);
-        result.put("generationStatus",processes.isEmpty()?"PROCESS_BINDING_REQUIRED":deliveries.stream().anyMatch(row->"DESIGN_INCOMPLETE".equals(row.get("status")))?"DESIGN_INCOMPLETE":"GENERATED");
-        result.put("buildRequired",false);
+        String actorSet=String.join(",",actors);
+        // Use the same actor-first order as ordinary actor/process/step edits.
+        // Missing actors are still protected by their advisory key until the
+        // requirement import creates them later in this transaction.
+        lockActorDefinitions(actors);
+        List<String> affected=jdbc.queryForList("""
+            with requested as materialized(
+              select unnest(string_to_array(?,',')) actor_code
+            ), affected as (
+              select ?::text process_code
+              union
+              select process.process_code
+                from framework_process_definition process
+                join requested actor on actor.actor_code=process.owner_actor_code
+              union
+              select step.process_code
+                from framework_process_step step
+                join requested actor on actor.actor_code=step.actor_code
+              union
+              select step.process_code
+                from framework_process_step step
+                join requested actor on actor.actor_code=step.escalation_actor_code
+              union
+              select step.process_code
+                from framework_process_step step
+               where exists(
+                 select 1 from requested actor
+                  where actor.actor_code=any(regexp_split_to_array(
+                    coalesce(nullif(btrim(step.segregation_actor_codes),''),'__NONE__'),
+                    '[[:space:]]*,[[:space:]]*')))
+            )
+            select process_code from affected
+             where process_code~'^[A-Z][A-Z0-9_:-]{1,79}$'
+             order by process_code collate "C"
+            """,String.class,actorSet,main);
+        if(affected.isEmpty()||!affected.contains(main))
+            throw new IllegalStateException("REQUIREMENT_PROCESS_LOCK_SET_NOT_EXACT: "+main);
+        for(String process:affected)lockCanonicalProcessPublication(process);
+        return List.copyOf(affected);
+    }
+
+    private Map<String,Object> refreshProcessExecutionSpecs(String process,String actor){
+        String refreshed=jdbc.queryForObject(
+            "select framework_refresh_process_execution_specs(?,?)::text",
+            String.class,process,actor);
+        if(refreshed==null)throw new IllegalStateException("PROCESS_SPEC_REFRESH_RESULT_REQUIRED");
+        return jsonMap(refreshed);
+    }
+
+    private Map<String,Object> beginProcessDesignRevision(String process,String actor){
+        String revision=jdbc.queryForObject(
+            "select framework_begin_process_design_revision(?,?)::text",
+            String.class,process,actor);
+        if(revision==null)throw new IllegalStateException("PROCESS_DESIGN_REVISION_REQUIRED");
+        return jsonMap(revision);
+    }
+
+    private Map<String,Object> finalizeProcessDesignRevision(String process,String actor){
+        String revision=jdbc.queryForObject(
+            "select framework_finalize_process_design_revision(?,?)::text",
+            String.class,process,actor);
+        if(revision==null)throw new IllegalStateException("PROCESS_DESIGN_FINALIZATION_REQUIRED");
+        return jsonMap(revision);
+    }
+
+    private void closeProcessDesignRevision(String process,String actor){
+        jdbc.queryForObject("select framework_close_process_design_revision(?,?)",
+            Boolean.class,process,actor);
+    }
+
+    Map<String,Object> refreshAndQueueCanonicalProcess(
+            String process,String actor,Map<String,Object> trigger,
+            java.util.function.Supplier<Map<String,Object>> exactProjection){
+        lockCanonicalProcessPublication(process);
+        Boolean initiallyLocked=jdbc.queryForObject(
+            "select definition_locked from framework_process_definition where process_code=?",
+            Boolean.class,process);
+        if(!Boolean.TRUE.equals(initiallyLocked))beginProcessDesignRevision(process,actor);
+        String expectedDesignHash=str(trigger,"designHash");
+        if(!expectedDesignHash.isBlank()){
+            String currentDesignHash=jdbc.queryForObject(
+                "select framework_canonical_screen_bundle(?,?,?,?)->>'designHash'",String.class,
+                process,req(trigger,"stepCode"),req(trigger,"audience"),req(trigger,"routePath"));
+            if(!expectedDesignHash.equals(currentDesignHash))
+                throw new IllegalStateException("STALE_CANONICAL_DESIGN_HASH");
+        }
+        if("PROCESS_STEP".equals(str(trigger,"triggerType")))
+            reconcileGeneratedProcessStepScreenIdentity(process);
+        Map<String,Object> refresh=refreshProcessExecutionSpecs(process,actor);
+        Map<String,Object> projection=exactProjection==null?Map.of():exactProjection.get();
+        Map<String,Object> revision=Map.of();
+        Map<String,Object> finalizationCoverage=jdbc.queryForMap("""
+            select process.definition_locked as "definitionLocked",
+                   (select count(*) from framework_process_step
+                     where process_code=process.process_code)::integer as "definedStepCount",
+                   (select count(*) from framework_step_execution_spec spec
+                     where spec.process_code=process.process_code)::integer as "specStepCount",
+                   (select count(*) from framework_step_execution_spec spec
+                     where spec.process_code=process.process_code
+                       and spec.design_status='DESIGN_COMPLETE'
+                       and spec.blocker_codes='[]'::jsonb)::integer as "completeStepCount"
+              from framework_process_definition process where process.process_code=?
+            """,process);
+        int defined=((Number)finalizationCoverage.getOrDefault("definedStepCount",0)).intValue();
+        int specs=((Number)finalizationCoverage.getOrDefault("specStepCount",0)).intValue();
+        int complete=((Number)finalizationCoverage.getOrDefault("completeStepCount",0)).intValue();
+        boolean locked=Boolean.TRUE.equals(finalizationCoverage.get("definitionLocked"));
+        if(!locked&&defined>0&&specs==defined&&complete==defined){
+            revision=finalizeProcessDesignRevision(process,actor);
+            refresh=refreshProcessExecutionSpecs(process,actor);
+            if("COMPOSITE_EXECUTABLE_DESIGN_AUTHORITY_BATCH".equals(
+                    str(trigger,"triggerType"))&&exactProjection!=null)
+                projection=exactProjection.get();
+        }else if(!locked){
+            closeProcessDesignRevision(process,actor);
+        }
+        Map<String,Object> effectiveTrigger=new LinkedHashMap<>(trigger);
+        if(projection.containsKey("endpointExpected"))
+            effectiveTrigger.put("triggerEndpointExpected",projection.get("endpointExpected"));
+        Map<String,Object> result=queueCanonicalProcessGeneration(process,actor,effectiveTrigger);
+        result.put("specRefresh",refresh);result.put("exactProjection",projection);
+        result.put("designRevision",revision);
         return result;
     }
 
+    private void synchronizeGeneratedProfessionalPrimaryMarkers(String process){
+        jdbc.update("""
+            with projected as (
+              select contract.contract_id,
+                     framework_merge_primary_contract_marker(
+                       framework_try_jsonb(contract.command_contract),
+                       'PRIMARY_STEP_COMMAND',jsonb_build_object(
+                         'commandCode',step.command_code,'actorCode',step.actor_code,
+                         'entryState',step.from_state,'resultState',step.to_state,
+                         'serverAuthorization',true,'validationRequired',true,
+                         'auditRequired',true))::text next_command_contract,
+                     framework_merge_primary_contract_marker(
+                       framework_try_jsonb(contract.api_contract),'PRIMARY_STEP_API',
+                       case when step.requires_api then jsonb_build_object(
+                         'declaredContract',coalesce(framework_try_jsonb(step.api_contract),
+                           to_jsonb(step.api_contract)),'actorCode',step.actor_code,
+                         'commandCode',step.command_code,'transactional',true,
+                         'tenantGuard',true,'projectGuard',true,'actorGuard',true,
+                         'idempotencyKey',true,'rowVersion',true) end)::text next_api_contract
+                from framework_professional_screen_contract contract
+                join framework_process_step step using(process_code,step_code)
+               where contract.process_code=?
+                 and contract.updated_by in(
+                   'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+                 and not exists(
+                   select 1 from framework_screen_blueprint blueprint
+                    where blueprint.process_code=contract.process_code
+                      and blueprint.step_code=contract.step_code
+                      and upper(blueprint.audience)=upper(contract.audience)
+                      and lower(split_part(blueprint.route_path,'?',1))=
+                          lower(split_part(contract.route_path,'?',1))
+                      and (blueprint.implementation_strategy='ADOPT_EXISTING'
+                        or blueprint.created_by not in(
+                          'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')))
+            )
+            update framework_professional_screen_contract contract set
+              command_contract=projected.next_command_contract,
+              api_contract=projected.next_api_contract,updated_at=current_timestamp
+              from projected where contract.contract_id=projected.contract_id
+               and (contract.command_contract is distinct from projected.next_command_contract
+                 or contract.api_contract is distinct from projected.next_api_contract)
+            """,process);
+        Integer mismatch=jdbc.queryForObject("""
+            select count(*) from framework_professional_screen_contract contract
+              join framework_process_step step using(process_code,step_code)
+             where contract.process_code=? and (
+               (select count(*) from jsonb_array_elements(coalesce(
+                  framework_try_jsonb(contract.command_contract),'[]'::jsonb)) item
+                 where item->>'markerType'='PRIMARY_STEP_COMMAND')<>1
+               or (select count(*) from jsonb_array_elements(coalesce(
+                  framework_try_jsonb(contract.command_contract),'[]'::jsonb)) item
+                 where item->>'markerType'='PRIMARY_STEP_COMMAND'
+                   and item->>'commandCode'=step.command_code
+                   and item->>'actorCode'=step.actor_code)<>1
+               or (step.requires_api and (
+                 (select count(*) from jsonb_array_elements(coalesce(
+                    framework_try_jsonb(contract.api_contract),'[]'::jsonb)) item
+                   where item->>'markerType'='PRIMARY_STEP_API')<>1
+                 or (select count(*) from jsonb_array_elements(coalesce(
+                    framework_try_jsonb(contract.api_contract),'[]'::jsonb)) item
+                   where item->>'markerType'='PRIMARY_STEP_API'
+                     and item->>'commandCode'=step.command_code
+                     and item->>'actorCode'=step.actor_code
+                     and item->'declaredContract'=coalesce(
+                       framework_try_jsonb(step.api_contract),to_jsonb(step.api_contract)))<>1))
+               or (not step.requires_api and (select count(*)
+                 from jsonb_array_elements(coalesce(
+                   framework_try_jsonb(contract.api_contract),'[]'::jsonb)) item
+                where item->>'markerType'='PRIMARY_STEP_API')<>0))
+            """,Integer.class,process);
+        if(mismatch==null||mismatch>0)throw new IllegalStateException(
+            "MANUAL_PROFESSIONAL_PRIMARY_CONTRACT_REVISION_REQUIRED: "+process+" / "+mismatch);
+    }
+
+    /**
+     * A direct step revision may move a generated screen to a different route,
+     * actor, or audience.  Reuse the requirement-owned identity reconciler only
+     * when a persisted screen authority already exists; a brand-new incomplete
+     * step must remain truthfully SKIPPED instead of inventing a design.
+     */
+    private void reconcileGeneratedProcessStepScreenIdentity(String process){
+        Boolean professional=jdbc.queryForObject("""
+            select exists(
+              select 1 from framework_professional_screen_contract
+               where process_code=?)
+            """,Boolean.class,process);
+        Boolean pageGraph=jdbc.queryForObject("""
+            select exists(
+              select 1 from framework_page_design where process_code=?
+              union all
+              select 1 from framework_screen_blueprint where process_code=?)
+            """,Boolean.class,process,process);
+        if(Boolean.TRUE.equals(professional)||Boolean.TRUE.equals(pageGraph)){
+            String reconciler="REQUIREMENT_SELF_HEALER";
+            reconcileRequirementOwnedProfessionalContracts(process,reconciler);
+            if(Boolean.TRUE.equals(pageGraph)){
+                reconcileRequirementOwnedPageDesigns(process);
+                upsertProcessPageDesignIdentities(process,reconciler,true);
+                reconcileRequirementOwnedBlueprints(process,reconciler);
+            }
+        }
+        synchronizeGeneratedProfessionalPrimaryMarkers(process);
+    }
+
+    private Map<String,Object> refreshAndQueueCanonicalProcess(
+            String process,String actor,Map<String,Object> trigger){
+        return refreshAndQueueCanonicalProcess(process,actor,trigger,null);
+    }
+
+    @Transactional public Map<String,Object> finalizeAndQueueProcessDesign(
+            String process,String actor,String triggerType){
+        if(actor==null||actor.isBlank()||!actor.equals(actor.trim())||actor.length()>100)
+            throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
+        String canonicalProcess=process==null?"":process.trim().toUpperCase(Locale.ROOT);
+        if(!canonicalProcess.matches("^[A-Z][A-Z0-9_:-]{1,79}$"))
+            throw new IllegalArgumentException("INVALID_PROCESS_CODE");
+        lockCanonicalProcessPublication(canonicalProcess);
+        beginProcessDesignRevision(canonicalProcess,actor);
+        Map<String,Object> trigger=new LinkedHashMap<>();
+        trigger.put("triggerType",triggerType==null||triggerType.isBlank()
+            ?"PROCESS_DESIGN_FINALIZATION":triggerType);
+        return refreshAndQueueCanonicalProcess(canonicalProcess,actor,trigger);
+    }
+
+    private Map<String,Object> queueCanonicalProcessGeneration(
+            String process,String actor,Map<String,Object> trigger){
+        Map<String,Object> coverage=jdbc.queryForMap("""
+            select (select count(*) from framework_process_step where process_code=?)::integer
+                     as "definedStepCount",
+                   (select count(*) from framework_step_execution_spec where process_code=?)::integer
+                     as "specStepCount",
+                   (select count(*) from framework_step_execution_spec
+                     where process_code=? and design_status='DESIGN_COMPLETE'
+                       and approval_status='APPROVED'
+                       and generation_status in('READY','GENERATED'))::integer
+                     as "generationReadyStepCount",
+                   (select count(*) from framework_development_job
+                     where process_code=? and job_type='FULL_STACK_GENERATION'
+                       and job_group_code=?||'_CANONICAL_PUBLICATION')::integer
+                     as "canonicalJobCount"
+            """,process,process,process,process,process);
+        int definedStepCount=((Number)coverage.getOrDefault("definedStepCount",0)).intValue();
+        int specStepCount=((Number)coverage.getOrDefault("specStepCount",0)).intValue();
+        int readyStepCount=((Number)coverage.getOrDefault("generationReadyStepCount",0)).intValue();
+        int existingJobCount=((Number)coverage.getOrDefault("canonicalJobCount",0)).intValue();
+        if(definedStepCount==0||specStepCount!=definedStepCount||readyStepCount!=definedStepCount){
+            List<String> blockers=new java.util.ArrayList<>();
+            if(definedStepCount==0)blockers.add("PROCESS_STEP_MISSING");
+            if(specStepCount!=definedStepCount)blockers.add("STEP_SPEC_COVERAGE_INCOMPLETE");
+            if(readyStepCount!=definedStepCount)blockers.add("GENERATION_APPROVAL_INCOMPLETE");
+            Map<String,Object> skipped=new LinkedHashMap<>();
+            skipped.put("success",true);skipped.put("status","SKIPPED");
+            skipped.put("generationQueued",false);skipped.put("jobCount",existingJobCount);
+            skipped.put("processCode",process);skipped.put("stepCode",str(trigger,"stepCode"));
+            skipped.put("processStepCount",definedStepCount);
+            skipped.put("generationReadyStepCount",readyStepCount);
+            skipped.put("skippedStepCount",Math.max(0,definedStepCount-readyStepCount));
+            skipped.put("blockerCount",blockers.size());skipped.put("blockers",blockers);
+            skipped.put("activationPolicy","SOURCE_IMMEDIATE_V1");
+            skipped.put("endpointExpected",0);skipped.put("publishCount",0);
+            return skipped;
+        }
+        List<Map<String,Object>> headed=jdbc.queryForList("""
+            with generation_head as materialized (
+              select framework_process_generation_input(?::text) head
+            ), updated as (
+               update framework_step_execution_spec spec
+                  set source_hash=head->>'processInputHash',
+                      updated_at=current_timestamp
+                from generation_head
+               where spec.process_code=?
+                 and spec.design_status='DESIGN_COMPLETE'
+                 and spec.approval_status='APPROVED'
+                 and spec.generation_status in('READY','GENERATED')
+              returning spec.step_code
+            )
+            select head->>'processInputHash' as "sourceHash",
+                   head->>'designSetHash' as "designSetHash",
+                   head->>'designCatalogHash' as "designCatalogHash",
+                   head->>'designCatalogTextHash' as "designCatalogTextHash",
+                   head->>'endpointCatalogHash' as "endpointCatalogHash",
+                   head->>'endpointCatalogTextHash' as "endpointCatalogTextHash",
+                   head->>'coordinatorStep' as "coordinatorStep",
+                   (head->>'processStepCount')::integer as "processStepCount",
+                   (head->>'generationReadyStepCount')::integer as "generationReadyStepCount",
+                   (head->>'processEndpointExpected')::integer as "processEndpointExpected",
+                   (head->>'screenCount')::integer as "designCount",
+                   (select count(*) from updated)::integer as "updatedCount"
+              from generation_head
+             where (head->>'generationReadyStepCount')::integer>0
+               and (head->>'coordinatorStep') is not null
+            """,process,process);
+        if(headed.size()!=1)throw new IllegalStateException(
+            "CANONICAL_PROCESS_GENERATION_HEAD_NOT_EXACT: "+process);
+        String sourceHash=String.valueOf(headed.get(0).get("sourceHash"));
+        String designSetHash=String.valueOf(headed.get(0).get("designSetHash"));
+        String designCatalogHash=String.valueOf(headed.get(0).get("designCatalogHash"));
+        String designCatalogTextHash=String.valueOf(headed.get(0).get("designCatalogTextHash"));
+        String endpointCatalogHash=String.valueOf(headed.get(0).get("endpointCatalogHash"));
+        String endpointCatalogTextHash=String.valueOf(headed.get(0).get("endpointCatalogTextHash"));
+        String coordinatorStep=String.valueOf(headed.get(0).get("coordinatorStep"));
+        int processStepCount=((Number)headed.get(0).getOrDefault("processStepCount",0)).intValue();
+        int generationReadyStepCount=((Number)headed.get(0)
+            .getOrDefault("generationReadyStepCount",0)).intValue();
+        int processEndpointExpected=((Number)headed.get(0)
+            .getOrDefault("processEndpointExpected",0)).intValue();
+        int updatedCount=((Number)headed.get(0).getOrDefault("updatedCount",0)).intValue();
+        if(!sourceHash.matches("[0-9a-f]{64}"))
+            throw new IllegalStateException("CANONICAL_SOURCE_HASH_INVALID");
+        if(!designSetHash.matches("[0-9a-f]{64}")
+                ||!designCatalogHash.matches("[0-9a-f]{64}")
+                ||!designCatalogTextHash.matches("[0-9a-f]{64}")
+                ||!endpointCatalogHash.matches("[0-9a-f]{64}")
+                ||!endpointCatalogTextHash.matches("[0-9a-f]{64}"))
+            throw new IllegalStateException("CANONICAL_DESIGN_SET_HASH_INVALID");
+        if(coordinatorStep.isBlank()||processStepCount<1
+                ||generationReadyStepCount!=processStepCount
+                ||updatedCount!=generationReadyStepCount)
+            throw new IllegalStateException("CANONICAL_PROCESS_GENERATION_COVERAGE_NOT_EXACT");
+        int triggerEndpointExpected=trigger.get("triggerEndpointExpected") instanceof Number value
+            ?value.intValue():0;
+        if(Set.of("PROFESSIONAL_SCREEN_CONTRACT",
+                "COMPOSITE_EXECUTABLE_DESIGN_AUTHORITY_BATCH").contains(str(trigger,"triggerType"))
+                &&triggerEndpointExpected<1)
+            throw new IllegalStateException("CANONICAL_ENDPOINT_OUTPUT_REQUIRED");
+
+        String target="canonical://"+process+"/"+sourceHash;
+        Map<String,Object> generationSpec=new LinkedHashMap<>();
+        generationSpec.put("algorithm","CANONICAL_PROCESS_PUBLICATION_V1");
+        generationSpec.put("activationPolicy","SOURCE_IMMEDIATE_V1");
+        generationSpec.put("generatorRequired",true);generationSpec.put("reuseCommonAssets",true);
+        generationSpec.put("processCode",process);generationSpec.put("stepCode",coordinatorStep);
+        generationSpec.put("coordinatorStep",coordinatorStep);
+        generationSpec.put("processInputHash",sourceHash);
+        generationSpec.put("processStepCount",processStepCount);
+        generationSpec.put("generationReadyStepCount",generationReadyStepCount);
+        generationSpec.put("triggerType",def(trigger,"triggerType","PROCESS_DEFINITION"));
+        if(!str(trigger,"stepCode").isBlank())
+            generationSpec.put("triggerStep",str(trigger,"stepCode"));
+        if(!str(trigger,"routePath").isBlank())
+            generationSpec.put("routePath",str(trigger,"routePath"));
+        if(!str(trigger,"audience").isBlank())
+            generationSpec.put("audience",str(trigger,"audience"));
+        if(!str(trigger,"designHash").isBlank())
+            generationSpec.put("designHash",str(trigger,"designHash"));
+        generationSpec.put("sourceHash",sourceHash);
+        generationSpec.put("designSetHash",designSetHash);
+        generationSpec.put("designCatalogHash",designCatalogHash);
+        generationSpec.put("designCatalogTextHash",designCatalogTextHash);
+        generationSpec.put("endpointCatalogHash",endpointCatalogHash);
+        generationSpec.put("endpointCatalogTextHash",endpointCatalogTextHash);
+        generationSpec.put("endpointExpected",processEndpointExpected);
+        generationSpec.put("triggerEndpointExpected",triggerEndpointExpected);
+        generationSpec.put("requiredGates",List.of(
+            "DESIGN","FRONTEND","API","DATABASE","HELP","CARDS","BUILD","PUBLISH"));
+        generationSpec.put("verifiedEvidenceRequired",true);generationSpec.put("autoDeploy",false);
+        generationSpec.put("requirement","구조화 화면·기능·권한·엔드포인트 계약을 기존 결정적 제너레이터로 생성한다.");
+        String specification=toJson(generationSpec);
+        String canonicalGroup=process+"_CANONICAL_PUBLICATION";
+        List<Map<String,Object>> existing=jdbc.queryForList(
+            "select job_id as \"jobId\",job_status as \"jobStatus\","+
+            "quality_status as \"qualityStatus\",evidence_ref as \"evidenceRef\","+
+            "target_path as \"targetPath\",attempt_count as \"attemptCount\","+
+            "max_attempts as \"maxAttempts\",(lease_until is not null and "+
+            "lease_until>current_timestamp) as \"leaseActive\","+
+            "(lease_until is not null) as \"leasePresent\","+
+            "(select count(*) from framework_process_artifact artifact where "+
+            "artifact.process_code=framework_development_job.process_code and "+
+            "artifact.contract_ref='AUTO:FULL_STACK_GENERATION' and artifact.required "+
+            "and artifact.delivery_status='VERIFIED' and nullif(artifact.evidence_ref,'') "+
+            "is not null)::integer as \"verifiedArtifactCount\" "+
+            "from framework_development_job where process_code=? and "+
+            "job_type='FULL_STACK_GENERATION' and job_group_code=? for update",
+            process,canonicalGroup);
+        long jobId;
+        boolean queued;
+        boolean resetArtifact;
+        boolean recoveryReset=false;
+        String executableStatus;
+        int executableAttempt;
+        int executableMaximum;
+        boolean executableLeasePresent;
+        String executableQuality;
+        int executableVerifiedArtifacts;
+        boolean executableEvidencePresent;
+        boolean executableEvidenceExact;
+        if(existing.isEmpty()){
+            jobId=jdbc.queryForObject("""
+                insert into framework_development_job(
+                  process_code,step_code,job_type,job_name,target_path,specification_json,
+                  job_status,approval_status,execution_mode,job_group_code,required,
+                  progress_weight,max_attempts,quality_status,created_by)
+                values(?,?,'FULL_STACK_GENERATION','구조화 설계 전체 스택 자동 생성',?, ?,
+                  'PLANNED','APPROVED','SEQUENTIAL',?,true,10,3,'PENDING',?) returning job_id
+                """,Long.class,process,coordinatorStep,target,specification,
+                canonicalGroup,actor);
+            queued=true;
+            resetArtifact=true;
+            executableStatus="PLANNED";
+            executableAttempt=0;
+            executableMaximum=3;
+            executableLeasePresent=false;
+            executableQuality="PENDING";executableVerifiedArtifacts=0;executableEvidencePresent=false;
+            executableEvidenceExact=false;
+        }else{
+            if(existing.size()!=1)throw new IllegalStateException("CANONICAL_GENERATION_JOB_NOT_EXACT");
+            jobId=((Number)existing.get(0).get("jobId")).longValue();
+            String status=String.valueOf(existing.get(0).get("jobStatus"));
+            boolean sameHeads=target.equals(String.valueOf(existing.get(0).get("targetPath")));
+            int attemptCount=((Number)existing.get(0).getOrDefault("attemptCount",0)).intValue();
+            int maxAttempts=Math.max(1,
+                ((Number)existing.get(0).getOrDefault("maxAttempts",3)).intValue());
+            boolean leaseActive=Boolean.TRUE.equals(existing.get(0).get("leaseActive"));
+            boolean leasePresent=Boolean.TRUE.equals(existing.get(0).get("leasePresent"));
+            executableStatus=status;
+            executableAttempt=attemptCount;
+            executableMaximum=maxAttempts;
+            executableLeasePresent=leasePresent;
+            executableQuality=String.valueOf(existing.get(0).getOrDefault("qualityStatus","PENDING"));
+            executableVerifiedArtifacts=((Number)existing.get(0).getOrDefault(
+                "verifiedArtifactCount",0)).intValue();
+            executableEvidencePresent=!String.valueOf(existing.get(0).getOrDefault(
+                "evidenceRef","")).isBlank();
+            executableEvidenceExact=Set.of("VERIFIED","COMPLETED").contains(status)
+                &&new CompositePhysicalEvidenceService(jdbc).isExact(jobId,process);
+            boolean exhaustedInactive=attemptCount>=maxAttempts
+                &&!("RUNNING".equals(status)&&leaseActive);
+            boolean orphanedState="CLAIMED".equals(status)
+                ||"RUNNING".equals(status)&&!leasePresent;
+            if(!sameHeads){
+                queued=true;resetArtifact=true;
+                int revisionReset=jdbc.update("""
+                    update framework_development_job
+                       set step_code=?,target_path=?,specification_json=?,job_status='PLANNED',
+                           approval_status='APPROVED',quality_status='PENDING',quality_report='{}',
+                           worker_id=null,lease_token=null,lease_until=null,attempt_count=0,
+                           started_at=null,completed_at=null,result_json='{}',evidence_ref=null,
+                           rollback_ref=null,last_error=null,updated_at=current_timestamp
+                     where job_id=? and process_code=?
+                       and job_type='FULL_STACK_GENERATION' and job_group_code=?
+                    """,coordinatorStep,target,specification,jobId,process,canonicalGroup);
+                if(revisionReset!=1)throw new IllegalStateException(
+                    "CANONICAL_GENERATION_JOB_REVISION_RESET_FAILED");
+                jdbc.update("delete from framework_development_job_gate_result where job_id=?",jobId);
+                executableStatus="PLANNED";executableAttempt=0;
+                executableLeasePresent=false;
+                executableQuality="PENDING";executableVerifiedArtifacts=0;executableEvidencePresent=false;
+                executableEvidenceExact=false;
+            }else if(Set.of("VERIFIED","COMPLETED").contains(status)
+                    &&"VERIFIED".equals(executableQuality)&&executableVerifiedArtifacts==1
+                    &&executableEvidencePresent&&executableEvidenceExact){
+                queued=false;resetArtifact=false;
+            }else if(Set.of("FAILED","BLOCKED").contains(status)
+                    ||Set.of("VERIFIED","COMPLETED").contains(status)
+                    ||exhaustedInactive||orphanedState){
+                queued=true;resetArtifact=true;recoveryReset=true;
+                int retryReset=jdbc.update("""
+                update framework_development_job
+                   set step_code=?,specification_json=?,job_status='PLANNED',approval_status='APPROVED',
+                       quality_status='PENDING',quality_report='{}',worker_id=null,
+                       lease_token=null,lease_until=null,attempt_count=0,started_at=null,
+                       completed_at=null,result_json='{}',evidence_ref=null,rollback_ref=null,
+                       last_error=null,updated_at=current_timestamp
+                 where job_id=? and process_code=? and job_type='FULL_STACK_GENERATION'
+                   and job_group_code=? and target_path=?
+                """,coordinatorStep,specification,jobId,process,canonicalGroup,target);
+                if(retryReset!=1)throw new IllegalStateException(
+                    "CANONICAL_GENERATION_JOB_RETRY_RESET_FAILED");
+                jdbc.update("delete from framework_development_job_gate_result where job_id=?",jobId);
+                executableStatus="PLANNED";executableAttempt=0;
+                executableLeasePresent=false;
+                executableQuality="PENDING";executableVerifiedArtifacts=0;executableEvidencePresent=false;
+                executableEvidenceExact=false;
+            }else if(Set.of("PLANNED","RETRY","RUNNING").contains(status)){
+                queued=true;resetArtifact=false;
+            }else throw new IllegalStateException("CANONICAL_GENERATION_JOB_STATUS_INVALID: "+status);
+        }
+        Integer artifactCount=jdbc.queryForObject(
+            "select count(*) from framework_process_artifact where process_code=? and contract_ref='AUTO:FULL_STACK_GENERATION'",
+            Integer.class,process);
+        if(artifactCount==null||artifactCount>1)
+            throw new IllegalStateException("CANONICAL_GENERATION_ARTIFACT_NOT_EXACT");
+        if(artifactCount==0)jdbc.update("""
+            insert into framework_process_artifact(
+              process_code,step_code,artifact_code,artifact_type,artifact_name,target_path,
+              contract_ref,required,delivery_status,owner_actor_code,acceptance_criteria,notes)
+            values(?,?,?,'FULL_STACK','구조화 설계 전체 스택 산출물',?,
+              'AUTO:FULL_STACK_GENERATION',true,'PLANNED',
+              (select actor_code from framework_process_step where process_code=? and step_code=?),
+              '동일 designHash/sourceHash의 결정적 산출물과 자동 테스트가 통과해야 한다.',
+              'save-and-generate direct path')
+            """,process,coordinatorStep,(process+"_FULL_STACK_GENERATION").replaceAll("[^A-Za-z0-9_]","_"),
+            target,process,coordinatorStep);
+        else jdbc.update("""
+            update framework_process_artifact
+               set step_code=?,target_path=?,delivery_status=case when ? then 'PLANNED' else delivery_status end,
+                   evidence_ref=case when ? then null else evidence_ref end,
+                   updated_at=current_timestamp
+             where process_code=? and contract_ref='AUTO:FULL_STACK_GENERATION'
+            """,coordinatorStep,target,resetArtifact,resetArtifact,process);
+
+        Integer canonicalJobCount=jdbc.queryForObject("""
+            select count(*) from framework_development_job
+             where process_code=? and job_type='FULL_STACK_GENERATION'
+               and job_group_code=?
+            """,Integer.class,process,canonicalGroup);
+        if(canonicalJobCount==null||canonicalJobCount!=1)
+            throw new IllegalStateException("CANONICAL_GENERATION_JOB_NOT_EXACT");
+        boolean workerCanProgress=(Set.of("PLANNED","RETRY").contains(executableStatus)
+                &&executableAttempt<executableMaximum)
+            ||("RUNNING".equals(executableStatus)&&executableLeasePresent);
+        if(queued&&!workerCanProgress)throw new IllegalStateException(
+            "CANONICAL_GENERATION_JOB_UNCLAIMABLE: "+jobId);
+
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("status",queued?"QUEUED":"UNCHANGED");
+        result.put("generationQueued",queued);result.put("jobCount",canonicalJobCount);result.put("jobId",jobId);
+        boolean physicalVerified=!queued&&Set.of("VERIFIED","COMPLETED").contains(executableStatus)
+            &&"VERIFIED".equals(executableQuality)&&executableVerifiedArtifacts==1
+            &&executableEvidencePresent&&executableEvidenceExact;
+        result.put("jobStatus",executableStatus);result.put("physicalVerified",physicalVerified);
+        result.put("generationStatus",physicalVerified?"PHYSICAL_GENERATED_VERIFIED":"PHYSICAL_QUEUED");
+        result.put("processCode",process);
+        result.put("stepCode",str(trigger,"stepCode").isBlank()
+            ?coordinatorStep:str(trigger,"stepCode"));
+        result.put("routePath",str(trigger,"routePath"));
+        result.put("designHash",str(trigger,"designHash").isBlank()
+            ?designSetHash:str(trigger,"designHash"));
+        result.put("sourceHash",sourceHash);
+        result.put("jobAttemptCount",executableAttempt);
+        result.put("jobMaxAttempts",executableMaximum);
+        result.put("workerCanProgress",!queued||workerCanProgress);
+        result.put("recoveryReset",recoveryReset);
+        result.put("processInputHash",sourceHash);result.put("designSetHash",designSetHash);
+        result.put("designCatalogHash",designCatalogHash);
+        result.put("endpointCatalogHash",endpointCatalogHash);
+        result.put("coordinatorStep",coordinatorStep);result.put("processStepCount",processStepCount);
+        result.put("generationReadyStepCount",generationReadyStepCount);
+        result.put("activationPolicy","SOURCE_IMMEDIATE_V1");
+        result.put("endpointExpected",processEndpointExpected);result.put("publishCount",0);
+        return result;
+    }
+
+    /**
+     * Runs the governed design-to-delivery handoff for one selected process
+     * step. Preflight is fail-closed, so implementation cannot be reopened
+     * before actor, screen, test and common-design contracts pass.
+     */
+    @Transactional public Map<String,Object> executeDevelopmentPipeline(Map<String,Object> body,String actor){
+        String process=req(body,"processCode");
+        String step=req(body,"stepCode");
+        Map<String,Object> preflight=runScreenDevelopmentPreflight(process,step,actor);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);
+        result.put("processCode",process);
+        result.put("stepCode",step);
+        result.put("preflight",preflight);
+        if(!Boolean.TRUE.equals(preflight.get("passed"))){
+            result.put("status","DESIGN_REQUIRED");
+            result.put("queued",false);
+            result.put("nextAction",preflight.get("failureSummary"));
+            return result;
+        }
+        Map<String,Object> delivery=executeDesignDirectDevelopment(
+                Map.of("processCode",process,"force",Boolean.TRUE.equals(body.get("force"))),actor);
+        result.put("status",delivery.get("status"));
+        result.put("queued",Set.of("READY_TO_EXECUTE","UNCHANGED").contains(String.valueOf(delivery.get("status"))));
+        result.put("delivery",delivery);
+        result.put("pipeline",List.of("DESIGN_VALIDATED","SCREEN_PREFLIGHT_PASSED",
+                "CODE_GENERATION_QUEUED","QUALITY_GATES_REQUIRED","DEPLOYMENT_GATE_REQUIRED"));
+        result.put("nextAction",delivery.get("nextAction"));
+        return result;
+    }
+
+    /**
+     * Compiles one route note into the exact professional-contract/blueprint
+     * identity in the same transaction.  The canonical database bundle is the
+     * commit invariant: a changed source must change both hashes and expose the
+     * typed note through the operator-support lanes.
+     */
+    @Transactional public Map<String,Object> saveDesignAndGenerate(Map<String,Object> body,String actor){
+        String route=ScreenDevelopmentNoteService.cleanRoute(req(body,"routePath"));
+        jdbc.query("select pg_advisory_xact_lock(hashtext(lower(?)))",rs->{},route);
+        String designNote=req(body,"designNote");
+        String functionNote=req(body,"functionNote");
+        String acceptanceNote=req(body,"acceptanceNote");
+        List<Map<String,Object>> identities=jdbc.queryForList("""
+            with blueprint_candidates as materialized (
+              select b.blueprint_id,c.contract_id,
+                     (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
+                       'framework_professional_screen_contract:'||c.contract_id,
+                       'professional_screen_contract:'||c.contract_id)) explicit_link,
+                     count(*) over(partition by c.contract_id) candidate_count,
+                     count(*) filter(where b.transition_status='CONTRACT_LINKED'
+                       and lower(b.source_reference) in(
+                         'framework_professional_screen_contract:'||c.contract_id,
+                         'professional_screen_contract:'||c.contract_id))
+                       over(partition by c.contract_id) explicit_count
+                from framework_screen_blueprint b
+                join framework_professional_screen_contract c
+                  on c.process_code=b.process_code and c.step_code=b.step_code
+                 and upper(c.audience)=upper(b.audience)
+                 and lower(split_part(c.route_path,'?',1))=
+                     lower(split_part(b.route_path,'?',1))
+               where b.validation_status='VALID'
+                 and lower(split_part(b.route_path,'?',1))=lower(?)
+            ), authority as materialized (
+              select blueprint_id,contract_id from blueprint_candidates
+               where (explicit_count=1 and explicit_link)
+                  or (explicit_count=0 and candidate_count=1)
+            )
+            select b.blueprint_id as "blueprintId",c.contract_id as "contractId",
+                   b.process_code as "processCode",b.step_code as "stepCode",b.audience,
+                   lower(split_part(b.route_path,'?',1)) as "routePath",
+                   c.section_contract as "sectionContract",c.field_contract as "fieldContract",
+                   c.command_contract as "commandContract",c.state_contract as "stateContract",
+                   c.api_contract as "apiContract",c.data_contract as "dataContract",
+                   c.evidence_contract as "evidenceContract",
+                   b.specification_json as "specificationJson",
+                   b.traceability_json as "traceabilityJson"
+              from authority selected
+              join framework_screen_blueprint b using(blueprint_id)
+              join framework_professional_screen_contract c using(contract_id)
+             order by b.blueprint_id,c.contract_id
+             for update of b,c
+            """,route);
+        if(identities.size()!=1)throw new IllegalStateException(
+            "CANONICAL_SCREEN_IDENTITY_NOT_EXACT: route="+route+", count="+identities.size());
+        Map<String,Object> identity=new LinkedHashMap<>(identities.get(0));
+        route=String.valueOf(identity.get("routePath"));
+        validateDesignCompilationSource(identity);
+        Map<String,Object> compiledNote=compileTypedDesignNote(
+            route,body,designNote,functionNote,acceptanceNote);
+        Map<String,Object> before=canonicalScreenBundle(identity);
+        Map<String,Object> currentNote=screenDevelopmentNoteService.find(route);
+        boolean canonicalNoteUnchanged=canonicalDesignNoteMatches(currentNote,designNote,functionNote,acceptanceNote);
+        boolean noteUnchanged=designNoteMatches(
+            currentNote,body,designNote,functionNote,acceptanceNote);
+        boolean sourceAlreadyCompiled=sourceContainsCompiledNote(identity,compiledNote);
+        List<String> processes=List.of(String.valueOf(identity.get("processCode")));
+        if(noteUnchanged&&sourceAlreadyCompiled){
+            requireCanonicalCompiledNote(before,compiledNote);
+            List<Map<String,Object>> outputs=designCodeOutputs(route);
+            String currentSourceHash=jdbc.queryForObject(
+                "select source_hash from framework_step_execution_spec where process_code=? and step_code=?",
+                String.class,identity.get("processCode"),identity.get("stepCode"));
+            Map<String,Object> currentDesign=canonicalObject(before.get("canonicalDesign"),"canonicalDesign");
+            Map<String,Object> currentLanes=canonicalObject(currentDesign.get("lanes"),"canonicalDesign.lanes");
+            int endpointExpected=currentLanes.get("API") instanceof List<?> apis?apis.size():0;
+            Map<String,Object> result=new LinkedHashMap<>();
+            result.put("success",true);result.put("changed",false);result.put("note",currentNote);
+            result.put("routePath",route);result.put("processCodes",processes);
+            result.put("deliveries",List.of());result.put("codeOutputs",outputs);
+            result.put("generationStatus","UNCHANGED");result.put("selfHealingRunId",null);
+            result.put("generationQueued",false);result.put("jobCount",0);
+            result.put("sourceHash",currentSourceHash==null?"":currentSourceHash);
+            result.put("endpointExpected",endpointExpected);result.put("publishCount",0);
+            result.put("designHash",canonicalHash(before,"designHash"));
+            result.put("catalogHash",before.get("catalogHash"));
+            result.put("support",canonicalSupport(before));
+            result.put("hashTransition",hashTransition(before,before));
+            Map<String,Object> unchangedPublication=new LinkedHashMap<>();
+            unchangedPublication.put("reason","UNCHANGED");
+            unchangedPublication.put("published",false);
+            unchangedPublication.put("designHash",canonicalHash(before,"designHash"));
+            unchangedPublication.put("catalogHash",before.get("catalogHash"));
+            result.put("runtimePublication",unchangedPublication);
+            result.put("rollbackPolicy","TRANSACTION_ROLLBACK");result.put("buildRequired",false);
+            return result;
+        }
+        UUID recoveryRun=jdbc.queryForObject(
+            "insert into framework_design_self_healing_run(route_key,affected_process_codes,executed_by) values(?,?,?) returning run_id",
+            UUID.class,route,processes.toArray(String[]::new),actor);
+        Map<String,Object> note=screenDevelopmentNoteService.save(body,actor);
+        String compiledJson=toJson(compiledNote);
+        long contractId=((Number)identity.get("contractId")).longValue();
+        long blueprintId=((Number)identity.get("blueprintId")).longValue();
+        int contractWrites=jdbc.update("""
+            with next_contract as (
+              select c.contract_id,
+                     coalesce((
+                       select jsonb_agg(e.value order by e.ordinality)
+                         from jsonb_array_elements(c.evidence_contract::jsonb)
+                              with ordinality e(value,ordinality)
+                        where not (jsonb_typeof(e.value)='object'
+                          and coalesce(e.value->>'namespace','')=? )
+                     ),'[]'::jsonb)||jsonb_build_array(cast(? as jsonb)) as next_evidence
+                from framework_professional_screen_contract c
+               where c.contract_id=?
+            )
+            update framework_professional_screen_contract c
+               set evidence_contract=next_contract.next_evidence::text,
+                   updated_by=?,updated_at=current_timestamp
+              from next_contract
+             where c.contract_id=next_contract.contract_id
+               and c.evidence_contract::jsonb is distinct from next_contract.next_evidence
+            """,DESIGN_AUTOMATION_NAMESPACE,compiledJson,contractId,actor);
+        int blueprintWrites=jdbc.update("""
+            with next_blueprint as (
+              select b.blueprint_id,
+                     b.specification_json::jsonb||jsonb_build_object(
+                       'extensions',coalesce(b.specification_json::jsonb->'extensions','{}'::jsonb)
+                         ||jsonb_build_object('designAutomation',cast(? as jsonb))
+                     ) as next_specification
+                from framework_screen_blueprint b
+               where b.blueprint_id=?
+            )
+            update framework_screen_blueprint b
+               set specification_json=next_blueprint.next_specification::text,
+                   updated_at=current_timestamp
+              from next_blueprint
+             where b.blueprint_id=next_blueprint.blueprint_id
+               and b.specification_json::jsonb is distinct from next_blueprint.next_specification
+            """,compiledJson,blueprintId);
+        Map<String,Object> after=canonicalScreenBundle(identity);
+        requireCanonicalCompiledNote(after,compiledNote);
+        boolean canonicalContentChanged=!canonicalNoteUnchanged||contractWrites>0||blueprintWrites>0;
+        boolean sourceChanged=!noteUnchanged||canonicalContentChanged;
+        if(!sourceChanged)throw new IllegalStateException(
+            "DESIGN_SOURCE_WRITE_INVARIANT: changed request produced no canonical source write");
+        if(canonicalContentChanged&&canonicalHash(before,"designHash").equals(canonicalHash(after,"designHash")))
+            throw new IllegalStateException("CANONICAL_DESIGN_HASH_INVARIANT: changed content retained designHash");
+        List<Map<String,Object>> deliveries=new java.util.ArrayList<>();
+        for(String process:processes){
+            generateProfessionalDesignGraph(process,actor);
+            deliveries.add(executeDesignDirectDevelopment(Map.of(
+                "processCode",process,"stepCode",String.valueOf(identity.get("stepCode")),
+                "routePath",route,"audience",String.valueOf(identity.get("audience")),
+                "designHash",canonicalHash(after,"designHash")),actor));
+        }
+        Map<String,Object> runtimePublication=screenContractRuntimeService.publishProfessionalContract(contractId,actor);
+        if(!canonicalHash(after,"designHash").equals(runtimePublication.get("designHash")))
+            throw new IllegalStateException("RUNTIME_PUBLICATION_CANONICAL_HASH_MISMATCH");
+        List<Map<String,Object>> outputs=designCodeOutputs(route);
+        long invalidScreens=outputs.stream().filter(row->!"VALID".equals(String.valueOf(row.get("validationStatus")))).count();
+        boolean generationQueued=deliveries.stream().anyMatch(row->Boolean.TRUE.equals(row.get("generationQueued")));
+        int jobCount=deliveries.stream().mapToInt(row->((Number)row.getOrDefault("jobCount",0)).intValue()).sum();
+        int endpointExpected=deliveries.stream().mapToInt(row->((Number)row.getOrDefault("endpointExpected",0)).intValue()).sum();
+        String sourceHash=deliveries.isEmpty()?"":String.valueOf(deliveries.get(0).getOrDefault("sourceHash",""));
+        String generationStatus=invalidScreens>0?"DESIGN_INCOMPLETE":generationQueued?"QUEUED":"UNCHANGED";
+        Map<String,Object> recoveryResult=new LinkedHashMap<>();
+        recoveryResult.put("routePath",route);recoveryResult.put("processCodes",processes);
+        recoveryResult.put("deliveries",deliveries);recoveryResult.put("generatedScreens",outputs.size());
+        recoveryResult.put("invalidScreens",invalidScreens);
+        recoveryResult.put("designHash",canonicalHash(after,"designHash"));
+        recoveryResult.put("sourceHash",sourceHash);recoveryResult.put("jobCount",jobCount);
+        recoveryResult.put("endpointExpected",endpointExpected);recoveryResult.put("generationQueued",generationQueued);
+        recoveryResult.put("catalogHash",after.get("catalogHash"));
+        recoveryResult.put("buildRequired",false);
+        jdbc.update("update framework_design_self_healing_run set run_status=?,regenerated_process_count=?,generated_screen_count=?,invalid_screen_count=?,result_json=cast(? as jsonb),completed_at=current_timestamp where run_id=?",
+            generationStatus,processes.size(),outputs.size(),invalidScreens,toJson(recoveryResult),recoveryRun);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("changed",true);result.put("note",note);result.put("routePath",route);
+        result.put("processCodes",processes);result.put("deliveries",deliveries);result.put("codeOutputs",outputs);
+        result.put("generationStatus",generationStatus);result.put("selfHealingRunId",recoveryRun);
+        result.put("designHash",canonicalHash(after,"designHash"));
+        result.put("sourceHash",sourceHash);result.put("jobCount",jobCount);
+        result.put("endpointExpected",endpointExpected);result.put("generationQueued",generationQueued);
+        result.put("catalogHash",after.get("catalogHash"));
+        result.put("support",canonicalSupport(after));
+        result.put("hashTransition",hashTransition(before,after));
+        result.put("runtimePublication",runtimePublication);
+        result.put("rollbackPolicy","TRANSACTION_ROLLBACK");result.put("buildRequired",false);
+        return result;
+    }
+
+    private static Map<String,Object> compileTypedDesignNote(String route,Map<String,Object> request,String design,
+            String functions,String acceptance){
+        Map<String,Object> compiled=new LinkedHashMap<>();
+        compiled.put("schema","carbonet.design-note/v1");
+        compiled.put("namespace",DESIGN_AUTOMATION_NAMESPACE);
+        compiled.put("routePath",route);
+        compiled.put("design",typedNoteValue("DESIGN_REQUIREMENT",design));
+        compiled.put("functions",typedNoteValue("FUNCTION_REQUIREMENT",functions));
+        compiled.put("acceptance",typedNoteValue("ACCEPTANCE_RULE",acceptance));
+        Map<String,Object> page=new LinkedHashMap<>();
+        page.put("pageId",def(request,"pageId",""));
+        page.put("pageTitle",def(request,"pageTitle",""));
+        page.put("status",def(request,"status","READY"));
+        compiled.put("page",page);
+        compiled.put("noteHash",sha256Hex(toJson(compiled)));
+        return compiled;
+    }
+
+    private static Map<String,Object> typedNoteValue(String type,String text){
+        Map<String,Object> value=new LinkedHashMap<>();
+        value.put("type",type);value.put("text",text);return value;
+    }
+
+    private static void validateDesignCompilationSource(Map<String,Object> source){
+        for(String field:List.of("sectionContract","fieldContract","commandContract","stateContract",
+                "apiContract","dataContract","evidenceContract"))
+            validateJsonArray(String.valueOf(source.get(field)),field);
+        validateJsonObject(String.valueOf(source.get("specificationJson")),"specificationJson");
+        validateJsonObject(String.valueOf(source.get("traceabilityJson")),"traceabilityJson");
+        try{
+            com.fasterxml.jackson.databind.JsonNode specification=
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree(
+                    String.valueOf(source.get("specificationJson")));
+            if(specification.has("extensions")&&!specification.get("extensions").isObject())
+                throw new IllegalArgumentException("specificationJson.extensions must be a JSON object");
+        }catch(com.fasterxml.jackson.core.JsonProcessingException error){
+            throw new IllegalArgumentException("specificationJson must be valid JSON",error);
+        }
+    }
+
+    private static boolean designNoteMatches(Map<String,Object> current,Map<String,Object> requested,
+            String design,String functions,String acceptance){
+        String requestedStatus=def(requested,"status","READY");
+        return design.equals(String.valueOf(current.getOrDefault("designNote","")))
+            &&functions.equals(String.valueOf(current.getOrDefault("functionNote","")))
+            &&acceptance.equals(String.valueOf(current.getOrDefault("acceptanceNote","")))
+            &&def(requested,"pageId","").equals(String.valueOf(current.getOrDefault("pageId","")))
+            &&def(requested,"pageTitle","").equals(String.valueOf(current.getOrDefault("pageTitle","")))
+            &&requestedStatus.equals(String.valueOf(current.getOrDefault("status","DRAFT")));
+    }
+
+    private static boolean sourceContainsCompiledNote(Map<String,Object> source,Map<String,Object> compiled){
+        try{
+            com.fasterxml.jackson.databind.ObjectMapper mapper=new com.fasterxml.jackson.databind.ObjectMapper();
+            com.fasterxml.jackson.databind.JsonNode expected=mapper.valueToTree(compiled);
+            com.fasterxml.jackson.databind.JsonNode evidence=mapper.readTree(String.valueOf(source.get("evidenceContract")));
+            boolean evidenceFound=false;
+            for(com.fasterxml.jackson.databind.JsonNode item:evidence)if(expected.equals(item)){evidenceFound=true;break;}
+            com.fasterxml.jackson.databind.JsonNode specification=mapper.readTree(String.valueOf(source.get("specificationJson")));
+            return evidenceFound&&expected.equals(specification.path("extensions").path("designAutomation"));
+        }catch(com.fasterxml.jackson.core.JsonProcessingException error){
+            throw new IllegalArgumentException("design source JSON is invalid",error);
+        }
+    }
+
+    private static boolean canonicalDesignNoteMatches(Map<String,Object> current,String design,
+            String functions,String acceptance){
+        return design.equals(String.valueOf(current.getOrDefault("designNote","")))
+            &&functions.equals(String.valueOf(current.getOrDefault("functionNote","")))
+            &&acceptance.equals(String.valueOf(current.getOrDefault("acceptanceNote","")));
+    }
+
+    private Map<String,Object> canonicalGenerationIdentity(long contractId){
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+            with blueprint_candidates as materialized (
+              select b.blueprint_id,c.contract_id,
+                     (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
+                       'framework_professional_screen_contract:'||c.contract_id,
+                       'professional_screen_contract:'||c.contract_id)) explicit_link,
+                     count(*) over(partition by c.contract_id) candidate_count,
+                     count(*) filter(where b.transition_status='CONTRACT_LINKED'
+                       and lower(b.source_reference) in(
+                         'framework_professional_screen_contract:'||c.contract_id,
+                         'professional_screen_contract:'||c.contract_id))
+                       over(partition by c.contract_id) explicit_count
+                from framework_professional_screen_contract c
+                join framework_screen_blueprint b
+                  on b.process_code=c.process_code and b.step_code=c.step_code
+                 and upper(b.audience)=upper(c.audience)
+                 and lower(split_part(b.route_path,'?',1))=lower(split_part(c.route_path,'?',1))
+               where c.contract_id=? and b.validation_status='VALID'
+            ), authority as materialized (
+              select blueprint_id,contract_id from blueprint_candidates
+               where (explicit_count=1 and explicit_link)
+                  or (explicit_count=0 and candidate_count=1)
+            )
+            select b.blueprint_id as "blueprintId",c.contract_id as "contractId",
+                   b.process_code as "processCode",b.step_code as "stepCode",b.audience,
+                   lower(split_part(b.route_path,'?',1)) as "routePath",
+                   c.section_contract as "sectionContract",c.field_contract as "fieldContract",
+                   c.command_contract as "commandContract",c.state_contract as "stateContract",
+                   c.api_contract as "apiContract",c.data_contract as "dataContract",
+                   c.evidence_contract as "evidenceContract",
+                   b.specification_json as "specificationJson",b.traceability_json as "traceabilityJson"
+              from authority selected
+              join framework_professional_screen_contract c using(contract_id)
+              join framework_screen_blueprint b using(blueprint_id)
+             order by b.blueprint_id
+             for update of b,c
+            """,contractId);
+        if(rows.size()!=1)throw new IllegalStateException(
+            "CANONICAL_SCREEN_IDENTITY_NOT_EXACT: contractId="+contractId+", count="+rows.size());
+        Map<String,Object> identity=new LinkedHashMap<>(rows.get(0));
+        validateDesignCompilationSource(identity);
+        return identity;
+    }
+
+    Map<String,Object> updateProfessionalBlueprintDesign(long contractId,Map<String,Object> body){
+        if(!body.containsKey("layout")&&!body.containsKey("theme")
+                &&!body.containsKey("assetBindings")
+                &&!body.containsKey("compositeAuthorityMarker"))
+            return Map.of("changed",false,"layout","","theme","");
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+            with candidates as materialized (
+              select b.blueprint_id,c.contract_id,
+                     (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
+                       'framework_professional_screen_contract:'||c.contract_id,
+                       'professional_screen_contract:'||c.contract_id)) explicit_link,
+                     count(*) over(partition by c.contract_id) candidate_count,
+                     count(*) filter(where b.transition_status='CONTRACT_LINKED'
+                       and lower(b.source_reference) in(
+                         'framework_professional_screen_contract:'||c.contract_id,
+                         'professional_screen_contract:'||c.contract_id))
+                       over(partition by c.contract_id) explicit_count
+                from framework_professional_screen_contract c
+                join framework_screen_blueprint b
+                  on b.process_code=c.process_code and b.step_code=c.step_code
+                 and upper(b.audience)=upper(c.audience)
+                 and lower(split_part(b.route_path,'?',1))=lower(split_part(c.route_path,'?',1))
+               where c.contract_id=? and b.validation_status='VALID'
+            ), authority as materialized (
+              select blueprint_id,contract_id from candidates
+               where (explicit_count=1 and explicit_link)
+                  or (explicit_count=0 and candidate_count=1)
+            )
+            select b.blueprint_id as "blueprintId",
+                   lower(split_part(b.route_path,'?',1)) as "routePath",
+                   b.specification_json as "specificationJson"
+              from authority selected join framework_screen_blueprint b using(blueprint_id)
+             order by b.blueprint_id for update of b
+            """,contractId);
+        if(rows.size()!=1)throw new IllegalStateException(
+            "CANONICAL_SCREEN_IDENTITY_NOT_EXACT: contractId="+contractId+", count="+rows.size());
+        Map<String,Object> authority=rows.get(0);
+        String route=String.valueOf(authority.get("routePath"));
+        String specification=String.valueOf(authority.get("specificationJson"));
+        validateJsonObject(specification,"specificationJson");
+        Map<String,Object> current=jsonMap(specification);
+
+        String layout=(body.containsKey("layout")
+            ?str(body,"layout"):String.valueOf(current.getOrDefault("layout",""))).trim();
+        if(layout.isBlank()){
+            List<String> defaults=jdbc.queryForList(
+                "select distinct layout_type from framework_screen_resource where route_key=? and nullif(btrim(layout_type),'') is not null",
+                String.class,route);
+            if(defaults.size()!=1)throw new IllegalStateException(
+                "REGISTERED_ROUTE_LAYOUT_NOT_EXACT: "+route+", count="+defaults.size());
+            layout=defaults.get(0);
+        }else{
+            Integer registered=jdbc.queryForObject(
+                "select count(distinct layout_type) from framework_screen_resource where layout_type=?",
+                Integer.class,layout);
+            if(registered==null||registered!=1)
+                throw new IllegalArgumentException("REGISTERED_LAYOUT_REQUIRED: "+layout);
+        }
+        if(!layout.matches("[A-Z][A-Z0-9_]{1,79}"))
+            throw new IllegalArgumentException("GOVERNED_LAYOUT_CODE_REQUIRED: "+layout);
+        String theme=(body.containsKey("theme")
+            ?str(body,"theme"):String.valueOf(current.getOrDefault("theme",""))).trim();
+        if(theme.isBlank())theme="KRDS_GOV_DEFAULT";
+        Integer registeredTheme=jdbc.queryForObject(
+            "select count(*) from comtnthemedefinition where theme_id=? and use_at='Y' and is_active='Y'",
+            Integer.class,theme);
+        if(registeredTheme==null||registeredTheme!=1)
+            throw new IllegalArgumentException("ACTIVE_REGISTERED_THEME_REQUIRED: "+theme);
+        if(!theme.matches("[A-Z][A-Z0-9_]{1,79}"))
+            throw new IllegalArgumentException("GOVERNED_THEME_CODE_REQUIRED: "+theme);
+
+        Map<String,Object> nextSpecification=new LinkedHashMap<>(current);
+        nextSpecification.put("layout",layout);nextSpecification.put("theme",theme);
+        if(body.containsKey("assetBindings")){
+            Object raw=jsonValue(req(body,"assetBindings"));
+            if(!(raw instanceof List<?> bindings)||bindings.isEmpty()
+                    ||bindings.stream().anyMatch(item->!(item instanceof Map<?,?>)))
+                throw new IllegalArgumentException("assetBindings must be a non-empty object array");
+            nextSpecification.put("assetBindings",bindings);
+        }
+        if(body.containsKey("compositeAuthorityMarker")){
+            Map<String,Object> marker=jsonMap(req(body,"compositeAuthorityMarker"));
+            if(!marker.keySet().equals(Set.of("authorityHash","documentSetHash","activationPolicy",
+                    "executableDesignHash","executableDesign","artifactManifest"))
+                    ||!str(marker,"authorityHash").matches("[0-9a-f]{64}")
+                    ||!str(marker,"documentSetHash").matches("[0-9a-f]{64}")
+                    ||!str(marker,"executableDesignHash").matches("[0-9a-f]{64}")
+                    ||!(marker.get("executableDesign") instanceof Map<?,?>)
+                    ||!(marker.get("artifactManifest") instanceof Map<?,?>)
+                    ||!CompositeExecutableDesignAuthorityCompiler.ACTIVATION_POLICY.equals(
+                        str(marker,"activationPolicy")))
+                throw new IllegalArgumentException("COMPOSITE_BLUEPRINT_MARKER_INVALID");
+            Map<String,Object> extensions=current.get("extensions") instanceof Map<?,?>
+                ?requireMap(current.get("extensions"),"specificationJson.extensions")
+                :new LinkedHashMap<>();
+            extensions.put("compositeAuthority",marker);nextSpecification.put("extensions",extensions);
+        }
+        boolean changed=!CompositeExecutableDesignAuthorityCompiler.stable(current).equals(
+            CompositeExecutableDesignAuthorityCompiler.stable(nextSpecification));
+        if(changed){
+            int updated=jdbc.update("""
+                update framework_screen_blueprint
+                   set specification_json=?::jsonb::text,
+                       updated_at=current_timestamp
+                 where blueprint_id=? and validation_status='VALID'
+                   and jsonb_typeof(framework_try_jsonb(specification_json))='object'
+                   and framework_try_jsonb(specification_json) is distinct from ?::jsonb
+                """,toJson(nextSpecification),authority.get("blueprintId"),toJson(nextSpecification));
+            if(updated!=1)throw new IllegalStateException("CANONICAL_BLUEPRINT_DESIGN_WRITE_FAILED");
+        }
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("changed",changed);result.put("blueprintId",authority.get("blueprintId"));
+        result.put("layout",layout);result.put("theme",theme);return result;
+    }
+
+    private Map<String,Object> structuredGenerationReadiness(long contractId){
+        return jdbc.queryForMap("""
+            with target as (
+              select contract.process_code,contract.step_code,step.actor_code,
+                     step.requires_user_page,step.requires_admin_page,
+                     lower(split_part(coalesce(step.user_path,''),'?',1)) user_route,
+                     lower(split_part(coalesce(step.admin_path,''),'?',1)) admin_route
+                from framework_professional_screen_contract contract
+                join framework_process_step step using(process_code,step_code)
+               where contract.contract_id=?
+            ), blueprint_candidates as materialized (
+              select c.contract_id,b.blueprint_id,
+                     (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
+                       'framework_professional_screen_contract:'||c.contract_id,
+                       'professional_screen_contract:'||c.contract_id)) explicit_link,
+                     count(*) over(partition by c.contract_id) candidate_count,
+                     count(*) filter(where b.transition_status='CONTRACT_LINKED'
+                       and lower(b.source_reference) in(
+                         'framework_professional_screen_contract:'||c.contract_id,
+                         'professional_screen_contract:'||c.contract_id))
+                       over(partition by c.contract_id) explicit_count
+                from framework_professional_screen_contract c
+                join target using(process_code,step_code)
+                join framework_screen_blueprint b
+                  on b.process_code=c.process_code and b.step_code=c.step_code
+                 and upper(b.audience)=upper(c.audience)
+                 and lower(split_part(b.route_path,'?',1))=lower(split_part(c.route_path,'?',1))
+                 and b.validation_status='VALID'
+            ), authority as materialized (
+              select blueprint_id,contract_id from blueprint_candidates
+               where (explicit_count=1 and explicit_link)
+                  or (explicit_count=0 and candidate_count=1)
+            ), contracts as (
+              select c.*,
+                     (select count(*) from authority selected
+                       where selected.contract_id=c.contract_id) blueprint_count,
+                     framework_try_jsonb(c.section_contract) sections,
+                     framework_try_jsonb(c.field_contract) fields,
+                     framework_try_jsonb(c.command_contract) commands,
+                     framework_try_jsonb(c.state_contract) states,
+                     framework_try_jsonb(c.api_contract) apis,
+                     framework_try_jsonb(c.data_contract) data_contract
+                from framework_professional_screen_contract c join target using(process_code,step_code)
+            ), checked as (
+              select contracts.*,blueprint_count=1
+                     and contracts.actor_code=target.actor_code
+                     and ((upper(contracts.audience)='USER'
+                       and target.requires_user_page
+                       and lower(split_part(contracts.route_path,'?',1))=target.user_route)
+                      or (upper(contracts.audience)='ADMIN'
+                       and target.requires_admin_page
+                       and lower(split_part(contracts.route_path,'?',1))=target.admin_route))
+                     and exists(select 1 from authority selected
+                       join framework_screen_blueprint blueprint using(blueprint_id)
+                       where selected.contract_id=contracts.contract_id
+                         and blueprint.actor_code=target.actor_code)
+                     and case when jsonb_typeof(sections)='array' then jsonb_array_length(sections)>0 else false end
+                     and case when jsonb_typeof(fields)='array' then jsonb_array_length(fields)>0 else false end
+                     and case when jsonb_typeof(commands)='array' then jsonb_array_length(commands)>0 else false end
+                     and case when jsonb_typeof(states)='array' then jsonb_array_length(states)>0 else false end
+                     and case when jsonb_typeof(apis)='array' then jsonb_array_length(apis)>0 else false end
+                     and case when jsonb_typeof(data_contract)='array' then jsonb_array_length(data_contract)>0 else false end
+                     and not exists(select 1 from jsonb_array_elements(
+                       case when jsonb_typeof(sections)='array' then sections else '[]'::jsonb end) value
+                       where jsonb_typeof(value)<>'object')
+                     and not exists(select 1 from jsonb_array_elements(
+                       case when jsonb_typeof(fields)='array' then fields else '[]'::jsonb end) value
+                       where jsonb_typeof(value)<>'object')
+                     and not exists(select 1 from jsonb_array_elements(
+                       case when jsonb_typeof(commands)='array' then commands else '[]'::jsonb end) value
+                       where jsonb_typeof(value)<>'object')
+                     and not exists(select 1 from jsonb_array_elements(
+                       case when jsonb_typeof(apis)='array' then apis else '[]'::jsonb end) value
+                       where jsonb_typeof(value)<>'object')
+                     and not exists(select 1 from jsonb_array_elements(
+                       case when jsonb_typeof(states)='array' then states else '[]'::jsonb end) value
+                       where jsonb_typeof(value)<>'object')
+                     and not exists(select 1 from jsonb_array_elements(
+                       case when jsonb_typeof(data_contract)='array' then data_contract else '[]'::jsonb end) value
+                       where jsonb_typeof(value)<>'object') valid
+                from contracts cross join target
+            )
+            select count(*) as "contractCount",count(*) filter(where valid) as "validContractCount",
+                   count(*)-count(*) filter(where valid) as "blockerCount",
+                   count(*)>0 and bool_and(valid)
+                     and (not target.requires_user_page or
+                       count(*) filter(where valid and upper(checked.audience)='USER')=1)
+                     and (not target.requires_admin_page or
+                       count(*) filter(where valid and upper(checked.audience)='ADMIN')=1)
+                     as "generationEligible"
+              from checked cross join target
+             group by target.requires_user_page,target.requires_admin_page
+            """,contractId);
+    }
+
+    private Map<String,Object> canonicalScreenBundle(Map<String,Object> identity){
+        String raw=jdbc.queryForObject(
+            "select framework_canonical_screen_bundle(?,?,?,?)::text",String.class,
+            identity.get("processCode"),identity.get("stepCode"),identity.get("audience"),identity.get("routePath"));
+        Map<String,Object> bundle=jsonMap(raw);
+        if(!bundle.keySet().equals(Set.of("schema","catalogHash","designHash","canonicalText","canonicalDesign"))
+                ||!"carbonet.canonical-design/v1".equals(bundle.get("schema")))
+            throw new IllegalStateException("CANONICAL_BUNDLE_ENVELOPE_INVALID");
+        String canonicalText=String.valueOf(bundle.getOrDefault("canonicalText",""));
+        String designHash=canonicalHash(bundle,"designHash");
+        Object rawCatalogHash=bundle.get("catalogHash");
+        boolean catalogHashValid=rawCatalogHash==null
+            ||rawCatalogHash instanceof String catalogHash
+                &&(catalogHash.isBlank()||catalogHash.matches("[0-9a-f]{64}"));
+        if(!designHash.matches("[0-9a-f]{64}")
+                ||!catalogHashValid
+                ||!designHash.equals(sha256Hex(canonicalText))
+                ||!jsonMap(canonicalText).equals(canonicalObject(bundle.get("canonicalDesign"),"canonicalDesign")))
+            throw new IllegalStateException("CANONICAL_BUNDLE_HASH_INVALID");
+        Map<String,Object> canonicalDesign=canonicalObject(bundle.get("canonicalDesign"),"canonicalDesign");
+        Map<String,Object> lanes=canonicalObject(canonicalDesign.get("lanes"),"canonicalDesign.lanes");
+        if(!lanes.keySet().equals(Set.of("HELP","WORK_GUIDE","QA","DESIGN_CARD","FRONTEND","API","DATABASE"))
+                ||!(lanes.get("HELP") instanceof Map<?,?>)||!(lanes.get("WORK_GUIDE") instanceof Map<?,?>)
+                ||!(lanes.get("QA") instanceof Map<?,?>)||!(lanes.get("DESIGN_CARD") instanceof Map<?,?>)
+                ||!(lanes.get("FRONTEND") instanceof Map<?,?>)||!(lanes.get("API") instanceof List<?>)
+                ||!(lanes.get("DATABASE") instanceof List<?>))
+            throw new IllegalStateException("CANONICAL_BUNDLE_LANES_INVALID");
+        return bundle;
+    }
+
+    private static void requireCanonicalCompiledNote(Map<String,Object> bundle,Map<String,Object> compiled){
+        Map<String,Object> design=canonicalObject(bundle.get("canonicalDesign"),"canonicalDesign");
+        Map<String,Object> lanes=canonicalObject(design.get("lanes"),"canonicalDesign.lanes");
+        Map<String,Object> help=canonicalObject(lanes.get("HELP"),"HELP");
+        Map<String,Object> qa=canonicalObject(lanes.get("QA"),"QA");
+        Map<String,Object> card=canonicalObject(lanes.get("DESIGN_CARD"),"DESIGN_CARD");
+        Map<String,Object> specification=canonicalObject(card.get("specification"),"DESIGN_CARD.specification");
+        Map<String,Object> extensions=canonicalObject(specification.get("extensions"),"DESIGN_CARD.specification.extensions");
+        if(!jsonArrayContains(help.get("evidence"),compiled)
+                ||!jsonArrayContains(qa.get("evidence"),compiled)
+                ||!compiled.equals(extensions.get("designAutomation")))
+            throw new IllegalStateException("CANONICAL_DESIGN_NOTE_NOT_PROPAGATED");
+    }
+
+    private static boolean jsonArrayContains(Object value,Map<String,Object> expected){
+        if(!(value instanceof List<?> items))return false;
+        return items.stream().anyMatch(expected::equals);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String,Object> canonicalObject(Object value,String field){
+        if(!(value instanceof Map<?,?>))throw new IllegalStateException(field+" must be an object");
+        return new LinkedHashMap<>((Map<String,Object>)value);
+    }
+
+    private static String canonicalHash(Map<String,Object> bundle,String field){
+        Object value=bundle.get(field);return value==null?"":String.valueOf(value);
+    }
+
+    private static Map<String,Object> canonicalSupport(Map<String,Object> bundle){
+        Map<String,Object> design=canonicalObject(bundle.get("canonicalDesign"),"canonicalDesign");
+        Map<String,Object> lanes=canonicalObject(design.get("lanes"),"canonicalDesign.lanes");
+        Map<String,Object> card=canonicalObject(lanes.get("DESIGN_CARD"),"DESIGN_CARD");
+        Map<String,Object> support=new LinkedHashMap<>();
+        support.put("schemaVersion","carbonet.executable-screen-support/v1");
+        support.put("designHash",canonicalHash(bundle,"designHash"));
+        support.put("catalogHash",bundle.get("catalogHash"));
+        support.put("help",lanes.get("HELP"));support.put("workGuide",lanes.get("WORK_GUIDE"));
+        support.put("qa",lanes.get("QA"));support.put("designCard",card);
+        support.put("assetBindings",card.get("assetBindings"));support.put("lanes",lanes);
+        return support;
+    }
+
+    private static Map<String,Object> hashTransition(Map<String,Object> before,Map<String,Object> after){
+        Map<String,Object> transition=new LinkedHashMap<>();
+        transition.put("beforeDesignHash",canonicalHash(before,"designHash"));
+        transition.put("afterDesignHash",canonicalHash(after,"designHash"));
+        transition.put("beforeCatalogHash",before.get("catalogHash"));
+        transition.put("afterCatalogHash",after.get("catalogHash"));
+        return transition;
+    }
+
+    private List<Map<String,Object>> designCodeOutputs(String route){
+        return jdbc.queryForList(
+            "select blueprint_id as \"blueprintId\",blueprint_code as \"blueprintCode\",process_code as \"processCode\",step_code as \"stepCode\",audience,page_id as \"pageId\",route_path as \"routePath\",screen_type as \"screenType\",template_code as \"templateCode\",specification_json as \"specificationJson\",traceability_json as \"traceabilityJson\",validation_status as \"validationStatus\",validation_message as \"validationMessage\" from framework_screen_blueprint where lower(split_part(route_path,'?',1))=lower(?) order by audience,blueprint_id",
+            route);
+    }
+
+    /** Composite-design transaction facade; orchestration lives in its bounded service. */
+    @Transactional public Map<String,Object> saveIntegratedDesignDocument(
+            Map<String,Object> body,String actor){
+        return compositeDesignApplication().saveIntegratedDesignDocument(body,actor);
+    }
+
+    /** Compiles all direct and ACTIVE-bound identities and queues exactly one process job. */
+    @Transactional public Map<String,Object> compileIntegratedDesignProcess(
+            Map<String,Object> body,String actor){
+        return compositeDesignApplication().compileIntegratedDesignProcess(body,actor);
+    }
+
+    @Transactional(readOnly=true,timeout=10)
+    public Map<String,Object> inspectCompositeCompilerReadiness(String process){
+        jdbc.execute("set local statement_timeout='10s'");
+        return compositeDesignApplication().inspectCompilerReadiness(process);
+    }
+
+    private CompositeExecutableDesignApplicationService compositeDesignApplication(){
+        return new CompositeExecutableDesignApplicationService(
+            jdbc,screenDevelopmentNoteService,screenContractRuntimeService,this);
+    }
+
     @Transactional public Map<String,Object> saveProfessionalScreenContract(Map<String,Object>b,String actor){
-        long id=Long.parseLong(req(b,"contractId"));
-        int updated=jdbc.update("update framework_professional_screen_contract set business_purpose=?,entry_condition=?,exit_condition=?,kpi_contract=?,section_contract=?,field_contract=?,command_contract=?,state_contract=?,api_contract=?,data_contract=?,evidence_contract=?,responsive_contract=?,accessibility_contract=?,security_contract=?,api_verified=?,database_verified=?,authority_verified=?,responsive_verified=?,accessibility_verified=?,exception_states_verified=?,audit_evidence_ref=?,contract_status=?,updated_by=?,updated_at=current_timestamp where contract_id=?",
-            req(b,"businessPurpose"),req(b,"entryCondition"),req(b,"exitCondition"),def(b,"kpiContract","[]"),def(b,"sectionContract","[]"),def(b,"fieldContract","[]"),def(b,"commandContract","[]"),def(b,"stateContract","[\"LOADING\",\"EMPTY\",\"ERROR\",\"FORBIDDEN\",\"READY\"]"),def(b,"apiContract","[]"),def(b,"dataContract","[]"),def(b,"evidenceContract","[]"),def(b,"responsiveContract","360px, 768px, 1280px 검증"),def(b,"accessibilityContract","KRDS 및 WCAG 2.1 AA"),def(b,"securityContract","테넌트·프로젝트·액터 권한 서버 검증"),bool(b,"apiVerified"),bool(b,"databaseVerified"),bool(b,"authorityVerified"),bool(b,"responsiveVerified"),bool(b,"accessibilityVerified"),bool(b,"exceptionStatesVerified"),str(b,"auditEvidenceRef"),def(b,"contractStatus","REVIEW_REQUIRED"),actor,id);
+        return saveProfessionalScreenContract(b,actor,false,false);
+    }
+
+    private Map<String,Object> saveProfessionalScreenContract(
+            Map<String,Object>b,String actor,boolean preserveBlueprint){
+        return saveProfessionalScreenContract(b,actor,preserveBlueprint,false);
+    }
+
+    Map<String,Object> saveProfessionalScreenContract(
+            Map<String,Object>b,String actor,boolean preserveBlueprint,boolean deferPublication){
+        Map<String,Object> values=professionalScreenContractInput(b);
+        long id=((Number)values.get("contractId")).longValue();
+        Map<String,Object> readiness=professionalContractReadiness(id,values);
+        Map<String,Object> gate=previewProfessionalScreenDesignGate(id,values);
+        int updated=jdbc.update("update framework_professional_screen_contract set business_purpose=?,entry_condition=?,exit_condition=?,kpi_contract=?,section_contract=?,field_contract=?,command_contract=?,state_contract=?,api_contract=?,data_contract=?,evidence_contract=?,responsive_contract=?,accessibility_contract=?,security_contract=?,permission_codes=?::jsonb,api_verified=?,database_verified=?,authority_verified=?,responsive_verified=?,accessibility_verified=?,exception_states_verified=?,audit_evidence_ref=?,contract_status=?,updated_by=?,updated_at=current_timestamp where contract_id=?",
+            values.get("businessPurpose"),values.get("entryCondition"),values.get("exitCondition"),
+            values.get("kpiContract"),values.get("sectionContract"),values.get("fieldContract"),
+            values.get("commandContract"),values.get("stateContract"),values.get("apiContract"),
+            values.get("dataContract"),values.get("evidenceContract"),values.get("responsiveContract"),
+            values.get("accessibilityContract"),values.get("securityContract"),values.get("permissionCodes"),values.get("apiVerified"),
+            values.get("databaseVerified"),values.get("authorityVerified"),values.get("responsiveVerified"),
+            values.get("accessibilityVerified"),values.get("exceptionStatesVerified"),values.get("auditEvidenceRef"),
+            values.get("contractStatus"),actor,id);
         if(updated==0)throw new IllegalArgumentException("화면 완성 계약을 찾을 수 없습니다: "+id);
-        Map<String,Object> readiness=jdbc.queryForMap("select contract_id as \"contractId\",readiness_score as \"readinessScore\",readiness_gaps as \"readinessGaps\" from framework_professional_screen_readiness where contract_id=?",id);
         if(((Number)readiness.get("readinessScore")).intValue()==100){jdbc.update("update framework_professional_screen_contract set contract_status='VERIFIED',updated_at=current_timestamp where contract_id=?",id);}
+        Map<String,Object> blueprintDesign=preserveBlueprint
+            ?Map.of("changed",false,"preserved",true,"policy","PRESERVE_ADOPT")
+            :updateProfessionalBlueprintDesign(id,b);
         String process=jdbc.queryForObject("select process_code from framework_professional_screen_contract where contract_id=?",String.class,id);
-        Map<String,Object> automation=autoImplementCompletedDesign(process,actor);
+        if(deferPublication){
+            Map<String,Object> staged=new LinkedHashMap<>();staged.put("success",true);
+            staged.put("status","STAGED");staged.put("processCode",process);
+            staged.put("contract",readiness);staged.put("designGate",gate);
+            staged.put("blueprintDesign",blueprintDesign);staged.put("generationQueued",false);
+            staged.put("jobCount",0);staged.put("endpointExpected",0);staged.put("publishCount",0);
+            return staged;
+        }
         generateProfessionalDesignGraph(process,actor);
-        jdbc.update("update framework_page_development_item i set design_status=case when g.design_gate_status='PASSED' then 'VERIFIED' else 'REVIEW_REQUIRED' end,blocker_reason=case when g.design_gate_status='PASSED' then null else array_to_string(g.design_gate_issues,', ') end,next_action=case when g.design_gate_status='PASSED' then 'Design verified; generation may proceed.' else 'Resolve design gate issues before generation: '||array_to_string(g.design_gate_issues,', ') end,updated_by=?,updated_at=current_timestamp from framework_page_design_assurance g join framework_screen_resource r using(screen_resource_id) join framework_professional_screen_contract c on lower(split_part(c.route_path,'?',1))=r.route_key where c.contract_id=? and i.screen_resource_id=g.screen_resource_id",actor,id);
-        Map<String,Object> gate=jdbc.queryForMap("select g.design_gate_status as \"status\",g.design_gate_score as \"score\",array_to_string(g.design_gate_issues,', ') as \"issues\" from framework_page_design_assurance g join framework_screen_resource r using(screen_resource_id) join framework_professional_screen_contract c on lower(split_part(c.route_path,'?',1))=r.route_key where c.contract_id=?",id);
-        return Map.of("success",true,"contract",readiness,"designGate",gate,"autoImplementation",automation);
+        Map<String,Object> generationReadiness=structuredGenerationReadiness(id);
+        boolean structuredApproved=Boolean.TRUE.equals(generationReadiness.get("generationEligible"));
+        Map<String,Object> generation=new LinkedHashMap<>();
+        if(structuredApproved){
+            Map<String,Object> identity=canonicalGenerationIdentity(id);
+            Map<String,Object> bundle=canonicalScreenBundle(identity);
+            generation.putAll(executeDesignDirectDevelopment(Map.of(
+                "processCode",process,"stepCode",String.valueOf(identity.get("stepCode")),
+                "routePath",String.valueOf(identity.get("routePath")),
+                "audience",String.valueOf(identity.get("audience")),
+                "designHash",canonicalHash(bundle,"designHash")),actor));
+        }else{
+            generation.put("status","DESIGN_INCOMPLETE");generation.put("generationQueued",false);
+            generation.put("jobCount",0);generation.put("endpointExpected",0);
+            generation.put("designHash","");generation.put("sourceHash","");generation.put("publishCount",0);
+        }
+        Map<String,Object> runtimePublication=screenContractRuntimeService.publishProfessionalContract(id,actor);
+        int blockerCount=((Number)generationReadiness.getOrDefault("blockerCount",1)).intValue();
+        Map<String,Object> automation=new LinkedHashMap<>();
+        automation.put("status",structuredApproved?generation.get("status"):"RUNTIME_DRAFT_APPLIED");
+        automation.put("processCode",process);automation.put("buildRequired",false);
+        automation.put("fullGenerationDeferred",!structuredApproved);
+        automation.put("generationQueued",generation.get("generationQueued"));
+        automation.put("jobCount",generation.get("jobCount"));
+        automation.put("designHash",generation.get("designHash"));
+        automation.put("sourceHash",generation.get("sourceHash"));
+        automation.put("endpointExpected",generation.get("endpointExpected"));
+        automation.put("blockerCount",blockerCount);
+        jdbc.update("update framework_page_development_item i set design_status=case when g.design_gate_status='PASSED' then 'VERIFIED' else 'REVIEW_REQUIRED' end,blocker_reason=case when g.design_gate_status='PASSED' then null else array_to_string(g.design_gate_issues,', ') end,next_action=case when g.design_gate_status='PASSED' then 'Post-generation QA passed; publication validation may proceed.' else 'Resolve QA issues before publish or deploy: '||array_to_string(g.design_gate_issues,', ') end,updated_by=?,updated_at=current_timestamp from framework_page_design_assurance g join framework_screen_resource r using(screen_resource_id) join framework_professional_screen_contract c on lower(split_part(c.route_path,'?',1))=r.route_key where c.contract_id=? and i.screen_resource_id=g.screen_resource_id",actor,id);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("contract",readiness);result.put("designGate",gate);
+        result.put("blueprintDesign",blueprintDesign);
+        result.put("generationReadiness",generationReadiness);
+        result.put("autoImplementation",automation);result.put("runtimePublication",runtimePublication);
+        result.put("generationQueued",generation.get("generationQueued"));
+        result.put("jobCount",generation.get("jobCount"));result.put("designHash",generation.get("designHash"));
+        result.put("sourceHash",generation.get("sourceHash"));
+        result.put("endpointExpected",generation.get("endpointExpected"));result.put("blockerCount",blockerCount);
+        result.put("publishCount",generation.get("publishCount"));result.put("status",automation.get("status"));
+        return result;
+    }
+
+    /**
+     * Validates the exact canonical save input and predicts readiness, design
+     * gate, and runtime publication without executing the production mutation
+     * path.  The read-only transaction is a second guard against accidental
+     * INSERT, UPDATE, DELETE, or sequence allocation in candidate validation.
+     */
+    @Transactional(readOnly=true) public Map<String,Object> saveProfessionalScreenContractPreview(Map<String,Object>b,String actor){
+        Map<String,Object> values=professionalScreenContractInput(b);
+        long id=((Number)values.get("contractId")).longValue();
+        Map<String,Object> readiness=professionalContractReadiness(id,values);
+        Map<String,Object> gate=previewProfessionalScreenDesignGate(id,values);
+        Map<String,Object> runtimeValues=new LinkedHashMap<>(values);
+        runtimeValues.remove("contractId");
+        runtimeValues.remove("kpiContract");
+        if(((Number)readiness.get("readinessScore")).intValue()==100)runtimeValues.put("contractStatus","VERIFIED");
+        Map<String,Object> runtimePublication=screenContractRuntimeService.predictProfessionalContract(id,runtimeValues);
+        String process=jdbc.queryForObject("select process_code from framework_professional_screen_contract where contract_id=?",String.class,id);
+        Map<String,Object> automation=Map.of(
+            "status","RUNTIME_CONTRACT_PREDICTED",
+            "processCode",process,
+            "buildRequired",false,
+            "fullGenerationDeferred",true,
+            "fullGenerationEndpoint","/admin/api/system/actor-process/development/direct"
+        );
+        Map<String,Object> response=new LinkedHashMap<>();
+        response.put("success",true);
+        response.put("contract",readiness);
+        response.put("designGate",gate);
+        response.put("autoImplementation",automation);
+        response.put("runtimePublication",runtimePublication);
+        response.put("preview",true);
+        response.put("rolledBack",true);
+        response.put("committed",false);
+        response.put("mutationScope","READ_ONLY_PREDICTION");
+        response.put("rollbackMode","NO_MUTATION_REQUIRED");
+        return response;
+    }
+
+    Map<String,Object> professionalScreenContractInput(Map<String,Object>b){
+        Map<String,Object> values=new LinkedHashMap<>();
+        long id;
+        try{id=Long.parseLong(req(b,"contractId"));}
+        catch(NumberFormatException e){throw new IllegalArgumentException("contractId must be a number",e);}
+        values.put("contractId",id);
+        values.put("businessPurpose",req(b,"businessPurpose"));
+        values.put("entryCondition",req(b,"entryCondition"));
+        values.put("exitCondition",req(b,"exitCondition"));
+        Map<String,String> arrays=new LinkedHashMap<>();
+        arrays.put("kpiContract",def(b,"kpiContract","[]"));
+        arrays.put("sectionContract",def(b,"sectionContract","[]"));
+        arrays.put("fieldContract",def(b,"fieldContract","[]"));
+        arrays.put("commandContract",def(b,"commandContract","[]"));
+        arrays.put("stateContract",def(b,"stateContract","[\"LOADING\",\"EMPTY\",\"ERROR\",\"FORBIDDEN\",\"READY\"]"));
+        arrays.put("apiContract",def(b,"apiContract","[]"));
+        arrays.put("evidenceContract",def(b,"evidenceContract","[]"));
+        arrays.forEach((field,value)->{validateJsonArray(value,field);values.put(field,value);});
+        String dataContract=def(b,"dataContract","[]");
+        validateJsonObjectOrArray(dataContract,"dataContract");
+        values.put("dataContract",dataContract);
+        values.put("permissionCodes",normalizePermissionCodes(def(b,"permissionCodes","[]")));
+        values.put("responsiveContract",def(b,"responsiveContract","360px, 768px, 1280px 검증"));
+        values.put("accessibilityContract",def(b,"accessibilityContract","KRDS 및 WCAG 2.1 AA"));
+        values.put("securityContract",def(b,"securityContract","테넌트·프로젝트·액터 권한 서버 검증"));
+        values.put("apiVerified",bool(b,"apiVerified"));
+        values.put("databaseVerified",bool(b,"databaseVerified"));
+        values.put("authorityVerified",bool(b,"authorityVerified"));
+        values.put("responsiveVerified",bool(b,"responsiveVerified"));
+        values.put("accessibilityVerified",bool(b,"accessibilityVerified"));
+        values.put("exceptionStatesVerified",bool(b,"exceptionStatesVerified"));
+        values.put("auditEvidenceRef",str(b,"auditEvidenceRef"));
+        String status=def(b,"contractStatus","REVIEW_REQUIRED").toUpperCase(Locale.ROOT);
+        if(!isSupportedProfessionalContractStatus(status))throw new IllegalArgumentException("Unsupported contractStatus: "+status);
+        values.put("contractStatus",status);
+        return values;
+    }
+
+    Map<String,Object> professionalContractReadiness(long id,Map<String,Object> values){
+        List<Map<String,Object>> source=jdbc.queryForList(
+            "select menu_verified as \"menuVerified\" from framework_professional_screen_contract where contract_id=?",id);
+        if(source.isEmpty())throw new IllegalArgumentException("화면 완성 계약을 찾을 수 없습니다: "+id);
+        boolean menuVerified=flag(source.get(0).get("menuVerified"));
+        int score=0;
+        if(text(values,"businessPurpose").length()>=20)score+=5;
+        if(text(values,"entryCondition").length()>=10&&text(values,"exitCondition").length()>=20)score+=5;
+        if(!"[]".equals(text(values,"kpiContract")))score+=5;
+        if(!"[]".equals(text(values,"sectionContract"))&&!"[]".equals(text(values,"fieldContract")))score+=10;
+        if(!"[]".equals(text(values,"commandContract")))score+=5;
+        String states=text(values,"stateContract");
+        if(states.contains("LOADING")&&states.contains("EMPTY")&&states.contains("ERROR")&&states.contains("FORBIDDEN"))score+=10;
+        if(!"[]".equals(text(values,"apiContract"))&&!"[]".equals(text(values,"dataContract")))score+=5;
+        if(!"[]".equals(text(values,"evidenceContract")))score+=5;
+        if(menuVerified)score+=5;
+        if(flag(values.get("apiVerified")))score+=10;
+        if(flag(values.get("databaseVerified")))score+=5;
+        if(flag(values.get("authorityVerified")))score+=10;
+        if(flag(values.get("responsiveVerified")))score+=5;
+        if(flag(values.get("accessibilityVerified")))score+=5;
+        if(flag(values.get("exceptionStatesVerified")))score+=5;
+        if(!text(values,"auditEvidenceRef").isEmpty())score+=5;
+        List<String> gaps=new ArrayList<>();
+        if(!menuVerified)gaps.add("DB 메뉴·화면·권한 연결");
+        if("[]".equals(text(values,"apiContract"))||!flag(values.get("apiVerified")))gaps.add("실 API 검증");
+        if("[]".equals(text(values,"dataContract"))||!flag(values.get("databaseVerified")))gaps.add("DB 영속성 검증");
+        if(!flag(values.get("authorityVerified")))gaps.add("액터·테넌트 권한 검증");
+        if(!flag(values.get("responsiveVerified")))gaps.add("반응형 검증");
+        if(!flag(values.get("accessibilityVerified")))gaps.add("접근성 검증");
+        if(!flag(values.get("exceptionStatesVerified")))gaps.add("로딩·빈값·오류·권한없음 상태 검증");
+        if(text(values,"auditEvidenceRef").isEmpty())gaps.add("브라우저 E2E 증적");
+        Map<String,Object> readiness=new LinkedHashMap<>();
+        readiness.put("contractId",id);readiness.put("readinessScore",score);
+        readiness.put("readinessGaps",String.join(", ",gaps));
+        return readiness;
+    }
+
+    Map<String,Object> previewProfessionalScreenDesignGate(long id,Map<String,Object> values){
+        Map<String,Object> context=jdbc.queryForMap("""
+            select lower(split_part(c.route_path,'?',1)) as "routePath",
+                   g.actor_passed as "actorPassed",g.process_passed as "processPassed",
+                   g.lineage_passed as "lineagePassed",g.transition_passed as "transitionPassed",
+                   g.admin_counterpart_passed as "adminCounterpartPassed",g.test_passed as "testPassed",
+                   (select count(*) from framework_process_step_screen_binding binding
+                     where binding.screen_resource_id=r.screen_resource_id and binding.binding_status='ACTIVE') as "bindingCount"
+              from framework_professional_screen_contract c
+              join framework_screen_resource r on lower(split_part(c.route_path,'?',1))=r.route_key
+              join framework_page_design_assurance g using(screen_resource_id)
+             where c.contract_id=?
+            """,id);
+        List<Map<String,Object>> contracts=jdbc.queryForList("""
+            select contract_id as "contractId",business_purpose as "businessPurpose",
+                   entry_condition as "entryCondition",exit_condition as "exitCondition",
+                   section_contract as "sectionContract",field_contract as "fieldContract",
+                   command_contract as "commandContract",state_contract as "stateContract",
+                   data_contract as "dataContract",evidence_contract as "evidenceContract",
+                   authority_verified as "authorityVerified",exception_states_verified as "exceptionStatesVerified",
+                   audit_evidence_ref as "auditEvidenceRef"
+              from framework_professional_screen_contract
+             where lower(split_part(route_path,'?',1))=?
+             order by contract_id
+            """,context.get("routePath"));
+        List<Map<String,Object>> proposedContracts=new ArrayList<>();
+        for(Map<String,Object> contract:contracts){
+            Map<String,Object> proposed=new LinkedHashMap<>(contract);
+            if(((Number)contract.get("contractId")).longValue()==id)proposed.putAll(values);
+            proposedContracts.add(proposed);
+        }
+        int bindingCount=((Number)context.getOrDefault("bindingCount",0)).intValue();
+        long semanticCount=proposedContracts.stream().filter(contract->
+            text(contract,"businessPurpose").length()>=20&&text(contract,"entryCondition").length()>=10
+            &&text(contract,"exitCondition").length()>=10&&!"[]".equals(text(contract,"sectionContract"))
+            &&!"[]".equals(text(contract,"fieldContract"))&&!"[]".equals(text(contract,"commandContract"))).count();
+        boolean contractPassed=proposedContracts.size()>=bindingCount&&semanticCount>=bindingCount;
+        boolean authorityPassed=!proposedContracts.isEmpty()&&proposedContracts.stream().allMatch(contract->flag(contract.get("authorityVerified")));
+        boolean versionPassed=!proposedContracts.isEmpty()&&proposedContracts.stream().allMatch(contract->
+            !text(contract,"auditEvidenceRef").isEmpty()&&(text(contract,"dataContract").toLowerCase(Locale.ROOT).contains("version")
+                ||text(contract,"evidenceContract").toLowerCase(Locale.ROOT).contains("version")));
+        boolean exceptionPassed=!proposedContracts.isEmpty()&&proposedContracts.stream().allMatch(contract->
+            flag(contract.get("exceptionStatesVerified"))&&text(contract,"stateContract").contains("ERROR")
+                &&text(contract,"stateContract").contains("FORBIDDEN"));
+        LinkedHashMap<String,Boolean> checks=new LinkedHashMap<>();
+        checks.put("ACTOR_BINDING_MISSING",flag(context.get("actorPassed")));
+        checks.put("PROCESS_STEP_MISSING",flag(context.get("processPassed")));
+        checks.put("PROFESSIONAL_CONTRACT_INCOMPLETE",contractPassed);
+        checks.put("INPUT_OUTPUT_LINEAGE_INCOMPLETE",flag(context.get("lineagePassed")));
+        checks.put("STATE_TRANSITION_INCOMPLETE",flag(context.get("transitionPassed")));
+        checks.put("AUTHORITY_NOT_VERIFIED",authorityPassed);
+        checks.put("VERSION_AUDIT_CONTRACT_MISSING",versionPassed);
+        checks.put("EXCEPTION_RECOVERY_NOT_VERIFIED",exceptionPassed);
+        checks.put("ADMIN_COUNTERPART_MISSING",flag(context.get("adminCounterpartPassed")));
+        checks.put("INDEPENDENT_TEST_COVERAGE_INCOMPLETE",flag(context.get("testPassed")));
+        int score=(int)checks.values().stream().filter(Boolean::booleanValue).count()*10;
+        String issues=String.join(", ",checks.entrySet().stream().filter(entry->!entry.getValue()).map(Map.Entry::getKey).toList());
+        return Map.of("status",score==100?"PASSED":"FAILED","score",score,"issues",issues);
+    }
+
+    private static boolean flag(Object value){
+        return value instanceof Boolean result?result:Boolean.parseBoolean(String.valueOf(value));
+    }
+
+    private static String text(Map<String,Object> values,String key){
+        Object value=values.get(key);return value==null?"":String.valueOf(value).trim();
+    }
+
+    static boolean isSupportedProfessionalContractStatus(String status) {
+        return status != null && PROFESSIONAL_CONTRACT_STATUSES.contains(status.trim().toUpperCase(Locale.ROOT));
     }
 
     @Transactional public Map<String,Object> executeProfessionalFactory(Map<String,Object>b,String user) throws Exception {
@@ -684,7 +4569,139 @@ public class ActorProcessGovernanceService {
     }
 
     private void ensureProfessionalContracts(String process,String user){
+        if(isRequirementAutomationActor(user)){
+            reconcileRequirementOwnedProfessionalContracts(process,user);
+            return;
+        }
         jdbc.update("insert into framework_professional_screen_contract(process_code,step_code,audience,route_path,screen_name,actor_code,business_purpose,entry_condition,exit_condition,kpi_contract,section_contract,field_contract,command_contract,api_contract,data_contract,evidence_contract,updated_by) select s.process_code,s.step_code,x.audience,x.route_path,s.step_name||case x.audience when 'ADMIN' then ' 관리자 업무 화면' else ' 사용자 업무 화면' end,s.actor_code,coalesce(nullif(s.requirement_text,''),s.step_name||' 업무를 완료한다.'),s.from_state||' 상태이며 해당 액터가 프로젝트에 배정되어 있다.',coalesce(nullif(s.completion_rule,''),s.to_state||' 상태로 전이된다.'),'[\"진행률\",\"마감·지연\",\"차단 오류\",\"담당자\"]','[\"업무 문맥·진행 상태\",\"검색·필터\",\"핵심 데이터 작업공간\",\"증적·이력\",\"다음 업무\"]','[\"업무 식별자\",\"상태\",\"담당자\",\"버전\",\"변경 일시\"]',json_build_array(s.command_code,'임시저장','증적첨부','다음 업무 이동')::text,coalesce(nullif(s.api_contract,''),'[\"업무 조회\",\"검증\",\"저장·명령\",\"이력 조회\"]'),'[\"tenantId\",\"projectId\",\"processCode\",\"stepCode\",\"actorCode\",\"version\",\"audit fields\"]','[\"요청·응답 증적\",\"상태 전이\",\"권한 판정\",\"감사 이벤트\",\"화면 E2E\"]',? from framework_process_step s cross join lateral(values('USER',nullif(s.user_path,'')),('ADMIN',nullif(s.admin_path,''))) x(audience,route_path) where s.process_code=? and x.route_path is not null on conflict(process_code,step_code,audience,route_path) do update set actor_code=excluded.actor_code,business_purpose=excluded.business_purpose,entry_condition=excluded.entry_condition,exit_condition=excluded.exit_condition,updated_by=excluded.updated_by,updated_at=current_timestamp",user,process);
+    }
+
+    private static boolean isRequirementAutomationActor(String actor){
+        return "BACKSTAGE_REQUIREMENT_AUTOMATION".equals(actor)
+            ||"REQUIREMENT_SELF_HEALER".equals(actor);
+    }
+
+    /** Reconciles only rows that were created by the requirement automation. */
+    private void reconcileRequirementOwnedProfessionalContracts(String process,String actor){
+        Integer manualConflicts=jdbc.queryForObject("""
+            select count(*)
+              from framework_professional_screen_contract contract
+              left join framework_process_step step
+                on step.process_code=contract.process_code
+               and step.step_code=contract.step_code
+             where contract.process_code=?
+               and contract.updated_by not in(
+                 'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+               and (step.step_code is null
+                 or upper(contract.audience) not in('USER','ADMIN')
+                 or (upper(contract.audience)='USER' and (
+                   not step.requires_user_page
+                   or lower(split_part(contract.route_path,'?',1))<>
+                      lower(split_part(coalesce(step.user_path,''),'?',1))))
+                 or (upper(contract.audience)='ADMIN' and (
+                   not step.requires_admin_page
+                   or lower(split_part(contract.route_path,'?',1))<>
+                      lower(split_part(coalesce(step.admin_path,''),'?',1))))
+                 or contract.actor_code<>step.actor_code)
+            """,Integer.class,process);
+        if(manualConflicts==null||manualConflicts>0)throw new IllegalStateException(
+            "MANUAL_SCREEN_IDENTITY_REVISION_REQUIRED: "+process+" / "+manualConflicts);
+        jdbc.update("""
+            delete from framework_professional_screen_contract contract
+             where contract.process_code=?
+               and contract.updated_by in(
+                 'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+               and not exists(
+                 select 1 from framework_process_step step
+                  where step.process_code=contract.process_code
+                    and step.step_code=contract.step_code
+                    and ((upper(contract.audience)='USER' and step.requires_user_page
+                      and lower(split_part(contract.route_path,'?',1))=
+                          lower(split_part(step.user_path,'?',1)))
+                     or (upper(contract.audience)='ADMIN' and step.requires_admin_page
+                      and lower(split_part(contract.route_path,'?',1))=
+                          lower(split_part(step.admin_path,'?',1)))))
+            """,process);
+        jdbc.update("""
+            insert into framework_professional_screen_contract(
+              process_code,step_code,audience,route_path,screen_name,actor_code,
+              business_purpose,entry_condition,exit_condition,kpi_contract,
+              section_contract,field_contract,command_contract,state_contract,
+              api_contract,data_contract,evidence_contract,updated_by)
+            select step.process_code,step.step_code,lane.audience,lane.route_path,
+              step.step_name||case lane.audience when 'ADMIN'
+                then ' 관리자 업무 화면' else ' 사용자 업무 화면' end,
+              step.actor_code,coalesce(nullif(step.requirement_text,''),step.step_name),
+              step.from_state||' 상태이며 해당 액터가 프로젝트에 배정되어 있다.',
+              coalesce(nullif(step.completion_rule,''),step.to_state||' 상태 전이'),
+              '[\"진행률\",\"마감·지연\",\"차단 오류\",\"담당자\"]',
+              '[\"업무 문맥·진행 상태\",\"입력 및 검증\",\"증적·이력\",\"다음 업무\"]',
+              '[\"업무 식별자\",\"상태\",\"담당자\",\"버전\",\"변경 일시\"]',
+              framework_merge_primary_contract_marker(
+                '[]'::jsonb,'PRIMARY_STEP_COMMAND',jsonb_build_object(
+                  'commandCode',step.command_code,'actorCode',step.actor_code,
+                  'entryState',step.from_state,'resultState',step.to_state,
+                  'serverAuthorization',true,'validationRequired',true,
+                  'auditRequired',true))::text,
+              '[\"LOADING\",\"EMPTY\",\"ERROR\",\"FORBIDDEN\",\"READY\"]',
+              framework_merge_primary_contract_marker(
+                '[]'::jsonb,'PRIMARY_STEP_API',case when step.requires_api
+                  then jsonb_build_object('declaredContract',coalesce(
+                    framework_try_jsonb(step.api_contract),to_jsonb(step.api_contract)),
+                    'actorCode',step.actor_code,'commandCode',step.command_code,
+                    'transactional',true,'tenantGuard',true,'projectGuard',true,
+                    'actorGuard',true,'idempotencyKey',true,'rowVersion',true) end)::text,
+              jsonb_build_array(jsonb_build_object('input',
+                framework_try_jsonb(step.input_contract),'output',
+                framework_try_jsonb(step.output_contract)))::text,
+              '[\"REQUEST\",\"RESPONSE\",\"DB_REREAD\",\"AUTHORITY\",\"ROLLBACK\"]',?
+              from framework_process_step step
+              cross join lateral(values
+                ('USER'::text,case when step.requires_user_page then step.user_path end),
+                ('ADMIN'::text,case when step.requires_admin_page then step.admin_path end)
+              ) lane(audience,route_path)
+             where step.process_code=? and nullif(btrim(lane.route_path),'') is not null
+            on conflict(process_code,step_code,audience,route_path) do update set
+              actor_code=case when framework_professional_screen_contract.updated_by in(
+                'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+                then excluded.actor_code else framework_professional_screen_contract.actor_code end,
+              command_contract=case when framework_professional_screen_contract.updated_by in(
+                'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+                then framework_merge_primary_contract_marker(
+                  framework_try_jsonb(framework_professional_screen_contract.command_contract),
+                  'PRIMARY_STEP_COMMAND',excluded.command_contract::jsonb->0)::text
+                else framework_professional_screen_contract.command_contract end,
+              api_contract=case when framework_professional_screen_contract.updated_by in(
+                'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+                then framework_merge_primary_contract_marker(
+                  framework_try_jsonb(framework_professional_screen_contract.api_contract),
+                  'PRIMARY_STEP_API',excluded.api_contract::jsonb->0)::text
+                else framework_professional_screen_contract.api_contract end,
+              updated_by=case when framework_professional_screen_contract.updated_by in(
+                'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+                then excluded.updated_by else framework_professional_screen_contract.updated_by end,
+              updated_at=current_timestamp
+            """,actor,process);
+        Integer exact=jdbc.queryForObject("""
+            select count(*) from framework_process_step step
+             where step.process_code=? and (
+               (step.requires_user_page and not exists(
+                 select 1 from framework_professional_screen_contract contract
+                  where contract.process_code=step.process_code
+                    and contract.step_code=step.step_code and contract.audience='USER'
+                    and contract.actor_code=step.actor_code
+                    and lower(split_part(contract.route_path,'?',1))=
+                        lower(split_part(step.user_path,'?',1))))
+               or (step.requires_admin_page and not exists(
+                 select 1 from framework_professional_screen_contract contract
+                  where contract.process_code=step.process_code
+                    and contract.step_code=step.step_code and contract.audience='ADMIN'
+                    and contract.actor_code=step.actor_code
+                    and lower(split_part(contract.route_path,'?',1))=
+                        lower(split_part(step.admin_path,'?',1)))))
+            """,Integer.class,process);
+        if(exact==null||exact>0)throw new IllegalStateException(
+            "REQUIREMENT_SCREEN_IDENTITY_NOT_EXACT: "+process+" / "+exact);
     }
 
     private int provisionProcessMenus(String process,String user) throws Exception {
@@ -728,11 +4745,1426 @@ public class ActorProcessGovernanceService {
         out.put("classSets",jdbc.queryForList("select class_set_id as \"classSetId\",theme_id as \"themeId\",class_set_nm as \"classSetName\",target_component as \"targetComponent\",base_classes as \"baseClasses\",responsive_classes as \"responsiveClasses\" from comtnthemeclassset where use_at='Y' order by theme_id,sort_order,class_set_id"));
         out.put("sections",jdbc.queryForList("select section_id as \"sectionId\",section_name as \"sectionName\",section_type as \"sectionType\",layout_contract as \"layoutContract\",responsive_contract as \"responsiveContract\",accessibility_contract as \"accessibilityContract\",design_reference as \"designReference\" from ui_section_registry where active_yn='Y' order by section_type,section_id"));
         out.put("components",jdbc.queryForList("select component_id as \"componentId\",component_name as \"componentName\",component_type as \"componentType\",owner_domain as \"ownerDomain\",design_reference as \"designReference\",asset_fingerprint as \"fingerprint\" from ui_component_registry where active_yn='Y' order by component_type,component_name"));
+        out.put("mappings",jdbc.queryForList("select m.map_id as \"mapId\",m.page_id as \"pageId\",p.route_path as \"routePath\",m.layout_zone as \"sectionId\",s.section_name as \"sectionName\",m.component_id as \"componentId\",c.component_name as \"componentName\",m.display_order as \"displayOrder\" from ui_page_component_map m join ui_page_manifest p on p.page_id=m.page_id and p.active_yn='Y' left join ui_section_registry s on s.section_id=m.layout_zone and s.active_yn='Y' left join ui_component_registry c on c.component_id=m.component_id and c.active_yn='Y' order by m.page_id,m.display_order,m.map_id"));
         out.put("designs",jdbc.queryForList("select design_asset_id as \"designAssetId\",page_id as \"pageId\",route_path as \"routePath\",menu_code as \"menuCode\",domain_code as \"domainCode\",layout_version as \"layoutVersion\",design_token_version as \"designTokenVersion\",source_path as \"sourcePath\",asset_fingerprint as \"fingerprint\" from framework_design_asset_registry where active_yn='Y' order by domain_code,route_path"));
         out.put("syncRuns",jdbc.queryForList("select sync_run_id as \"syncRunId\",asset_type as \"assetType\",source_path as \"sourcePath\",discovered_count as \"discoveredCount\",registered_count as \"registeredCount\",duplicate_count as \"duplicateCount\",sync_status as \"syncStatus\",executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_asset_sync_run order by sync_run_id desc limit 20"));
         out.put("duplicates",jdbc.queryForList("select asset_fingerprint as fingerprint,count(*) as count,string_agg(component_id,', ' order by component_id) as \"componentIds\" from ui_component_registry where active_yn='Y' and asset_fingerprint is not null group by asset_fingerprint having count(*)>1 order by count(*) desc"));
         out.put("recentPreflights",jdbc.queryForList("select preflight_id as \"preflightId\",page_id as \"pageId\",route_path as \"routePath\",theme_id as \"themeId\",section_id as \"sectionId\",component_id as \"componentId\",class_set_id as \"classSetId\",reuse_policy as \"reusePolicy\",source_scope as \"sourceScope\",decision,executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_design_preflight order by preflight_id desc limit 50"));
         return out;
+    }
+
+    /**
+     * Applies an approved common-design edit to the authoritative runtime
+     * registry and every exact canonical screen that consumes the asset.  The
+     * registry write, canonical marker, runtime publication and one generation
+     * head per affected process share the caller transaction.  There is no
+     * draft, cohort or promotion state in this path.
+     */
+    @Transactional
+    public List<Map<String,Object>> commonDesignAssetSourceHeads(
+            String requestedType,String requestedId,String search,int requestedLimit){
+        return commonDesignAssetSourceHeads(
+            requestedType,requestedId,search,requestedLimit,false);
+    }
+
+    @Transactional
+    public List<Map<String,Object>> commonDesignAssetSourceHeads(
+            String requestedType,String requestedId,String search,int requestedLimit,
+            boolean includeDependents){
+        String assetType=requestedType==null?"":requestedType.trim().toUpperCase(Locale.ROOT);
+        String assetId=requestedId==null?"":requestedId.trim();
+        String needle=search==null?"":search.trim();
+        if(!assetType.isBlank()&&!SOURCE_IMMEDIATE_DESIGN_ASSET_TYPES.contains(assetType))
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_TYPE");
+        if(!assetId.isBlank()&&!assetId.matches("[A-Za-z0-9][A-Za-z0-9_.:-]{1,199}"))
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_ID");
+        if(includeDependents&&(assetType.isBlank()||assetId.isBlank()))
+            throw new IllegalArgumentException("DEPENDENT_SOURCE_ROOT_REQUIRED");
+        lockCommonDesignGlobalSource();
+        int limit=Math.max(1,Math.min(requestedLimit,500));
+        List<Map<String,Object>> identities=includeDependents?jdbc.queryForList("""
+            with recursive impacted(asset_type,asset_id) as (
+              select cast(? as text),cast(? as text)
+              union
+              select source.asset_type,source.asset_id
+                from framework_common_design_asset_source_state source
+                join impacted upstream on exists(
+                  select 1 from jsonb_array_elements(case
+                    when jsonb_typeof(source.canonical_asset#>'{payload,dependencies}')='array'
+                    then source.canonical_asset#>'{payload,dependencies}' else '[]'::jsonb end) dependency
+                   where upper(dependency->>'assetType')=upper(upstream.asset_type)
+                     and dependency->>'assetId'=upstream.asset_id)
+            )
+            select source.asset_type as "assetType",source.asset_id as "assetId",
+                   to_char(source.updated_at at time zone 'UTC',
+                     'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "syncedAt"
+              from impacted
+              join framework_common_design_asset_source_state source
+                using(asset_type,asset_id)
+             order by source.asset_type collate "C",source.asset_id collate "C"
+            """,assetType,assetId):jdbc.queryForList("""
+            select asset_type as "assetType",asset_id as "assetId",
+                   to_char(updated_at at time zone 'UTC',
+                     'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "syncedAt"
+              from framework_common_design_asset_source_state
+             where (?='' or asset_type=?) and (?='' or asset_id=?)
+               and (?='' or asset_id ilike ('%'||?||'%')
+                    or canonical_asset->>'assetName' ilike ('%'||?||'%')
+                    or canonical_asset->>'routePath' ilike ('%'||?||'%'))
+             order by asset_type collate "C",asset_id collate "C" limit ?
+            """,assetType,assetType,assetId,assetId,needle,needle,needle,needle,limit);
+        for(Map<String,Object> identity:identities){
+            String type=String.valueOf(identity.get("assetType"));
+            String id=String.valueOf(identity.get("assetId"));
+            jdbc.query("select pg_advisory_xact_lock(hashtextextended(?,0))",row->{},
+                "COMMON_DESIGN_SOURCE_V1:"+type+":"+id);
+        }
+        Set<String> persistedStates=new HashSet<>();
+        List<Map<String,Object>> heads=new ArrayList<>();
+        for(Map<String,Object> identity:identities){
+            String type=String.valueOf(identity.get("assetType"));
+            String id=String.valueOf(identity.get("assetId"));
+            Map<String,Object> canonical=lockedCommonDesignSourceState(
+                type,id,persistedStates);
+            if(canonical==null)throw new IllegalStateException(
+                "DESIGN_ASSET_SOURCE_STATE_REQUIRED: "+type+":"+id);
+            assertCommonDesignRuntimeRegistry(canonical);
+            Map<String,Object> head=new LinkedHashMap<>(canonical);
+            head.put("fingerprint",commonDesignAssetFingerprint(canonical));
+            head.put("syncedAt",identity.get("syncedAt"));
+            heads.add(head);
+        }
+        return heads;
+    }
+
+    @Transactional
+    public Map<String,Object> commonDesignAssetSourceReceipt(String receiptId,
+            String requestedType,String assetId,String baseFingerprint,
+            String assetFingerprint){
+        String assetType=requestedType==null?"":requestedType.trim().toUpperCase(Locale.ROOT);
+        if(!SOURCE_IMMEDIATE_DESIGN_ASSET_TYPES.contains(assetType)
+                ||assetId==null
+                ||!assetId.matches("[A-Za-z0-9][A-Za-z0-9_.:-]{1,199}")
+                ||baseFingerprint==null||!baseFingerprint.matches("[0-9a-f]{64}")
+                ||assetFingerprint==null||!assetFingerprint.matches("[0-9a-f]{64}"))
+            throw new IllegalArgumentException("INVALID_DESIGN_SOURCE_RECEIPT_IDENTITY");
+        receiptId=receiptId==null?"":receiptId.toLowerCase(Locale.ROOT);
+        if(!receiptId.matches("[0-9a-f]{64}"))throw new IllegalArgumentException(
+            "DESIGN_SOURCE_RECEIPT_SHA256_REQUIRED");
+        lockCommonDesignGlobalSource();
+        List<Map<String,Object>> snapshots=exactCommonDesignSourceReceipt(
+            receiptId,assetType,assetId,baseFingerprint,assetFingerprint);
+        return Map.of("success",true,"sourceCommitted",true,
+            "sourceReceiptId",receiptId,"assetType",assetType,"assetId",assetId,
+            "baseFingerprint",baseFingerprint,"assetFingerprint",assetFingerprint,
+            "sourceSnapshots",snapshots);
+    }
+
+    @Transactional
+    public Map<String,Object> applyCommonDesignAssetSource(
+            Map<String,Object> body,String actor){
+        if(actor==null||actor.isBlank()||!actor.equals(actor.trim())||actor.length()>300)
+            throw new SecurityException("DESIGN_APPROVER_IDENTITY_REQUIRED");
+        lockCommonDesignSystemAdministrator(actor);
+        lockCommonDesignGlobalSource();
+        Set<String> requestFields=Set.of("activationPolicy","authorityMode","projectId",
+            "assetType","assetId","assetName","routePath","version","active",
+            "payload","dependencies","baseAsset","baseFingerprint","assetFingerprint",
+            "sourceReceiptId");
+        java.util.SortedSet<String> unsupportedRequestFields=
+            new java.util.TreeSet<>(body.keySet());
+        unsupportedRequestFields.removeAll(requestFields);
+        if(!unsupportedRequestFields.isEmpty())throw new IllegalArgumentException(
+            "UNSUPPORTED_DESIGN_ASSET_SOURCE_FIELDS: "+unsupportedRequestFields);
+        String activationPolicy=req(body,"activationPolicy").trim().toUpperCase(Locale.ROOT);
+        if(!SOURCE_IMMEDIATE_ACTIVATION_POLICY.equals(activationPolicy))
+            throw new SecurityException("SOURCE_IMMEDIATE_V1_AUTHORITY_REQUIRED");
+        String authorityMode=def(body,"authorityMode","SOURCE").trim().toUpperCase(Locale.ROOT);
+        if(!"SOURCE".equals(authorityMode))
+            throw new SecurityException("MANUAL_OR_ADOPT_DESIGN_AUTHORITY_FORBIDDEN");
+        String projectId=req(body,"projectId").trim().toUpperCase(Locale.ROOT);
+        if(!projectId.matches("[A-Z][A-Z0-9_-]{2,63}"))
+            throw new IllegalArgumentException("INVALID_PROJECT_ID");
+        String assetType=req(body,"assetType").trim().toUpperCase(Locale.ROOT);
+        if(!SOURCE_IMMEDIATE_DESIGN_ASSET_TYPES.contains(assetType))
+            throw new IllegalArgumentException("SOURCE_IMMEDIATE_ASSET_TYPE_UNSUPPORTED: "+assetType);
+        String assetId=req(body,"assetId").trim();
+        if(!assetId.matches("[A-Za-z0-9][A-Za-z0-9_.:-]{1,199}"))
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_ID");
+        String assetName=req(body,"assetName");
+        if(assetName.length()>300)throw new IllegalArgumentException("INVALID_DESIGN_ASSET_NAME");
+        String rawRoute=str(body,"routePath");
+        String route=canonicalCommonDesignRoute(rawRoute);
+        if(!rawRoute.isBlank()&&!route.startsWith("/"))
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_ROUTE");
+        String version=def(body,"version","v1");
+        if(!version.matches("[A-Za-z0-9][A-Za-z0-9._-]{0,79}"))
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_VERSION");
+        String beforeFingerprint=req(body,"baseFingerprint").toLowerCase(Locale.ROOT);
+        String afterFingerprint=req(body,"assetFingerprint").toLowerCase(Locale.ROOT);
+        String sourceReceiptId=req(body,"sourceReceiptId").toLowerCase(Locale.ROOT);
+        if(!sourceReceiptId.matches("[0-9a-f]{64}"))throw new IllegalArgumentException(
+            "DESIGN_SOURCE_RECEIPT_SHA256_REQUIRED");
+        if(!beforeFingerprint.matches("[0-9a-f]{64}")
+                ||!afterFingerprint.matches("[0-9a-f]{64}"))
+            throw new IllegalArgumentException("DESIGN_ASSET_SHA256_REQUIRED");
+        Map<String,Object> payload=designAssetPayload(body.get("payload"),assetType);
+        List<Map<String,Object>> dependencies=designAssetDependencies(body.get("dependencies"));
+        List<Map<String,Object>> payloadDependencies=
+            designAssetDependencies(payload.get("dependencies"));
+        if(!dependencyFingerprints(dependencies).equals(
+                dependencyFingerprints(payloadDependencies)))
+            throw new IllegalArgumentException(
+                "DESIGN_ASSET_DEPENDENCY_CONTRACT_MISMATCH");
+        assertScreenDependencyCompleteness(assetType,payload,dependencies);
+        if(!(body.get("active") instanceof Boolean active))
+            throw new IllegalArgumentException("DESIGN_ASSET_ACTIVE_BOOLEAN_REQUIRED");
+        Map<String,Object> proposed=canonicalCommonDesignAsset(assetType,assetId,
+            assetName,route,version,active,payload);
+        Map<String,Object> base=canonicalCommonDesignAsset(body.get("baseAsset"));
+        if(!assetType.equals(base.get("assetType"))||!assetId.equals(base.get("assetId")))
+            throw new IllegalArgumentException("DESIGN_ASSET_BASE_IDENTITY_MISMATCH");
+        String computedBaseFingerprint=commonDesignAssetFingerprint(base);
+        String computedAfterFingerprint=commonDesignAssetFingerprint(proposed);
+        if(!beforeFingerprint.equals(computedBaseFingerprint))
+            throw new IllegalArgumentException("DESIGN_ASSET_BASE_FINGERPRINT_FORGED");
+        if(!afterFingerprint.equals(computedAfterFingerprint))
+            throw new IllegalArgumentException("DESIGN_ASSET_AFTER_FINGERPRINT_FORGED");
+
+        Set<String> persistedSourceStates=new HashSet<>();
+        // Acquire every identity in one deterministic order before taking any
+        // source-state row lock. This keeps cross-dependent mutations free of
+        // target/dependency lock inversion while still allowing a committed
+        // replay to ignore later dependency drift.
+        lockCommonDesignAssetIdentities(assetType,assetId,dependencies);
+        String targetIdentity=assetType+":"+assetId;
+        Map<String,Object> current=lockedCommonDesignSourceState(
+            assetType,assetId,persistedSourceStates);
+        if(current==null)throw new IllegalStateException(
+            "DESIGN_ASSET_SOURCE_STATE_REQUIRED: "+targetIdentity);
+        assertCommonDesignRuntimeRegistry(current);
+        String currentFingerprint=commonDesignAssetFingerprint(current);
+        if(currentFingerprint.equals(afterFingerprint)){
+            List<Map<String,Object>> sourceSnapshots=
+                exactCommonDesignSourceReceipt(sourceReceiptId,assetType,assetId,
+                    beforeFingerprint,afterFingerprint);
+            Map<String,Object> replay=new LinkedHashMap<>();
+            replay.put("success",true);replay.put("status","APPLIED");
+            replay.put("sourceCommitted",true);replay.put("idempotent",true);
+            replay.put("activationPolicy",SOURCE_IMMEDIATE_ACTIVATION_POLICY);
+            replay.put("authorityMode","SOURCE");replay.put("projectId",projectId);
+            replay.put("assetType",assetType);replay.put("assetId",assetId);
+            replay.put("baseFingerprint",beforeFingerprint);
+            replay.put("assetFingerprint",afterFingerprint);
+            replay.put("sourceReceiptId",sourceReceiptId);
+            replay.put("registryWrites",0);replay.put("sourceStateWrites",0);
+            replay.put("compositionWrites",0);
+            replay.put("canonicalWrites",0);replay.put("affectedScreenCount",0);
+            replay.put("affectedProcessCount",0);replay.put("screens",List.of());
+            replay.put("processes",List.of());replay.put("runtimePublications",List.of());
+            replay.put("jobCount",0);replay.put("endpointExpected",0);
+            replay.put("sourceSnapshots",sourceSnapshots);
+            replay.put("buildRequired",false);
+            replay.put("rollbackPolicy","TRANSACTION_ROLLBACK");
+            return replay;
+        }
+        if(!currentFingerprint.equals(beforeFingerprint))
+            throw new IllegalStateException("DESIGN_ASSET_GLOBAL_FINGERPRINT_CHANGED: "+
+                currentFingerprint);
+        // The target row remains locked while the not-yet-committed request
+        // acquires and validates every dependency row.
+        Map<String,Map<String,Object>> lockedAssets=lockCommonDesignAssets(
+            assetType,assetId,dependencies,persistedSourceStates);
+        CommonDesignCascadePlan cascade=planCommonDesignDependencyCascade(
+            proposed,afterFingerprint);
+
+        List<Map<String,Object>> identities=affectedCommonDesignScreens(
+            assetType,assetId,route,payload);
+        for(Map<String,Object> identity:identities){
+            int blueprintLocks=jdbc.queryForList(
+                "select blueprint_id from framework_screen_blueprint where blueprint_id=? for update",
+                identity.get("blueprintId")).size();
+            int contractLocks=jdbc.queryForList(
+                "select contract_id from framework_professional_screen_contract where contract_id=? for update",
+                identity.get("contractId")).size();
+            if(blueprintLocks!=1||contractLocks!=1)
+                throw new IllegalStateException("COMMON_DESIGN_SCREEN_LOCK_NOT_EXACT");
+        }
+
+        Map<Long,Map<String,Object>> beforeBundles=new LinkedHashMap<>();
+        boolean idempotent=!identities.isEmpty();
+        for(Map<String,Object> identity:identities){
+            long blueprintId=((Number)identity.get("blueprintId")).longValue();
+            beforeBundles.put(blueprintId,canonicalScreenBundle(identity));
+            if(!commonAssetMarkerMatches(
+                    String.valueOf(identity.get("specificationJson")),
+                    assetType,assetId,afterFingerprint))idempotent=false;
+        }
+
+        int registryWrites=updateCommonDesignRegistry(
+            assetType,assetId,assetName,route,version,active,
+            payload,afterFingerprint,actor);
+        if(registryWrites!=1)throw new IllegalStateException(
+            "COMMON_DESIGN_REGISTRY_WRITE_NOT_EXACT: "+registryWrites);
+        int compositionWrites="SCREEN".equals(assetType)
+            ?materializeScreenComposition(assetId,payload):0;
+        int sourceStateWrites=writeCommonDesignSourceState(proposed,afterFingerprint,
+            actor,persistedSourceStates.contains(targetIdentity),currentFingerprint);
+        if(sourceStateWrites!=1)throw new IllegalStateException(
+            "COMMON_DESIGN_SOURCE_STATE_WRITE_NOT_EXACT: "+sourceStateWrites);
+        assertCommonDesignRuntimeRegistry(proposed);
+        Map<String,Object> persistedAfter=lockedCommonDesignSourceState(
+            assetType,assetId,new HashSet<>());
+        if(persistedAfter==null||!afterFingerprint.equals(
+                commonDesignAssetFingerprint(persistedAfter)))
+            throw new IllegalStateException("COMMON_DESIGN_AFTER_FINGERPRINT_MISMATCH");
+        for(CommonDesignCascadeEntry dependent:cascade.dependents()){
+            int cascaded=writeCommonDesignSourceState(dependent.canonical(),
+                dependent.afterFingerprint(),actor,true,dependent.beforeFingerprint());
+            if(cascaded!=1)throw new IllegalStateException(
+                "COMMON_DESIGN_DEPENDENCY_CASCADE_WRITE_NOT_EXACT: "+dependent.identity());
+            assertCommonDesignRuntimeRegistry(dependent.canonical());
+            sourceStateWrites+=cascaded;
+        }
+        int receiptWrites=jdbc.update("""
+            insert into framework_common_design_source_receipt(
+              receipt_id,asset_type,asset_id,base_fingerprint,asset_fingerprint,
+              source_snapshots,created_by)
+            values(?,?,?,?,?,cast(? as jsonb),?)
+            """,sourceReceiptId,assetType,assetId,beforeFingerprint,afterFingerprint,
+            toJson(cascade.sourceSnapshots()),actor);
+        if(receiptWrites!=1)throw new IllegalStateException(
+            "COMMON_DESIGN_SOURCE_RECEIPT_WRITE_NOT_EXACT");
+        Map<String,Object> marker=new LinkedHashMap<>();
+        marker.put("schema","carbonet.common-design-asset-source/v1");
+        marker.put("activationPolicy",SOURCE_IMMEDIATE_ACTIVATION_POLICY);
+        marker.put("projectId",projectId);marker.put("assetType",assetType);
+        marker.put("assetId",assetId);marker.put("assetName",assetName);
+        marker.put("version",version);marker.put("assetFingerprint",afterFingerprint);
+        marker.put("payloadHash",sha256Hex(toJson(payload)));
+        marker.put("dependencies",dependencies);
+        String markerKey=assetType+":"+assetId;
+        int canonicalWrites=0;
+        for(Map<String,Object> identity:identities){
+            String screenSpecification="SCREEN".equals(assetType)
+                ?toJson(screenBlueprintComposition(payload)):"{}";
+            int changed=jdbc.update("""
+                with proposed as (
+                  select blueprint_id,
+                         framework_try_jsonb(specification_json)||
+                         jsonb_build_object(
+                           'sourceImmediateAssets',
+                           coalesce(framework_try_jsonb(specification_json)
+                                      ->'sourceImmediateAssets','{}'::jsonb)
+                           ||jsonb_build_object(?,cast(? as jsonb)))
+                         ||case when ?='SCREEN' then cast(? as jsonb)
+                                 else '{}'::jsonb end as next_specification
+                    from framework_screen_blueprint where blueprint_id=?
+                )
+                update framework_screen_blueprint blueprint
+                   set specification_json=proposed.next_specification::text,
+                       updated_at=current_timestamp
+                  from proposed
+                 where blueprint.blueprint_id=proposed.blueprint_id
+                   and framework_try_jsonb(blueprint.specification_json)
+                       is distinct from proposed.next_specification
+                """,markerKey,toJson(marker),assetType,screenSpecification,
+                identity.get("blueprintId"));
+            if(changed>1)throw new IllegalStateException(
+                "COMMON_DESIGN_CANONICAL_WRITE_NOT_EXACT");
+            canonicalWrites+=changed;
+        }
+
+        java.util.SortedSet<String> processes=new java.util.TreeSet<>();
+        identities.forEach(identity->processes.add(String.valueOf(
+            identity.get("processCode"))));
+        for(String process:processes)generateProfessionalDesignGraph(process,actor);
+
+        List<Map<String,Object>> screenReceipts=new ArrayList<>();
+        List<Map<String,Object>> publications=new ArrayList<>();
+        for(Map<String,Object> identity:identities){
+            long blueprintId=((Number)identity.get("blueprintId")).longValue();
+            Map<String,Object> after=canonicalScreenBundle(identity);
+            String beforeHash=canonicalHash(beforeBundles.get(blueprintId),"designHash");
+            String afterHash=canonicalHash(after,"designHash");
+            if(!idempotent&&beforeHash.equals(afterHash))
+                throw new IllegalStateException(
+                    "COMMON_DESIGN_CANONICAL_HASH_UNCHANGED: "+blueprintId);
+            Map<String,Object> screen=new LinkedHashMap<>();
+            screen.put("blueprintId",blueprintId);
+            screen.put("contractId",identity.get("contractId"));
+            screen.put("processCode",identity.get("processCode"));
+            screen.put("stepCode",identity.get("stepCode"));
+            screen.put("audience",identity.get("audience"));
+            screen.put("routePath",identity.get("routePath"));
+            screen.put("beforeDesignHash",beforeHash);
+            screen.put("afterDesignHash",afterHash);
+            screen.put("changed",!beforeHash.equals(afterHash));
+            screenReceipts.add(screen);
+            publications.add(screenContractRuntimeService.publishProfessionalContract(
+                ((Number)identity.get("contractId")).longValue(),actor));
+        }
+
+        List<Map<String,Object>> generation=new ArrayList<>();
+        for(String process:processes){
+            Map<String,Object> trigger=new LinkedHashMap<>();
+            trigger.put("triggerType","COMMON_DESIGN_ASSET_SOURCE");
+            trigger.put("assetType",assetType);trigger.put("assetId",assetId);
+            trigger.put("assetFingerprint",afterFingerprint);
+            generation.add(refreshAndQueueCanonicalProcess(process,actor,trigger));
+        }
+        boolean reviewRequired=generation.stream().anyMatch(receipt->
+            Set.of("FAILED","BLOCKED","SKIPPED","REVIEW_REQUIRED").contains(
+                String.valueOf(receipt.get("status"))));
+        boolean queued=generation.stream().anyMatch(receipt->
+            Boolean.TRUE.equals(receipt.get("generationQueued")));
+        String status=reviewRequired?"REVIEW_REQUIRED":queued?"QUEUED":"APPLIED";
+        int jobCount=generation.stream().mapToInt(receipt->
+            ((Number)receipt.getOrDefault("jobCount",0)).intValue()).sum();
+        int endpointExpected=generation.stream().mapToInt(receipt->
+            ((Number)receipt.getOrDefault("endpointExpected",0)).intValue()).sum();
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",!reviewRequired);result.put("status",status);
+        result.put("sourceCommitted",true);result.put("idempotent",idempotent);
+        result.put("activationPolicy",SOURCE_IMMEDIATE_ACTIVATION_POLICY);
+        result.put("authorityMode","SOURCE");result.put("projectId",projectId);
+        result.put("assetType",assetType);result.put("assetId",assetId);
+        result.put("baseFingerprint",beforeFingerprint);
+        result.put("assetFingerprint",afterFingerprint);
+        result.put("sourceReceiptId",sourceReceiptId);
+        result.put("registryWrites",registryWrites);
+        result.put("compositionWrites",compositionWrites);
+        result.put("sourceStateWrites",sourceStateWrites);
+        result.put("sourceSnapshots",cascade.sourceSnapshots());
+        result.put("canonicalWrites",canonicalWrites);
+        result.put("affectedScreenCount",identities.size());
+        result.put("affectedProcessCount",processes.size());
+        result.put("screens",screenReceipts);result.put("processes",generation);
+        result.put("runtimePublications",publications);
+        result.put("jobCount",jobCount);result.put("endpointExpected",endpointExpected);
+        result.put("buildRequired",false);
+        result.put("rollbackPolicy","TRANSACTION_ROLLBACK");
+        return result;
+    }
+
+    private List<Map<String,Object>> affectedCommonDesignScreens(
+            String assetType,String assetId,String route,Map<String,Object> payload){
+        String theme="THEME".equals(assetType)?assetId:str(payload,"theme");
+        List<Map<String,Object>> candidates=jdbc.queryForList("""
+            with recursive impacted(asset_type,asset_id) as (
+              select cast(? as text),cast(? as text)
+              union
+              select source.asset_type,source.asset_id
+                from framework_common_design_asset_source_state source
+                cross join lateral jsonb_array_elements(case
+                  when jsonb_typeof(source.canonical_asset#>'{payload,dependencies}')='array'
+                  then source.canonical_asset#>'{payload,dependencies}'
+                  else '[]'::jsonb end) dependency
+                join impacted upstream
+                  on upper(dependency->>'assetType')=upper(upstream.asset_type)
+                 and dependency->>'assetId'=upstream.asset_id
+            ), declared_screens as materialized (
+              select canonical_asset->>'assetId' page_id,
+                     canonical_asset->>'routePath' route_path
+                from framework_common_design_asset_source_state source
+                join impacted using(asset_type,asset_id)
+               where source.asset_type='SCREEN'
+            ), candidates as materialized (
+              select blueprint.blueprint_id,contract.contract_id,
+                     (blueprint.transition_status='CONTRACT_LINKED'
+                       and lower(blueprint.source_reference) in(
+                         'framework_professional_screen_contract:'||contract.contract_id,
+                         'professional_screen_contract:'||contract.contract_id)) explicit_link,
+                     count(*) over(partition by contract.contract_id) candidate_count,
+                     count(*) filter(where blueprint.transition_status='CONTRACT_LINKED'
+                       and lower(blueprint.source_reference) in(
+                         'framework_professional_screen_contract:'||contract.contract_id,
+                         'professional_screen_contract:'||contract.contract_id))
+                       over(partition by contract.contract_id) explicit_count
+                from framework_screen_blueprint blueprint
+                join framework_professional_screen_contract contract
+                  on contract.process_code=blueprint.process_code
+                 and contract.step_code=blueprint.step_code
+                 and upper(contract.audience)=upper(blueprint.audience)
+                 and lower(split_part(contract.route_path,'?',1))=
+                     lower(split_part(blueprint.route_path,'?',1))
+               where blueprint.validation_status='VALID'
+            )
+            select blueprint.blueprint_id as "blueprintId",
+                   contract.contract_id as "contractId",
+                   blueprint.process_code as "processCode",
+                   blueprint.step_code as "stepCode",blueprint.audience,
+                   lower(split_part(blueprint.route_path,'?',1)) as "routePath",
+                   blueprint.specification_json as "specificationJson",
+                   ((selected.explicit_count=1 and selected.explicit_link)
+                     or (selected.explicit_count=0 and selected.candidate_count=1))
+                       as "authorityExact"
+              from candidates selected
+              join framework_screen_blueprint blueprint using(blueprint_id)
+              join framework_professional_screen_contract contract using(contract_id)
+             where (
+               ?='THEME' and (
+                 framework_try_jsonb(blueprint.specification_json)->>'theme'=?
+                 or exists(select 1 from ui_page_manifest page
+                    where page.page_id=blueprint.page_id and page.active_yn='Y'
+                      and page.design_token_version=?)))
+                or (?='SECTION' and (
+                  exists(select 1 from ui_page_component_map mapping
+                    where mapping.page_id=blueprint.page_id
+                      and upper(mapping.layout_zone)=upper(?))
+                  or exists(select 1 from jsonb_array_elements(case
+                      when jsonb_typeof(framework_try_jsonb(blueprint.specification_json)
+                        ->'assetBindings')='array'
+                      then framework_try_jsonb(blueprint.specification_json)->'assetBindings'
+                      else '[]'::jsonb end) binding
+                    where upper(coalesce(binding->>'assetCode',binding->>'registryKey',''))=upper(?))))
+                or (?='COMPONENT' and (
+                  exists(select 1 from ui_page_component_map mapping
+                    where mapping.page_id=blueprint.page_id
+                      and upper(mapping.component_id)=upper(?))
+                  or exists(select 1 from jsonb_array_elements(case
+                      when jsonb_typeof(framework_try_jsonb(blueprint.specification_json)
+                        ->'assetBindings')='array'
+                      then framework_try_jsonb(blueprint.specification_json)->'assetBindings'
+                      else '[]'::jsonb end) binding
+                    where upper(coalesce(binding->>'assetCode',binding->>'registryKey',''))=upper(?))))
+                or (?='SCREEN' and (
+                  upper(blueprint.page_id)=upper(?)
+                  or (?<>'' and lower(split_part(blueprint.route_path,'?',1))=lower(?))))
+                or exists(select 1 from declared_screens declared
+                   where upper(blueprint.page_id)=upper(declared.page_id)
+                      or (coalesce(declared.route_path,'')<>'' and
+                          lower(split_part(blueprint.route_path,'?',1))=
+                          lower(split_part(declared.route_path,'?',1))))
+             order by blueprint.process_code collate "C",blueprint.step_code collate "C",
+                      blueprint.audience collate "C",blueprint.blueprint_id
+            """,assetType,assetId,
+            assetType,theme,theme,assetType,assetId,assetId,
+            assetType,assetId,assetId,assetType,assetId,route,route);
+        for(var group:candidates.stream().collect(java.util.stream.Collectors.groupingBy(
+                row->row.get("contractId"))).entrySet()){
+            long exact=group.getValue().stream().filter(
+                row->Boolean.TRUE.equals(row.get("authorityExact"))).count();
+            if(exact!=1)throw new IllegalStateException(
+                "COMMON_DESIGN_SCREEN_AUTHORITY_NOT_EXACT: "+group.getKey());
+        }
+        List<Map<String,Object>> exactCandidates=candidates.stream()
+            .filter(row->Boolean.TRUE.equals(row.get("authorityExact"))).toList();
+        for(var group:exactCandidates.stream().collect(java.util.stream.Collectors.groupingBy(
+                row->row.get("blueprintId"))).entrySet()){
+            if(group.getValue().size()!=1)throw new IllegalStateException(
+                "COMMON_DESIGN_SCREEN_AUTHORITY_NOT_EXACT: "+group.getKey());
+        }
+        return exactCandidates.stream()
+            .map(row->{Map<String,Object> exact=new LinkedHashMap<>(row);
+                exact.remove("authorityExact");return exact;}).toList();
+    }
+
+    private int updateCommonDesignRegistry(String assetType,String assetId,
+            String assetName,String route,String version,boolean active,
+            Map<String,Object> payload,String fingerprint,String actor){
+        if("THEME".equals(assetType)){
+            Map<String,Object> current=exactRegistryRow(
+                "select * from comtnthemedefinition where theme_id=? for update",assetId);
+            boolean defaultTheme=payload.containsKey("isDefault")
+                ?flag(payload.get("isDefault"))
+                :"Y".equalsIgnoreCase(String.valueOf(current.get("is_default")));
+            return jdbc.update("""
+                update comtnthemedefinition set
+                  theme_nm=?,theme_dc=?,theme_type=?,color_config=?,typography_config=?,
+                  spacing_config=?,border_config=?,shadow_config=?,class_prefix=?,
+                  is_default=?,is_active=?,use_at=?,updt_pnttm=current_timestamp,
+                  updt_user_id=? where theme_id=?
+                """,assetName,
+                value(payload,"description",current.get("theme_dc")),
+                value(payload,"themeType",current.get("theme_type")),
+                toJson(payload.get("colorConfig")),toJson(payload.get("typographyConfig")),
+                toJson(payload.get("spacingConfig")),toJson(payload.get("borderConfig")),
+                toJson(payload.get("shadowConfig")),
+                value(payload,"classPrefix",current.get("class_prefix")),
+                defaultTheme?"Y":"N",active?"Y":"N",active?"Y":"N",
+                actor,assetId);
+        }
+        if("SECTION".equals(assetType)){
+            exactRegistryRow("select section_id from ui_section_registry where section_id=? for update",assetId);
+            return jdbc.update("""
+                update ui_section_registry set section_name=?,section_type=?,layout_contract=?,
+                  responsive_contract=?,accessibility_contract=?,design_reference=?,
+                  asset_fingerprint=?,active_yn=?,updated_at=current_timestamp
+                 where section_id=?
+                """,assetName,req(payload,"sectionType"),
+                req(payload,"layoutContract"),req(payload,"responsiveContract"),
+                req(payload,"accessibilityContract"),str(payload,"designReference"),
+                fingerprint,active?"Y":"N",assetId);
+        }
+        if("COMPONENT".equals(assetType)){
+            exactRegistryRow("select component_id from ui_component_registry where component_id=? for update",assetId);
+            return jdbc.update("""
+                update ui_component_registry set component_name=?,component_type=?,owner_domain=?,
+                  props_schema_json=cast(? as jsonb),design_reference=?,
+                  default_props=cast(? as jsonb),category=?,
+                  asset_fingerprint=?,active_yn=?,updated_at=current_timestamp
+                 where component_id=?
+                """,assetName,req(payload,"componentType"),
+                req(payload,"ownerDomain"),toJson(payload.get("propsSchema")),
+                req(payload,"designReference"),toJson(payload.get("defaultProps")),
+                def(payload,"category","COMMON"),fingerprint,active?"Y":"N",assetId);
+        }
+        List<Map<String,Object>> pages=jdbc.queryForList("""
+            select page_id,route_path from ui_page_manifest
+             where (upper(page_id)=upper(?) or (?<>'' and
+                    lower(split_part(route_path,'?',1))=lower(?))) for update
+            """,assetId,route,route);
+        if(pages.size()!=1)throw new IllegalArgumentException(
+            "SCREEN_DESIGN_ASSET_NOT_EXACT: "+assetId+", count="+pages.size());
+        String pageId=String.valueOf(pages.get(0).get("page_id"));
+        String currentRoute=String.valueOf(pages.get(0).get("route_path"));
+        String runtimeRoute=canonicalCommonDesignRoute(currentRoute).equals(route)
+            ?currentRoute:route;
+        return jdbc.update("""
+            update ui_page_manifest set page_name=?,route_path=?,layout_version=?,
+                   design_token_version=?,component_schema=?,version_id=?,
+                   active_yn=?,updated_at=current_timestamp
+             where page_id=?
+            """,assetName,runtimeRoute,req(payload,"layout"),
+            req(payload,"theme"),toJson(screenDesignComposition(payload)),version,
+            active?"Y":"N",pageId);
+    }
+
+    private int materializeScreenComposition(String pageId,
+            Map<String,Object> payload){
+        @SuppressWarnings("unchecked")
+        List<Map<String,Object>> sections=(List<Map<String,Object>>)payload.get("sections");
+        @SuppressWarnings("unchecked")
+        List<Map<String,Object>> components=(List<Map<String,Object>>)payload.get("components");
+        Map<String,Map<String,Object>> sectionIndex=new LinkedHashMap<>();
+        for(Map<String,Object> section:sections){
+            String sectionId=String.valueOf(section.get("sectionId"));
+            Integer exact=jdbc.queryForObject("""
+                select count(*) from ui_section_registry
+                 where section_id=? and active_yn='Y'
+                """,Integer.class,sectionId);
+            if(exact==null||exact!=1)throw new IllegalStateException(
+                "DESIGN_SCREEN_SECTION_SOURCE_NOT_EXACT: "+sectionId);
+            sectionIndex.put(sectionId,section);
+        }
+        for(Map<String,Object> component:components){
+            String componentId=String.valueOf(component.get("componentId"));
+            Integer exact=jdbc.queryForObject("""
+                select count(*) from ui_component_registry
+                 where component_id=? and active_yn='Y'
+                """,Integer.class,componentId);
+            if(exact==null||exact!=1)throw new IllegalStateException(
+                "DESIGN_SCREEN_COMPONENT_SOURCE_NOT_EXACT: "+componentId);
+        }
+        int writes=jdbc.update(
+            "delete from ui_page_component_map where page_id=?",pageId);
+        for(Map<String,Object> component:components){
+            String sectionId=String.valueOf(component.get("sectionId"));
+            Map<String,Object> section=sectionIndex.get(sectionId);
+            if(section==null)throw new IllegalStateException(
+                "DESIGN_SCREEN_COMPONENT_SECTION_MISSING: "+sectionId);
+            String instanceKey=String.valueOf(component.get("instanceKey"));
+            String mapId="SRC_"+sha256Hex(pageId+"\u0000"+instanceKey)
+                .substring(0,40).toUpperCase(Locale.ROOT);
+            writes+=jdbc.update("""
+                insert into ui_page_component_map(
+                  map_id,page_id,layout_zone,component_id,instance_key,
+                  display_order,conditional_rule_summary,instance_props,
+                  created_at,updated_at)
+                values(?,?,?,?,?,?,?,?,current_timestamp,current_timestamp)
+                """,mapId,pageId,section.get("zone"),component.get("componentId"),
+                instanceKey,component.get("displayOrder"),component.get("condition"),
+                toJson(component.get("props")));
+        }
+        List<Map<String,Object>> persisted=jdbc.queryForList("""
+            select layout_zone as zone,component_id as "componentId",
+                   instance_key as "instanceKey",display_order as "displayOrder",
+                   conditional_rule_summary as condition,
+                   framework_try_jsonb(instance_props)::text as props
+              from ui_page_component_map where page_id=?
+             order by display_order,map_id
+            """,pageId);
+        persisted=persisted.stream().map(row->{
+            Map<String,Object> normalized=new LinkedHashMap<>(row);
+            normalized.put("props",jsonMap(String.valueOf(row.get("props"))));
+            return normalized;
+        }).toList();
+        List<Map<String,Object>> expected=new ArrayList<>();
+        for(Map<String,Object> component:components){
+            Map<String,Object> section=sectionIndex.get(
+                String.valueOf(component.get("sectionId")));
+            expected.add(Map.of("zone",section.get("zone"),
+                "componentId",component.get("componentId"),
+                "instanceKey",component.get("instanceKey"),
+                "displayOrder",component.get("displayOrder"),
+                "condition",component.get("condition"),
+                "props",component.get("props")));
+        }
+        if(!stableDesignJson(expected).equals(stableDesignJson(persisted)))
+            throw new IllegalStateException("DESIGN_SCREEN_COMPOSITION_NOT_EXACT");
+        return writes;
+    }
+
+    private static Map<String,Object> screenDesignComposition(
+            Map<String,Object> payload){
+        Map<String,Object> composition=new LinkedHashMap<>();
+        composition.put("schema","carbonet.screen-composition/v1");
+        composition.put("layout",payload.get("layout"));
+        composition.put("theme",payload.get("theme"));
+        composition.put("sections",payload.get("sections"));
+        composition.put("components",payload.get("components"));
+        return composition;
+    }
+
+    private static Map<String,Object> screenBlueprintComposition(
+            Map<String,Object> payload){
+        Map<String,Object> specification=new LinkedHashMap<>();
+        specification.put("layout",payload.get("layout"));
+        specification.put("theme",payload.get("theme"));
+        specification.put("sections",payload.get("sections"));
+        specification.put("components",payload.get("components"));
+        specification.put("commonDesignComposition",screenDesignComposition(payload));
+        return specification;
+    }
+
+    private Map<String,Object> exactRegistryRow(String sql,Object... arguments){
+        List<Map<String,Object>> rows=jdbc.queryForList(sql,arguments);
+        if(rows.size()!=1)throw new IllegalArgumentException(
+            "DESIGN_ASSET_RUNTIME_SOURCE_NOT_EXACT: count="+rows.size());
+        return rows.get(0);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String,Object> designAssetPayload(Object raw,String assetType){
+        if(!(raw instanceof Map<?,?> map)||map.isEmpty())
+            throw new IllegalArgumentException("DESIGN_ASSET_PAYLOAD_OBJECT_REQUIRED");
+        Map<String,Object> payload=new LinkedHashMap<>();
+        map.forEach((key,item)->payload.put(String.valueOf(key),item));
+        Set<String> allowed=switch(assetType){
+            case "THEME" -> Set.of("schemaVersion","themeName","description","themeType",
+                "colorConfig","typographyConfig","spacingConfig","borderConfig",
+                "shadowConfig","classPrefix","isDefault","dependencies");
+            case "SECTION" -> Set.of("schemaVersion","sectionName","sectionType",
+                "layoutContract","responsiveContract","accessibilityContract",
+                "designReference","dependencies");
+            case "COMPONENT" -> Set.of("schemaVersion","componentName","componentType",
+                "ownerDomain","propsSchema","designReference","defaultProps","category",
+                "dependencies");
+            case "SCREEN" -> Set.of("schemaVersion","pageName","layout","theme",
+                "sections","components","dependencies");
+            default -> Set.of();
+        };
+        java.util.SortedSet<String> unsupported=new java.util.TreeSet<>(payload.keySet());
+        unsupported.removeAll(allowed);
+        if(!unsupported.isEmpty())throw new IllegalArgumentException(
+            "UNSUPPORTED_DESIGN_ASSET_PAYLOAD_FIELDS: "+unsupported);
+        if(!payload.containsKey("dependencies"))throw new IllegalArgumentException(
+            "DESIGN_ASSET_DEPENDENCIES_REQUIRED");
+        if("THEME".equals(assetType)){
+            for(String field:List.of("colorConfig","typographyConfig","spacingConfig",
+                    "borderConfig","shadowConfig"))requireMap(payload.get(field),"payload."+field);
+            for(String field:List.of("description","themeType","classPrefix"))req(payload,field);
+            if(!(payload.get("isDefault") instanceof Boolean))
+                throw new IllegalArgumentException("payload.isDefault must be boolean");
+        }else if("SECTION".equals(assetType)){
+            for(String field:List.of("sectionType","layoutContract","responsiveContract",
+                    "accessibilityContract","designReference"))req(payload,field);
+        }else if("COMPONENT".equals(assetType)){
+            req(payload,"componentType");req(payload,"ownerDomain");
+            req(payload,"designReference");req(payload,"category");
+            requireMap(payload.get("propsSchema"),"payload.propsSchema");
+            requireMap(payload.get("defaultProps"),"payload.defaultProps");
+        }else{
+            String layout=req(payload,"layout"),theme=req(payload,"theme");
+            if(!layout.matches("[A-Z][A-Z0-9_]{1,79}")
+                    ||!theme.matches("[A-Z][A-Z0-9_]{1,79}"))
+                throw new IllegalArgumentException("GOVERNED_LAYOUT_AND_THEME_REQUIRED");
+            List<Map<String,Object>> sections=new ArrayList<>();
+            Set<String> sectionIds=new HashSet<>();
+            Set<Integer> sectionOrders=new HashSet<>();
+            int previousSectionOrder=-1,index=0;
+            for(Object rawSection:requireList(payload.get("sections"),"payload.sections")){
+                Map<String,Object> section=requireMap(rawSection,
+                    "payload.sections["+index+"]");
+                if(!section.keySet().equals(Set.of(
+                        "sectionId","zone","displayOrder","props")))
+                    throw new IllegalArgumentException(
+                        "DESIGN_SCREEN_SECTION_SCHEMA_INVALID: "+index);
+                String sectionId=req(section,"sectionId"),zone=req(section,"zone");
+                int displayOrder=screenCompositionOrder(
+                    section.get("displayOrder"),"payload.sections["+index+"]");
+                Map<String,Object> props=requireMap(section.get("props"),
+                    "payload.sections["+index+"].props");
+                if(!sectionId.matches("[A-Za-z0-9][A-Za-z0-9_.:-]{1,199}")
+                        ||!zone.matches("[A-Za-z0-9][A-Za-z0-9_.:-]{1,119}")
+                        ||displayOrder<=previousSectionOrder
+                        ||!sectionIds.add(sectionId)||!sectionOrders.add(displayOrder))
+                    throw new IllegalArgumentException(
+                        "DESIGN_SCREEN_SECTION_ORDER_OR_IDENTITY_INVALID: "+index);
+                sections.add(Map.of("sectionId",sectionId,"zone",zone,
+                    "displayOrder",displayOrder,"props",props));
+                previousSectionOrder=displayOrder;index++;
+            }
+            List<Map<String,Object>> components=new ArrayList<>();
+            Set<String> instanceKeys=new HashSet<>();
+            Set<Integer> componentOrders=new HashSet<>();
+            int previousComponentOrder=-1;index=0;
+            for(Object rawComponent:requireList(
+                    payload.get("components"),"payload.components")){
+                Map<String,Object> component=requireMap(rawComponent,
+                    "payload.components["+index+"]");
+                if(!component.keySet().equals(Set.of("componentId","sectionId",
+                        "instanceKey","displayOrder","props","condition")))
+                    throw new IllegalArgumentException(
+                        "DESIGN_SCREEN_COMPONENT_SCHEMA_INVALID: "+index);
+                String componentId=req(component,"componentId");
+                String sectionId=req(component,"sectionId");
+                String instanceKey=req(component,"instanceKey");
+                String condition=req(component,"condition");
+                int displayOrder=screenCompositionOrder(component.get("displayOrder"),
+                    "payload.components["+index+"]");
+                Map<String,Object> props=requireMap(component.get("props"),
+                    "payload.components["+index+"].props");
+                if(!componentId.matches("[A-Za-z0-9][A-Za-z0-9_.:-]{1,199}")
+                        ||!sectionIds.contains(sectionId)
+                        ||!instanceKey.matches("[A-Za-z0-9][A-Za-z0-9_.:-]{1,199}")
+                        ||condition.length()>1000
+                        ||displayOrder<=previousComponentOrder
+                        ||!instanceKeys.add(instanceKey)
+                        ||!componentOrders.add(displayOrder))
+                    throw new IllegalArgumentException(
+                        "DESIGN_SCREEN_COMPONENT_ORDER_OR_IDENTITY_INVALID: "+index);
+                components.add(Map.of("componentId",componentId,
+                    "sectionId",sectionId,"instanceKey",instanceKey,
+                    "displayOrder",displayOrder,"props",props,
+                    "condition",condition));
+                previousComponentOrder=displayOrder;index++;
+            }
+            payload.put("sections",sections);
+            payload.put("components",components);
+        }
+        return payload;
+    }
+
+    private static int screenCompositionOrder(Object raw,String field){
+        if(!(raw instanceof Number number)||number.doubleValue()!=number.longValue()
+                ||number.longValue()<0||number.longValue()>Integer.MAX_VALUE)
+            throw new IllegalArgumentException(field+".displayOrder must be a non-negative integer");
+        return number.intValue();
+    }
+
+    private static List<Map<String,Object>> designAssetDependencies(Object raw){
+        if(!(raw instanceof List<?> items)||items.size()>200)
+            throw new IllegalArgumentException("DESIGN_ASSET_DEPENDENCIES_ARRAY_REQUIRED");
+        List<Map<String,Object>> dependencies=new ArrayList<>();
+        Set<String> identities=new HashSet<>();
+        for(Object item:items){
+            Map<String,Object> dependency=requireMap(item,"dependency");
+            if(!dependency.keySet().stream().allMatch(
+                    Set.of("assetType","assetId","fingerprint")::contains))
+                throw new IllegalArgumentException("DESIGN_ASSET_DEPENDENCY_SCHEMA_INVALID");
+            String type=req(dependency,"assetType").toUpperCase(Locale.ROOT);
+            String id=req(dependency,"assetId");
+            if(!SOURCE_IMMEDIATE_DESIGN_ASSET_TYPES.contains(type)
+                    ||!id.matches("[A-Za-z0-9][A-Za-z0-9_.:-]{1,199}"))
+                throw new IllegalArgumentException("DESIGN_ASSET_DEPENDENCY_INVALID");
+            String fingerprint=str(dependency,"fingerprint").toLowerCase(Locale.ROOT);
+            if(!fingerprint.matches("[0-9a-f]{64}"))
+                throw new IllegalArgumentException("DESIGN_ASSET_DEPENDENCY_SHA256_INVALID");
+            if(!identities.add(type+":"+id))
+                throw new IllegalArgumentException("DUPLICATE_DESIGN_ASSET_DEPENDENCY");
+            dependencies.add(Map.of("assetType",type,"assetId",id,
+                "fingerprint",fingerprint));
+        }
+        return dependencies;
+    }
+
+    private static Map<String,String> dependencyFingerprints(
+            List<Map<String,Object>> dependencies){
+        Map<String,String> index=new TreeMap<>();
+        for(Map<String,Object> dependency:dependencies){
+            String identity=String.valueOf(dependency.get("assetType"))+":"+
+                String.valueOf(dependency.get("assetId"));
+            index.put(identity,String.valueOf(dependency.get("fingerprint")));
+        }
+        return index;
+    }
+
+    private static void assertScreenDependencyCompleteness(String assetType,
+            Map<String,Object> payload,List<Map<String,Object>> dependencies){
+        if(!"SCREEN".equals(assetType))return;
+        java.util.SortedSet<String> required=new java.util.TreeSet<>();
+        required.add("THEME:"+req(payload,"theme"));
+        for(Object raw:requireList(payload.get("sections"),"payload.sections"))
+            required.add("SECTION:"+req(requireMap(raw,"screen section"),"sectionId"));
+        for(Object raw:requireList(payload.get("components"),"payload.components"))
+            required.add("COMPONENT:"+req(requireMap(raw,"screen component"),"componentId"));
+        required.removeAll(dependencyFingerprints(dependencies).keySet());
+        if(!required.isEmpty())throw new IllegalArgumentException(
+            "DESIGN_SCREEN_DEPENDENCY_FINGERPRINTS_MISSING: "+required);
+    }
+
+    private record CommonDesignCascadeEntry(String identity,
+            Map<String,Object> canonical,String beforeFingerprint,
+            String afterFingerprint){}
+
+    private record CommonDesignCascadePlan(
+            List<CommonDesignCascadeEntry> dependents,
+            List<Map<String,Object>> sourceSnapshots){}
+
+    private CommonDesignCascadePlan planCommonDesignDependencyCascade(
+            Map<String,Object> proposed,String proposedFingerprint){
+        String targetIdentity=proposed.get("assetType")+":"+proposed.get("assetId");
+        List<Map<String,Object>> closureIdentities=jdbc.queryForList("""
+            with recursive impacted(asset_type,asset_id) as (
+              select cast(? as text),cast(? as text)
+              union
+              select source.asset_type,source.asset_id
+                from framework_common_design_asset_source_state source
+                join impacted upstream on exists(
+                  select 1 from jsonb_array_elements(case
+                    when jsonb_typeof(source.canonical_asset#>'{payload,dependencies}')='array'
+                    then source.canonical_asset#>'{payload,dependencies}' else '[]'::jsonb end) dependency
+                   where upper(dependency->>'assetType')=upper(upstream.asset_type)
+                     and dependency->>'assetId'=upstream.asset_id)
+            )
+            select asset_type as "assetType",asset_id as "assetId" from impacted
+             order by asset_type collate "C",asset_id collate "C"
+            """,proposed.get("assetType"),proposed.get("assetId"));
+        java.util.SortedSet<String> closure=new java.util.TreeSet<>();
+        closureIdentities.forEach(row->closure.add(row.get("assetType")+":"+row.get("assetId")));
+        if(!closure.contains(targetIdentity))throw new IllegalStateException(
+            "DESIGN_ASSET_SOURCE_STATE_REQUIRED: "+targetIdentity);
+
+        Map<String,Map<String,Object>> originalCanonicals=new TreeMap<>();
+        Map<String,String> originalFingerprints=new TreeMap<>();
+        Set<String> persisted=new HashSet<>();
+        for(String identity:closure){
+            int separator=identity.indexOf(':');
+            Map<String,Object> canonical=lockedCommonDesignSourceState(
+                identity.substring(0,separator),identity.substring(separator+1),persisted);
+            if(canonical==null)throw new IllegalStateException(
+                "DESIGN_ASSET_DEPENDENCY_SOURCE_STATE_REQUIRED: "+identity);
+            assertCommonDesignRuntimeRegistry(canonical);
+            originalCanonicals.put(identity,canonical);
+            originalFingerprints.put(identity,commonDesignAssetFingerprint(canonical));
+        }
+        Map<String,Map<String,Object>> graphCanonicals=new TreeMap<>(originalCanonicals);
+        graphCanonicals.put(targetIdentity,proposed);
+
+        java.util.SortedSet<String> requiredDependencies=new java.util.TreeSet<>();
+        for(Map.Entry<String,Map<String,Object>> entry:graphCanonicals.entrySet()){
+            List<Map<String,Object>> declared=designAssetDependencies(
+                requireMap(entry.getValue().get("payload"),"payload").get("dependencies"));
+            for(Map<String,Object> dependency:declared){
+                String identity=dependency.get("assetType")+":"+dependency.get("assetId");
+                if(entry.getKey().equals(identity))throw new IllegalArgumentException(
+                    "DESIGN_ASSET_SELF_DEPENDENCY_FORBIDDEN");
+                requiredDependencies.add(identity);
+            }
+        }
+        for(String identity:requiredDependencies){
+            if(originalCanonicals.containsKey(identity))continue;
+            int separator=identity.indexOf(':');
+            Map<String,Object> canonical=lockedCommonDesignSourceState(
+                identity.substring(0,separator),identity.substring(separator+1),persisted);
+            if(canonical==null)throw new IllegalStateException(
+                "DESIGN_ASSET_DEPENDENCY_SOURCE_STATE_REQUIRED: "+identity);
+            assertCommonDesignRuntimeRegistry(canonical);
+            originalCanonicals.put(identity,canonical);
+            originalFingerprints.put(identity,commonDesignAssetFingerprint(canonical));
+        }
+
+        Map<String,java.util.SortedSet<String>> downstream=new TreeMap<>();
+        Map<String,Integer> indegree=new TreeMap<>();
+        closure.forEach(identity->{downstream.put(identity,new java.util.TreeSet<>());
+            indegree.put(identity,0);});
+        for(String identity:closure){
+            List<Map<String,Object>> declared=designAssetDependencies(requireMap(
+                graphCanonicals.get(identity).get("payload"),"payload").get("dependencies"));
+            for(Map<String,Object> dependency:declared){
+                String dependencyIdentity=dependency.get("assetType")+":"+dependency.get("assetId");
+                String actual=originalFingerprints.get(dependencyIdentity);
+                if(actual==null)throw new IllegalStateException(
+                    "DESIGN_ASSET_DEPENDENCY_SOURCE_STATE_REQUIRED: "+dependencyIdentity);
+                if(!actual.equals(dependency.get("fingerprint")))throw new IllegalStateException(
+                    "DESIGN_ASSET_DEPENDENCY_FINGERPRINT_CHANGED: "+dependencyIdentity);
+                Map<String,Object> dependencyCanonical=targetIdentity.equals(dependencyIdentity)
+                    ?proposed:originalCanonicals.get(dependencyIdentity);
+                if(!Boolean.TRUE.equals(dependencyCanonical.get("active")))
+                    throw new IllegalStateException(
+                        "DESIGN_ASSET_DEPENDENCY_INACTIVE: "+dependencyIdentity);
+                if(closure.contains(dependencyIdentity)){
+                    if(downstream.get(dependencyIdentity).add(identity))
+                        indegree.put(identity,indegree.get(identity)+1);
+                }
+            }
+        }
+        PriorityQueue<String> ready=new PriorityQueue<>();
+        indegree.forEach((identity,count)->{if(count==0)ready.add(identity);});
+        List<String> topological=new ArrayList<>();
+        while(!ready.isEmpty()){
+            String identity=ready.remove();topological.add(identity);
+            for(String dependent:downstream.get(identity)){
+                int remaining=indegree.get(dependent)-1;indegree.put(dependent,remaining);
+                if(remaining==0)ready.add(dependent);
+            }
+        }
+        if(topological.size()!=closure.size())throw new IllegalStateException(
+            "COMMON_DESIGN_DEPENDENCY_CYCLE_FORBIDDEN");
+
+        Map<String,String> nextFingerprints=new TreeMap<>(originalFingerprints);
+        nextFingerprints.put(targetIdentity,proposedFingerprint);
+        Map<String,Map<String,Object>> nextCanonicals=new TreeMap<>(graphCanonicals);
+        List<CommonDesignCascadeEntry> dependents=new ArrayList<>();
+        List<Map<String,Object>> snapshots=new ArrayList<>();
+        snapshots.add(commonDesignSourceTransition(proposed,
+            originalFingerprints.get(targetIdentity),proposedFingerprint));
+        for(String identity:topological){
+            if(targetIdentity.equals(identity))continue;
+            Map<String,Object> current=nextCanonicals.get(identity);
+            Map<String,Object> nextPayload=new LinkedHashMap<>(
+                requireMap(current.get("payload"),"payload"));
+            List<Map<String,Object>> refreshed=new ArrayList<>();
+            for(Map<String,Object> dependency:designAssetDependencies(
+                    nextPayload.get("dependencies"))){
+                String dependencyIdentity=dependency.get("assetType")+":"+dependency.get("assetId");
+                String fingerprint=nextFingerprints.get(dependencyIdentity);
+                if(fingerprint==null)throw new IllegalStateException(
+                    "DESIGN_ASSET_DEPENDENCY_SOURCE_STATE_REQUIRED: "+dependencyIdentity);
+                refreshed.add(Map.of("assetType",dependency.get("assetType"),
+                    "assetId",dependency.get("assetId"),"fingerprint",fingerprint));
+            }
+            nextPayload.put("dependencies",refreshed);
+            Map<String,Object> raw=new LinkedHashMap<>(current);raw.put("payload",nextPayload);
+            Map<String,Object> next=canonicalCommonDesignAsset(raw);
+            String before=originalFingerprints.get(identity);
+            String after=commonDesignAssetFingerprint(next);
+            if(before.equals(after))throw new IllegalStateException(
+                "COMMON_DESIGN_DEPENDENCY_CASCADE_HASH_UNCHANGED: "+identity);
+            nextCanonicals.put(identity,next);nextFingerprints.put(identity,after);
+            dependents.add(new CommonDesignCascadeEntry(identity,next,before,after));
+            snapshots.add(commonDesignSourceTransition(next,before,after));
+        }
+        snapshots.sort(java.util.Comparator
+            .comparing((Map<String,Object> item)->String.valueOf(item.get("assetType")))
+            .thenComparing(item->String.valueOf(item.get("assetId"))));
+        return new CommonDesignCascadePlan(List.copyOf(dependents),List.copyOf(snapshots));
+    }
+
+    private static Map<String,Object> commonDesignSourceTransition(
+            Map<String,Object> canonical,String baseFingerprint,String fingerprint){
+        Map<String,Object> transition=new LinkedHashMap<>(canonical);
+        transition.put("baseFingerprint",baseFingerprint);
+        transition.put("fingerprint",fingerprint);
+        return transition;
+    }
+
+    private List<Map<String,Object>> exactCommonDesignSourceReceipt(String receiptId,
+            String assetType,String assetId,String baseFingerprint,String assetFingerprint){
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+            select asset_type as "assetType",asset_id as "assetId",
+                   trim(base_fingerprint) as "baseFingerprint",
+                   trim(asset_fingerprint) as "assetFingerprint",
+                   source_snapshots::text as "sourceSnapshots"
+              from framework_common_design_source_receipt
+             where receipt_id=? for update
+            """,receiptId);
+        if(rows.size()!=1)throw new IllegalStateException(
+            "COMMON_DESIGN_SOURCE_RECEIPT_REQUIRED");
+        Map<String,Object> row=rows.get(0);
+        if(!assetType.equals(row.get("assetType"))||!assetId.equals(row.get("assetId"))
+                ||!baseFingerprint.equals(row.get("baseFingerprint"))
+                ||!assetFingerprint.equals(row.get("assetFingerprint")))
+            throw new IllegalStateException("COMMON_DESIGN_SOURCE_RECEIPT_IDENTITY_MISMATCH");
+        Object parsed;
+        try{parsed=new com.fasterxml.jackson.databind.ObjectMapper().readValue(
+            String.valueOf(row.get("sourceSnapshots")),Object.class);}
+        catch(Exception error){throw new IllegalStateException(
+            "COMMON_DESIGN_SOURCE_RECEIPT_INVALID",error);}
+        List<Map<String,Object>> exact=new ArrayList<>();
+        Set<String> identities=new HashSet<>();int targetCount=0;
+        for(Object item:requireList(parsed,"sourceSnapshots")){
+            Map<String,Object> transition=requireMap(item,"sourceSnapshot");
+            if(!transition.keySet().equals(Set.of("assetType","assetId","assetName",
+                    "routePath","version","active","payload","baseFingerprint","fingerprint")))
+                throw new IllegalStateException("COMMON_DESIGN_SOURCE_RECEIPT_SCHEMA_INVALID");
+            Map<String,Object> raw=new LinkedHashMap<>(transition);
+            String before=req(raw,"baseFingerprint");String after=req(raw,"fingerprint");
+            raw.remove("baseFingerprint");raw.remove("fingerprint");
+            Map<String,Object> canonical=canonicalCommonDesignAsset(raw);
+            if(!before.matches("[0-9a-f]{64}")
+                    ||!after.equals(commonDesignAssetFingerprint(canonical)))
+                throw new IllegalStateException("COMMON_DESIGN_SOURCE_RECEIPT_SHA_INVALID");
+            String identity=canonical.get("assetType")+":"+canonical.get("assetId");
+            if(!identities.add(identity))throw new IllegalStateException(
+                "COMMON_DESIGN_SOURCE_RECEIPT_DUPLICATE_IDENTITY");
+            if(identity.equals(assetType+":"+assetId)){
+                targetCount++;
+                if(!before.equals(baseFingerprint)||!after.equals(assetFingerprint))
+                    throw new IllegalStateException(
+                        "COMMON_DESIGN_SOURCE_RECEIPT_TARGET_MISMATCH");
+            }
+            exact.add(commonDesignSourceTransition(canonical,before,after));
+        }
+        if(targetCount!=1)throw new IllegalStateException(
+            "COMMON_DESIGN_SOURCE_RECEIPT_TARGET_NOT_EXACT");
+        exact.sort(java.util.Comparator
+            .comparing((Map<String,Object> item)->String.valueOf(item.get("assetType")))
+            .thenComparing(item->String.valueOf(item.get("assetId"))));
+        return List.copyOf(exact);
+    }
+
+    private Map<String,Map<String,Object>> lockCommonDesignAssets(
+            String targetType,String targetId,
+            List<Map<String,Object>> dependencies,Set<String> persistedStates){
+        String targetIdentity=targetType+":"+targetId;
+        Map<String,Map<String,Object>> dependencyIndex=new TreeMap<>();
+        for(Map<String,Object> dependency:dependencies){
+            String identity=String.valueOf(dependency.get("assetType"))+":"+
+                String.valueOf(dependency.get("assetId"));
+            if(targetIdentity.equals(identity))throw new IllegalArgumentException(
+                "DESIGN_ASSET_SELF_DEPENDENCY_FORBIDDEN");
+            dependencyIndex.put(identity,dependency);
+        }
+        java.util.SortedSet<String> identities=lockCommonDesignAssetIdentities(
+            targetType,targetId,dependencies);
+        Map<String,Map<String,Object>> locked=new TreeMap<>();
+        for(String identity:identities){
+            int separator=identity.indexOf(':');
+            String type=identity.substring(0,separator),id=identity.substring(separator+1);
+            Map<String,Object> canonical=lockedCommonDesignSourceState(
+                type,id,persistedStates);
+            if(canonical==null)throw new IllegalStateException(
+                (identity.equals(targetIdentity)
+                    ?"DESIGN_ASSET_SOURCE_STATE_REQUIRED: "
+                    :"DESIGN_ASSET_DEPENDENCY_SOURCE_STATE_REQUIRED: ")+identity);
+            assertCommonDesignRuntimeRegistry(canonical);
+            String fingerprint=commonDesignAssetFingerprint(canonical);
+            Map<String,Object> dependency=dependencyIndex.get(identity);
+            if(dependency!=null){
+                if(!Boolean.TRUE.equals(canonical.get("active")))
+                    throw new IllegalStateException(
+                        "DESIGN_ASSET_DEPENDENCY_INACTIVE: "+identity);
+                if(!fingerprint.equals(dependency.get("fingerprint")))
+                    throw new IllegalStateException(
+                        "DESIGN_ASSET_DEPENDENCY_FINGERPRINT_CHANGED: "+identity);
+            }
+            locked.put(identity,canonical);
+        }
+        return locked;
+    }
+
+    private java.util.SortedSet<String> lockCommonDesignAssetIdentities(
+            String targetType,String targetId,List<Map<String,Object>> dependencies){
+        String targetIdentity=targetType+":"+targetId;
+        java.util.SortedSet<String> identities=new java.util.TreeSet<>();
+        identities.add(targetIdentity);
+        for(Map<String,Object> dependency:dependencies){
+            String identity=String.valueOf(dependency.get("assetType"))+":"+
+                String.valueOf(dependency.get("assetId"));
+            if(targetIdentity.equals(identity))throw new IllegalArgumentException(
+                "DESIGN_ASSET_SELF_DEPENDENCY_FORBIDDEN");
+            identities.add(identity);
+        }
+        // The registry is global. Project identity never partitions this lock.
+        for(String identity:identities)
+            jdbc.query("select pg_advisory_xact_lock(hashtextextended(?,0))",row->{},
+                "COMMON_DESIGN_SOURCE_V1:"+identity);
+        return identities;
+    }
+
+    private Map<String,Object> lockedCommonDesignSourceState(
+            String assetType,String assetId,Set<String> persistedStates){
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+            select canonical_asset::text as "canonicalAsset",
+                   asset_fingerprint as "assetFingerprint"
+              from framework_common_design_asset_source_state
+             where asset_type=? and asset_id=? for update
+            """,assetType,assetId);
+        if(rows.size()>1)throw new IllegalStateException(
+            "COMMON_DESIGN_SOURCE_STATE_NOT_EXACT: "+assetType+":"+assetId);
+        if(rows.isEmpty())return null;
+        Map<String,Object> canonical=canonicalCommonDesignAsset(
+            jsonMap(String.valueOf(rows.get(0).get("canonicalAsset"))));
+        if(!assetType.equals(canonical.get("assetType"))
+                ||!assetId.equals(canonical.get("assetId")))
+            throw new IllegalStateException("COMMON_DESIGN_SOURCE_STATE_IDENTITY_MISMATCH");
+        String computed=commonDesignAssetFingerprint(canonical);
+        Object stored=rows.get(0).get("assetFingerprint");
+        if(stored==null){
+            int initialized=jdbc.update("""
+                update framework_common_design_asset_source_state
+                   set asset_fingerprint=?,updated_by='SYSTEM_RUNTIME_BACKFILL',
+                       updated_at=current_timestamp
+                 where asset_type=? and asset_id=? and asset_fingerprint is null
+                """,computed,assetType,assetId);
+            if(initialized!=1)throw new IllegalStateException(
+                "COMMON_DESIGN_SOURCE_STATE_INITIALIZATION_NOT_EXACT");
+        }else if(!computed.equals(String.valueOf(stored).trim())){
+            throw new IllegalStateException("COMMON_DESIGN_SOURCE_STATE_FINGERPRINT_CORRUPT");
+        }
+        persistedStates.add(assetType+":"+assetId);
+        return canonical;
+    }
+
+    private int writeCommonDesignSourceState(Map<String,Object> canonical,
+            String fingerprint,String actor,boolean exists,String currentFingerprint){
+        String assetType=String.valueOf(canonical.get("assetType"));
+        String assetId=String.valueOf(canonical.get("assetId"));
+        if(exists)return jdbc.update("""
+            update framework_common_design_asset_source_state
+               set canonical_asset=cast(? as jsonb),asset_fingerprint=?,
+                   updated_by=?,updated_at=current_timestamp
+             where asset_type=? and asset_id=? and asset_fingerprint=?
+            """,toJson(canonical),fingerprint,actor,assetType,assetId,currentFingerprint);
+        return jdbc.update("""
+            insert into framework_common_design_asset_source_state(
+              asset_type,asset_id,canonical_asset,asset_fingerprint,updated_by)
+            values(?,?,cast(? as jsonb),?,?)
+            """,assetType,assetId,toJson(canonical),fingerprint,actor);
+    }
+
+    private void assertCommonDesignRuntimeRegistry(Map<String,Object> canonical){
+        String assetType=String.valueOf(canonical.get("assetType"));
+        String assetId=String.valueOf(canonical.get("assetId"));
+        String assetName=String.valueOf(canonical.get("assetName"));
+        String route=String.valueOf(canonical.get("routePath"));
+        String version=String.valueOf(canonical.get("version"));
+        boolean active=Boolean.TRUE.equals(canonical.get("active"));
+        Map<String,Object> payload=requireMap(canonical.get("payload"),"canonical.payload");
+        if("THEME".equals(assetType)){
+            Map<String,Object> row=exactRegistryRow("""
+                select theme_nm as "assetName",coalesce(theme_type,'') as "themeType",
+                       coalesce(theme_dc,'') as description,
+                       coalesce(color_config::text,'{}') as "colorConfig",
+                       coalesce(typography_config::text,'{}') as "typographyConfig",
+                       coalesce(spacing_config::text,'{}') as "spacingConfig",
+                       coalesce(border_config::text,'{}') as "borderConfig",
+                       coalesce(shadow_config::text,'{}') as "shadowConfig",
+                       coalesce(class_prefix,'') as "classPrefix",
+                       is_default='Y' as "isDefault",
+                       use_at='Y' and is_active='Y' as active
+                  from comtnthemedefinition where theme_id=? for update
+                """,assetId);
+            assertDesignScalar("assetName",assetName,row.get("assetName"));
+            assertDesignScalar("routePath",route,"");
+            assertDesignScalar("active",active,row.get("active"));
+            assertDesignScalar("description",str(payload,"description"),row.get("description"));
+            assertDesignScalar("themeType",str(payload,"themeType"),row.get("themeType"));
+            assertDesignJson("colorConfig",payload.get("colorConfig"),row.get("colorConfig"));
+            assertDesignJson("typographyConfig",payload.get("typographyConfig"),row.get("typographyConfig"));
+            assertDesignJson("spacingConfig",payload.get("spacingConfig"),row.get("spacingConfig"));
+            assertDesignJson("borderConfig",payload.get("borderConfig"),row.get("borderConfig"));
+            assertDesignJson("shadowConfig",payload.get("shadowConfig"),row.get("shadowConfig"));
+            assertDesignScalar("classPrefix",str(payload,"classPrefix"),row.get("classPrefix"));
+            assertDesignScalar("isDefault",flag(payload.get("isDefault")),row.get("isDefault"));
+            return;
+        }
+        if("SECTION".equals(assetType)){
+            Map<String,Object> row=exactRegistryRow("""
+                select section_name as "assetName",section_type as "sectionType",
+                       layout_contract as "layoutContract",
+                       responsive_contract as "responsiveContract",
+                       accessibility_contract as "accessibilityContract",
+                       coalesce(design_reference,'') as "designReference",
+                       active_yn='Y' as active
+                  from ui_section_registry where section_id=? for update
+                """,assetId);
+            assertDesignScalar("assetName",assetName,row.get("assetName"));
+            assertDesignScalar("routePath",route,"");
+            assertDesignScalar("active",active,row.get("active"));
+            for(String field:List.of("sectionType","layoutContract","responsiveContract",
+                    "accessibilityContract","designReference"))
+                assertDesignScalar(field,str(payload,field),row.get(field));
+            return;
+        }
+        if("COMPONENT".equals(assetType)){
+            Map<String,Object> row=exactRegistryRow("""
+                select component_name as "assetName",component_type as "componentType",
+                       owner_domain as "ownerDomain",
+                       coalesce(props_schema_json::text,'{}') as "propsSchema",
+                       coalesce(design_reference,'') as "designReference",
+                       coalesce(default_props::text,'{}') as "defaultProps",
+                       coalesce(category,'COMMON') as category,active_yn='Y' as active
+                  from ui_component_registry where component_id=? for update
+                """,assetId);
+            assertDesignScalar("assetName",assetName,row.get("assetName"));
+            assertDesignScalar("routePath",route,"");
+            assertDesignScalar("active",active,row.get("active"));
+            for(String field:List.of("componentType","ownerDomain","designReference","category"))
+                assertDesignScalar(field,str(payload,field),row.get(field));
+            assertDesignJson("propsSchema",payload.get("propsSchema"),row.get("propsSchema"));
+            assertDesignJson("defaultProps",payload.get("defaultProps"),row.get("defaultProps"));
+            return;
+        }
+        Map<String,Object> row=exactRegistryRow("""
+            select page_name as "assetName",route_path as "routePath",
+                   coalesce(nullif(version_id,''),layout_version) as version,
+                   layout_version as layout,design_token_version as theme,
+                   coalesce(nullif(component_schema,''),'{}') as composition,
+                   active_yn='Y' as active
+              from ui_page_manifest where page_id=? for update
+            """,assetId);
+        assertDesignScalar("assetName",assetName,row.get("assetName"));
+        assertDesignScalar("routePath",route,canonicalCommonDesignRoute(
+            String.valueOf(row.get("routePath"))));
+        assertDesignScalar("version",version,row.get("version"));
+        assertDesignScalar("active",active,row.get("active"));
+        assertDesignScalar("layout",str(payload,"layout"),row.get("layout"));
+        assertDesignScalar("theme",str(payload,"theme"),row.get("theme"));
+        assertDesignJson("composition",screenDesignComposition(payload),
+            row.get("composition"));
+    }
+
+    private static void assertDesignScalar(String field,Object expected,Object actual){
+        if(!String.valueOf(expected).equals(String.valueOf(actual)))
+            throw new IllegalStateException("DESIGN_ASSET_RUNTIME_STATE_CHANGED: "+field);
+    }
+
+    private static void assertDesignJson(String field,Object expected,Object actual){
+        Object parsed=actual;
+        if(actual instanceof String text){
+            try{parsed=new com.fasterxml.jackson.databind.ObjectMapper().readValue(text,Object.class);}
+            catch(Exception error){throw new IllegalStateException(
+                "DESIGN_ASSET_RUNTIME_JSON_INVALID: "+field,error);}
+        }
+        if(!stableDesignJson(expected).equals(stableDesignJson(parsed)))
+            throw new IllegalStateException("DESIGN_ASSET_RUNTIME_STATE_CHANGED: "+field);
+    }
+
+    private static Map<String,Object> canonicalCommonDesignAsset(Object raw){
+        Map<String,Object> source=requireMap(raw,"baseAsset");
+        Set<String> allowed=Set.of("assetType","assetId","assetName","routePath",
+            "version","active","payload");
+        if(source.size()!=allowed.size()||!source.keySet().equals(allowed))
+            throw new IllegalArgumentException("DESIGN_ASSET_BASE_SCHEMA_INVALID");
+        String assetType=req(source,"assetType").toUpperCase(Locale.ROOT);
+        String assetId=req(source,"assetId");
+        String assetName=req(source,"assetName");
+        String rawRoute=str(source,"routePath");
+        String route=canonicalCommonDesignRoute(rawRoute);
+        String version=req(source,"version");
+        if(!(source.get("active") instanceof Boolean active))
+            throw new IllegalArgumentException("DESIGN_ASSET_ACTIVE_BOOLEAN_REQUIRED");
+        Map<String,Object> payload=designAssetPayload(source.get("payload"),assetType);
+        List<Map<String,Object>> dependencies=
+            designAssetDependencies(payload.get("dependencies"));
+        assertScreenDependencyCompleteness(assetType,payload,dependencies);
+        return canonicalCommonDesignAsset(assetType,assetId,assetName,route,
+            version,active,payload);
+    }
+
+    private static Map<String,Object> canonicalCommonDesignAsset(String assetType,
+            String assetId,String assetName,String route,String version,boolean active,
+            Map<String,Object> payload){
+        if(!SOURCE_IMMEDIATE_DESIGN_ASSET_TYPES.contains(assetType)
+                ||!assetId.matches("[A-Za-z0-9][A-Za-z0-9_.:-]{1,199}"))
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_IDENTITY");
+        if(assetName.isBlank()||assetName.length()>300)
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_NAME");
+        if(!route.isBlank()&&(!route.startsWith("/")||route.length()>500))
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_ROUTE");
+        if(!version.matches("[A-Za-z0-9][A-Za-z0-9._-]{0,79}"))
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_VERSION");
+        Map<String,Object> canonical=new LinkedHashMap<>();
+        canonical.put("assetType",assetType);canonical.put("assetId",assetId);
+        canonical.put("assetName",assetName);canonical.put("routePath",route);
+        canonical.put("version",version);canonical.put("active",active);
+        canonical.put("payload",payload);
+        return canonical;
+    }
+
+    static String commonDesignAssetFingerprint(Map<String,Object> canonical){
+        Map<String,Object> normalized=new LinkedHashMap<>(canonical);
+        if(normalized.containsKey("routePath"))normalized.put("routePath",
+            canonicalCommonDesignRoute(normalized.get("routePath") == null
+                ?"":String.valueOf(normalized.get("routePath"))));
+        return sha256Hex(stableDesignJson(normalized));
+    }
+
+    private static String canonicalCommonDesignRoute(String value){
+        String raw=value==null?"":value.trim();
+        if(raw.isBlank())return "";
+        int query=raw.indexOf('?'),fragment=raw.indexOf('#'),boundary=raw.length();
+        if(query>=0)boundary=Math.min(boundary,query);
+        if(fragment>=0)boundary=Math.min(boundary,fragment);
+        String path=raw.substring(0,boundary).replaceAll("/{2,}","/");
+        return path.isBlank()?"/":path;
+    }
+
+    private static String stableDesignJson(Object value){
+        if(value==null)return "null";
+        if(value instanceof Map<?,?> raw){
+            java.util.SortedMap<String,Object> sorted=new java.util.TreeMap<>();
+            raw.forEach((key,item)->sorted.put(String.valueOf(key),item));
+            return sorted.entrySet().stream().map(entry->
+                canonicalDesignString(entry.getKey())+":"+stableDesignJson(entry.getValue()))
+                .collect(java.util.stream.Collectors.joining(",","{","}"));
+        }
+        if(value instanceof List<?> list)return list.stream().map(
+            ActorProcessGovernanceService::stableDesignJson)
+            .collect(java.util.stream.Collectors.joining(",","[","]"));
+        if(value instanceof Number number){
+            double normalized=number.doubleValue();
+            if(!Double.isFinite(normalized))
+                throw new IllegalArgumentException("DESIGN_ASSET_NONFINITE_NUMBER");
+            if(normalized==0d)normalized=0d;
+            return String.format(Locale.ROOT,"@%016x",Double.doubleToLongBits(normalized));
+        }
+        if(value instanceof String text)return canonicalDesignString(text);
+        if(value instanceof Boolean bool)return bool?"true":"false";
+        throw new IllegalArgumentException("DESIGN_ASSET_NON_JSON_VALUE");
+    }
+
+    private static String canonicalDesignString(String value){
+        for(int index=0;index<value.length();index++){
+            char current=value.charAt(index);
+            if(Character.isHighSurrogate(current)){
+                if(index+1>=value.length()||!Character.isLowSurrogate(value.charAt(index+1)))
+                    throw new IllegalArgumentException("DESIGN_ASSET_UNPAIRED_SURROGATE");
+                index++;
+            }else if(Character.isLowSurrogate(current)){
+                throw new IllegalArgumentException("DESIGN_ASSET_UNPAIRED_SURROGATE");
+            }
+        }
+        byte[] bytes=value.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        StringBuilder encoded=new StringBuilder(bytes.length*2+2).append('"');
+        for(byte item:bytes)encoded.append(String.format(Locale.ROOT,"%02x",item&0xff));
+        return encoded.append('"').toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String,Object> requireMap(Object value,String field){
+        if(!(value instanceof Map<?,?> raw))
+            throw new IllegalArgumentException(field+" must be an object");
+        Map<String,Object> result=new LinkedHashMap<>();
+        raw.forEach((key,item)->result.put(String.valueOf(key),item));
+        return result;
+    }
+
+    private static List<?> requireList(Object value,String field){
+        if(!(value instanceof List<?> list))
+            throw new IllegalArgumentException(field+" must be an array");
+        return list;
+    }
+
+    private static String value(Map<String,Object> source,String key,Object fallback){
+        String value=str(source,key);
+        return value.isBlank()?(fallback==null?"":String.valueOf(fallback)):value;
+    }
+
+    private static boolean commonAssetMarkerMatches(String specification,
+            String assetType,String assetId,String fingerprint){
+        Map<String,Object> spec=jsonMap(specification);
+        Object rawAssets=spec.get("sourceImmediateAssets");
+        if(!(rawAssets instanceof Map<?,?> assets))return false;
+        Object rawMarker=assets.get(assetType+":"+assetId);
+        if(!(rawMarker instanceof Map<?,?> marker))return false;
+        return fingerprint.equals(String.valueOf(marker.get("assetFingerprint")))
+            &&SOURCE_IMMEDIATE_ACTIVATION_POLICY.equals(
+                String.valueOf(marker.get("activationPolicy")));
     }
 
     public Map<String,Object> searchAssetCatalog(String query,String type,int requestedLimit){
@@ -765,29 +6197,9 @@ public class ActorProcessGovernanceService {
     }
 
     @Transactional public Map<String,Object> runDesignPreflight(Map<String,Object>b,String actor){
-        String pageId=req(b,"pageId"),route=req(b,"routePath"),pageName=req(b,"pageName"),domain=def(b,"domainCode","COMMON");
-        String themeId=def(b,"themeId","KRDS_GOV_DEFAULT"),sectionId=req(b,"sectionId"),componentName=req(b,"componentName"),componentType=req(b,"componentType");
-        Integer themeCount=jdbc.queryForObject("select count(*) from comtnthemedefinition where theme_id=? and use_at='Y' and is_active='Y'",Integer.class,themeId);
-        if(themeCount==null||themeCount==0)throw new IllegalArgumentException("활성 테마가 존재하지 않습니다: "+themeId);
-        Integer sectionCount=jdbc.queryForObject("select count(*) from ui_section_registry where section_id=? and active_yn='Y'",Integer.class,sectionId);
-        if(sectionCount==null||sectionCount==0)throw new IllegalArgumentException("등록된 섹션을 먼저 선택해야 합니다: "+sectionId);
-        String classSetId=def(b,"classSetId",defaultClassSet(componentType));
-        Integer classSetCount=jdbc.queryForObject("select count(*) from comtnthemeclassset where class_set_id=? and theme_id=? and use_at='Y'",Integer.class,classSetId,themeId);
-        if(classSetCount==null||classSetCount==0)throw new IllegalArgumentException("등록된 공통 CSS 클래스 세트를 먼저 선택해야 합니다: "+classSetId);
-        String props=def(b,"propsSchema","{}"),designRef=def(b,"designReference",themeId);
-        String fingerprint=jdbc.queryForObject("select md5(lower(trim(?))||'|'||lower(trim(?))||'|'||?||'|'||?)",String.class,componentType,componentName,props,designRef);
-        jdbc.query("select pg_advisory_xact_lock(hashtext(?))",rs->{},fingerprint);
-        List<Map<String,Object>> matches=jdbc.queryForList("select component_id as \"componentId\",asset_fingerprint as fingerprint from ui_component_registry where active_yn='Y' and category='COMMON' and (asset_fingerprint=? or (component_type=? and props_schema_json=? and design_reference=?)) order by case when asset_fingerprint=? then 0 else 1 end,component_id limit 1",fingerprint,componentType,props,designRef,fingerprint);
-        String componentId,decision;
-        if(matches.isEmpty()){
-            componentId="CMP_"+fingerprint.substring(0,12).toUpperCase(); decision="CREATED";
-            jdbc.update("insert into ui_component_registry(component_id,component_name,component_type,owner_domain,props_schema_json,design_reference,active_yn,category,default_props,asset_fingerprint,created_at,updated_at) values(?,?,?,?,?,?,'Y','COMMON',?,?,current_timestamp,current_timestamp)",componentId,componentName,componentType,domain,props,designRef,props,fingerprint);
-        }else{componentId=String.valueOf(matches.get(0).get("componentId"));fingerprint=String.valueOf(matches.get(0).get("fingerprint"));decision="REUSED";}
-        jdbc.update("insert into ui_page_manifest(page_id,page_name,route_path,domain_code,layout_version,design_token_version,active_yn,created_at,updated_at,page_title,page_url,version_status) values(?,?,?,?,'1.0.0',?,'Y',current_timestamp,current_timestamp,?,?, 'DRAFT') on conflict(page_id) do update set page_name=excluded.page_name,route_path=excluded.route_path,domain_code=excluded.domain_code,design_token_version=excluded.design_token_version,active_yn='Y',updated_at=current_timestamp",pageId,pageName,route,domain,themeId,pageName,route);
-        Integer mappingCount=jdbc.queryForObject("select count(*) from ui_page_component_map where page_id=? and component_id=? and layout_zone=?",Integer.class,pageId,componentId,sectionId);
-        if(mappingCount==null||mappingCount==0) jdbc.update("insert into ui_page_component_map(map_id,page_id,layout_zone,component_id,instance_key,display_order,conditional_rule_summary,created_at,updated_at) values(?,?,?,?,?,coalesce((select max(display_order)+1 from ui_page_component_map where page_id=?),1),?,current_timestamp,current_timestamp)","MAP_"+pageId.replaceAll("[^A-Za-z0-9]","")+"_"+componentId,pageId,sectionId,componentId,pageId+"_"+componentId,pageId,"design-preflight");
-        jdbc.update("insert into framework_design_preflight(page_id,route_path,theme_id,section_id,component_id,class_set_id,decision,asset_fingerprint,evidence_json,reuse_policy,source_scope,executed_by) values(?,?,?,?,?,?,?,?,?,'COMMON_ONLY','COMMON',?)",pageId,route,themeId,sectionId,componentId,classSetId,decision,fingerprint,"{\"themeVerified\":true,\"sectionVerified\":true,\"componentMatched\":true,\"classSetVerified\":true,\"commonOnly\":true}",actor);
-        return Map.of("success",true,"decision",decision,"componentId",componentId,"fingerprint",fingerprint,"pageId",pageId,"sectionId",sectionId,"themeId",themeId,"classSetId",classSetId,"reusePolicy","COMMON_ONLY");
+        return Map.of("success",false,"status","RETIRED","httpStatus",410,
+            "activationPolicy",SOURCE_IMMEDIATE_ACTIVATION_POLICY,
+            "message","Use the globally authorized common-design source endpoint.");
     }
 
     @Transactional public Map<String,Object> ensureCommonDesignAssets(String process,String step,String actor){
@@ -798,26 +6210,188 @@ public class ActorProcessGovernanceService {
         for(Map<String,Object> row:routes){
             String route=ScreenDevelopmentNoteService.cleanRoute(String.valueOf(row.get("route_path")));
             if(route.isBlank())continue;
-            String pageId=jdbc.queryForObject("select 'AUTO_'||upper(substr(md5(lower(?)),1,16))",String.class,route);
-            Map<String,Object> request=new LinkedHashMap<>();
-            request.put("pageId",pageId);request.put("pageName",String.valueOf(row.get("stepName")));request.put("routePath",route);
-            request.put("domainCode",process);request.put("themeId","KRDS_GOV_DEFAULT");request.put("sectionId","DETAIL_WORKSPACE");
-            request.put("componentName",common.get("componentName"));request.put("componentType",common.get("componentType"));
-            request.put("propsSchema",common.get("propsSchema"));request.put("designReference",common.get("designReference"));
-            request.put("classSetId",defaultClassSet(String.valueOf(common.get("componentType"))));
-            bindings.add(runDesignPreflight(request,actor));
+            Integer covered=jdbc.queryForObject("select count(*) from framework_common_design_asset_coverage where route_path=lower(?) and common_assets_ready",Integer.class,route);
+            if(covered!=null&&covered>0)continue;
+            throw new IllegalStateException(
+                "COMMON_DESIGN_SOURCE_REQUIRED: "+process+":"+row.get("stepCode")+":"+route);
         }
         return Map.of("success",true,"checkedRoutes",bindings.size(),"bindings",bindings);
     }
 
-    private String defaultClassSet(String componentType){
-        if("BUTTON".equalsIgnoreCase(componentType))return "KRDS_BUTTON_PRIMARY";
-        if("INPUT".equalsIgnoreCase(componentType)||"FORM".equalsIgnoreCase(componentType))return "KRDS_FORM_CONTROL";
-        return "KRDS_CONTENT_CARD";
+    private java.util.SortedSet<String> canonicalCodeSet(
+            String raw,String codePattern,String fieldName){
+        java.util.SortedSet<String> values=new java.util.TreeSet<>();
+        for(String value:raw.split(",")){
+            String code=value.trim().toUpperCase(Locale.ROOT);
+            if(code.isEmpty())continue;
+            if(!code.matches(codePattern))
+                throw new IllegalArgumentException("INVALID_"+fieldName+": "+code);
+            values.add(code);
+        }
+        return values;
     }
 
-    @Transactional public void createActor(Map<String,Object>b){
-        jdbc.update("insert into framework_actor_definition(actor_code,actor_name,actor_name_en,actor_type,purpose,capability_codes,delegation_allowed) values(?,?,?,?,?,?,?) on conflict(actor_code) do update set actor_name=excluded.actor_name,actor_name_en=excluded.actor_name_en,actor_type=excluded.actor_type,purpose=excluded.purpose,capability_codes=excluded.capability_codes,delegation_allowed=excluded.delegation_allowed,updated_at=current_timestamp",req(b,"actorCode"),req(b,"actorName"),str(b,"actorNameEn"),def(b,"actorType","BUSINESS"),req(b,"purpose"),str(b,"capabilityCodes"),bool(b,"delegationAllowed"));
+    /**
+     * Locks actor definitions in one deterministic order before a process or step
+     * persists references to them.  Actor deactivation takes the same row lock, so
+     * it must either observe the committed reference and refresh its process or
+     * complete first and make the active-reference validation fail closed.
+     */
+    private Map<String,String> lockActorDefinitions(
+            java.util.Collection<String> requestedCodes){
+        java.util.SortedSet<String> codes=new java.util.TreeSet<>();
+        for(String raw:requestedCodes){
+            String code=raw==null?"":raw.trim().toUpperCase(Locale.ROOT);
+            if(!code.isEmpty())codes.add(code);
+        }
+        if(codes.isEmpty())return Map.of();
+        for(String code:codes){
+            jdbc.query("select pg_advisory_xact_lock(hashtextextended("+
+                "'CANONICAL_ACTOR_MUTATION_V1:'||upper(btrim(?)),0))",rs->{},code);
+        }
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+            select actor_code,use_at
+              from framework_actor_definition
+             where actor_code=any(string_to_array(?,','))
+             order by actor_code collate "C"
+             for update
+            """,String.join(",",codes));
+        Map<String,String> states=new LinkedHashMap<>();
+        for(Map<String,Object> row:rows){
+            states.put(String.valueOf(row.get("actor_code")),
+                String.valueOf(row.get("use_at")));
+        }
+        return states;
+    }
+
+    private boolean isActiveActor(Map<String,String> actorStates,String actorCode){
+        return "Y".equals(actorStates.get(actorCode));
+    }
+
+    @Transactional public Map<String,Object> createActor(Map<String,Object>b,String authenticatedActor){
+        return createActorInternal(b,authenticatedActor,true);
+    }
+
+    @Transactional public Map<String,Object> createActorForRequirementImport(
+            Map<String,Object>b,String authenticatedActor){
+        if(authenticatedActor==null||authenticatedActor.isBlank()
+                ||!authenticatedActor.equals(authenticatedActor.trim())
+                ||authenticatedActor.length()>100)
+            throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
+        String actorCode=req(b,"actorCode").trim().toUpperCase(Locale.ROOT);
+        if(!actorCode.matches("^[A-Z][A-Z0-9_]{1,59}$"))
+            throw new IllegalArgumentException("INVALID_ACTOR_CODE: "+actorCode);
+        Map<String,String> existing=lockActorDefinitions(java.util.Set.of(actorCode));
+        if(existing.containsKey(actorCode)){
+            if(!isActiveActor(existing,actorCode))
+                throw new IllegalArgumentException(
+                    "ACTIVE_ACTOR_NOT_FOUND: "+actorCode);
+            List<String> affected=affectedProcessesForActor(actorCode);
+            Map<String,Object> response=new LinkedHashMap<>();
+            response.put("success",true);response.put("actorCode",actorCode);
+            response.put("affectedProcessCount",affected.size());
+            response.put("affectedProcessCodes",affected);
+            response.put("propagationDeferred",true);
+            response.put("generationQueued",false);
+            response.put("queuedProcessCount",0);
+            response.put("processResults",List.of());
+            response.put("definitionChanged",false);
+            return response;
+        }
+        Map<String,Object> created=createActorInternal(b,authenticatedActor,false);
+        created.put("definitionChanged",true);
+        return created;
+    }
+
+    private Map<String,Object> createActorInternal(
+            Map<String,Object>b,String authenticatedActor,boolean propagate){
+        if(authenticatedActor==null||authenticatedActor.isBlank()
+                ||!authenticatedActor.equals(authenticatedActor.trim())
+                ||authenticatedActor.length()>100)
+            throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
+        String actorCode=req(b,"actorCode").trim().toUpperCase(Locale.ROOT);
+        String purpose=req(b,"purpose");
+        if(!actorCode.matches("^[A-Z][A-Z0-9_]{1,59}$"))throw new IllegalArgumentException("actorCode must use uppercase letters, numbers, and underscores");
+        java.util.SortedSet<String> capabilities=canonicalCodeSet(
+            str(b,"capabilityCodes"),"^[A-Z][A-Z0-9_:-]{0,79}$","CAPABILITY_CODE");
+        java.util.SortedSet<String> conflicts=canonicalCodeSet(
+            str(b,"conflictActorCodes"),"^[A-Z][A-Z0-9_]{1,59}$","CONFLICT_ACTOR_CODE");
+        if(conflicts.contains(actorCode))
+            throw new IllegalArgumentException("CONFLICT_ACTOR_MUST_DIFFER_FROM_SELF: "+actorCode);
+        java.util.SortedSet<String> lockedActors=new java.util.TreeSet<>(conflicts);
+        lockedActors.add(actorCode);
+        Map<String,String> actorStates=lockActorDefinitions(lockedActors);
+        if(!conflicts.isEmpty()){
+            java.util.SortedSet<String> activeConflicts=new java.util.TreeSet<>();
+            for(String conflict:conflicts){
+                if(isActiveActor(actorStates,conflict))activeConflicts.add(conflict);
+            }
+            if(!activeConflicts.equals(conflicts)){
+                java.util.SortedSet<String> missing=new java.util.TreeSet<>(conflicts);
+                missing.removeAll(activeConflicts);
+                throw new IllegalArgumentException("ACTIVE_CONFLICT_ACTOR_NOT_FOUND: "+missing);
+            }
+        }
+        String useAt=def(b,"useAt","Y").trim().toUpperCase(Locale.ROOT);
+        if(!useAt.matches("^[YN]$"))throw new IllegalArgumentException("useAt must be Y or N");
+        if("N".equals(useAt)){
+            Integer activeAssignments=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where actor_code=? and assignment_status='ACTIVE' and (valid_until is null or valid_until>=current_date)",Integer.class,actorCode);
+            if(activeAssignments!=null&&activeAssignments>0)throw new IllegalArgumentException("ACTIVE_ACTOR_ASSIGNMENTS_EXIST");
+            List<String> activeConflictReferences=jdbc.queryForList("""
+                select actor_code
+                  from framework_actor_definition
+                 where use_at='Y' and actor_code<>?
+                   and ?=any(regexp_split_to_array(
+                     coalesce(nullif(btrim(conflict_actor_codes),''),'__NONE__'),
+                     '[[:space:]]*,[[:space:]]*'))
+                 order by actor_code
+                """,String.class,actorCode,actorCode);
+            if(!activeConflictReferences.isEmpty()){
+                throw new IllegalArgumentException(
+                    "ACTIVE_ACTOR_CONFLICT_REFERENCES_EXIST: "+activeConflictReferences);
+            }
+        }
+        jdbc.update("insert into framework_actor_definition(actor_code,actor_name,actor_name_en,actor_type,purpose,capability_codes,delegation_allowed,use_at,responsibility_text,accountability_text,competency_requirements,conflict_actor_codes,max_concurrent_assignments,review_cycle_days) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(actor_code) do update set actor_name=excluded.actor_name,actor_name_en=excluded.actor_name_en,actor_type=excluded.actor_type,purpose=excluded.purpose,capability_codes=excluded.capability_codes,delegation_allowed=excluded.delegation_allowed,use_at=excluded.use_at,responsibility_text=excluded.responsibility_text,accountability_text=excluded.accountability_text,competency_requirements=excluded.competency_requirements,conflict_actor_codes=excluded.conflict_actor_codes,max_concurrent_assignments=excluded.max_concurrent_assignments,review_cycle_days=excluded.review_cycle_days,updated_at=current_timestamp",actorCode,req(b,"actorName"),str(b,"actorNameEn"),def(b,"actorType","BUSINESS"),purpose,String.join(",",capabilities),bool(b,"delegationAllowed"),useAt,def(b,"responsibility",purpose),def(b,"accountability",purpose),def(b,"competency",purpose),String.join(",",conflicts),integerOr(b,"maxConcurrentAssignments",0),integerOr(b,"reviewCycleDays",365));
+        List<String> affected=affectedProcessesForActor(actorCode);
+        List<Map<String,Object>> processResults=new java.util.ArrayList<>();
+        int queuedCount=0;
+        for(String process:affected){
+            if(!propagate)continue;
+            Map<String,Object> trigger=new LinkedHashMap<>();
+            trigger.put("triggerType","ACTOR_DEFINITION");trigger.put("actorCode",actorCode);
+            Map<String,Object> result=refreshAndQueueCanonicalProcess(
+                process,authenticatedActor,trigger);
+            if(Boolean.TRUE.equals(result.get("generationQueued")))queuedCount++;
+            processResults.add(result);
+        }
+        Map<String,Object> response=new LinkedHashMap<>();
+        response.put("success",true);response.put("actorCode",actorCode);
+        response.put("affectedProcessCount",affected.size());
+        response.put("affectedProcessCodes",affected);
+        response.put("propagationDeferred",!propagate);
+        response.put("generationQueued",queuedCount>0);
+        response.put("queuedProcessCount",queuedCount);response.put("processResults",processResults);
+        return response;
+    }
+
+    private List<String> affectedProcessesForActor(String actorCode){
+        return jdbc.queryForList("""
+            select affected.process_code from (
+              select step.process_code from framework_process_step step
+               where step.actor_code=?
+              union
+              select process.process_code from framework_process_definition process
+               where process.owner_actor_code=?
+              union
+              select step.process_code from framework_process_step step
+               where step.escalation_actor_code=?
+              union
+               select step.process_code from framework_process_step step
+                where ?=any(regexp_split_to_array(
+                  coalesce(nullif(btrim(step.segregation_actor_codes),''),'__NONE__'),
+                  '[[:space:]]*,[[:space:]]*'))
+            ) affected order by affected.process_code collate "C"
+            """,String.class,actorCode,actorCode,actorCode,actorCode);
     }
     @Transactional public void saveWorkType(Map<String,Object>b){
         String code=req(b,"workTypeCode").trim().toUpperCase(Locale.ROOT);
@@ -825,7 +6399,16 @@ public class ActorProcessGovernanceService {
         jdbc.update("insert into framework_business_work_type(work_type_code,work_type_name,work_type_name_en,description,sort_order,use_at) values(?,?,?,?,?,?) on conflict(work_type_code) do update set work_type_name=excluded.work_type_name,work_type_name_en=excluded.work_type_name_en,description=excluded.description,sort_order=excluded.sort_order,use_at=excluded.use_at,updated_at=current_timestamp",code,req(b,"workTypeName"),str(b,"workTypeNameEn"),str(b,"description"),integerOr(b,"sortOrder",100),def(b,"useAt","Y"));
     }
     @Transactional public void assignActor(Map<String,Object>b){
-        String accountId=req(b,"accountId"), tenantId=def(b,"tenantId","DEFAULT"), projectId=def(b,"projectId","*"), actorCode=req(b,"actorCode");
+        String accountId=req(b,"accountId"), tenantId=def(b,"tenantId","DEFAULT"), projectId=def(b,"projectId","*");
+        String actorCode=req(b,"actorCode").trim().toUpperCase(Locale.ROOT);
+        if(!actorCode.matches("^[A-Z][A-Z0-9_]{1,59}$"))
+            throw new SecurityException("ACTIVE_ACTOR_NOT_FOUND");
+        List<String> activeActor=jdbc.queryForList("""
+            select actor_code from framework_actor_definition
+             where actor_code=? and use_at='Y'
+             for update
+            """,String.class,actorCode);
+        if(activeActor.size()!=1)throw new SecurityException("ACTIVE_ACTOR_NOT_FOUND");
         jdbc.update("insert into framework_account_actor_assignment(account_id,tenant_id,project_id,actor_code,data_scope,valid_until) values(?,?,?,?,?,nullif(?,'')::date) on conflict(account_id,tenant_id,project_id,actor_code) do update set data_scope=excluded.data_scope,valid_until=excluded.valid_until,assignment_status='ACTIVE'",accountId,tenantId,projectId,actorCode,def(b,"dataScope","*"),str(b,"validUntil"));
         if(!"*".equals(projectId)){
             Integer projectCount=jdbc.queryForObject("select count(*) from emission_project_registry where project_id=? and tenant_id=?",Integer.class,projectId,tenantId);
@@ -835,22 +6418,321 @@ public class ActorProcessGovernanceService {
             jdbc.update("insert into emission_project_history(project_id,event_type,event_description,actor_name) values (?,'ACTOR_ASSIGNED',?||' 역할의 주 담당자가 '||?||'(으)로 배정되었습니다.',?)",projectId,actorCode,accountId,accountId);
         }
     }
-    @Transactional public void createProcess(Map<String,Object>b){
+
+    @Transactional public void assignActorAuthorized(Map<String,Object>b,String requesterAccountId,String requesterTenantId,String requesterAuthorCode,boolean platformAdministrator){
+        String accountId=req(b,"accountId").trim();
+        String tenantId=def(b,"tenantId","DEFAULT").trim();
+        String projectId=def(b,"projectId","*").trim();
+        String requester=requesterAccountId==null?"":requesterAccountId.trim();
+        String requesterTenant=requesterTenantId==null?"":requesterTenantId.trim();
+        String authority=requesterAuthorCode==null?"":requesterAuthorCode.trim().toUpperCase(Locale.ROOT);
+        if(requester.isBlank())throw new SecurityException("AUTHENTICATION_REQUIRED");
+        if(!platformAdministrator&&(requesterTenant.isBlank()||!tenantId.equals(requesterTenant)))throw new SecurityException("ACTOR_ASSIGNMENT_TENANT_FORBIDDEN");
+        if(!"*".equals(projectId)){
+            Integer projectCount=jdbc.queryForObject("select count(*) from emission_project_registry where project_id=? and tenant_id=?",Integer.class,projectId,tenantId);
+            if(projectCount==null||projectCount==0)throw new SecurityException("ACTOR_ASSIGNMENT_PROJECT_TENANT_FORBIDDEN");
+        }
+        if(!platformAdministrator){
+            // ROLE_ADMIN is the company's bootstrap administrator in the member model.
+            // After onboarding, an active COMPANY_MANAGER actor binding grants the same
+            // bounded capability without promoting that account to a platform role.
+            boolean companyAdministrator="ROLE_ADMIN".equals(authority);
+            if(!companyAdministrator){
+                Integer managerCount=jdbc.queryForObject("select count(*) from framework_account_actor_assignment assignment join framework_actor_definition actor on actor.actor_code=assignment.actor_code and actor.use_at='Y' where assignment.tenant_id=? and lower(assignment.account_id)=lower(?) and assignment.actor_code='COMPANY_MANAGER' and assignment.assignment_status='ACTIVE' and (assignment.valid_from is null or assignment.valid_from<=current_date) and (assignment.valid_until is null or assignment.valid_until>=current_date) and (assignment.project_id='*' or assignment.project_id=?) and (assignment.data_scope='*' or ?=any(string_to_array(replace(assignment.data_scope,' ',''),',')))",Integer.class,tenantId,requester,projectId,projectId);
+                if(managerCount==null||managerCount==0)throw new SecurityException("ACTOR_ASSIGNMENT_COMPANY_MANAGER_REQUIRED");
+            }
+            Integer targetCount=jdbc.queryForObject("select count(*) from (select emplyr_id as account_id from comtnemplyrinfo where lower(emplyr_id)=lower(?) and trim(instt_id)=trim(?) and emplyr_sttus_code in ('P','A') union all select entrprs_mber_id from comtnentrprsmber where lower(entrprs_mber_id)=lower(?) and trim(instt_id)=trim(?) and entrprs_mber_sttus in ('P','A')) tenant_account",Integer.class,accountId,tenantId,accountId,tenantId);
+            if(targetCount==null||targetCount==0)throw new SecurityException("ACTOR_ASSIGNMENT_TARGET_TENANT_FORBIDDEN");
+        }
+        assignActor(b);
+    }
+
+    @Transactional public Map<String,Object> saveProjectDeliveryBlueprint(Map<String,Object>b,String actor){
+        String code=req(b,"blueprintCode").trim().toUpperCase(Locale.ROOT);
+        if(!code.matches("^[A-Z][A-Z0-9_]{2,99}$"))throw new IllegalArgumentException("blueprintCode must use uppercase letters, numbers, and underscores");
+        Object actors=b.get("actors"),processes=b.get("processCodes");
+        if(!(actors instanceof List<?> actorList)||actorList.isEmpty())throw new IllegalArgumentException("at least one actor binding is required");
+        if(!(processes instanceof List<?> processList)||processList.isEmpty())throw new IllegalArgumentException("at least one process is required");
+        Map<String,Object> specification=new LinkedHashMap<>();
+        specification.put("schemaVersion","1.0.0");specification.put("actors",actors);specification.put("processCodes",processes);
+        specification.put("qualityGate",List.of("ACTOR","PROCESS_STEP","VALID_SCREEN","HAPPY_PATH","AUTHORITY","ISOLATION","EXCEPTION","RECOVERY","ATOMIC_ROLLBACK"));
+        boolean approve=bool(b,"approve");
+        jdbc.update("insert into framework_project_delivery_blueprint(blueprint_code,blueprint_name,blueprint_version,domain_code,specification,blueprint_status,approved_by,approved_at) values(?,?,?,?,cast(? as jsonb),?,case when ? then ? else null end,case when ? then current_timestamp else null end) on conflict(blueprint_code) do update set blueprint_name=excluded.blueprint_name,blueprint_version=excluded.blueprint_version,domain_code=excluded.domain_code,specification=excluded.specification,blueprint_status=excluded.blueprint_status,approved_by=excluded.approved_by,approved_at=excluded.approved_at,updated_at=current_timestamp",code,req(b,"blueprintName"),def(b,"blueprintVersion","1.0.0"),req(b,"domainCode").toUpperCase(Locale.ROOT),toJson(specification),approve?"APPROVED":"DRAFT",approve,actor,approve);
+        Map<String,Object> validation=jsonMap(jdbc.queryForObject("select framework_validate_project_delivery_blueprint(?)::text",String.class,code));
+        if(!Boolean.TRUE.equals(validation.get("valid"))){
+            jdbc.update("update framework_project_delivery_blueprint set blueprint_status='DRAFT',approved_by=null,approved_at=null,updated_at=current_timestamp where blueprint_code=?",code);
+        }
+        return Map.of("success",Boolean.TRUE.equals(validation.get("valid")),"blueprintCode",code,"status",approve&&Boolean.TRUE.equals(validation.get("valid"))?"APPROVED":"DRAFT","validation",validation);
+    }
+
+    public Map<String,Object> validateProjectDeliveryBlueprint(String code){
+        return jsonMap(jdbc.queryForObject("select framework_validate_project_delivery_blueprint(?)::text",String.class,code));
+    }
+
+    @Transactional public Map<String,Object> applyProjectDeliveryBlueprint(Map<String,Object>b,String actor){
+        String blueprintCode=req(b,"blueprintCode"),tenantId=def(b,"tenantId","DEFAULT"),projectId=req(b,"projectId");
+        Map<String,Object> specification=jsonMap(jdbc.queryForObject("select specification::text from framework_project_delivery_blueprint where blueprint_code=? and blueprint_status='APPROVED'",String.class,blueprintCode));
+        Set<String> requiredActors=new HashSet<>();
+        Object rawActors=specification.get("actors");
+        if(rawActors instanceof List<?> list)for(Object item:list)if(item instanceof Map<?,?> row)requiredActors.add(String.valueOf(row.get("actorCode")));
+        Object rawBindings=b.get("actorBindings");
+        if(!(rawBindings instanceof List<?> bindings)||bindings.isEmpty())throw new IllegalArgumentException("actorBindings are required");
+        Set<String> boundActors=new HashSet<>();
+        List<Map<String,Object>> normalizedBindings=new java.util.ArrayList<>();
+        for(Object item:bindings){
+            if(!(item instanceof Map<?,?> raw))continue;
+            Map<String,Object> binding=new LinkedHashMap<>();raw.forEach((key,value)->binding.put(String.valueOf(key),value));
+            boundActors.add(req(binding,"actorCode"));req(binding,"accountId");normalizedBindings.add(binding);
+        }
+        if(!boundActors.containsAll(requiredActors))throw new IllegalArgumentException("every blueprint actor requires a project account binding: "+requiredActors);
+        for(Map<String,Object> binding:normalizedBindings){binding.put("tenantId",tenantId);binding.put("projectId",projectId);assignActor(binding);}
+        Map<String,Object> result=jsonMap(jdbc.queryForObject("select framework_apply_project_delivery_blueprint(?,?,?,?)::text",String.class,blueprintCode,tenantId,projectId,actor));
+        if(!Boolean.TRUE.equals(result.get("success")))throw new IllegalArgumentException("project delivery validation failed: "+result);
+        return result;
+    }
+
+    /**
+     * Executes the real project-delivery path inside a transaction that is
+     * always rolled back.  It proves actor assignment, process/task sync,
+     * generated-screen impact and release creation without leaving test data in
+     * the customer database.
+     */
+    @Transactional public Map<String,Object> verifyProjectDeliveryBlueprintE2E(String actor){
+        String suffix=UUID.randomUUID().toString().replace("-","").substring(0,12).toUpperCase(Locale.ROOT);
+        String projectId="E2E-PDR-"+suffix;
+        String blueprintCode="E2E_PDR_"+suffix;
+        String tenantId="DEFAULT";
+        Map<String,Object> process=jdbc.queryForMap("select p.process_code,a.actor_code from framework_process_definition p join lateral (select s.actor_code from framework_process_step s where s.process_code=p.process_code order by s.step_order limit 1) a on true where p.process_code='EMISSION_PROJECT' and exists(select 1 from framework_screen_blueprint b where b.process_code=p.process_code and b.validation_status='VALID') and exists(select 1 from framework_simulation_case c where c.process_code=p.process_code and c.case_type='HAPPY_PATH' and c.case_status in('READY','ACTIVE','APPROVED','VERIFIED'))");
+        String processCode=String.valueOf(process.get("process_code"));
+        String actorCode=String.valueOf(process.get("actor_code"));
+        String accountId="e2e-project-delivery";
+        jdbc.update("insert into emission_project_registry(project_id,project_name,site_name,calculation_period,scope_name,owner_name,progress_percent,current_step,due_date,project_status,tenant_id) values(?,?,?,?,?,?,0,?,current_date+7,'TEST',?)",projectId,"Project delivery transaction E2E","E2E SITE","2026","Scope 1·2",accountId,"SETUP",tenantId);
+        Map<String,Object> saved=saveProjectDeliveryBlueprint(Map.of(
+            "blueprintCode",blueprintCode,"blueprintName","Project delivery E2E","blueprintVersion","1.0.0",
+            "domainCode","EMISSION","actors",List.of(Map.of("actorCode",actorCode)),
+            "processCodes",List.of(processCode),"approve",true),actor);
+        if(!Boolean.TRUE.equals(saved.get("success")))throw new IllegalStateException("E2E_BLUEPRINT_VALIDATION_FAILED: "+saved);
+        Map<String,Object> applied=applyProjectDeliveryBlueprint(Map.of(
+            "blueprintCode",blueprintCode,"tenantId",tenantId,"projectId",projectId,
+            "actorBindings",List.of(Map.of("actorCode",actorCode,"accountId",accountId,"dataScope","*"))),actor);
+        Map<String,Object> evidence=jdbc.queryForMap("select (select count(*) from framework_project_delivery_release where project_id=?) as release_count,(select count(*) from framework_account_actor_assignment where project_id=? and actor_code=? and assignment_status='ACTIVE') as actor_count,(select count(*) from emission_project_task where project_id=?) as task_count,(select count(*) from framework_project_process_applicability where project_id=? and applicability_status='APPLICABLE') as process_count",projectId,projectId,actorCode,projectId,projectId);
+        if(((Number)evidence.get("release_count")).intValue()!=1||((Number)evidence.get("actor_count")).intValue()!=1||((Number)evidence.get("task_count")).intValue()<1||((Number)evidence.get("process_count")).intValue()<1){
+            throw new IllegalStateException("E2E_PROJECT_DELIVERY_INCOMPLETE: "+evidence);
+        }
+        org.springframework.transaction.interceptor.TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+        return Map.of("success",true,"projectId",projectId,"blueprintCode",blueprintCode,
+            "processCode",processCode,"actorCode",actorCode,"evidence",evidence,
+            "releaseCode",String.valueOf(applied.get("releaseCode")),"rollbackScheduled",true);
+    }
+    @Transactional public Map<String,Object> deactivateActorAssignment(Map<String,Object>b){
+        long assignmentId=Long.parseLong(req(b,"assignmentId"));
+        List<Map<String,Object>> matches=jdbc.queryForList("select assignment_id,account_id,tenant_id,project_id,actor_code from framework_account_actor_assignment where assignment_id=? for update",assignmentId);
+        if(matches.isEmpty())throw new IllegalArgumentException("ACTOR_ASSIGNMENT_NOT_FOUND");
+        Map<String,Object> assignment=matches.get(0);
+        String accountId=String.valueOf(assignment.get("account_id"));
+        String projectId=String.valueOf(assignment.get("project_id"));
+        String actorCode=String.valueOf(assignment.get("actor_code"));
+        jdbc.update("update framework_account_actor_assignment set assignment_status='INACTIVE' where assignment_id=?",assignmentId);
+        if(!"*".equals(projectId)){
+            jdbc.update("update framework_project_actor_assignment set active_yn='N' where project_id=? and actor_code=? and user_id=?",projectId,actorCode,accountId);
+            jdbc.update("update emission_project_task set assignee_id=null,updated_at=current_timestamp where project_id=? and actor_code=? and assignee_id=?",projectId,actorCode,accountId);
+            jdbc.update("insert into emission_project_history(project_id,event_type,event_description,actor_name) values (?,'ACTOR_UNASSIGNED',?||' 액터에서 '||?||' 계정 배정을 해제했습니다.',?)",projectId,actorCode,accountId,accountId);
+        }
+        return Map.of("success",true,"assignmentId",assignmentId,"accountId",accountId,"projectId",projectId,"actorCode",actorCode,"status","INACTIVE");
+    }
+    @Transactional public Map<String,Object> createProcess(Map<String,Object>b,String authenticatedActor){
+        return createProcessInternal(b,authenticatedActor,true);
+    }
+
+    @Transactional public Map<String,Object> createProcessForRequirementImport(
+            Map<String,Object>b,String authenticatedActor){
+        return createProcessInternal(b,authenticatedActor,false);
+    }
+
+    private Map<String,Object> createProcessInternal(
+            Map<String,Object>b,String authenticatedActor,boolean propagate){
+        if(authenticatedActor==null||authenticatedActor.isBlank()
+                ||!authenticatedActor.equals(authenticatedActor.trim())
+                ||authenticatedActor.length()>100)
+            throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
+        String processCode=req(b,"processCode").trim().toUpperCase(Locale.ROOT);
+        if(!processCode.matches("[A-Z0-9_]{3,80}"))throw new IllegalArgumentException("INVALID_PROCESS_CODE");
         String domainCode=req(b,"domainCode").trim().toUpperCase(Locale.ROOT);
         Integer enabled=jdbc.queryForObject("select count(*) from framework_business_work_type where work_type_code=? and use_at='Y'",Integer.class,domainCode);
         if(enabled==null||enabled==0)throw new IllegalArgumentException("ACTIVE_WORK_TYPE_NOT_FOUND: "+domainCode);
-        jdbc.update("insert into framework_process_definition(process_code,process_name,domain_code,process_version,goal,start_condition,completion_condition,parent_process_code,process_level,automation_mode) values(?,?,?,?,?,?,?,nullif(?,''),?,?) on conflict(process_code) do update set process_name=excluded.process_name,domain_code=excluded.domain_code,process_version=excluded.process_version,goal=excluded.goal,start_condition=excluded.start_condition,completion_condition=excluded.completion_condition,parent_process_code=excluded.parent_process_code,process_level=excluded.process_level,automation_mode=excluded.automation_mode,updated_at=current_timestamp",req(b,"processCode"),req(b,"processName"),domainCode,def(b,"version","1.0.0"),req(b,"goal"),req(b,"startCondition"),req(b,"completionCondition"),str(b,"parentProcessCode"),integerOr(b,"processLevel",str(b,"parentProcessCode").isEmpty()?1:2),def(b,"automationMode","ASSISTED"));
+        String ownerActorCode=req(b,"ownerActorCode").trim().toUpperCase(Locale.ROOT);
+        Map<String,String> ownerActor=lockActorDefinitions(java.util.Set.of(ownerActorCode));
+        if(!isActiveActor(ownerActor,ownerActorCode))
+            throw new IllegalArgumentException("ACTIVE_OWNER_ACTOR_NOT_FOUND: "+ownerActorCode);
+        String parentProcessCode=str(b,"parentProcessCode").trim().toUpperCase(Locale.ROOT);
+        if(processCode.equals(parentProcessCode))throw new IllegalArgumentException("PROCESS_CANNOT_PARENT_ITSELF");
+        if(!parentProcessCode.isEmpty()){
+            Integer parentCount=jdbc.queryForObject("select count(*) from framework_process_definition where process_code=?",Integer.class,parentProcessCode);
+            if(parentCount==null||parentCount==0)throw new IllegalArgumentException("PARENT_PROCESS_NOT_FOUND: "+parentProcessCode);
+        }
+        String processStatus=def(b,"processStatus","DRAFT").toUpperCase(Locale.ROOT);
+        String automationMode=def(b,"automationMode","ASSISTED").toUpperCase(Locale.ROOT);
+        String riskLevel=def(b,"riskLevel","MEDIUM").toUpperCase(Locale.ROOT);
+        String lifecycleStatus=def(b,"lifecycleStatus","DRAFT").toUpperCase(Locale.ROOT);
+        if(!Set.of("DRAFT","DEVELOPMENT_READY","IN_DEVELOPMENT","ACTIVE","SUSPENDED","RETIRED").contains(processStatus))throw new IllegalArgumentException("INVALID_PROCESS_STATUS");
+        if(!Set.of("MANUAL","ASSISTED","AUTOMATED").contains(automationMode))throw new IllegalArgumentException("INVALID_AUTOMATION_MODE");
+        if(!Set.of("LOW","MEDIUM","HIGH","CRITICAL").contains(riskLevel))throw new IllegalArgumentException("INVALID_RISK_LEVEL");
+        if(!Set.of("DRAFT","DESIGN","VALIDATED","PROMOTED","ACTIVE","DEPRECATED","RETIRED").contains(lifecycleStatus))throw new IllegalArgumentException("INVALID_LIFECYCLE_STATUS");
+        String effectiveFrom=str(b,"effectiveFrom"),effectiveUntil=str(b,"effectiveUntil");
+        if(!effectiveFrom.isEmpty()&&!effectiveUntil.isEmpty()&&effectiveFrom.compareTo(effectiveUntil)>0)throw new IllegalArgumentException("INVALID_EFFECTIVE_DATE_RANGE");
+        lockCanonicalProcessPublication(processCode);
+        Map<String,Object> revision=beginProcessDesignRevision(processCode,authenticatedActor);
+        String processVersion=Boolean.TRUE.equals(revision.get("exists"))
+            ?String.valueOf(revision.get("processVersion")):def(b,"version","1.0.0");
+        jdbc.update("""
+            insert into framework_process_definition(
+              process_code,process_name,domain_code,process_version,goal,start_condition,completion_condition,
+              parent_process_code,process_level,automation_mode,development_order,prerequisite_codes,
+              process_status,owner_actor_code,risk_level,sla_hours,review_cycle_days,regulation_refs,
+              lifecycle_status,effective_from,effective_until)
+            values(?,?,?,?,?,?,?,nullif(?,''),?,?,?,?,?,?,?,?,?,?,?,nullif(?,'')::date,nullif(?,'')::date)
+            on conflict(process_code) do update set
+              process_name=excluded.process_name,domain_code=excluded.domain_code,process_version=excluded.process_version,
+              goal=excluded.goal,start_condition=excluded.start_condition,completion_condition=excluded.completion_condition,
+              parent_process_code=excluded.parent_process_code,process_level=excluded.process_level,
+              automation_mode=excluded.automation_mode,development_order=excluded.development_order,
+              prerequisite_codes=excluded.prerequisite_codes,process_status=excluded.process_status,
+              owner_actor_code=excluded.owner_actor_code,risk_level=excluded.risk_level,sla_hours=excluded.sla_hours,
+              review_cycle_days=excluded.review_cycle_days,regulation_refs=excluded.regulation_refs,
+              lifecycle_status=excluded.lifecycle_status,effective_from=excluded.effective_from,
+              effective_until=excluded.effective_until,updated_at=current_timestamp
+            """,processCode,req(b,"processName"),domainCode,processVersion,req(b,"goal"),
+            req(b,"startCondition"),req(b,"completionCondition"),parentProcessCode,
+            integerOr(b,"processLevel",parentProcessCode.isEmpty()?1:2),automationMode,
+            integerOr(b,"developmentOrder",0),str(b,"prerequisiteCodes"),processStatus,ownerActorCode,riskLevel,
+            integerOr(b,"slaHours",0),integerOr(b,"reviewCycleDays",365),str(b,"regulationRefs"),
+            lifecycleStatus,effectiveFrom,effectiveUntil);
+        Map<String,Object> trigger=new LinkedHashMap<>();
+        trigger.put("triggerType","PROCESS_DEFINITION");
+        Map<String,Object> result=propagate
+            ?refreshAndQueueCanonicalProcess(processCode,authenticatedActor,trigger)
+            :new LinkedHashMap<>(Map.of("success",true,"status","DEFERRED",
+                "generationQueued",false,"jobCount",0,"propagationDeferred",true));
+        result.put("processCode",processCode);
+        return result;
     }
     @Transactional public Map<String,Object> addStep(Map<String,Object>b,String actor){
-        String process=req(b,"processCode"),step=req(b,"stepCode"); int order=integer(b,"stepOrder");
-        Integer exists=jdbc.queryForObject("select count(*) from framework_process_step where process_code=? and step_code=?",Integer.class,process,step);
-        if(exists==null||exists==0){
+        return addStepInternal(b,actor,true);
+    }
+
+    @Transactional public Map<String,Object> addStepForRequirementImport(
+            Map<String,Object>b,String actor){
+        return addStepInternal(b,actor,false);
+    }
+
+    private Map<String,Object> addStepInternal(
+            Map<String,Object>b,String actor,boolean propagate){
+        if(actor==null||actor.isBlank()||!actor.equals(actor.trim())||actor.length()>100)
+            throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
+        String process=req(b,"processCode").trim().toUpperCase(Locale.ROOT),
+            step=req(b,"stepCode").trim().toUpperCase(Locale.ROOT); int order=integer(b,"stepOrder");
+        Integer processCount=jdbc.queryForObject("select count(*) from framework_process_definition where process_code=?",Integer.class,process);
+        if(processCount==null||processCount==0)throw new IllegalArgumentException("PROCESS_NOT_FOUND: "+process);
+        String actorCode=req(b,"actorCode").trim().toUpperCase(Locale.ROOT);
+        String escalationActorCode=str(b,"escalationActorCode").trim().toUpperCase(Locale.ROOT);
+        java.util.SortedSet<String> segregationActors=canonicalCodeSet(
+            str(b,"segregationActorCodes"),"^[A-Z][A-Z0-9_]{1,59}$",
+            "SEGREGATION_ACTOR_CODE");
+        if(segregationActors.contains(actorCode))
+            throw new IllegalArgumentException(
+                "SEGREGATION_ACTOR_MUST_DIFFER_FROM_PRIMARY: "+actorCode);
+        String segregationActorCodes=String.join(",",segregationActors);
+        java.util.SortedSet<String> referencedActors=new java.util.TreeSet<>(segregationActors);
+        referencedActors.add(actorCode);
+        if(!escalationActorCode.isEmpty())referencedActors.add(escalationActorCode);
+        Map<String,String> actorStates=lockActorDefinitions(referencedActors);
+        if(!isActiveActor(actorStates,actorCode))
+            throw new IllegalArgumentException("ACTIVE_ACTOR_NOT_FOUND: "+actorCode);
+        if(!escalationActorCode.isEmpty()
+                &&!isActiveActor(actorStates,escalationActorCode)){
+            throw new IllegalArgumentException(
+                "ACTIVE_ESCALATION_ACTOR_NOT_FOUND: "+escalationActorCode);
+        }
+        if(!segregationActors.isEmpty()){
+            java.util.SortedSet<String> activeSegregationActors=new java.util.TreeSet<>();
+            for(String segregationActor:segregationActors){
+                if(isActiveActor(actorStates,segregationActor))
+                    activeSegregationActors.add(segregationActor);
+            }
+            if(!activeSegregationActors.equals(segregationActors)){
+                java.util.SortedSet<String> missing=new java.util.TreeSet<>(segregationActors);
+                missing.removeAll(activeSegregationActors);
+                throw new IllegalArgumentException("ACTIVE_SEGREGATION_ACTOR_NOT_FOUND: "+missing);
+            }
+        }
+        validateJsonObject(def(b,"inputContract","{}"),"inputContract");
+        validateJsonObject(def(b,"outputContract","{}"),"outputContract");
+        lockCanonicalProcessPublication(process);
+        beginProcessDesignRevision(process,actor);
+        List<Map<String,Object>> currentSteps=jdbc.queryForList("select step_order from framework_process_step where process_code=? and step_code=? for update",process,step);
+        if(currentSteps.isEmpty()){
             jdbc.update("update framework_process_step set step_order=step_order+10000 where process_code=? and step_order>=?",process,order);
             jdbc.update("update framework_process_step set step_order=step_order-9999 where process_code=? and step_order>=?",process,order+10000);
+        }else{
+            int currentOrder=((Number)currentSteps.get(0).get("step_order")).intValue();
+            if(currentOrder!=order){
+                jdbc.update("update framework_process_step set step_order=-1000000000 where process_code=? and step_code=?",process,step);
+                if(order<currentOrder)jdbc.update("update framework_process_step set step_order=step_order+1 where process_code=? and step_order>=? and step_order<?",process,order,currentOrder);
+                else jdbc.update("update framework_process_step set step_order=step_order-1 where process_code=? and step_order>? and step_order<=?",process,currentOrder,order);
+            }
         }
-        jdbc.update("insert into framework_process_step(process_code,step_order,step_code,step_name,parent_step_code,step_type,actor_code,from_state,command_code,to_state,completion_rule,requirement_text,input_contract,output_contract,requires_user_page,requires_admin_page,requires_api,requires_database,requires_notification,user_path,admin_path,api_contract,automation_status) values(?,?,?,?,nullif(?,''),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'PLANNED') on conflict(process_code,step_code) do update set step_name=excluded.step_name,parent_step_code=excluded.parent_step_code,step_type=excluded.step_type,actor_code=excluded.actor_code,from_state=excluded.from_state,command_code=excluded.command_code,to_state=excluded.to_state,completion_rule=excluded.completion_rule,requirement_text=excluded.requirement_text,input_contract=excluded.input_contract,output_contract=excluded.output_contract,requires_user_page=excluded.requires_user_page,requires_admin_page=excluded.requires_admin_page,requires_api=excluded.requires_api,requires_database=excluded.requires_database,requires_notification=excluded.requires_notification,user_path=excluded.user_path,admin_path=excluded.admin_path,api_contract=excluded.api_contract,automation_status='PLANNED'",process,order,step,req(b,"stepName"),str(b,"parentStepCode"),def(b,"stepType","TASK"),req(b,"actorCode"),req(b,"fromState"),req(b,"commandCode"),req(b,"toState"),req(b,"completionRule"),def(b,"requirementText",req(b,"completionRule")),def(b,"inputContract","{}"),def(b,"outputContract","{}"),bool(b,"requiresUserPage"),bool(b,"requiresAdminPage"),bool(b,"requiresApi"),bool(b,"requiresDatabase"),bool(b,"requiresNotification"),str(b,"userPath"),str(b,"adminPath"),str(b,"apiContract"));
-        Map<String,Object> plan=generateDevelopmentPlan(process,step,actor);
-        return Map.of("success",true,"processCode",process,"stepCode",step,"generatedJobs",plan.get("generatedJobs"));
+        jdbc.update("insert into framework_process_step(process_code,step_order,step_code,step_name,parent_step_code,step_type,actor_code,from_state,command_code,to_state,completion_rule,requirement_text,input_contract,output_contract,requires_user_page,requires_admin_page,requires_api,requires_database,requires_notification,user_path,admin_path,api_contract,automation_status,sla_hours,escalation_actor_code,evidence_required,evidence_types,segregation_actor_codes,rollback_command_code,decision_rule) values(?,?,?,?,nullif(?,''),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'PLANNED',?,nullif(?,''),?,?,?,?,?) on conflict(process_code,step_code) do update set step_order=excluded.step_order,step_name=excluded.step_name,parent_step_code=excluded.parent_step_code,step_type=excluded.step_type,actor_code=excluded.actor_code,from_state=excluded.from_state,command_code=excluded.command_code,to_state=excluded.to_state,completion_rule=excluded.completion_rule,requirement_text=excluded.requirement_text,input_contract=excluded.input_contract,output_contract=excluded.output_contract,requires_user_page=excluded.requires_user_page,requires_admin_page=excluded.requires_admin_page,requires_api=excluded.requires_api,requires_database=excluded.requires_database,requires_notification=excluded.requires_notification,user_path=excluded.user_path,admin_path=excluded.admin_path,api_contract=excluded.api_contract,automation_status='PLANNED',sla_hours=excluded.sla_hours,escalation_actor_code=excluded.escalation_actor_code,evidence_required=excluded.evidence_required,evidence_types=excluded.evidence_types,segregation_actor_codes=excluded.segregation_actor_codes,rollback_command_code=excluded.rollback_command_code,decision_rule=excluded.decision_rule",process,order,step,req(b,"stepName"),str(b,"parentStepCode"),def(b,"stepType","TASK"),actorCode,req(b,"fromState"),req(b,"commandCode"),req(b,"toState"),req(b,"completionRule"),def(b,"requirementText",req(b,"completionRule")),def(b,"inputContract","{}"),def(b,"outputContract","{}"),bool(b,"requiresUserPage"),bool(b,"requiresAdminPage"),bool(b,"requiresApi"),bool(b,"requiresDatabase"),bool(b,"requiresNotification"),str(b,"userPath"),str(b,"adminPath"),str(b,"apiContract"),integerOr(b,"slaHours",0),escalationActorCode,Boolean.parseBoolean(def(b,"evidenceRequired","true")),str(b,"evidenceTypes"),segregationActorCodes,str(b,"rollbackCommandCode"),str(b,"decisionRule"));
+        Map<String,Object> trigger=new LinkedHashMap<>();
+        trigger.put("triggerType","PROCESS_STEP");trigger.put("stepCode",step);
+        Map<String,Object> result=propagate
+            ?refreshAndQueueCanonicalProcess(process,actor,trigger)
+            :new LinkedHashMap<>(Map.of("success",true,"status","DEFERRED",
+                "generationQueued",false,"jobCount",0,"propagationDeferred",true));
+        result.put("success",true);result.put("processCode",process);result.put("stepCode",step);
+        result.put("generatedJobs",result.getOrDefault("jobCount",0));
+        return result;
+    }
+
+    @Transactional public Map<String,Object> reconcileRequirementImportSteps(
+            String processCode,java.util.Collection<String> requestedStepCodes,String actor){
+        String process=req(Map.of("processCode",processCode),"processCode")
+            .trim().toUpperCase(Locale.ROOT);
+        if(actor==null||actor.isBlank()||!actor.equals(actor.trim())||actor.length()>100)
+            throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
+        if(requestedStepCodes==null||requestedStepCodes.isEmpty())
+            throw new IllegalArgumentException("REQUIREMENT_STEP_SET_REQUIRED");
+        java.util.SortedSet<String> requested=new java.util.TreeSet<>();
+        for(String raw:requestedStepCodes){
+            String step=raw==null?"":raw.trim().toUpperCase(Locale.ROOT);
+            if(!step.matches("^[A-Z][A-Z0-9_]{1,79}$"))
+                throw new IllegalArgumentException("INVALID_REQUIREMENT_STEP_CODE: "+step);
+            if(!requested.add(step))
+                throw new IllegalArgumentException("DUPLICATE_REQUIREMENT_STEP_CODE: "+step);
+        }
+        lockCanonicalProcessPublication(process);
+        String exactSet=String.join(",",requested);
+        List<Map<String,Object>> obsolete=jdbc.queryForList("""
+            select step_code,coalesce(decision_rule,'') decision_rule
+              from framework_process_step
+             where process_code=?
+               and not(step_code=any(string_to_array(?,',')))
+             order by step_code
+             for update
+            """,process,exactSet);
+        for(Map<String,Object> row:obsolete){
+            String step=String.valueOf(row.get("step_code"));
+            if(!"SOURCE:REQUIREMENT_DOCUMENT".equals(row.get("decision_rule")))
+                throw new IllegalStateException(
+                    "MANUAL_PROCESS_STEP_OMISSION_FORBIDDEN: "+process+" / "+step);
+        }
+        int removed=0;
+        for(Map<String,Object> row:obsolete){
+            removed+=jdbc.update("delete from framework_process_step "+
+                "where process_code=? and step_code=? and decision_rule='SOURCE:REQUIREMENT_DOCUMENT'",
+                process,row.get("step_code"));
+        }
+        return Map.of("success",true,"processCode",process,"removedStepCount",removed,
+            "requestedStepCount",requested.size());
     }
 
     @Transactional public Map<String,Object> generateDevelopmentPlan(String process,String step,String actor){
@@ -1020,16 +6902,36 @@ public class ActorProcessGovernanceService {
 
     @Transactional public Map<String,Object> startProcessExecution(Map<String,Object>b,String user){
         String tenant=req(b,"tenantId"),project=req(b,"projectId"),process=req(b,"processCode"),actor=req(b,"actorCode");
+        String cycleType=def(b,"cycleType","ONCE").toUpperCase(Locale.ROOT);
+        String periodStart=str(b,"periodStart"),periodEnd=str(b,"periodEnd");
+        String boundaryVersion=def(b,"boundaryVersion","CURRENT"),methodologyVersion=def(b,"methodologyVersion","CURRENT");
+        String siteScopeJson=def(b,"siteScopeJson","[]"),dataCutoffAt=str(b,"dataCutoffAt");
+        int executionVersion=integerOr(b,"executionVersion",1);
+        Set<String> cycles=Set.of("ONCE","MONTHLY","QUARTERLY","HALF_YEARLY","ANNUAL","AD_HOC");
+        if(!cycles.contains(cycleType))throw new IllegalArgumentException("지원하지 않는 실행 주기입니다: "+cycleType);
+        if("ONCE".equals(cycleType)){periodStart="";periodEnd="";}
+        else if(periodStart.isBlank()||periodEnd.isBlank())throw new IllegalArgumentException("반복 실행은 periodStart와 periodEnd가 필요합니다.");
+        if(executionVersion<1)throw new IllegalArgumentException("executionVersion은 1 이상이어야 합니다.");
         List<Map<String,Object>> steps=jdbc.queryForList("select step_code,actor_code,from_state from framework_process_step where process_code=? order by step_order limit 1",process);
         if(steps.isEmpty())throw new IllegalArgumentException("프로세스 단계가 없습니다: "+process);
         Map<String,Object> first=steps.get(0);String requiredActor=String.valueOf(first.get("actor_code"));
+        String compositeActor=new CompositeRuntimePolicyService(jdbc).resolveActor(project,process,
+            String.valueOf(first.get("step_code")),str(b,"routePath"),str(b,"audience"));
+        if(!compositeActor.isBlank())requiredActor=compositeActor;
         if(!requiredActor.equals(actor))throw new SecurityException("첫 단계 수행 액터는 "+requiredActor+"입니다.");
+        String step=String.valueOf(first.get("step_code"));
         requireActorAssignment(tenant,project,actor,user);
-        List<Map<String,Object>> running=jdbc.queryForList("select execution_id as \"executionId\",current_step_code as \"currentStepCode\",current_state as \"currentState\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? and execution_status='RUNNING'",tenant,project,process);
+        requireStepPermissionGrants(process,step,actor,str(b,"routePath"),str(b,"audience"),project);
+        List<Map<String,Object>> running=jdbc.queryForList("select execution_id as \"executionId\",current_step_code as \"currentStepCode\",current_state as \"currentState\",cycle_type as \"cycleType\",period_start as \"periodStart\",period_end as \"periodEnd\",execution_version as \"executionVersion\",handoff_status as \"handoffStatus\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? and cycle_type=? and period_start is not distinct from nullif(?,'')::date and period_end is not distinct from nullif(?,'')::date and boundary_version=? and methodology_version=? and execution_version=? and execution_status='RUNNING'",tenant,project,process,cycleType,periodStart,periodEnd,boundaryVersion,methodologyVersion,executionVersion);
         if(!running.isEmpty())return Map.of("success",true,"created",false,"execution",running.get(0));
-        UUID id=UUID.randomUUID();String step=String.valueOf(first.get("step_code")),state=String.valueOf(first.get("from_state"));
-        jdbc.update("insert into framework_process_execution(execution_id,tenant_id,project_id,process_code,current_step_code,current_state,initiated_by_actor,initiated_by) values(?,?,?,?,?,?,?,?)",id,tenant,project,process,step,state,actor,user);
-        return Map.of("success",true,"created",true,"executionId",id,"processCode",process,"currentStepCode",step,"currentState",state,"actorCode",actor);
+        UUID id=UUID.randomUUID();String state=String.valueOf(first.get("from_state"));
+        assertRelayPrerequisitesReady(tenant,project,process,step);
+        jdbc.update("insert into framework_process_execution(execution_id,tenant_id,project_id,process_code,current_step_code,current_state,initiated_by_actor,initiated_by,cycle_type,period_start,period_end,site_scope,boundary_version,methodology_version,data_cutoff_at,execution_version) values(?,?,?,?,?,?,?,?,?,nullif(?,'')::date,nullif(?,'')::date,cast(? as jsonb),?,?,nullif(?,'')::timestamp,?)",id,tenant,project,process,step,state,actor,user,cycleType,periodStart,periodEnd,siteScopeJson,boundaryVersion,methodologyVersion,dataCutoffAt,executionVersion);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("created",true);result.put("executionId",id);result.put("processCode",process);
+        result.put("currentStepCode",step);result.put("currentState",state);result.put("actorCode",actor);result.put("cycleType",cycleType);
+        result.put("periodStart",periodStart);result.put("periodEnd",periodEnd);result.put("executionVersion",executionVersion);result.put("handoffStatus","NOT_READY");
+        return result;
     }
 
     @Transactional public Map<String,Object> verifyBackendProcessContracts(String sourceCommit,String user){
@@ -1040,19 +6942,45 @@ public class ActorProcessGovernanceService {
     }
 
     @Transactional public Map<String,Object> executeProcessCommand(UUID executionId,Map<String,Object>b,String user){
+        Map<String,Object> preconditions=resolveProcessCommandPreconditions(executionId,b,user);
+        if(preconditions.containsKey("replay"))return (Map<String,Object>)preconditions.get("replay");
+        return commitProcessCommand(executionId,b,user,preconditions);
+    }
+
+    private Map<String,Object> resolveProcessCommandPreconditions(
+            UUID executionId,Map<String,Object>b,String user){
         String tenant=req(b,"tenantId"),project=req(b,"projectId"),process=req(b,"processCode"),step=req(b,"stepCode"),actor=req(b,"actorCode"),command=req(b,"commandCode"),key=req(b,"idempotencyKey");
         List<Map<String,Object>> executions=jdbc.queryForList("select * from framework_process_execution where execution_id=? for update",executionId);
         if(executions.isEmpty())throw new IllegalArgumentException("프로세스 실행 건이 없습니다.");
         Map<String,Object> execution=executions.get(0);
-        if(!"RUNNING".equals(String.valueOf(execution.get("execution_status"))))throw new IllegalStateException("실행 중인 프로세스가 아닙니다.");
         if(!tenant.equals(String.valueOf(execution.get("tenant_id")))||!project.equals(String.valueOf(execution.get("project_id")))||!process.equals(String.valueOf(execution.get("process_code"))))throw new SecurityException("테넌트·프로젝트·프로세스 실행 문맥이 일치하지 않습니다.");
         requireActorAssignment(tenant,project,actor,user);
+        requireStepPermissionGrants(process,step,actor,str(b,"routePath"),str(b,"audience"),project);
         List<Map<String,Object>> existing=jdbc.queryForList("select event_id as \"eventId\",to_state as \"toState\" from framework_process_execution_event where execution_id=? and idempotency_key=?",executionId,key);
-        if(!existing.isEmpty())return Map.of("success",true,"idempotent",true,"event",existing.get(0));
+        if(!existing.isEmpty()){
+            Map<String,Object> event=existing.get(0);
+            Map<String,Object> replay=new LinkedHashMap<>();
+            replay.put("success",true);replay.put("idempotent",true);
+            replay.put("eventId",event.get("eventId"));replay.put("toState",event.get("toState"));
+            return Map.of("replay",replay);
+        }
         if(!step.equals(String.valueOf(execution.get("current_step_code"))))throw new IllegalStateException("현재 실행 단계는 "+execution.get("current_step_code")+"입니다.");
         List<Map<String,Object>> contracts=jdbc.queryForList("select step_order,actor_code,command_code,from_state,to_state from framework_process_step where process_code=? and step_code=?",process,step);
         if(contracts.isEmpty())throw new IllegalArgumentException("단계 계약이 없습니다.");
         Map<String,Object> contract=contracts.get(0);String requiredActor=String.valueOf(contract.get("actor_code")),requiredCommand=String.valueOf(contract.get("command_code")),from=String.valueOf(contract.get("from_state")),to=String.valueOf(contract.get("to_state"));
+        if(!"RUNNING".equals(String.valueOf(execution.get("execution_status"))))throw new IllegalStateException("실행 중인 프로세스가 아닙니다.");
+        String currentState=String.valueOf(execution.get("current_state"));
+        Map<String,Object> compositeAuthority=enforceCompositeRuntimePredicates(
+            tenant,project,process,step,command,currentState,str(b,"routePath"),
+            str(b,"audience"),def(b,"requestJson","{}"));
+        if(compositeAuthority.isEmpty()){
+            if(!requiredCommand.equals(command))throw new IllegalArgumentException("이 단계의 명령은 "+requiredCommand+"입니다.");
+            if(!from.equals(currentState))throw new IllegalStateException("현재 상태가 단계 시작 조건과 다릅니다.");
+        }else{
+            requiredActor=String.valueOf(compositeAuthority.get("actorCode"));
+            from=String.valueOf(compositeAuthority.get("fromState"));
+            to=String.valueOf(compositeAuthority.get("toState"));
+        }
         String requestedToState=str(b,"requestedToState");
         if(!requestedToState.isBlank()){
             boolean correctionDecision=("EMISSION_PROJECT_VALIDATE".equals(step)||"EMISSION_PROJECT_APPROVE".equals(step))&&"CORRECTION_REQUIRED".equals(requestedToState);
@@ -1060,15 +6988,358 @@ public class ActorProcessGovernanceService {
             to=requestedToState;
         }
         if(!requiredActor.equals(actor))throw new SecurityException("이 단계의 수행 액터는 "+requiredActor+"입니다.");
-        if(!requiredCommand.equals(command))throw new IllegalArgumentException("이 단계의 명령은 "+requiredCommand+"입니다.");
-        if(!from.equals(String.valueOf(execution.get("current_state"))))throw new IllegalStateException("현재 상태가 단계 시작 조건과 다릅니다.");
-        Long eventId=jdbc.queryForObject("insert into framework_process_execution_event(execution_id,step_code,actor_code,command_code,from_state,to_state,idempotency_key,request_json,result_json,executed_by) values(?,?,?,?,?,?,?,?,?,?) returning event_id",Long.class,executionId,step,actor,command,from,to,key,def(b,"requestJson","{}"),def(b,"resultJson","{}"),user);
+        if(Boolean.parseBoolean(def(b,"requireDraft","false"))){
+            List<Map<String,Object>> drafts=jdbc.queryForList("select draft_status,payload_json from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?) for update",tenant,project,process,step,user);
+            if(drafts.isEmpty())throw new IllegalStateException("Save the work data before completing this step.");
+            Map<String,Object> draft=drafts.get(0);
+            if(!"DRAFT".equals(String.valueOf(draft.get("draft_status"))))throw new IllegalStateException("Only a DRAFT work item can be completed.");
+            Object payload=draft.get("payload_json");
+            if(payload==null||"{}".equals(String.valueOf(payload)))throw new IllegalStateException("The work draft has no business data.");
+            List<String> missingFields=jdbc.queryForList("""
+                select field->>'fieldName'
+                  from jsonb_array_elements(coalesce(
+                    (select nullif(framework_step_contract_fields(execution_spec.field_contract,'USER'),'[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
+                    (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
+                    '[]'::jsonb
+                  )) field
+                 where nullif(field->>'fieldCode','') is not null
+                   and coalesce((field->>'required')::boolean,false)
+                   and coalesce((field->>'editable')::boolean,false)
+                   and coalesce(nullif(btrim((?::jsonb)->>(field->>'fieldCode')),''),'')=''
+                 order by coalesce((field->>'fieldOrder')::integer,9999),field->>'fieldCode'
+                """,String.class,process,step,process,step,String.valueOf(payload));
+            if(!missingFields.isEmpty())throw new IllegalStateException("Required work fields are missing: "+String.join(", ",missingFields));
+            assertRelayPrerequisitesReady(tenant,project,process,step);
+        }
         int order=((Number)contract.get("step_order")).intValue();
-        List<Map<String,Object>> next=jdbc.queryForList("select step_code,actor_code from framework_process_step where process_code=? and step_code<>? and from_state=? order by case when step_order>? then 0 else 1 end,step_order limit 1",process,step,to,order);
-        if(next.isEmpty())jdbc.update("update framework_process_execution set current_state=?,execution_status='COMPLETED',completed_at=current_timestamp,updated_at=current_timestamp where execution_id=?",to,executionId);
-        else jdbc.update("update framework_process_execution set current_step_code=?,current_state=?,updated_at=current_timestamp where execution_id=?",String.valueOf(next.get(0).get("step_code")),to,executionId);
+        List<Map<String,Object>> next=jdbc.queryForList("select step_code,actor_code,user_path,admin_path from framework_process_step where process_code=? and step_code<>? and from_state=? order by case when step_order>? then 0 else 1 end,step_order limit 1",process,step,to,order);
+        List<Map<String,Object>> policies=jdbc.queryForList("select completion_type,snapshot_required from framework_step_completion_policy where process_code=? and step_code=? and use_at='Y'",process,step);
+        Map<String,Object> resolved=new LinkedHashMap<>();
+        resolved.put("tenant",tenant);resolved.put("project",project);resolved.put("process",process);
+        resolved.put("step",step);resolved.put("actor",actor);resolved.put("command",command);resolved.put("key",key);
+        resolved.put("from",from);resolved.put("to",to);resolved.put("execution",execution);
+        resolved.put("next",next);resolved.put("snapshotRequired",!policies.isEmpty()&&Boolean.TRUE.equals(policies.get(0).get("snapshot_required")));
+        resolved.put("compositeAuthority",compositeAuthority);
+        return resolved;
+    }
+
+    private Map<String,Object> enforceCompositeRuntimePredicates(String tenant,String project,
+            String process,String step,String command,String currentState,String route,String audience,
+            String requestJson){
+        return new CompositeRuntimePolicyService(jdbc).enforcePredicates(project,process,step,
+            command,currentState,route,audience,requestJson);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String,Object> commitProcessCommand(
+            UUID executionId,Map<String,Object>b,String user,Map<String,Object> preconditions){
+        String tenant=String.valueOf(preconditions.get("tenant")),project=String.valueOf(preconditions.get("project"));
+        String process=String.valueOf(preconditions.get("process")),step=String.valueOf(preconditions.get("step"));
+        String actor=String.valueOf(preconditions.get("actor")),command=String.valueOf(preconditions.get("command"));
+        String key=String.valueOf(preconditions.get("key")),from=String.valueOf(preconditions.get("from")),to=String.valueOf(preconditions.get("to"));
+        Map<String,Object> execution=(Map<String,Object>)preconditions.get("execution");
+        List<Map<String,Object>> next=(List<Map<String,Object>>)preconditions.get("next");
+        Long eventId=jdbc.queryForObject("insert into framework_process_execution_event(execution_id,step_code,actor_code,command_code,from_state,to_state,idempotency_key,request_json,result_json,executed_by) values(?,?,?,?,?,?,?,?,?,?) returning event_id",Long.class,executionId,step,actor,command,from,to,key,def(b,"requestJson","{}"),def(b,"resultJson","{}"),user);
+        queueCompositeRuntimeNotifications((Map<String,Object>)preconditions.get("compositeAuthority"),
+            executionId,eventId,tenant,project,process,step,command);
+        String snapshotRef=def(b,"snapshotRef","");
+        if(Boolean.TRUE.equals(preconditions.get("snapshotRequired"))&&snapshotRef.isBlank())
+            snapshotRef=executionId+":"+step+":"+eventId;
+        if(next.isEmpty())jdbc.update("update framework_process_execution set current_state=?,execution_status='COMPLETED',handoff_status='HANDED_OFF',snapshot_ref=nullif(?,''),completed_at=current_timestamp,updated_at=current_timestamp where execution_id=?",to,snapshotRef,executionId);
+        else jdbc.update("update framework_process_execution set current_step_code=?,current_state=?,handoff_status='HANDED_OFF',snapshot_ref=nullif(?,''),updated_at=current_timestamp where execution_id=?",String.valueOf(next.get(0).get("step_code")),to,snapshotRef,executionId);
         jdbc.update("update framework_process_work_draft set draft_status='SUBMITTED',submitted_at=current_timestamp,updated_at=current_timestamp where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?) and draft_status='DRAFT'",tenant,project,process,step,user);
-        return Map.of("success",true,"idempotent",false,"eventId",eventId,"fromState",from,"toState",to,"executionStatus",next.isEmpty()?"COMPLETED":"RUNNING","nextStepCode",next.isEmpty()?"":String.valueOf(next.get(0).get("step_code")),"nextActorCode",next.isEmpty()?"":String.valueOf(next.get(0).get("actor_code")));
+        Map<String,Object> nextProcess=next.isEmpty()?startChainedProcess(tenant,project,process,execution,user):Map.of();
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("idempotent",false);result.put("eventId",eventId);result.put("fromState",from);result.put("toState",to);
+        result.put("executionStatus",next.isEmpty()?"COMPLETED":"RUNNING");result.put("nextStepCode",next.isEmpty()?"":String.valueOf(next.get(0).get("step_code")));
+        result.put("nextActorCode",next.isEmpty()?"":String.valueOf(next.get(0).get("actor_code")));result.put("nextUserPath",next.isEmpty()?"":String.valueOf(next.get(0).get("user_path")));
+        result.put("nextAdminPath",next.isEmpty()?"":String.valueOf(next.get(0).get("admin_path")));result.put("handoffStatus","HANDED_OFF");result.put("snapshotRef",snapshotRef);
+        result.putAll(nextProcess);return result;
+    }
+
+    private void queueCompositeRuntimeNotifications(Map<String,Object> authority,UUID executionId,
+            Long eventId,String tenant,String project,String process,String step,String command){
+        new CompositeRuntimePolicyService(jdbc).queueNotifications(authority,executionId,eventId,
+            tenant,project,process,step,command);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String,Object> predictProcessCommandResult(
+            UUID executionId,Map<String,Object>b,Map<String,Object> preconditions){
+        List<Map<String,Object>> next=(List<Map<String,Object>>)preconditions.get("next");
+        String step=String.valueOf(preconditions.get("step"));
+        String snapshotRef=def(b,"snapshotRef","");
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("idempotent",false);
+        result.put("fromState",preconditions.get("from"));result.put("toState",preconditions.get("to"));
+        result.put("executionStatus",next.isEmpty()?"COMPLETED":"RUNNING");
+        result.put("nextStepCode",next.isEmpty()?"":String.valueOf(next.get(0).get("step_code")));
+        result.put("nextActorCode",next.isEmpty()?"":String.valueOf(next.get(0).get("actor_code")));
+        result.put("nextUserPath",next.isEmpty()?"":String.valueOf(next.get(0).get("user_path")));
+        result.put("nextAdminPath",next.isEmpty()?"":String.valueOf(next.get(0).get("admin_path")));
+        result.put("handoffStatus","HANDED_OFF");result.put("snapshotRef",snapshotRef);
+        result.put("snapshotRequired",preconditions.get("snapshotRequired"));
+        result.put("predictedEventRef",executionId+":"+step+":<allocated-on-commit>");
+        if(next.isEmpty())result.putAll(predictChainedProcess(preconditions));
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String,Object> predictChainedProcess(Map<String,Object> preconditions){
+        String tenant=String.valueOf(preconditions.get("tenant")),project=String.valueOf(preconditions.get("project"));
+        String completedProcess=String.valueOf(preconditions.get("process"));
+        Map<String,Object> completedExecution=(Map<String,Object>)preconditions.get("execution");
+        List<Map<String,Object>> chain=jdbc.queryForList("select next_process_code from framework_process_chain where process_code=? and use_at='Y' and auto_start_yn='Y' and nullif(next_process_code,'') is not null order by process_order limit 1",completedProcess);
+        if(chain.isEmpty())return Map.of("relayCompleted",true);
+        String nextProcess=String.valueOf(chain.get(0).get("next_process_code"));
+        List<Map<String,Object>> firstSteps=jdbc.queryForList("select step_code,actor_code,from_state,user_path,admin_path from framework_process_step where process_code=? order by step_order limit 1",nextProcess);
+        if(firstSteps.isEmpty())throw new IllegalStateException("다음 프로세스 단계가 없습니다: "+nextProcess);
+        int relayExecutionVersion=((Number)completedExecution.getOrDefault("execution_version",1)).intValue();
+        List<Map<String,Object>> active=jdbc.queryForList("select execution_id,current_step_code from framework_process_execution where tenant_id=? and project_id=? and process_code=? and execution_version=? and execution_status='RUNNING' order by started_at desc limit 1",tenant,project,nextProcess,relayExecutionVersion);
+        Map<String,Object> relayStep=firstSteps.get(0);
+        Object nextExecutionId="";
+        if(!active.isEmpty()){
+            Map<String,Object> activeExecution=active.get(0);
+            nextExecutionId=activeExecution.get("execution_id");
+            String activeStepCode=String.valueOf(activeExecution.get("current_step_code"));
+            relayStep=jdbc.queryForList("select step_code,actor_code,from_state,user_path,admin_path from framework_process_step where process_code=? and step_code=?",nextProcess,activeStepCode)
+                    .stream().findFirst().orElseThrow(()->new IllegalStateException("활성 다음 프로세스의 현재 단계 계약이 없습니다: "+nextProcess+"/"+activeStepCode));
+        }
+        assertRelayPrerequisitesReady(tenant,project,nextProcess,String.valueOf(relayStep.get("step_code")));
+        Map<String,Object> prediction=new LinkedHashMap<>();
+        prediction.put("nextProcessCode",nextProcess);prediction.put("nextProcessExecutionId",nextExecutionId);
+        prediction.put("nextProcessExecutionPending",active.isEmpty());
+        prediction.put("nextProcessStepCode",String.valueOf(relayStep.get("step_code")));
+        prediction.put("nextProcessActorCode",String.valueOf(relayStep.get("actor_code")));
+        prediction.put("nextProcessUserPath",String.valueOf(relayStep.get("user_path")));
+        prediction.put("nextProcessAdminPath",String.valueOf(relayStep.get("admin_path")));
+        prediction.put("relayCompleted",false);
+        return prediction;
+    }
+    private Map<String,Object> startChainedProcess(String tenant,String project,String completedProcess,Map<String,Object> completedExecution,String user){
+        List<Map<String,Object>> chain=jdbc.queryForList("select next_process_code from framework_process_chain where process_code=? and use_at='Y' and auto_start_yn='Y' and nullif(next_process_code,'') is not null order by process_order limit 1",completedProcess);
+        if(chain.isEmpty())return Map.of("relayCompleted",true);
+        String nextProcess=String.valueOf(chain.get(0).get("next_process_code"));
+        List<Map<String,Object>> firstSteps=jdbc.queryForList("select step_code,actor_code,from_state,user_path,admin_path from framework_process_step where process_code=? order by step_order limit 1",nextProcess);
+        if(firstSteps.isEmpty())throw new IllegalStateException("다음 프로세스 단계가 없습니다: "+nextProcess);
+        Map<String,Object> first=firstSteps.get(0);
+        int relayExecutionVersion=((Number)completedExecution.getOrDefault("execution_version",1)).intValue();
+        List<Map<String,Object>> active=jdbc.queryForList("select execution_id,current_step_code from framework_process_execution where tenant_id=? and project_id=? and process_code=? and execution_version=? and execution_status='RUNNING' order by started_at desc limit 1",tenant,project,nextProcess,relayExecutionVersion);
+        UUID nextExecutionId;
+        Map<String,Object> relayStep=first;
+        if(active.isEmpty()){
+            nextExecutionId=UUID.randomUUID();
+            jdbc.update("insert into framework_process_execution(execution_id,tenant_id,project_id,process_code,current_step_code,current_state,initiated_by_actor,initiated_by,cycle_type,period_start,period_end,site_scope,boundary_version,methodology_version,execution_version,handoff_status) values(?,?,?,?,?,?,?,?,?,nullif(?,'')::date,nullif(?,'')::date,cast(? as jsonb),?,?,?,?)",
+                nextExecutionId,tenant,project,nextProcess,String.valueOf(first.get("step_code")),String.valueOf(first.get("from_state")),String.valueOf(first.get("actor_code")),user,
+                valueOr(completedExecution,"cycle_type","ONCE"),valueOr(completedExecution,"period_start",""),valueOr(completedExecution,"period_end",""),valueOr(completedExecution,"site_scope","[]"),
+                valueOr(completedExecution,"boundary_version","CURRENT"),valueOr(completedExecution,"methodology_version","CURRENT"),
+                relayExecutionVersion,"READY");
+        }else{
+            Map<String,Object> activeExecution=active.get(0);
+            nextExecutionId=(UUID)activeExecution.get("execution_id");
+            String activeStepCode=String.valueOf(activeExecution.get("current_step_code"));
+            relayStep=jdbc.queryForList("select step_code,actor_code,from_state,user_path,admin_path from framework_process_step where process_code=? and step_code=?",nextProcess,activeStepCode)
+                .stream().findFirst().orElseThrow(()->new IllegalStateException("활성 다음 프로세스의 현재 단계 계약이 없습니다: "+nextProcess+"/"+activeStepCode));
+        }
+        assertRelayPrerequisitesReady(tenant,project,nextProcess,String.valueOf(relayStep.get("step_code")));
+        return Map.of(
+            "nextProcessCode",nextProcess,
+            "nextProcessExecutionId",nextExecutionId,
+            "nextProcessStepCode",String.valueOf(relayStep.get("step_code")),
+            "nextProcessActorCode",String.valueOf(relayStep.get("actor_code")),
+            "nextProcessUserPath",String.valueOf(relayStep.get("user_path")),
+            "nextProcessAdminPath",String.valueOf(relayStep.get("admin_path")),
+            "relayCompleted",false
+        );
+    }
+
+
+
+    /**
+     * Runs the same command checks used by customer screens, but resolves the account
+     * assigned to the current step instead of trusting a control-plane supplied
+     * account id. Validation returns before event-id allocation or any DML; advancement
+     * continues through the canonical committed command path.
+     */
+    @Transactional
+    public Map<String,Object> validateProcessCommandFromControlPlane(
+            UUID executionId, Map<String,Object> options, String operator) {
+        Map<String,Object> context=controlPlaneExecutionCommand(executionId,options);
+        Map<String,Object> request=(Map<String,Object>)context.get("request");
+        Map<String,Object> preconditions=resolveProcessCommandPreconditions(
+                executionId,request,String.valueOf(context.get("accountId")));
+        Map<String,Object> result=preconditions.containsKey("replay")
+                ? new LinkedHashMap<>((Map<String,Object>)preconditions.get("replay"))
+                : predictProcessCommandResult(executionId,request,preconditions);
+        Map<String,Object> response=new LinkedHashMap<>(result);
+        response.put("success",true);
+        response.put("validated",true);
+        response.put("committed",false);
+        response.put("operator",operator);
+        response.put("accountId",context.get("accountId"));
+        response.put("executionId",executionId);
+        response.put("mutationScope","READ_ONLY_VALIDATION");
+        response.put("databaseCurrentWrites",0);
+        return response;
+    }
+
+    @Transactional
+    public Map<String,Object> advanceProcessCommandFromControlPlane(
+            UUID executionId, Map<String,Object> options, String operator) {
+        Map<String,Object> context=controlPlaneExecutionCommand(executionId,options);
+        Map<String,Object> result=executeProcessCommand(
+                executionId,
+                (Map<String,Object>)context.get("request"),
+                String.valueOf(context.get("accountId")));
+        Map<String,Object> response=new LinkedHashMap<>(result);
+        response.put("committed",true);
+        response.put("operator",operator);
+        response.put("accountId",context.get("accountId"));
+        response.put("executionId",executionId);
+        return response;
+    }
+
+    private Map<String,Object> controlPlaneExecutionCommand(
+            UUID executionId, Map<String,Object> options) {
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+            select e.tenant_id as "tenantId",e.project_id as "projectId",
+                   e.process_code as "processCode",e.current_step_code as "stepCode",
+                   e.execution_status as "executionStatus",
+                   s.actor_code as "actorCode",s.command_code as "commandCode"
+              from framework_process_execution e
+              join framework_process_step s
+                on s.process_code=e.process_code and s.step_code=e.current_step_code
+             where e.execution_id=?
+            """,executionId);
+        if(rows.isEmpty())throw new IllegalArgumentException("프로세스 실행 건이 없습니다.");
+        Map<String,Object> execution=rows.get(0);
+        if(!"RUNNING".equals(String.valueOf(execution.get("executionStatus")))){
+            throw new IllegalStateException("실행 중인 프로세스가 아닙니다.");
+        }
+        String requestingAccount=String.valueOf(options.getOrDefault("requestingAccount","")).trim();
+        if(requestingAccount.isBlank()){
+            throw new SecurityException("Authenticated control-plane account is required.");
+        }
+        boolean administrator=isControlPlaneAdministrator(requestingAccount);
+        List<Map<String,Object>> accounts=administrator
+                ? jdbc.queryForList("""
+                    select assignment.account_id as "accountId"
+                      from framework_account_actor_assignment assignment
+                      join framework_actor_definition actor
+                        on actor.actor_code=assignment.actor_code and actor.use_at='Y'
+                     where assignment.tenant_id=? and (assignment.project_id=? or assignment.project_id='*') and assignment.actor_code=?
+                       and assignment.assignment_status='ACTIVE'
+                       and (assignment.valid_from is null or assignment.valid_from<=current_date)
+                       and (assignment.valid_until is null or assignment.valid_until>=current_date)
+                     order by case when assignment.project_id=? then 0 else 1 end,assignment.account_id
+                     limit 1
+                    """,execution.get("tenantId"),execution.get("projectId"),execution.get("actorCode"),
+                        execution.get("projectId"))
+                : jdbc.queryForList("""
+                    select assignment.account_id as "accountId"
+                      from framework_account_actor_assignment assignment
+                      join framework_actor_definition actor
+                        on actor.actor_code=assignment.actor_code and actor.use_at='Y'
+                     where assignment.tenant_id=? and (assignment.project_id=? or assignment.project_id='*') and assignment.actor_code=?
+                       and lower(assignment.account_id)=lower(?)
+                       and assignment.assignment_status='ACTIVE'
+                       and (assignment.valid_from is null or assignment.valid_from<=current_date)
+                       and (assignment.valid_until is null or assignment.valid_until>=current_date)
+                     order by case when assignment.project_id=? then 0 else 1 end
+                     limit 1
+                    """,execution.get("tenantId"),execution.get("projectId"),execution.get("actorCode"),
+                        requestingAccount,execution.get("projectId"));
+        if(accounts.isEmpty()){
+            throw new SecurityException(
+                    "현재 단계 액터에 활성 계정이 배정되지 않았습니다: "+execution.get("actorCode"));
+        }
+        boolean domainCompletionVerified=verifyDomainCompletion(execution);
+        Map<String,Object> request=new LinkedHashMap<>();
+        request.put("tenantId",execution.get("tenantId"));
+        request.put("projectId",execution.get("projectId"));
+        request.put("processCode",execution.get("processCode"));
+        request.put("stepCode",execution.get("stepCode"));
+        request.put("actorCode",execution.get("actorCode"));
+        request.put("commandCode",execution.get("commandCode"));
+        request.put("idempotencyKey",String.valueOf(
+                options.getOrDefault("idempotencyKey","backstage-"+UUID.randomUUID())));
+        request.put("requestJson",String.valueOf(
+                options.getOrDefault("requestJson","{\"source\":\"BACKSTAGE_CONTROL_PLANE\"}")));
+        request.put("resultJson",String.valueOf(options.getOrDefault("resultJson","{}")));
+        if(options.containsKey("requestedToState")){
+            request.put("requestedToState",String.valueOf(options.get("requestedToState")));
+        }
+        request.put("requireDraft",String.valueOf(
+                domainCompletionVerified ? false : options.getOrDefault("requireDraft","true")));
+        return Map.of(
+                "request",request,
+                "accountId",String.valueOf(accounts.get(0).get("accountId")));
+    }
+
+    /**
+     * Metadata-driven screens use framework_process_work_draft as their source
+     * of truth. A domain workflow must instead be completed through its own
+     * transactional API. This adapter prevents the control plane from advancing
+     * a real emission project merely because a generic draft exists.
+     */
+    boolean verifyDomainCompletion(Map<String,Object> execution) {
+        if(!"EMISSION_PROJECT".equals(String.valueOf(execution.get("processCode"))))return false;
+        String taskCode=switch(String.valueOf(execution.get("stepCode"))){
+            case "EMISSION_PROJECT_SETUP" -> "BASIC_INFO";
+            case "EMISSION_PROJECT_COLLECT","EMISSION_PROJECT_CORRECT" -> "ACTIVITY_DATA";
+            case "EMISSION_PROJECT_CALCULATE" -> "CALCULATION";
+            case "EMISSION_PROJECT_VALIDATE" -> "VERIFICATION";
+            case "EMISSION_PROJECT_APPROVE" -> "APPROVAL";
+            case "EMISSION_PROJECT_REPORT" -> "REPORT";
+            case "EMISSION_PROJECT_REGULATORY_SUBMISSION" -> "REGULATORY_SUBMISSION";
+            default -> "";
+        };
+        if(taskCode.isBlank())return false;
+        List<Map<String,Object>> tasks=jdbc.queryForList("""
+            select t.task_status as "taskStatus",coalesce(t.blocked_reason,'') as "blockedReason",
+                   t.target_url as "targetUrl"
+              from emission_project_task t
+              join emission_project_registry p on p.project_id=t.project_id
+             where t.project_id=? and p.tenant_id=? and t.task_code=?
+             limit 1
+            """,execution.get("projectId"),execution.get("tenantId"),taskCode);
+        if(tasks.isEmpty()){
+            throw new IllegalStateException(String.format(
+                    "Emission project workflow binding is missing or orphaned: tenant=%s, project=%s, step=%s.",
+                    execution.get("tenantId"),execution.get("projectId"),execution.get("stepCode")));
+        }
+        Map<String,Object> task=tasks.get(0);
+        if("DONE".equals(String.valueOf(task.get("taskStatus"))))return true;
+        if("ACTIVITY_DATA".equals(taskCode)){
+            Map<String,Object> readiness=jdbc.queryForMap("""
+                select
+                  (select count(*) from emission_activity_data
+                    where project_id=? and tenant_id=?) as "activityCount",
+                  coalesce((select submit_ready from emission_activity_quality_run
+                    where project_id=? and tenant_id=?
+                    order by executed_at desc,run_id desc limit 1),false) as "qualityReady",
+                  (select count(*) from emission_activity_submission
+                    where project_id=? and tenant_id=? and submission_state='SUBMITTED') as "submittedCount",
+                  (select count(*) from emission_activity_request
+                    where project_id=? and tenant_id=?
+                      and request_status in ('REQUESTED','IN_PROGRESS','SUBMITTED','CORRECTION_REQUIRED')) as "openRequestCount"
+                """,
+                execution.get("projectId"),execution.get("tenantId"),
+                execution.get("projectId"),execution.get("tenantId"),
+                execution.get("projectId"),execution.get("tenantId"),
+                execution.get("projectId"),execution.get("tenantId"));
+            throw new IllegalStateException(String.format(
+                    "Activity data is not complete: saved=%s, qualityReady=%s, submitted=%s, openRequests=%s. "
+                            +"Complete collection, quality check, submission, and manager acceptance in %s.",
+                    readiness.get("activityCount"),readiness.get("qualityReady"),
+                    readiness.get("submittedCount"),readiness.get("openRequestCount"),
+                    task.get("targetUrl")));
+        }
+        throw new IllegalStateException(String.format(
+                "Domain task %s is %s. Complete it in %s%s.",
+                taskCode,task.get("taskStatus"),task.get("targetUrl"),
+                String.valueOf(task.get("blockedReason")).isBlank()
+                        ? "" : " ("+task.get("blockedReason")+")"));
     }
 
     /**
@@ -1078,7 +7349,7 @@ public class ActorProcessGovernanceService {
      */
     @Transactional public Map<String,Object> runProcessRuntimeSmoke(String requestedProcess,String executedBy){
         String processFilter=requestedProcess==null?"":requestedProcess.trim();
-        List<Map<String,Object>> fixtures=jdbc.queryForList("select a.tenant_id as \"tenantId\",a.project_id as \"projectId\",a.account_id as \"accountId\",s.process_code as \"processCode\",s.step_code as \"stepCode\",s.actor_code as \"actorCode\",s.command_code as \"commandCode\",s.from_state as \"fromState\",s.to_state as \"toState\" from framework_account_actor_assignment a join framework_process_step s on s.actor_code=a.actor_code and s.step_order=(select min(first_step.step_order) from framework_process_step first_step where first_step.process_code=s.process_code) where a.assignment_status='ACTIVE' and a.project_id<>'*' and (?='' or s.process_code=?) and not exists(select 1 from framework_process_execution e where e.tenant_id=a.tenant_id and e.project_id=a.project_id and e.process_code=s.process_code and e.execution_status='RUNNING') order by a.project_id,s.process_code limit 1",processFilter,processFilter);
+        List<Map<String,Object>> fixtures=jdbc.queryForList("select a.tenant_id as \"tenantId\",a.project_id as \"projectId\",a.account_id as \"accountId\",s.process_code as \"processCode\",s.step_code as \"stepCode\",s.actor_code as \"actorCode\",s.command_code as \"commandCode\",s.from_state as \"fromState\",s.to_state as \"toState\" from framework_account_actor_assignment a join framework_actor_definition actor on actor.actor_code=a.actor_code and actor.use_at='Y' join framework_process_step s on s.actor_code=a.actor_code and s.step_order=(select min(first_step.step_order) from framework_process_step first_step where first_step.process_code=s.process_code) where a.assignment_status='ACTIVE' and a.project_id<>'*' and (?='' or s.process_code=?) and not exists(select 1 from framework_process_execution e where e.tenant_id=a.tenant_id and e.project_id=a.project_id and e.process_code=s.process_code and e.execution_status='RUNNING') order by a.project_id,s.process_code limit 1",processFilter,processFilter);
         if(fixtures.isEmpty())throw new IllegalStateException("No isolated actor/process fixture is available for runtime smoke testing.");
         Map<String,Object> fixture=fixtures.get(0);
         String tenant=String.valueOf(fixture.get("tenantId")),project=String.valueOf(fixture.get("projectId"));
@@ -1091,7 +7362,76 @@ public class ActorProcessGovernanceService {
         Map<String,Object> request=new LinkedHashMap<>(context);
         request.put("stepCode",step);request.put("commandCode",command);request.put("idempotencyKey",key);
         request.put("requestJson","{\"smoke\":true}");request.put("resultJson","{\"rolledBack\":true}");
+        String smokePayload=jdbc.queryForObject("""
+            select coalesce(jsonb_object_agg(
+                     field->>'fieldCode',
+                     case
+                       when upper(coalesce(field->>'dataType','')) in ('INTEGER','DECIMAL','NUMBER') then '1'::jsonb
+                       when upper(coalesce(field->>'dataType','')) in ('BOOLEAN','BOOL') then 'true'::jsonb
+                       when upper(coalesce(field->>'controlType','')) = 'PROJECT_SELECT' then to_jsonb(?::text)
+                       when upper(coalesce(field->>'controlType','')) = 'ACTOR_SELECT' then to_jsonb(?::text)
+                       else to_jsonb('runtime-smoke'::text)
+                     end
+                   ),'{"runtimeSmoke":true}'::jsonb)::text
+              from jsonb_array_elements(coalesce(
+                (select nullif(framework_step_contract_fields(execution_spec.field_contract,'USER'),'[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
+                (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
+                '[]'::jsonb
+             )) field
+             where nullif(field->>'fieldCode','') is not null
+               and coalesce((field->>'editable')::boolean,false)
+            """,String.class,project,actor,process,step,process,step);
+        Integer editableFieldCount=jdbc.queryForObject("select count(*)::integer from jsonb_object_keys(?::jsonb)",Integer.class,smokePayload);
+        Integer requiredFieldCount=jdbc.queryForObject("""
+            select count(distinct field->>'fieldCode')
+              from jsonb_array_elements(coalesce(
+                (select nullif(framework_step_contract_fields(execution_spec.field_contract,'USER'),'[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
+                (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
+                '[]'::jsonb
+              )) field
+             where nullif(field->>'fieldCode','') is not null
+               and coalesce((field->>'required')::boolean,false)
+               and coalesce((field->>'editable')::boolean,false)
+            """,Integer.class,process,step,process,step);
+        jdbc.update("delete from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?)",tenant,project,process,step,account);
+        request.put("requireDraft",true);
+        boolean requiredValidationRejected=false;
+        int incompleteVersion=0;
+        if(requiredFieldCount!=null&&requiredFieldCount>0){
+            Map<String,Object> incompleteDraft=saveWorkDraft(Map.of(
+                "tenantId",tenant,"projectId",project,"processCode",process,"stepCode",step,
+                "actorCode",actor,"payloadJson","{\"runtimeMarker\":\"incomplete\"}","evidenceJson","{}","expectedVersion",0
+            ),account);
+            try{
+                executeProcessCommand(executionId,request,account);
+            }catch(IllegalStateException expected){requiredValidationRejected=expected.getMessage()!=null&&expected.getMessage().startsWith("Required work fields are missing:");}
+            incompleteVersion=((Number)((Map<?,?>)incompleteDraft.get("draft")).get("draftVersion")).intValue();
+        }
+        boolean requiredValidationVerified=(requiredFieldCount==null||requiredFieldCount==0)||requiredValidationRejected;
+        Map<String,Object> savedDraft=saveWorkDraft(Map.of(
+            "tenantId",tenant,"projectId",project,"processCode",process,"stepCode",step,
+            "actorCode",actor,"payloadJson",smokePayload,"evidenceJson","{\"runtimeSmoke\":true}","expectedVersion",incompleteVersion
+        ),account);
+        Map<String,Object> reloadedDraft=loadWorkDraft(tenant,project,process,step,account);
+        Map<?,?> reloaded=(Map<?,?>)reloadedDraft.get("draft");
+        int savedVersion=((Number)((Map<?,?>)savedDraft.get("draft")).get("draftVersion")).intValue();
+        Integer reloadedFieldCount=jdbc.queryForObject("select count(*)::integer from jsonb_object_keys(?::jsonb)",Integer.class,String.valueOf(reloaded.get("payloadJson")));
+        boolean draftRoundTripVerified=Boolean.TRUE.equals(reloadedDraft.get("found"))
+            && savedVersion==incompleteVersion+1
+            && savedVersion==((Number)reloaded.get("draftVersion")).intValue()
+            && java.util.Objects.equals(editableFieldCount,reloadedFieldCount);
+        boolean staleVersionRejected=false;
+        try{
+            saveWorkDraft(Map.of(
+                "tenantId",tenant,"projectId",project,"processCode",process,"stepCode",step,
+                "actorCode",actor,"payloadJson",smokePayload,"evidenceJson","{}","expectedVersion",incompleteVersion
+            ),account);
+        }catch(IllegalStateException expected){staleVersionRejected=true;}
         Map<String,Object> first=executeProcessCommand(executionId,request,account);
+        String submittedDraftStatus=jdbc.queryForObject(
+            "select draft_status from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?)",
+            String.class,tenant,project,process,step,account);
+        boolean draftSubmittedVerified="SUBMITTED".equals(submittedDraftStatus);
         Map<String,Object> duplicate=executeProcessCommand(executionId,request,account);
         boolean recoveryVerified=Boolean.TRUE.equals(duplicate.get("idempotent"));
         boolean isolationRejected=false;
@@ -1106,36 +7446,112 @@ public class ActorProcessGovernanceService {
         }catch(IllegalArgumentException|SecurityException expected){authorityRejected=true;}
         boolean exceptionRejected=false;
         try{
-            Map<String,Object> invalidCommand=new LinkedHashMap<>(request);invalidCommand.put("stepCode",String.valueOf(first.getOrDefault("nextStepCode",step)));invalidCommand.put("commandCode","INVALID_COMMAND");invalidCommand.put("idempotencyKey",key+"-exception");
-            executeProcessCommand(executionId,invalidCommand,account);
+            String exceptionStep=String.valueOf(first.getOrDefault("nextStepCode",step));
+            String exceptionActor=String.valueOf(first.getOrDefault("nextActorCode",actor));
+            List<Map<String,Object>> exceptionAccounts=jdbc.queryForList("select assignment.account_id as \"accountId\" from framework_account_actor_assignment assignment join framework_actor_definition actor on actor.actor_code=assignment.actor_code and actor.use_at='Y' where assignment.tenant_id=? and assignment.project_id=? and assignment.actor_code=? and assignment.assignment_status='ACTIVE' order by assignment.account_id limit 1",tenant,project,exceptionActor);
+            if(exceptionAccounts.isEmpty())throw new IllegalStateException("No active account is assigned for exception-path actor: "+exceptionActor);
+            Map<String,Object> invalidCommand=new LinkedHashMap<>(request);invalidCommand.put("stepCode",exceptionStep);invalidCommand.put("actorCode",exceptionActor);invalidCommand.put("commandCode","INVALID_COMMAND");invalidCommand.put("idempotencyKey",key+"-exception");
+            executeProcessCommand(executionId,invalidCommand,String.valueOf(exceptionAccounts.get(0).get("accountId")));
         }catch(IllegalArgumentException|IllegalStateException expected){exceptionRejected=true;}
         List<Map<String,Object>> transitions=new java.util.ArrayList<>();
         transitions.add(Map.of("stepCode",step,"actorCode",actor,"commandCode",command,"fromState",fixture.get("fromState"),"toState",fixture.get("toState"),"accountId",account));
-        List<Map<String,Object>> processSteps=jdbc.queryForList("select step_code as \"stepCode\",actor_code as \"actorCode\",command_code as \"commandCode\",from_state as \"fromState\",to_state as \"toState\" from framework_process_step where process_code=? and step_order>(select step_order from framework_process_step where process_code=? and step_code=?) order by step_order",process,process,step);
         String executionStatus=String.valueOf(first.getOrDefault("executionStatus","RUNNING"));
+        String nextStepCode=String.valueOf(first.getOrDefault("nextStepCode",""));
         int sequence=1;
-        for(Map<String,Object> nextStep:processSteps){
+        int workflowDraftStepCount=1,workflowDraftFieldCount=editableFieldCount==null?0:editableFieldCount;
+        boolean workflowDraftsVerified=draftRoundTripVerified&&draftSubmittedVerified;
+        java.util.Set<String> visitedSteps=new java.util.LinkedHashSet<>();visitedSteps.add(step);
+        while(!nextStepCode.isBlank()&&sequence<100){
+            if(!visitedSteps.add(nextStepCode))throw new IllegalStateException("Process runtime entered a cycle at step: "+nextStepCode);
+            List<Map<String,Object>> nextSteps=jdbc.queryForList("select step_code as \"stepCode\",actor_code as \"actorCode\",command_code as \"commandCode\",from_state as \"fromState\",to_state as \"toState\" from framework_process_step where process_code=? and step_code=?",process,nextStepCode);
+            if(nextSteps.isEmpty())throw new IllegalStateException("The next process step contract does not exist: "+nextStepCode);
+            Map<String,Object> nextStep=nextSteps.get(0);
             String nextActor=String.valueOf(nextStep.get("actorCode"));
-            List<Map<String,Object>> accounts=jdbc.queryForList("select account_id as \"accountId\" from framework_account_actor_assignment where tenant_id=? and project_id=? and actor_code=? and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date) order by account_id limit 1",tenant,project,nextActor);
+            List<Map<String,Object>> accounts=jdbc.queryForList("select assignment.account_id as \"accountId\" from framework_account_actor_assignment assignment join framework_actor_definition actor on actor.actor_code=assignment.actor_code and actor.use_at='Y' where assignment.tenant_id=? and assignment.project_id=? and assignment.actor_code=? and assignment.assignment_status='ACTIVE' and (assignment.valid_from is null or assignment.valid_from<=current_date) and (assignment.valid_until is null or assignment.valid_until>=current_date) order by assignment.account_id limit 1",tenant,project,nextActor);
             if(accounts.isEmpty())throw new IllegalStateException("No active account is assigned for process actor: "+nextActor);
             String nextAccount=String.valueOf(accounts.get(0).get("accountId")),nextKey=key+"-step-"+(++sequence);
             Map<String,Object> nextRequest=new LinkedHashMap<>();nextRequest.put("tenantId",tenant);nextRequest.put("projectId",project);nextRequest.put("processCode",process);nextRequest.put("stepCode",String.valueOf(nextStep.get("stepCode")));nextRequest.put("actorCode",nextActor);nextRequest.put("commandCode",String.valueOf(nextStep.get("commandCode")));nextRequest.put("idempotencyKey",nextKey);nextRequest.put("requestJson","{\"smoke\":true,\"sequence\":"+sequence+"}");nextRequest.put("resultJson","{\"rolledBack\":true}");
-            Map<String,Object> nextResult=executeProcessCommand(executionId,nextRequest,nextAccount);executionStatus=String.valueOf(nextResult.getOrDefault("executionStatus","RUNNING"));
+            String nextPayload=runtimeSmokePayload(process,String.valueOf(nextStep.get("stepCode")),project,nextActor);
+            Integer nextFieldCount=jdbc.queryForObject("select count(*)::integer from jsonb_object_keys(?::jsonb)",Integer.class,nextPayload);
+            if(nextFieldCount!=null&&nextFieldCount>0){
+                jdbc.update("delete from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?)",tenant,project,process,nextStep.get("stepCode"),nextAccount);
+                Map<String,Object> nextSaved=saveWorkDraft(Map.of(
+                    "tenantId",tenant,"projectId",project,"processCode",process,"stepCode",String.valueOf(nextStep.get("stepCode")),
+                    "actorCode",nextActor,"payloadJson",nextPayload,"evidenceJson","{\"runtimeSmoke\":true}","expectedVersion",0
+                ),nextAccount);
+                Map<?,?> nextDraft=(Map<?,?>)nextSaved.get("draft");
+                Integer nextReloadedCount=jdbc.queryForObject("select count(*)::integer from jsonb_object_keys(?::jsonb)",Integer.class,String.valueOf(nextDraft.get("payloadJson")));
+                workflowDraftsVerified=workflowDraftsVerified
+                    && "DRAFT".equals(String.valueOf(nextDraft.get("draftStatus")))
+                    && java.util.Objects.equals(nextFieldCount,nextReloadedCount);
+                workflowDraftStepCount++;workflowDraftFieldCount+=nextFieldCount;
+                nextRequest.put("requireDraft",true);
+            }
+            Map<String,Object> nextResult=executeProcessCommand(executionId,nextRequest,nextAccount);
+            if(nextFieldCount!=null&&nextFieldCount>0){
+                String nextDraftStatus=jdbc.queryForObject(
+                    "select draft_status from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?)",
+                    String.class,tenant,project,process,nextStep.get("stepCode"),nextAccount);
+                workflowDraftsVerified=workflowDraftsVerified&&"SUBMITTED".equals(nextDraftStatus);
+            }
+            executionStatus=String.valueOf(nextResult.getOrDefault("executionStatus","RUNNING"));
+            nextStepCode=String.valueOf(nextResult.getOrDefault("nextStepCode",""));
             transitions.add(Map.of("stepCode",nextStep.get("stepCode"),"actorCode",nextActor,"commandCode",nextStep.get("commandCode"),"fromState",nextStep.get("fromState"),"toState",nextStep.get("toState"),"accountId",nextAccount));
         }
         Integer eventCount=jdbc.queryForObject("select count(*) from framework_process_execution_event where execution_id=?",Integer.class,executionId);
         boolean workflowCompleted="COMPLETED".equals(executionStatus)&&eventCount!=null&&eventCount==transitions.size();
-        boolean passed=Boolean.TRUE.equals(first.get("success"))&&recoveryVerified&&isolationRejected&&authorityRejected&&exceptionRejected&&workflowCompleted;
+        boolean terminalWorkflow="COMPLETED".equals(executionStatus)&&nextStepCode.isBlank();
+        boolean nextTaskLinkVerified=terminalWorkflow||(!String.valueOf(first.getOrDefault("nextStepCode","")).isBlank()
+            && (!String.valueOf(first.getOrDefault("nextUserPath","")).isBlank()||!String.valueOf(first.getOrDefault("nextAdminPath","")).isBlank()));
+        boolean passed=Boolean.TRUE.equals(first.get("success"))&&requiredValidationVerified&&draftRoundTripVerified&&staleVersionRejected
+            &&draftSubmittedVerified&&recoveryVerified&&isolationRejected&&authorityRejected&&exceptionRejected&&workflowCompleted&&nextTaskLinkVerified;
+        passed=passed&&workflowDraftsVerified;
         TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("success",passed);result.put("rolledBack",true);result.put("executedBy",executedBy);
         result.put("executionId",executionId);result.put("tenantId",tenant);result.put("projectId",project);result.put("processCode",process);result.put("stepCode",step);
         result.put("actorCode",actor);result.put("stateTransition",fixture.get("fromState")+" -> "+fixture.get("toState"));
         result.put("idempotencyVerified",recoveryVerified);result.put("recoveryVerified",recoveryVerified);
+        result.put("requiredValidationVerified",requiredValidationVerified);result.put("requiredValidationRejected",requiredValidationRejected);
+        result.put("draftRoundTripVerified",draftRoundTripVerified);
+        result.put("staleVersionRejected",staleVersionRejected);result.put("editableFieldCount",editableFieldCount==null?0:editableFieldCount);
+        result.put("requiredFieldCount",requiredFieldCount==null?0:requiredFieldCount);result.put("reloadedFieldCount",reloadedFieldCount==null?0:reloadedFieldCount);
+        result.put("draftSubmittedVerified",draftSubmittedVerified);
         result.put("tenantIsolationVerified",isolationRejected);result.put("authorityVerified",authorityRejected);result.put("exceptionVerified",exceptionRejected);
-        result.put("workflowCompleted",workflowCompleted);result.put("stepCount",transitions.size());result.put("transitions",transitions);result.put("nextStepCode",first.getOrDefault("nextStepCode",""));
-        if(!passed)throw new IllegalStateException("Process runtime smoke assertions failed; transaction was rolled back.");
+        result.put("workflowCompleted",workflowCompleted);result.put("nextTaskLinkVerified",nextTaskLinkVerified);
+        result.put("workflowDraftsVerified",workflowDraftsVerified);result.put("workflowDraftStepCount",workflowDraftStepCount);
+        result.put("workflowDraftFieldCount",workflowDraftFieldCount);
+        result.put("stepCount",transitions.size());result.put("transitions",transitions);result.put("nextStepCode",first.getOrDefault("nextStepCode",""));
+        result.put("nextUserPath",first.getOrDefault("nextUserPath",""));result.put("nextAdminPath",first.getOrDefault("nextAdminPath",""));
+        if(!passed)throw new IllegalStateException("Process runtime smoke assertions failed; transaction was rolled back. "
+                +"required="+requiredValidationVerified+", draft="+draftRoundTripVerified+", stale="+staleVersionRejected
+                +", submitted="+draftSubmittedVerified+", idempotency="+recoveryVerified+", isolation="+isolationRejected+", authority="+authorityRejected
+                +", exception="+exceptionRejected+", workflow="+workflowCompleted+", status="+executionStatus
+                +", events="+(eventCount==null?-1:eventCount)+", steps="+transitions.size()+", nextLink="+nextTaskLinkVerified
+                +", workflowDrafts="+workflowDraftsVerified);
         return result;
+    }
+
+    private String runtimeSmokePayload(String process,String step,String project,String actor){
+        return jdbc.queryForObject("""
+            select coalesce(jsonb_object_agg(
+                     field->>'fieldCode',
+                     case
+                       when upper(coalesce(field->>'dataType','')) in ('INTEGER','DECIMAL','NUMBER') then '1'::jsonb
+                       when upper(coalesce(field->>'dataType','')) in ('BOOLEAN','BOOL') then 'true'::jsonb
+                       when upper(coalesce(field->>'controlType','')) = 'PROJECT_SELECT' then to_jsonb(?::text)
+                       when upper(coalesce(field->>'controlType','')) = 'ACTOR_SELECT' then to_jsonb(?::text)
+                       else to_jsonb('runtime-smoke'::text)
+                     end
+                   ),'{}'::jsonb)::text
+              from jsonb_array_elements(coalesce(
+                (select nullif(framework_step_contract_fields(execution_spec.field_contract,'USER'),'[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
+                (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
+                '[]'::jsonb
+              )) field
+             where nullif(field->>'fieldCode','') is not null
+               and coalesce((field->>'editable')::boolean,false)
+            """,String.class,project,actor,process,step,process,step);
     }
 
     public Map<String,Object> verifyProcessRuntimeSmokeRollback(UUID executionId){
@@ -1148,28 +7564,183 @@ public class ActorProcessGovernanceService {
     @Transactional public void recordQaResult(String processCode,String stepCode,String result,Map<String,Object> evidence,String failureReason,String user){
         String evidenceJson;
         try{evidenceJson=new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(evidence==null?Map.of():evidence);}catch(Exception ignored){evidenceJson="{}";}
-        jdbc.update("insert into framework_process_qa_run(process_code,step_code,result,failure_reason,evidence_json,executed_by) values(?,?,?,nullif(?,''),?::jsonb,?)",processCode,stepCode==null?"":stepCode,result,failureReason==null?"":failureReason,evidenceJson,user);
+        String normalizedStep=stepCode==null?"":stepCode.trim();
+        List<Map<String,Object>> contracts=jdbc.queryForList("""
+            select p.process_version as "processVersion",
+                   case when ?='' then framework_current_process_contract_fingerprint(p.process_code)
+                        else framework_current_process_step_contract_fingerprint(p.process_code,?) end as "contractFingerprint"
+              from framework_process_definition p where p.process_code=?
+            """,normalizedStep,normalizedStep,processCode);
+        Object rawFingerprint=contracts.size()==1?contracts.get(0).get("contractFingerprint"):null;
+        if(rawFingerprint==null||rawFingerprint.toString().isBlank())
+            throw new IllegalStateException("Current process contract fingerprint is unavailable; QA evidence was not recorded: "+processCode+" / "+normalizedStep);
+        String processVersion=String.valueOf(contracts.get(0).get("processVersion"));
+        String contractFingerprint=rawFingerprint.toString();
+        Object rawSourceCommit=(evidence==null?Map.of():evidence).get("sourceCommit");
+        Object rawEnvironment=(evidence==null?Map.of():evidence).get("executionEnvironment");
+        String sourceCommit=rawSourceCommit==null||rawSourceCommit.toString().isBlank()?"UNAVAILABLE":rawSourceCommit.toString();
+        String environment=rawEnvironment==null||rawEnvironment.toString().isBlank()?"APPLICATION_RUNTIME_SMOKE":rawEnvironment.toString();
+        String evidenceHash=sha256Hex(evidenceJson);
+        String evidenceUri="inline://qa-runtime/sha256/"+evidenceHash;
+        jdbc.update("insert into framework_process_qa_run(process_code,step_code,result,failure_reason,evidence_json,executed_by,evidence_type,process_version,source_commit,contract_fingerprint,execution_environment,evidence_uri,evidence_hash) values(?,?,?,nullif(?,''),?::jsonb,?,'QA_RUNTIME',?,?,?,?,?,?)",processCode,normalizedStep,result,failureReason==null?"":failureReason,evidenceJson,user,processVersion,sourceCommit,contractFingerprint,environment,evidenceUri,evidenceHash);
     }
 
     public List<Map<String,Object>> qaResults(String processCode,String user){
         String filter=processCode==null?"":processCode.trim();
-        return jdbc.queryForList("select qa_run_id as \"qaRunId\",process_code as \"processCode\",step_code as \"stepCode\",result,failure_reason as \"failureReason\",evidence_json::text as \"evidenceJson\",executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_process_qa_run where (?='' or process_code=?) order by qa_run_id desc limit 50",filter,filter);
+        return jdbc.queryForList("select qa_run_id as \"qaRunId\",process_code as \"processCode\",step_code as \"stepCode\",result,failure_reason as \"failureReason\",evidence_json::text as \"evidenceJson\",executed_by as \"executedBy\",executed_at as \"executedAt\",evidence_type as \"evidenceType\",process_version as \"processVersion\",source_commit as \"sourceCommit\",contract_fingerprint as \"contractFingerprint\",execution_environment as \"executionEnvironment\",evidence_uri as \"evidenceUri\",evidence_hash as \"evidenceHash\" from framework_process_qa_run where (?='' or process_code=?) order by qa_run_id desc limit 50",filter,filter);
+    }
+
+    private static String sha256Hex(String value){
+        try{
+            byte[] digest=java.security.MessageDigest.getInstance("SHA-256").digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        }catch(java.security.NoSuchAlgorithmException impossible){throw new IllegalStateException("SHA-256 is unavailable",impossible);}
+    }
+
+    private static String md5Hex(String value){
+        try{
+            byte[] digest=java.security.MessageDigest.getInstance("MD5").digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        }catch(java.security.NoSuchAlgorithmException e){throw new IllegalStateException(e);}
     }
 
     private void requireActorAssignment(String tenant,String project,String actor,String user){
-        Integer count=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and project_id=? and actor_code=? and lower(account_id)=lower(?) and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date)",Integer.class,tenant,project,actor,user);
+        Integer count=jdbc.queryForObject("select count(*) from framework_account_actor_assignment assignment join framework_actor_definition actor_definition on actor_definition.actor_code=assignment.actor_code and actor_definition.use_at='Y' where assignment.tenant_id=? and (assignment.project_id=? or assignment.project_id='*') and assignment.actor_code=? and lower(assignment.account_id)=lower(?) and assignment.assignment_status='ACTIVE' and (assignment.valid_from is null or assignment.valid_from<=current_date) and (assignment.valid_until is null or assignment.valid_until>=current_date)",Integer.class,tenant,project,actor,user);
         if(count==null||count==0)throw new SecurityException("프로젝트에 활성 액터 배정이 없습니다: "+actor);
     }
 
+    void requireStepPermissionGrants(String process,String step,String actor){
+        requireStepPermissionGrants(process,step,actor,"","","");
+    }
+
+    void requireStepPermissionGrants(
+            String process,String step,String actor,String routePath,String audience){
+        requireStepPermissionGrants(process,step,actor,routePath,audience,"");
+    }
+
+    void requireStepPermissionGrants(String process,String step,String actor,
+            String routePath,String audience,String project){
+        new CompositeRuntimePolicyService(jdbc).requirePermissions(process,step,actor,
+            routePath,audience,project);
+    }
+
+    @Transactional public Map<String,Object> manageQaProcessExecution(Map<String,Object>b,String user){
+        String normalizedUser=user==null?"":user.trim().toLowerCase(Locale.ROOT);
+        if(!normalizedUser.startsWith("qa")&&!"webmaster".equals(normalizedUser))throw new SecurityException("QA 허용 계정만 인스턴스를 관리할 수 있습니다.");
+        String action=req(b,"action").toUpperCase(Locale.ROOT),project=req(b,"projectId"),process=req(b,"processCode");
+        if(!Set.of("CREATE","UPDATE","RESET","DELETE").contains(action))throw new IllegalArgumentException("지원하지 않는 QA 인스턴스 작업입니다: "+action);
+        List<Map<String,Object>> projects=jdbc.queryForList("select tenant_id,project_name from emission_project_registry where project_id=?",project);
+        if(projects.isEmpty())throw new IllegalArgumentException("프로젝트를 찾을 수 없습니다: "+project);
+        String tenant=String.valueOf(projects.get(0).get("tenant_id"));
+        Integer qaAssignment=jdbc.queryForObject("select count(*) from framework_account_actor_assignment assignment join framework_actor_definition actor on actor.actor_code=assignment.actor_code and actor.use_at='Y' where assignment.tenant_id=? and (assignment.project_id=? or assignment.project_id='*') and lower(assignment.account_id)=lower(?) and assignment.assignment_status='ACTIVE'",Integer.class,tenant,project,user);
+        if((qaAssignment==null||qaAssignment==0)&&!"qaassign26".equals(normalizedUser)&&!"webmaster".equals(normalizedUser))throw new SecurityException("이 프로젝트의 QA 액터 배정이 없습니다.");
+        List<Map<String,Object>> firstSteps=jdbc.queryForList("select step_code,from_state,actor_code from framework_process_step where process_code=? order by step_order limit 1",process);
+        if(firstSteps.isEmpty())throw new IllegalArgumentException("프로세스 절차가 없습니다: "+process);
+        if("CREATE".equals(action)){
+            Map<String,Object> first=firstSteps.get(0),context=new LinkedHashMap<>();
+            context.put("tenantId",tenant);context.put("projectId",project);context.put("processCode",process);
+            context.put("actorCode",def(b,"actorCode",String.valueOf(first.get("actor_code"))));context.put("cycleType",def(b,"cycleType","ONCE"));
+            context.put("periodStart",str(b,"periodStart"));context.put("periodEnd",str(b,"periodEnd"));
+            Map<String,Object> created=new LinkedHashMap<>(startProcessExecution(context,user));created.put("action",action);return created;
+        }
+        List<Map<String,Object>> rows=jdbc.queryForList("select * from framework_process_execution where tenant_id=? and project_id=? and process_code=? order by started_at desc limit 1 for update",tenant,project,process);
+        if(rows.isEmpty())throw new IllegalStateException("관리할 QA 인스턴스가 없습니다. 먼저 추가하세요.");
+        Map<String,Object> execution=rows.get(0);UUID executionId=(UUID)execution.get("execution_id");
+        if("DELETE".equals(action)){
+            int drafts=jdbc.update("delete from framework_process_work_draft where tenant_id=? and project_id=? and process_code=?",tenant,project,process);
+            int deleted=jdbc.update("delete from framework_process_execution where execution_id=?",executionId);
+            return Map.of("success",true,"action",action,"projectId",project,"processCode",process,"deletedExecutions",deleted,"deletedDrafts",drafts);
+        }
+        if("RESET".equals(action)){
+            int events=jdbc.update("delete from framework_process_execution_event where execution_id=?",executionId);
+            int drafts=jdbc.update("delete from framework_process_work_draft where tenant_id=? and project_id=? and process_code=?",tenant,project,process);
+            Map<String,Object> first=firstSteps.get(0);
+            jdbc.update("update framework_process_execution set current_step_code=?,current_state=?,execution_status='RUNNING',handoff_status='NOT_READY',snapshot_ref=null,completed_at=null,started_at=current_timestamp,updated_at=current_timestamp where execution_id=?",first.get("step_code"),first.get("from_state"),executionId);
+            return Map.of("success",true,"action",action,"executionId",executionId,"projectId",project,"processCode",process,"deletedEvents",events,"deletedDrafts",drafts,"currentStepCode",String.valueOf(first.get("step_code")));
+        }
+        String cycleType=def(b,"cycleType",String.valueOf(execution.getOrDefault("cycle_type","ONCE"))).toUpperCase(Locale.ROOT);
+        if(!Set.of("ONCE","MONTHLY","QUARTERLY","HALF_YEARLY","ANNUAL","AD_HOC").contains(cycleType))throw new IllegalArgumentException("지원하지 않는 실행 주기입니다: "+cycleType);
+        String periodStart="ONCE".equals(cycleType)?"":str(b,"periodStart"),periodEnd="ONCE".equals(cycleType)?"":str(b,"periodEnd");
+        if(!"ONCE".equals(cycleType)&&(periodStart.isBlank()||periodEnd.isBlank()))throw new IllegalArgumentException("반복 실행은 시작일과 종료일이 필요합니다.");
+        jdbc.update("update framework_process_execution set cycle_type=?,period_start=nullif(?,'')::date,period_end=nullif(?,'')::date,updated_at=current_timestamp where execution_id=?",cycleType,periodStart,periodEnd,executionId);
+        Map<String,Object> result=new LinkedHashMap<>();result.put("success",true);result.put("action",action);result.put("executionId",executionId);result.put("projectId",project);result.put("processCode",process);result.put("cycleType",cycleType);result.put("periodStart",periodStart);result.put("periodEnd",periodEnd);return result;
+    }
+
     public Map<String,Object> loadWorkDraft(String tenant,String project,String process,String step,String user){
-        List<Map<String,Object>> contracts=jdbc.queryForList("select step_code as \"stepCode\",step_name as \"stepName\",actor_code as \"actorCode\",command_code as \"commandCode\",from_state as \"fromState\",to_state as \"toState\",requirement_text as \"requirementText\",completion_rule as \"completionRule\",input_contract as \"inputContract\",output_contract as \"outputContract\",api_contract as \"apiContract\" from framework_process_step where process_code=? and step_code=?",process,step);
+        List<Map<String,Object>> contracts=jdbc.queryForList("select runtime_step.step_code as \"stepCode\",runtime_step.step_name as \"stepName\",runtime_step.actor_code as \"actorCode\",runtime_step.command_code as \"commandCode\",runtime_step.from_state as \"fromState\",runtime_step.to_state as \"toState\",runtime_step.requirement_text as \"requirementText\",runtime_step.completion_rule as \"completionRule\",runtime_step.input_contract as \"inputContract\",runtime_step.output_contract as \"outputContract\",runtime_step.api_contract as \"apiContract\",coalesce(nullif(framework_step_contract_fields(execution_spec.field_contract,'USER'),'[]'::jsonb),(select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=runtime_step.process_code and screen_contract.step_code=runtime_step.step_code order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),'[]'::jsonb)::text as \"fieldContractJson\" from framework_process_step runtime_step left join framework_step_execution_spec execution_spec using(process_code,step_code) where runtime_step.process_code=? and runtime_step.step_code=?",process,step);
         if(contracts.isEmpty())throw new IllegalArgumentException("Work step contract does not exist: "+process+" / "+step);
         Map<String,Object> contract=contracts.get(0);
         requireActorAssignment(tenant,project,String.valueOf(contract.get("actorCode")),user);
-        List<Map<String,Object>> drafts=jdbc.queryForList("select draft_id as \"draftId\",tenant_id as \"tenantId\",project_id as \"projectId\",process_code as \"processCode\",step_code as \"stepCode\",actor_code as \"actorCode\",payload_json::text as \"payloadJson\",evidence_json::text as \"evidenceJson\",draft_version as \"draftVersion\",draft_status as \"draftStatus\",saved_at as \"savedAt\",submitted_at as \"submittedAt\" from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?)",tenant,project,process,step,user);
+        List<Map<String,Object>> drafts=jdbc.queryForList("select draft_id as \"draftId\",tenant_id as \"tenantId\",project_id as \"projectId\",process_code as \"processCode\",step_code as \"stepCode\",actor_code as \"actorCode\",payload_json::text as \"payloadJson\",evidence_json::text as \"evidenceJson\",evidence_count as \"evidenceCount\",draft_version as \"draftVersion\",draft_status as \"draftStatus\",saved_at as \"savedAt\",submitted_at as \"submittedAt\" from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?)",tenant,project,process,step,user);
+        List<Map<String,Object>> handoffs=jdbc.queryForList("""
+            with target as (
+              select step_order from framework_process_step where process_code=? and step_code=?
+            ), source_steps as (
+              select 0 as source_priority,previous.process_code,previous.step_code
+                from framework_process_step previous,target
+               where previous.process_code=? and previous.step_order=target.step_order-1
+              union all
+              select 1,chain.process_code,previous.step_code
+                from framework_process_chain chain
+                join framework_process_step previous on previous.process_code=chain.process_code
+               where chain.next_process_code=? and chain.use_at='Y'
+                 and previous.step_order=(select max(last_step.step_order) from framework_process_step last_step where last_step.process_code=chain.process_code)
+                 and (select step_order from target)=1
+            )
+            select source.process_code as "fromProcessCode",source.step_code as "fromStepCode",
+                   draft.actor_code as "fromActorCode",draft.payload_json::text as "payloadJson",
+                   draft.evidence_json::text as "evidenceJson",draft.submitted_at as "submittedAt",
+                   coalesce(handoff.payload_contract,'{}'::jsonb)::text as "mappingContractJson",
+                   coalesce(handoff.integrity_contract,'{}'::jsonb)::text as "integrityContractJson",
+                   coalesce(mapped.payload,'{}'::jsonb)::text as "mappedPayloadJson"
+              from source_steps source
+              join framework_process_work_draft draft
+                on draft.tenant_id=? and draft.project_id=? and draft.process_code=source.process_code
+               and draft.step_code=source.step_code and draft.draft_status='SUBMITTED'
+              left join framework_process_data_handoff handoff
+                on handoff.process_code=source.process_code and handoff.from_step_code=source.step_code
+               and handoff.to_process_code=? and handoff.to_step_code=?
+              left join lateral (
+                select jsonb_object_agg(
+                         mapping->>'toField',
+                         framework_apply_handoff_transform(
+                           mapping->>'transform',
+                           draft.payload_json->(mapping->>'fromField'),
+                           draft.tenant_id
+                         )
+                       ) as payload
+                  from jsonb_array_elements(coalesce(handoff.payload_contract->'fieldMappings','[]'::jsonb)) mapping
+                 where jsonb_exists(draft.payload_json,mapping->>'fromField')
+              ) mapped on true
+             order by source.source_priority,draft.submitted_at desc
+             limit 1
+            """,process,step,process,process,tenant,project,process,step);
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("success",true);result.put("found",!drafts.isEmpty());result.put("contract",contract);
-        result.put("draft",drafts.isEmpty()?Map.of("draftVersion",0,"draftStatus","NOT_SAVED"):drafts.get(0));
+        result.put("draft",drafts.isEmpty()?Map.of("draftVersion",0,"draftStatus","NOT_SAVED","evidenceCount",0):drafts.get(0));
+        result.put("handoff",handoffs.isEmpty()?Map.of():handoffs.get(0));
+        result.put("prerequisiteReadiness",relayPrerequisiteReadiness(tenant,project,process,step));
+        List<Map<String,Object>> executionContext=jdbc.queryForList("""
+            select jsonb_strip_nulls(jsonb_build_object(
+                     'tenantId',execution.tenant_id,'projectId',execution.project_id,'processCode',execution.process_code,
+                     'stepCode',?::text,'actorCode',?::text,
+                     'reportingYear',coalesce(project.reporting_year,extract(year from execution.period_start)::integer,extract(year from current_date)::integer),
+                     'periodStart',to_char(coalesce(execution.period_start,project.period_start),'YYYY-MM-DD'),
+                     'periodEnd',to_char(coalesce(execution.period_end,project.period_end),'YYYY-MM-DD')
+                   ))::text as "defaultPayloadJson"
+              from framework_process_execution execution
+              left join emission_project_registry project
+                on project.tenant_id=execution.tenant_id and project.project_id=execution.project_id
+             where execution.tenant_id=? and execution.project_id=? and execution.process_code=?
+             order by execution.started_at desc limit 1
+            """,step,String.valueOf(contract.get("actorCode")),tenant,project,process);
+        if(executionContext.isEmpty()){
+            Map<String,Object> defaults=new LinkedHashMap<>();
+            defaults.put("tenantId",tenant);defaults.put("projectId",project);
+            defaults.put("processCode",process);defaults.put("stepCode",step);
+            defaults.put("actorCode",String.valueOf(contract.get("actorCode")));
+            result.put("defaultPayloadJson",defaults);
+        }else result.put("defaultPayloadJson",String.valueOf(executionContext.get(0).get("defaultPayloadJson")));
         return result;
     }
 
@@ -1181,6 +7752,7 @@ public class ActorProcessGovernanceService {
         String requiredActor=String.valueOf(contracts.get(0).get("actor_code"));
         if(!requiredActor.equals(actor))throw new SecurityException("The required actor for this step is "+requiredActor+".");
         requireActorAssignment(tenant,project,actor,user);
+        assertRelayPrerequisitesReady(tenant,project,process,step);
         List<Map<String,Object>> existing=jdbc.queryForList("select draft_id,draft_version,draft_status from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?) for update",tenant,project,process,step,user);
         if(existing.isEmpty()){
             if(expectedVersion!=0)throw new IllegalStateException("The draft version changed. Reload the latest work.");
@@ -1188,16 +7760,19 @@ public class ActorProcessGovernanceService {
         }else{
             Map<String,Object> current=existing.get(0);int currentVersion=((Number)current.get("draft_version")).intValue();
             if(currentVersion!=expectedVersion)throw new IllegalStateException("The draft version changed. Reload the latest work.");
-            if("SUBMITTED".equals(String.valueOf(current.get("draft_status"))))throw new IllegalStateException("A submitted work item cannot be edited.");
-            jdbc.update("update framework_process_work_draft set actor_code=?,payload_json=cast(? as jsonb),evidence_json=cast(? as jsonb),draft_version=draft_version+1,saved_at=current_timestamp,updated_at=current_timestamp where draft_id=?",actor,payload,evidence,current.get("draft_id"));
+            if("SUBMITTED".equals(String.valueOf(current.get("draft_status")))){
+                Integer reentry=jdbc.queryForObject("select count(*) from framework_process_execution where tenant_id=? and project_id=? and process_code=? and current_step_code=? and execution_status='RUNNING'",Integer.class,tenant,project,process,step);
+                if(reentry==null||reentry==0)throw new IllegalStateException("A submitted work item can only be reopened after an active process re-enters this step.");
+            }
+            jdbc.update("update framework_process_work_draft set actor_code=?,payload_json=cast(? as jsonb),evidence_json=cast(? as jsonb),draft_version=draft_version+1,draft_status='DRAFT',submitted_at=null,saved_at=current_timestamp,updated_at=current_timestamp where draft_id=?",actor,payload,evidence,current.get("draft_id"));
         }
         return loadWorkDraft(tenant,project,process,step,user);
     }
 
     public Map<String,Object> findProcessExecution(String tenant,String project,String process,String user){
-        Integer assignmentCount=jdbc.queryForObject("select count(*) from framework_account_actor_assignment a where a.tenant_id=? and a.project_id=? and lower(a.account_id)=lower(?) and a.assignment_status='ACTIVE' and (a.valid_from is null or a.valid_from<=current_date) and (a.valid_until is null or a.valid_until>=current_date) and exists(select 1 from framework_process_step s where s.process_code=? and s.actor_code=a.actor_code)",Integer.class,tenant,project,user,process);
+        Integer assignmentCount=jdbc.queryForObject("select count(*) from framework_account_actor_assignment a join framework_actor_definition actor on actor.actor_code=a.actor_code and actor.use_at='Y' where a.tenant_id=? and a.project_id=? and lower(a.account_id)=lower(?) and a.assignment_status='ACTIVE' and (a.valid_from is null or a.valid_from<=current_date) and (a.valid_until is null or a.valid_until>=current_date) and exists(select 1 from framework_process_step s where s.process_code=? and s.actor_code=a.actor_code)",Integer.class,tenant,project,user,process);
         if(assignmentCount==null||assignmentCount==0)throw new SecurityException("No active actor assignment exists for this project process.");
-        List<Map<String,Object>> rows=jdbc.queryForList("select execution_id as \"executionId\",tenant_id as \"tenantId\",project_id as \"projectId\",process_code as \"processCode\",current_step_code as \"currentStepCode\",execution_status as \"executionStatus\",current_state as \"currentState\",initiated_by_actor as \"initiatedByActor\",started_at as \"startedAt\",completed_at as \"completedAt\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? order by started_at desc limit 1",tenant,project,process);
+        List<Map<String,Object>> rows=jdbc.queryForList("select execution_id as \"executionId\",tenant_id as \"tenantId\",project_id as \"projectId\",process_code as \"processCode\",current_step_code as \"currentStepCode\",execution_status as \"executionStatus\",current_state as \"currentState\",initiated_by_actor as \"initiatedByActor\",cycle_type as \"cycleType\",period_start as \"periodStart\",period_end as \"periodEnd\",site_scope as \"siteScope\",boundary_version as \"boundaryVersion\",methodology_version as \"methodologyVersion\",data_cutoff_at as \"dataCutoffAt\",execution_version as \"executionVersion\",handoff_status as \"handoffStatus\",snapshot_ref as \"snapshotRef\",started_at as \"startedAt\",completed_at as \"completedAt\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? order by started_at desc limit 1",tenant,project,process);
         if(rows.isEmpty())return Map.of("found",false);
         Map<String,Object> out=new LinkedHashMap<>(rows.get(0));
         out.put("found",true);
@@ -1205,17 +7780,135 @@ public class ActorProcessGovernanceService {
         return out;
     }
 
+    public Map<String,Object> generatedFieldOptions(String tenant,String project,String process,String step,String keyword,String user){
+        String actor=jdbc.queryForObject("select actor_code from framework_process_step where process_code=? and step_code=?",String.class,process,step);
+        requireActorAssignment(tenant,project,actor,user);
+        String search=keyword==null?"":keyword.trim().toLowerCase(Locale.ROOT);
+        String like="%"+search+"%";
+        List<Map<String,Object>> fields=jdbc.queryForList("""
+            select field->>'fieldCode' as "fieldCode",upper(coalesce(field->>'controlType','TEXT')) as "controlType"
+              from jsonb_array_elements(coalesce(
+                (select nullif(framework_step_contract_fields(execution_spec.field_contract,'USER'),'[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
+                (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
+                '[]'::jsonb
+              )) field
+             where nullif(field->>'fieldCode','') is not null
+               and coalesce((field->>'editable')::boolean,false)
+            """,process,step,process,step);
+        Map<String,Object> optionSets=new LinkedHashMap<>();
+        for(Map<String,Object> field:fields){
+            String fieldCode=String.valueOf(field.get("fieldCode")),control=String.valueOf(field.get("controlType"));
+            List<Map<String,Object>> options;
+            switch(control){
+                case "PROJECT_SELECT" -> options=jdbc.queryForList("select project_id::text as value,project_name as label from emission_project_registry where project_id=? and tenant_id=? order by project_name limit 50",project,tenant);
+                case "ACTOR_SELECT" -> options=jdbc.queryForList("select distinct assignment.actor_code as value,assignment.actor_code as label from framework_account_actor_assignment assignment join framework_actor_definition actor on actor.actor_code=assignment.actor_code and actor.use_at='Y' where assignment.tenant_id=? and assignment.project_id=? and assignment.assignment_status='ACTIVE' order by assignment.actor_code limit 50",tenant,project);
+                case "ORGANIZATION_SELECT" -> options=jdbc.queryForList("select distinct coalesce(nullif(instt_id,''),entrprs_mber_id) as value,coalesce(nullif(cmpny_nm,''),entrprs_mber_id) as label from comtnentrprsmber where entrprs_mber_sttus in ('P','A') and (lower(coalesce(cmpny_nm,'')) like ? or lower(coalesce(instt_id,'')) like ?) order by label limit 50",like,like);
+                case "SITE_SELECT" -> options=jdbc.queryForList("select site_code as value,site_name as label from emission_site_registry where tenant_id=? and site_status='ACTIVE' and (lower(site_name) like ? or lower(site_code) like ?) order by site_name limit 50",tenant,like,like);
+                case "SCOPE_SELECT" -> options=List.of(option("SCOPE1","Scope 1"),option("SCOPE2","Scope 2"),option("SCOPE3","Scope 3"));
+                case "UNIT_SELECT" -> options=jdbc.queryForList("select distinct unit as value,unit as label from emission_factor_reference where nullif(unit,'') is not null and lower(unit) like ? order by unit limit 50",like);
+                case "FACTOR_SEARCH" -> options=jdbc.queryForList("select factor_id as value,factor_name||' · '||factor_value::text||' '||unit as label from emission_factor_reference where lower(factor_name) like ? or lower(factor_id) like ? order by factor_name limit 50",like,like);
+                case "QUALITY_BADGE" -> options=List.of(option("READY","정상"),option("CHECK_REQUIRED","확인 필요"),option("BLOCKED","차단"));
+                default -> options=new ArrayList<>();
+            }
+            if(!options.isEmpty())optionSets.put(fieldCode,options);
+        }
+        return Map.of("success",true,"tenantId",tenant,"projectId",project,"processCode",process,"stepCode",step,"optionSets",optionSets);
+    }
+
+    public Map<String,Object> relayPrerequisiteReadiness(String tenant,String project,String process,String step){
+        String normalizedTenant=tenant==null?"":tenant.trim(),normalizedProject=project==null?"":project.trim();
+        String normalizedProcess=process==null?"":process.trim(),normalizedStep=step==null?"":step.trim();
+        if(normalizedTenant.isBlank()&&!normalizedProject.isBlank()){
+            List<String> tenants=jdbc.queryForList("select tenant_id from emission_project_registry where project_id=? order by created_at desc limit 1",String.class,normalizedProject);
+            if(!tenants.isEmpty())normalizedTenant=tenants.get(0);
+        }
+        final String resolvedTenant=normalizedTenant;
+        List<Map<String,Object>> policies=jdbc.queryForList("""
+            select handoff.to_process_code as "processCode",handoff.to_step_code as "stepCode",
+                   policy->>'fieldCode' as "fieldCode",policy->>'fieldName' as "fieldName",
+                   policy->>'prerequisiteType' as "prerequisiteType",
+                   coalesce((policy->>'blocking')::boolean,false) as blocking
+              from framework_process_data_handoff handoff
+              cross join lateral jsonb_array_elements(coalesce(handoff.payload_contract->'unmappedFieldPolicies','[]'::jsonb)) policy
+             where policy->>'prerequisiteType'<>'NONE'
+               and (?='' or handoff.to_process_code=?)
+               and (?='' or handoff.to_step_code=?)
+             order by handoff.to_process_code,handoff.to_step_code,policy->>'fieldCode'
+            """,normalizedProcess,normalizedProcess,normalizedStep,normalizedStep);
+        Map<String,Integer> counts=new HashMap<>();List<Map<String,Object>> items=new ArrayList<>();int blockingMissing=0;
+        for(Map<String,Object> policy:policies){
+            String type=String.valueOf(policy.get("prerequisiteType"));
+            int available=counts.computeIfAbsent(type,key->prerequisiteAvailability(key,resolvedTenant,normalizedProject));
+            boolean blocking=Boolean.TRUE.equals(policy.get("blocking")),ready=available>0;
+            if(blocking&&!ready)blockingMissing++;
+            Map<String,Object> item=new LinkedHashMap<>(policy);item.put("availableCount",available);item.put("ready",ready);
+            item.put("managementUrl",prerequisiteManagementUrl(type));item.put("resolution",prerequisiteResolution(type));items.add(item);
+        }
+        Map<String,Object> result=new LinkedHashMap<>();result.put("ready",blockingMissing==0);result.put("requirementCount",items.size());
+        result.put("blockingCount",items.stream().filter(item->Boolean.TRUE.equals(item.get("blocking"))).count());
+        result.put("blockingMissingCount",blockingMissing);result.put("items",items);return result;
+    }
+
+    private int prerequisiteAvailability(String type,String tenant,String project){
+        Integer count=switch(type){
+            case "ORGANIZATION_REGISTRY" -> jdbc.queryForObject("select count(*) from emission_project_registry where tenant_id=? and project_id=?",Integer.class,tenant,project);
+            case "SITE_REGISTRY" -> jdbc.queryForObject("select count(*) from emission_site_registry where tenant_id=? and site_status='ACTIVE' and (effective_until is null or effective_until>=current_date)",Integer.class,tenant);
+            case "ACTOR_ASSIGNMENT" -> jdbc.queryForObject("select count(*) from framework_account_actor_assignment assignment join framework_actor_definition actor on actor.actor_code=assignment.actor_code and actor.use_at='Y' where assignment.tenant_id=? and assignment.project_id=? and assignment.assignment_status='ACTIVE' and (assignment.valid_from is null or assignment.valid_from<=current_date) and (assignment.valid_until is null or assignment.valid_until>=current_date)",Integer.class,tenant,project);
+            case "EMISSION_FACTOR_REFERENCE" -> jdbc.queryForObject("select count(*) from emission_factor_reference",Integer.class);
+            case "UNIT_REFERENCE" -> jdbc.queryForObject("select count(distinct unit) from emission_factor_reference where nullif(trim(unit),'') is not null",Integer.class);
+            case "REPORT_REGISTRY" -> jdbc.queryForObject("select count(*) from emission_project_report where project_id=? or exists(select 1 from framework_process_work_draft where tenant_id=? and project_id=? and process_code='EMISSION_CALCULATION' and draft_status='SUBMITTED')",Integer.class,project,tenant,project);
+            case "FACILITY_REGISTRY" -> jdbc.queryForObject("select count(*) from framework_process_work_draft where tenant_id=? and project_id=? and nullif(trim(payload_json->>'facilityId'),'') is not null",Integer.class,tenant,project);
+            case "DATA_SOURCE_REGISTRY" -> 1;
+            default -> 0;
+        };
+        return count==null?0:count;
+    }
+
+    private static String prerequisiteManagementUrl(String type){
+        return switch(type){
+            case "ORGANIZATION_REGISTRY","SITE_REGISTRY","FACILITY_REGISTRY" -> "/admin/emission/site-management";
+            case "ACTOR_ASSIGNMENT" -> "/emission/work-assignment";
+            case "EMISSION_FACTOR_REFERENCE","UNIT_REFERENCE" -> "/admin/emission/factor-management";
+            case "REPORT_REGISTRY" -> "/admin/emission/report-template";
+            default -> "/admin/emission/project-prerequisites";
+        };
+    }
+
+    private static String prerequisiteResolution(String type){
+        return switch(type){
+            case "ORGANIZATION_REGISTRY" -> "Register the project organization and boundary.";
+            case "SITE_REGISTRY" -> "Register and activate at least one tenant-owned site.";
+            case "ACTOR_ASSIGNMENT" -> "Assign an active account to the required project actor.";
+            case "FACILITY_REGISTRY" -> "Register or select the project facility.";
+            case "EMISSION_FACTOR_REFERENCE" -> "Approve at least one emission factor reference.";
+            case "UNIT_REFERENCE" -> "Register a unit through the factor reference catalog.";
+            case "REPORT_REGISTRY" -> "Create a report record or complete the calculation handoff.";
+            case "DATA_SOURCE_REGISTRY" -> "Enter the governed source type and original reference in this step.";
+            default -> "Complete the administrator prerequisite.";
+        };
+    }
+
+    private void assertRelayPrerequisitesReady(String tenant,String project,String process,String step){
+        Map<String,Object> readiness=relayPrerequisiteReadiness(tenant,project,process,step);
+        if(((Number)readiness.get("blockingMissingCount")).intValue()>0)
+            throw new IllegalStateException("PREREQUISITE_NOT_READY: complete the linked administrator prerequisites before saving or completing this step.");
+    }
+
+    private static Map<String,Object> option(String value,String label){return Map.of("value",value,"label",label);}
+
     @Transactional public Map<String,Object> claimDevelopmentJob(String worker){
-        List<Map<String,Object>> rows=jdbc.queryForList("select j.* from framework_development_job j left join framework_development_phase phase on phase.job_type=j.job_type and phase.active_yn='Y' where j.approval_status='APPROVED' and (j.job_status in ('PLANNED','RETRY') or (j.job_status='RUNNING' and j.lease_until<current_timestamp)) and j.attempt_count<j.max_attempts and not exists(select 1 from framework_development_job_dependency d join framework_development_job required_job on required_job.job_id=d.depends_on_job_id where d.job_id=j.job_id and d.dependency_type='REQUIRED' and required_job.job_status not in ('VERIFIED','COMPLETED')) order by coalesce(phase.phase_order,1000),j.process_code,j.step_code,j.job_id for update of j skip locked limit 1");
+        List<Map<String,Object>> rows=jdbc.queryForList("select j.* from framework_development_job j left join framework_development_phase phase on phase.job_type=j.job_type and phase.active_yn='Y' where j.approval_status='APPROVED' and (j.job_status in ('PLANNED','RETRY') or (j.job_status='RUNNING' and j.lease_until is not null and j.lease_until<=current_timestamp)) and j.attempt_count<j.max_attempts and not exists(select 1 from framework_development_job_dependency d join framework_development_job required_job on required_job.job_id=d.depends_on_job_id where d.job_id=j.job_id and d.dependency_type='REQUIRED' and required_job.job_status not in ('VERIFIED','COMPLETED')) order by coalesce(phase.phase_order,1000),j.process_code,j.step_code,j.job_id for update of j skip locked limit 1");
         if(rows.isEmpty())return Map.of("success",true,"available",false);
         Map<String,Object> job=rows.get(0); long id=((Number)job.get("job_id")).longValue(); String from=String.valueOf(job.get("job_status")),token=UUID.randomUUID().toString();
-        jdbc.update("update framework_development_job set job_status='RUNNING',worker_id=?,lease_token=?,lease_until=current_timestamp+interval '10 minutes',attempt_count=attempt_count+1,started_at=coalesce(started_at,current_timestamp),last_error=null,updated_at=current_timestamp where job_id=?",worker,token,id);
+        int nextAttempt=((Number)job.getOrDefault("attempt_count",0)).intValue()+1;
+        int claimed=jdbc.update("update framework_development_job set job_status='RUNNING',worker_id=?,lease_token=?,lease_until=current_timestamp+interval '10 minutes',attempt_count=attempt_count+1,started_at=coalesce(started_at,current_timestamp),last_error=null,updated_at=current_timestamp where job_id=? and job_status=? and attempt_count=? and attempt_count<max_attempts",worker,token,id,from,nextAttempt-1);
+        if(claimed!=1)throw new IllegalStateException("DEVELOPMENT_JOB_CLAIM_CAS_NOT_EXACT");
         event(id,"CLAIMED",from,"RUNNING",worker,"{}");
-        Map<String,Object> out=new LinkedHashMap<>(job);out.put("jobId",id);out.put("leaseToken",token);out.put("available",true);out.put("success",true);return out;
+        Map<String,Object> out=new LinkedHashMap<>(job);out.put("jobId",id);out.put("leaseToken",token);out.put("jobStatus","RUNNING");out.put("job_status","RUNNING");out.put("attemptCount",nextAttempt);out.put("attempt_count",nextAttempt);out.put("available",true);out.put("success",true);return out;
     }
 
     @Transactional public Map<String,Object> heartbeatDevelopmentJob(long jobId,String token,String worker){
-        int changed=jdbc.update("update framework_development_job set lease_until=current_timestamp+interval '10 minutes',updated_at=current_timestamp where job_id=? and lease_token=? and worker_id=? and job_status='RUNNING'",jobId,token,worker);
+        int changed=jdbc.update("update framework_development_job set lease_until=current_timestamp+interval '10 minutes',updated_at=current_timestamp where job_id=? and lease_token=? and worker_id=? and job_status='RUNNING' and lease_until is not null and lease_until>current_timestamp",jobId,token,worker);
         if(changed==0)throw new IllegalArgumentException("실행 임대가 만료되었거나 다른 실행기가 소유한 작업입니다.");
         return Map.of("success",true,"jobId",jobId);
     }
@@ -1223,7 +7916,7 @@ public class ActorProcessGovernanceService {
     @Transactional public Map<String,Object> completeDevelopmentJob(Map<String,Object>b,String worker){
         long id=Long.parseLong(req(b,"jobId"));String token=req(b,"leaseToken"),result=def(b,"result","VERIFIED");
         if(!List.of("VERIFIED","FAILED").contains(result))throw new IllegalArgumentException("result must be VERIFIED or FAILED");
-        List<Map<String,Object>> rows=jdbc.queryForList("select * from framework_development_job where job_id=? and lease_token=? and worker_id=? and job_status='RUNNING' for update",id,token,worker);
+        List<Map<String,Object>> rows=jdbc.queryForList("select * from framework_development_job where job_id=? and lease_token=? and worker_id=? and job_status='RUNNING' and lease_until is not null and lease_until>current_timestamp for update",id,token,worker);
         if(rows.isEmpty())throw new IllegalArgumentException("실행 임대가 만료되었거나 다른 실행기가 소유한 작업입니다.");
         Map<String,Object>j=rows.get(0);String process=String.valueOf(j.get("process_code")),step=String.valueOf(j.get("step_code")),type=String.valueOf(j.get("job_type"));
         jdbc.update("update framework_development_job set job_status=?,quality_status=case when ?='VERIFIED' then 'VERIFIED' else 'FAILED' end,result_json=?,evidence_ref=nullif(?,''),rollback_ref=nullif(?,''),last_error=nullif(?,''),completed_at=case when ?='VERIFIED' then current_timestamp else null end,lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=?",result,result,def(b,"resultJson","{}"),str(b,"evidenceRef"),str(b,"rollbackRef"),str(b,"error"),result,id);
@@ -1238,6 +7931,46 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> rows=jdbc.queryForList("select job_status from framework_development_job where job_id=? for update",jobId);if(rows.isEmpty())throw new IllegalArgumentException("작업이 존재하지 않습니다.");
         String from=String.valueOf(rows.get(0).get("job_status"));if(!"FAILED".equals(from))throw new IllegalArgumentException("실패 작업만 재시도할 수 있습니다.");
         jdbc.update("update framework_development_job set job_status='RETRY',worker_id=null,lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=?",jobId);event(jobId,"RETRY_REQUESTED",from,"RETRY",actor,"{}");return Map.of("success",true,"jobId",jobId);
+    }
+
+    @Transactional public Map<String,Object> requestDevelopmentRollback(long jobId,String reason,String actor){
+        List<Map<String,Object>> rows=jdbc.queryForList("select job_id,process_code,step_code,job_type,target_path,job_status,quality_status,rollback_ref from framework_development_job where job_id=? for update",jobId);
+        if(rows.isEmpty())throw new IllegalArgumentException("개발 작업이 존재하지 않습니다.");
+        Map<String,Object> job=rows.get(0);
+        String status=String.valueOf(job.get("job_status")),quality=String.valueOf(job.get("quality_status"));
+        String rollbackRef=job.get("rollback_ref")==null?"":String.valueOf(job.get("rollback_ref")).trim();
+        if(!List.of("VERIFIED","COMPLETED").contains(status)||!"VERIFIED".equals(quality))
+            throw new IllegalStateException("검증 완료된 개발 작업만 롤백할 수 있습니다.");
+        if(rollbackRef.isBlank())throw new IllegalStateException("불변 롤백 기준이 등록되지 않았습니다.");
+        Integer failedGates=jdbc.queryForObject("select count(*) from framework_quality_gate gate where gate.mandatory=true and gate.use_at='Y' and not exists(select 1 from framework_development_job_gate_result result where result.job_id=? and result.gate_code=gate.gate_code and result.result='PASSED')",Integer.class,jobId);
+        Integer runningTargets=jdbc.queryForObject("select count(*) from framework_development_job where coalesce(target_path,'')=coalesce(?, '') and job_status='RUNNING'",Integer.class,job.get("target_path"));
+        String preflight=failedGates!=null&&failedGates>0?"FAILED":runningTargets!=null&&runningTargets>0?"FAILED":"PASSED";
+        String summary="mandatoryGateFailures="+failedGates+", runningTargetJobs="+runningTargets;
+        if(!"PASSED".equals(preflight))throw new IllegalStateException("롤백 사전 검증 실패: "+summary);
+        Long requestId=jdbc.queryForObject("insert into framework_development_rollback_request(source_job_id,rollback_ref,request_reason,preflight_status,preflight_summary,requested_by) values(?,?,?,?,?,?) returning rollback_request_id",Long.class,jobId,rollbackRef,reason==null||reason.isBlank()?"운영 안정성 복구":reason.trim(),preflight,summary,actor);
+        event(jobId,"ROLLBACK_REQUESTED",status,status,actor,"{\"rollbackRequestId\":"+requestId+"}");
+        return Map.of("success",true,"rollbackRequestId",requestId,"sourceJobId",jobId,"status","PENDING","preflightStatus",preflight);
+    }
+
+    @Transactional public Map<String,Object> approveDevelopmentRollback(long requestId,String actor){
+        List<Map<String,Object>> rows=jdbc.queryForList("select request.*,job.process_code,job.step_code,job.target_path,job.job_status,job.quality_status from framework_development_rollback_request request join framework_development_job job on job.job_id=request.source_job_id where request.rollback_request_id=? for update",requestId);
+        if(rows.isEmpty())throw new IllegalArgumentException("롤백 요청이 존재하지 않습니다.");
+        Map<String,Object> request=rows.get(0);
+        if(!"PENDING".equals(String.valueOf(request.get("request_status"))))throw new IllegalStateException("승인 대기 중인 롤백 요청만 승인할 수 있습니다.");
+        if(actor.equalsIgnoreCase(String.valueOf(request.get("requested_by"))))throw new SecurityException("요청자와 승인자는 서로 달라야 합니다.");
+        if(!"PASSED".equals(String.valueOf(request.get("preflight_status"))))throw new IllegalStateException("사전 검증을 통과하지 못한 롤백 요청입니다.");
+        if(!List.of("VERIFIED","COMPLETED").contains(String.valueOf(request.get("job_status")))||!"VERIFIED".equals(String.valueOf(request.get("quality_status"))))throw new IllegalStateException("승인 시점에 원본 작업의 검증 상태가 변경되어 현재 운영 버전을 유지합니다.");
+        String process=String.valueOf(request.get("process_code")),step=String.valueOf(request.get("step_code")),target=String.valueOf(request.get("target_path"));
+        Integer running=jdbc.queryForObject("select count(*) from framework_development_job where coalesce(target_path,'')=coalesce(?, '') and job_status='RUNNING'",Integer.class,target);
+        if(running!=null&&running>0)throw new IllegalStateException("동일 대상의 실행 중 작업이 있어 현재 운영 버전을 유지합니다.");
+        String rollbackTarget=target==null||"null".equals(target)?"":target;
+        String specification="{\"sourceJobId\":"+request.get("source_job_id")+",\"rollbackRequestId\":"+requestId+",\"rollbackRef\":\""+jsonEscape(String.valueOf(request.get("rollback_ref")))+"\",\"failClosed\":true}";
+        queueJob(process,step,"ROLLBACK","승인된 안전 롤백",rollbackTarget,specification,actor);
+        Long rollbackJobId=jdbc.queryForObject("select job_id from framework_development_job where process_code=? and step_code=? and job_type='ROLLBACK' and target_path=?",Long.class,process,step,rollbackTarget);
+        jdbc.update("update framework_development_job set approval_status='APPROVED',job_status='PLANNED',quality_status='PENDING',specification_json=?,rollback_ref=?,worker_id=null,lease_token=null,lease_until=null,last_error=null,updated_at=current_timestamp where job_id=?",specification,request.get("rollback_ref"),rollbackJobId);
+        jdbc.update("update framework_development_rollback_request set rollback_job_id=?,request_status='QUEUED',approved_by=?,approved_at=current_timestamp,updated_at=current_timestamp where rollback_request_id=?",rollbackJobId,actor,requestId);
+        event(((Number)request.get("source_job_id")).longValue(),"ROLLBACK_APPROVED",String.valueOf(request.get("job_status")),"QUEUED",actor,"{\"rollbackRequestId\":"+requestId+",\"rollbackJobId\":"+rollbackJobId+"}");
+        return Map.of("success",true,"rollbackRequestId",requestId,"rollbackJobId",rollbackJobId,"status","QUEUED","failClosed",true);
     }
 
     @Transactional public Map<String,Object> requestDevelopmentJob(long jobId,String actor){
@@ -1283,7 +8016,7 @@ public class ActorProcessGovernanceService {
     @Transactional public Map<String,Object> compileScreenBlueprints(Map<String,Object>b,String actor){
         String process=str(b,"processCode");int limit=Math.min(1000,Math.max(1,integerOr(b,"maxScreens",1000)));boolean dryRun=!"false".equalsIgnoreCase(str(b,"dryRun"));
         String batchCode="SCREEN_"+System.currentTimeMillis();
-        Long batchId=jdbc.queryForObject("insert into framework_screen_generation_batch(batch_code,batch_name,process_code,requested_count,dry_run,requested_by) values(?,?,?,?,?,?) returning batch_id",Long.class,batchCode,process.isBlank()?"전체 프로세스 화면 컴파일":process+" 화면 컴파일",process.isBlank()?null:process,limit,dryRun,actor);
+        Long batchId=dryRun?0L:jdbc.queryForObject("insert into framework_screen_generation_batch(batch_code,batch_name,process_code,requested_count,dry_run,requested_by) values(?,?,?,?,?,?) returning batch_id",Long.class,batchCode,process.isBlank()?"전체 프로세스 화면 컴파일":process+" 화면 컴파일",process.isBlank()?null:process,limit,false,actor);
         String filter=process.isBlank()?"":" and s.process_code=?";
         Object[] args=process.isBlank()?new Object[]{limit}:new Object[]{process,limit};
         List<Map<String,Object>> steps=jdbc.queryForList("select s.process_code,s.step_code,s.step_name,s.actor_code,s.command_code,s.from_state,s.to_state,s.completion_rule,s.user_path,s.admin_path,s.requires_user_page,s.requires_admin_page,p.domain_code from framework_process_step s join framework_process_definition p on p.process_code=s.process_code where (s.requires_user_page or s.requires_admin_page)"+filter+" order by p.development_order,s.process_code,s.step_order limit ?",args);
@@ -1297,7 +8030,7 @@ public class ActorProcessGovernanceService {
                 String screenType=inferScreenType(stepName,route,audience);String pageId=(processCode+"_"+stepCode+"_"+audience).replaceAll("[^A-Za-z0-9_]","_");String code="BP_"+pageId;
                 int caseTypes=jdbc.queryForObject("select count(distinct case_type) from framework_simulation_case where process_code=? and case_type in ('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY')",Integer.class,processCode);
                 String safeRoute=route.isBlank()?("ADMIN".equals(audience)?"/admin/generated/":"/generated/")+processCode.toLowerCase(Locale.ROOT)+"/"+stepCode.toLowerCase(Locale.ROOT):route;
-                List<Map<String,Object>> designRows=jdbc.queryForList("select business_purpose,entry_condition,exit_condition,kpi_contract,section_contract,field_contract,command_contract,state_contract,api_contract,data_contract,evidence_contract,responsive_contract,accessibility_contract,security_contract,design_readiness_score from framework_professional_screen_design_readiness where process_code=? and step_code=? and audience=? and lower(split_part(route_path,'?',1))=lower(?) order by contract_id limit 1",processCode,stepCode,audience,ScreenDevelopmentNoteService.cleanRoute(safeRoute));
+                List<Map<String,Object>> designRows=jdbc.queryForList("select business_purpose,entry_condition,exit_condition,kpi_contract,section_contract,field_contract,command_contract,state_contract,api_contract,data_contract,evidence_contract,responsive_contract,accessibility_contract,security_contract,design_readiness_score from framework_professional_screen_design_readiness where process_code=? and step_code=? and audience=? and lower(split_part(route_path,'?',1))=lower(?) order by design_readiness_score desc,contract_id desc limit 1",processCode,stepCode,audience,ScreenDevelopmentNoteService.cleanRoute(safeRoute));
                 Map<String,Object> design=designRows.isEmpty()?Map.of():designRows.get(0);
                 int designScore=designRows.isEmpty()?0:((Number)design.get("design_readiness_score")).intValue();
                 String validation=route.isBlank()?"화면 경로 누락":caseTypes<5?"필수 5종 테스트 시나리오 누락":(!designRows.isEmpty()&&designScore<100)?"전문 화면 설계 계약 미완료":"";String status=validation.isBlank()?"VALID":"INVALID";
@@ -1306,13 +8039,50 @@ public class ActorProcessGovernanceService {
                 boolean registeredSource=registeredSourceRoutes.contains(ScreenDevelopmentNoteService.cleanRoute(safeRoute).toLowerCase(Locale.ROOT));
                 String strategy=!"VALID".equals(status)?"DESIGN_REQUIRED":registeredSource?"ADOPT_EXISTING":"GENERATED_RUNTIME";
                 String transition=!"VALID".equals(status)?"DESIGN_BLOCKED":registeredSource?"CONTRACT_LINKED":"RUNTIME_ACTIVE";
-                Long blueprintId=jdbc.queryForObject("insert into framework_screen_blueprint(blueprint_code,process_code,step_code,actor_code,audience,page_id,page_name,route_path,screen_type,template_code,specification_json,traceability_json,validation_status,validation_message,implementation_strategy,transition_status,created_by) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(audience,route_path) do update set process_code=excluded.process_code,step_code=excluded.step_code,actor_code=excluded.actor_code,page_id=excluded.page_id,page_name=excluded.page_name,screen_type=excluded.screen_type,template_code=excluded.template_code,specification_json=excluded.specification_json,traceability_json=excluded.traceability_json,validation_status=excluded.validation_status,validation_message=excluded.validation_message,implementation_strategy=case when framework_screen_blueprint.implementation_strategy='ADOPT_EXISTING' then 'ADOPT_EXISTING' else excluded.implementation_strategy end,transition_status=case when framework_screen_blueprint.implementation_strategy='ADOPT_EXISTING' then 'CONTRACT_LINKED' else excluded.transition_status end,updated_at=current_timestamp returning blueprint_id",Long.class,code,processCode,stepCode,actorCode,audience,pageId,stepName+("USER".equals(audience)?"":" 관리"),safeRoute,screenType,"KRDS_"+screenType,spec,trace,status,validation,strategy,transition,actor);
+                if(dryRun){compiled++;if("VALID".equals(status))valid++;else invalid++;continue;}
+                String pageName=stepName+("USER".equals(audience)?"":" 관리");
+                List<Map<String,Object>> protectedRows=jdbc.queryForList("""
+                    select blueprint_id,
+                           process_code is not distinct from ?
+                       and step_code is not distinct from ?
+                       and actor_code is not distinct from ?
+                       and page_id is not distinct from ?
+                       and page_name is not distinct from ?
+                       and screen_type is not distinct from ?
+                       and template_code is not distinct from ?
+                       and specification_json is not distinct from ?
+                       and traceability_json is not distinct from ?
+                       and validation_status is not distinct from ?
+                       and validation_message is not distinct from ?
+                       and implementation_strategy is not distinct from ?
+                       and transition_status is not distinct from ? as exact_match
+                      from framework_screen_blueprint
+                     where audience=? and lower(split_part(route_path,'?',1))=lower(?)
+                       and implementation_strategy not in('GENERATED_RUNTIME','DESIGN_REQUIRED')
+                     for update
+                    """,processCode,stepCode,actorCode,pageId,pageName,screenType,
+                    "KRDS_"+screenType,spec,trace,status,validation,strategy,transition,
+                    audience,safeRoute);
+                Long blueprintId;
+                if(!protectedRows.isEmpty()){
+                    if(protectedRows.size()!=1||!Boolean.TRUE.equals(
+                            protectedRows.get(0).get("exact_match"))){
+                        throw new IllegalStateException(
+                            "MANUAL_BLUEPRINT_REVISION_REQUIRED: "+audience+" / "+safeRoute);
+                    }
+                    blueprintId=((Number)protectedRows.get(0).get("blueprint_id")).longValue();
+                }else{
+                    List<Long> written=jdbc.queryForList("insert into framework_screen_blueprint(blueprint_code,process_code,step_code,actor_code,audience,page_id,page_name,route_path,screen_type,template_code,specification_json,traceability_json,validation_status,validation_message,implementation_strategy,transition_status,created_by) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(audience,route_path) do update set process_code=excluded.process_code,step_code=excluded.step_code,actor_code=excluded.actor_code,page_id=excluded.page_id,page_name=excluded.page_name,screen_type=excluded.screen_type,template_code=excluded.template_code,specification_json=excluded.specification_json,traceability_json=excluded.traceability_json,validation_status=excluded.validation_status,validation_message=excluded.validation_message,implementation_strategy=excluded.implementation_strategy,transition_status=excluded.transition_status,updated_at=current_timestamp where framework_screen_blueprint.implementation_strategy in('GENERATED_RUNTIME','DESIGN_REQUIRED') returning blueprint_id",Long.class,code,processCode,stepCode,actorCode,audience,pageId,pageName,safeRoute,screenType,"KRDS_"+screenType,spec,trace,status,validation,strategy,transition,actor);
+                    if(written.size()!=1)throw new IllegalStateException(
+                        "MANUAL_BLUEPRINT_REVISION_REQUIRED: "+audience+" / "+safeRoute);
+                    blueprintId=written.get(0);
+                }
                 jdbc.update("insert into framework_screen_generation_batch_item(batch_id,blueprint_id,item_order,item_status,validation_message) values(?,?,?,?,?) on conflict(batch_id,blueprint_id) do nothing",batchId,blueprintId,++order,status,validation);
                 compiled++;if("VALID".equals(status))valid++;else invalid++;
             }
         }
         String batchStatus=invalid==0?"COMPILED":"REVIEW_REQUIRED";
-        jdbc.update("update framework_screen_generation_batch set compiled_count=?,valid_count=?,invalid_count=?,batch_status=?,summary_json=?,completed_at=current_timestamp where batch_id=?",compiled,valid,invalid,batchStatus,"{\"coverage\":"+(compiled==0?0:Math.round(valid*100.0/compiled))+"}",batchId);
+        if(!dryRun)jdbc.update("update framework_screen_generation_batch set compiled_count=?,valid_count=?,invalid_count=?,batch_status=?,summary_json=?,completed_at=current_timestamp where batch_id=?",compiled,valid,invalid,batchStatus,"{\"coverage\":"+(compiled==0?0:Math.round(valid*100.0/compiled))+"}",batchId);
         return Map.of("success",true,"batchId",batchId,"batchCode",batchCode,"compiled",compiled,"valid",valid,"invalid",invalid,"status",batchStatus,"dryRun",dryRun);
     }
 
@@ -1324,9 +8094,573 @@ public class ActorProcessGovernanceService {
         result.put("queued",queued.get("queued"));result.put("elapsedMillis",elapsed);result.put("screensPerSecond",Math.round(count*1000.0/elapsed));result.put("runtime","COMMON_GENERATED_SCREEN");result.put("sourceFilesPerScreen",0);return result;
     }
 
+    /**
+     * Runs global screen compilation while the exact design-release claim row is
+     * locked.  The lock and the side effects share this transaction, so a lease
+     * takeover either happens before the guard (write zero) or after all writes
+     * commit; it can never steal the claim in the middle of queue creation.
+     */
+    @Transactional public Map<String,Object> compileAndQueueScreensForGenerationClaim(
+            String projectId,int designVersion,String claimToken,
+            Map<String,Object> body,String actor){
+        if(!lockOwnedGenerationClaim(projectId,designVersion,claimToken))
+            return generationClaimLost(projectId,designVersion);
+        Map<String,Object> result=compileAndQueueScreens(body,actor);
+        heartbeatLockedGenerationClaim(projectId,designVersion,claimToken);
+        return result;
+    }
+
+    /**
+     * Rebuilds every requirement-owned process under one exact release claim.
+     * All ensure/finalize calls join this transaction and therefore cannot emit
+     * a job after another worker has taken the lease.
+     */
+    @Transactional public Map<String,Object> recoverRequirementProcessesForGenerationClaim(
+            String projectId,int designVersion,String claimToken,
+            java.util.Collection<String> processCodes,String actor){
+        if(!lockOwnedGenerationClaim(projectId,designVersion,claimToken))
+            return generationClaimLost(projectId,designVersion);
+        java.util.SortedSet<String> processes=new java.util.TreeSet<>();
+        if(processCodes!=null)for(String raw:processCodes){
+            String process=raw==null?"":raw.trim().toUpperCase(Locale.ROOT);
+            if(!process.matches("^[A-Z][A-Z0-9_:-]{1,79}$"))
+                throw new IllegalArgumentException("INVALID_PROCESS_CODE");
+            processes.add(process);
+        }
+        if(processes.isEmpty())throw new IllegalArgumentException("PROCESS_CODE_REQUIRED");
+        List<Map<String,Object>> publications=new java.util.ArrayList<>();
+        for(String process:processes){
+            int safety=ensureGeneratedProcessSafetyCases(process);
+            int contracts=ensureGeneratedProcessDesignContracts(process,actor);
+            int pages=ensureGeneratedProcessPageDesigns(process,actor);
+            Map<String,Object> publication=finalizeAndQueueProcessDesign(
+                    process,actor,"REQUIREMENT_PROCESS_RECOVERY");
+            if(safety<5||!Boolean.TRUE.equals(publication.get("success"))
+                    ||Set.of("FAILED","BLOCKED","SKIPPED").contains(
+                        String.valueOf(publication.get("status")))){
+                throw new IllegalStateException("REQUIREMENT_RETRY_NOT_QUEUED: "+process);
+            }
+            Map<String,Object> receipt=new LinkedHashMap<>(publication);
+            receipt.put("safetyScenarioTypes",safety);
+            receipt.put("designContractCount",contracts);
+            receipt.put("pageDesignCount",pages);
+            publications.add(receipt);
+        }
+        heartbeatLockedGenerationClaim(projectId,designVersion,claimToken);
+        return Map.of("success",true,"status","RECOVERED",
+                "projectId",projectId,"designVersion",designVersion,
+                "processCount",processes.size(),"publications",publications);
+    }
+
+    private boolean lockOwnedGenerationClaim(
+            String projectId,int designVersion,String claimToken){
+        String project=projectId==null?"":projectId.trim().toUpperCase(Locale.ROOT);
+        String token=claimToken==null?"":claimToken.trim();
+        if(!project.matches("^[A-Z][A-Z0-9_:-]{1,99}$")||designVersion<1
+                ||!token.matches("^[0-9a-fA-F-]{36}$"))return false;
+        List<Integer> owned=jdbc.queryForList("""
+            select 1
+              from framework_actor_process_design_release
+             where project_id=? and design_version=? and release_status='RUNNING'
+               and generation_result->>'claimToken'=?
+             for update
+            """,Integer.class,project,designVersion,token);
+        if(owned.size()!=1)return false;
+        return jdbc.update("""
+            update framework_actor_process_design_release
+               set received_at=current_timestamp
+             where project_id=? and design_version=? and release_status='RUNNING'
+               and generation_result->>'claimToken'=?
+            """,project,designVersion,token)==1;
+    }
+
+    private void heartbeatLockedGenerationClaim(
+            String projectId,int designVersion,String claimToken){
+        if(jdbc.update("""
+            update framework_actor_process_design_release
+               set received_at=current_timestamp
+            where project_id=? and design_version=? and release_status='RUNNING'
+               and generation_result->>'claimToken'=?
+            """,projectId.trim().toUpperCase(Locale.ROOT),designVersion,
+                claimToken.trim())!=1)
+            throw new IllegalStateException("GENERATION_CLAIM_LOST_DURING_TRANSACTION");
+    }
+
+    private Map<String,Object> generationClaimLost(String projectId,int designVersion){
+        return Map.of("success",false,"status","CLAIM_LOST","sideEffectCount",0,
+                "projectId",projectId==null?"":projectId.trim().toUpperCase(Locale.ROOT),
+                "designVersion",designVersion);
+    }
+
+    /**
+     * Resolves one browser location into the canonical screen and executable
+     * actor/process contract. A screen is N:M with process steps, therefore an
+     * ambiguous route is never silently bound to the first row.
+     */
+    public Map<String,Object> screenContext(String routePath,String pageId,String projectId,String processCode,String stepCode,
+                                            String actorCode,String audience,String capabilityCode,Set<String> allowedAudiences,
+                                            String accountId,String tenantId,boolean unrestrictedActors){
+        String requestedRoute=routePath==null?"":routePath.trim();
+        String route=requestedRoute.isBlank()?"":canonicalScreenContextRoute(requestedRoute);
+        String requestedPage=pageId==null?"":pageId.trim();
+        String project=projectId==null?"":projectId.trim();
+        String requestedProcess=processCode==null?"":processCode.trim().toUpperCase(Locale.ROOT);
+        String requestedStep=stepCode==null?"":stepCode.trim().toUpperCase(Locale.ROOT);
+        String requestedActor=actorCode==null?"":actorCode.trim().toUpperCase(Locale.ROOT);
+        String requestedAudience=audience==null?"":audience.trim().toUpperCase(Locale.ROOT);
+        // Capability selection is bounded by the screen + process + step mapping. It is metadata
+        // resolution only; authorization remains the responsibility of the authenticated command.
+        String requestedCapability=capabilityCode==null?"":capabilityCode.trim().toUpperCase(Locale.ROOT);
+        Set<String> audienceScope=allowedAudiences==null?Set.of():allowedAudiences.stream()
+            .filter(value->value!=null)
+            .map(value->value.trim().toUpperCase(Locale.ROOT))
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+        String account=accountId==null?"":accountId.trim();
+        String tenant=tenantId==null?"":tenantId.trim();
+        String assignmentProject="*".equals(project)?"":project;
+        Set<String> actorScope=unrestrictedActors?Set.of():jdbc.queryForList("""
+            select distinct upper(assignment.actor_code) as "actorCode"
+              from framework_account_actor_assignment assignment
+              join framework_actor_definition actor_definition
+                on actor_definition.actor_code=assignment.actor_code
+               and actor_definition.use_at='Y'
+             where assignment.tenant_id=?
+               and lower(assignment.account_id)=lower(?)
+               and assignment.assignment_status='ACTIVE'
+               and (assignment.valid_from is null or assignment.valid_from<=current_date)
+               and (assignment.valid_until is null or assignment.valid_until>=current_date)
+               and (assignment.project_id='*' or (?<>'' and assignment.project_id=?))
+               and (coalesce(nullif(assignment.data_scope,''),'*')='*'
+                    or (?<>'' and ?=any(string_to_array(replace(assignment.data_scope,' ',''),','))))
+             order by upper(assignment.actor_code)
+            """,tenant,account,assignmentProject,assignmentProject,assignmentProject,assignmentProject).stream()
+            .map(row->String.valueOf(row.get("actorCode")).trim().toUpperCase(Locale.ROOT))
+            .filter(value->!value.isBlank())
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        if(!unrestrictedActors&&!requestedActor.isBlank()&&!actorScope.contains(requestedActor)){
+            throw new SecurityException("SCREEN_CONTEXT_ACTOR_FORBIDDEN");
+        }
+
+        List<Map<String,Object>> identities=jdbc.queryForList("""
+            with requested(route_key,page_id) as (values (?::text,?::text))
+            select coalesce(screen.route_key,
+                            lower(split_part(manifest.route_path,'?',1)),
+                            lower(split_part(blueprint.route_path,'?',1)),
+                            requested.route_key,'') as "routeKey",
+                   coalesce(screen.route_key,
+                            lower(split_part(manifest.route_path,'?',1)),
+                            lower(split_part(blueprint.route_path,'?',1)),
+                            requested.route_key,'') as "canonicalRoutePath",
+                   coalesce(manifest.page_id,blueprint.page_id,nullif(requested.page_id,''),'') as "pageId",
+                   screen.screen_resource_id as "screenResourceId",
+                   coalesce(screen.screen_name,manifest.page_name,blueprint.page_name,'') as "screenName",
+                   coalesce(screen.screen_type,'') as "screenType",
+                   coalesce(screen.implementation_status,'UNREGISTERED') as "implementationStatus"
+              from requested
+              left join lateral (
+                   select resource.screen_resource_id,resource.route_key,resource.screen_name,
+                          resource.screen_type,resource.implementation_status
+                     from framework_screen_resource resource
+                    where (requested.route_key<>'' and lower(resource.route_key)=lower(requested.route_key))
+                       or (requested.page_id<>'' and exists(
+                              select 1 from ui_page_manifest page
+                               where page.active_yn='Y'
+                                 and lower(page.page_id)=lower(requested.page_id)
+                                 and lower(split_part(page.route_path,'?',1))=resource.route_key))
+                       or (requested.page_id<>'' and exists(
+                              select 1 from framework_screen_blueprint candidate_blueprint
+                               where lower(candidate_blueprint.page_id)=lower(requested.page_id)
+                                 and lower(split_part(candidate_blueprint.route_path,'?',1))=resource.route_key))
+                    order by case when requested.route_key<>'' and lower(resource.route_key)=lower(requested.route_key) then 0 else 1 end,
+                             resource.updated_at desc,resource.screen_resource_id
+                    limit 1
+              ) screen on true
+              left join lateral (
+                   select page.page_id,page.page_name,page.route_path
+                     from ui_page_manifest page
+                    where page.active_yn='Y' and (
+                          (requested.page_id<>'' and lower(page.page_id)=lower(requested.page_id))
+                       or (screen.route_key is not null and lower(split_part(page.route_path,'?',1))=screen.route_key)
+                       or (requested.route_key<>'' and lower(split_part(page.route_path,'?',1))=requested.route_key))
+                    order by case when requested.page_id<>'' and lower(page.page_id)=lower(requested.page_id) then 0 else 1 end,
+                             page.updated_at desc,page.page_id
+                    limit 1
+              ) manifest on true
+              left join lateral (
+                   select candidate_blueprint.page_id,candidate_blueprint.page_name,candidate_blueprint.route_path
+                     from framework_screen_blueprint candidate_blueprint
+                    where (requested.page_id<>'' and lower(candidate_blueprint.page_id)=lower(requested.page_id))
+                       or (screen.route_key is not null and lower(split_part(candidate_blueprint.route_path,'?',1))=screen.route_key)
+                       or (requested.route_key<>'' and lower(split_part(candidate_blueprint.route_path,'?',1))=requested.route_key)
+                    order by case when requested.page_id<>'' and lower(candidate_blueprint.page_id)=lower(requested.page_id) then 0 else 1 end,
+                             candidate_blueprint.updated_at desc,candidate_blueprint.blueprint_id
+                    limit 1
+              ) blueprint on true
+            """,route,requestedPage);
+
+        Map<String,Object> identity=new LinkedHashMap<>();
+        if(!identities.isEmpty())identity.putAll(identities.get(0));
+        identity.putIfAbsent("routeKey",route);
+        identity.putIfAbsent("canonicalRoutePath",route);
+        identity.putIfAbsent("pageId",requestedPage);
+        identity.putIfAbsent("screenResourceId",null);
+        identity.putIfAbsent("screenName","");
+        identity.putIfAbsent("screenType","");
+        identity.putIfAbsent("implementationStatus","UNREGISTERED");
+        identity.put("requestedRoutePath",requestedRoute);
+        identity.put("projectId",project);
+        identity.put("requestedCapabilityCode",requestedCapability);
+
+        String resolvedRoute=String.valueOf(identity.getOrDefault("routeKey","")).trim().toLowerCase(Locale.ROOT);
+        Object rawScreenId=identity.get("screenResourceId");
+        long screenId=rawScreenId instanceof Number number?number.longValue():-1L;
+        List<Map<String,Object>> candidates=resolvedRoute.isBlank()?List.of():jdbc.queryForList("""
+            with candidate_source as (
+              select binding.process_code,binding.step_code,binding.audience,binding.entry_mode,
+                     coalesce(nullif(binding.actor_code,''),binding_step.actor_code) as actor_code,
+                     0 as source_rank,'SCREEN_BINDING'::varchar as resolution_source
+                from framework_process_step_screen_binding binding
+                join framework_process_step binding_step
+                  on binding_step.process_code=binding.process_code and binding_step.step_code=binding.step_code
+               where binding.screen_resource_id=? and binding.binding_status='ACTIVE'
+              union all
+              select step.process_code,step.step_code,
+                     case when lower(split_part(coalesce(step.admin_path,''),'?',1))=?
+                                and lower(split_part(coalesce(step.user_path,''),'?',1))<>?
+                          then 'ADMIN' else 'USER' end as audience,
+                     'PRIMARY' as entry_mode,step.actor_code,1 as source_rank,
+                     'STEP_PATH'::varchar as resolution_source
+                from framework_process_step step
+               where lower(split_part(coalesce(step.user_path,''),'?',1))=?
+                  or lower(split_part(coalesce(step.admin_path,''),'?',1))=?
+              union all
+              select step.process_code,step.step_code,menu.audience,'PRIMARY' as entry_mode,
+                     step.actor_code,2 as source_rank,'MENU_SEMANTIC'::varchar as resolution_source
+                from framework_process_menu_binding menu
+                join framework_menu_route_semantic_audit semantic on semantic.menu_code=menu.menu_code
+                join framework_process_step step on step.process_code=menu.process_code
+                 and menu.step_code=step.step_code
+               where menu.binding_status='ACTIVE'
+                 and menu.verified_at is not null
+                 and semantic.semantic_status in ('EXACT_STEP','SCREEN_CONTRACT')
+                 and semantic.resolved_process_code=menu.process_code
+                 and semantic.resolved_step_code=menu.step_code
+                 and semantic.resolved_actor_code=menu.actor_code
+                 and lower(split_part(coalesce(menu.menu_url,''),'?',1))=?
+            ), candidates as (
+              select distinct on (process_code,step_code,audience)
+                     process_code,step_code,audience,entry_mode,actor_code,resolution_source
+                from candidate_source
+               order by process_code,step_code,audience,source_rank,
+                        case entry_mode when 'PRIMARY' then 0 else 1 end,
+                        case audience when 'USER' then 0 when 'ADMIN' then 1 else 2 end
+            )
+            select upper(process.domain_code) as "workTypeCode",
+                   coalesce(work_type.work_type_name,process.domain_code) as "workTypeName",
+                   step.process_code as "processCode",process.process_name as "processName",
+                   step.step_code as "stepCode",step.step_name as "stepName",step.step_order as "stepOrder",
+                   candidates.actor_code as "actorCode",
+                   coalesce(actor.actor_name,candidates.actor_code) as "actorName",
+                   step.requirement_text as "workPurpose",step.completion_rule as "completionRule",
+                   step.input_contract as "inputContract",step.output_contract as "outputContract",
+                   coalesce(nullif(step.user_path,''),(
+                     select menu.menu_url from framework_process_menu_binding menu
+                     join framework_menu_route_semantic_audit semantic on semantic.menu_code=menu.menu_code
+                      where menu.process_code=step.process_code and menu.audience='USER'
+                        and menu.binding_status='ACTIVE'
+                        and menu.verified_at is not null
+                        and menu.step_code=step.step_code
+                        and semantic.semantic_status in ('EXACT_STEP','SCREEN_CONTRACT')
+                        and semantic.resolved_process_code=menu.process_code
+                        and semantic.resolved_step_code=menu.step_code
+                        and semantic.resolved_actor_code=menu.actor_code
+                      order by (menu.step_code=step.step_code) desc,menu.menu_code limit 1),'') as "userPath",
+                   coalesce(nullif(step.admin_path,''),(
+                     select menu.menu_url from framework_process_menu_binding menu
+                     join framework_menu_route_semantic_audit semantic on semantic.menu_code=menu.menu_code
+                      where menu.process_code=step.process_code and menu.audience='ADMIN'
+                        and menu.binding_status='ACTIVE'
+                        and menu.verified_at is not null
+                        and menu.step_code=step.step_code
+                        and semantic.semantic_status in ('EXACT_STEP','SCREEN_CONTRACT')
+                        and semantic.resolved_process_code=menu.process_code
+                        and semantic.resolved_step_code=menu.step_code
+                        and semantic.resolved_actor_code=menu.actor_code
+                      order by (menu.step_code=step.step_code) desc,menu.menu_code limit 1),'') as "adminPath",
+                   step.automation_status as "automationStatus",
+                   candidates.audience,candidates.entry_mode as "entryMode",
+                   candidates.resolution_source as "resolutionSource"
+              from candidates
+              join framework_process_step step using(process_code,step_code)
+              join framework_process_definition process using(process_code)
+              left join framework_business_work_type work_type on work_type.work_type_code=upper(process.domain_code)
+              left join framework_actor_definition actor on actor.actor_code=candidates.actor_code
+             where (?='' or exists(
+                    select 1
+                      from framework_step_capability_binding step_capability
+                      join framework_screen_capability capability
+                        on capability.capability_id=step_capability.capability_id
+                       and capability.screen_resource_id=?
+                     where step_capability.process_code=candidates.process_code
+                       and step_capability.step_code=candidates.step_code
+                       and upper(capability.capability_code)=?
+                   ))
+             order by coalesce(work_type.sort_order,9999),process.development_order,step.process_code,
+                      step.step_order,candidates.audience,candidates.actor_code
+            """,screenId,resolvedRoute,resolvedRoute,resolvedRoute,resolvedRoute,resolvedRoute,
+                requestedCapability,screenId,requestedCapability);
+
+        List<Map<String,Object>> resolvedCandidates=candidates;
+        List<Map<String,Object>> audienceCandidates=resolvedCandidates.stream()
+            .map(candidate->{
+                Map<String,Object> scoped=new LinkedHashMap<>(candidate);
+                String candidateAudience=String.valueOf(scoped.get("audience")).toUpperCase(Locale.ROOT);
+                if("ADMIN".equals(candidateAudience))scoped.put("userPath","");
+                else scoped.put("adminPath","");
+                return scoped;
+            })
+            .filter(candidate->audienceScope.contains(
+                String.valueOf(candidate.get("audience")).toUpperCase(Locale.ROOT)))
+            .toList();
+        candidates=audienceCandidates.stream()
+            .filter(candidate->unrestrictedActors||actorScope.contains(
+                String.valueOf(candidate.get("actorCode")).toUpperCase(Locale.ROOT)))
+            .toList();
+
+        boolean accessRestricted=!unrestrictedActors&&!audienceCandidates.isEmpty()&&candidates.isEmpty();
+        Map<String,Object> policy=loadScreenWorkflowPolicy(resolvedRoute);
+        boolean policyDefined=!policy.isEmpty();
+        boolean hasBinding=!resolvedCandidates.isEmpty();
+        String classification=policyDefined
+            ?String.valueOf(policy.getOrDefault("classification","REVIEW_REQUIRED")).trim().toUpperCase(Locale.ROOT)
+            :(hasBinding?"EXECUTABLE":"REVIEW_REQUIRED");
+        String reasonCode=policyDefined
+            ?String.valueOf(policy.getOrDefault("reasonCode","")).trim()
+            :(hasBinding?"BINDING_RESOLVED":"WORKFLOW_POLICY_UNDEFINED");
+        String reasonText=policyDefined
+            ?String.valueOf(policy.getOrDefault("reasonText","")).trim()
+            :(hasBinding?"검증된 화면 업무 연결 후보가 존재합니다.":"화면 업무 정책과 실행 가능한 연결 후보가 없습니다.");
+        String reviewStatus=policyDefined
+            ?String.valueOf(policy.getOrDefault("reviewStatus","PENDING")).trim().toUpperCase(Locale.ROOT)
+            :(hasBinding?"AUTO_APPROVED":"PENDING");
+        if("EXECUTABLE".equals(classification)&&!hasBinding){
+            classification="REVIEW_REQUIRED";
+            reasonCode="EXECUTABLE_BINDING_MISSING";
+            reasonText="실행 가능 화면 정책에 대응하는 검증된 프로세스·단계 연결이 없습니다.";
+            reviewStatus="CONFLICT";
+        }else if(Set.of("INFORMATIONAL","EXCLUDED").contains(classification)&&hasBinding){
+            classification="REVIEW_REQUIRED";
+            reasonCode="POLICY_BINDING_CONFLICT";
+            reasonText="비실행 화면 정책과 실행 가능한 프로세스·단계 연결이 동시에 존재합니다.";
+            reviewStatus="CONFLICT";
+        }else if(accessRestricted&&"EXECUTABLE".equals(classification)){
+            reasonCode="ACCESS_RESTRICTED";
+            reasonText="화면 업무는 실행 가능하지만 현재 계정에 배정된 액터 범위에는 포함되지 않습니다.";
+        }
+
+        List<Map<String,Object>> matching=candidates.stream()
+            .filter(candidate->requestedProcess.isBlank()||requestedProcess.equals(String.valueOf(candidate.get("processCode")).toUpperCase(Locale.ROOT)))
+            .filter(candidate->requestedStep.isBlank()||requestedStep.equals(String.valueOf(candidate.get("stepCode")).toUpperCase(Locale.ROOT)))
+            .filter(candidate->requestedActor.isBlank()||requestedActor.equals(String.valueOf(candidate.get("actorCode")).toUpperCase(Locale.ROOT)))
+            .filter(candidate->requestedAudience.isBlank()||requestedAudience.equals(String.valueOf(candidate.get("audience")).toUpperCase(Locale.ROOT)))
+            .toList();
+        Map<String,Object> workflow="EXECUTABLE".equals(classification)&&matching.size()==1
+            ?new LinkedHashMap<>(matching.get(0)):null;
+        identity.put("audience",workflow!=null?workflow.getOrDefault("audience",""):requestedAudience);
+
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("linked",workflow!=null);
+        result.put("identity",identity);
+        result.put("workflow",workflow);
+        result.put("candidates",candidates);
+        result.put("candidateCount",candidates.size());
+        result.put("selectionRequired","EXECUTABLE".equals(classification)&&!accessRestricted
+            &&workflow==null&&!candidates.isEmpty());
+        result.put("classification",classification);
+        result.put("reasonCode",reasonCode);
+        result.put("reasonText",reasonText);
+        result.put("reviewStatus",reviewStatus);
+        result.put("accessRestricted",accessRestricted);
+        return result;
+    }
+
+    private Map<String,Object> loadScreenWorkflowPolicy(String route){
+        if(route==null||route.isBlank())return Map.of();
+        Boolean available=jdbc.queryForObject(
+            "select to_regclass('public.framework_screen_workflow_policy') is not null",Boolean.class);
+        if(!Boolean.TRUE.equals(available))return Map.of();
+        List<Map<String,Object>> policies=jdbc.queryForList("""
+            select classification,reason_code as "reasonCode",reason_text as "reasonText",
+                   source,review_status as "reviewStatus",reviewed_by as "reviewedBy",
+                   reviewed_at as "reviewedAt",updated_at as "updatedAt"
+              from framework_screen_workflow_policy
+             where route_key=?
+            """,route);
+        return policies.isEmpty()?Map.of():new LinkedHashMap<>(policies.get(0));
+    }
+
+    static String canonicalScreenContextRoute(String value){
+        String route=ScreenDevelopmentNoteService.cleanRoute(value);
+        if("/en".equalsIgnoreCase(route))return "/";
+        if(route.regionMatches(true,0,"/en/",0,4))route=route.substring(3);
+        while(route.length()>1&&route.endsWith("/"))route=route.substring(0,route.length()-1);
+        return route.toLowerCase(Locale.ROOT);
+    }
+
     public Map<String,Object> resolveGeneratedScreen(String routePath){
-        String route=ScreenDevelopmentNoteService.cleanRoute(routePath);List<Map<String,Object>> rows=jdbc.queryForList("select blueprint_code as \"blueprintCode\",process_code as \"processCode\",step_code as \"stepCode\",actor_code as \"actorCode\",audience,page_id as \"pageId\",page_name as \"pageName\",route_path as \"routePath\",screen_type as \"screenType\",template_code as \"templateCode\",specification_json as \"specificationJson\",traceability_json as \"traceabilityJson\",validation_status as \"validationStatus\",implementation_strategy as \"implementationStrategy\",updated_at as \"updatedAt\" from framework_screen_blueprint where lower(split_part(route_path,'?',1))=lower(?) and validation_status='VALID' and implementation_strategy='GENERATED_RUNTIME' order by updated_at desc limit 1",route);
-        if(rows.isEmpty())return Map.of("enabled",false,"routePath",route);Map<String,Object> result=new LinkedHashMap<>(rows.get(0));result.put("enabled",true);return result;
+        String route=ScreenDevelopmentNoteService.cleanRoute(routePath);
+        Integer protectedExisting=jdbc.queryForObject("""
+            select count(*)
+              from framework_screen_blueprint
+             where lower(split_part(route_path,'?',1))=lower(?)
+               and validation_status='VALID'
+               and implementation_strategy='ADOPT_EXISTING'
+            """,Integer.class,route);
+        if(protectedExisting!=null&&protectedExisting>0){
+            return Map.of(
+                "enabled",false,
+                "routePath",route,
+                "protectedExisting",true,
+                "source","REGISTERED_IMPLEMENTATION"
+            );
+        }
+        List<Map<String,Object>> screenSpace=jdbc.queryForList("""
+            select 'SS_'||upper(substr(specification_hash,1,20)) as "blueprintCode",
+                   process_code as "processCode",
+                   step_code as "stepCode",
+                   actor_code as "actorCode",
+                   case when route_path like '/admin/%' then 'ADMIN' else 'USER' end as audience,
+                   coalesce(nullif(screen_spec #>> '{dimensions,seedScreenId}',''),
+                            'screen-space-'||substr(specification_hash,1,12)) as "pageId",
+                   coalesce(nullif(initcap(replace(screen_spec #>> '{dimensions,seedScreenId}','-',' ')),''),
+                            initcap(replace(step_code,'_',' '))) as "pageName",
+                   route_path as "routePath",
+                   archetype_code as "screenType",
+                   'KRDS_'||archetype_code as "templateCode",
+                   jsonb_build_object(
+                     'domain',coalesce(screen_spec #>> '{dimensions,domainObject}',process_code),
+                     'businessPurpose',coalesce(screen_spec #>> '{dimensions,seedScreenId}',step_code),
+                     'commandCode',coalesce((
+                       select runtime_step.command_code
+                         from framework_process_step runtime_step
+                        where runtime_step.process_code=framework_screen_space_spec.process_code
+                          and runtime_step.step_code=framework_screen_space_spec.step_code
+                     ),screen_spec #>> '{dimensions,action}','COMPLETE'),
+                     'fromState',coalesce((
+                       select runtime_step.from_state
+                         from framework_process_step runtime_step
+                        where runtime_step.process_code=framework_screen_space_spec.process_code
+                          and runtime_step.step_code=framework_screen_space_spec.step_code
+                     ),state_code),
+                     'toState',coalesce((
+                       select runtime_step.to_state
+                         from framework_process_step runtime_step
+                        where runtime_step.process_code=framework_screen_space_spec.process_code
+                          and runtime_step.step_code=framework_screen_space_spec.step_code
+                     ),state_code),
+                     'completionRule',coalesce((
+                       select runtime_step.completion_rule
+                         from framework_process_step runtime_step
+                        where runtime_step.process_code=framework_screen_space_spec.process_code
+                          and runtime_step.step_code=framework_screen_space_spec.step_code
+                     ),''),
+                     'sections',coalesce(screen_spec #> '{composition,sections}','[]'::jsonb),
+                     'fields',coalesce((
+                       select jsonb_agg(jsonb_build_object(
+                         'code',field->>'fieldCode',
+                         'label',coalesce(field->>'fieldName',field->>'fieldCode'),
+                         'dataType',coalesce(field->>'dataType','STRING'),
+                         'control',coalesce(field->>'controlType','TEXT'),
+                         'required',coalesce((field->>'required')::boolean,false),
+                         'validation',coalesce(field->'validation','{}'::jsonb),
+                         'group',coalesce(field->>'fieldGroup','WORK')
+                       ) order by coalesce((field->>'fieldOrder')::integer,9999),field->>'fieldCode')
+                         from jsonb_array_elements(coalesce(
+                           (select nullif(framework_step_contract_fields(execution_spec.field_contract,'USER'),'[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=framework_screen_space_spec.process_code and execution_spec.step_code=framework_screen_space_spec.step_code),
+                           (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=framework_screen_space_spec.process_code and screen_contract.step_code=framework_screen_space_spec.step_code order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
+                           '[]'::jsonb
+                         )) field
+                        where nullif(field->>'fieldCode','') is not null
+                          and coalesce((field->>'editable')::boolean,false)
+                     ),(
+                       select jsonb_agg(jsonb_build_object(
+                         'code',field_name,
+                         'label',initcap(replace(replace(field_name,'.',' '),'_',' ')),
+                         'dataType','STRING',
+                         'control','TEXT',
+                         'required',field_name in ('tenantId','companyId','projectId')
+                       ) order by ordinal)
+                       from jsonb_array_elements_text(coalesce(screen_spec #> '{bindings,dataContracts}','[]'::jsonb))
+                            with ordinality as contract_field(field_name,ordinal)
+                       where field_name not like '%%.output'
+                     ),'[]'::jsonb),
+                     'commands',jsonb_build_array(jsonb_build_object(
+                       'code',coalesce((
+                         select runtime_step.command_code
+                           from framework_process_step runtime_step
+                          where runtime_step.process_code=framework_screen_space_spec.process_code
+                            and runtime_step.step_code=framework_screen_space_spec.step_code
+                       ),screen_spec #>> '{dimensions,action}','COMPLETE'),
+                       'label',coalesce((
+                         select runtime_step.step_name
+                           from framework_process_step runtime_step
+                          where runtime_step.process_code=framework_screen_space_spec.process_code
+                            and runtime_step.step_code=framework_screen_space_spec.step_code
+                       ),screen_spec #>> '{dimensions,action}','COMPLETE')
+                     )),
+                     'states',jsonb_build_array(state_code),
+                     'responsive',coalesce(screen_spec #> '{composition,responsive}','[]'::jsonb),
+                     'dataContracts',coalesce(screen_spec #> '{bindings,dataContracts}','[]'::jsonb),
+                     'apiContracts',jsonb_build_array(
+                       jsonb_build_object('code','LOAD_DRAFT','method','GET','path','/home/api/process-executions/draft'),
+                       jsonb_build_object('code','LOAD_FIELD_OPTIONS','method','GET','path','/home/api/process-executions/field-options'),
+                       jsonb_build_object('code','SAVE_DRAFT','method','PUT','path','/home/api/process-executions/draft'),
+                       jsonb_build_object('code','EXECUTE_COMMAND','method','POST','path','/home/api/process-executions/{executionId}/commands')
+                     ),
+                     'permissions',jsonb_build_array(jsonb_build_object(
+                       'code',actor_code,'scope','TENANT_PROJECT','serverAuthorization',true
+                     )),
+                     'validations',jsonb_build_array(
+                       jsonb_build_object('code','REQUIRED_FIELDS','type','CONTRACT'),
+                       jsonb_build_object('code','OPTIMISTIC_VERSION','type','CONCURRENCY')
+                     ),
+                     'screenSpace',screen_spec
+                   )::text as "specificationJson",
+                   jsonb_build_object(
+                     'source','BACKSTAGE_SCREEN_SPACE',
+                     'coordinate',coordinate_key,
+                     'specSha256',specification_hash,
+                     'validationStatus',validation_status,
+                     'requiredScenarioTypes',jsonb_build_array('HAPPY_PATH','VALIDATION_ERROR','FORBIDDEN','CONFLICT','RECOVERY'),
+                     'publishedAt',published_at
+                   )::text as "traceabilityJson",
+                   validation_status as "validationStatus",
+                   'SCREEN_SPACE_RUNTIME' as "implementationStrategy",
+                   100 as "designScore",
+                   true as "designComplete",
+                   updated_at as "updatedAt"
+              from framework_screen_space_spec
+             where lower(split_part(route_path,'?',1))=lower(?)
+               and validation_status='VERIFIED'
+             order by updated_at desc
+             limit 1
+            """,route);
+        if(!screenSpace.isEmpty()){
+            Map<String,Object> result=new LinkedHashMap<>(screenSpace.get(0));
+            result.put("enabled",true);
+            result.put("source","SCREEN_SPACE_RUNTIME");
+            return result;
+        }
+        List<Map<String,Object>> rows=jdbc.queryForList(
+            "select blueprint_code as \"blueprintCode\",process_code as \"processCode\",step_code as \"stepCode\",actor_code as \"actorCode\",audience,page_id as \"pageId\",page_name as \"pageName\",route_path as \"routePath\",screen_type as \"screenType\",template_code as \"templateCode\",specification_json as \"specificationJson\",traceability_json as \"traceabilityJson\",validation_status as \"validationStatus\",implementation_strategy as \"implementationStrategy\",updated_at as \"updatedAt\" from framework_screen_blueprint where lower(split_part(route_path,'?',1))=lower(?) and validation_status='VALID' and implementation_strategy='GENERATED_RUNTIME' order by updated_at desc limit 1",
+            route
+        );
+        if(rows.isEmpty())return Map.of("enabled",false,"routePath",route);
+        Map<String,Object> result=new LinkedHashMap<>(rows.get(0));
+        result.put("enabled",true);
+        result.put("source","LEGACY_GENERATED_RUNTIME");
+        return result;
     }
 
     @Transactional public Map<String,Object> adoptExistingScreens(Map<String,Object>b,String actor){
@@ -1351,7 +8685,6 @@ public class ActorProcessGovernanceService {
             String spec="{\"domain\":\""+jsonEscape(domain)+"\",\"designSystem\":\"KRDS_GOV\",\"preserveExistingImplementation\":true}";
             String trace="{\"menuCode\":\""+jsonEscape(menuCode)+"\",\"requiredScenarioTypes\":[\"HAPPY_PATH\",\"AUTHORITY\",\"ISOLATION\",\"EXCEPTION\",\"RECOVERY\"],\"caseTypeCount\":"+caseTypes+"}";
             Long blueprintId=jdbc.queryForObject("insert into framework_screen_blueprint(blueprint_code,process_code,step_code,actor_code,audience,page_id,page_name,route_path,screen_type,template_code,specification_json,traceability_json,validation_status,validation_message,implementation_strategy,source_reference,transition_status,created_by) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(audience,route_path) do update set page_name=excluded.page_name,process_code=excluded.process_code,step_code=excluded.step_code,actor_code=excluded.actor_code,screen_type=excluded.screen_type,template_code=excluded.template_code,specification_json=excluded.specification_json,traceability_json=excluded.traceability_json,validation_status=excluded.validation_status,validation_message=excluded.validation_message,implementation_strategy='ADOPT_EXISTING',source_reference=excluded.source_reference,transition_status='CONTRACT_LINKED',updated_at=current_timestamp returning blueprint_id",Long.class,"BP_"+pageId,process,step,actorCode,audience,pageId,name,route,screenType,"KRDS_"+screenType,spec,trace,status,validation,"ADOPT_EXISTING","COMTNMENUINFO:"+menuCode,"CONTRACT_LINKED",actor);
-            jdbc.update("insert into ui_page_manifest(page_id,page_name,route_path,domain_code,layout_version,design_token_version,active_yn,created_at,updated_at,page_title,page_url,version_status) values(?,?,?,?,'1.0.0','KRDS_GOV_DEFAULT','Y',current_timestamp,current_timestamp,?,?, 'DRAFT') on conflict(page_id) do update set page_name=excluded.page_name,route_path=excluded.route_path,domain_code=excluded.domain_code,design_token_version='KRDS_GOV_DEFAULT',active_yn='Y',updated_at=current_timestamp",pageId,name,route,domain,name,route);
             jdbc.update("insert into framework_screen_generation_batch_item(batch_id,blueprint_id,item_order,item_status,validation_message) values(?,?,?,?,?)",batchId,blueprintId,++order,status,validation);
             if("VALID".equals(status))valid++;
         }
@@ -1430,6 +8763,822 @@ public class ActorProcessGovernanceService {
     }
     @Transactional public void createCase(Map<String,Object>b){
         jdbc.update("insert into framework_simulation_case(case_code,process_code,case_name,case_type,preconditions,steps_json,assertions_json) values(?,?,?,?,?,?,?) on conflict(case_code) do update set case_name=excluded.case_name,case_type=excluded.case_type,preconditions=excluded.preconditions,steps_json=excluded.steps_json,assertions_json=excluded.assertions_json,updated_at=current_timestamp",req(b,"caseCode"),req(b,"processCode"),req(b,"caseName"),def(b,"caseType","HAPPY_PATH"),req(b,"preconditions"),req(b,"stepsJson"),req(b,"assertionsJson"));
+    }
+
+    /** Installs the mandatory safety harness before a generated process is compiled. */
+    @Transactional public int ensureGeneratedProcessSafetyCases(String processCode){
+        String process=req(Map.of("processCode",processCode),"processCode");
+        Integer processCount=jdbc.queryForObject(
+            "select count(*) from framework_process_definition where process_code=?",Integer.class,process);
+        if(processCount==null||processCount==0)throw new IllegalArgumentException("Process not found: "+process);
+        seedCases(process);
+        Integer caseTypes=jdbc.queryForObject(
+            "select count(distinct case_type) from framework_simulation_case where process_code=? and case_type in ('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY')",
+            Integer.class,process);
+        return caseTypes==null?0:caseTypes;
+    }
+
+    /** Materializes complete design contracts without claiming implementation verification. */
+    @Transactional public int ensureGeneratedProcessDesignContracts(String processCode,String actor){
+        String process=req(Map.of("processCode",processCode),"processCode");
+        jdbc.update("""
+            update framework_process_step
+            set output_contract=jsonb_set(
+                  coalesce(nullif(output_contract,''),'{}')::jsonb,
+                  '{toState}',to_jsonb(to_state),true)::text
+            where process_code=?
+              and coalesce(output_contract,'{}')::jsonb->>'toState' is distinct from to_state
+            """,process);
+        ensureProfessionalContracts(process,actor);
+        jdbc.update("""
+            update framework_professional_screen_contract c set
+              business_purpose=coalesce(nullif(s.requirement_text,''),s.step_name)||' 업무를 추적 가능한 방식으로 완료한다.',
+              entry_condition=s.from_state||' 상태이며 '||s.actor_code||' 액터가 프로젝트에 배정되어 있다.',
+              exit_condition=coalesce(nullif(s.completion_rule,''),s.to_state||' 상태 전이 조건')||' 완료 증적과 감사 이력이 저장된다.',
+              kpi_contract='["처리 건수","완료율","기한 준수율","오류 건수"]',
+              section_contract='["업무 요약","입력 및 검증","처리 결과","증적 및 이력","다음 업무"]',
+              field_contract=json_build_array(json_build_object('input',coalesce(nullif(s.input_contract,''),'{}')::jsonb),json_build_object('output',coalesce(nullif(s.output_contract,''),'{}')::jsonb))::text,
+              command_contract=framework_merge_primary_contract_marker(
+                framework_try_jsonb(c.command_contract),'PRIMARY_STEP_COMMAND',
+                jsonb_build_object('commandCode',s.command_code,'actorCode',s.actor_code,
+                  'entryState',s.from_state,'resultState',s.to_state,
+                  'serverAuthorization',true,'validationRequired',true,
+                  'auditRequired',true))::text,
+              state_contract='["LOADING","EMPTY","ERROR","FORBIDDEN","READY","PROCESSING","COMPLETED"]',
+              api_contract=framework_merge_primary_contract_marker(
+                framework_try_jsonb(c.api_contract),'PRIMARY_STEP_API',
+                case when s.requires_api then jsonb_build_object(
+                  'declaredContract',coalesce(framework_try_jsonb(s.api_contract),
+                    to_jsonb(s.api_contract)),'actorCode',s.actor_code,
+                  'commandCode',s.command_code,'transactional',true,
+                  'tenantGuard',true,'projectGuard',true,'actorGuard',true,
+                  'idempotencyKey',true,'rowVersion',true) end)::text,
+              data_contract=json_build_array(
+                json_build_object('entity','framework_process_execution'),
+                json_build_object('entity','framework_process_execution_event'),
+                json_build_object('contextFields',json_build_array('tenantId','projectId','processCode','stepCode','actorCode','statusCode','rowVersion','createdAt','updatedAt')),
+                json_build_object('input',coalesce(nullif(s.input_contract,''),'{}')::jsonb),
+                json_build_object('output',coalesce(nullif(s.output_contract,''),'{}')::jsonb))::text,
+              evidence_contract='["REQUEST","RESPONSE","DB_REREAD","AUTHORITY","E2E","ROLLBACK"]',
+              responsive_contract='KRDS responsive contract for mobile 360px, tablet 768px, and desktop 1280px.',
+              accessibility_contract='KRDS and WCAG 2.1 AA keyboard, focus, label, contrast, and error-message contract.',
+              security_contract='Server-enforced tenant, project, actor, command, optimistic-lock, and audit policy.',
+              contract_status='REVIEW_REQUIRED',updated_by=?,updated_at=current_timestamp
+            from framework_process_step s
+            where c.process_code=s.process_code and c.step_code=s.step_code and c.process_code=?
+              and c.updated_by in(
+                'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+            """,actor,process);
+        Integer ready=jdbc.queryForObject("""
+            select count(*) from framework_process_step step
+             where step.process_code=?
+               and (not step.requires_user_page or exists(
+                 select 1 from framework_professional_screen_contract contract
+                  where contract.process_code=step.process_code
+                    and contract.step_code=step.step_code and contract.audience='USER'
+                    and contract.actor_code=step.actor_code
+                    and lower(split_part(contract.route_path,'?',1))=
+                        lower(split_part(step.user_path,'?',1))))
+               and (not step.requires_admin_page or exists(
+                 select 1 from framework_professional_screen_contract contract
+                  where contract.process_code=step.process_code
+                    and contract.step_code=step.step_code and contract.audience='ADMIN'
+                    and contract.actor_code=step.actor_code
+                    and lower(split_part(contract.route_path,'?',1))=
+                        lower(split_part(step.admin_path,'?',1))))
+            """,Integer.class,process);
+        return ready==null?0:ready;
+    }
+
+    /** Builds the page, field, and step-handoff design catalogs used by the unified work map. */
+    private void reconcileRequirementOwnedPageDesigns(String process){
+        Integer manualConflicts=jdbc.queryForObject("""
+            select count(*) from framework_page_design page
+              left join framework_process_step step
+                on step.process_code=page.process_code and step.step_code=page.step_code
+             where page.process_code=?
+               and page.updated_by not in(
+                 'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+               and (step.step_code is null or page.actor_code<>step.actor_code
+                 or (upper(page.audience)='USER' and (
+                   not step.requires_user_page
+                   or lower(split_part(page.planned_route_path,'?',1))<>
+                      lower(split_part(coalesce(step.user_path,''),'?',1))))
+                 or (upper(page.audience)='ADMIN' and (
+                   not step.requires_admin_page
+                   or lower(split_part(page.planned_route_path,'?',1))<>
+                      lower(split_part(coalesce(step.admin_path,''),'?',1)))))
+            """,Integer.class,process);
+        if(manualConflicts==null||manualConflicts>0)throw new IllegalStateException(
+            "MANUAL_PAGE_DESIGN_REVISION_REQUIRED: "+process+" / "+manualConflicts);
+        jdbc.update("""
+            delete from framework_page_design page
+             where page.process_code=?
+               and page.updated_by in(
+                 'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+               and not exists(
+                 select 1 from framework_process_step step
+                  where step.process_code=page.process_code
+                    and step.step_code=page.step_code
+                    and ((page.audience='USER' and step.requires_user_page)
+                      or (page.audience='ADMIN' and step.requires_admin_page)))
+            """,process);
+    }
+
+    private void reconcileRequirementOwnedBlueprints(String process,String actor){
+        Integer manualConflicts=jdbc.queryForObject("""
+            select count(*) from framework_screen_blueprint blueprint
+              left join framework_process_step step
+                on step.process_code=blueprint.process_code
+               and step.step_code=blueprint.step_code
+             where blueprint.process_code=?
+               and (blueprint.implementation_strategy='ADOPT_EXISTING'
+                 or blueprint.created_by not in(
+                   'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER'))
+               and (step.step_code is null or blueprint.actor_code<>step.actor_code
+                 or (blueprint.audience='USER' and (
+                   not step.requires_user_page
+                   or lower(split_part(blueprint.route_path,'?',1))<>
+                      lower(split_part(coalesce(step.user_path,''),'?',1))))
+                 or (blueprint.audience='ADMIN' and (
+                   not step.requires_admin_page
+                   or lower(split_part(blueprint.route_path,'?',1))<>
+                      lower(split_part(coalesce(step.admin_path,''),'?',1)))))
+            """,Integer.class,process);
+        if(manualConflicts==null||manualConflicts>0)throw new IllegalStateException(
+            "MANUAL_BLUEPRINT_IDENTITY_REVISION_REQUIRED: "+process+" / "+manualConflicts);
+        Integer routeConflicts=jdbc.queryForObject("""
+            with desired as (
+              select step.process_code,step.step_code,step.actor_code,lane.audience,lane.route_path
+                from framework_process_step step
+                cross join lateral(values
+                  ('USER'::text,case when step.requires_user_page then step.user_path end),
+                  ('ADMIN'::text,case when step.requires_admin_page then step.admin_path end)
+                ) lane(audience,route_path)
+               where step.process_code=? and nullif(btrim(lane.route_path),'') is not null)
+            select count(*) from desired
+              join framework_screen_blueprint blueprint
+                on blueprint.audience=desired.audience
+               and lower(split_part(blueprint.route_path,'?',1))=
+                   lower(split_part(desired.route_path,'?',1))
+             where (blueprint.process_code,blueprint.step_code)<>
+                   (desired.process_code,desired.step_code)
+            """,Integer.class,process);
+        if(routeConflicts==null||routeConflicts>0)throw new IllegalStateException(
+            "SCREEN_ROUTE_AUTHORITY_CONFLICT: "+process+" / "+routeConflicts);
+        jdbc.update("""
+            update framework_screen_blueprint blueprint
+               set validation_status='INVALID',transition_status='DESIGN_BLOCKED',
+                   validation_message='Superseded requirement-owned screen identity',
+                   updated_at=current_timestamp
+             where blueprint.process_code=?
+               and blueprint.implementation_strategy='GENERATED_RUNTIME'
+               and blueprint.created_by in(
+                 'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+               and not exists(
+                 select 1 from framework_process_step step
+                  where step.process_code=blueprint.process_code
+                    and step.step_code=blueprint.step_code
+                    and ((blueprint.audience='USER' and step.requires_user_page
+                      and lower(split_part(blueprint.route_path,'?',1))=
+                          lower(split_part(step.user_path,'?',1)))
+                     or (blueprint.audience='ADMIN' and step.requires_admin_page
+                      and lower(split_part(blueprint.route_path,'?',1))=
+                          lower(split_part(step.admin_path,'?',1)))))
+            """,process);
+        jdbc.update("""
+            with desired as (
+              select step.process_code,step.step_code,step.step_name,step.actor_code,
+                     step.command_code,step.from_state,step.to_state,lane.audience,
+                     lower(split_part(lane.route_path,'?',1)) route_path,
+                     page.page_code,page.page_title,page.screen_type,
+                     resource.layout_type,contract.contract_id,
+                     (select theme_id from comtnthemedefinition
+                       where theme_id='KRDS_GOV_DEFAULT' and use_at='Y' and is_active='Y') theme_id
+                from framework_process_step step
+                cross join lateral(values
+                  ('USER'::text,case when step.requires_user_page then step.user_path end),
+                  ('ADMIN'::text,case when step.requires_admin_page then step.admin_path end)
+                ) lane(audience,route_path)
+                join framework_page_design page
+                  on page.process_code=step.process_code and page.step_code=step.step_code
+                 and page.audience=lane.audience
+                 and lower(split_part(page.planned_route_path,'?',1))=
+                     lower(split_part(lane.route_path,'?',1))
+                join framework_professional_screen_contract contract
+                  on contract.process_code=step.process_code and contract.step_code=step.step_code
+                 and contract.audience=lane.audience and contract.actor_code=step.actor_code
+                 and lower(split_part(contract.route_path,'?',1))=
+                     lower(split_part(lane.route_path,'?',1))
+                join framework_screen_resource resource
+                  on resource.route_key=lower(split_part(lane.route_path,'?',1))
+               where step.process_code=? and nullif(btrim(lane.route_path),'') is not null
+                 and resource.layout_type~'^[A-Z][A-Z0-9_]{1,79}$'
+            ), selected as (
+              select desired.*,blueprint.blueprint_id,
+                     row_number() over(partition by desired.process_code,desired.step_code,
+                       desired.audience order by
+                       case when lower(split_part(blueprint.route_path,'?',1))=desired.route_path
+                         then 0 else 1 end,blueprint.blueprint_id) authority_order
+                from desired
+                join framework_screen_blueprint blueprint
+                  on blueprint.process_code=desired.process_code
+                 and blueprint.step_code=desired.step_code
+                 and blueprint.audience=desired.audience
+                 and blueprint.implementation_strategy='GENERATED_RUNTIME'
+                 and blueprint.created_by in(
+                   'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+               where not exists(
+                 select 1 from framework_screen_blueprint manual
+                  where manual.process_code=desired.process_code
+                    and manual.step_code=desired.step_code
+                    and manual.audience=desired.audience
+                    and manual.actor_code=desired.actor_code
+                    and lower(split_part(manual.route_path,'?',1))=desired.route_path
+                    and (manual.implementation_strategy='ADOPT_EXISTING'
+                      or manual.created_by not in(
+                        'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')))
+            )
+            update framework_screen_blueprint blueprint set
+              actor_code=selected.actor_code,page_id=selected.page_code,
+              page_name=selected.page_title,route_path=selected.route_path,
+              screen_type=selected.screen_type,template_code='KRDS_'||selected.screen_type,
+              specification_json=jsonb_build_object(
+                'schemaVersion',1,'source','REQUIREMENT_AUTOMATION',
+                'process',selected.process_code,'step',selected.step_code,
+                'actor',selected.actor_code,'actorCode',selected.actor_code,
+                'commandCode',selected.command_code,'fromState',selected.from_state,
+                'toState',selected.to_state,'layout',selected.layout_type,
+                'theme',selected.theme_id)::text,
+              traceability_json=jsonb_build_object('source','REQUIREMENT_DOCUMENT',
+                'contractId',selected.contract_id)::text,
+              validation_status='VALID',validation_message=null,
+              source_reference='FRAMEWORK_PROFESSIONAL_SCREEN_CONTRACT:'||selected.contract_id,
+              transition_status='CONTRACT_LINKED',updated_at=current_timestamp
+              from selected
+             where blueprint.blueprint_id=selected.blueprint_id
+               and selected.authority_order=1 and selected.theme_id is not null
+            """,process);
+        jdbc.update("""
+            with desired as (
+              select step.process_code,step.step_code,step.step_name,step.actor_code,
+                     step.command_code,step.from_state,step.to_state,lane.audience,
+                     lower(split_part(lane.route_path,'?',1)) route_path,
+                     page.page_code,page.page_title,page.screen_type,
+                     resource.layout_type,contract.contract_id,
+                     (select theme_id from comtnthemedefinition
+                       where theme_id='KRDS_GOV_DEFAULT' and use_at='Y' and is_active='Y') theme_id
+                from framework_process_step step
+                cross join lateral(values
+                  ('USER'::text,case when step.requires_user_page then step.user_path end),
+                  ('ADMIN'::text,case when step.requires_admin_page then step.admin_path end)
+                ) lane(audience,route_path)
+                join framework_page_design page
+                  on page.process_code=step.process_code and page.step_code=step.step_code
+                 and page.audience=lane.audience
+                 and lower(split_part(page.planned_route_path,'?',1))=
+                     lower(split_part(lane.route_path,'?',1))
+                join framework_professional_screen_contract contract
+                  on contract.process_code=step.process_code and contract.step_code=step.step_code
+                 and contract.audience=lane.audience and contract.actor_code=step.actor_code
+                 and lower(split_part(contract.route_path,'?',1))=
+                     lower(split_part(lane.route_path,'?',1))
+                join framework_screen_resource resource
+                  on resource.route_key=lower(split_part(lane.route_path,'?',1))
+               where step.process_code=? and nullif(btrim(lane.route_path),'') is not null
+                 and resource.layout_type~'^[A-Z][A-Z0-9_]{1,79}$')
+            insert into framework_screen_blueprint(
+              blueprint_code,process_code,step_code,actor_code,audience,page_id,page_name,
+              route_path,screen_type,template_code,specification_json,traceability_json,
+              validation_status,validation_message,implementation_strategy,source_reference,
+              transition_status,created_by)
+            select 'REQ_BP_'||upper(substr(md5(process_code||':'||step_code||':'||audience),1,24)),
+              process_code,step_code,actor_code,audience,page_code,page_title,route_path,
+              screen_type,'KRDS_'||screen_type,jsonb_build_object(
+                'schemaVersion',1,'source','REQUIREMENT_AUTOMATION','process',process_code,
+                'step',step_code,'actor',actor_code,'actorCode',actor_code,
+                'commandCode',command_code,'fromState',from_state,'toState',to_state,
+                'layout',layout_type,'theme',theme_id)::text,
+              jsonb_build_object('source','REQUIREMENT_DOCUMENT','contractId',contract_id)::text,
+              'VALID',null,'GENERATED_RUNTIME',
+              'FRAMEWORK_PROFESSIONAL_SCREEN_CONTRACT:'||contract_id,
+              'CONTRACT_LINKED',?
+              from desired
+             where theme_id is not null and not exists(
+               select 1 from framework_screen_blueprint existing
+                where existing.process_code=desired.process_code
+                  and existing.step_code=desired.step_code
+                  and existing.audience=desired.audience
+                  and existing.actor_code=desired.actor_code
+                  and lower(split_part(existing.route_path,'?',1))=desired.route_path)
+            on conflict(audience,route_path) do nothing
+            """,process,actor);
+        Integer missing=jdbc.queryForObject("""
+            select count(*) from framework_process_step step
+             where step.process_code=? and (
+               (step.requires_user_page and not exists(
+                 select 1 from framework_screen_blueprint blueprint
+                  where blueprint.process_code=step.process_code
+                    and blueprint.step_code=step.step_code and blueprint.audience='USER'
+                    and blueprint.actor_code=step.actor_code and blueprint.validation_status='VALID'
+                    and lower(split_part(blueprint.route_path,'?',1))=
+                        lower(split_part(step.user_path,'?',1))))
+               or (step.requires_admin_page and not exists(
+                 select 1 from framework_screen_blueprint blueprint
+                  where blueprint.process_code=step.process_code
+                    and blueprint.step_code=step.step_code and blueprint.audience='ADMIN'
+                    and blueprint.actor_code=step.actor_code and blueprint.validation_status='VALID'
+                    and lower(split_part(blueprint.route_path,'?',1))=
+                        lower(split_part(step.admin_path,'?',1)))))
+            """,Integer.class,process);
+        if(missing==null||missing>0)throw new IllegalStateException(
+            "REQUIREMENT_BLUEPRINT_IDENTITY_NOT_EXACT: "+process+" / "+missing);
+        jdbc.update("""
+            update framework_process_step_screen_binding binding
+               set binding_status='INACTIVE',updated_at=current_timestamp
+              from framework_screen_resource resource
+             where binding.screen_resource_id=resource.screen_resource_id
+               and binding.process_code=? and binding.binding_status='ACTIVE'
+               and resource.source_kind='PAGE_DESIGN'
+               and not exists(
+                 select 1 from framework_process_step step
+                  where step.process_code=binding.process_code
+                    and step.step_code=binding.step_code
+                    and binding.actor_code=step.actor_code
+                    and ((binding.audience='USER' and step.requires_user_page
+                      and resource.route_key=lower(split_part(step.user_path,'?',1)))
+                     or (binding.audience='ADMIN' and step.requires_admin_page
+                      and resource.route_key=lower(split_part(step.admin_path,'?',1)))))
+            """,process);
+    }
+
+    private void upsertProcessPageDesignIdentities(
+            String process,String actor,boolean generatedOnly){
+        jdbc.update("""
+            with ordered as (
+              select s.*,lag(s.step_code) over(order by s.step_order) upstream_step,
+                lead(s.step_code) over(order by s.step_order) downstream_step
+              from framework_process_step s where s.process_code=?
+            ), pages as (
+              select o.*,'USER'::varchar audience,o.user_path route_path from ordered o where o.requires_user_page
+              union all
+              select o.*,'ADMIN'::varchar audience,o.admin_path route_path from ordered o where o.requires_admin_page
+            )
+            insert into framework_page_design(process_code,step_code,audience,page_code,page_title,page_purpose,
+              screen_type,planned_route_path,actual_route_path,route_status,primary_entity,upstream_step_code,
+              downstream_step_code,actor_code,entry_condition,exit_condition,responsive_contract,
+              accessibility_contract,security_contract,exception_contract,design_status,updated_by)
+            select process_code,step_code,audience,process_code||'_'||step_code||'_'||audience,step_name,
+              coalesce(nullif(requirement_text,''),step_name||' 업무를 완료한다.'),'WORKSPACE',route_path,null,
+              'DESIGN_ONLY','framework_business_record',upstream_step,downstream_step,actor_code,
+              from_state||' 상태와 액터·프로젝트 권한을 검증한다.',
+              coalesce(nullif(completion_rule,''),to_state||' 상태 전이')||' 및 감사 증적을 저장한다.',
+              '{"mobile":"single-column","tablet":"adaptive-two-column","desktop":"task-grid","overflow":"wrap-or-scroll"}'::jsonb,
+              '{"standard":"WCAG 2.1 AA","keyboard":true,"labels":true,"focusManagement":true}'::jsonb,
+              jsonb_build_object('actorCode',actor_code,'tenantIsolation',true,'projectIsolation',true,'auditRequired',true),
+              '{"states":["loading","empty","validation-error","forbidden","conflict","server-error","recovery"],"retry":"idempotent-only"}'::jsonb,
+              'DESIGN_COMPLETE',?
+            from pages
+            on conflict(process_code,step_code,audience) do update set page_title=excluded.page_title,
+              page_purpose=excluded.page_purpose,planned_route_path=excluded.planned_route_path,
+              actual_route_path=case
+                when framework_page_design.updated_by in(
+                  'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+                 and framework_page_design.actual_route_path is not null
+                then excluded.planned_route_path
+                else framework_page_design.actual_route_path end,
+              actor_code=excluded.actor_code,entry_condition=excluded.entry_condition,exit_condition=excluded.exit_condition,
+              design_status='DESIGN_COMPLETE',updated_by=excluded.updated_by,updated_at=current_timestamp
+              where not ? or framework_page_design.updated_by in(
+                'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+            """,process,actor,generatedOnly);
+    }
+
+    private record RequirementProjectionInput(
+            String process,String payload,String contentSha,int screenCount){}
+
+    /** Applies one hash-bound structured design before the process-wide queue refresh. */
+    @Transactional public Map<String,Object> applyRequirementProcessDesignProjection(
+            String processCode,Map<String,Object> contract,String actor){
+        RequirementProjectionInput input=prepareRequirementProjection(processCode,contract,actor);
+        Map<String,Object> writes=writeRequirementProjection(input,actor);
+        verifyRequirementProjection(input);
+        Map<String,Object> result=new LinkedHashMap<>(writes);
+        result.put("success",true);result.put("processCode",input.process());
+        result.put("contentSha256",input.contentSha());result.put("screenCount",input.screenCount());
+        return result;
+    }
+
+    private RequirementProjectionInput prepareRequirementProjection(
+            String processCode,Map<String,Object> contract,String actor){
+        String process=req(Map.of("processCode",processCode),"processCode").trim().toUpperCase(Locale.ROOT);
+        if(!process.matches("^[A-Z][A-Z0-9_:-]{1,79}$"))
+            throw new IllegalArgumentException("INVALID_PROCESS_CODE");
+        if(actor==null||actor.isBlank()||!isRequirementAutomationActor(actor))
+            throw new SecurityException("REQUIREMENT_AUTOMATION_ACTOR_REQUIRED");
+        if(contract==null)throw new IllegalArgumentException("REQUIREMENT_CONTRACT_REQUIRED");
+        String payload=toJson(contract);
+        if(payload.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>8_000_000)
+            throw new IllegalArgumentException("REQUIREMENT_CONTRACT_TOO_LARGE");
+        lockCanonicalProcessPublication(process);
+        Map<String,Object> check=jdbc.queryForMap("""
+            with payload as materialized(select cast(? as jsonb) body),requested as materialized(
+              select body#>>'{process,processCode}' process_code,step.value item,
+                     step.value->>'stepCode' step_code,step.value->>'actorCode' actor_code,
+                     step.value->>'commandCode' command_code,step.value->>'fromState' from_state,
+                     step.value->>'toState' to_state,
+                     lower(split_part(step.value->>'routePath','?',1)) route_path,
+                     case when step.value->>'actorCode' like '%ADMIN%' then 'ADMIN' else 'USER' end audience,
+                     step.value->'apiContract' api_contract,step.value->>'layoutCode' layout_code,
+                     step.value->>'themeCode' theme_code
+                from payload cross join lateral jsonb_array_elements(case
+                  when jsonb_typeof(body#>'{process,steps}')='array' then body#>'{process,steps}'
+                  else '[]'::jsonb end) step(value)
+            )
+            select body->>'contentSha256' as "contentSha256",
+                   body#>>'{process,processCode}' as "processCode",count(requested.item)::integer as "screenCount",
+                   count(*) filter(where requested.item is not null and(
+                     jsonb_typeof(item->'sections')<>'array' or jsonb_array_length(item->'sections')=0
+                     or jsonb_typeof(item->'fields')<>'array' or jsonb_array_length(item->'fields')=0
+                     or jsonb_typeof(item->'permissionCodes')<>'array'
+                     or jsonb_typeof(item->'apiContract')<>'object'
+                     or layout_code!~'^[A-Z][A-Z0-9_]{1,79}$'
+                     or theme_code!~'^[A-Z][A-Z0-9_]{1,79}$'))::integer as "malformedCount",
+                   count(step.step_code)::integer as "matchedStepCount",
+                   count(*) filter(where requested.item is not null and(step.step_code is null
+                     or step.actor_code<>requested.actor_code
+                     or step.command_code<>requested.command_code
+                     or step.from_state<>requested.from_state or step.to_state<>requested.to_state
+                     or coalesce(framework_try_jsonb(step.api_contract),'{}'::jsonb)<>requested.api_contract
+                     or (requested.audience='USER' and(not step.requires_user_page
+                       or lower(split_part(step.user_path,'?',1))<>requested.route_path))
+                     or (requested.audience='ADMIN' and(not step.requires_admin_page
+                       or lower(split_part(step.admin_path,'?',1))<>requested.route_path))))::integer as "stepMismatchCount",
+                   count(*) filter(where requested.item is not null and(select count(distinct layout_type)
+                     from framework_screen_resource where layout_type=requested.layout_code)<>1)::integer
+                     as "layoutMismatchCount",
+                   count(*) filter(where requested.item is not null and(select count(*)
+                     from comtnthemedefinition where theme_id=requested.theme_code
+                       and use_at='Y' and is_active='Y')<>1)::integer as "themeMismatchCount",
+                   count(*) filter(where requested.item is not null and(select count(*)
+                     from framework_screen_resource where route_key=requested.route_path)<>1)::integer
+                     as "routeResourceMismatchCount",
+                   ((select count(*) from requested join framework_professional_screen_contract c
+                      on c.process_code=requested.process_code and c.step_code=requested.step_code
+                     and c.audience=requested.audience
+                     and lower(split_part(c.route_path,'?',1))=requested.route_path
+                    where c.updated_by not in('BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER'))+
+                    (select count(*) from requested join framework_page_design p
+                      on p.process_code=requested.process_code and p.step_code=requested.step_code
+                     and p.audience=requested.audience
+                     and lower(split_part(p.planned_route_path,'?',1))=requested.route_path
+                    where p.updated_by not in('BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER'))+
+                    (select count(*) from requested join framework_screen_blueprint b
+                      on b.process_code=requested.process_code and b.step_code=requested.step_code
+                     and b.audience=requested.audience
+                     and lower(split_part(b.route_path,'?',1))=requested.route_path
+                    where b.implementation_strategy='ADOPT_EXISTING' or b.created_by not in(
+                      'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')))::integer as "manualCount"
+              from payload left join requested on true left join framework_process_step step
+                on step.process_code=requested.process_code and step.step_code=requested.step_code group by body
+            """,payload);
+        String contentSha=String.valueOf(check.getOrDefault("contentSha256",""));
+        int screens=((Number)check.getOrDefault("screenCount",0)).intValue();
+        if(!contentSha.matches("^[0-9a-f]{64}$")||!process.equals(check.get("processCode"))
+                ||screens<1||number(check,"malformedCount")>0)
+            throw new IllegalArgumentException("REQUIREMENT_DESIGN_PROJECTION_MALFORMED");
+        for(String key:List.of("stepMismatchCount","layoutMismatchCount","themeMismatchCount",
+                "routeResourceMismatchCount","manualCount"))if(number(check,key)>0)
+            throw new IllegalStateException("REQUIREMENT_DESIGN_AUTHORITY_NOT_EXACT: "+key+"="+check.get(key));
+        if(number(check,"matchedStepCount")!=screens)
+            throw new IllegalStateException("REQUIREMENT_STEP_PROJECTION_NOT_EXACT");
+        return new RequirementProjectionInput(process,payload,contentSha,screens);
+    }
+
+    private Map<String,Object> writeRequirementProjection(RequirementProjectionInput input,String actor){
+        return jdbc.queryForMap("""
+            with payload as materialized(select cast(? as jsonb) body),requested as materialized(
+              select body#>>'{process,processCode}' process_code,body,step.value item,
+                     step.value->>'stepCode' step_code,step.value->>'actorCode' actor_code,
+                     lower(split_part(step.value->>'routePath','?',1)) route_path,
+                     case when step.value->>'actorCode' like '%ADMIN%' then 'ADMIN' else 'USER' end audience
+                from payload cross join lateral jsonb_array_elements(body#>'{process,steps}') step(value)),
+            resource_write as(
+              update framework_screen_resource r set layout_type=item->>'layoutCode'
+                from requested where r.route_key=requested.route_path
+                 and r.layout_type is distinct from item->>'layoutCode' returning 1),
+            professional_projected as materialized(
+              select c.contract_id,item,
+                framework_merge_primary_contract_marker(framework_try_jsonb(c.command_contract),
+                  'PRIMARY_STEP_COMMAND',jsonb_build_object('commandCode',item->>'commandCode',
+                    'actorCode',item->>'actorCode','entryState',item->>'fromState',
+                    'resultState',item->>'toState','serverAuthorization',true,
+                    'validationRequired',true,'auditRequired',true))::text commands,
+                framework_merge_primary_contract_marker(framework_try_jsonb(c.api_contract),
+                  'PRIMARY_STEP_API',jsonb_build_object('declaredContract',item->'apiContract',
+                    'actorCode',item->>'actorCode','commandCode',item->>'commandCode',
+                    'transactional',true,'tenantGuard',true,'projectGuard',true,'actorGuard',true,
+                    'idempotencyKey',true,'rowVersion',true))::text apis
+                from requested join framework_professional_screen_contract c
+                  on c.process_code=requested.process_code and c.step_code=requested.step_code
+                 and c.audience=requested.audience
+                 and lower(split_part(c.route_path,'?',1))=requested.route_path
+               where c.updated_by in('BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')),
+            professional_write as(
+              update framework_professional_screen_contract c set screen_name=p.item->>'screenName',
+                business_purpose=p.item->>'description',entry_condition=p.item->>'fromState',
+                exit_condition=array_to_string(array(select jsonb_array_elements_text(
+                  p.item->'acceptanceCriteria')),'; '),section_contract=(p.item->'sections')::text,
+                field_contract=(p.item->'fields')::text,permission_codes=p.item->'permissionCodes',
+                command_contract=p.commands,api_contract=p.apis,updated_by=?,updated_at=current_timestamp
+                from professional_projected p where c.contract_id=p.contract_id and
+                 (c.screen_name,c.business_purpose,c.entry_condition,c.exit_condition,c.section_contract,
+                  c.field_contract,c.permission_codes,c.command_contract,c.api_contract) is distinct from
+                 (p.item->>'screenName',p.item->>'description',p.item->>'fromState',
+                  array_to_string(array(select jsonb_array_elements_text(p.item->'acceptanceCriteria')),'; '),
+                  (p.item->'sections')::text,(p.item->'fields')::text,p.item->'permissionCodes',p.commands,p.apis)
+                returning 1),
+            page_write as(
+              update framework_page_design p set page_title=item->>'screenName',
+                page_purpose=item->>'description',security_contract=jsonb_build_object(
+                  'actorCode',item->>'actorCode','permissionCodes',item->'permissionCodes',
+                  'tenantIsolation',true,'projectIsolation',true,'auditRequired',true),
+                updated_by=?,updated_at=current_timestamp from requested
+               where p.process_code=requested.process_code and p.step_code=requested.step_code
+                 and p.audience=requested.audience
+                 and lower(split_part(p.planned_route_path,'?',1))=requested.route_path
+                 and p.updated_by in('BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+                 and (p.page_title,p.page_purpose,p.security_contract) is distinct from
+                  (item->>'screenName',item->>'description',jsonb_build_object(
+                    'actorCode',item->>'actorCode','permissionCodes',item->'permissionCodes',
+                    'tenantIsolation',true,'projectIsolation',true,'auditRequired',true)) returning 1),
+            blueprint_projected as materialized(
+              select b.blueprint_id,framework_try_jsonb(b.specification_json)||jsonb_build_object(
+                'schemaVersion',3,'source','REQUIREMENT_AUTOMATION','process',requested.process_code,
+                'step',requested.step_code,'actor',requested.actor_code,
+                'actorCode',requested.actor_code,
+                'commandCode',item->>'commandCode','fromState',item->>'fromState',
+                'toState',item->>'toState','layout',item->>'layoutCode','theme',item->>'themeCode',
+                'sections',item->'sections','permissionCodes',item->'permissionCodes',
+                'requirementContract',jsonb_build_object('schemaVersion',body->'schemaVersion',
+                  'contentSha256',body->'contentSha256','projectId',body->'projectId',
+                  'tenantId',body->'tenantId','identity',body->'identity',
+                  'contextFields',body->'contextFields','workspaces',body->'workspaces',
+                  'actorDefinition',(select a.value from jsonb_array_elements(body->'actorDefinitions') a(value)
+                    where a.value->>'actorCode'=requested.actor_code),'step',item,
+                  'generation',body->'generation','reconciliation',body->'reconciliation',
+                  'qualityGates',body->'qualityGates')) next_spec,
+                framework_try_jsonb(b.traceability_json)||jsonb_build_object(
+                  'source','REQUIREMENT_DOCUMENT','contentSha256',body->>'contentSha256') next_trace
+                from requested join framework_screen_blueprint b
+                  on b.process_code=requested.process_code and b.step_code=requested.step_code
+                 and b.audience=requested.audience and b.actor_code=requested.actor_code
+                 and lower(split_part(b.route_path,'?',1))=requested.route_path
+               where b.implementation_strategy='GENERATED_RUNTIME' and b.created_by in(
+                 'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')),
+            blueprint_write as(
+              update framework_screen_blueprint b set specification_json=p.next_spec::text,
+                traceability_json=p.next_trace::text,validation_status='VALID',validation_message=null,
+                transition_status='CONTRACT_LINKED',updated_at=current_timestamp
+                from blueprint_projected p where b.blueprint_id=p.blueprint_id and
+                 (framework_try_jsonb(b.specification_json),framework_try_jsonb(b.traceability_json),
+                  b.validation_status,b.validation_message,b.transition_status) is distinct from
+                 (p.next_spec,p.next_trace,'VALID'::text,null::text,'CONTRACT_LINKED'::text) returning 1)
+            select (select count(*) from resource_write)::integer as "resourceUpdates",
+                   (select count(*) from professional_write)::integer as "professionalUpdates",
+                   (select count(*) from page_write)::integer as "pageUpdates",
+                   (select count(*) from blueprint_write)::integer as "blueprintUpdates"
+            """,input.payload(),actor,actor);
+    }
+
+    private void verifyRequirementProjection(RequirementProjectionInput input){
+        Map<String,Object> exact=jdbc.queryForMap("""
+            with payload as materialized(select cast(? as jsonb) body), requested as materialized(
+              select step.value->>'stepCode' step_code,
+                     step.value->>'actorCode' actor_code,
+                     lower(split_part(step.value->>'routePath','?',1)) route_path,
+                     case when step.value->>'actorCode' like '%ADMIN%' then 'ADMIN' else 'USER' end audience,
+                     step.value item,body
+                from payload cross join lateral jsonb_array_elements(body#>'{process,steps}') step(value)
+            )
+            select count(*)::integer as "screenCount",
+                   count(contract.contract_id)::integer as "professionalCount",
+                   count(page.page_design_id)::integer as "pageCount",
+                   count(blueprint.blueprint_id)::integer as "blueprintCount",
+                   count(resource.screen_resource_id)::integer as "resourceCount",
+                   count(*) filter(where
+                     contract.section_contract::jsonb<>requested.item->'sections'
+                     or contract.field_contract::jsonb<>requested.item->'fields'
+                     or contract.permission_codes<>requested.item->'permissionCodes'
+                     or framework_try_jsonb(blueprint.specification_json)#>>
+                          '{requirementContract,contentSha256}'<>requested.body->>'contentSha256'
+                     or resource.layout_type<>requested.item->>'layoutCode'
+                     or framework_try_jsonb(blueprint.specification_json)->>'theme'<>
+                          requested.item->>'themeCode')::integer as "mismatchCount"
+              from requested
+              left join framework_professional_screen_contract contract
+                on contract.process_code=? and contract.step_code=requested.step_code
+               and contract.audience=requested.audience and contract.actor_code=requested.actor_code
+               and lower(split_part(contract.route_path,'?',1))=requested.route_path
+              left join framework_page_design page
+                on page.process_code=? and page.step_code=requested.step_code
+               and page.audience=requested.audience and page.actor_code=requested.actor_code
+               and lower(split_part(page.planned_route_path,'?',1))=requested.route_path
+              left join framework_screen_blueprint blueprint
+                on blueprint.process_code=? and blueprint.step_code=requested.step_code
+               and blueprint.audience=requested.audience and blueprint.actor_code=requested.actor_code
+               and lower(split_part(blueprint.route_path,'?',1))=requested.route_path
+               and blueprint.validation_status='VALID'
+              left join framework_screen_resource resource on resource.route_key=requested.route_path
+            """,input.payload(),input.process(),input.process(),input.process());
+        for(String key:List.of("professionalCount","pageCount","blueprintCount","resourceCount"))
+            if(number(exact,key)!=input.screenCount())
+                throw new IllegalStateException("REQUIREMENT_DESIGN_PROJECTION_NOT_EXACT: "+key);
+        if(number(exact,"mismatchCount")!=0)
+            throw new IllegalStateException("REQUIREMENT_DESIGN_PROJECTION_DIVERGED");
+    }
+
+    private static int number(Map<String,Object> values,String key){
+        return ((Number)values.getOrDefault(key,0)).intValue();
+    }
+
+    @Transactional public int ensureGeneratedProcessPageDesigns(String processCode,String actor){
+        String process=req(Map.of("processCode",processCode),"processCode");
+        boolean requirementOwned=isRequirementAutomationActor(actor);
+        if(requirementOwned)reconcileRequirementOwnedPageDesigns(process);
+        jdbc.update("update framework_process_definition set domain_code='DATA_GOVERNANCE',updated_at=current_timestamp where process_code=?",process);
+        upsertProcessPageDesignIdentities(process,actor,requirementOwned);
+        jdbc.update("""
+            insert into framework_page_field_definition(page_design_id,field_order,field_group,field_code,field_name,
+              data_type,control_type,required,editable,list_visible,search_enabled,api_property,mapping_status,
+              validation_contract,privacy_class,permission_code,evidence_required,responsive_priority,help_text,design_source)
+            select d.page_design_id,f.ord,'COMMON',f.code,f.name,f.dtype,f.control,f.required,f.editable,
+              f.list_visible,f.search_enabled,f.code,f.mapping_status,'{}'::jsonb,'INTERNAL',d.actor_code||':'||d.audience,
+              f.evidence_required,f.ord*10,f.help,'REQUIREMENT_AUTOMATION'
+            from framework_page_design d cross join (values
+              (1,'tenantId','테넌트','STRING','HIDDEN',true,false,false,false,'CONTEXT',false,'테넌트 격리 키'),
+              (2,'projectId','프로젝트','STRING','PROJECT_SELECTOR',true,true,true,true,'CONTEXT',false,'프로젝트 선택'),
+              (3,'processCode','프로세스','STRING','HIDDEN',true,false,false,false,'CONTEXT',false,'프로세스 식별자'),
+              (4,'stepCode','업무 단계','STRING','HIDDEN',true,false,false,false,'CONTEXT',false,'단계 식별자'),
+              (5,'actorCode','담당 액터','STRING','ACTOR_SELECTOR',true,true,true,true,'CONTEXT',false,'담당 액터'),
+              (6,'statusCode','처리 상태','STRING','STATUS',false,false,true,true,'LOGICAL_CONTRACT',false,'현재 처리 상태'),
+              (7,'rowVersion','데이터 버전','INTEGER','HIDDEN',false,false,false,false,'LOGICAL_CONTRACT',false,'동시 수정 방지'),
+              (8,'businessData','업무 입력','JSON','DYNAMIC_FORM',false,true,false,false,'LOGICAL_CONTRACT',true,'요구사항 기반 입력'),
+              (9,'evidenceFiles','증적 파일','FILE_LIST','FILE_UPLOAD',false,true,false,false,'LOGICAL_CONTRACT',true,'검증 증적'),
+              (10,'auditHistory','변경 이력','JSON','AUDIT_TIMELINE',false,false,false,false,'LOGICAL_CONTRACT',true,'감사 이력')
+            ) f(ord,code,name,dtype,control,required,editable,list_visible,search_enabled,mapping_status,evidence_required,help)
+            where d.process_code=? and (not ? or d.updated_by in(
+              'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER'))
+            on conflict(page_design_id,field_code) do update set field_order=excluded.field_order,
+              field_name=excluded.field_name,control_type=excluded.control_type,required=excluded.required,
+              editable=excluded.editable,list_visible=excluded.list_visible,search_enabled=excluded.search_enabled,
+              permission_code=excluded.permission_code,evidence_required=excluded.evidence_required,
+              help_text=excluded.help_text,updated_at=current_timestamp
+            """,process,requirementOwned);
+        jdbc.update("""
+            with ordered as (
+              select s.*,lead(s.step_code) over(order by s.step_order) next_step
+              from framework_process_step s where s.process_code=?
+            )
+            insert into framework_process_data_handoff(process_code,from_step_code,to_process_code,to_step_code,
+              handoff_type,context_keys,payload_contract,integrity_contract,authorization_contract,failure_contract)
+            select process_code,step_code,process_code,next_step,'STEP',
+              '["tenantId","projectId","processCode","stepCode","actorCode","rowVersion"]'::jsonb,
+              jsonb_build_object('source',output_contract,'targetStep',next_step),
+              '{"versionRequired":true,"checksumRequired":true,"auditRequired":true}'::jsonb,
+              jsonb_build_object('fromActor',actor_code,'tenantIsolation',true,'projectIsolation',true),
+              '{"onMissing":"BLOCK_AND_NOTIFY","onConflict":"RELOAD_AND_RETRY","onUnauthorized":"DENY_AND_AUDIT"}'::jsonb
+            from ordered where next_step is not null
+            on conflict(process_code,from_step_code,to_process_code,to_step_code,handoff_type) do update set
+              context_keys=excluded.context_keys,payload_contract=excluded.payload_contract,
+              integrity_contract=excluded.integrity_contract,authorization_contract=excluded.authorization_contract,
+              failure_contract=excluded.failure_contract,updated_at=current_timestamp
+            """,process);
+        jdbc.update("""
+            insert into framework_process_execution_topology(process_code,work_type_code,stage_code,execution_wave,
+              lane_code,lane_order,execution_mode,join_strategy,predecessor_process_codes,successor_process_codes,
+              shared_milestone_code,required_for_join,applicability_rule,topology_status)
+            values(?,'DATA_GOVERNANCE','REQUIREMENT_DELIVERY',1,'PRIMARY',1,'SEQUENTIAL','ALL',
+              '[]'::jsonb,'[]'::jsonb,?||'_REQUIREMENT_DELIVERY_W1',true,'ALWAYS','DESIGN_COMPLETE')
+            on conflict(process_code) do update set work_type_code=excluded.work_type_code,
+              stage_code=excluded.stage_code,execution_wave=excluded.execution_wave,lane_code=excluded.lane_code,
+              lane_order=excluded.lane_order,execution_mode=excluded.execution_mode,join_strategy=excluded.join_strategy,
+              predecessor_process_codes=excluded.predecessor_process_codes,
+              successor_process_codes=excluded.successor_process_codes,
+              shared_milestone_code=excluded.shared_milestone_code,required_for_join=excluded.required_for_join,
+              applicability_rule=excluded.applicability_rule,topology_status=excluded.topology_status,
+              updated_at=current_timestamp
+            """,process,process);
+        Integer workflowOrder=jdbc.queryForObject(
+            "select framework_allocate_requirement_process_sequence(?)",Integer.class,process);
+        if(workflowOrder==null||workflowOrder<1)
+            throw new IllegalStateException("REQUIREMENT_PROCESS_SEQUENCE_ALLOCATION_FAILED: "+process);
+        jdbc.update("""
+            insert into framework_process_navigation_binding(process_code,menu_code,step_code,actor_code,audience,
+              navigation_type,target_path,business_screen_implemented,binding_status,binding_source,verified_at)
+            select s.process_code,'H108',s.step_code,s.actor_code,'USER','DESIGN_WORKSPACE',
+              '/admin/system/actor-process?process='||s.process_code,false,'ACTIVE','REQUIREMENT_AUTOMATION',current_timestamp
+            from framework_process_step s where s.process_code=? order by s.step_order limit 1
+            on conflict(process_code) do update set step_code=excluded.step_code,actor_code=excluded.actor_code,
+              target_path=excluded.target_path,binding_status='ACTIVE',binding_source=excluded.binding_source,
+              verified_at=current_timestamp,updated_at=current_timestamp
+            """,process);
+        ensureGeneratedScreenDevelopmentAssets(process,actor);
+        jdbc.queryForObject("select framework_generate_professional_design_graph(?,?)::text",String.class,process,actor);
+        if(requirementOwned)reconcileRequirementOwnedBlueprints(process,actor);
+        jdbc.queryForObject("select framework_compile_process_execution_specs(?)",Integer.class,process);
+        jdbc.update("""
+            update framework_step_execution_spec e set
+              handoff_contract=jsonb_build_object('schemaVersion',1,'contractType','STEP_HANDOFF','policy','{}'::jsonb,
+                'transitions',jsonb_build_array(jsonb_build_object('handoffType','TERMINAL','toState',s.to_state,
+                  'contextKeys',jsonb_build_array('tenantId','projectId','processCode','stepCode','actorCode','rowVersion')))),
+              source_hash=md5(e.actor_contract::text||e.business_contract::text||e.transition_contract::text||
+                e.input_contract::text||e.output_contract::text||e.screen_contract::text||e.field_contract::text||
+                e.command_contract::text||e.api_contract::text||e.persistence_contract::text||
+                jsonb_build_object('schemaVersion',1,'contractType','STEP_HANDOFF','policy','{}'::jsonb,
+                  'transitions',jsonb_build_array(jsonb_build_object('handoffType','TERMINAL','toState',s.to_state,
+                    'contextKeys',jsonb_build_array('tenantId','projectId','processCode','stepCode','actorCode','rowVersion'))))::text||
+                e.test_contract::text||e.guide_contract::text||e.nonfunctional_contract::text),
+              updated_at=current_timestamp
+            from framework_process_step s
+            where e.process_code=s.process_code and e.step_code=s.step_code and e.process_code=?
+              and coalesce(e.handoff_contract->'policy','{}'::jsonb)='{}'::jsonb
+              and coalesce(e.handoff_contract->'transitions','[]'::jsonb)='[]'::jsonb
+              and not exists(select 1 from framework_process_step n
+                where n.process_code=s.process_code and n.step_order>s.step_order)
+            """,process);
+        Integer pages=jdbc.queryForObject("select count(*) from framework_page_design where process_code=?",Integer.class,process);
+        return pages==null?0:pages;
+    }
+
+    /**
+     * Materializes an editable design note, one selected HTML proposal, and the
+     * canonical common-design binding for generated routes. Existing operator
+     * notes and proposals are never overwritten. This satisfies design input
+     * gates only; it deliberately does not claim frontend implementation.
+     */
+    private void ensureGeneratedScreenDevelopmentAssets(String process,String actor){
+        List<Map<String,Object>> screens=jdbc.queryForList("""
+            select s.step_code,s.step_name,s.actor_code,s.from_state,s.to_state,s.command_code,
+                   coalesce(nullif(s.requirement_text,''),s.step_name) requirement_text,
+                   coalesce(nullif(s.completion_rule,''),s.to_state||' state transition') completion_rule,
+                   route.route_path
+              from framework_process_step s
+              cross join lateral unnest(array_remove(array[s.user_path,s.admin_path],null)) route(route_path)
+             where s.process_code=? and nullif(trim(route.route_path),'') is not null
+             order by s.step_order,route.route_path
+            """,process);
+        for(Map<String,Object> screen:screens){
+            String route=ScreenDevelopmentNoteService.cleanRoute(String.valueOf(screen.get("route_path")));
+            String routeKey=route.toLowerCase(Locale.ROOT);
+            String step=String.valueOf(screen.get("step_code"));
+            String title=String.valueOf(screen.get("step_name"));
+            String pageId=jdbc.queryForObject("select 'AUTO_'||upper(substr(md5(lower(?)),1,16))",String.class,route);
+            String design="KRDS responsive workspace for actor "+screen.get("actor_code")+
+                "; state "+screen.get("from_state")+" -> "+screen.get("to_state")+
+                "; sections: summary, input and validation, evidence, audit history, next task.";
+            String function="Execute "+screen.get("command_code")+" for "+process+"/"+step+
+                " with tenant, project, actor, row-version, validation, evidence, and idempotent retry contracts.";
+            String acceptance=String.valueOf(screen.get("completion_rule"))+
+                "; persist result, reread database state, record audit evidence, and enable only the valid next transition.";
+            jdbc.update("""
+                insert into framework_screen_development_note(route_key,route_path,page_id,page_title,design_note,
+                  function_note,acceptance_note,development_status,updated_by)
+                values(?,?,?,?,?,?,?,'READY',?) on conflict(route_key) do nothing
+                """,routeKey,route,pageId,title,design,function,acceptance,actor);
+
+            String prompt="Render the approved KRDS common workspace for "+process+"/"+step+
+                ". Preserve actor authority, responsive layout, accessibility, validation, evidence, audit, and next-step contracts.";
+            String html="<main class=\"krds-page generated-workspace\" data-process=\""+htmlEscape(process)+
+                "\" data-step=\""+htmlEscape(step)+"\" data-actor=\""+htmlEscape(String.valueOf(screen.get("actor_code")))+
+                "\"><header class=\"krds-page-header\"><p class=\"krds-breadcrumb\">"+htmlEscape(process)+
+                "</p><h1>"+htmlEscape(title)+"</h1><p>"+htmlEscape(String.valueOf(screen.get("requirement_text")))+
+                "</p></header><section class=\"krds-summary-metrics\" aria-label=\"Task status\" data-from-state=\""+
+                htmlEscape(String.valueOf(screen.get("from_state")))+"\" data-to-state=\""+
+                htmlEscape(String.valueOf(screen.get("to_state")))+"\"></section><section class=\"krds-work-grid\">"+
+                "<div class=\"krds-card\" data-section=\"input-validation\"><h2>Input and validation</h2></div>"+
+                "<div class=\"krds-card\" data-section=\"evidence-history\"><h2>Evidence and audit history</h2></div>"+
+                "</section><footer class=\"krds-task-actions\" data-command=\""+
+                htmlEscape(String.valueOf(screen.get("command_code")))+"\"><button type=\"button\">Save draft</button>"+
+                "<button type=\"button\" class=\"krds-btn-primary\">Complete and continue</button></footer></main>";
+            jdbc.update("""
+                insert into framework_screen_html_mockup(route_key,route_path,page_id,slot_no,mockup_title,prompt_text,
+                  html_content,mockup_status,selected,updated_by)
+                values(?,?,?,1,?,?,?,'DRAFT',false,?) on conflict(route_key,slot_no) do nothing
+                """,routeKey,route,pageId,title+" - KRDS workspace",prompt,html,actor);
+            jdbc.update("""
+                update framework_screen_html_mockup set selected=true,mockup_status='SELECTED',updated_by=?,updated_at=current_timestamp
+                 where route_key=? and slot_no=1
+                   and not exists(select 1 from framework_screen_html_mockup selected where selected.route_key=? and selected.selected=true)
+                """,actor,routeKey,routeKey);
+        }
+        ensureCommonDesignAssets(process,"",actor);
+    }
+
+    private static String htmlEscape(String value){
+        if(value==null)return "";
+        return value.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+            .replace("\"","&quot;").replace("'","&#39;");
     }
     @Transactional public void saveArtifact(Map<String,Object>b){
         jdbc.update("insert into framework_process_artifact(process_code,step_code,artifact_code,artifact_type,artifact_name,target_path,contract_ref,required,delivery_status,owner_actor_code,acceptance_criteria,evidence_ref,notes) values(?,?,?,?,?,?,?,?,?,?,?,nullif(?,''),nullif(?,'')) on conflict(process_code,artifact_code) do update set step_code=excluded.step_code,artifact_type=excluded.artifact_type,artifact_name=excluded.artifact_name,target_path=excluded.target_path,contract_ref=excluded.contract_ref,required=excluded.required,delivery_status=excluded.delivery_status,owner_actor_code=excluded.owner_actor_code,acceptance_criteria=excluded.acceptance_criteria,evidence_ref=excluded.evidence_ref,notes=excluded.notes,updated_at=current_timestamp",req(b,"processCode"),str(b,"stepCode"),req(b,"artifactCode"),req(b,"artifactType"),req(b,"artifactName"),str(b,"targetPath"),str(b,"contractRef"),!"false".equalsIgnoreCase(str(b,"required")),def(b,"status","PLANNED"),req(b,"ownerActorCode"),req(b,"acceptanceCriteria"),str(b,"evidenceRef"),str(b,"notes"));
@@ -1515,23 +9664,75 @@ public class ActorProcessGovernanceService {
     }
     private void seedCases(String process){
         String[][] cases={{"HAPPY","정상 완료","HAPPY_PATH"},{"AUTH","권한 없는 액션 차단","AUTHORITY"},{"ISOLATION","테넌트·프로젝트 데이터 격리","ISOLATION"},{"EXCEPTION","필수 데이터 누락과 보완","EXCEPTION"},{"RECOVERY","실패 후 재처리·복구","RECOVERY"}};
-        for(String[] c:cases){String code=process+"_"+c[0];jdbc.update("insert into framework_simulation_case(case_code,process_code,case_name,case_type,preconditions,steps_json,assertions_json) values(?,?,?,?,?,?,?) on conflict(case_code) do update set case_name=excluded.case_name,case_type=excluded.case_type,preconditions=excluded.preconditions,steps_json=excluded.steps_json,assertions_json=excluded.assertions_json,updated_at=current_timestamp",code,process,c[1],c[2],"테스트용 테넌트·프로젝트·액터 계정이 준비되어야 함","[]","[\"권한·상태·데이터격리·감사로그 검증\"]");}
+        String steps=jdbc.queryForObject("""
+            select coalesce(json_agg(json_build_object(
+              'order',step_order,'stepCode',step_code,'command',command_code,
+              'actorCode',actor_code,'fromState',from_state,'toState',to_state
+            ) order by step_order),'[]'::json)::text
+            from framework_process_step where process_code=?
+            """,String.class,process);
+        Map<String,String> assertions=Map.of(
+            "HAPPY_PATH","[\"all ordered transitions are reachable\",\"every command has an actor\",\"terminal completion state exists\"]",
+            "AUTHORITY","[\"every step actor exists\",\"unauthorized commands are denied\",\"denials are audit logged\"]",
+            "ISOLATION","[\"tenant context is required\",\"project context is required\",\"cross-context access is denied\"]",
+            "EXCEPTION","[\"required input contracts exist\",\"validation failure preserves prior state\",\"correction path retains evidence\"]",
+            "RECOVERY","[\"every step has rollback semantics\",\"commands are idempotent\",\"retry preserves audit history\"]");
+        String preconditions="A tenant, project, assigned actor, current process version, and isolated test data are available for deterministic contract validation.";
+        for(String[] c:cases){
+            String code=process+"_"+c[0];
+            jdbc.update("""
+                insert into framework_simulation_case(
+                  case_code,process_code,case_name,case_type,preconditions,
+                  steps_json,assertions_json,case_status,severity,
+                  required_evidence,automated,expected_duration_minutes)
+                values(?,?,?,?,?,?,?,'READY','CRITICAL',
+                  'PROCESS_GRAPH,ACTOR_POLICY,STATE_CONTRACT,DATA_CONTRACT,AUDIT_LOG',true,5)
+                on conflict(case_code) do update set
+                  case_name=excluded.case_name,case_type=excluded.case_type,
+                  preconditions=excluded.preconditions,steps_json=excluded.steps_json,
+                  assertions_json=excluded.assertions_json,
+                  case_status=case when framework_simulation_case.case_status='APPROVED'
+                    then framework_simulation_case.case_status else 'READY' end,
+                  severity=excluded.severity,required_evidence=excluded.required_evidence,
+                  automated=true,expected_duration_minutes=excluded.expected_duration_minutes,
+                  updated_at=current_timestamp
+                """,code,process,c[1],c[2],preconditions,steps,assertions.get(c[2]));
+        }
     }
     private static String str(Map<String,Object>b,String k){return b.get(k)==null?"":String.valueOf(b.get(k)).trim();}
     private static String req(Map<String,Object>b,String k){String v=str(b,k);if(v.isEmpty())throw new IllegalArgumentException(k+" is required");return v;}
     private static String def(Map<String,Object>b,String k,String d){String v=str(b,k);return v.isEmpty()?d:v;}
+    private static String valueOr(Map<String,Object>b,String k,String d){Object raw=b.get(k);if(raw==null)return d;String v=String.valueOf(raw).trim();return v.isEmpty()||"null".equalsIgnoreCase(v)?d:v;}
     private static boolean bool(Map<String,Object>b,String k){return Boolean.parseBoolean(str(b,k));}
     private static int integer(Map<String,Object>b,String k){try{return Integer.parseInt(req(b,k));}catch(Exception e){throw new IllegalArgumentException(k+" must be a number");}}
     private static int integerOr(Map<String,Object>b,String k,int d){String v=str(b,k);if(v.isEmpty())return d;try{return Integer.parseInt(v);}catch(Exception e){throw new IllegalArgumentException(k+" must be a number");}}
-    private static void validateJsonObject(String value,String field){
+    private static String auditTargetPart(Object value){return value==null?"#":String.valueOf(value);}
+    private static String normalizePermissionCodes(String value){
         try{
-            if(!new com.fasterxml.jackson.databind.ObjectMapper().readTree(value).isObject()){
-                throw new IllegalArgumentException(field+" must be a JSON object");
+            com.fasterxml.jackson.databind.JsonNode parsed=
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree(value);
+            if(!parsed.isArray())throw new IllegalArgumentException(
+                "permissionCodes must be a JSON array");
+            java.util.SortedSet<String> codes=new java.util.TreeSet<>();
+            for(com.fasterxml.jackson.databind.JsonNode item:parsed){
+                if(!item.isTextual())throw new IllegalArgumentException(
+                    "permissionCodes must contain strings only");
+                String code=item.textValue();
+                if(!code.matches("[A-Z][A-Z0-9_:-]{1,119}"))
+                    throw new IllegalArgumentException("invalid permissionCode: "+code);
+                if(!codes.add(code))throw new IllegalArgumentException(
+                    "duplicate permissionCode: "+code);
             }
+            return toJson(codes);
         }catch(com.fasterxml.jackson.core.JsonProcessingException e){
-            throw new IllegalArgumentException(field+" must be valid JSON",e);
+            throw new IllegalArgumentException("permissionCodes must be valid JSON",e);
         }
     }
+    private static void validateJsonObject(String value,String field){try{if(!new com.fasterxml.jackson.databind.ObjectMapper().readTree(value).isObject())throw new IllegalArgumentException(field+" must be a JSON object");}catch(com.fasterxml.jackson.core.JsonProcessingException e){throw new IllegalArgumentException(field+" must be valid JSON",e);}}
+    private static void validateJsonArray(String value,String field){try{if(!new com.fasterxml.jackson.databind.ObjectMapper().readTree(value).isArray())throw new IllegalArgumentException(field+" must be a JSON array");}catch(com.fasterxml.jackson.core.JsonProcessingException e){throw new IllegalArgumentException(field+" must be valid JSON",e);}}
+    private static void validateJsonObjectOrArray(String value,String field){try{com.fasterxml.jackson.databind.JsonNode node=new com.fasterxml.jackson.databind.ObjectMapper().readTree(value);if(!node.isObject()&&!node.isArray())throw new IllegalArgumentException(field+" must be a JSON object or array");}catch(com.fasterxml.jackson.core.JsonProcessingException e){throw new IllegalArgumentException(field+" must be valid JSON",e);}}
     private static String toJson(Object value){try{return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(value==null?Map.of():value);}catch(Exception e){throw new IllegalArgumentException("configuration must be JSON serializable",e);}}
+    private static Object jsonValue(String value){try{return new com.fasterxml.jackson.databind.ObjectMapper().readValue(value,Object.class);}catch(Exception e){throw new IllegalArgumentException("database returned invalid JSON value",e);}}
+    @SuppressWarnings("unchecked") private static Map<String,Object> jsonMap(String value){try{return new com.fasterxml.jackson.databind.ObjectMapper().readValue(value,LinkedHashMap.class);}catch(Exception e){throw new IllegalArgumentException("database returned invalid JSON",e);}}
     private static String jsonEscape(String value){return value==null?"":value.replace("\\","\\\\").replace("\"","\\\"").replace("\r","\\r").replace("\n","\\n");}
 }

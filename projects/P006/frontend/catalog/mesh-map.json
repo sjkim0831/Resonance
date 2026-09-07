@@ -1,0 +1,6587 @@
+{
+  "generatedAt": "2026-08-12T07:00:13.686Z",
+  "physicalAssetCount": 464,
+  "bundleCount": 15,
+  "counts": {
+    "mold_cooling": 5,
+    "robot_panel": 2,
+    "holding_furnace": 8,
+    "spray_ladler": 4,
+    "release_agent": 6,
+    "main_panel": 2,
+    "casting_filter": 1,
+    "casting_machine": 30,
+    "vacuum_unit": 11,
+    "turntable_furnace": 9,
+    "trimming_machine": 2,
+    "melting_furnace": 17,
+    "ladler": 8,
+    "punching_press": 6,
+    "takeout_robot": 19
+  },
+  "mappings": [
+    {
+      "assetId": "A0001",
+      "placementCode": "catalog_a0001",
+      "assetName": "냉각장비",
+      "bundleCode": "cooling_unit",
+      "confidence": 0.93,
+      "mappingSource": "EQUIPMENT_GROUP_RECLASSIFICATION"
+    },
+    {
+      "assetId": "A0002",
+      "placementCode": "catalog_a0002",
+      "assetName": "로봇제어반1",
+      "bundleCode": "robot_panel",
+      "confidence": 0.89,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0003",
+      "placementCode": "catalog_a0003",
+      "assetName": "로봇제어반2",
+      "bundleCode": "robot_panel",
+      "confidence": 0.89,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0004",
+      "placementCode": "catalog_a0004",
+      "assetName": "보온로1",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0005",
+      "placementCode": "catalog_a0005",
+      "assetName": "보온로2",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0006",
+      "placementCode": "catalog_a0006",
+      "assetName": "스프레이로봇,래들1",
+      "bundleCode": "spray_ladler",
+      "confidence": 0.95,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0007",
+      "placementCode": "catalog_a0007",
+      "assetName": "이형제1",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0008",
+      "placementCode": "catalog_a0008",
+      "assetName": "제어반전체1",
+      "bundleCode": "main_panel",
+      "confidence": 0.93,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0009",
+      "placementCode": "catalog_a0009",
+      "assetName": "주조기_필터",
+      "bundleCode": "casting_filter",
+      "confidence": 0.93,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0010",
+      "placementCode": "catalog_a0010",
+      "assetName": "주조기1",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0011",
+      "placementCode": "catalog_a0011",
+      "assetName": "주조기2",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0012",
+      "placementCode": "catalog_a0012",
+      "assetName": "주조기3",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0013",
+      "placementCode": "catalog_a0013",
+      "assetName": "주조기4",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0014",
+      "placementCode": "catalog_a0014",
+      "assetName": "주조기5",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0015",
+      "placementCode": "catalog_a0015",
+      "assetName": "주조기6",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0016",
+      "placementCode": "catalog_a0016",
+      "assetName": "주조기7",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0017",
+      "placementCode": "catalog_a0017",
+      "assetName": "진공장치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0018",
+      "placementCode": "catalog_a0018",
+      "assetName": "진공장치2",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0019",
+      "placementCode": "catalog_a0019",
+      "assetName": "진공장치3",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0020",
+      "placementCode": "catalog_a0020",
+      "assetName": "진공장치4",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0021",
+      "placementCode": "catalog_a0021",
+      "assetName": "턴테이블로1",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0022",
+      "placementCode": "catalog_a0022",
+      "assetName": "턴테이블로2",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0023",
+      "placementCode": "catalog_a0023",
+      "assetName": "트리밍1",
+      "bundleCode": "trimming_machine",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0024",
+      "placementCode": "catalog_a0024",
+      "assetName": "트리밍2",
+      "bundleCode": "trimming_machine",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0025",
+      "placementCode": "catalog_a0025",
+      "assetName": "용해로",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0026",
+      "placementCode": "catalog_a0026",
+      "assetName": "BUHLER",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0027",
+      "placementCode": "catalog_a0027",
+      "assetName": "LADLER",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0028",
+      "placementCode": "catalog_a0028",
+      "assetName": "베이스",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0029",
+      "placementCode": "catalog_a0029",
+      "assetName": "부품1",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0030",
+      "placementCode": "catalog_a0030",
+      "assetName": "부품2",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0031",
+      "placementCode": "catalog_a0031",
+      "assetName": "부품3",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0032",
+      "placementCode": "catalog_a0032",
+      "assetName": "부품4",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0033",
+      "placementCode": "catalog_a0033",
+      "assetName": "부품5",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0034",
+      "placementCode": "catalog_a0034",
+      "assetName": "컵",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0035",
+      "placementCode": "catalog_a0035",
+      "assetName": "punching press",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0036",
+      "placementCode": "catalog_a0036",
+      "assetName": "펀칭기 제어반",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0037",
+      "placementCode": "catalog_a0037",
+      "assetName": "펀칭기",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0038",
+      "placementCode": "catalog_a0038",
+      "assetName": "펀칭기_1",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0039",
+      "placementCode": "catalog_a0039",
+      "assetName": "펀칭기_2",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0040",
+      "placementCode": "catalog_a0040",
+      "assetName": "펀칭기_3",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0041",
+      "placementCode": "catalog_a0041",
+      "assetName": "TT-1800",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0042",
+      "placementCode": "catalog_a0042",
+      "assetName": "VACUUM SUCTION UNIT",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0043",
+      "placementCode": "catalog_a0043",
+      "assetName": "금형고압냉각장비",
+      "bundleCode": "mold_cooling",
+      "confidence": 0.93,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0044",
+      "placementCode": "catalog_a0044",
+      "assetName": "금형고압 DOOR",
+      "bundleCode": "mold_cooling",
+      "confidence": 0.93,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0045",
+      "placementCode": "catalog_a0045",
+      "assetName": "금형고압냉각장비",
+      "bundleCode": "mold_cooling",
+      "confidence": 0.93,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0046",
+      "placementCode": "catalog_a0046",
+      "assetName": "금형고압냉각장비_1",
+      "bundleCode": "mold_cooling",
+      "confidence": 0.93,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0047",
+      "placementCode": "catalog_a0047",
+      "assetName": "파트_a0",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0048",
+      "placementCode": "catalog_a0048",
+      "assetName": "파트_a1",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0049",
+      "placementCode": "catalog_a0049",
+      "assetName": "파트_a2",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0050",
+      "placementCode": "catalog_a0050",
+      "assetName": "파트_a3",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0051",
+      "placementCode": "catalog_a0051",
+      "assetName": "파트_a4",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0052",
+      "placementCode": "catalog_a0052",
+      "assetName": "파트_a5",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0053",
+      "placementCode": "catalog_a0053",
+      "assetName": "로봇",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0054",
+      "placementCode": "catalog_a0054",
+      "assetName": "로봇01",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0055",
+      "placementCode": "catalog_a0055",
+      "assetName": "로봇02",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0056",
+      "placementCode": "catalog_a0056",
+      "assetName": "로봇03",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0057",
+      "placementCode": "catalog_a0057",
+      "assetName": "로봇04",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0058",
+      "placementCode": "catalog_a0058",
+      "assetName": "로봇05",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0059",
+      "placementCode": "catalog_a0059",
+      "assetName": "로봇06",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0060",
+      "placementCode": "catalog_a0060",
+      "assetName": "로봇1",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0061",
+      "placementCode": "catalog_a0061",
+      "assetName": "본체",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0062",
+      "placementCode": "catalog_a0062",
+      "assetName": "로봇2",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0063",
+      "placementCode": "catalog_a0063",
+      "assetName": "로봇2-1",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0064",
+      "placementCode": "catalog_a0064",
+      "assetName": "로봇2-2",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0065",
+      "placementCode": "catalog_a0065",
+      "assetName": "로봇2-3",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0066",
+      "placementCode": "catalog_a0066",
+      "assetName": "로봇2-4",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0067",
+      "placementCode": "catalog_a0067",
+      "assetName": "로봇2-5",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0068",
+      "placementCode": "catalog_a0068",
+      "assetName": "로봇2-6",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0069",
+      "placementCode": "catalog_a0069",
+      "assetName": "보온로",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0070",
+      "placementCode": "catalog_a0070",
+      "assetName": "보온로",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0071",
+      "placementCode": "catalog_a0071",
+      "assetName": "보온로-부품1",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0072",
+      "placementCode": "catalog_a0072",
+      "assetName": "보온로-부품2",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0073",
+      "placementCode": "catalog_a0073",
+      "assetName": "보온로-부품3",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0074",
+      "placementCode": "catalog_a0074",
+      "assetName": "스프레이로보트제어반",
+      "bundleCode": "spray_ladler",
+      "confidence": 0.95,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0075",
+      "placementCode": "catalog_a0075",
+      "assetName": "용해로",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0076",
+      "placementCode": "catalog_a0076",
+      "assetName": "용해로1_1",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0077",
+      "placementCode": "catalog_a0077",
+      "assetName": "용해로1_2",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0078",
+      "placementCode": "catalog_a0078",
+      "assetName": "용해로1_3",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0079",
+      "placementCode": "catalog_a0079",
+      "assetName": "용해로2",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0080",
+      "placementCode": "catalog_a0080",
+      "assetName": "용해로3_1",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0081",
+      "placementCode": "catalog_a0081",
+      "assetName": "용해로3_2",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0082",
+      "placementCode": "catalog_a0082",
+      "assetName": "용해로4",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0083",
+      "placementCode": "catalog_a0083",
+      "assetName": "용해로5",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0084",
+      "placementCode": "catalog_a0084",
+      "assetName": "용해로6",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0085",
+      "placementCode": "catalog_a0085",
+      "assetName": "용해로7",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0086",
+      "placementCode": "catalog_a0086",
+      "assetName": "용해로8",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0087",
+      "placementCode": "catalog_a0087",
+      "assetName": "용해로다리",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0088",
+      "placementCode": "catalog_a0088",
+      "assetName": "용해로제어반",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0089",
+      "placementCode": "catalog_a0089",
+      "assetName": "이형제_1",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0090",
+      "placementCode": "catalog_a0090",
+      "assetName": "이형제_2",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0091",
+      "placementCode": "catalog_a0091",
+      "assetName": "이형제_3",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0092",
+      "placementCode": "catalog_a0092",
+      "assetName": "이형제_4",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0093",
+      "placementCode": "catalog_a0093",
+      "assetName": "이형제2",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0094",
+      "placementCode": "catalog_a0094",
+      "assetName": "전체 어셈블리",
+      "bundleCode": "casting_machine",
+      "confidence": 0.95,
+      "mappingSource": "ADMIN_VISUAL_REVIEW"
+    },
+    {
+      "assetId": "A0095",
+      "placementCode": "catalog_a0095",
+      "assetName": "01스프레이로보트제어반",
+      "bundleCode": "spray_ladler",
+      "confidence": 0.95,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0096",
+      "placementCode": "catalog_a0096",
+      "assetName": "스프레이로보트제어반1",
+      "bundleCode": "spray_ladler",
+      "confidence": 0.95,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0097",
+      "placementCode": "catalog_a0097",
+      "assetName": "자동화제어반",
+      "bundleCode": "main_panel",
+      "confidence": 0.93,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0098",
+      "placementCode": "catalog_a0098",
+      "assetName": "취출로보트제어반",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0099",
+      "placementCode": "catalog_a0099",
+      "assetName": "취출로보트제어반1",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0100",
+      "placementCode": "catalog_a0100",
+      "assetName": "buhler",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0101",
+      "placementCode": "catalog_a0101",
+      "assetName": "buhler-2",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0102",
+      "placementCode": "catalog_a0102",
+      "assetName": "cylinder plate reworked",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0103",
+      "placementCode": "catalog_a0103",
+      "assetName": "fixing plate fixed",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0104",
+      "placementCode": "catalog_a0104",
+      "assetName": "fixing plate mobile",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0105",
+      "placementCode": "catalog_a0105",
+      "assetName": "주조기",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0106",
+      "placementCode": "catalog_a0106",
+      "assetName": "주조기_tie bar",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0107",
+      "placementCode": "catalog_a0107",
+      "assetName": "주조기_파트1",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0108",
+      "placementCode": "catalog_a0108",
+      "assetName": "주조기_파트12",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0109",
+      "placementCode": "catalog_a0109",
+      "assetName": "주조기_파트2",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0110",
+      "placementCode": "catalog_a0110",
+      "assetName": "주조기_파트3",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0111",
+      "placementCode": "catalog_a0111",
+      "assetName": "주조기_파트4",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0112",
+      "placementCode": "catalog_a0112",
+      "assetName": "주조기_파트5",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0113",
+      "placementCode": "catalog_a0113",
+      "assetName": "주조기_파트7",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0114",
+      "placementCode": "catalog_a0114",
+      "assetName": "주조기_파트8",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0115",
+      "placementCode": "catalog_a0115",
+      "assetName": "vacuum suction unit",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0116",
+      "placementCode": "catalog_a0116",
+      "assetName": "vacuum suction unit_1",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0117",
+      "placementCode": "catalog_a0117",
+      "assetName": "VACUUM 상단DOOR",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0118",
+      "placementCode": "catalog_a0118",
+      "assetName": "VACUUM 하단DOOR",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0119",
+      "placementCode": "catalog_a0119",
+      "assetName": "취출로보트제어반",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0120",
+      "placementCode": "catalog_a0120",
+      "assetName": "TT-1800_01",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0121",
+      "placementCode": "catalog_a0121",
+      "assetName": "TT-1800_02",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0122",
+      "placementCode": "catalog_a0122",
+      "assetName": "TT-1800_03",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0123",
+      "placementCode": "catalog_a0123",
+      "assetName": "TT-1800_04",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0124",
+      "placementCode": "catalog_a0124",
+      "assetName": "TT-1800_05",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0125",
+      "placementCode": "catalog_a0125",
+      "assetName": "주조기,보온로",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0126",
+      "placementCode": "catalog_a0126",
+      "assetName": "턴테이블로",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0243",
+      "placementCode": "catalog_a0243",
+      "assetName": "ass'y(20170425)",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "A0244",
+      "placementCode": "catalog_a0244",
+      "assetName": "경동식 연속용해로 1t 3D",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "NAME_PATH_RULE"
+    },
+    {
+      "assetId": "G0001",
+      "placementCode": "catalog_g0001",
+      "assetName": "고진공장비 GVH2000TPN",
+      "bundleCode": "vacuum_unit",
+      "confidence": 1.0,
+      "mappingSource": "DWG_GENERATED"
+    },
+    {
+      "assetId": "G0002",
+      "placementCode": "catalog_g0002",
+      "assetName": "제트쿨러 JT800CVN",
+      "bundleCode": "vacuum_unit",
+      "confidence": 1.0,
+      "mappingSource": "DWG_GENERATED"
+    },
+    {
+      "assetId": "V00001",
+      "placementCode": "catalog_v00001",
+      "assetName": "냉각장비 · 컴팩트 배치",
+      "bundleCode": "cooling_unit",
+      "confidence": 0.93,
+      "mappingSource": "EQUIPMENT_GROUP_RECLASSIFICATION",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0001"
+    },
+    {
+      "assetId": "V00002",
+      "placementCode": "catalog_v00002",
+      "assetName": "냉각장비 · 정비공간 배치",
+      "bundleCode": "cooling_unit",
+      "confidence": 0.93,
+      "mappingSource": "EQUIPMENT_GROUP_RECLASSIFICATION",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0001"
+    },
+    {
+      "assetId": "V00003",
+      "placementCode": "catalog_v00003",
+      "assetName": "로봇제어반1 · 컴팩트 배치",
+      "bundleCode": "robot_panel",
+      "confidence": 0.89,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0002"
+    },
+    {
+      "assetId": "V00004",
+      "placementCode": "catalog_v00004",
+      "assetName": "로봇제어반1 · 정비공간 배치",
+      "bundleCode": "robot_panel",
+      "confidence": 0.89,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0002"
+    },
+    {
+      "assetId": "V00005",
+      "placementCode": "catalog_v00005",
+      "assetName": "로봇제어반2 · 컴팩트 배치",
+      "bundleCode": "robot_panel",
+      "confidence": 0.89,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0003"
+    },
+    {
+      "assetId": "V00006",
+      "placementCode": "catalog_v00006",
+      "assetName": "로봇제어반2 · 정비공간 배치",
+      "bundleCode": "robot_panel",
+      "confidence": 0.89,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0003"
+    },
+    {
+      "assetId": "V00007",
+      "placementCode": "catalog_v00007",
+      "assetName": "보온로1 · 컴팩트 배치",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0004"
+    },
+    {
+      "assetId": "V00008",
+      "placementCode": "catalog_v00008",
+      "assetName": "보온로1 · 정비공간 배치",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0004"
+    },
+    {
+      "assetId": "V00009",
+      "placementCode": "catalog_v00009",
+      "assetName": "보온로2 · 컴팩트 배치",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0005"
+    },
+    {
+      "assetId": "V00010",
+      "placementCode": "catalog_v00010",
+      "assetName": "보온로2 · 정비공간 배치",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0005"
+    },
+    {
+      "assetId": "V00011",
+      "placementCode": "catalog_v00011",
+      "assetName": "스프레이로봇,래들1 · 컴팩트 배치",
+      "bundleCode": "spray_ladler",
+      "confidence": 0.95,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0006"
+    },
+    {
+      "assetId": "V00012",
+      "placementCode": "catalog_v00012",
+      "assetName": "스프레이로봇,래들1 · 정비공간 배치",
+      "bundleCode": "spray_ladler",
+      "confidence": 0.95,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0006"
+    },
+    {
+      "assetId": "V00013",
+      "placementCode": "catalog_v00013",
+      "assetName": "이형제1 · 컴팩트 배치",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0007"
+    },
+    {
+      "assetId": "V00014",
+      "placementCode": "catalog_v00014",
+      "assetName": "이형제1 · 정비공간 배치",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0007"
+    },
+    {
+      "assetId": "V00015",
+      "placementCode": "catalog_v00015",
+      "assetName": "제어반전체1 · 컴팩트 배치",
+      "bundleCode": "main_panel",
+      "confidence": 0.93,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0008"
+    },
+    {
+      "assetId": "V00016",
+      "placementCode": "catalog_v00016",
+      "assetName": "제어반전체1 · 정비공간 배치",
+      "bundleCode": "main_panel",
+      "confidence": 0.93,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0008"
+    },
+    {
+      "assetId": "V00017",
+      "placementCode": "catalog_v00017",
+      "assetName": "주조기_필터 · 컴팩트 배치",
+      "bundleCode": "casting_filter",
+      "confidence": 0.93,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0009"
+    },
+    {
+      "assetId": "V00018",
+      "placementCode": "catalog_v00018",
+      "assetName": "주조기_필터 · 정비공간 배치",
+      "bundleCode": "casting_filter",
+      "confidence": 0.93,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0009"
+    },
+    {
+      "assetId": "V00019",
+      "placementCode": "catalog_v00019",
+      "assetName": "주조기1 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0010"
+    },
+    {
+      "assetId": "V00020",
+      "placementCode": "catalog_v00020",
+      "assetName": "주조기1 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0010"
+    },
+    {
+      "assetId": "V00021",
+      "placementCode": "catalog_v00021",
+      "assetName": "주조기2 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0011"
+    },
+    {
+      "assetId": "V00022",
+      "placementCode": "catalog_v00022",
+      "assetName": "주조기2 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0011"
+    },
+    {
+      "assetId": "V00023",
+      "placementCode": "catalog_v00023",
+      "assetName": "주조기3 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0012"
+    },
+    {
+      "assetId": "V00024",
+      "placementCode": "catalog_v00024",
+      "assetName": "주조기3 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0012"
+    },
+    {
+      "assetId": "V00025",
+      "placementCode": "catalog_v00025",
+      "assetName": "주조기4 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0013"
+    },
+    {
+      "assetId": "V00026",
+      "placementCode": "catalog_v00026",
+      "assetName": "주조기4 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0013"
+    },
+    {
+      "assetId": "V00027",
+      "placementCode": "catalog_v00027",
+      "assetName": "주조기5 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0014"
+    },
+    {
+      "assetId": "V00028",
+      "placementCode": "catalog_v00028",
+      "assetName": "주조기5 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0014"
+    },
+    {
+      "assetId": "V00029",
+      "placementCode": "catalog_v00029",
+      "assetName": "주조기6 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0015"
+    },
+    {
+      "assetId": "V00030",
+      "placementCode": "catalog_v00030",
+      "assetName": "주조기6 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0015"
+    },
+    {
+      "assetId": "V00031",
+      "placementCode": "catalog_v00031",
+      "assetName": "주조기7 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0016"
+    },
+    {
+      "assetId": "V00032",
+      "placementCode": "catalog_v00032",
+      "assetName": "주조기7 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0016"
+    },
+    {
+      "assetId": "V00033",
+      "placementCode": "catalog_v00033",
+      "assetName": "진공장치 · 컴팩트 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0017"
+    },
+    {
+      "assetId": "V00034",
+      "placementCode": "catalog_v00034",
+      "assetName": "진공장치 · 정비공간 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0017"
+    },
+    {
+      "assetId": "V00035",
+      "placementCode": "catalog_v00035",
+      "assetName": "진공장치2 · 컴팩트 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0018"
+    },
+    {
+      "assetId": "V00036",
+      "placementCode": "catalog_v00036",
+      "assetName": "진공장치2 · 정비공간 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0018"
+    },
+    {
+      "assetId": "V00037",
+      "placementCode": "catalog_v00037",
+      "assetName": "진공장치3 · 컴팩트 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0019"
+    },
+    {
+      "assetId": "V00038",
+      "placementCode": "catalog_v00038",
+      "assetName": "진공장치3 · 정비공간 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0019"
+    },
+    {
+      "assetId": "V00039",
+      "placementCode": "catalog_v00039",
+      "assetName": "진공장치4 · 컴팩트 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0020"
+    },
+    {
+      "assetId": "V00040",
+      "placementCode": "catalog_v00040",
+      "assetName": "진공장치4 · 정비공간 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0020"
+    },
+    {
+      "assetId": "V00041",
+      "placementCode": "catalog_v00041",
+      "assetName": "턴테이블로1 · 컴팩트 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0021"
+    },
+    {
+      "assetId": "V00042",
+      "placementCode": "catalog_v00042",
+      "assetName": "턴테이블로1 · 정비공간 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0021"
+    },
+    {
+      "assetId": "V00043",
+      "placementCode": "catalog_v00043",
+      "assetName": "턴테이블로2 · 컴팩트 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0022"
+    },
+    {
+      "assetId": "V00044",
+      "placementCode": "catalog_v00044",
+      "assetName": "턴테이블로2 · 정비공간 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0022"
+    },
+    {
+      "assetId": "V00045",
+      "placementCode": "catalog_v00045",
+      "assetName": "트리밍1 · 컴팩트 배치",
+      "bundleCode": "trimming_machine",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0023"
+    },
+    {
+      "assetId": "V00046",
+      "placementCode": "catalog_v00046",
+      "assetName": "트리밍1 · 정비공간 배치",
+      "bundleCode": "trimming_machine",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0023"
+    },
+    {
+      "assetId": "V00047",
+      "placementCode": "catalog_v00047",
+      "assetName": "트리밍2 · 컴팩트 배치",
+      "bundleCode": "trimming_machine",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0024"
+    },
+    {
+      "assetId": "V00048",
+      "placementCode": "catalog_v00048",
+      "assetName": "트리밍2 · 정비공간 배치",
+      "bundleCode": "trimming_machine",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0024"
+    },
+    {
+      "assetId": "V00049",
+      "placementCode": "catalog_v00049",
+      "assetName": "용해로 · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0025"
+    },
+    {
+      "assetId": "V00050",
+      "placementCode": "catalog_v00050",
+      "assetName": "용해로 · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0025"
+    },
+    {
+      "assetId": "V00051",
+      "placementCode": "catalog_v00051",
+      "assetName": "BUHLER · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0026"
+    },
+    {
+      "assetId": "V00052",
+      "placementCode": "catalog_v00052",
+      "assetName": "BUHLER · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0026"
+    },
+    {
+      "assetId": "V00053",
+      "placementCode": "catalog_v00053",
+      "assetName": "LADLER · 컴팩트 배치",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0027"
+    },
+    {
+      "assetId": "V00054",
+      "placementCode": "catalog_v00054",
+      "assetName": "LADLER · 정비공간 배치",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0027"
+    },
+    {
+      "assetId": "V00055",
+      "placementCode": "catalog_v00055",
+      "assetName": "베이스 · 컴팩트 배치",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0028"
+    },
+    {
+      "assetId": "V00056",
+      "placementCode": "catalog_v00056",
+      "assetName": "베이스 · 정비공간 배치",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0028"
+    },
+    {
+      "assetId": "V00057",
+      "placementCode": "catalog_v00057",
+      "assetName": "부품1 · 컴팩트 배치",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0029"
+    },
+    {
+      "assetId": "V00058",
+      "placementCode": "catalog_v00058",
+      "assetName": "부품1 · 정비공간 배치",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0029"
+    },
+    {
+      "assetId": "V00059",
+      "placementCode": "catalog_v00059",
+      "assetName": "부품2 · 컴팩트 배치",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0030"
+    },
+    {
+      "assetId": "V00060",
+      "placementCode": "catalog_v00060",
+      "assetName": "부품2 · 정비공간 배치",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0030"
+    },
+    {
+      "assetId": "V00061",
+      "placementCode": "catalog_v00061",
+      "assetName": "부품3 · 컴팩트 배치",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0031"
+    },
+    {
+      "assetId": "V00062",
+      "placementCode": "catalog_v00062",
+      "assetName": "부품3 · 정비공간 배치",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0031"
+    },
+    {
+      "assetId": "V00063",
+      "placementCode": "catalog_v00063",
+      "assetName": "부품4 · 컴팩트 배치",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0032"
+    },
+    {
+      "assetId": "V00064",
+      "placementCode": "catalog_v00064",
+      "assetName": "부품4 · 정비공간 배치",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0032"
+    },
+    {
+      "assetId": "V00065",
+      "placementCode": "catalog_v00065",
+      "assetName": "부품5 · 컴팩트 배치",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0033"
+    },
+    {
+      "assetId": "V00066",
+      "placementCode": "catalog_v00066",
+      "assetName": "부품5 · 정비공간 배치",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0033"
+    },
+    {
+      "assetId": "V00067",
+      "placementCode": "catalog_v00067",
+      "assetName": "컵 · 컴팩트 배치",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0034"
+    },
+    {
+      "assetId": "V00068",
+      "placementCode": "catalog_v00068",
+      "assetName": "컵 · 정비공간 배치",
+      "bundleCode": "ladler",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0034"
+    },
+    {
+      "assetId": "V00069",
+      "placementCode": "catalog_v00069",
+      "assetName": "punching press · 컴팩트 배치",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0035"
+    },
+    {
+      "assetId": "V00070",
+      "placementCode": "catalog_v00070",
+      "assetName": "punching press · 정비공간 배치",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0035"
+    },
+    {
+      "assetId": "V00071",
+      "placementCode": "catalog_v00071",
+      "assetName": "펀칭기 제어반 · 컴팩트 배치",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0036"
+    },
+    {
+      "assetId": "V00072",
+      "placementCode": "catalog_v00072",
+      "assetName": "펀칭기 제어반 · 정비공간 배치",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0036"
+    },
+    {
+      "assetId": "V00073",
+      "placementCode": "catalog_v00073",
+      "assetName": "펀칭기 · 컴팩트 배치",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0037"
+    },
+    {
+      "assetId": "V00074",
+      "placementCode": "catalog_v00074",
+      "assetName": "펀칭기 · 정비공간 배치",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0037"
+    },
+    {
+      "assetId": "V00075",
+      "placementCode": "catalog_v00075",
+      "assetName": "펀칭기_1 · 컴팩트 배치",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0038"
+    },
+    {
+      "assetId": "V00076",
+      "placementCode": "catalog_v00076",
+      "assetName": "펀칭기_1 · 정비공간 배치",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0038"
+    },
+    {
+      "assetId": "V00077",
+      "placementCode": "catalog_v00077",
+      "assetName": "펀칭기_2 · 컴팩트 배치",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0039"
+    },
+    {
+      "assetId": "V00078",
+      "placementCode": "catalog_v00078",
+      "assetName": "펀칭기_2 · 정비공간 배치",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0039"
+    },
+    {
+      "assetId": "V00079",
+      "placementCode": "catalog_v00079",
+      "assetName": "펀칭기_3 · 컴팩트 배치",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0040"
+    },
+    {
+      "assetId": "V00080",
+      "placementCode": "catalog_v00080",
+      "assetName": "펀칭기_3 · 정비공간 배치",
+      "bundleCode": "punching_press",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0040"
+    },
+    {
+      "assetId": "V00081",
+      "placementCode": "catalog_v00081",
+      "assetName": "TT-1800 · 컴팩트 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0041"
+    },
+    {
+      "assetId": "V00082",
+      "placementCode": "catalog_v00082",
+      "assetName": "TT-1800 · 정비공간 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0041"
+    },
+    {
+      "assetId": "V00083",
+      "placementCode": "catalog_v00083",
+      "assetName": "VACUUM SUCTION UNIT · 컴팩트 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0042"
+    },
+    {
+      "assetId": "V00084",
+      "placementCode": "catalog_v00084",
+      "assetName": "VACUUM SUCTION UNIT · 정비공간 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0042"
+    },
+    {
+      "assetId": "V00085",
+      "placementCode": "catalog_v00085",
+      "assetName": "금형고압냉각장비 · 컴팩트 배치",
+      "bundleCode": "mold_cooling",
+      "confidence": 0.93,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0043"
+    },
+    {
+      "assetId": "V00086",
+      "placementCode": "catalog_v00086",
+      "assetName": "금형고압냉각장비 · 정비공간 배치",
+      "bundleCode": "mold_cooling",
+      "confidence": 0.93,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0043"
+    },
+    {
+      "assetId": "V00087",
+      "placementCode": "catalog_v00087",
+      "assetName": "금형고압 DOOR · 컴팩트 배치",
+      "bundleCode": "mold_cooling",
+      "confidence": 0.93,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0044"
+    },
+    {
+      "assetId": "V00088",
+      "placementCode": "catalog_v00088",
+      "assetName": "금형고압 DOOR · 정비공간 배치",
+      "bundleCode": "mold_cooling",
+      "confidence": 0.93,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0044"
+    },
+    {
+      "assetId": "V00089",
+      "placementCode": "catalog_v00089",
+      "assetName": "금형고압냉각장비 · 컴팩트 배치",
+      "bundleCode": "mold_cooling",
+      "confidence": 0.93,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0045"
+    },
+    {
+      "assetId": "V00090",
+      "placementCode": "catalog_v00090",
+      "assetName": "금형고압냉각장비 · 정비공간 배치",
+      "bundleCode": "mold_cooling",
+      "confidence": 0.93,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0045"
+    },
+    {
+      "assetId": "V00091",
+      "placementCode": "catalog_v00091",
+      "assetName": "금형고압냉각장비_1 · 컴팩트 배치",
+      "bundleCode": "mold_cooling",
+      "confidence": 0.93,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0046"
+    },
+    {
+      "assetId": "V00092",
+      "placementCode": "catalog_v00092",
+      "assetName": "금형고압냉각장비_1 · 정비공간 배치",
+      "bundleCode": "mold_cooling",
+      "confidence": 0.93,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0046"
+    },
+    {
+      "assetId": "V00093",
+      "placementCode": "catalog_v00093",
+      "assetName": "파트_a0 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0047"
+    },
+    {
+      "assetId": "V00094",
+      "placementCode": "catalog_v00094",
+      "assetName": "파트_a0 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0047"
+    },
+    {
+      "assetId": "V00095",
+      "placementCode": "catalog_v00095",
+      "assetName": "파트_a1 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0048"
+    },
+    {
+      "assetId": "V00096",
+      "placementCode": "catalog_v00096",
+      "assetName": "파트_a1 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0048"
+    },
+    {
+      "assetId": "V00097",
+      "placementCode": "catalog_v00097",
+      "assetName": "파트_a2 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0049"
+    },
+    {
+      "assetId": "V00098",
+      "placementCode": "catalog_v00098",
+      "assetName": "파트_a2 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0049"
+    },
+    {
+      "assetId": "V00099",
+      "placementCode": "catalog_v00099",
+      "assetName": "파트_a3 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0050"
+    },
+    {
+      "assetId": "V00100",
+      "placementCode": "catalog_v00100",
+      "assetName": "파트_a3 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0050"
+    },
+    {
+      "assetId": "V00101",
+      "placementCode": "catalog_v00101",
+      "assetName": "파트_a4 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0051"
+    },
+    {
+      "assetId": "V00102",
+      "placementCode": "catalog_v00102",
+      "assetName": "파트_a4 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0051"
+    },
+    {
+      "assetId": "V00103",
+      "placementCode": "catalog_v00103",
+      "assetName": "파트_a5 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0052"
+    },
+    {
+      "assetId": "V00104",
+      "placementCode": "catalog_v00104",
+      "assetName": "파트_a5 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0052"
+    },
+    {
+      "assetId": "V00105",
+      "placementCode": "catalog_v00105",
+      "assetName": "로봇 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0053"
+    },
+    {
+      "assetId": "V00106",
+      "placementCode": "catalog_v00106",
+      "assetName": "로봇 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0053"
+    },
+    {
+      "assetId": "V00107",
+      "placementCode": "catalog_v00107",
+      "assetName": "로봇01 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0054"
+    },
+    {
+      "assetId": "V00108",
+      "placementCode": "catalog_v00108",
+      "assetName": "로봇01 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0054"
+    },
+    {
+      "assetId": "V00109",
+      "placementCode": "catalog_v00109",
+      "assetName": "로봇02 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0055"
+    },
+    {
+      "assetId": "V00110",
+      "placementCode": "catalog_v00110",
+      "assetName": "로봇02 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0055"
+    },
+    {
+      "assetId": "V00111",
+      "placementCode": "catalog_v00111",
+      "assetName": "로봇03 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0056"
+    },
+    {
+      "assetId": "V00112",
+      "placementCode": "catalog_v00112",
+      "assetName": "로봇03 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0056"
+    },
+    {
+      "assetId": "V00113",
+      "placementCode": "catalog_v00113",
+      "assetName": "로봇04 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0057"
+    },
+    {
+      "assetId": "V00114",
+      "placementCode": "catalog_v00114",
+      "assetName": "로봇04 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0057"
+    },
+    {
+      "assetId": "V00115",
+      "placementCode": "catalog_v00115",
+      "assetName": "로봇05 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0058"
+    },
+    {
+      "assetId": "V00116",
+      "placementCode": "catalog_v00116",
+      "assetName": "로봇05 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0058"
+    },
+    {
+      "assetId": "V00117",
+      "placementCode": "catalog_v00117",
+      "assetName": "로봇06 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0059"
+    },
+    {
+      "assetId": "V00118",
+      "placementCode": "catalog_v00118",
+      "assetName": "로봇06 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0059"
+    },
+    {
+      "assetId": "V00119",
+      "placementCode": "catalog_v00119",
+      "assetName": "로봇1 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0060"
+    },
+    {
+      "assetId": "V00120",
+      "placementCode": "catalog_v00120",
+      "assetName": "로봇1 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0060"
+    },
+    {
+      "assetId": "V00121",
+      "placementCode": "catalog_v00121",
+      "assetName": "본체 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0061"
+    },
+    {
+      "assetId": "V00122",
+      "placementCode": "catalog_v00122",
+      "assetName": "본체 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0061"
+    },
+    {
+      "assetId": "V00123",
+      "placementCode": "catalog_v00123",
+      "assetName": "로봇2 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0062"
+    },
+    {
+      "assetId": "V00124",
+      "placementCode": "catalog_v00124",
+      "assetName": "로봇2 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0062"
+    },
+    {
+      "assetId": "V00125",
+      "placementCode": "catalog_v00125",
+      "assetName": "로봇2-1 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0063"
+    },
+    {
+      "assetId": "V00126",
+      "placementCode": "catalog_v00126",
+      "assetName": "로봇2-1 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0063"
+    },
+    {
+      "assetId": "V00127",
+      "placementCode": "catalog_v00127",
+      "assetName": "로봇2-2 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0064"
+    },
+    {
+      "assetId": "V00128",
+      "placementCode": "catalog_v00128",
+      "assetName": "로봇2-2 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0064"
+    },
+    {
+      "assetId": "V00129",
+      "placementCode": "catalog_v00129",
+      "assetName": "로봇2-3 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0065"
+    },
+    {
+      "assetId": "V00130",
+      "placementCode": "catalog_v00130",
+      "assetName": "로봇2-3 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0065"
+    },
+    {
+      "assetId": "V00131",
+      "placementCode": "catalog_v00131",
+      "assetName": "로봇2-4 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0066"
+    },
+    {
+      "assetId": "V00132",
+      "placementCode": "catalog_v00132",
+      "assetName": "로봇2-4 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0066"
+    },
+    {
+      "assetId": "V00133",
+      "placementCode": "catalog_v00133",
+      "assetName": "로봇2-5 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0067"
+    },
+    {
+      "assetId": "V00134",
+      "placementCode": "catalog_v00134",
+      "assetName": "로봇2-5 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0067"
+    },
+    {
+      "assetId": "V00135",
+      "placementCode": "catalog_v00135",
+      "assetName": "로봇2-6 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0068"
+    },
+    {
+      "assetId": "V00136",
+      "placementCode": "catalog_v00136",
+      "assetName": "로봇2-6 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0068"
+    },
+    {
+      "assetId": "V00137",
+      "placementCode": "catalog_v00137",
+      "assetName": "보온로 · 컴팩트 배치",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0069"
+    },
+    {
+      "assetId": "V00138",
+      "placementCode": "catalog_v00138",
+      "assetName": "보온로 · 정비공간 배치",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0069"
+    },
+    {
+      "assetId": "V00139",
+      "placementCode": "catalog_v00139",
+      "assetName": "보온로 · 컴팩트 배치",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0070"
+    },
+    {
+      "assetId": "V00140",
+      "placementCode": "catalog_v00140",
+      "assetName": "보온로 · 정비공간 배치",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0070"
+    },
+    {
+      "assetId": "V00141",
+      "placementCode": "catalog_v00141",
+      "assetName": "보온로-부품1 · 컴팩트 배치",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0071"
+    },
+    {
+      "assetId": "V00142",
+      "placementCode": "catalog_v00142",
+      "assetName": "보온로-부품1 · 정비공간 배치",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0071"
+    },
+    {
+      "assetId": "V00143",
+      "placementCode": "catalog_v00143",
+      "assetName": "보온로-부품2 · 컴팩트 배치",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0072"
+    },
+    {
+      "assetId": "V00144",
+      "placementCode": "catalog_v00144",
+      "assetName": "보온로-부품2 · 정비공간 배치",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0072"
+    },
+    {
+      "assetId": "V00145",
+      "placementCode": "catalog_v00145",
+      "assetName": "보온로-부품3 · 컴팩트 배치",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0073"
+    },
+    {
+      "assetId": "V00146",
+      "placementCode": "catalog_v00146",
+      "assetName": "보온로-부품3 · 정비공간 배치",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0073"
+    },
+    {
+      "assetId": "V00147",
+      "placementCode": "catalog_v00147",
+      "assetName": "스프레이로보트제어반 · 컴팩트 배치",
+      "bundleCode": "spray_ladler",
+      "confidence": 0.95,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0074"
+    },
+    {
+      "assetId": "V00148",
+      "placementCode": "catalog_v00148",
+      "assetName": "스프레이로보트제어반 · 정비공간 배치",
+      "bundleCode": "spray_ladler",
+      "confidence": 0.95,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0074"
+    },
+    {
+      "assetId": "V00149",
+      "placementCode": "catalog_v00149",
+      "assetName": "용해로 · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0075"
+    },
+    {
+      "assetId": "V00150",
+      "placementCode": "catalog_v00150",
+      "assetName": "용해로 · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0075"
+    },
+    {
+      "assetId": "V00151",
+      "placementCode": "catalog_v00151",
+      "assetName": "용해로1_1 · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0076"
+    },
+    {
+      "assetId": "V00152",
+      "placementCode": "catalog_v00152",
+      "assetName": "용해로1_1 · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0076"
+    },
+    {
+      "assetId": "V00153",
+      "placementCode": "catalog_v00153",
+      "assetName": "용해로1_2 · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0077"
+    },
+    {
+      "assetId": "V00154",
+      "placementCode": "catalog_v00154",
+      "assetName": "용해로1_2 · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0077"
+    },
+    {
+      "assetId": "V00155",
+      "placementCode": "catalog_v00155",
+      "assetName": "용해로1_3 · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0078"
+    },
+    {
+      "assetId": "V00156",
+      "placementCode": "catalog_v00156",
+      "assetName": "용해로1_3 · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0078"
+    },
+    {
+      "assetId": "V00157",
+      "placementCode": "catalog_v00157",
+      "assetName": "용해로2 · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0079"
+    },
+    {
+      "assetId": "V00158",
+      "placementCode": "catalog_v00158",
+      "assetName": "용해로2 · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0079"
+    },
+    {
+      "assetId": "V00159",
+      "placementCode": "catalog_v00159",
+      "assetName": "용해로3_1 · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0080"
+    },
+    {
+      "assetId": "V00160",
+      "placementCode": "catalog_v00160",
+      "assetName": "용해로3_1 · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0080"
+    },
+    {
+      "assetId": "V00161",
+      "placementCode": "catalog_v00161",
+      "assetName": "용해로3_2 · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0081"
+    },
+    {
+      "assetId": "V00162",
+      "placementCode": "catalog_v00162",
+      "assetName": "용해로3_2 · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0081"
+    },
+    {
+      "assetId": "V00163",
+      "placementCode": "catalog_v00163",
+      "assetName": "용해로4 · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0082"
+    },
+    {
+      "assetId": "V00164",
+      "placementCode": "catalog_v00164",
+      "assetName": "용해로4 · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0082"
+    },
+    {
+      "assetId": "V00165",
+      "placementCode": "catalog_v00165",
+      "assetName": "용해로5 · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0083"
+    },
+    {
+      "assetId": "V00166",
+      "placementCode": "catalog_v00166",
+      "assetName": "용해로5 · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0083"
+    },
+    {
+      "assetId": "V00167",
+      "placementCode": "catalog_v00167",
+      "assetName": "용해로6 · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0084"
+    },
+    {
+      "assetId": "V00168",
+      "placementCode": "catalog_v00168",
+      "assetName": "용해로6 · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0084"
+    },
+    {
+      "assetId": "V00169",
+      "placementCode": "catalog_v00169",
+      "assetName": "용해로7 · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0085"
+    },
+    {
+      "assetId": "V00170",
+      "placementCode": "catalog_v00170",
+      "assetName": "용해로7 · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0085"
+    },
+    {
+      "assetId": "V00171",
+      "placementCode": "catalog_v00171",
+      "assetName": "용해로8 · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0086"
+    },
+    {
+      "assetId": "V00172",
+      "placementCode": "catalog_v00172",
+      "assetName": "용해로8 · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0086"
+    },
+    {
+      "assetId": "V00173",
+      "placementCode": "catalog_v00173",
+      "assetName": "용해로다리 · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0087"
+    },
+    {
+      "assetId": "V00174",
+      "placementCode": "catalog_v00174",
+      "assetName": "용해로다리 · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0087"
+    },
+    {
+      "assetId": "V00175",
+      "placementCode": "catalog_v00175",
+      "assetName": "용해로제어반 · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0088"
+    },
+    {
+      "assetId": "V00176",
+      "placementCode": "catalog_v00176",
+      "assetName": "용해로제어반 · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0088"
+    },
+    {
+      "assetId": "V00177",
+      "placementCode": "catalog_v00177",
+      "assetName": "이형제_1 · 컴팩트 배치",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0089"
+    },
+    {
+      "assetId": "V00178",
+      "placementCode": "catalog_v00178",
+      "assetName": "이형제_1 · 정비공간 배치",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0089"
+    },
+    {
+      "assetId": "V00179",
+      "placementCode": "catalog_v00179",
+      "assetName": "이형제_2 · 컴팩트 배치",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0090"
+    },
+    {
+      "assetId": "V00180",
+      "placementCode": "catalog_v00180",
+      "assetName": "이형제_2 · 정비공간 배치",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0090"
+    },
+    {
+      "assetId": "V00181",
+      "placementCode": "catalog_v00181",
+      "assetName": "이형제_3 · 컴팩트 배치",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0091"
+    },
+    {
+      "assetId": "V00182",
+      "placementCode": "catalog_v00182",
+      "assetName": "이형제_3 · 정비공간 배치",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0091"
+    },
+    {
+      "assetId": "V00183",
+      "placementCode": "catalog_v00183",
+      "assetName": "이형제_4 · 컴팩트 배치",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0092"
+    },
+    {
+      "assetId": "V00184",
+      "placementCode": "catalog_v00184",
+      "assetName": "이형제_4 · 정비공간 배치",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0092"
+    },
+    {
+      "assetId": "V00185",
+      "placementCode": "catalog_v00185",
+      "assetName": "이형제2 · 컴팩트 배치",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0093"
+    },
+    {
+      "assetId": "V00186",
+      "placementCode": "catalog_v00186",
+      "assetName": "이형제2 · 정비공간 배치",
+      "bundleCode": "release_agent",
+      "confidence": 0.94,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0093"
+    },
+    {
+      "assetId": "V00187",
+      "placementCode": "catalog_v00187",
+      "assetName": "전체 어셈블리 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.95,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0094"
+    },
+    {
+      "assetId": "V00188",
+      "placementCode": "catalog_v00188",
+      "assetName": "전체 어셈블리 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.95,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0094"
+    },
+    {
+      "assetId": "V00189",
+      "placementCode": "catalog_v00189",
+      "assetName": "01스프레이로보트제어반 · 컴팩트 배치",
+      "bundleCode": "spray_ladler",
+      "confidence": 0.95,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0095"
+    },
+    {
+      "assetId": "V00190",
+      "placementCode": "catalog_v00190",
+      "assetName": "01스프레이로보트제어반 · 정비공간 배치",
+      "bundleCode": "spray_ladler",
+      "confidence": 0.95,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0095"
+    },
+    {
+      "assetId": "V00191",
+      "placementCode": "catalog_v00191",
+      "assetName": "스프레이로보트제어반1 · 컴팩트 배치",
+      "bundleCode": "spray_ladler",
+      "confidence": 0.95,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0096"
+    },
+    {
+      "assetId": "V00192",
+      "placementCode": "catalog_v00192",
+      "assetName": "스프레이로보트제어반1 · 정비공간 배치",
+      "bundleCode": "spray_ladler",
+      "confidence": 0.95,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0096"
+    },
+    {
+      "assetId": "V00193",
+      "placementCode": "catalog_v00193",
+      "assetName": "자동화제어반 · 컴팩트 배치",
+      "bundleCode": "main_panel",
+      "confidence": 0.93,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0097"
+    },
+    {
+      "assetId": "V00194",
+      "placementCode": "catalog_v00194",
+      "assetName": "자동화제어반 · 정비공간 배치",
+      "bundleCode": "main_panel",
+      "confidence": 0.93,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0097"
+    },
+    {
+      "assetId": "V00195",
+      "placementCode": "catalog_v00195",
+      "assetName": "취출로보트제어반 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0098"
+    },
+    {
+      "assetId": "V00196",
+      "placementCode": "catalog_v00196",
+      "assetName": "취출로보트제어반 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0098"
+    },
+    {
+      "assetId": "V00197",
+      "placementCode": "catalog_v00197",
+      "assetName": "취출로보트제어반1 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0099"
+    },
+    {
+      "assetId": "V00198",
+      "placementCode": "catalog_v00198",
+      "assetName": "취출로보트제어반1 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0099"
+    },
+    {
+      "assetId": "V00199",
+      "placementCode": "catalog_v00199",
+      "assetName": "buhler · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0100"
+    },
+    {
+      "assetId": "V00200",
+      "placementCode": "catalog_v00200",
+      "assetName": "buhler · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0100"
+    },
+    {
+      "assetId": "V00201",
+      "placementCode": "catalog_v00201",
+      "assetName": "buhler-2 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0101"
+    },
+    {
+      "assetId": "V00202",
+      "placementCode": "catalog_v00202",
+      "assetName": "buhler-2 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0101"
+    },
+    {
+      "assetId": "V00203",
+      "placementCode": "catalog_v00203",
+      "assetName": "cylinder plate reworked · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0102"
+    },
+    {
+      "assetId": "V00204",
+      "placementCode": "catalog_v00204",
+      "assetName": "cylinder plate reworked · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0102"
+    },
+    {
+      "assetId": "V00205",
+      "placementCode": "catalog_v00205",
+      "assetName": "fixing plate fixed · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0103"
+    },
+    {
+      "assetId": "V00206",
+      "placementCode": "catalog_v00206",
+      "assetName": "fixing plate fixed · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0103"
+    },
+    {
+      "assetId": "V00207",
+      "placementCode": "catalog_v00207",
+      "assetName": "fixing plate mobile · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0104"
+    },
+    {
+      "assetId": "V00208",
+      "placementCode": "catalog_v00208",
+      "assetName": "fixing plate mobile · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0104"
+    },
+    {
+      "assetId": "V00209",
+      "placementCode": "catalog_v00209",
+      "assetName": "주조기 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0105"
+    },
+    {
+      "assetId": "V00210",
+      "placementCode": "catalog_v00210",
+      "assetName": "주조기 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0105"
+    },
+    {
+      "assetId": "V00211",
+      "placementCode": "catalog_v00211",
+      "assetName": "주조기_tie bar · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0106"
+    },
+    {
+      "assetId": "V00212",
+      "placementCode": "catalog_v00212",
+      "assetName": "주조기_tie bar · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0106"
+    },
+    {
+      "assetId": "V00213",
+      "placementCode": "catalog_v00213",
+      "assetName": "주조기_파트1 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0107"
+    },
+    {
+      "assetId": "V00214",
+      "placementCode": "catalog_v00214",
+      "assetName": "주조기_파트1 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0107"
+    },
+    {
+      "assetId": "V00215",
+      "placementCode": "catalog_v00215",
+      "assetName": "주조기_파트12 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0108"
+    },
+    {
+      "assetId": "V00216",
+      "placementCode": "catalog_v00216",
+      "assetName": "주조기_파트12 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0108"
+    },
+    {
+      "assetId": "V00217",
+      "placementCode": "catalog_v00217",
+      "assetName": "주조기_파트2 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0109"
+    },
+    {
+      "assetId": "V00218",
+      "placementCode": "catalog_v00218",
+      "assetName": "주조기_파트2 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0109"
+    },
+    {
+      "assetId": "V00219",
+      "placementCode": "catalog_v00219",
+      "assetName": "주조기_파트3 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0110"
+    },
+    {
+      "assetId": "V00220",
+      "placementCode": "catalog_v00220",
+      "assetName": "주조기_파트3 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0110"
+    },
+    {
+      "assetId": "V00221",
+      "placementCode": "catalog_v00221",
+      "assetName": "주조기_파트4 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0111"
+    },
+    {
+      "assetId": "V00222",
+      "placementCode": "catalog_v00222",
+      "assetName": "주조기_파트4 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0111"
+    },
+    {
+      "assetId": "V00223",
+      "placementCode": "catalog_v00223",
+      "assetName": "주조기_파트5 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0112"
+    },
+    {
+      "assetId": "V00224",
+      "placementCode": "catalog_v00224",
+      "assetName": "주조기_파트5 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0112"
+    },
+    {
+      "assetId": "V00225",
+      "placementCode": "catalog_v00225",
+      "assetName": "주조기_파트7 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0113"
+    },
+    {
+      "assetId": "V00226",
+      "placementCode": "catalog_v00226",
+      "assetName": "주조기_파트7 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0113"
+    },
+    {
+      "assetId": "V00227",
+      "placementCode": "catalog_v00227",
+      "assetName": "주조기_파트8 · 컴팩트 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0114"
+    },
+    {
+      "assetId": "V00228",
+      "placementCode": "catalog_v00228",
+      "assetName": "주조기_파트8 · 정비공간 배치",
+      "bundleCode": "casting_machine",
+      "confidence": 0.86,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0114"
+    },
+    {
+      "assetId": "V00229",
+      "placementCode": "catalog_v00229",
+      "assetName": "vacuum suction unit · 컴팩트 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0115"
+    },
+    {
+      "assetId": "V00230",
+      "placementCode": "catalog_v00230",
+      "assetName": "vacuum suction unit · 정비공간 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0115"
+    },
+    {
+      "assetId": "V00231",
+      "placementCode": "catalog_v00231",
+      "assetName": "vacuum suction unit_1 · 컴팩트 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0116"
+    },
+    {
+      "assetId": "V00232",
+      "placementCode": "catalog_v00232",
+      "assetName": "vacuum suction unit_1 · 정비공간 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0116"
+    },
+    {
+      "assetId": "V00233",
+      "placementCode": "catalog_v00233",
+      "assetName": "VACUUM 상단DOOR · 컴팩트 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0117"
+    },
+    {
+      "assetId": "V00234",
+      "placementCode": "catalog_v00234",
+      "assetName": "VACUUM 상단DOOR · 정비공간 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0117"
+    },
+    {
+      "assetId": "V00235",
+      "placementCode": "catalog_v00235",
+      "assetName": "VACUUM 하단DOOR · 컴팩트 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0118"
+    },
+    {
+      "assetId": "V00236",
+      "placementCode": "catalog_v00236",
+      "assetName": "VACUUM 하단DOOR · 정비공간 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 0.97,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0118"
+    },
+    {
+      "assetId": "V00237",
+      "placementCode": "catalog_v00237",
+      "assetName": "취출로보트제어반 · 컴팩트 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0119"
+    },
+    {
+      "assetId": "V00238",
+      "placementCode": "catalog_v00238",
+      "assetName": "취출로보트제어반 · 정비공간 배치",
+      "bundleCode": "takeout_robot",
+      "confidence": 0.88,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0119"
+    },
+    {
+      "assetId": "V00239",
+      "placementCode": "catalog_v00239",
+      "assetName": "TT-1800_01 · 컴팩트 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0120"
+    },
+    {
+      "assetId": "V00240",
+      "placementCode": "catalog_v00240",
+      "assetName": "TT-1800_01 · 정비공간 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0120"
+    },
+    {
+      "assetId": "V00241",
+      "placementCode": "catalog_v00241",
+      "assetName": "TT-1800_02 · 컴팩트 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0121"
+    },
+    {
+      "assetId": "V00242",
+      "placementCode": "catalog_v00242",
+      "assetName": "TT-1800_02 · 정비공간 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0121"
+    },
+    {
+      "assetId": "V00243",
+      "placementCode": "catalog_v00243",
+      "assetName": "TT-1800_03 · 컴팩트 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0122"
+    },
+    {
+      "assetId": "V00244",
+      "placementCode": "catalog_v00244",
+      "assetName": "TT-1800_03 · 정비공간 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0122"
+    },
+    {
+      "assetId": "V00245",
+      "placementCode": "catalog_v00245",
+      "assetName": "TT-1800_04 · 컴팩트 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0123"
+    },
+    {
+      "assetId": "V00246",
+      "placementCode": "catalog_v00246",
+      "assetName": "TT-1800_04 · 정비공간 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0123"
+    },
+    {
+      "assetId": "V00247",
+      "placementCode": "catalog_v00247",
+      "assetName": "TT-1800_05 · 컴팩트 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0124"
+    },
+    {
+      "assetId": "V00248",
+      "placementCode": "catalog_v00248",
+      "assetName": "TT-1800_05 · 정비공간 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0124"
+    },
+    {
+      "assetId": "V00249",
+      "placementCode": "catalog_v00249",
+      "assetName": "주조기,보온로 · 컴팩트 배치",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0125"
+    },
+    {
+      "assetId": "V00250",
+      "placementCode": "catalog_v00250",
+      "assetName": "주조기,보온로 · 정비공간 배치",
+      "bundleCode": "holding_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0125"
+    },
+    {
+      "assetId": "V00251",
+      "placementCode": "catalog_v00251",
+      "assetName": "턴테이블로 · 컴팩트 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0126"
+    },
+    {
+      "assetId": "V00252",
+      "placementCode": "catalog_v00252",
+      "assetName": "턴테이블로 · 정비공간 배치",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.98,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0126"
+    },
+    {
+      "assetId": "V00253",
+      "placementCode": "catalog_v00253",
+      "assetName": "ass'y(20170425) · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0243"
+    },
+    {
+      "assetId": "V00254",
+      "placementCode": "catalog_v00254",
+      "assetName": "ass'y(20170425) · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0243"
+    },
+    {
+      "assetId": "V00255",
+      "placementCode": "catalog_v00255",
+      "assetName": "경동식 연속용해로 1t 3D · 컴팩트 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "A0244"
+    },
+    {
+      "assetId": "V00256",
+      "placementCode": "catalog_v00256",
+      "assetName": "경동식 연속용해로 1t 3D · 정비공간 배치",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.96,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "A0244"
+    },
+    {
+      "assetId": "V00257",
+      "placementCode": "catalog_v00257",
+      "assetName": "고진공장비 GVH2000TPN · 컴팩트 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 1.0,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "G0001"
+    },
+    {
+      "assetId": "V00258",
+      "placementCode": "catalog_v00258",
+      "assetName": "고진공장비 GVH2000TPN · 정비공간 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 1.0,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "G0001"
+    },
+    {
+      "assetId": "V00259",
+      "placementCode": "catalog_v00259",
+      "assetName": "제트쿨러 JT800CVN · 컴팩트 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 1.0,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "variantYaw": 0,
+      "sourceAssetId": "G0002"
+    },
+    {
+      "assetId": "V00260",
+      "placementCode": "catalog_v00260",
+      "assetName": "제트쿨러 JT800CVN · 정비공간 배치",
+      "bundleCode": "vacuum_unit",
+      "confidence": 1.0,
+      "mappingSource": "PARAMETRIC_VARIANT",
+      "variantScale": [
+        1.0,
+        1.15,
+        1.0
+      ],
+      "variantYaw": 90,
+      "sourceAssetId": "G0002"
+    },
+    {
+      "assetId": "U00001",
+      "placementCode": "catalog_u00001",
+      "assetName": "용해로 후면 측판",
+      "bundleCode": "melting_furnace",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00001_furnaceSideBack"
+    },
+    {
+      "assetId": "U00002",
+      "placementCode": "catalog_u00002",
+      "assetName": "용해로 상부 덮개",
+      "bundleCode": "melting_furnace",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00002_furnaceTop"
+    },
+    {
+      "assetId": "U00003",
+      "placementCode": "catalog_u00003",
+      "assetName": "주조기 형상 부품 1158",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00003_polySurface1158"
+    },
+    {
+      "assetId": "U00004",
+      "placementCode": "catalog_u00004",
+      "assetName": "청소 로봇 본체",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00004_clearRobot"
+    },
+    {
+      "assetId": "U00005",
+      "placementCode": "catalog_u00005",
+      "assetName": "주조 금형 고정측",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00005_moldMan"
+    },
+    {
+      "assetId": "U00006",
+      "placementCode": "catalog_u00006",
+      "assetName": "트리밍 커터 하부",
+      "bundleCode": "trimming_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00006_cuter_low"
+    },
+    {
+      "assetId": "U00007",
+      "placementCode": "catalog_u00007",
+      "assetName": "주조 셀 외곽 안전펜스",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00007_fenceNouter"
+    },
+    {
+      "assetId": "U00008",
+      "placementCode": "catalog_u00008",
+      "assetName": "주조기 제어함 하부",
+      "bundleCode": "main_panel",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00008_contBox_low1"
+    },
+    {
+      "assetId": "U00009",
+      "placementCode": "catalog_u00009",
+      "assetName": "용해로 본체 2",
+      "bundleCode": "melting_furnace",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00009_furnaceBody2"
+    },
+    {
+      "assetId": "U00010",
+      "placementCode": "catalog_u00010",
+      "assetName": "주조기 고정 프레임 하부",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00010_casterFix_low"
+    },
+    {
+      "assetId": "U00011",
+      "placementCode": "catalog_u00011",
+      "assetName": "용해로 본체 1",
+      "bundleCode": "melting_furnace",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00011_furnaceBody1"
+    },
+    {
+      "assetId": "U00012",
+      "placementCode": "catalog_u00012",
+      "assetName": "취출 로봇 지그",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00012_outRobotJig"
+    },
+    {
+      "assetId": "U00013",
+      "placementCode": "catalog_u00013",
+      "assetName": "주조기 후면 푸셔",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00013_casterPushBack"
+    },
+    {
+      "assetId": "U00014",
+      "placementCode": "catalog_u00014",
+      "assetName": "트리밍 절단 지그 2",
+      "bundleCode": "trimming_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00014_cutJig2"
+    },
+    {
+      "assetId": "U00015",
+      "placementCode": "catalog_u00015",
+      "assetName": "청소 로봇 지그",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00015_cleanJIg"
+    },
+    {
+      "assetId": "U00016",
+      "placementCode": "catalog_u00016",
+      "assetName": "주조기 푸셔 관절 0",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00016_casterPush_joint0"
+    },
+    {
+      "assetId": "U00017",
+      "placementCode": "catalog_u00017",
+      "assetName": "후면 설비 제어함",
+      "bundleCode": "main_panel",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00017_backEquip_Cont_low"
+    },
+    {
+      "assetId": "U00018",
+      "placementCode": "catalog_u00018",
+      "assetName": "용해로 상부 플레어 1",
+      "bundleCode": "melting_furnace",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00018_furnaceTopFlar1"
+    },
+    {
+      "assetId": "U00019",
+      "placementCode": "catalog_u00019",
+      "assetName": "주조 셀 후면 보조설비",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00019_backEquip"
+    },
+    {
+      "assetId": "U00020",
+      "placementCode": "catalog_u00020",
+      "assetName": "용탕 이송 푸셔",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00020_meltPush"
+    },
+    {
+      "assetId": "U00021",
+      "placementCode": "catalog_u00021",
+      "assetName": "취출 로봇 그리퍼",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00021_Grip"
+    },
+    {
+      "assetId": "U00022",
+      "placementCode": "catalog_u00022",
+      "assetName": "주조기 점검 도어",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00022_door"
+    },
+    {
+      "assetId": "U00023",
+      "placementCode": "catalog_u00023",
+      "assetName": "주조 생산품 1",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00023_product_r1"
+    },
+    {
+      "assetId": "U00024",
+      "placementCode": "catalog_u00024",
+      "assetName": "용해로 하부 프레임",
+      "bundleCode": "melting_furnace",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00024_furnaceBotom"
+    },
+    {
+      "assetId": "U00025",
+      "placementCode": "catalog_u00025",
+      "assetName": "턴테이블 하부 프레임",
+      "bundleCode": "turntable_furnace",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00025_turnTable_low"
+    },
+    {
+      "assetId": "U00026",
+      "placementCode": "catalog_u00026",
+      "assetName": "트리밍 절단 지그 1",
+      "bundleCode": "trimming_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00026_cutJig1"
+    },
+    {
+      "assetId": "U00027",
+      "placementCode": "catalog_u00027",
+      "assetName": "주조기 단차 프레임",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00027_casterDan"
+    },
+    {
+      "assetId": "U00028",
+      "placementCode": "catalog_u00028",
+      "assetName": "취출 로봇 본체",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00028_outerRobot"
+    },
+    {
+      "assetId": "U00029",
+      "placementCode": "catalog_u00029",
+      "assetName": "용해로 구동 모터",
+      "bundleCode": "melting_furnace",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00029_furnaceMotor"
+    },
+    {
+      "assetId": "U00030",
+      "placementCode": "catalog_u00030",
+      "assetName": "주조 금형 가동측",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00030_moldWoman"
+    },
+    {
+      "assetId": "U00031",
+      "placementCode": "catalog_u00031",
+      "assetName": "용탕 주입 로봇 본체",
+      "bundleCode": "spray_ladler",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00031_pourrobot"
+    },
+    {
+      "assetId": "U00032",
+      "placementCode": "catalog_u00032",
+      "assetName": "청소 로봇 관절 0",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00032_clearRobot_jt0"
+    },
+    {
+      "assetId": "U00033",
+      "placementCode": "catalog_u00033",
+      "assetName": "트리밍 커터 관절 0",
+      "bundleCode": "trimming_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00033_cuter_low_joint0"
+    },
+    {
+      "assetId": "U00034",
+      "placementCode": "catalog_u00034",
+      "assetName": "취출 로봇 A지그 1",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00034_outRobotJigA_1"
+    },
+    {
+      "assetId": "U00035",
+      "placementCode": "catalog_u00035",
+      "assetName": "스프레이 트리거",
+      "bundleCode": "spray_ladler",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00035_Trigger"
+    },
+    {
+      "assetId": "U00036",
+      "placementCode": "catalog_u00036",
+      "assetName": "주조 생산품 2",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00036_product_r2"
+    },
+    {
+      "assetId": "U00037",
+      "placementCode": "catalog_u00037",
+      "assetName": "취출 로봇 관절 0",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00037_outerRobot_j0"
+    },
+    {
+      "assetId": "U00038",
+      "placementCode": "catalog_u00038",
+      "assetName": "용탕 주입 로봇 관절 0",
+      "bundleCode": "spray_ladler",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00038_pourrobot_7_Jt0"
+    },
+    {
+      "assetId": "U00039",
+      "placementCode": "catalog_u00039",
+      "assetName": "청소 로봇 관절 1",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00039_clearRobot_jt1"
+    },
+    {
+      "assetId": "U00040",
+      "placementCode": "catalog_u00040",
+      "assetName": "트리밍 커터 관절 1",
+      "bundleCode": "trimming_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00040_cuter_low_joint1"
+    },
+    {
+      "assetId": "U00041",
+      "placementCode": "catalog_u00041",
+      "assetName": "취출 로봇 A지그 2",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00041_outRobotJigA_2"
+    },
+    {
+      "assetId": "U00042",
+      "placementCode": "catalog_u00042",
+      "assetName": "스프레이 노즐 B",
+      "bundleCode": "spray_ladler",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00042_Nozzle_B"
+    },
+    {
+      "assetId": "U00043",
+      "placementCode": "catalog_u00043",
+      "assetName": "주조 생산품",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00043_product"
+    },
+    {
+      "assetId": "U00044",
+      "placementCode": "catalog_u00044",
+      "assetName": "보온로 하부 박스",
+      "bundleCode": "holding_furnace",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00044_bonroBox_low2"
+    },
+    {
+      "assetId": "U00045",
+      "placementCode": "catalog_u00045",
+      "assetName": "취출 로봇 관절 1",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00045_outerRobot_j1"
+    },
+    {
+      "assetId": "U00046",
+      "placementCode": "catalog_u00046",
+      "assetName": "용탕 주입 로봇 관절 5",
+      "bundleCode": "spray_ladler",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00046_pourrobot_Jt5"
+    },
+    {
+      "assetId": "U00047",
+      "placementCode": "catalog_u00047",
+      "assetName": "청소 로봇 관절 2",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00047_clearRobot_jt2"
+    },
+    {
+      "assetId": "U00048",
+      "placementCode": "catalog_u00048",
+      "assetName": "트리밍 커터 관절 2",
+      "bundleCode": "trimming_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00048_cuter_low_joint2"
+    },
+    {
+      "assetId": "U00049",
+      "placementCode": "catalog_u00049",
+      "assetName": "취출 로봇 B지그 1",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00049_outRobotJigB_1"
+    },
+    {
+      "assetId": "U00050",
+      "placementCode": "catalog_u00050",
+      "assetName": "스프레이 노즐 A",
+      "bundleCode": "spray_ladler",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00050_Nozzle_A"
+    },
+    {
+      "assetId": "U00051",
+      "placementCode": "catalog_u00051",
+      "assetName": "취출 로봇 관절 6",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00051_outerRobot_j6"
+    },
+    {
+      "assetId": "U00052",
+      "placementCode": "catalog_u00052",
+      "assetName": "용탕 주입 로봇 관절 2",
+      "bundleCode": "spray_ladler",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00052_pourrobot_33_26_Jt2"
+    },
+    {
+      "assetId": "U00053",
+      "placementCode": "catalog_u00053",
+      "assetName": "청소 로봇 관절 3",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00053_clearRobot_jt3"
+    },
+    {
+      "assetId": "U00054",
+      "placementCode": "catalog_u00054",
+      "assetName": "취출 로봇 B지그 2",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00054_outRobotJigB_2"
+    },
+    {
+      "assetId": "U00055",
+      "placementCode": "catalog_u00055",
+      "assetName": "주조기 푸셔 관절 1",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00055_casterPush_joint1"
+    },
+    {
+      "assetId": "U00056",
+      "placementCode": "catalog_u00056",
+      "assetName": "스프레이 본체 B",
+      "bundleCode": "spray_ladler",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00056_Body_B"
+    },
+    {
+      "assetId": "U00057",
+      "placementCode": "catalog_u00057",
+      "assetName": "취출 로봇 관절 3",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00057_outerRobot_j3"
+    },
+    {
+      "assetId": "U00058",
+      "placementCode": "catalog_u00058",
+      "assetName": "용탕 주입 로봇 관절 1",
+      "bundleCode": "spray_ladler",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00058_pourrobot_12_5_jt1"
+    },
+    {
+      "assetId": "U00059",
+      "placementCode": "catalog_u00059",
+      "assetName": "청소 로봇 관절 4",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00059_clearRobot_jt4"
+    },
+    {
+      "assetId": "U00060",
+      "placementCode": "catalog_u00060",
+      "assetName": "주조기 푸셔 관절 2",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00060_casterPush_joint2"
+    },
+    {
+      "assetId": "U00061",
+      "placementCode": "catalog_u00061",
+      "assetName": "스프레이 핸들",
+      "bundleCode": "spray_ladler",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00061_Handle"
+    },
+    {
+      "assetId": "U00062",
+      "placementCode": "catalog_u00062",
+      "assetName": "취출 로봇 관절 4",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00062_outerRobot_j4"
+    },
+    {
+      "assetId": "U00063",
+      "placementCode": "catalog_u00063",
+      "assetName": "용탕 주입 로봇 관절 3",
+      "bundleCode": "spray_ladler",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00063_pourrobot_48_2_Jt3"
+    },
+    {
+      "assetId": "U00064",
+      "placementCode": "catalog_u00064",
+      "assetName": "주조기 푸셔 관절 3",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00064_casterPush_joint3"
+    },
+    {
+      "assetId": "U00065",
+      "placementCode": "catalog_u00065",
+      "assetName": "스프레이 본체 A",
+      "bundleCode": "spray_ladler",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00065_Body_A"
+    },
+    {
+      "assetId": "U00066",
+      "placementCode": "catalog_u00066",
+      "assetName": "취출 로봇 관절 5",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00066_outerRobot_j5"
+    },
+    {
+      "assetId": "U00067",
+      "placementCode": "catalog_u00067",
+      "assetName": "용탕 주입 로봇 관절 4",
+      "bundleCode": "spray_ladler",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00067_pourrobot_Jt4"
+    },
+    {
+      "assetId": "U00068",
+      "placementCode": "catalog_u00068",
+      "assetName": "주조기 푸셔 관절 4",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00068_casterPush_joint4"
+    },
+    {
+      "assetId": "U00069",
+      "placementCode": "catalog_u00069",
+      "assetName": "스프레이 핸들 볼트",
+      "bundleCode": "spray_ladler",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00069_Handle_Bolts"
+    },
+    {
+      "assetId": "U00070",
+      "placementCode": "catalog_u00070",
+      "assetName": "취출 로봇 관절 2",
+      "bundleCode": "takeout_robot",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00070_outerRobot_j2"
+    },
+    {
+      "assetId": "U00071",
+      "placementCode": "catalog_u00071",
+      "assetName": "주조기 푸셔 관절 5",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00071_casterPush_joint5"
+    },
+    {
+      "assetId": "U00072",
+      "placementCode": "catalog_u00072",
+      "assetName": "주조기 푸셔 관절 6",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00072_casterPush_joint6"
+    },
+    {
+      "assetId": "U00073",
+      "placementCode": "catalog_u00073",
+      "assetName": "주조기 푸셔 관절 7",
+      "bundleCode": "casting_machine",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00073_casterPush_joint7"
+    },
+    {
+      "assetId": "U00074",
+      "placementCode": "catalog_u00074",
+      "assetName": "용해로 승강 장치",
+      "bundleCode": "melting_furnace",
+      "confidence": 1.0,
+      "mappingSource": "UNITY_MESH_EXTRACTED",
+      "sourceLayer": "./p006_extracted_unity_meshes.usda",
+      "sourcePrim": "/UnityExtractedMeshes/Mesh_U00074_furnaceElevate"
+    },
+    {
+      "assetId": "A0127",
+      "placementCode": "catalog_a0127",
+      "assetName": "우수casco_모델링항목_sheet",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0149",
+      "placementCode": "catalog_a0149",
+      "assetName": "우수CASCO_네트워크_구성도_20180228",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0151",
+      "placementCode": "catalog_a0151",
+      "assetName": "Ecp_84__I_A4P__EN",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0152",
+      "placementCode": "catalog_a0152",
+      "assetName": "뷸러 PART LIST_REV01_170502",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0153",
+      "placementCode": "catalog_a0153",
+      "assetName": "뷸러_주조기_모델링_항목_LIST_형상+사진(컨셉)",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0154",
+      "placementCode": "catalog_a0154",
+      "assetName": "사출 부자재 도면",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0155",
+      "placementCode": "catalog_a0155",
+      "assetName": "DD_700026276-en",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0156",
+      "placementCode": "catalog_a0156",
+      "assetName": "DD_700026276-ko",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0157",
+      "placementCode": "catalog_a0157",
+      "assetName": "ED_700026276",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0158",
+      "placementCode": "catalog_a0158",
+      "assetName": "GCEO-00241-001UHZ000_05",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0159",
+      "placementCode": "catalog_a0159",
+      "assetName": "GCEO-00243-001UHZ000_01",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0160",
+      "placementCode": "catalog_a0160",
+      "assetName": "GCEO-00442-001UHZ000_02",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0161",
+      "placementCode": "catalog_a0161",
+      "assetName": "GCEO-10036-001UHZ000_03",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0162",
+      "placementCode": "catalog_a0162",
+      "assetName": "GCEO-10686-001UHZ000_01",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0163",
+      "placementCode": "catalog_a0163",
+      "assetName": "GCEU-00000-023UHZ000_06",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0164",
+      "placementCode": "catalog_a0164",
+      "assetName": "GCEU-00000-057UHZ000_07",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0165",
+      "placementCode": "catalog_a0165",
+      "assetName": "GCEU-00000-066UHZ000_12",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0166",
+      "placementCode": "catalog_a0166",
+      "assetName": "GCEU-00032-001UHZ000_03",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0167",
+      "placementCode": "catalog_a0167",
+      "assetName": "GCEU-00039-001UHZ000_03",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0168",
+      "placementCode": "catalog_a0168",
+      "assetName": "GCEU-00052-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0169",
+      "placementCode": "catalog_a0169",
+      "assetName": "GCEU-00056-001UHZ000_06",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0170",
+      "placementCode": "catalog_a0170",
+      "assetName": "GCEU-00146-001UHZ000_12",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0171",
+      "placementCode": "catalog_a0171",
+      "assetName": "GCEU-10031-001UHZ000_02",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0172",
+      "placementCode": "catalog_a0172",
+      "assetName": "GCEU-10032-001UHZ000_10",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0173",
+      "placementCode": "catalog_a0173",
+      "assetName": "GCEU-10035-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0174",
+      "placementCode": "catalog_a0174",
+      "assetName": "GCEU-10038-001UHZ000_02",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0175",
+      "placementCode": "catalog_a0175",
+      "assetName": "GCEU-10043-001UHZ000_02",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0176",
+      "placementCode": "catalog_a0176",
+      "assetName": "GCEU-10044-001UHZ000_03",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0177",
+      "placementCode": "catalog_a0177",
+      "assetName": "GCEU-10045-001UHZ000_02",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0178",
+      "placementCode": "catalog_a0178",
+      "assetName": "GCEU-10050-001UHZ000_02",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0179",
+      "placementCode": "catalog_a0179",
+      "assetName": "GCEU-10054-001UHZ000_03",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0180",
+      "placementCode": "catalog_a0180",
+      "assetName": "GCEU-10055-001UHZ000_03",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0181",
+      "placementCode": "catalog_a0181",
+      "assetName": "GCEU-10056-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0182",
+      "placementCode": "catalog_a0182",
+      "assetName": "GCEU-10057-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0183",
+      "placementCode": "catalog_a0183",
+      "assetName": "GCEU-10059-001UHZ000_03",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0184",
+      "placementCode": "catalog_a0184",
+      "assetName": "GCEU-10062-001UHZ000_02",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0185",
+      "placementCode": "catalog_a0185",
+      "assetName": "GCEU-10065-001UHZ000_02",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0186",
+      "placementCode": "catalog_a0186",
+      "assetName": "GCEU-10067-001UHZ000_01",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0187",
+      "placementCode": "catalog_a0187",
+      "assetName": "GCEU-10072-001UHZ000_02",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0188",
+      "placementCode": "catalog_a0188",
+      "assetName": "GCEU-10079-001UHZ000_04",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0189",
+      "placementCode": "catalog_a0189",
+      "assetName": "GCEU-10080-001UHZ000_03",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0190",
+      "placementCode": "catalog_a0190",
+      "assetName": "GCEU-10082-001UHZ000_03",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0191",
+      "placementCode": "catalog_a0191",
+      "assetName": "GCEU-10085-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0192",
+      "placementCode": "catalog_a0192",
+      "assetName": "GCEU-10089-001UHZ000_02",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0193",
+      "placementCode": "catalog_a0193",
+      "assetName": "GCEU-10091-001UHZ000_04",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0194",
+      "placementCode": "catalog_a0194",
+      "assetName": "GCEU-10092-001UHZ000_01",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0195",
+      "placementCode": "catalog_a0195",
+      "assetName": "GCEU-10099-001UHZ000_01",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0196",
+      "placementCode": "catalog_a0196",
+      "assetName": "GCEU-10101-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0197",
+      "placementCode": "catalog_a0197",
+      "assetName": "GCEU-10102-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0198",
+      "placementCode": "catalog_a0198",
+      "assetName": "GCEU-10103-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0199",
+      "placementCode": "catalog_a0199",
+      "assetName": "GCEU-10104-001UHZ000_02",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0200",
+      "placementCode": "catalog_a0200",
+      "assetName": "GCEU-10118-001UHZ000_04",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0201",
+      "placementCode": "catalog_a0201",
+      "assetName": "GCEU-10147-001UHZ000_02",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0202",
+      "placementCode": "catalog_a0202",
+      "assetName": "GCEU-10149-001UHZ000_01",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0203",
+      "placementCode": "catalog_a0203",
+      "assetName": "GCEU-10162-001UHZ000_06",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0204",
+      "placementCode": "catalog_a0204",
+      "assetName": "GCEU-10163-001UHZ000_04",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0205",
+      "placementCode": "catalog_a0205",
+      "assetName": "GCEU-10195-001UHZ000_03",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0206",
+      "placementCode": "catalog_a0206",
+      "assetName": "GCEU-10212-001UHZ000_01",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0207",
+      "placementCode": "catalog_a0207",
+      "assetName": "GCEU-10216-001UHZ000_04",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0208",
+      "placementCode": "catalog_a0208",
+      "assetName": "GCEU-10279-001UHZ000_04",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0209",
+      "placementCode": "catalog_a0209",
+      "assetName": "GCEU-10376-001UHZ000_03",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0210",
+      "placementCode": "catalog_a0210",
+      "assetName": "GCEU-10831-001UHZ000_02",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0211",
+      "placementCode": "catalog_a0211",
+      "assetName": "GCEU-11865-001UHZ000_01",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0212",
+      "placementCode": "catalog_a0212",
+      "assetName": "GCEU-11887-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0213",
+      "placementCode": "catalog_a0213",
+      "assetName": "GCEU-11890-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0214",
+      "placementCode": "catalog_a0214",
+      "assetName": "GCEU-11907-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0215",
+      "placementCode": "catalog_a0215",
+      "assetName": "GCEU-11921-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0216",
+      "placementCode": "catalog_a0216",
+      "assetName": "GCEU-11926-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0217",
+      "placementCode": "catalog_a0217",
+      "assetName": "GCEU-11934-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0218",
+      "placementCode": "catalog_a0218",
+      "assetName": "GCEU-11936-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0219",
+      "placementCode": "catalog_a0219",
+      "assetName": "GKM-81108-760UHM000_01",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0220",
+      "placementCode": "catalog_a0220",
+      "assetName": "GKM-84105-830UHZ000_01",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0221",
+      "placementCode": "catalog_a0221",
+      "assetName": "GKS-82104-810UHZ000_03",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0222",
+      "placementCode": "catalog_a0222",
+      "assetName": "GKU-10873-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0223",
+      "placementCode": "catalog_a0223",
+      "assetName": "GKU-82001-820UHZ000_03",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0224",
+      "placementCode": "catalog_a0224",
+      "assetName": "GKU-82002-820UHZ000_02",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0225",
+      "placementCode": "catalog_a0225",
+      "assetName": "GKU-82110-810UHZ000_07",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0226",
+      "placementCode": "catalog_a0226",
+      "assetName": "GKU-82195-820UHZ000_01",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0227",
+      "placementCode": "catalog_a0227",
+      "assetName": "GNS -40336-010UHZ000_10",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0228",
+      "placementCode": "catalog_a0228",
+      "assetName": "GNS-10031-001UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0229",
+      "placementCode": "catalog_a0229",
+      "assetName": "GNS-10047-001UHZ000_01",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0230",
+      "placementCode": "catalog_a0230",
+      "assetName": "GNS-10899-001UHZ000_02",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0231",
+      "placementCode": "catalog_a0231",
+      "assetName": "GNS-82038-810UHZ000_00",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0232",
+      "placementCode": "catalog_a0232",
+      "assetName": "GNS-82040-810UHZ000_01",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0233",
+      "placementCode": "catalog_a0233",
+      "assetName": "GNS-83032-810UHZ000_01",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0234",
+      "placementCode": "catalog_a0234",
+      "assetName": "HD_700026276-ko",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0235",
+      "placementCode": "catalog_a0235",
+      "assetName": "ID_700026276-en",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0236",
+      "placementCode": "catalog_a0236",
+      "assetName": "ID_700026276-ko",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0237",
+      "placementCode": "catalog_a0237",
+      "assetName": "OI_700026276-en",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0238",
+      "placementCode": "catalog_a0238",
+      "assetName": "OI_700026276-ko",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0239",
+      "placementCode": "catalog_a0239",
+      "assetName": "Spare_Parts-en",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0240",
+      "placementCode": "catalog_a0240",
+      "assetName": "Spare_Parts-ko",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0241",
+      "placementCode": "catalog_a0241",
+      "assetName": "주조기 모듈 list",
+      "bundleCode": "casting_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0136",
+      "placementCode": "catalog_a0136",
+      "assetName": "LAYOUT",
+      "bundleCode": "trimming_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0137",
+      "placementCode": "catalog_a0137",
+      "assetName": "TRIMMING 타격기(전기)",
+      "bundleCode": "trimming_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0138",
+      "placementCode": "catalog_a0138",
+      "assetName": "plot",
+      "bundleCode": "trimming_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0139",
+      "placementCode": "catalog_a0139",
+      "assetName": "그립퍼 타격바 지그 모음 (1 , 2차분 포함) - 20170223",
+      "bundleCode": "trimming_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0140",
+      "placementCode": "catalog_a0140",
+      "assetName": "보수점검사항",
+      "bundleCode": "trimming_machine",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0247",
+      "placementCode": "catalog_a0247",
+      "assetName": "DAMP200(이형제압송)",
+      "bundleCode": "release_agent",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0248",
+      "placementCode": "catalog_a0248",
+      "assetName": "우수200",
+      "bundleCode": "release_agent",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0242",
+      "placementCode": "catalog_a0242",
+      "assetName": "ass'y(20170425)",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0245",
+      "placementCode": "catalog_a0245",
+      "assetName": "유지보수 및 PART LIST",
+      "bundleCode": "melting_furnace",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0129",
+      "placementCode": "catalog_a0129",
+      "assetName": "dwgviewr",
+      "bundleCode": "ladler",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0130",
+      "placementCode": "catalog_a0130",
+      "assetName": "LAYOUT",
+      "bundleCode": "ladler",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0131",
+      "placementCode": "catalog_a0131",
+      "assetName": "plot",
+      "bundleCode": "ladler",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0132",
+      "placementCode": "catalog_a0132",
+      "assetName": "spare parts  QT",
+      "bundleCode": "ladler",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0133",
+      "placementCode": "catalog_a0133",
+      "assetName": "뷸러 래들 확인GAC -23527-001(2015-09-25)",
+      "bundleCode": "ladler",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0134",
+      "placementCode": "catalog_a0134",
+      "assetName": "뷸러래들JSLB五连杆给汤机操作使用说明书_160525",
+      "bundleCode": "ladler",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0135",
+      "placementCode": "catalog_a0135",
+      "assetName": "electrical_part_list_2013-7-18",
+      "bundleCode": "ladler",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    },
+    {
+      "assetId": "A0253",
+      "placementCode": "catalog_a0253",
+      "assetName": "TT-1800",
+      "bundleCode": "turntable_furnace",
+      "confidence": 0.85,
+      "mappingSource": "CLASSIFIED_GROUP_PROXY"
+    }
+  ],
+  "generatedAssetCount": 2,
+  "generatedVariantCount": 260,
+  "extractedUnityMeshCount": 74
+}

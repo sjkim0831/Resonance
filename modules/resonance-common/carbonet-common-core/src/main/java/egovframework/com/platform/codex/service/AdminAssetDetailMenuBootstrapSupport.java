@@ -4,6 +4,7 @@ import egovframework.com.platform.request.codex.CodexProvisionRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -26,6 +27,7 @@ public class AdminAssetDetailMenuBootstrapSupport {
     private final PlatformMenuProvisionSupport platformMenuProvisionSupport;
 
     @EventListener(ApplicationReadyEvent.class)
+    @Async("applicationReadyBootstrapExecutor")
     public void ensureAssetDetailMenu() {
         platformMenuProvisionSupport.provisionAdminMenu(
                 "Asset detail menu",

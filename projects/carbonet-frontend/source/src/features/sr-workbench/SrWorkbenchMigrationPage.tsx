@@ -788,7 +788,7 @@ export function SrWorkbenchMigrationPage() {
                   onChange={() => setSelectedStackItemIds((current) => current.includes(item.stackItemId)
                     ? current.filter((value) => value !== item.stackItemId)
                     : [...current, item.stackItemId])}
-                  type="checkbox"
+                  type="checkbox" className="krds-control-native"
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">

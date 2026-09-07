@@ -599,7 +599,7 @@ export function PageManagementMigrationPage() {
           />
           <div className="p-6">
         <form action={buildLocalizedPath("/admin/system/page-management/create", "/en/admin/system/page-management/create")} className="grid grid-cols-1 gap-4 xl:grid-cols-6" method="post" onSubmit={submitCreateForm}>
-          <input name="menuType" type="hidden" value={draft.menuType} />
+          <input name="menuType" type="hidden" value={draft.menuType} className="krds-control-field" />
           <div>
             <label className="gov-label" htmlFor="domainCode">{en ? "Domain" : "도메인"}</label>
             <select className="gov-select" id="domainCode" name="domainCode" value={createForm.domainCode} onChange={(event) => ensureDomainPrefix(event.target.value)}>
@@ -629,7 +629,7 @@ export function PageManagementMigrationPage() {
           </div>
           <div>
             <label className="gov-label">{en ? "Menu Icon" : "메뉴 아이콘"}</label>
-            <input name="menuIcon" type="hidden" value={createForm.menuIcon} />
+            <input name="menuIcon" type="hidden" value={createForm.menuIcon} className="krds-control-field" />
             <IconPicker helperText={en ? "Scroll to view the full icon list." : "스크롤해서 전체 아이콘을 볼 수 있습니다."} icons={iconOptions} onChange={(value) => setCreateForm((current) => ({ ...current, menuIcon: value }))} searchPlaceholder={en ? "Search icons" : "아이콘 검색"} value={createForm.menuIcon} />
           </div>
           <div>
@@ -806,10 +806,10 @@ export function PageManagementMigrationPage() {
                             deletedUserOverrides: numberToText(row.defaultViewUserOverrideCount)
                           });
                         }}>
-                          <input name="code" type="hidden" value={code} />
-                          <input name="menuType" type="hidden" value={draft.menuType} />
-                          <input name="searchKeyword" type="hidden" value={draft.searchKeyword} />
-                          <input name="searchUrl" type="hidden" value={draft.searchUrl} />
+                          <input name="code" type="hidden" value={code} className="krds-control-field" />
+                          <input name="menuType" type="hidden" value={draft.menuType} className="krds-control-field" />
+                          <input name="searchKeyword" type="hidden" value={draft.searchKeyword} className="krds-control-field" />
+                          <input name="searchUrl" type="hidden" value={draft.searchUrl} className="krds-control-field" />
                           <button className="gov-btn gov-btn-danger w-full" type="submit">{en ? "Delete" : "삭제"}</button>
                         </form>
                         <div className="flex flex-wrap justify-center gap-1.5">
@@ -832,10 +832,10 @@ export function PageManagementMigrationPage() {
                     <tr className={isHighlighted ? "bg-amber-50" : "bg-gray-50"} key={`${code}-edit`}>
                       <td className="px-4 py-4" colSpan={8}>
                         <form action={buildLocalizedPath("/admin/system/page-management/update", "/en/admin/system/page-management/update")} className="grid grid-cols-1 items-end gap-3 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-4 md:grid-cols-6" method="post" onSubmit={(event) => submitEditForm(event, code)}>
-                          <input name="code" type="hidden" value={code} />
-                          <input name="menuType" type="hidden" value={draft.menuType} />
-                          <input name="searchKeyword" type="hidden" value={draft.searchKeyword} />
-                          <input name="searchUrl" type="hidden" value={draft.searchUrl} />
+                          <input name="code" type="hidden" value={code} className="krds-control-field" />
+                          <input name="menuType" type="hidden" value={draft.menuType} className="krds-control-field" />
+                          <input name="searchKeyword" type="hidden" value={draft.searchKeyword} className="krds-control-field" />
+                          <input name="searchUrl" type="hidden" value={draft.searchUrl} className="krds-control-field" />
                           <label>
                             <span className="gov-label">{en ? "Page Name" : "페이지명"}</span>
                             <input className="gov-input" name="codeNm" value={editForm.codeNm} onChange={(event) => setEditForms((current) => ({ ...current, [code]: { ...editForm, codeNm: event.target.value } }))} />
@@ -853,7 +853,7 @@ export function PageManagementMigrationPage() {
                           </label>
                           <label>
                             <span className="gov-label">{en ? "Menu Icon" : "메뉴 아이콘"}</span>
-                            <input name="menuIcon" type="hidden" value={editForm.menuIcon} />
+                            <input name="menuIcon" type="hidden" value={editForm.menuIcon} className="krds-control-field" />
                             <IconPicker helperText={en ? "Scroll to view the full icon list." : "스크롤해서 전체 아이콘을 볼 수 있습니다."} icons={iconOptions} onChange={(value) => setEditForms((current) => ({ ...current, [code]: { ...editForm, menuIcon: value } }))} searchPlaceholder={en ? "Search icons" : "아이콘 검색"} value={editForm.menuIcon} />
                           </label>
                           <div className="grid grid-cols-2 gap-2">

@@ -1,0 +1,29 @@
+{
+  "processCode": "CERTIFICATE_ISSUANCE",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "CERTIFICATE_ISSUANCE_01_PLAN",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/emission/report_submit?step=certificate_issuance_01_plan"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "CERTIFICATE_ISSUANCE_02_WORK",
+      "actorCode": "APPROVER",
+      "routePath": "/emission/report_submit?step=certificate_issuance_02_work"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "CERTIFICATE_ISSUANCE_03_VERIFY",
+      "actorCode": "VERIFIER",
+      "routePath": "/home/certificate-verify?step=certificate_issuance_03_verify"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "CERTIFICATE_ISSUANCE_04_APPROVE",
+      "actorCode": "APPROVER",
+      "routePath": "/emission/report_submit?step=certificate_issuance_04_approve"
+    }
+  ]
+}

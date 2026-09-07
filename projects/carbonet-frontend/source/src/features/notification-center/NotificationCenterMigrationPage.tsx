@@ -23,6 +23,25 @@ type NotificationCloseoutRow = {
   detailEn: string;
 };
 
+type RuntimeAlertEntry = {
+  id: number;
+  sourceCode?: string;
+  eventType?: string;
+  status?: string;
+  reason?: string;
+  durationMs?: number;
+  severity?: string;
+  assignedActor?: string;
+  workflowStatus?: string;
+  dueAt?: string;
+  escalationLevel?: number;
+  deliverySummary?: string;
+  deliveryAttemptCount?: number;
+  escalatedAt?: string;
+  acknowledgementStatus?: string;
+  occurredAt?: string;
+};
+
 const NOTIFICATION_CLOSEOUT_ROWS: NotificationCloseoutRow[] = [
   {
     titleKo: "보안 알림 라우팅 저장",
@@ -251,6 +270,8 @@ export function NotificationCenterMigrationPage() {
   const [notificationSlackChannel, setNotificationSlackChannel] = useState("");
   const [notificationMailRecipients, setNotificationMailRecipients] = useState("");
   const [notificationWebhookUrl, setNotificationWebhookUrl] = useState("");
+  const [runtimeAlerts, setRuntimeAlerts] = useState<RuntimeAlertEntry[]>([]);
+  const [runtimeAlertBusy, setRuntimeAlertBusy] = useState<number | null>(null);
   const [historyTab, setHistoryTab] = useState<"delivery" | "activity">(initialQuery.historyTab);
   const [deliveryChannelFilter, setDeliveryChannelFilter] = useState(initialQuery.deliveryChannel);
   const [deliveryStatusFilter, setDeliveryStatusFilter] = useState(initialQuery.deliveryStatus);
@@ -302,6 +323,55 @@ export function NotificationCenterMigrationPage() {
   const notificationCenterGuidance = ((page?.notificationCenterGuidance || []) as Array<Record<string, string>>);
   const notificationCenterMeta = ((page?.notificationCenterMeta || {}) as Record<string, unknown>);
   const notificationCenterFilterOptions = ((page?.notificationCenterFilterOptions || {}) as Record<string, unknown>);
+
+  async function loadRuntimeAlerts() {
+    const response = await fetch("/api/admin/process-preview-recorder-audit", { credentials: "include" });
+    if (!response.ok) return;
+    const payload = await response.json() as { entries?: RuntimeAlertEntry[] };
+    setRuntimeAlerts((payload.entries || []).filter((entry) =>
+      entry.status === "FAILED_FINAL"
+      && entry.acknowledgementStatus === "UNACKNOWLEDGED"
+    ));
+  }
+
+  async function acknowledgeRuntimeAlert(id: number) {
+    setRuntimeAlertBusy(id);
+    try {
+      const response = await fetch(`/api/admin/process-preview-recorder-audit/${id}/acknowledge`, {
+        method: "POST",
+        credentials: "include"
+      });
+      if (!response.ok) throw new Error(en ? "Failed to close the runtime alert." : "런타임 장애 확인·종료 처리에 실패했습니다.");
+      await loadRuntimeAlerts();
+      window.dispatchEvent(new CustomEvent("runtime-alerts-updated"));
+      setMessage(en ? "Runtime alert acknowledged and closed." : "런타임 장애를 확인하고 종료했습니다.");
+    } catch (acknowledgeError) {
+      setError(acknowledgeError instanceof Error ? acknowledgeError.message : String(acknowledgeError));
+    } finally {
+      setRuntimeAlertBusy(null);
+    }
+  }
+
+  async function resolveRuntimeAlert(id: number) {
+    setRuntimeAlertBusy(id);
+    try {
+      const response = await fetch(`/api/admin/process-preview-recorder-audit/${id}/resolve`, {
+        method: "POST",
+        credentials: "include"
+      });
+      if (!response.ok) throw new Error(en ? "Failed to resolve the runtime alert." : "런타임 장애 조치 완료 처리에 실패했습니다.");
+      await loadRuntimeAlerts();
+      setMessage(en ? "Runtime alert marked as resolved. Administrator acknowledgement is now required." : "런타임 장애를 조치 완료했습니다. 이제 관리자 확인·종료가 필요합니다.");
+    } catch (resolveError) {
+      setError(resolveError instanceof Error ? resolveError.message : String(resolveError));
+    } finally {
+      setRuntimeAlertBusy(null);
+    }
+  }
+
+  useEffect(() => {
+    void loadRuntimeAlerts();
+  }, []);
 
   useEffect(() => {
     if (bootstrapEnabled && hasAppliedServerFilters) {
@@ -594,6 +664,45 @@ export function NotificationCenterMigrationPage() {
             );
           })}
         </section>
+
+        {runtimeAlerts.length > 0 ? (
+          <section className="gov-card mt-6 overflow-hidden border-2 border-red-300" data-help-id="runtime-alerts">
+            <div className="border-b border-red-200 bg-red-50 px-6 py-5">
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-red-700">{en ? "Automatic runtime alert" : "자동 런타임 장애"}</p>
+              <h2 className="mt-1 text-lg font-black text-red-950">{en ? `${runtimeAlerts.length} runtime alerts require acknowledgement` : `관리자 확인이 필요한 런타임 장애 ${runtimeAlerts.length}건`}</h2>
+              <p className="mt-2 text-sm text-red-800">{en ? "PDF, API, page, login, or recorder recovery failed. Review and acknowledge each event." : "PDF·API·화면·로그인 또는 녹화 자동복구가 실패했습니다. 원인을 확인하고 각 장애를 확인 처리해야 합니다."}</p>
+            </div>
+            <div className="divide-y divide-red-100">
+              {runtimeAlerts.map((entry) => (
+                <article className="flex flex-wrap items-center justify-between gap-4 px-6 py-4" key={entry.id}>
+                  <div>
+                    <p className="font-black text-[var(--kr-gov-text-primary)]">#{entry.id} · {entry.sourceCode || "RUNTIME_ALERT"}</p>
+                    <p className="mt-1 text-sm font-bold text-red-800">{entry.reason || "RUNTIME_FAILURE"}</p>
+                    <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{entry.occurredAt || "-"} · {Number(entry.durationMs || 0).toLocaleString()}ms</p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs font-black">
+                      <span className={`rounded-full px-2.5 py-1 ${entry.severity === "CRITICAL" ? "bg-red-100 text-red-800" : entry.severity === "HIGH" ? "bg-orange-100 text-orange-800" : "bg-amber-100 text-amber-800"}`}>{entry.severity || "INFO"}</span>
+                      <span className="rounded-full bg-blue-50 px-2.5 py-1 text-blue-800">{entry.assignedActor || "SYSTEM_OPERATOR"}</span>
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">{entry.workflowStatus || "ASSIGNED"}</span>
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">{en ? "Due" : "처리기한"} {entry.dueAt || "-"}</span>
+                      {Number(entry.escalationLevel || 0) > 0 ? <span className="rounded-full bg-red-100 px-2.5 py-1 text-red-800">{en ? "Escalation" : "상위 보고"} {entry.escalationLevel}</span> : null}
+                      {entry.deliverySummary ? <span className="rounded-full bg-violet-100 px-2.5 py-1 text-violet-800">{en ? "Delivery" : "채널 발송"} {entry.deliverySummary}</span> : null}
+                      {Number(entry.deliveryAttemptCount || 0) > 0 ? <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">{en ? "Attempts" : "발송 시도"} {entry.deliveryAttemptCount}</span> : null}
+                    </div>
+                  </div>
+                  {entry.workflowStatus === "RESOLVED" ? (
+                    <MemberButton disabled={runtimeAlertBusy === entry.id || !canManageNotification} onClick={() => void acknowledgeRuntimeAlert(entry.id)} type="button" variant="primary">
+                      {runtimeAlertBusy === entry.id ? (en ? "Closing..." : "종료 처리 중...") : (en ? "Acknowledge and close" : "확인·종료")}
+                    </MemberButton>
+                  ) : (
+                    <MemberButton disabled={runtimeAlertBusy === entry.id || !canManageNotification} onClick={() => void resolveRuntimeAlert(entry.id)} type="button" variant="primary">
+                      {runtimeAlertBusy === entry.id ? (en ? "Resolving..." : "조치 처리 중...") : (en ? "Mark resolved" : "조치 완료")}
+                    </MemberButton>
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section className="gov-card mt-6 overflow-hidden" data-help-id="notification-closeout-gate">
           <div className="px-6 py-5">

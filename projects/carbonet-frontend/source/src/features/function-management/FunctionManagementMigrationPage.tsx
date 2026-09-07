@@ -117,7 +117,7 @@ export function FunctionManagementMigrationPage() {
         />
 
         <form action={buildLocalizedPath("/admin/system/feature-management/create", "/en/admin/system/feature-management/create")} className="grid grid-cols-1 xl:grid-cols-6 gap-4" method="post" onSubmit={handleSubmit}>
-          <input name="menuType" type="hidden" value={draft.menuType} />
+          <input name="menuType" type="hidden" value={draft.menuType} className="krds-control-field" />
           <div>
             <label className="gov-label" htmlFor="menuTypeDisplay">{en ? "Page Scope" : "화면 구분"}</label>
             <AdminSelect id="menuTypeDisplay" value={draft.menuType} onChange={(event) => {
@@ -264,10 +264,10 @@ export function FunctionManagementMigrationPage() {
                     <td className="px-4 py-3 text-center font-semibold">{stringOf(row, "useAt")}</td>
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                       <form action={buildLocalizedPath("/admin/system/feature-management/delete", "/en/admin/system/feature-management/delete")} method="post" onSubmit={handleSubmit}>
-                        <input name="featureCode" type="hidden" value={featureCode} />
-                        <input name="menuType" type="hidden" value={filters.menuType} />
-                        <input name="searchMenuCode" type="hidden" value={filters.searchMenuCode} />
-                        <input name="searchKeyword" type="hidden" value={filters.searchKeyword} />
+                        <input name="featureCode" type="hidden" value={featureCode} className="krds-control-field" />
+                        <input name="menuType" type="hidden" value={filters.menuType} className="krds-control-field" />
+                        <input name="searchMenuCode" type="hidden" value={filters.searchMenuCode} className="krds-control-field" />
+                        <input name="searchKeyword" type="hidden" value={filters.searchKeyword} className="krds-control-field" />
                         <MemberButton type="submit" variant="danger">{en ? "Delete" : "삭제"}</MemberButton>
                       </form>
                     </td>

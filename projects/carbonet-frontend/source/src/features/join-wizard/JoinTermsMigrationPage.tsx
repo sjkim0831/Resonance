@@ -4,6 +4,7 @@ import { resetJoinSession, saveJoinStep2 } from "../../lib/api/joinSession";
 import { useJoinSession } from "../../app/hooks/useJoinSession";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { AppButton, AppCheckbox } from "../app-ui/primitives";
+import { CommonJoinProcessShell } from "../../components/common-design/CommonJoinProcessShell";
 
 const TERMS_KO = {
   title: "회원가입",
@@ -84,6 +85,11 @@ export function JoinTermsMigrationPage() {
   const error = actionError || sessionState.error;
 
   useEffect(() => {
+    if (sessionState.loading || !session || session.canViewStep2) return;
+    navigate(buildLocalizedPath("/join/step1?expired=1", "/join/en/step1?expired=1"));
+  }, [session, sessionState.loading]);
+
+  useEffect(() => {
     logGovernanceScope("PAGE", "join-step2", {
       route: window.location.pathname,
       canViewStep2: !!session?.canViewStep2
@@ -139,13 +145,13 @@ export function JoinTermsMigrationPage() {
   const allChecked = agreeTerms && agreePrivacy && agreeGwp;
 
   return (
-    <div className="join-step2-screen bg-[var(--kr-gov-bg-gray)] text-[var(--kr-gov-text-primary)] min-h-screen flex flex-col">
+    <CommonJoinProcessShell className="join-step2-screen" screenId="JOIN_TERMS">
       <a className="skip-link" href="#main-content">{en ? "Skip to content" : "본문 바로가기"}</a>
 
-      <div className="bg-white border-b border-[var(--kr-gov-border-light)]">
+      <div className="bg-white border-b border-[var(--kr-gov-border-light)]" data-join-government-bar>
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img alt={en ? "Emblem of the Republic of Korea" : "대한민국 정부 상징"} className="h-4" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8BPzqtzSLVGSrjt4mzhhVBy9SocCRDssk1F3XRVu7Xq9jHh7qzzt48wFi8qduCiJmB0LRQczPB7waPe3h0gkjn3jOEDxt6UJSJjdXNf8P-4WlM2BEZrfg2SL91uSiZrFcCk9KYrsdg-biTS9dtJ_OIghDBEVoAzMc33XcCYR_UP0QQdoYzBe840YrtH40xGyB9MSr0QH4D0foqlvOhG0jX8CDayXNlDsSKlfClVd3K2aodlwg4xSxgXHB3vnnnA0L2yNBNihQQg0" />
+            <img alt={en ? "Emblem of the Republic of Korea" : "대한민국 정부 상징"} className="h-4" src="/img/egovframework/kr_gov_symbol.png" />
             <span className="text-[13px] font-medium text-[var(--kr-gov-text-secondary)]">
               {en ? "Official Government Service of the Republic of Korea" : "대한민국 정부 공식 서비스"}
             </span>
@@ -309,6 +315,6 @@ export function JoinTermsMigrationPage() {
           <p className="mt-8 text-sm text-[var(--kr-gov-text-secondary)] text-center">{copy.footer}</p>
         </div>
       </main>
-    </div>
+    </CommonJoinProcessShell>
   );
 }

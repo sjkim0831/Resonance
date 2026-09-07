@@ -1,0 +1,23 @@
+{
+  "processCode": "LEGAL_NOTIFICATION_DELIVERY",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "LND_COMPOSE",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/work/legal-notification-delivery?step=lnd_compose"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "LND_DELIVER",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "routePath": "/work/legal-notification-delivery?step=lnd_deliver"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "LND_RECEIPT",
+      "actorCode": "AUDITOR",
+      "routePath": "/work/legal-notification-delivery?step=lnd_receipt"
+    }
+  ]
+}

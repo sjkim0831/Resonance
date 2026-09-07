@@ -48,6 +48,10 @@ const PLATFORM_SPECIAL_CASE_PREFIXES = [
   ["/admin/system/unified_log", "unified-log"]
 ] as const satisfies ReadonlyArray<readonly [string, MigrationPageId]>;
 const APP_SPECIAL_CASE_PAGES = [
+  ["/mypage/company", "mypage-company"],
+  ["/en/mypage/company", "mypage-company"],
+  ["/mypage/staff", "mypage-staff"],
+  ["/en/mypage/staff", "mypage-staff"],
   ["/admin/member/withdrawn", "member-list"],
   ["/admin/member/activate", "member-list"],
   ["/admin/system/menu", "menu-management"],
@@ -75,10 +79,10 @@ const APP_SPECIAL_CASE_PAGES = [
   ["/co2/credit", "co2-credit"]
 ] as const satisfies ReadonlyArray<readonly [string, MigrationPageId]>;
 const APP_ROUTE_ALIASES = [
-  ["/work/company-manager-delegation", "mypage-staff"],
-  ["/en/work/company-manager-delegation", "mypage-staff"],
-  ["/admin/work/company-manager-delegation", "actor-process-governance"],
-  ["/en/admin/work/company-manager-delegation", "actor-process-governance"],
+  ["/work/company-manager-delegation", "company-manager-delegation"],
+  ["/en/work/company-manager-delegation", "company-manager-delegation"],
+  ["/admin/work/company-manager-delegation", "company-manager-delegation"],
+  ["/en/admin/work/company-manager-delegation", "company-manager-delegation"],
   ["/admin/trade/list", "trade-list"],
   ["/en/admin/trade/list", "trade-list"],
   ["/trade/matching", "co2-search"],

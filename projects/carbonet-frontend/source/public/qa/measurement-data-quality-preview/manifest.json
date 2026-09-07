@@ -1,0 +1,29 @@
+{
+  "processCode": "MEASUREMENT_DATA_QUALITY",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "MEASUREMENT_DATA_QUALITY_S1",
+      "actorCode": "SITE_DATA_OWNER",
+      "routePath": "/generated/measurement-data-quality/measurement-data-quality-s1?step=measurement_data_quality_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "MEASUREMENT_DATA_QUALITY_S2",
+      "actorCode": "SITE_DATA_OWNER",
+      "routePath": "/generated/measurement-data-quality/measurement-data-quality-s2?step=measurement_data_quality_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "MEASUREMENT_DATA_QUALITY_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/measurement-data-quality/measurement-data-quality-s3?step=measurement_data_quality_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "MEASUREMENT_DATA_QUALITY_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/measurement-data-quality/measurement-data-quality-s4?step=measurement_data_quality_s4"
+    }
+  ]
+}

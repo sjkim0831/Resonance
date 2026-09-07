@@ -1,0 +1,487 @@
+{
+  "startedAt": "2026-09-01T08:31:20.245Z",
+  "steps": [
+    {
+      "ordinal": 1,
+      "processCode": "EMISSION_PROJECT_PORTFOLIO",
+      "stepCode": "EMISSION_PROJECT_PORTFOLIO_LIST",
+      "actor": "COMPANY_MANAGER",
+      "endpoints": [
+        "GET /home/api/emission-projects/options",
+        "POST /home/api/emission-projects"
+      ],
+      "at": "2026-09-01T08:31:20.576Z",
+      "status": "DONE"
+    },
+    {
+      "ordinal": 2,
+      "processCode": "ORGANIZATIONAL_BOUNDARY",
+      "stepCode": "ORGANIZATIONAL_BOUNDARY_S1",
+      "actor": "COMPANY_MANAGER",
+      "endpoints": [
+        "GET /organizational-boundary",
+        "PUT /organizational-boundary"
+      ],
+      "at": "2026-09-01T08:31:20.634Z",
+      "status": "DONE"
+    },
+    {
+      "ordinal": 3,
+      "processCode": "ORGANIZATIONAL_BOUNDARY",
+      "stepCode": "ORGANIZATIONAL_BOUNDARY_S2",
+      "actor": "COMPANY_MANAGER",
+      "endpoints": [
+        "POST /organizational-boundary/review-ready"
+      ],
+      "at": "2026-09-01T08:31:20.665Z",
+      "status": "DONE"
+    },
+    {
+      "ordinal": 4,
+      "processCode": "ORGANIZATIONAL_BOUNDARY",
+      "stepCode": "ORGANIZATIONAL_BOUNDARY_S3",
+      "actor": "CALCULATOR",
+      "endpoints": [
+        "POST /organizational-boundary/consolidate"
+      ],
+      "at": "2026-09-01T08:31:20.712Z",
+      "status": "DONE"
+    },
+    {
+      "ordinal": 5,
+      "processCode": "ORGANIZATIONAL_BOUNDARY",
+      "stepCode": "ORGANIZATIONAL_BOUNDARY_S4",
+      "actor": "VERIFIER",
+      "endpoints": [
+        "GET /organizational-boundary/review",
+        "POST /organizational-boundary/verification/decision"
+      ],
+      "at": "2026-09-01T08:31:20.778Z",
+      "status": "DONE"
+    },
+    {
+      "ordinal": 6,
+      "processCode": "ORGANIZATIONAL_BOUNDARY",
+      "stepCode": "ORGANIZATIONAL_BOUNDARY_S5",
+      "actor": "APPROVER",
+      "endpoints": [
+        "POST /organizational-boundary/decision"
+      ],
+      "at": "2026-09-01T08:31:20.812Z",
+      "status": "DONE"
+    },
+    {
+      "ordinal": 7,
+      "processCode": "ACTIVITY_DATA",
+      "stepCode": "ACTIVITY_DATA_01_PLAN",
+      "actor": "COMPANY_MANAGER",
+      "endpoints": [
+        "GET /activity-requests",
+        "POST /activity-requests"
+      ],
+      "at": "2026-09-01T08:31:20.838Z",
+      "status": "DONE",
+      "requestId": 1062
+    },
+    {
+      "ordinal": 8,
+      "processCode": "ACTIVITY_DATA",
+      "stepCode": "ACTIVITY_DATA_02_WORK",
+      "actor": "SITE_DATA_OWNER",
+      "endpoints": [
+        "POST /activities",
+        "POST /quality",
+        "POST /submissions",
+        "POST /submissions/{id}/submit"
+      ],
+      "at": "2026-09-01T08:31:20.999Z",
+      "status": "DONE",
+      "activityId": 564,
+      "submissionId": 553,
+      "requestId": 1062,
+      "qualityScore": 95
+    },
+    {
+      "ordinal": 9,
+      "processCode": "ACTIVITY_DATA",
+      "stepCode": "ACTIVITY_DATA_03_VERIFY",
+      "actor": "VERIFIER",
+      "endpoints": [
+        "POST /quality"
+      ],
+      "at": "2026-09-01T08:31:21.024Z",
+      "status": "DONE",
+      "qualityScore": 95
+    },
+    {
+      "ordinal": 10,
+      "processCode": "ACTIVITY_DATA",
+      "stepCode": "ACTIVITY_DATA_04_APPROVE",
+      "actor": "APPROVER",
+      "endpoints": [
+        "POST /activity-requests/{id}/decision"
+      ],
+      "at": "2026-09-01T08:31:21.056Z",
+      "status": "DONE"
+    },
+    {
+      "ordinal": 11,
+      "processCode": "EMISSION_CALCULATION",
+      "stepCode": "EMISSION_CALCULATION_01_PLAN",
+      "actor": "COMPANY_MANAGER",
+      "endpoints": [
+        "GET /calculation"
+      ],
+      "at": "2026-09-01T08:31:21.080Z",
+      "status": "DONE"
+    },
+    {
+      "ordinal": 12,
+      "processCode": "EMISSION_CALCULATION",
+      "stepCode": "EMISSION_CALCULATION_02_WORK",
+      "actor": "CALCULATOR",
+      "endpoints": [
+        "POST /activities/auto-map",
+        "POST /calculation"
+      ],
+      "at": "2026-09-01T08:31:21.171Z",
+      "status": "DONE",
+      "calculationId": 477,
+      "factorId": "EF-DIESEL"
+    },
+    {
+      "ordinal": 13,
+      "processCode": "EMISSION_CALCULATION",
+      "stepCode": "EMISSION_CALCULATION_03_VERIFY",
+      "actor": "VERIFIER",
+      "endpoints": [
+        "POST /verification/start",
+        "POST /verification/decision",
+        "GET /review-workflow"
+      ],
+      "at": "2026-09-01T08:31:21.249Z",
+      "status": "DONE"
+    },
+    {
+      "ordinal": 14,
+      "processCode": "EMISSION_CALCULATION",
+      "stepCode": "EMISSION_CALCULATION_04_APPROVE",
+      "actor": "APPROVER",
+      "endpoints": [
+        "POST /approval/decision",
+        "GET /calculation",
+        "GET/POST /result-lock",
+        "GET /result-lock/audit"
+      ],
+      "at": "2026-09-01T08:31:21.404Z",
+      "status": "DONE",
+      "calculationId": 477,
+      "lockIntegrity": "VERIFIED"
+    },
+    {
+      "ordinal": 15,
+      "processCode": "REPORT_CERTIFICATION",
+      "stepCode": "REPORT_CERTIFICATION_01_PLAN",
+      "actor": "COMPANY_MANAGER",
+      "endpoints": [
+        "GET /completion"
+      ],
+      "at": "2026-09-01T08:31:21.504Z",
+      "status": "DONE"
+    },
+    {
+      "ordinal": 16,
+      "processCode": "REPORT_CERTIFICATION",
+      "stepCode": "REPORT_CERTIFICATION_02_WORK",
+      "actor": "CALCULATOR",
+      "endpoints": [
+        "POST /reports"
+      ],
+      "at": "2026-09-01T08:31:21.531Z",
+      "status": "DONE",
+      "reportId": 453
+    },
+    {
+      "ordinal": 17,
+      "processCode": "REPORT_CERTIFICATION",
+      "stepCode": "REPORT_CERTIFICATION_03_VERIFY",
+      "actor": "VERIFIER",
+      "endpoints": [
+        "POST /reports/{id}/finalize"
+      ],
+      "at": "2026-09-01T08:31:21.554Z",
+      "status": "DONE",
+      "reportId": 453
+    },
+    {
+      "ordinal": 18,
+      "processCode": "REPORT_CERTIFICATION",
+      "stepCode": "REPORT_CERTIFICATION_04_APPROVE",
+      "actor": "APPROVER",
+      "endpoints": [
+        "POST /reports/{id}/issue",
+        "POST /reports/{id}/download",
+        "GET /api/public/report-certificates/{id}"
+      ],
+      "at": "2026-09-01T08:31:21.662Z",
+      "status": "DONE",
+      "reportId": 453,
+      "certificateId": "CER-2026-5758CB98-29A",
+      "certificateValid": true
+    },
+    {
+      "ordinal": 19,
+      "processCode": "REGULATORY_SUBMISSION",
+      "stepCode": "REGULATORY_SUBMISSION_S1",
+      "actor": "COMPANY_MANAGER",
+      "endpoints": [
+        "POST /regulatory-submissions"
+      ],
+      "at": "2026-09-01T08:31:21.692Z",
+      "status": "DONE",
+      "regulatoryId": 440
+    },
+    {
+      "ordinal": 20,
+      "processCode": "REGULATORY_SUBMISSION",
+      "stepCode": "REGULATORY_SUBMISSION_S2",
+      "actor": "COMPANY_MANAGER",
+      "endpoints": [
+        "POST /regulatory-submissions/{id}/transition:SUBMIT"
+      ],
+      "at": "2026-09-01T08:31:21.715Z",
+      "status": "DONE",
+      "regulatoryId": 440
+    },
+    {
+      "ordinal": 21,
+      "processCode": "REGULATORY_SUBMISSION",
+      "stepCode": "REGULATORY_SUBMISSION_S3",
+      "actor": "VERIFIER",
+      "endpoints": [
+        "POST /regulatory-submissions/{id}/transition:RECORD_RECEIPT"
+      ],
+      "at": "2026-09-01T08:31:21.744Z",
+      "status": "DONE",
+      "regulatoryId": 440
+    },
+    {
+      "ordinal": 22,
+      "processCode": "REGULATORY_SUBMISSION",
+      "stepCode": "REGULATORY_SUBMISSION_S4",
+      "actor": "APPROVER",
+      "endpoints": [
+        "POST /regulatory-submissions/{id}/transition:ACCEPT"
+      ],
+      "at": "2026-09-01T08:31:21.774Z",
+      "status": "DONE",
+      "regulatoryId": 440
+    }
+  ],
+  "authorization": [
+    {
+      "action": "REPORT_BEFORE_RESULT_LOCK",
+      "expected": 409,
+      "actual": 409
+    },
+    {
+      "action": "COMPANY_MANAGER_CANNOT_ISSUE_CERTIFICATE",
+      "expected": 403,
+      "actual": 403
+    }
+  ],
+  "visual": [
+    {
+      "ordinal": 1,
+      "route": "/emission/project/create",
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_SETUP",
+      "actor": "COMPANY_MANAGER",
+      "account": "qaowner26",
+      "requestId": "PRJ-2026-F05D14",
+      "http": 200,
+      "actualPath": "/emission/project/create",
+      "mounted": true,
+      "expectedTextVisible": true,
+      "overflow": false,
+      "screenshot": "/opt/resonance-data/dev-worktrees/certificate-verification/var/test-evidence/seven-step-visual/1788251480406-1lottx/01-EMISSION_PROJECT_SETUP.png"
+    },
+    {
+      "ordinal": 2,
+      "route": "/emission/activity-data",
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_COLLECT",
+      "actor": "SITE_DATA_OWNER",
+      "account": "qadata26",
+      "requestId": "PRJ-2026-F05D14",
+      "http": 200,
+      "actualPath": "/emission/activity-data",
+      "mounted": true,
+      "expectedTextVisible": true,
+      "overflow": false,
+      "screenshot": "/opt/resonance-data/dev-worktrees/certificate-verification/var/test-evidence/seven-step-visual/1788251480406-1lottx/02-EMISSION_PROJECT_COLLECT.png"
+    },
+    {
+      "ordinal": 3,
+      "route": "/emission/calculation",
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_CALCULATE",
+      "actor": "CALCULATOR",
+      "account": "qacalc26",
+      "requestId": "PRJ-2026-F05D14",
+      "http": 200,
+      "actualPath": "/emission/calculation",
+      "mounted": true,
+      "expectedTextVisible": true,
+      "overflow": false,
+      "screenshot": "/opt/resonance-data/dev-worktrees/certificate-verification/var/test-evidence/seven-step-visual/1788251480406-1lottx/03-EMISSION_PROJECT_CALCULATE.png"
+    },
+    {
+      "ordinal": 4,
+      "route": "/emission/validate",
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_VALIDATE",
+      "actor": "VERIFIER",
+      "account": "qaverify26",
+      "requestId": "PRJ-2026-F05D14",
+      "http": 200,
+      "actualPath": "/emission/validate",
+      "mounted": true,
+      "expectedTextVisible": true,
+      "overflow": false,
+      "screenshot": "/opt/resonance-data/dev-worktrees/certificate-verification/var/test-evidence/seven-step-visual/1788251480406-1lottx/04-EMISSION_PROJECT_VALIDATE.png"
+    },
+    {
+      "ordinal": 5,
+      "route": "/emission/activity-data",
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_CORRECT",
+      "actor": "SITE_DATA_OWNER",
+      "account": "qadata26",
+      "requestId": "PRJ-2026-F05D14",
+      "http": 200,
+      "actualPath": "/emission/activity-data",
+      "mounted": true,
+      "expectedTextVisible": true,
+      "overflow": false,
+      "screenshot": "/opt/resonance-data/dev-worktrees/certificate-verification/var/test-evidence/seven-step-visual/1788251480406-1lottx/05-EMISSION_PROJECT_CORRECT.png"
+    },
+    {
+      "ordinal": 6,
+      "route": "/emission/validate",
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_APPROVE",
+      "actor": "APPROVER",
+      "account": "qaapprove26",
+      "requestId": "PRJ-2026-F05D14",
+      "http": 200,
+      "actualPath": "/emission/validate",
+      "mounted": true,
+      "expectedTextVisible": true,
+      "overflow": false,
+      "screenshot": "/opt/resonance-data/dev-worktrees/certificate-verification/var/test-evidence/seven-step-visual/1788251480406-1lottx/06-EMISSION_PROJECT_APPROVE.png"
+    },
+    {
+      "ordinal": 7,
+      "route": "/emission/report_submit",
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_REPORT",
+      "actor": "COMPANY_MANAGER",
+      "account": "qaowner26",
+      "requestId": "PRJ-2026-F05D14",
+      "http": 200,
+      "actualPath": "/emission/report_submit",
+      "mounted": true,
+      "expectedTextVisible": true,
+      "overflow": false,
+      "screenshot": "/opt/resonance-data/dev-worktrees/certificate-verification/var/test-evidence/seven-step-visual/1788251480406-1lottx/07-EMISSION_PROJECT_REPORT.png"
+    },
+    {
+      "route": "/emission/report-download",
+      "resultLockVerified": true,
+      "certificateVisible": true,
+      "overflow": false
+    }
+  ],
+  "projectId": "PRJ-2026-F05D14",
+  "cleanup": true,
+  "simulation": {
+    "actor": "CALCULATOR",
+    "account": "qacalc26",
+    "input": {
+      "scenarioCode": "BALANCED",
+      "techInvestment": 51,
+      "efficiencyGain": 63,
+      "renewableRate": 36,
+      "ccusScale": 21
+    },
+    "output": {
+      "scenarioId": 218,
+      "version": 1,
+      "projectedReduction": 18150,
+      "unit": "tCO2e"
+    },
+    "create": true,
+    "replay": true,
+    "readback": true
+  },
+  "downloadAudit": {
+    "http": 200,
+    "bytes": 16,
+    "contentType": "application/json",
+    "success": true
+  },
+  "renderedPdf": {
+    "path": "/opt/resonance-data/dev-worktrees/certificate-verification/var/test-evidence/seven-step-visual/1788251480406-1lottx/08-EMISSION_PROJECT_REPORT.pdf",
+    "header": "%PDF-",
+    "bytes": 700681,
+    "contentType": "application/pdf",
+    "certificateId": "CER-2026-5758CB98-29A",
+    "certificateVisible": true
+  },
+  "finishedAt": "2026-09-01T08:31:32.582Z",
+  "durationMs": 12337,
+  "completion": {
+    "checklist": [
+      {
+        "code": "BASIC_INFO",
+        "status": "DONE"
+      },
+      {
+        "code": "ACTIVITY_DATA",
+        "status": "DONE"
+      },
+      {
+        "code": "CALCULATION",
+        "status": "DONE"
+      },
+      {
+        "code": "VERIFICATION",
+        "status": "DONE"
+      },
+      {
+        "code": "APPROVAL",
+        "status": "DONE"
+      },
+      {
+        "code": "REPORT",
+        "status": "DONE"
+      },
+      {
+        "code": "REGULATORY_SUBMISSION",
+        "status": "DONE"
+      }
+    ],
+    "extensionTaskCount": 1,
+    "metrics": {
+      "activityCount": 1,
+      "qualityPassCount": 3,
+      "approvedSubmissions": 1,
+      "totalEmission": 0.02606,
+      "finalizedReports": 1,
+      "activeCertificates": 1,
+      "accessCount": 1
+    }
+  },
+  "residualTaskCount": 0
+}

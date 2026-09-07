@@ -525,9 +525,12 @@
 
     <select id="countAuthorFeaturePermission" parameterType="map" resultType="int">
         SELECT COUNT(*)
-        FROM COMTNAUTHORFUNCTIONRELATE
-        WHERE AUTHOR_CODE = #{authorCode}
-          AND FEATURE_CODE = #{featureCode}
+        FROM COMTNAUTHORFUNCTIONRELATE R
+        INNER JOIN COMTNMENUFUNCTIONINFO F
+            ON F.FEATURE_CODE = R.FEATURE_CODE
+        WHERE R.AUTHOR_CODE = #{authorCode}
+          AND R.FEATURE_CODE = #{featureCode}
+          AND COALESCE(F.USE_AT, 'N') = 'Y'
     </select>
 
     <select id="countAuthorFeatureRelationsByFeatureCode" parameterType="string" resultType="int">

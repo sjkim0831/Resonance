@@ -13,6 +13,8 @@ import egovframework.com.feature.auth.dto.request.LoginRequestDTO;
 import egovframework.com.feature.auth.dto.response.LoginResponseDTO;
 import egovframework.com.feature.auth.mapper.AuthLoginMapper;
 import egovframework.com.feature.auth.service.AuthService;
+import egovframework.com.feature.auth.service.CredentialMutationLockService;
+import egovframework.com.feature.auth.service.CredentialRevocationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -20,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.apache.commons.codec.binary.Base64;
 import org.egovframe.rte.fdl.cmmn.EgovAbstractServiceImpl;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
 
 import java.nio.charset.StandardCharsets;
@@ -44,6 +47,8 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
     private final PasswordResetHistoryRepository passwordResetHistoryRepository;
     private final AuthLoginMapper authLoginMapper;
     private final ProjectRuntimeContext projectRuntimeContext;
+    private final CredentialMutationLockService credentialMutationLockService;
+    private final CredentialRevocationService credentialRevocationService;
 
     @Override
     public LoginResponseDTO actionLogin(LoginRequestDTO loginVO) {
@@ -66,7 +71,7 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
                     LoginResponseDTO employeeUser = fallbackEmployeeLogin(userId, loginVO.getUserPw());
                     return employeeUser;
                 }
-                if (!"A".equalsIgnoreCase(enterpriseUser.getMemberStatus())) {
+                if (!"P".equalsIgnoreCase(enterpriseUser.getMemberStatus())) {
                     log.warn("Blocked enterprise login before approval: userId={}, status={}", userId,
                             enterpriseUser.getMemberStatus());
                     return null;
@@ -122,7 +127,7 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
 
         switch (userSe) {
             case "GNR": // 일반회원
-                return getLoginInfo(genRepository::findById, userId, result -> new LoginIncorrectDTO(
+                return getLoginInfo(this::findGeneralMember, userId, result -> new LoginIncorrectDTO(
                         result.getMberId(), result.getPassword(), result.getMberNm(), userSe,
                         result.getEsntlId(), getLockAt(result.getLockAt()), getLockCnt(result.getLockCnt())));
             case "ENT": // 기업회원
@@ -135,7 +140,7 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
                                 result.getEmplyrId(), result.getPassword(), result.getUserNm(), "USR",
                                 result.getEsntlId(), getLockAt(result.getLockAt()), getLockCnt(result.getLockCnt()))));
             case "USR": // 업무사용자
-                return getLoginInfo(empRepository::findById, userId, result -> new LoginIncorrectDTO(
+                return getLoginInfo(this::findEmployeeMember, userId, result -> new LoginIncorrectDTO(
                         result.getEmplyrId(), result.getPassword(), result.getUserNm(), userSe,
                         result.getEsntlId(), getLockAt(result.getLockAt()), getLockCnt(result.getLockCnt())));
             default:
@@ -183,7 +188,7 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
         }
 
         // 비밀번호가 맞는 경우
-        if (matchesPassword(rawPassword, userId, loginIncorrectVO.getUserPw())) {
+        if (matchesPassword(rawPassword, loginIncorrectVO.getUserId(), loginIncorrectVO.getUserPw())) {
             saveLoginIncorrect(userId, userSe, "E", lockCnt);
             return "E";
         }
@@ -208,7 +213,7 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
         LocalDateTime now = LocalDateTime.now();
         switch (userSe) {
             case "GNR": // 일반회원
-                genRepository.findById(userId).ifPresent(gnrlMber -> {
+                findGeneralMember(userId).ifPresent(gnrlMber -> {
                     updateLockStatus(gnrlMber, processCode, lockCnt, now);
                     genRepository.save(gnrlMber);
                 });
@@ -220,7 +225,7 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
                 });
                 break;
             case "USR": // 업무사용자
-                empRepository.findById(userId).ifPresent(emplyrInfo -> {
+                findEmployeeMember(userId).ifPresent(emplyrInfo -> {
                     updateLockStatus(emplyrInfo, processCode, lockCnt, now);
                     empRepository.save(emplyrInfo);
                 });
@@ -268,8 +273,12 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
         if (ObjectUtils.isEmpty(rawPassword) || ObjectUtils.isEmpty(userId) || ObjectUtils.isEmpty(storedPassword)) {
             return false;
         }
-        String encoded = encryptPassword(rawPassword, userId);
-        return Objects.equals(encoded, storedPassword) || Objects.equals(rawPassword, storedPassword);
+        String normalizedSalt = userId.toLowerCase(java.util.Locale.ROOT);
+        String normalizedEncoded = encryptPassword(rawPassword, normalizedSalt);
+        String legacyEncoded = encryptPassword(rawPassword, userId);
+        return Objects.equals(normalizedEncoded, storedPassword)
+                || Objects.equals(legacyEncoded, storedPassword)
+                || Objects.equals(rawPassword, storedPassword);
     }
 
     private String normalizeUserId(String userId) {
@@ -384,20 +393,25 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean resetPassword(String userId, String newPassword) {
         return resetPassword(userId, newPassword, null, null, "SELF_SERVICE");
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean resetPassword(String userId, String newPassword, String resetByUserId, String resetIp, String resetSource) {
-        if (ObjectUtils.isEmpty(userId) || ObjectUtils.isEmpty(newPassword)) {
+        String normalizedUserId = normalizeUserId(userId);
+        if (ObjectUtils.isEmpty(normalizedUserId) || ObjectUtils.isEmpty(newPassword)) {
             return false;
         }
 
-        String encPassword = encryptPassword(newPassword, userId);
+        credentialMutationLockService.acquireInCurrentTransaction(normalizedUserId);
+        String encPassword = encryptPassword(newPassword,
+                normalizedUserId.toLowerCase(java.util.Locale.ROOT));
         LocalDateTime now = LocalDateTime.now();
 
-        Optional<EntrprsMber> entOpt = findEnterpriseMember(userId);
+        Optional<EntrprsMber> entOpt = findEnterpriseMember(normalizedUserId);
         if (entOpt.isPresent()) {
             EntrprsMber entity = entOpt.get();
             entity.setEntrprsMberPassword(encPassword);
@@ -406,11 +420,11 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
             entity.setLockCnt(0);
             entity.setLockLastPnttm(null);
             entRepository.save(entity);
-            savePasswordResetHistorySafely(userId, "ENT", resetByUserId, resetIp, resetSource, now);
+            completePasswordReset(normalizedUserId, "ENT", resetByUserId, resetIp, resetSource, now);
             return true;
         }
 
-        Optional<GnrlMber> gnrOpt = genRepository.findById(userId);
+        Optional<GnrlMber> gnrOpt = findGeneralMember(normalizedUserId);
         if (gnrOpt.isPresent()) {
             GnrlMber entity = gnrOpt.get();
             entity.setPassword(encPassword);
@@ -419,11 +433,11 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
             entity.setLockCnt(0);
             entity.setLockLastPnttm(null);
             genRepository.save(entity);
-            savePasswordResetHistorySafely(userId, "GNR", resetByUserId, resetIp, resetSource, now);
+            completePasswordReset(normalizedUserId, "GNR", resetByUserId, resetIp, resetSource, now);
             return true;
         }
 
-        Optional<EmplyrInfo> usrOpt = empRepository.findById(userId);
+        Optional<EmplyrInfo> usrOpt = findEmployeeMember(normalizedUserId);
         if (usrOpt.isPresent()) {
             EmplyrInfo entity = usrOpt.get();
             entity.setPassword(encPassword);
@@ -432,7 +446,80 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
             entity.setLockCnt(0);
             entity.setLockLastPnttm(null);
             empRepository.save(entity);
-            savePasswordResetHistorySafely(userId, "USR", resetByUserId, resetIp, resetSource, now);
+            completePasswordReset(normalizedUserId, "USR", resetByUserId, resetIp, resetSource, now);
+            return true;
+        }
+
+        return false;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean resetPassword(String userId, String userSe, String newPassword, String resetByUserId,
+            String resetIp, String resetSource) {
+        String normalizedUserId = normalizeUserId(userId);
+        if (ObjectUtils.isEmpty(normalizedUserId) || ObjectUtils.isEmpty(userSe) || ObjectUtils.isEmpty(newPassword)) {
+            return false;
+        }
+
+        String normalizedUserSe = userSe.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!List.of("ENT", "GNR", "USR").contains(normalizedUserSe)) {
+            return false;
+        }
+
+        credentialMutationLockService.acquireInCurrentTransaction(normalizedUserId);
+        String encPassword = encryptPassword(newPassword,
+                normalizedUserId.toLowerCase(java.util.Locale.ROOT));
+        LocalDateTime now = LocalDateTime.now();
+
+        if ("ENT".equals(normalizedUserSe)) {
+            Optional<EntrprsMber> member = findEnterpriseMember(normalizedUserId)
+                    .filter(entity -> List.of("A", "P").contains(String.valueOf(entity.getEntrprsMberStus()).toUpperCase(java.util.Locale.ROOT)));
+            if (member.isEmpty()) {
+                return false;
+            }
+            EntrprsMber entity = member.get();
+            entity.setEntrprsMberPassword(encPassword);
+            entity.setChgPwdLastPnttm(now);
+            entity.setLockAt(null);
+            entity.setLockCnt(0);
+            entity.setLockLastPnttm(null);
+            entRepository.save(entity);
+            completePasswordReset(normalizedUserId, normalizedUserSe, resetByUserId, resetIp, resetSource, now);
+            return true;
+        }
+
+        if ("GNR".equals(normalizedUserSe)) {
+            Optional<GnrlMber> member = findGeneralMember(normalizedUserId)
+                    .filter(entity -> "P".equalsIgnoreCase(entity.getMberStus()));
+            if (member.isEmpty()) {
+                return false;
+            }
+            GnrlMber entity = member.get();
+            entity.setPassword(encPassword);
+            entity.setChgPwdLastPnttm(now);
+            entity.setLockAt(null);
+            entity.setLockCnt(0);
+            entity.setLockLastPnttm(null);
+            genRepository.save(entity);
+            completePasswordReset(normalizedUserId, normalizedUserSe, resetByUserId, resetIp, resetSource, now);
+            return true;
+        }
+
+        if ("USR".equals(normalizedUserSe)) {
+            Optional<EmplyrInfo> member = findEmployeeMember(normalizedUserId)
+                    .filter(entity -> "P".equalsIgnoreCase(entity.getEmplyrStusCode()));
+            if (member.isEmpty()) {
+                return false;
+            }
+            EmplyrInfo entity = member.get();
+            entity.setPassword(encPassword);
+            entity.setChgPwdLastPnttm(now);
+            entity.setLockAt(null);
+            entity.setLockCnt(0);
+            entity.setLockLastPnttm(null);
+            empRepository.save(entity);
+            completePasswordReset(normalizedUserId, normalizedUserSe, resetByUserId, resetIp, resetSource, now);
             return true;
         }
 
@@ -469,13 +556,10 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
         passwordResetHistoryRepository.save(history);
     }
 
-    private void savePasswordResetHistorySafely(String userId, String userSe, String resetByUserId, String resetIp,
+    private void completePasswordReset(String userId, String userSe, String resetByUserId, String resetIp,
             String resetSource, LocalDateTime resetPnttm) {
-        try {
-            savePasswordResetHistory(userId, userSe, resetByUserId, resetIp, resetSource, resetPnttm);
-        } catch (Exception e) {
-            log.warn("Failed to save credential reset audit history. userId={}, userSe={}", userId, userSe, e);
-        }
+        savePasswordResetHistory(userId, userSe, resetByUserId, resetIp, resetSource, resetPnttm);
+        credentialRevocationService.revokeAfterPasswordChange(userId);
     }
 
     private String normalizeAuditValue(String value) {
@@ -490,16 +574,27 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
         }
         String projectId = currentProjectId();
         if (!projectId.isEmpty()) {
-            Optional<EntrprsMber> projectScoped = entRepository.findByEntrprsMberIdAndProjectId(normalizedUserId, projectId);
+            Optional<EntrprsMber> projectScoped = entRepository
+                    .findFirstByEntrprsMberIdIgnoreCaseAndProjectId(normalizedUserId, projectId);
             if (projectScoped.isPresent()) {
                 return projectScoped;
             }
         }
-        return entRepository.findById(normalizedUserId);
+        return entRepository.findFirstByEntrprsMberIdIgnoreCase(normalizedUserId);
     }
 
     private Optional<EmplyrInfo> findEmployeeMember(String userId) {
-        return empRepository.findById(normalizeUserId(userId));
+        String normalizedUserId = normalizeUserId(userId);
+        return ObjectUtils.isEmpty(normalizedUserId)
+                ? Optional.empty()
+                : empRepository.findFirstByEmplyrIdIgnoreCase(normalizedUserId);
+    }
+
+    private Optional<GnrlMber> findGeneralMember(String userId) {
+        String normalizedUserId = normalizeUserId(userId);
+        return ObjectUtils.isEmpty(normalizedUserId)
+                ? Optional.empty()
+                : genRepository.findFirstByMberIdIgnoreCase(normalizedUserId);
     }
 
     private String currentProjectId() {

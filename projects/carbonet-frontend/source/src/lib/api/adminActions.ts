@@ -142,7 +142,7 @@ export async function saveDeptRoleMapping(
   }
 ) {
   return postAdminAction<{ success?: boolean; message?: string } & Record<string, unknown>>(
-    "/api/admin/dept-role-mapping/save",
+    `/api/admin/dept-role-mapping/save?insttId=${encodeURIComponent(payload.insttId)}`,
     payload,
     "Failed to save dept mapping",
     buildJsonHeaders(session)
@@ -158,7 +158,7 @@ export async function saveDeptRoleMember(
   }
 ) {
   return postAdminAction<{ success?: boolean; message?: string } & Record<string, unknown>>(
-    "/api/admin/dept-role-mapping/member-save",
+    `/api/admin/dept-role-mapping/member-save?insttId=${encodeURIComponent(payload.insttId)}`,
     payload,
     "Failed to save dept member role",
     buildJsonHeaders(session)

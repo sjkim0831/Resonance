@@ -181,11 +181,10 @@ export function AuthChangeMigrationPage() {
     setMessage("");
     setSavingEmplyrId(emplyrId);
     saveAdminAuthChange(session, { emplyrId, authorCode: nextAuthorCode })
-      .then(() => loadPage(session))
-      .then(() => {
+      .then((result) => {
         setSelectedAdminId(emplyrId);
         setRestoreEmplyrId(emplyrId);
-        setMessage(t(page, "권한 변경을 저장했습니다.", "Authority change has been saved."));
+        setMessage(t(page, `권한 변경 요청을 접수했습니다. 요청 ID: ${String(result.requestId || "-")} · 승인 완료 후 반영됩니다.`, `Authority change request accepted: ${String(result.requestId || "-")}. It will be applied after approval.`));
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setSavingEmplyrId(""));
@@ -212,7 +211,7 @@ export function AuthChangeMigrationPage() {
       await loadPage(session);
       setSelectedAdminId(pendingChanges[0]?.emplyrId || "");
       setRestoreEmplyrId(pendingChanges[0]?.emplyrId || "");
-      setMessage(t(page, "권한 변경을 일괄 저장했습니다.", "Authority changes have been saved in bulk."));
+      setMessage(t(page, "권한 변경 요청을 일괄 접수했습니다. 검증·승인 완료 후 반영됩니다.", "Authority change requests were submitted and will be applied after verification and approval."));
     } catch (err) {
       setError(err instanceof Error ? err.message : t(page, "일괄 저장에 실패했습니다.", "Bulk save failed."));
     } finally {

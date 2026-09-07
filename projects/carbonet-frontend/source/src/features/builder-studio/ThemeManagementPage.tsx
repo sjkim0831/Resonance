@@ -235,7 +235,7 @@ function ThemeModal({ theme, onClose, onSave }: ThemeModalProps) {
             <input
               type="checkbox"
               checked={form.isDefault}
-              onChange={e => setForm({ ...form, isDefault: e.target.checked })}
+              onChange={e => setForm({ ...form, isDefault: e.target.checked })} className="krds-control-native"
             />
             <span className="text-sm">기본 테마로 설정</span>
           </label>

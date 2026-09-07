@@ -14,6 +14,7 @@ frontend_required=false
 backend_required=false
 database_required=false
 infrastructure_required=false
+backstage_required=false
 catalog_only=true
 declare -a tests=()
 declare -a reasons=()
@@ -65,6 +66,39 @@ while IFS= read -r path; do
       backend_required=true; catalog_only=false
       add_test "backend:related-test"
       add_reason "backend-test"
+      ;;
+    platform/control-plane/backstage/packages/app/e2e-tests/*|\
+    platform/control-plane/backstage/playwright.config.ts)
+      # Browser specifications and their runner configuration verify the live
+      # control plane; they must not rebuild its production image.
+      infrastructure_required=true
+      add_test "backstage:visual-e2e"
+      add_reason "backstage-test-only"
+      ;;
+    platform/control-plane/backstage/*|deploy/k8s/control-plane/backstage.yaml)
+      # Backstage owns the design/development/operations control-plane UI and
+      # has an independent image and rollout. Never rebuild Carbonet for it,
+      # but do require its dedicated deployment pipeline.
+      infrastructure_required=true; backstage_required=true
+      add_test "control-plane:validate"
+      add_test "backstage:build-deploy"
+      add_reason "backstage-runtime"
+      ;;
+    platform/control-plane/catalog/*)
+      # Production Backstage serves these files from a ConfigMap. Synchronize
+      # and verify the live catalog without rebuilding the Backstage image.
+      infrastructure_required=true
+      add_test "control-plane:validate"
+      add_test "backstage:catalog-sync"
+      add_reason "backstage-catalog"
+      ;;
+    platform/control-plane/*|deploy/k8s/control-plane/*)
+      # Backstage catalog and control-plane boundary declarations describe
+      # environments outside the Carbonet application runtime. Validate them,
+      # but never rebuild or roll the customer-facing Java/React workload.
+      infrastructure_required=true
+      add_test "control-plane:validate"
+      add_reason "control-plane-only"
       ;;
     ops/docker/*|deploy/*|manifests/*)
       runtime_required=true; backend_required=true; infrastructure_required=true; catalog_only=false
@@ -121,11 +155,12 @@ if [[ "$FORMAT" == "env" ]]; then
   printf 'PLAN_BACKEND_REQUIRED=%q\n' "$backend_required"
   printf 'PLAN_DATABASE_REQUIRED=%q\n' "$database_required"
   printf 'PLAN_INFRASTRUCTURE_REQUIRED=%q\n' "$infrastructure_required"
+  printf 'PLAN_BACKSTAGE_REQUIRED=%q\n' "$backstage_required"
   printf 'PLAN_CATALOG_ONLY=%q\n' "$catalog_only"
   printf 'PLAN_TESTS=%q\n' "$tests_csv"
   printf 'PLAN_REASONS=%q\n' "$reasons_csv"
 else
-  printf 'runtime=%s frontend=%s backend=%s database=%s infrastructure=%s catalogOnly=%s\n' \
-    "$runtime_required" "$frontend_required" "$backend_required" "$database_required" "$infrastructure_required" "$catalog_only"
+  printf 'runtime=%s frontend=%s backend=%s database=%s infrastructure=%s backstage=%s catalogOnly=%s\n' \
+    "$runtime_required" "$frontend_required" "$backend_required" "$database_required" "$infrastructure_required" "$backstage_required" "$catalog_only"
   printf 'tests=%s\nreasons=%s\n' "$tests_csv" "$reasons_csv"
 fi

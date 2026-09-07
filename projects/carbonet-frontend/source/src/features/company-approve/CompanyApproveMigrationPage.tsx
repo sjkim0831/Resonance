@@ -50,6 +50,7 @@ export function CompanyApproveMigrationPage() {
   const [reviewInsttId, setReviewInsttId] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const [masterInvitations, setMasterInvitations] = useState<Array<{ insttId?: string; email?: string; expiresAt?: string; activationPath?: string }>>([]);
   
   const sessionState = useFrontendSession();
 
@@ -62,6 +63,7 @@ export function CompanyApproveMigrationPage() {
       pageIndex: pageData.pageIndex,
       searchKeyword: pageData.searchKeyword,
       sbscrbSttus: pageData.status,
+      projectId: getSearchParam("projectId"),
       result: getSearchParam("result") || ""
     })
       .then(data => {
@@ -161,12 +163,15 @@ export function CompanyApproveMigrationPage() {
       selectedCount: selectedIds.length
     });
     try {
-      await submitCompanyApproveAction(session, {
+      const actionResult = await submitCompanyApproveAction(session, {
         action,
         insttId,
         selectedIds: insttId ? undefined : selectedIds,
         rejectReason
       });
+      const invitations = Array.isArray(actionResult.masterInvitations) ? actionResult.masterInvitations as Array<{ insttId?: string; email?: string; expiresAt?: string; activationPath?: string }> : [];
+      setMasterInvitations(invitations);
+      setMessage(invitations.length ? `${invitations.length}개 회원사 승인 및 기업 마스터 초대 발급이 완료되었습니다.` : "승인 처리가 완료되었습니다.");
       setReloadKey((current) => current + 1);
       setSelectedIds([]);
       if (insttId) {
@@ -209,6 +214,16 @@ export function CompanyApproveMigrationPage() {
       loadingLabel="회원사 승인 대상을 불러오는 중입니다."
     >
       {message ? <PageStatusNotice tone="success">{message}</PageStatusNotice> : null}
+      {masterInvitations.length ? <section className="mb-5 rounded-2xl border border-blue-200 bg-blue-50 p-5" aria-label="기업 마스터 초대">
+        <h2 className="text-lg font-black text-blue-950">기업 마스터 계정 초대</h2>
+        <p className="mt-1 text-sm text-blue-900">원문 토큰은 DB에 저장되지 않습니다. 아래 1회용 링크를 담당자에게 안전하게 전달하세요.</p>
+        <div className="mt-4 grid gap-3">{masterInvitations.map((invite, index) => {
+          const url = `${window.location.origin}${invite.activationPath || ""}`;
+          return <div className="rounded-xl border border-blue-200 bg-white p-4" key={`${invite.insttId || "invite"}-${index}`}>
+            <div className="flex flex-wrap items-center justify-between gap-3"><div><strong>{invite.insttId}</strong><p className="mt-1 text-xs text-slate-600">대상 {invite.email || "미등록"} · 만료 {invite.expiresAt}</p></div><button className="min-h-10 rounded-lg bg-blue-800 px-4 text-sm font-black text-white" type="button" onClick={() => navigator.clipboard.writeText(url)}>초대 링크 복사</button></div>
+          </div>;
+        })}</div>
+      </section> : null}
       {error || actionError ? <PageStatusNotice tone="error">{error || actionError}</PageStatusNotice> : null}
       {!loading && result && !result.canView ? (
         <MemberStateCard description="현재 계정으로는 회원사 승인 관리 화면을 조회할 수 없습니다." icon="lock" title="권한이 없습니다." tone="warning" />
@@ -254,10 +269,11 @@ export function CompanyApproveMigrationPage() {
             <>
               <CompanyApproveReviewContent reviewRow={reviewRow} />
               <section className="mt-6">
-                <label className="block">
+                <label className="block" htmlFor="company-approve-reject-reason">
                   <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-primary)]">반려 사유</span>
                   <textarea
                     className="gov-input min-h-[120px] py-3"
+                    id="company-approve-reject-reason"
                     onChange={(event) => setRejectReason(event.target.value)}
                     placeholder="회원사 반려 사유를 입력하세요."
                     value={rejectReason}

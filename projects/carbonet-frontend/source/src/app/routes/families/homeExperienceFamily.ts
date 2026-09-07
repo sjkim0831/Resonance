@@ -2,6 +2,7 @@ import { createRouteFamily, type PageUnitsOf, type RouteDefinitionsOf } from "..
 import { buildManifestBackedRoutePageContracts } from "./manifestBackedPageContracts";
 
 const HOME_EXPERIENCE_ROUTE_DEFINITIONS = [
+  { id: "company-manager-delegation", label: "회원사 담당자 위임·승계", group: "home", koPath: "/work/company-manager-delegation", enPath: "/en/work/company-manager-delegation" },
   { id: "home-alerts", label: "주요 알림", group: "home", koPath: "/home/alerts", enPath: "/en/home/alerts" },
   { id: "join-company-register", label: "공개 회원사 등록", group: "join", koPath: "/join/companyRegister", enPath: "/join/en/companyRegister" },
   { id: "join-company-register-complete", label: "회원사 등록 완료", group: "join", koPath: "/join/companyRegisterComplete", enPath: "/join/en/companyRegisterComplete" },
@@ -20,6 +21,7 @@ const HOME_EXPERIENCE_ROUTE_DEFINITIONS = [
   { id: "join-auth", label: "회원가입 본인확인", group: "join", koPath: "/join/step3", enPath: "/join/en/step3" },
   { id: "join-info", label: "회원가입 정보입력", group: "join", koPath: "/join/step4", enPath: "/join/en/step4" },
   { id: "join-complete", label: "회원가입 완료", group: "join", koPath: "/join/step5", enPath: "/join/en/step5" },
+  { id: "join-member-status", label: "회원가입 신청 상태 확인", group: "join", koPath: "/join/memberStatusSearch", enPath: "/join/en/memberStatusSearch" },
   { id: "mtn-index", label: "서비스 운영 대시보드", group: "home", koPath: "/mtn/index", enPath: "/en/mtn/index" },
   { id: "my-inquiry", label: "1:1 문의", group: "home", koPath: "/mtn/my_inquiry", enPath: "/en/mtn/my_inquiry" },
   { id: "mtn-status", label: "서비스 상태", group: "home", koPath: "/mtn/status", enPath: "/en/mtn/status" },
@@ -37,6 +39,7 @@ const HOME_EXPERIENCE_ROUTE_DEFINITIONS = [
 ] as const satisfies RouteDefinitionsOf;
 
 const HOME_EXPERIENCE_PAGE_UNITS = [
+  { id: "company-manager-delegation", exportName: "CompanyManagerDelegationPage", loader: () => import("../../../features/company-manager-delegation/CompanyManagerDelegationPage") },
   { id: "home-alerts", exportName: "HomeAlertsPage", loader: () => import("../../../features/home-alerts/HomeAlertsPage") },
   { id: "edu-index", exportName: "EduIndexPage", loader: () => import("../../../features/major-menu-index/MajorMenuIndexPage") },
   { id: "edu-course-list", exportName: "EduCourseListMigrationPage", loader: () => import("../../../features/edu-course-list/EduCourseListMigrationPage") },
@@ -61,6 +64,7 @@ const HOME_EXPERIENCE_PAGE_UNITS = [
   { id: "join-auth", exportName: "JoinAuthMigrationPage", loader: () => import("../../../features/join-wizard/JoinAuthMigrationPage") },
   { id: "join-info", exportName: "JoinInfoMigrationPage", loader: () => import("../../../features/join-wizard/JoinInfoMigrationPage") },
   { id: "join-complete", exportName: "JoinCompleteMigrationPage", loader: () => import("../../../features/join-wizard/JoinCompleteMigrationPage") },
+  { id: "join-member-status", exportName: "JoinCompleteMigrationPage", loader: () => import("../../../features/join-wizard/JoinCompleteMigrationPage") },
   { id: "mypage-index", exportName: "MypageIndexPage", loader: () => import("../../../features/major-menu-index/MajorMenuIndexPage") },
   { id: "mypage", exportName: "MypageMigrationPage", loader: () => import("../../../features/mypage/MypageMigrationPage") },
   { id: "mypage-email", exportName: "MypageEmailMigrationPage", loader: () => import("../../../features/mypage-email/MypageEmailMigrationPage") },

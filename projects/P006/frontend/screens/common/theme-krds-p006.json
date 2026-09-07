@@ -1,0 +1,26 @@
+{
+  "themeId": "theme-krds-p006",
+  "themeVersion": "1.0.0",
+  "name": "KRDS P006 Smart Factory",
+  "updatedAt": "2026-08-20T23:40:00+09:00",
+  "tokens": {
+    "--sdui-primary": "#246beb",
+    "--sdui-primary-dark": "#163f7a",
+    "--sdui-accent": "#008a6e",
+    "--sdui-surface": "#ffffff",
+    "--sdui-surface-subtle": "#f4f7fb",
+    "--sdui-text": "#1d1d1d",
+    "--sdui-text-muted": "#555d66",
+    "--sdui-border": "#c6cdd5",
+    "--sdui-danger": "#d50136",
+    "--sdui-warning": "#98690a",
+    "--sdui-success": "#087a55",
+    "--sdui-radius": "12px",
+    "--sdui-shadow": "0 8px 24px rgb(8 59 102 / 10%)"
+  },
+  "accessibility": {
+    "target": "WCAG 2.1 AA",
+    "minimumTargetSizePx": 44,
+    "focusIndicator": "3px #ffbf47"
+  }
+}

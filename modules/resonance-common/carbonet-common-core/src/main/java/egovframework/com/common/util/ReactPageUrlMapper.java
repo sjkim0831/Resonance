@@ -69,7 +69,12 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
         registerAdmin(adminPathToRoute, adminRouteToPath, "actor-process-governance", "/admin/system/actor-process", "/admin/system/actor-process");
         registerAdmin(adminPathToRoute, adminRouteToPath, "ops-capability-bridge", "/admin/system/ops-bridge", "/admin/system/ops-bridge");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_list", "/emission/project_list", "/en/emission/project_list", "/emission/project_list");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_portfolio", "/emission/project-portfolio", "/en/emission/project-portfolio", "/emission/project-portfolio");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_work_assignment", "/emission/work-assignment", "/en/emission/work-assignment", "/emission/work-assignment");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "home_alerts", "/home/alerts", "/en/home/alerts", "/home/alerts");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-company-reapply", "/join/companyReapply", "/join/en/companyReapply", "/join/companyReapply", "/join/companyreapply");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-member-status-search", "/join/memberStatusSearch", "/join/en/memberStatusSearch", "/join/memberStatusSearch");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-member-status-detail", "/join/memberStatusDetail", "/join/en/memberStatusDetail", "/join/memberStatusDetail");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_create", "/emission/project/create", "/en/emission/project/create", "/emission/project/create");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_detail", "/emission/project/detail", "/en/emission/project/detail", "/emission/project/detail");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_progress", "/emission/project/progress", "/en/emission/project/progress", "/emission/project/progress");
@@ -131,6 +136,7 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "mtn_status", "/mtn/status", "/en/mtn/status", "/mtn/status");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "support_inquiry", "/support/inquiry", "/en/support/inquiry", "/support/inquiry");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "mypage_email", "/mypage/email", "/en/mypage/email", "/mypage/email");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "mypage_company", "/mypage/company", "/en/mypage/company", "/mypage/company");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "mypage_staff", "/mypage/staff", "/en/mypage/staff", "/mypage/staff");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "download_list", "/support/download_list", "/en/support/download_list", "/support/download_list");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "notice_list", "/support/notice_list", "/en/support/notice_list", "/support/notice_list");

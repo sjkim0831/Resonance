@@ -1,0 +1,775 @@
+{
+  "status": "PASS",
+  "promoted": [
+    {
+      "assetId": "A0127",
+      "name": "우수casco_모델링항목_sheet",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.87,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0129",
+      "name": "dwgviewr",
+      "equipmentCode": "ladler",
+      "confidence": 0.92,
+      "preview": "icons/technical-reference.svg"
+    },
+    {
+      "assetId": "A0130",
+      "name": "LAYOUT",
+      "equipmentCode": "ladler",
+      "confidence": 0.92,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0131",
+      "name": "plot",
+      "equipmentCode": "ladler",
+      "confidence": 0.92,
+      "preview": "icons/technical-reference.svg"
+    },
+    {
+      "assetId": "A0132",
+      "name": "spare parts  QT",
+      "equipmentCode": "ladler",
+      "confidence": 0.92,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0133",
+      "name": "뷸러 래들 확인GAC -23527-001(2015-09-25)",
+      "equipmentCode": "ladler",
+      "confidence": 0.92,
+      "preview": "icons/technical-reference.svg"
+    },
+    {
+      "assetId": "A0134",
+      "name": "뷸러래들JSLB五连杆给汤机操作使用说明书_160525",
+      "equipmentCode": "ladler",
+      "confidence": 0.92,
+      "preview": "icons/manual-design.svg"
+    },
+    {
+      "assetId": "A0135",
+      "name": "electrical_part_list_2013-7-18",
+      "equipmentCode": "ladler",
+      "confidence": 0.92,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0136",
+      "name": "LAYOUT",
+      "equipmentCode": "trimming_machine",
+      "confidence": 0.9,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0137",
+      "name": "TRIMMING 타격기(전기)",
+      "equipmentCode": "trimming_machine",
+      "confidence": 0.9,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0138",
+      "name": "plot",
+      "equipmentCode": "trimming_machine",
+      "confidence": 0.9,
+      "preview": "icons/technical-reference.svg"
+    },
+    {
+      "assetId": "A0139",
+      "name": "그립퍼 타격바 지그 모음 (1 , 2차분 포함) - 20170223",
+      "equipmentCode": "trimming_machine",
+      "confidence": 0.9,
+      "preview": "icons/technical-reference.svg"
+    },
+    {
+      "assetId": "A0140",
+      "name": "보수점검사항",
+      "equipmentCode": "trimming_machine",
+      "confidence": 0.9,
+      "preview": "icons/technical-reference.svg"
+    },
+    {
+      "assetId": "A0149",
+      "name": "우수CASCO_네트워크_구성도_20180228",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.87,
+      "preview": "icons/manual-design.svg"
+    },
+    {
+      "assetId": "A0151",
+      "name": "Ecp_84__I_A4P__EN",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/technical-reference.svg"
+    },
+    {
+      "assetId": "A0152",
+      "name": "뷸러 PART LIST_REV01_170502",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0153",
+      "name": "뷸러_주조기_모델링_항목_LIST_형상+사진(컨셉)",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0154",
+      "name": "사출 부자재 도면",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/technical-reference.svg"
+    },
+    {
+      "assetId": "A0155",
+      "name": "DD_700026276-en",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0156",
+      "name": "DD_700026276-ko",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0157",
+      "name": "ED_700026276",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0158",
+      "name": "GCEO-00241-001UHZ000_05",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0159",
+      "name": "GCEO-00243-001UHZ000_01",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0160",
+      "name": "GCEO-00442-001UHZ000_02",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0161",
+      "name": "GCEO-10036-001UHZ000_03",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0162",
+      "name": "GCEO-10686-001UHZ000_01",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0163",
+      "name": "GCEU-00000-023UHZ000_06",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0164",
+      "name": "GCEU-00000-057UHZ000_07",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0165",
+      "name": "GCEU-00000-066UHZ000_12",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0166",
+      "name": "GCEU-00032-001UHZ000_03",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0167",
+      "name": "GCEU-00039-001UHZ000_03",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0168",
+      "name": "GCEU-00052-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0169",
+      "name": "GCEU-00056-001UHZ000_06",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0170",
+      "name": "GCEU-00146-001UHZ000_12",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0171",
+      "name": "GCEU-10031-001UHZ000_02",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0172",
+      "name": "GCEU-10032-001UHZ000_10",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0173",
+      "name": "GCEU-10035-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0174",
+      "name": "GCEU-10038-001UHZ000_02",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0175",
+      "name": "GCEU-10043-001UHZ000_02",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0176",
+      "name": "GCEU-10044-001UHZ000_03",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0177",
+      "name": "GCEU-10045-001UHZ000_02",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0178",
+      "name": "GCEU-10050-001UHZ000_02",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0179",
+      "name": "GCEU-10054-001UHZ000_03",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0180",
+      "name": "GCEU-10055-001UHZ000_03",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0181",
+      "name": "GCEU-10056-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0182",
+      "name": "GCEU-10057-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0183",
+      "name": "GCEU-10059-001UHZ000_03",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0184",
+      "name": "GCEU-10062-001UHZ000_02",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0185",
+      "name": "GCEU-10065-001UHZ000_02",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0186",
+      "name": "GCEU-10067-001UHZ000_01",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0187",
+      "name": "GCEU-10072-001UHZ000_02",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0188",
+      "name": "GCEU-10079-001UHZ000_04",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0189",
+      "name": "GCEU-10080-001UHZ000_03",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0190",
+      "name": "GCEU-10082-001UHZ000_03",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0191",
+      "name": "GCEU-10085-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0192",
+      "name": "GCEU-10089-001UHZ000_02",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0193",
+      "name": "GCEU-10091-001UHZ000_04",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0194",
+      "name": "GCEU-10092-001UHZ000_01",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0195",
+      "name": "GCEU-10099-001UHZ000_01",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0196",
+      "name": "GCEU-10101-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0197",
+      "name": "GCEU-10102-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0198",
+      "name": "GCEU-10103-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0199",
+      "name": "GCEU-10104-001UHZ000_02",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0200",
+      "name": "GCEU-10118-001UHZ000_04",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0201",
+      "name": "GCEU-10147-001UHZ000_02",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0202",
+      "name": "GCEU-10149-001UHZ000_01",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0203",
+      "name": "GCEU-10162-001UHZ000_06",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0204",
+      "name": "GCEU-10163-001UHZ000_04",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0205",
+      "name": "GCEU-10195-001UHZ000_03",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0206",
+      "name": "GCEU-10212-001UHZ000_01",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0207",
+      "name": "GCEU-10216-001UHZ000_04",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0208",
+      "name": "GCEU-10279-001UHZ000_04",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0209",
+      "name": "GCEU-10376-001UHZ000_03",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0210",
+      "name": "GCEU-10831-001UHZ000_02",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0211",
+      "name": "GCEU-11865-001UHZ000_01",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0212",
+      "name": "GCEU-11887-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0213",
+      "name": "GCEU-11890-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0214",
+      "name": "GCEU-11907-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0215",
+      "name": "GCEU-11921-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0216",
+      "name": "GCEU-11926-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0217",
+      "name": "GCEU-11934-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0218",
+      "name": "GCEU-11936-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0219",
+      "name": "GKM-81108-760UHM000_01",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0220",
+      "name": "GKM-84105-830UHZ000_01",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0221",
+      "name": "GKS-82104-810UHZ000_03",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0222",
+      "name": "GKU-10873-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0223",
+      "name": "GKU-82001-820UHZ000_03",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0224",
+      "name": "GKU-82002-820UHZ000_02",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0225",
+      "name": "GKU-82110-810UHZ000_07",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0226",
+      "name": "GKU-82195-820UHZ000_01",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0227",
+      "name": "GNS -40336-010UHZ000_10",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0228",
+      "name": "GNS-10031-001UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0229",
+      "name": "GNS-10047-001UHZ000_01",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0230",
+      "name": "GNS-10899-001UHZ000_02",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0231",
+      "name": "GNS-82038-810UHZ000_00",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0232",
+      "name": "GNS-82040-810UHZ000_01",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0233",
+      "name": "GNS-83032-810UHZ000_01",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0234",
+      "name": "HD_700026276-ko",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0235",
+      "name": "ID_700026276-en",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0236",
+      "name": "ID_700026276-ko",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0237",
+      "name": "OI_700026276-en",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0238",
+      "name": "OI_700026276-ko",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0239",
+      "name": "Spare_Parts-en",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0240",
+      "name": "Spare_Parts-ko",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0241",
+      "name": "주조기 모듈 list",
+      "equipmentCode": "casting_machine",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0242",
+      "name": "ass'y(20170425)",
+      "equipmentCode": "melting_furnace",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0245",
+      "name": "유지보수 및 PART LIST",
+      "equipmentCode": "melting_furnace",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    },
+    {
+      "assetId": "A0247",
+      "name": "DAMP200(이형제압송)",
+      "equipmentCode": "release_agent",
+      "confidence": 0.85,
+      "preview": "icons/drawing.svg"
+    },
+    {
+      "assetId": "A0248",
+      "name": "우수200",
+      "equipmentCode": "release_agent",
+      "confidence": 0.85,
+      "preview": "icons/list-check.svg"
+    }
+  ],
+  "summary": {
+    "generatedAt": "2026-08-15T02:53:47.304463+00:00",
+    "policy": "AUTO_APPROVED confidence >= 0.85 preview required manuals excluded",
+    "beforePlaceable": 465,
+    "promotedCount": 109,
+    "afterPlaceable": 574
+  }
+}

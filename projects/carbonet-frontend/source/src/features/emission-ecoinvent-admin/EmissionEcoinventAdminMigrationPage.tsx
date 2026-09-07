@@ -573,7 +573,7 @@ export function EmissionEcoinventAdminMigrationPage() {
                       onClick={() => chooseRow(row)}
                     >
                       <td className="px-4 py-3">
-                        <input checked={selectedIds.includes(datasetId)} onChange={() => toggleRow(row)} onClick={(event) => event.stopPropagation()} type="checkbox" />
+                        <input checked={selectedIds.includes(datasetId)} onChange={() => toggleRow(row)} onClick={(event) => event.stopPropagation()} type="checkbox" className="krds-control-native" />
                       </td>
                       <td className="px-4 py-3 font-bold text-[var(--kr-gov-blue)]">{textOf(row.koreanName) || "-"}</td>
                       <td className="px-4 py-3 font-bold">{textOf(row.productName) || "-"}</td>

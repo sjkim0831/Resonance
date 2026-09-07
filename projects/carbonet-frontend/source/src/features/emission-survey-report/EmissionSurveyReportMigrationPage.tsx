@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { logGovernanceScope } from "../../app/policy/debug";
 import {
   fetchSurveyEcoinventAiRecommendationPage,
@@ -12,9 +12,12 @@ import {
   verifySurveyReportPhoto,
   type ReportPdfFileVerificationResponse,
   type ReportPhotoVerificationResponse,
-  type ReportDatasetVerificationResponse
+  type ReportDatasetVerificationResponse,
+  type ReportOcrIssuanceEvidence,
+  type ReportVerificationDatasetPayload
 } from "../../lib/api/emission";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { buildResilientCsrfHeaders } from "../../lib/api/core";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { PageStatusNotice, WarningPanel } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -159,6 +162,23 @@ type ReportVerificationType = "EMISSION_SURVEY" | "LCA_SUMMARY";
 
 type ReportVerificationRecord = ReportVerificationPayload & {
   source: "browser-print";
+};
+
+type LcaWorkflowEvent = {
+  eventId?: number;
+  commandCode?: string;
+  toStatus?: string;
+  executedBy?: string;
+  executedAt?: string;
+};
+
+type LcaWorkflowRecord = {
+  workspaceId?: string;
+  businessKey?: string;
+  workflowStatus?: string;
+  assignedActor?: string;
+  payload?: { projectId?: string; productName?: string };
+  events?: LcaWorkflowEvent[];
 };
 
 function stableStringify(value: unknown): string {
@@ -328,7 +348,20 @@ function loadReportVerificationRecords() {
 
 function saveReportVerificationRecord(record: ReportVerificationRecord) {
   const records = loadReportVerificationRecords().filter((item) => item.certificateId !== record.certificateId);
-  window.localStorage.setItem(REPORT_VERIFICATION_STORAGE_KEY, JSON.stringify([record, ...records].slice(0, 100)));
+  const retained = [record, ...records].slice(0, 100);
+  while (retained.length > 0) {
+    try {
+      window.localStorage.setItem(REPORT_VERIFICATION_STORAGE_KEY, JSON.stringify(retained));
+      return true;
+    } catch (error) {
+      if (retained.length === 1) {
+        console.warn("[emission-survey-report:verification-cache]", error);
+        return false;
+      }
+      retained.pop();
+    }
+  }
+  return false;
 }
 
 function base64UrlEncode(value: string) {
@@ -372,7 +405,11 @@ async function createReportQrDataUrl(record: ReportVerificationRecord) {
 
 async function scanReportQrEvidence(images: Blob[]) {
   const { default: jsQR } = await import("jsqr");
-  for (const image of images) {
+  // Issued reports place the verification QR on the final identification page.
+  // Check that page first so added report pages do not multiply expensive full-image scans.
+  const candidateIndexes = Array.from(new Set([images.length - 1, 0])).filter((index) => index >= 0);
+  for (const imageIndex of candidateIndexes) {
+    const image = images[imageIndex];
     const bitmap = await createImageBitmap(image, { imageOrientation: "from-image" });
     const regions = [
       { x: 0.68, y: 0.68, width: 0.32, height: 0.32, scale: 4 },
@@ -405,6 +442,18 @@ async function scanReportQrEvidence(images: Blob[]) {
     bitmap.close();
   }
   return null;
+}
+
+async function withReportStageTimeout<T>(work: Promise<T>, timeoutMs: number, stage: string): Promise<T> {
+  let timeoutId = 0;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(`${stage}_TIMEOUT`)), timeoutMs);
+  });
+  try {
+    return await Promise.race([work, timeout]);
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 }
 
 function extractVerificationPayload(raw: string): ReportVerificationPayload | null {
@@ -558,7 +607,7 @@ async function preprocessReportPhoto(file: Blob) {
 async function recognizeReportPhotos(files: Blob[], onProgress: (progress: number, status: string) => void) {
   const images: Blob[] = [];
   for (let index = 0; index < files.length; index += 1) {
-    onProgress(Math.round((index / Math.max(1, files.length)) * 10), `IMAGE ${index + 1}/${files.length}`);
+    onProgress(12 + Math.round(((index + 1) / Math.max(1, files.length)) * 8), `IMAGE ${index + 1}/${files.length}`);
     images.push(await preprocessReportPhoto(files[index]));
   }
   const { createWorker, OEM } = await import("tesseract.js");
@@ -575,12 +624,12 @@ async function recognizeReportPhotos(files: Blob[], onProgress: (progress: numbe
     try {
       for (let imageIndex = 0; imageIndex < images.length; imageIndex += 1) {
         const base = languageIndex * images.length + imageIndex;
-        const result = await worker.recognize(images[imageIndex], {}, {
+        const result = await withReportStageTimeout(worker.recognize(images[imageIndex], {}, {
           text: true
-        });
+        }), 120_000, `OCR_PAGE_${imageIndex + 1}`);
         texts.push(result.data.text);
         confidences.push(result.data.confidence);
-        onProgress(10 + Math.round(((base + 1) / images.length) * 90), `${languages.join("+").toUpperCase()} ${imageIndex + 1}/${images.length}`);
+        onProgress(20 + Math.round(((base + 1) / images.length) * 80), `${languages.join("+").toUpperCase()} ${imageIndex + 1}/${images.length}`);
       }
     } finally {
       await worker.terminate();
@@ -588,6 +637,7 @@ async function recognizeReportPhotos(files: Blob[], onProgress: (progress: numbe
   }
   return {
     text: texts.filter(Boolean).join("\n"),
+    pageTexts: texts,
     confidence: confidences.length ? Math.max(...confidences) : 0
   };
 }
@@ -757,11 +807,71 @@ function nextAnimationFrame() {
   return new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 }
 
+function buildReportOcrIssuanceEvidence(article: HTMLElement, record: ReportVerificationDatasetPayload): ReportOcrIssuanceEvidence {
+  const pageDefinitions = [
+    ["SUMMARY", ".pdf-export-page.print-page"],
+    ["SECTION_BAR", ".pdf-chart-bar-page"],
+    ["SECTION_PIE", ".pdf-chart-pie-page"],
+    ["DETAIL_TABLE", ".pdf-table-export-page"],
+    ["DIGITAL_VERIFICATION", ".report-verification-footer"]
+  ] as const;
+  const pages = pageDefinitions.map(([pageType, selector], index) => {
+    const source = article.querySelector<HTMLElement>(selector);
+    if (!source) {
+      throw new Error(`Visible report page ${index + 1} (${pageType}) is unavailable for OCR registration.`);
+    }
+    const excluded = ".pdf-machine-readable,.lca-pdf-machine-readable,.print-hidden,.pdf-hidden,[aria-hidden='true'],button,input,select,textarea,script,style";
+    const pageBox = source.getBoundingClientRect();
+    const rows = Array.from(source.querySelectorAll("tr,.report-bar-row,.pdf-table-row"));
+    const walker = document.createTreeWalker(source, NodeFilter.SHOW_TEXT);
+    const segments: Array<{ segmentIndex: number; text: string; semanticTag: string; rowIndex: number; columnIndex: number; box: { x: number; y: number; width: number; height: number } }> = [];
+    let current = walker.nextNode();
+    while (current) {
+      const parent = current.parentElement;
+      const text = (current.textContent || "").replace(/\s+/g, " ").trim();
+      if (parent && text && !parent.closest(excluded)) {
+        const semantic = parent.closest<HTMLElement>("th,td,h1,h2,h3,p,li,span,div") || parent;
+        const row = parent.closest("tr,.report-bar-row,.pdf-table-row");
+        const cell = parent.closest<HTMLTableCellElement>("th,td");
+        const rect = semantic.getBoundingClientRect();
+        const normalize = (value: number, total: number) => total > 0 ? Math.round((value / total) * 10_000) : 0;
+        segments.push({
+          segmentIndex: segments.length,
+          text,
+          semanticTag: semantic.tagName.toLowerCase(),
+          rowIndex: row ? rows.indexOf(row) : -1,
+          columnIndex: cell ? cell.cellIndex : -1,
+          box: {
+            x: normalize(rect.left - pageBox.left, pageBox.width),
+            y: normalize(rect.top - pageBox.top, pageBox.height),
+            width: normalize(rect.width, pageBox.width),
+            height: normalize(rect.height, pageBox.height)
+          }
+        });
+      }
+      current = walker.nextNode();
+    }
+    const visibleText = segments.map((segment) => segment.text).join(" ").replace(/\s+/g, " ").trim();
+    if (visibleText.length < (pageType === "DIGITAL_VERIFICATION" ? 20 : 40)) {
+      throw new Error(`Visible report page ${index + 1} (${pageType}) has too few OCR fields.`);
+    }
+    return { pageNumber: index + 1, pageType, visibleText, segments };
+  });
+  return {
+    schemaVersion: 4,
+    certificateId: record.certificateId,
+    payloadHash: record.payloadHash,
+    integrityCode: record.integrityCode,
+    datasetHash: String(record.datasetHash || record.payloadHash),
+    pages
+  };
+}
+
 async function waitForReportFonts() {
   if (!document.fonts) {
     return;
   }
-  await Promise.all([
+  const fontLoads = [
     document.fonts.load('400 16px "Pretendard GOV"'),
     document.fonts.load('500 16px "Pretendard GOV"'),
     document.fonts.load('600 16px "Pretendard GOV"'),
@@ -769,7 +879,14 @@ async function waitForReportFonts() {
     document.fonts.load('800 16px "Pretendard GOV"'),
     document.fonts.load('900 16px "Pretendard GOV"'),
     document.fonts.ready
-  ]);
+  ];
+  const timeout = new Promise<void>((resolve) => {
+    window.setTimeout(resolve, 3_000);
+  });
+  // A missing optional font must not block issuance. Chromium can render the
+  // report with the configured fallback stack, so wait only for a bounded
+  // best-effort font settlement and continue on individual load failures.
+  await Promise.race([Promise.allSettled(fontLoads).then(() => undefined), timeout]);
 }
 
 function escapeReportStyleAttribute(value: string) {
@@ -798,10 +915,21 @@ async function buildInlinedReportStyles() {
   const nodes = Array.from(document.querySelectorAll<HTMLLinkElement | HTMLStyleElement>('link[rel="stylesheet"], style'));
   const fragments = await Promise.all(nodes.map(async (node) => {
     if (node instanceof HTMLStyleElement) {
-      return node.outerHTML;
+      const css = node.textContent || "";
+      if (!css.trim()) {
+        return "";
+      }
+      return `<style data-carbonet-pdf-inline-style="true">${css.replace(/<\/style/gi, "<\\/style")}</style>`;
     }
     const stylesheetUrl = node.href;
-    const response = await fetch(stylesheetUrl, {
+    const parsedStylesheetUrl = new URL(stylesheetUrl, window.location.href);
+    if (parsedStylesheetUrl.origin !== window.location.origin) {
+      // External font stylesheets are optional and can be blocked by CORS or
+      // an isolated production network. The same-origin application CSS below
+      // remains mandatory, and Chromium uses the report fallback font stack.
+      return "";
+    }
+    const response = await fetch(parsedStylesheetUrl.href, {
       credentials: "include",
       cache: "no-store"
     });
@@ -819,7 +947,8 @@ async function buildInlinedReportStyles() {
     const safeCss = absolutizeReportStyleUrls(css, stylesheetUrl).replace(/<\/style/gi, "<\\/style");
     return `<style data-carbonet-pdf-stylesheet="${escapeReportStyleAttribute(stylesheetUrl)}">${safeCss}</style>`;
   }));
-  if (!fragments.some((fragment) => fragment.includes("data-carbonet-pdf-stylesheet="))) {
+  if (!fragments.some((fragment) => fragment.includes("data-carbonet-pdf-stylesheet=")
+    || fragment.includes("data-carbonet-pdf-inline-style="))) {
     throw new Error("PDF stylesheet was not embedded.");
   }
   return fragments.join("\n");
@@ -1459,6 +1588,53 @@ export function EmissionSurveyReportMigrationPage() {
   const en = routeEn;
   useEnglishTitleCase(en);
   const report = loadEmissionSurveyReportSession();
+  const [lcaWorkflow, setLcaWorkflow] = useState<LcaWorkflowRecord | null>(null);
+  const [lcaWorkflowMessage, setLcaWorkflowMessage] = useState("");
+  const [lcaWorkflowBusy, setLcaWorkflowBusy] = useState(false);
+  const projectId = new URLSearchParams(window.location.search).get("projectId")?.trim() || "";
+
+  const loadLcaWorkflow = async () => {
+    if (!projectId) {
+      setLcaWorkflow(null);
+      return;
+    }
+    const response = await fetch("/admin/api/admin/lca-workspaces/LCA_EXECUTION", {
+      credentials: "include", cache: "no-store",
+      headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" }
+    });
+    const body = await response.json().catch(() => ({})) as { records?: LcaWorkflowRecord[]; message?: string };
+    if (!response.ok) throw new Error(body.message || `LCA 업무 상태 조회 실패 (${response.status})`);
+    const projectRecords = (body.records || []).filter((item) => item.payload?.projectId === projectId);
+    const record = (report?.productName
+      ? projectRecords.find((item) => item.payload?.productName === report.productName)
+      : projectRecords[0]) || null;
+    setLcaWorkflow(record);
+  };
+
+  useEffect(() => {
+    void loadLcaWorkflow().catch((error) => setLcaWorkflowMessage(error instanceof Error ? error.message : "LCA 업무 상태를 불러오지 못했습니다."));
+  }, [projectId, report?.productName]);
+
+  const runLcaWorkflowCommand = async (command: "VALIDATE" | "APPROVE") => {
+    if (!lcaWorkflow?.workspaceId) return;
+    setLcaWorkflowBusy(true);
+    setLcaWorkflowMessage("");
+    try {
+      const response = await fetch(`/admin/api/admin/lca-workspaces/LCA_EXECUTION/${encodeURIComponent(lcaWorkflow.workspaceId)}/commands`, {
+        method: "POST", credentials: "include",
+        headers: await buildResilientCsrfHeaders({ "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" }),
+        body: JSON.stringify({ command, evidence: { projectId, productName: report?.productName || lcaWorkflow.payload?.productName || "", screen: "emission-survey-report" } })
+      });
+      const body = await response.json().catch(() => ({})) as { workflowStatus?: string; message?: string };
+      if (!response.ok) throw new Error(body.message || `LCA 상태 전이 실패 (${response.status})`);
+      await loadLcaWorkflow();
+      setLcaWorkflowMessage(command === "VALIDATE" ? "검증 완료 상태를 DB 원장에 기록했습니다." : "최종 승인 상태를 DB 원장에 기록했습니다.");
+    } catch (error) {
+      setLcaWorkflowMessage(error instanceof Error ? error.message : "LCA 상태 전이에 실패했습니다.");
+    } finally {
+      setLcaWorkflowBusy(false);
+    }
+  };
 
   logGovernanceScope("PAGE", "emission-survey-report", {
     route: window.location.pathname,
@@ -1488,6 +1664,35 @@ export function EmissionSurveyReportMigrationPage() {
         subtitle={en ? "No calculated report session was found." : "계산 결과 세션을 찾지 못했습니다."}
       >
         <AdminWorkspacePageFrame>
+          <section className="rounded-[calc(var(--kr-gov-radius)+6px)] border border-blue-200 bg-blue-50/70 p-5 shadow-sm" data-lca-workflow-status={lcaWorkflow?.workflowStatus || "NOT_FOUND"}>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[var(--kr-gov-blue)]">{en ? "LCA Workflow Ledger" : "LCA 업무 진행 원장"}</p>
+                <h2 className="mt-2 text-xl font-black text-slate-950">{en ? "Submission · Verification · Approval" : "제출 · 검증 · 승인 상태"}</h2>
+                <p className="mt-2 text-sm font-bold text-slate-600">{lcaWorkflow ? `${lcaWorkflow.businessKey || ""} · ${lcaWorkflow.assignedActor || ""}` : (en ? "No submitted workflow was found." : "제출된 LCA 업무 원장을 찾지 못했습니다.")}</p>
+              </div>
+              <div className="flex gap-2">
+                {lcaWorkflow?.workflowStatus === "SUBMITTED" ? <MemberButton disabled={lcaWorkflowBusy} onClick={() => void runLcaWorkflowCommand("VALIDATE")} type="button">{en ? "Complete Verification" : "검증 완료"}</MemberButton> : null}
+                {lcaWorkflow?.workflowStatus === "VALIDATED" ? <MemberButton disabled={lcaWorkflowBusy} onClick={() => void runLcaWorkflowCommand("APPROVE")} type="button">{en ? "Final Approval" : "최종 승인"}</MemberButton> : null}
+              </div>
+            </div>
+            <ol className="mt-5 grid gap-3 md:grid-cols-3">
+              {[
+                { command: "SUBMIT", label: en ? "Submitted" : "제출됨" },
+                { command: "VALIDATE", label: en ? "Verified" : "검증 완료" },
+                { command: "APPROVE", label: en ? "Approved" : "승인 완료" }
+              ].map((stage, index) => {
+                const event = lcaWorkflow?.events?.find((item) => item.commandCode === stage.command);
+                return <li className={`rounded-xl border p-4 ${event ? "border-emerald-200 bg-white" : "border-slate-200 bg-slate-50"}`} data-lca-stage={stage.command} key={stage.command}>
+                  <span className="text-xs font-black text-slate-500">{index + 1}단계</span>
+                  <strong className={`mt-1 block text-sm ${event ? "text-emerald-800" : "text-slate-500"}`}>{stage.label} · {event ? "PASS" : "WAIT"}</strong>
+                  <span className="mt-2 block text-xs font-bold text-slate-600">{event?.executedBy || "-"}</span>
+                  <time className="mt-1 block text-xs text-slate-500">{event?.executedAt ? new Date(event.executedAt).toLocaleString() : "-"}</time>
+                </li>;
+              })}
+            </ol>
+            {lcaWorkflowMessage ? <p className="mt-3 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-700" data-lca-workflow-message>{lcaWorkflowMessage}</p> : null}
+          </section>
           <PageStatusNotice tone="warning">
             {en
               ? "Open this page through the calculation button on the survey admin screen."
@@ -1566,6 +1771,35 @@ export function EmissionSurveyReportMigrationPage() {
       )}
     >
       <AdminWorkspacePageFrame>
+        <section className="rounded-[calc(var(--kr-gov-radius)+6px)] border border-blue-200 bg-blue-50/70 p-5 shadow-sm" data-lca-workflow-status={lcaWorkflow?.workflowStatus || "NOT_FOUND"}>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[var(--kr-gov-blue)]">{en ? "LCA Workflow Ledger" : "LCA 업무 진행 원장"}</p>
+              <h2 className="mt-2 text-xl font-black text-slate-950">{en ? "Submission · Verification · Approval" : "제출 · 검증 · 승인 상태"}</h2>
+              <p className="mt-2 text-sm font-bold text-slate-600">{lcaWorkflow ? `${lcaWorkflow.businessKey || ""} · ${lcaWorkflow.assignedActor || ""}` : (en ? "No submitted workflow was found." : "제출된 LCA 업무 원장을 찾지 못했습니다.")}</p>
+            </div>
+            <div className="flex gap-2">
+              {lcaWorkflow?.workflowStatus === "SUBMITTED" ? <MemberButton disabled={lcaWorkflowBusy} onClick={() => void runLcaWorkflowCommand("VALIDATE")} type="button">{en ? "Complete Verification" : "검증 완료"}</MemberButton> : null}
+              {lcaWorkflow?.workflowStatus === "VALIDATED" ? <MemberButton disabled={lcaWorkflowBusy} onClick={() => void runLcaWorkflowCommand("APPROVE")} type="button">{en ? "Final Approval" : "최종 승인"}</MemberButton> : null}
+            </div>
+          </div>
+          <ol className="mt-5 grid gap-3 md:grid-cols-3">
+            {[
+              { command: "SUBMIT", label: en ? "Submitted" : "제출됨" },
+              { command: "VALIDATE", label: en ? "Verified" : "검증 완료" },
+              { command: "APPROVE", label: en ? "Approved" : "승인 완료" }
+            ].map((stage, index) => {
+              const event = lcaWorkflow?.events?.find((item) => item.commandCode === stage.command);
+              return <li className={`rounded-xl border p-4 ${event ? "border-emerald-200 bg-white" : "border-slate-200 bg-slate-50"}`} data-lca-stage={stage.command} key={stage.command}>
+                <span className="text-xs font-black text-slate-500">{index + 1}단계</span>
+                <strong className={`mt-1 block text-sm ${event ? "text-emerald-800" : "text-slate-500"}`}>{stage.label} · {event ? "PASS" : "WAIT"}</strong>
+                <span className="mt-2 block text-xs font-bold text-slate-600">{event?.executedBy || "-"}</span>
+                <time className="mt-1 block text-xs text-slate-500">{event?.executedAt ? new Date(event.executedAt).toLocaleString() : "-"}</time>
+              </li>;
+            })}
+          </ol>
+          {lcaWorkflowMessage ? <p className="mt-3 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-700" data-lca-workflow-message>{lcaWorkflowMessage}</p> : null}
+        </section>
         <section className="overflow-hidden rounded-[calc(var(--kr-gov-radius)+10px)] bg-[linear-gradient(135deg,#0f172a,#11284d_42%,#0f766e)] text-white shadow-[0_26px_60px_rgba(15,23,42,0.22)]">
           <div className="grid items-center gap-6 px-6 py-6 lg:grid-cols-[minmax(0,1.4fr)_380px] lg:px-8 lg:py-8">
             <div>
@@ -1816,7 +2050,7 @@ export function EmissionSurveyReportPrintPage() {
 
   if (!effectiveReport) {
     return (
-      <main className="min-h-screen bg-slate-100 px-6 py-10 text-slate-900">
+      <main className="min-h-screen bg-slate-100 px-6 py-10 text-slate-900" data-screen-theme="krds-v1">
         <section className="mx-auto max-w-3xl rounded-2xl bg-white p-8 shadow-sm">
           <h1 className="text-2xl font-black">{en ? "No report data" : "리포트 데이터 없음"}</h1>
           <p className="mt-3 text-sm text-slate-600">
@@ -2139,24 +2373,32 @@ export function EmissionSurveyReportPrintPage() {
     }
     setVerificationBusy(true);
     setVerificationMessage("");
+    let issuanceStage = "PROOFREAD";
     try {
       const proofreading = await proofreadReportForIssuance(effectiveReport);
       const issuedReport = proofreading.report;
       setDraftReport(issuedReport);
+      issuanceStage = "LOCAL_SESSION";
       saveEmissionSurveyReportSession(issuedReport);
+      issuanceStage = "VERIFICATION_RECORD";
       const record = await buildReportVerificationRecord(issuedReport, { byproductAllocation });
       saveReportVerificationRecord(record);
       setVerificationRecord(record);
+      issuanceStage = "QR_EVIDENCE";
       setVerificationQrDataUrl(await createReportQrDataUrl(record));
       setPdfDesignDraft(draft);
       setPdfDownloadMode(false);
+      issuanceStage = "REPORT_RENDER:FRAMES";
       await nextAnimationFrame();
       await nextAnimationFrame();
+      issuanceStage = "REPORT_RENDER:FONTS";
       await waitForReportFonts();
+      issuanceStage = "REPORT_RENDER:ARTICLE";
       const article = reportArticleRef.current;
       if (!article) {
         throw new Error("Report element is not ready.");
       }
+      issuanceStage = "REPORT_RENDER:HTML";
       // The backend renders a temporary file:// document. External stylesheet
       // links can be unreachable from that Chromium process even though they
       // are already loaded in the user's authenticated page. Embed the exact
@@ -2165,6 +2407,7 @@ export function EmissionSurveyReportPrintPage() {
       const reportHtml = [
         "<!doctype html><html lang=\"" + (en ? "en" : "ko") + "\"><head>",
         "<meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
+        `<meta name="carbonet-integrity-code" content="${escapeReportStyleAttribute(record.integrityCode)}">`,
         `<base href="${window.location.origin}/">`,
         printableHead,
         "<style>html,body{margin:0!important;background:#fff!important}body{padding:0!important}.print-sheet{margin:0 auto!important}</style>",
@@ -2172,7 +2415,9 @@ export function EmissionSurveyReportPrintPage() {
         article.outerHTML,
         "</body></html>"
       ].join("");
-      const issuedPdf = await issueSurveyReportPdf(record, reportHtml);
+      issuanceStage = "PDF_API";
+      const issuedPdf = await issueSurveyReportPdf(record, reportHtml, buildReportOcrIssuanceEvidence(article, record));
+      issuanceStage = "DOWNLOAD";
       const downloadUrl = URL.createObjectURL(issuedPdf);
       const download = document.createElement("a");
       download.href = downloadUrl;
@@ -2184,10 +2429,12 @@ export function EmissionSurveyReportPrintPage() {
       setVerificationMessage(en
         ? `The verified PDF was downloaded. Its dataset, OCR source, and ${proofreading.changedCount} text correction(s) were registered from the final PDF.`
         : `검증 PDF를 다운로드했습니다. 최종 PDF 기준 시각 지문·OCR 원문·데이터셋과 오탈자 ${proofreading.changedCount}건을 함께 등록했습니다.`);
-    } catch (error) {
-      console.error(error);
-      setVerificationMessage(en ? "PDF issuance failed. Please try again." : "PDF 발급에 실패했습니다. 다시 시도하세요.");
-    } finally {
+      } catch (error) {
+        console.error(`[emission-survey-report:${issuanceStage}]`, error);
+        setVerificationMessage(en
+          ? `PDF issuance failed at ${issuanceStage}. Please try again.`
+          : `PDF 발급에 실패했습니다. 실패 단계: ${issuanceStage}. 다시 시도하세요.`);
+      } finally {
       setVerificationBusy(false);
     }
   };
@@ -2439,7 +2686,7 @@ export function EmissionSurveyReportPrintPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#dfe7ef] px-4 py-8 text-slate-950 print:bg-white print:p-0">
+    <main className="min-h-screen bg-[#dfe7ef] px-4 py-8 text-slate-950 print:bg-white print:p-0" data-screen-theme="krds-v1">
       <style>
         {"@page{size:A4;margin:8mm;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}.print-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;overflow:visible!important;padding:0!important}.print-page{break-after:page;page-break-after:always}.print-page:last-child{break-after:auto;page-break-after:auto}.pdf-page-start{break-before:page;page-break-before:always}.pdf-page-content{margin-top:0!important;padding-top:0!important}.pdf-page-end{break-after:page;page-break-after:always}.pdf-chart-page{display:grid!important;grid-template-columns:minmax(0,1fr)!important;align-items:start!important;gap:14pt!important}.pdf-chart-page .print-card{padding:12pt!important}.pdf-chart-page .pdf-table-row{padding-top:5pt!important;padding-bottom:5pt!important}.pdf-chart-page h2,.pdf-chart-page h3{font-size:14pt!important;line-height:1.2!important}.pdf-avoid,.print-break{break-inside:avoid;page-break-inside:avoid}.print-table{break-inside:auto;page-break-inside:auto}.print-table thead{display:table-header-group}.print-table tr,.pdf-table-row{break-inside:avoid;page-break-inside:avoid}.print-card{background:#fff!important;border:1px solid #d8e0ea!important;border-radius:18px!important;box-shadow:none!important;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;letter-spacing:0!important;white-space:pre-wrap!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-soft-bg{background:#f8fafc!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-ink-bg{background:#0f172a!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero{background:linear-gradient(135deg,#0f172a,#11284d 42%,#0f766e)!important;color:#fff!important;border:1px solid #0f172a!important;border-radius:20px!important;margin:0 0 16px!important;padding:20px!important;overflow:hidden!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero-grid{display:grid!important;grid-template-columns:minmax(0,1.4fr) 260px!important;align-items:center!important}.print-report-title-wrap{min-height:112px!important;display:flex!important;align-items:center!important}.print-report-title-tag{color:#a5f3fc!important}.print-report-title{color:#fff!important}.print-report-total-card{width:260px!important;justify-self:end!important;background:rgba(255,255,255,.10)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-total-card *{color:#fff!important}.print-total-cell{background:#fff!important;color:#0f172a!important;border-top:2px solid #0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-total-label{border-bottom-left-radius:18px!important}.print-total-box-cell{border-bottom-right-radius:18px!important}.print-total-value{background:#f8fafc!important;color:#0f172a!important;border:1px solid transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}@media screen{.print-input-text{display:none!important}.pdf-download-mode .print-page{break-after:page;page-break-after:always;padding-top:0!important;padding-bottom:20pt!important}.pdf-download-mode .print-page:last-child{break-after:auto!important;page-break-after:auto!important;padding-bottom:0!important}.pdf-download-mode .pdf-page-start{break-before:page;page-break-before:always;margin-top:0!important;padding-top:0!important}.pdf-download-mode .pdf-page-content{margin-top:0!important;padding-top:0!important}.pdf-download-mode .pdf-table-page{margin-top:0!important;margin-bottom:0!important;padding-top:0!important;padding-bottom:0!important}.pdf-download-mode .pdf-page-end{break-after:auto!important;page-break-after:auto!important}.pdf-download-mode .pdf-chart-page{display:grid!important;grid-template-columns:minmax(0,1fr)!important;align-items:start!important;gap:14pt!important}.pdf-download-mode .pdf-chart-page .print-card{padding:12pt!important}.pdf-download-mode .pdf-chart-page .pdf-table-row{padding-top:5pt!important;padding-bottom:5pt!important}.pdf-download-mode .pdf-chart-page h2,.pdf-chart-page h3{font-size:14pt!important;line-height:1.2!important}.pdf-download-mode .pdf-avoid,.pdf-download-mode .print-break,.pdf-download-mode .print-card,.pdf-download-mode .pdf-table-row{break-inside:avoid;page-break-inside:avoid}.pdf-download-mode .print-input-control{display:none!important}.pdf-download-mode .print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}.pdf-download-mode .print-hidden{display:none!important}.pdf-download-mode .pdf-hidden{display:none!important}.pdf-download-mode .pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}.pdf-download-mode > :last-child{break-after:auto!important;page-break-after:auto!important;margin-bottom:0!important;padding-bottom:0!important}.pdf-machine-readable{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important;color:transparent!important;background:transparent!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}}"}
       </style>
@@ -3502,7 +3749,7 @@ export function EmissionSurveyReportPrintPage() {
         </div>
         {verificationRecord ? (
           <>
-            <footer className="report-verification-footer flex items-center justify-between gap-5 border-t border-slate-200 bg-white px-8 py-5">
+            <footer className="report-verification-footer pdf-page-start flex items-center justify-between gap-5 border-t border-slate-200 bg-white px-8 py-5">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-700">DIGITAL VERIFICATION</p>
                 <p className="mt-1 text-xs font-semibold text-slate-500">
@@ -3522,10 +3769,98 @@ export function EmissionSurveyReportPrintPage() {
   );
 }
 
+type CertificateVerificationAudienceConfig = {
+  showIdentifiers: boolean;
+  showIssuedCertificateId: boolean;
+  showTechnicalOcrAudit: boolean;
+};
+
+type CertificateVerificationViewConfig = {
+  schemaVersion: number;
+  verificationFlow: {
+    continueAfterByteMismatch: boolean;
+  };
+  audiences: {
+    public: CertificateVerificationAudienceConfig;
+    admin: CertificateVerificationAudienceConfig;
+  };
+  labels: {
+    ko: { graphComparison: string; detailComparison: string };
+    en: { graphComparison: string; detailComparison: string };
+  };
+  pdfGate: {
+    enabled: boolean;
+    businessType: string;
+    process: string;
+    step: string;
+    publicAccount: string;
+    adminAccount: string;
+    publicActor: string;
+    adminActor: string;
+    publicPermission: string;
+    adminPermission: string;
+    page: string;
+    feature: string;
+    input: string;
+    output: string;
+  };
+};
+
+const DEFAULT_CERTIFICATE_VERIFICATION_VIEW_CONFIG: CertificateVerificationViewConfig = {
+  schemaVersion: 2,
+  verificationFlow: { continueAfterByteMismatch: true },
+  audiences: {
+    public: { showIdentifiers: false, showIssuedCertificateId: false, showTechnicalOcrAudit: false },
+    admin: { showIdentifiers: true, showIssuedCertificateId: true, showTechnicalOcrAudit: true }
+  },
+  labels: {
+    ko: { graphComparison: "그래프 데이터 전체 대조", detailComparison: "상세 계산 데이터 전체 대조" },
+    en: { graphComparison: "All graph data", detailComparison: "All detail calculation data" }
+  },
+  pdfGate: {
+    enabled: true,
+    businessType: "탄소배출 관리",
+    process: "탄소배출 프로젝트 수행",
+    step: "보고·인증서 발급 및 진위확인",
+    publicAccount: "공개 검증 사용자",
+    adminAccount: "QA 운영 계정",
+    publicActor: "PUBLIC_VERIFIER",
+    adminActor: "CERTIFICATE_QA_OPERATOR",
+    publicPermission: "CERTIFICATE_VERIFY_READ",
+    adminPermission: "CERTIFICATE_VERIFY_AUDIT",
+    page: "/home/certificate-verify",
+    feature: "발급 원본 PDF 바이트·해시·시각 변경 대조",
+    input: "발급된 PDF 파일 1개",
+    output: "정상·변조·확인 필요 판정과 근거"
+  }
+};
+
+function normalizeCertificateVerificationViewConfig(value: Partial<CertificateVerificationViewConfig> | null | undefined): CertificateVerificationViewConfig {
+  return {
+    ...DEFAULT_CERTIFICATE_VERIFICATION_VIEW_CONFIG,
+    ...value,
+    verificationFlow: {
+      ...DEFAULT_CERTIFICATE_VERIFICATION_VIEW_CONFIG.verificationFlow,
+      ...value?.verificationFlow
+    },
+    audiences: {
+      public: { ...DEFAULT_CERTIFICATE_VERIFICATION_VIEW_CONFIG.audiences.public, ...value?.audiences?.public },
+      admin: { ...DEFAULT_CERTIFICATE_VERIFICATION_VIEW_CONFIG.audiences.admin, ...value?.audiences?.admin }
+    },
+    labels: {
+      ko: { ...DEFAULT_CERTIFICATE_VERIFICATION_VIEW_CONFIG.labels.ko, ...value?.labels?.ko },
+      en: { ...DEFAULT_CERTIFICATE_VERIFICATION_VIEW_CONFIG.labels.en, ...value?.labels?.en }
+    },
+    pdfGate: {
+      ...DEFAULT_CERTIFICATE_VERIFICATION_VIEW_CONFIG.pdfGate,
+      ...value?.pdfGate
+    }
+  };
+}
+
 export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?: boolean } = {}) {
   const en = isEnglish();
   const [selectedReportType, setSelectedReportType] = useState<ReportVerificationType>("EMISSION_SURVEY");
-  const [manualBlock, setManualBlock] = useState("");
   const [fileName, setFileName] = useState("");
   const [uploadedPdfSelected, setUploadedPdfSelected] = useState(false);
   const [uploadedVerificationText, setUploadedVerificationText] = useState("");
@@ -3534,11 +3869,25 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
   const [datasetVerification, setDatasetVerification] = useState<ReportDatasetVerificationResponse | null>(null);
   const [pdfFileVerification, setPdfFileVerification] = useState<ReportPdfFileVerificationResponse | null>(null);
   const [photoVerification, setPhotoVerification] = useState<ReportPhotoVerificationResponse | null>(null);
+  const [verificationViewConfig, setVerificationViewConfig] = useState(DEFAULT_CERTIFICATE_VERIFICATION_VIEW_CONFIG);
   const [ocrProgress, setOcrProgress] = useState<{ busy: boolean; percent: number; status: string }>({ busy: false, percent: 0, status: "" });
   const [verificationLogs, setVerificationLogs] = useState<Array<{ id: string; at: string; level: "INFO" | "OK" | "WARN" | "ERROR"; message: string; detail?: string }>>([]);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
+  const [selectedPreviewPage, setSelectedPreviewPage] = useState(0);
+  const [fileDragActive, setFileDragActive] = useState(false);
   const [resultMessage, setResultMessage] = useState(en ? "Upload the certificate PDF or paste the verification block." : "인증서 PDF를 업로드하거나 검증 블록을 붙여넣으세요.");
   const [resultTone, setResultTone] = useState<"info" | "success" | "warning" | "danger">("info");
+  useEffect(() => {
+    let active = true;
+    fetch(buildLocalizedPath(
+      "/api/home/certificate-verify/screen-design",
+      "/api/en/home/certificate-verify/screen-design"
+    ), { cache: "no-store", credentials: "same-origin" })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+      .then((value) => { if (active) setVerificationViewConfig(normalizeCertificateVerificationViewConfig(value)); })
+      .catch((error) => console.warn("Certificate verification SDUI config fallback is active.", error));
+    return () => { active = false; };
+  }, []);
   const appendVerificationLog = (level: "INFO" | "OK" | "WARN" | "ERROR", message: string, detail?: string) => {
     setVerificationLogs((current) => [...current, {
       id: `${Date.now()}-${current.length}`,
@@ -3552,6 +3901,10 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
   const applyPdfFileVerdict = (verification: ReportPdfFileVerificationResponse) => {
     setPdfFileVerification(verification);
     if (verification.status === "EXACT_PDF_MATCH" && verification.valid) {
+      setResultTone("success");
+      setResultMessage(en
+        ? "Authenticity verified: the uploaded PDF bytes exactly match the issued original."
+        : "진위 확인 완료: 업로드한 PDF 바이트가 발급 원본과 정확히 일치합니다.");
       return true;
     }
     if (verification.status === "TAMPERED_PDF") {
@@ -3561,22 +3914,22 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
           ? "Tampered PDF: CreationDate and ModDate differ. QR, OCR, and visual similarity cannot override this modification evidence."
           : "변조 파일입니다. PDF 생성일과 수정일이 다릅니다. QR·OCR·시각 유사도로 이 수정 흔적을 덮어쓸 수 없습니다.")
         : (en
-          ? "Tampered PDF: the uploaded file bytes differ from the issued original. QR, OCR, and visual similarity cannot override this result."
-          : "변조 파일입니다. 업로드한 PDF 바이트가 발급 원본과 다릅니다. QR·OCR·시각 유사도로 이 결과를 덮어쓸 수 없습니다."));
+          ? "Tampered PDF: the uploaded bytes differ from the issued original. The exact-file verdict is complete."
+          : "변조 파일입니다. 업로드한 PDF 바이트가 발급 원본과 다르므로 원본 파일 대조 판정을 완료했습니다."));
       return false;
     }
     setResultTone("warning");
     setResultMessage(verification.status === "PDF_FINGERPRINT_UNAVAILABLE"
       ? (en ? "This legacy issuance has no final-PDF fingerprint, so exact-file authenticity cannot be proven." : "이 구형 발급 기록에는 최종 PDF 지문이 없어 파일 원본성을 증명할 수 없습니다.")
       : verification.status === "NOT_FOUND"
-        ? (en ? "No issued PDF fingerprint exists for this certificate ID." : "이 인증서 ID의 발급 PDF 지문을 원장에서 찾지 못했습니다.")
+        ? (en ? "Unregistered issuance: no issued PDF fingerprint exists in the ledger. Authenticity cannot be verified; reissue the report." : "원장 미등록 발급본입니다. 발급 PDF 지문이 없어 진위를 확인할 수 없으므로 리포트를 재발급해야 합니다.")
         : (en ? "The server could not complete exact PDF-byte verification." : "서버가 PDF 원본 바이트 검증을 완료하지 못했습니다."));
     return false;
   };
 
   const verifyExactPdfFile = async (file: File, certificateId: string) => {
     try {
-      const verification = await verifySurveyReportPdfFile(file, certificateId);
+      const verification = await withReportStageTimeout(verifySurveyReportPdfFile(file, certificateId), 15_000, "PDF_BYTE_VERIFY");
       appendVerificationLog(verification.valid ? "OK" : verification.status === "TAMPERED_PDF" ? "ERROR" : "WARN",
         en ? "Exact PDF-byte comparison completed." : "PDF 원본 바이트 대조를 완료했습니다.",
         `status=${verification.status}, hash=${verification.byteHashMatch === true ? "match" : "mismatch"}, size=${verification.sizeMatch === true ? "match" : "mismatch"}`);
@@ -3690,21 +4043,33 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     setResultMessage(en ? `Reading visible report data from ${sourceLabel}...` : `${sourceLabel}의 화면 데이터셋을 읽고 있습니다...`);
     let exactPdfVerification = initialPdfVerification;
     try {
-      const qrEvidence = await scanReportQrEvidence(pages);
+      setOcrProgress({ busy: true, percent: 9, status: en ? "Reading verification QR" : "검증 QR 판독 중" });
+      const qrEvidence = await withReportStageTimeout(scanReportQrEvidence(pages), 15_000, "QR_SCAN").catch((error) => {
+        appendVerificationLog("WARN", en ? "QR scan timed out; continuing with OCR." : "QR 판독 제한시간을 초과하여 OCR 검증을 계속합니다.", error instanceof Error ? error.message : String(error));
+        return null;
+      });
       appendVerificationLog(qrEvidence ? "OK" : "WARN", qrEvidence ? (en ? "Verification QR decoded." : "검증 QR을 판독했습니다.") : (en ? "Verification QR was not found." : "검증 QR을 찾지 못했습니다."), qrEvidence?.certificateId);
       if (rawPdfFile && !exactPdfVerification && qrEvidence?.certificateId) {
+        setOcrProgress({ busy: true, percent: 10, status: en ? "Checking issued PDF bytes" : "발급 PDF 바이트 대조 중" });
         exactPdfVerification = await verifyExactPdfFile(rawPdfFile, qrEvidence.certificateId);
         if (exactPdfVerification.status === "TAMPERED_PDF") {
           applyPdfFileVerdict(exactPdfVerification);
-          return;
+          if (!continueAfterByteMismatch) return;
+          appendVerificationLog("WARN", en ? "Byte mismatch retained; detailed content verification continues." : "바이트 불일치 판정을 유지하고 상세 내용 검증을 계속합니다.");
         }
       }
-      const visualProfile = await buildReportVisualProfile(pages);
+      setOcrProgress({ busy: true, percent: 11, status: en ? "Building visual fingerprint" : "페이지 시각 지문 생성 중" });
+      const visualProfile = await withReportStageTimeout(buildReportVisualProfile(pages), 20_000, "VISUAL_PROFILE");
       appendVerificationLog("OK", en ? "Uploaded visual fingerprint generated." : "업로드 문서 시각 지문을 생성했습니다.", `grid=${visualProfile.columns}x${visualProfile.rows}, pages=${visualProfile.pages.length}`);
       const recognized = await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
       appendVerificationLog("OK", en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다.", `characters=${recognized.text.length}, engineConfidence=${Math.round(recognized.confidence)}%`);
       setUploadedVerificationText(recognized.text);
-      const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType);
+      setOcrProgress({ busy: true, percent: 99, status: en ? "Comparing with issued ledger" : "발급 원장 최종 대조 중" });
+      const verification = await withReportStageTimeout(
+        verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType, recognized.pageTexts),
+        60_000,
+        "PHOTO_LEDGER_VERIFY"
+      );
       appendVerificationLog(verification.photoConsistent ? "OK" : "WARN", en ? "Issued-report candidate comparison completed." : "발급 리포트 후보 대조를 완료했습니다.", `certificate=${verification.certificateId || "-"}, candidates=${verification.comparisons?.length || 0}, exact=${verification.comparisons?.filter((item) => item.overallExactMatch).length || 0}, confidence=${verification.confidence}%, visual=${verification.visualSimilarity ?? 0}%, mismatches=${verification.fieldMismatches?.length || 0}`);
       setPhotoVerification(verification);
       if (rawPdfFile && !exactPdfVerification && verification.certificateId) {
@@ -3719,12 +4084,19 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
           return;
         }
         if (!applyPdfFileVerdict(exactPdfVerification)) {
+          if (!continueAfterByteMismatch) return;
+          setResultTone(exactPdfVerification.status === "TAMPERED_PDF" ? "danger" : "warning");
+          setResultMessage(exactPdfVerification.status === "TAMPERED_PDF"
+            ? (en
+              ? `Byte mismatch confirmed. Detailed OCR/content comparison completed (${verification.confidence}%); the final authenticity verdict remains tampered.`
+              : `바이트 불일치를 확인했습니다. 상세 OCR·내용 대조를 완료했으며(${verification.confidence}%) 최종 진위 판정은 변조로 유지됩니다.`)
+            : (en ? "Detailed OCR/content comparison completed, but exact byte authenticity is unavailable." : "상세 OCR·내용 대조를 완료했지만 원본 바이트 진위는 확인할 수 없습니다."));
           return;
         }
-        setResultTone(verification.photoConsistent ? "success" : "warning");
+        setResultTone("success");
         setResultMessage(verification.photoConsistent
           ? (en ? `Exact issued PDF match confirmed; visible OCR also matched (${verification.confidence}%).` : `발급 PDF 원본 바이트가 정확히 일치하고 화면 OCR도 일치했습니다(${verification.confidence}%).`)
-          : (en ? `Exact PDF bytes match, but visible OCR requires review (${verification.confidence}%).` : `PDF 원본 바이트는 일치하지만 화면 OCR 결과는 검토가 필요합니다(${verification.confidence}%).`));
+          : (en ? `Authenticity verified by exact issued-PDF bytes. Visible OCR matched ${verification.confidence}%; unavailable issuance-time OCR evidence is shown separately.` : `발급 PDF 원본 바이트가 정확히 일치하여 진위 확인이 완료되었습니다. 화면 OCR은 ${verification.confidence}% 일치하며 발급 당시 OCR 증거 미등록은 별도로 표시합니다.`));
         return;
       }
       if (preserveDigitalPayload) {
@@ -3753,10 +4125,20 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     }
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
+  const processVerificationFiles = async (files: File[]) => {
     const file = files[0];
     if (!file) {
+      return;
+    }
+    const supported = files.every((item) => (
+      item.type === "application/pdf"
+      || item.type.startsWith("image/")
+      || /\.(pdf|jpe?g|png|webp)$/i.test(item.name)
+    ));
+    if (!supported) {
+      appendVerificationLog("WARN", en ? "Unsupported file ignored." : "지원하지 않는 파일을 제외했습니다.", files.map((item) => item.name).join(", "));
+      setResultTone("warning");
+      setResultMessage(en ? "Choose a PDF, JPG, PNG, or WebP file." : "PDF, JPG, PNG 또는 WebP 파일을 선택하세요.");
       return;
     }
     setVerificationLogs([]);
@@ -3768,6 +4150,8 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     setPhotoVerification(null);
     setDatasetVerification(null);
     setPdfFileVerification(null);
+    setResultTone("info");
+    setResultMessage(en ? "Verifying the uploaded PDF against the issued ledger..." : "업로드한 PDF를 발급 원장과 대조하고 있습니다...");
     if (files.every((item) => item.type.startsWith("image/"))) {
       setUploadedPdfSelected(false);
       photoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -3799,25 +4183,17 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
         };
         appendVerificationLog("ERROR", en ? "PDF modification metadata detected." : "PDF 생성·수정 날짜 불일치를 감지했습니다.", metadataTamperVerdict.message);
         applyPdfFileVerdict(metadataTamperVerdict);
-        setOcrProgress({ busy: false, percent: 0, status: en ? "Tampered PDF blocked" : "변조 PDF 차단" });
-        return;
       }
       await evaluatePayload(nextPayload, file.name, exactPdfVerification);
-      if (exactPdfVerification.status === "TAMPERED_PDF") {
-        setOcrProgress({ busy: false, percent: 0, status: en ? "Tampered PDF blocked" : "변조 PDF 차단" });
-        return;
-      }
-      setOcrProgress({ busy: true, percent: 0, status: en ? "Cross-checking visible PDF data" : "PDF 화면 데이터 교차 검증 중" });
       try {
-        const pages = await renderReportPdfPages(file, (percent, status) => setOcrProgress({ busy: true, percent, status }));
-        appendVerificationLog("OK", en ? "PDF pages rendered for OCR cross-check." : "OCR 교차 검증용 PDF 페이지 변환을 완료했습니다.", `pages=${pages.length}`);
+        const pages = await renderReportPdfPages(file, () => undefined);
+        appendVerificationLog("OK", en ? "PDF pages rendered for preview." : "PDF 미리보기 페이지 변환을 완료했습니다.", `pages=${pages.length}`);
         setPhotoPreviewUrls(pages.map((page) => URL.createObjectURL(page)));
-        await evaluatePhotographedPages(pages, file.name, true, file, exactPdfVerification);
+        applyPdfFileVerdict(exactPdfVerification);
       } catch (error) {
-        appendVerificationLog("ERROR", en ? "Visible PDF OCR cross-check failed." : "PDF 화면 OCR 교차 검증에 실패했습니다.", error instanceof Error ? error.message : String(error));
-        setOcrProgress((current) => ({ ...current, busy: false }));
+        appendVerificationLog("ERROR", en ? "PDF preview rendering failed." : "PDF 미리보기 변환에 실패했습니다.", error instanceof Error ? error.message : String(error));
         setResultTone("warning");
-        setResultMessage(error instanceof Error ? error.message : (en ? "Visible PDF dataset cross-check failed." : "PDF 화면 데이터셋 교차 검증에 실패했습니다."));
+        setResultMessage(error instanceof Error ? error.message : (en ? "PDF preview rendering failed." : "PDF 미리보기 변환에 실패했습니다."));
       }
       return;
     }
@@ -3835,42 +4211,52 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
       };
       appendVerificationLog("ERROR", en ? "PDF modification metadata detected." : "PDF 생성·수정 날짜 불일치를 감지했습니다.", metadataTamperVerdict.message);
       applyPdfFileVerdict(metadataTamperVerdict);
-      setOcrProgress({ busy: false, percent: 0, status: en ? "Tampered PDF blocked" : "변조 PDF 차단" });
-      return;
     }
-    if (initialPdfVerification?.status === "TAMPERED_PDF") {
-      setOcrProgress({ busy: false, percent: 0, status: en ? "Tampered PDF blocked" : "변조 PDF 차단" });
-      return;
-    }
-    setOcrProgress({ busy: true, percent: 0, status: en ? "Rendering PDF pages" : "PDF 페이지 변환 중" });
     try {
-      const pages = await renderReportPdfPages(file, (percent, status) => setOcrProgress({ busy: true, percent, status }));
-      appendVerificationLog("OK", en ? "PDF pages rendered for visual verification." : "시각 검증용 PDF 페이지 변환을 완료했습니다.", `pages=${pages.length}`);
+      const pages = await renderReportPdfPages(file, () => undefined);
+      appendVerificationLog("OK", en ? "PDF pages rendered for preview." : "PDF 미리보기 페이지 변환을 완료했습니다.", `pages=${pages.length}`);
       setPhotoPreviewUrls(pages.map((page) => URL.createObjectURL(page)));
-      await evaluatePhotographedPages(pages, file.name, false, file, initialPdfVerification);
+      let resolvedPdfVerification = initialPdfVerification;
+      if (!resolvedPdfVerification) {
+        const qrEvidence = await withReportStageTimeout(scanReportQrEvidence(pages), 8_000, "QR_SCAN").catch(() => null);
+        if (qrEvidence?.certificateId) resolvedPdfVerification = await verifyExactPdfFile(file, qrEvidence.certificateId);
+      }
+      if (resolvedPdfVerification) {
+        applyPdfFileVerdict(resolvedPdfVerification);
+      } else {
+        setResultTone("warning");
+        setResultMessage(en
+          ? "The certificate ID could not be identified from the PDF. Exact issued-file verification could not start."
+          : "PDF에서 인증서 ID를 식별하지 못해 발급 원본 파일 대조를 시작할 수 없습니다.");
+      }
     } catch (error) {
-      setOcrProgress((current) => ({ ...current, busy: false }));
       setResultTone("warning");
-      setResultMessage(error instanceof Error ? error.message : (en ? "Scanned PDF OCR failed." : "스캔 PDF OCR 처리에 실패했습니다."));
+      setResultMessage(error instanceof Error ? error.message : (en ? "PDF preview rendering failed." : "PDF 미리보기 변환에 실패했습니다."));
     }
   };
 
-  const handleManualVerify = () => {
-    if (pdfFileVerification && !applyPdfFileVerdict(pdfFileVerification)) {
-      return;
-    }
-    if (photoVerification) {
-      setResultTone(photoVerification.photoConsistent ? "success" : "warning");
-      setResultMessage(photoVerification.photoConsistent
-        ? (en ? `Photo content matches an issued dataset with ${photoVerification.confidence}% confidence.` : `촬영본 내용이 발급 데이터셋과 ${photoVerification.confidence}% 신뢰도로 일치합니다.`)
-        : (en ? "The photo OCR result requires review." : "사진 OCR 결과에 대한 검토가 필요합니다."));
-      return;
-    }
-    const sourceText = manualBlock.trim() || uploadedVerificationText;
-    const sourceLabel = manualBlock.trim()
-      ? (en ? "manual input" : "수동 입력값")
-      : (fileName || (en ? "uploaded PDF" : "업로드 PDF"));
-    void evaluatePayload(resolveVerificationPayload(sourceText), sourceLabel);
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    await processVerificationFiles(Array.from(event.target.files || []));
+    event.target.value = "";
+  };
+
+  const handleFileDragEnter = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer.types.includes("Files")) setFileDragActive(true);
+  };
+
+  const handleFileDragLeave = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget as Node)) setFileDragActive(false);
+  };
+
+  const handleFileDrop = async (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setFileDragActive(false);
+    await processVerificationFiles(Array.from(event.dataTransfer.files || []));
   };
 
   const toneClass = resultTone === "success"
@@ -3880,106 +4266,102 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
     : resultTone === "warning"
       ? "border-amber-200 bg-amber-50 text-amber-950"
       : "border-sky-200 bg-sky-50 text-sky-950";
-
+  const selectedOcrRecord = photoVerification?.comparisons?.find((item) => item.certificateId === photoVerification.certificateId)
+    || photoVerification?.comparisons?.[0];
+  const resolvedCertificateId = payload?.certificateId || pdfFileVerification?.certificateId || photoVerification?.certificateId || selectedOcrRecord?.certificateId || "-";
+  const resolvedPayloadHash = payload?.payloadHash || pdfFileVerification?.payloadHash || photoVerification?.payloadHash || selectedOcrRecord?.payloadHash || "-";
+  const resolvedIntegrityCode = payload?.integrityCode || pdfFileVerification?.integrityCode || photoVerification?.integrityCode || selectedOcrRecord?.integrityCode || "-";
+  const registeredPdfSha256 = pdfFileVerification?.registeredPdfSha256 || "-";
+  const uploadedPdfSha256 = pdfFileVerification?.uploadedPdfSha256 || "-";
+  const pdfSha256Mismatch = registeredPdfSha256 !== "-"
+    && uploadedPdfSha256 !== "-"
+    && registeredPdfSha256.toLowerCase() !== uploadedPdfSha256.toLowerCase();
+  const resolvedIssuedAt = matchedRecord?.issuedAt || payload?.issuedAt || datasetVerification?.issuedAt || pdfFileVerification?.issuedAt || photoVerification?.issuedAt;
+  const resolvedProductName = matchedRecord?.productName || payload?.productName || datasetVerification?.productName || pdfFileVerification?.productName || photoVerification?.productName;
+  const resolvedTotalEmission = matchedRecord?.totalEmission ?? payload?.totalEmission ?? datasetVerification?.totalEmission ?? pdfFileVerification?.totalEmission ?? photoVerification?.totalEmission;
+  const candidateFinalMatch = (item: NonNullable<typeof photoVerification>["comparisons"][number]) => item.overallExactMatch || Boolean(
+    pdfFileVerification?.status === "EXACT_PDF_MATCH"
+    && pdfFileVerification.certificateId === item.certificateId
+  );
+  const administratorVerificationView = /^\/(en\/)?admin\//.test(window.location.pathname);
+  const verificationAudienceConfig = administratorVerificationView
+    ? verificationViewConfig.audiences.admin
+    : verificationViewConfig.audiences.public;
+  const verificationLabels = en ? verificationViewConfig.labels.en : verificationViewConfig.labels.ko;
+  const continueAfterByteMismatch = verificationViewConfig.verificationFlow.continueAfterByteMismatch;
+  const candidateExactPdfMatch = (item: NonNullable<typeof photoVerification>["comparisons"][number]) => Boolean(
+    pdfFileVerification?.status === "EXACT_PDF_MATCH"
+    && pdfFileVerification.certificateId === item.certificateId
+  );
+  const candidateIdentifierMatch = (item: NonNullable<typeof photoVerification>["comparisons"][number], matched: boolean) => (
+    matched || candidateExactPdfMatch(item)
+  );
+  const selectedPreviewIndex = Math.min(selectedPreviewPage, Math.max(photoPreviewUrls.length - 1, 0));
+  const selectedPreviewRegions = (pdfFileVerification?.changedRegions || [])
+    .filter((region) => region.pageNumber === selectedPreviewIndex + 1);
   const verificationContent = (
       <AdminWorkspacePageFrame>
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <fieldset className="mb-5 border-b border-slate-200 pb-5">
-              <legend className="text-sm font-black text-slate-800">{en ? "Report type" : "검증할 리포트 종류"}</legend>
-              <div className="mt-3 grid grid-cols-2 gap-2" role="radiogroup">
-                {([
-                  ["EMISSION_SURVEY", en ? "Emission report" : "탄소배출량 리포트", en ? "Emission survey and calculation" : "배출 설문·산정 보고서"],
-                  ["LCA_SUMMARY", en ? "Product LCA summary" : "제품 LCA 수행 개요", en ? "Product LCA overview report" : "제품 LCA 요약 보고서"]
-                ] as const).map(([value, label, description]) => (
-                  <button
-                    aria-pressed={selectedReportType === value}
-                    className={`min-h-20 border px-4 py-3 text-left transition-colors ${selectedReportType === value ? "border-emerald-600 bg-emerald-50 text-emerald-950" : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"}`}
-                    key={value}
-                    onClick={() => {
-                      setSelectedReportType(value);
-                      setPayload(null);
-                      setDatasetVerification(null);
-                      setPhotoVerification(null);
-                      setFileName("");
-                      setPhotoPreviewUrls([]);
-                      setVerificationLogs([]);
-                      setResultTone("info");
-                      setResultMessage(en ? "Upload a report of the selected type." : "선택한 종류의 리포트를 업로드하세요.");
-                    }}
-                    role="radio"
-                    type="button"
-                  >
-                    <strong className="block text-sm">{label}</strong>
-                    <span className="mt-1 block text-xs font-semibold opacity-70">{description}</span>
-                  </button>
-                ))}
-              </div>
-            </fieldset>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">{en ? "PDF Verification" : "PDF 검증"}</p>
                 <h2 className="mt-1 text-2xl font-black text-slate-950">{en ? "Upload Certificate PDF" : "인증서 PDF 업로드"}</h2>
-                <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-                  {en ? "Version 2 PDFs contain hidden certificate data and the canonical report dataset. They are read and compared automatically." : "version 2 PDF에는 숨김 인증 정보와 정규화 데이터셋이 포함되며 업로드 시 자동으로 읽어 대조합니다."}
-                </p>
               </div>
-              <MemberButton onClick={() => navigate(buildLocalizedPath("/admin/emission/survey-report-print?lang=ko", "/en/admin/emission/survey-report-print?lang=en"))} type="button" variant="secondary">
-                {en ? "Open PDF Download" : "PDF 다운로드 화면 열기"}
-              </MemberButton>
             </div>
-            <label className="mt-5 flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center hover:border-emerald-400 hover:bg-emerald-50">
-              <span className="text-base font-black text-slate-900">{fileName || (en ? "Choose PDF file" : "PDF 파일 선택")}</span>
+            <label
+              aria-label={en ? "Choose or drop certificate files" : "인증서 파일 선택 또는 끌어다 놓기"}
+              className={`mt-5 flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-8 text-center transition ${fileDragActive ? "scale-[1.01] border-emerald-500 bg-emerald-100 shadow-md" : "border-slate-300 bg-slate-50 hover:border-emerald-400 hover:bg-emerald-50"}`}
+              data-file-drop-active={fileDragActive ? "true" : "false"}
+              onDragEnter={handleFileDragEnter}
+              onDragLeave={handleFileDragLeave}
+              onDragOver={handleFileDragEnter}
+              onDrop={(event) => { void handleFileDrop(event); }}
+            >
+              <span className="material-symbols-outlined mb-3 text-[34px] text-emerald-700" aria-hidden="true">upload_file</span>
+              <span className="text-base font-black text-slate-900">{fileName || (fileDragActive ? (en ? "Drop files to verify" : "파일을 놓으면 검증을 시작합니다") : (en ? "Choose or drag files here" : "파일을 선택하거나 여기로 끌어다 놓으세요"))}</span>
               <span className="mt-2 text-sm font-semibold text-slate-500">{en ? "PDF, JPG, PNG, and WebP are supported. Photos are processed locally with Korean and English OCR." : "PDF, JPG, PNG, WebP 지원. 사진은 한글·영문 OCR로 기기 안에서 처리합니다."}</span>
               <input accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" className="sr-only" multiple onChange={handleFileChange} type="file" />
             </label>
             {photoPreviewUrls.length ? (
-              <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-3">
-                {photoPreviewUrls.map((url, index) => <img alt={`${en ? "Uploaded report page" : "업로드 리포트 페이지"} ${index + 1}`} className="aspect-[3/4] w-full rounded-xl border border-slate-200 bg-slate-50 object-contain" key={url} src={url} />)}
+              <div className="mt-3">
+                <div className="relative mx-auto aspect-[210/297] w-full max-w-3xl overflow-hidden rounded-xl border border-slate-300 bg-slate-100 shadow-inner">
+                  <img alt={`${en ? "Enlarged report page" : "리포트 크게 보기"} ${selectedPreviewIndex + 1}`} className="h-full w-full object-contain" src={photoPreviewUrls[selectedPreviewIndex]} />
+                  {selectedPreviewRegions.map((region, regionIndex) => (
+                    <span
+                      aria-label={`${en ? "Tampered region" : "변조 의심 영역"} ${regionIndex + 1}`}
+                      className="pointer-events-none absolute z-10 border-[3px] border-rose-600 bg-rose-500/15 shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
+                      key={`${region.pageNumber}-${region.x}-${region.y}-${regionIndex}`}
+                      style={{ left: `${region.x * 100}%`, top: `${region.y * 100}%`, width: `${region.width * 100}%`, height: `${region.height * 100}%` }}
+                    />
+                  ))}
+                  {selectedPreviewRegions.length ? <span className="absolute left-3 top-3 z-20 rounded-full bg-rose-700 px-3 py-1 text-xs font-black text-white shadow">{en ? `${selectedPreviewRegions.length} changed` : `변경 ${selectedPreviewRegions.length}건`}</span> : null}
+                </div>
+                <p className="mt-2 text-center text-xs font-bold text-slate-500">{en ? `Enlarged view · page ${selectedPreviewIndex + 1} of ${photoPreviewUrls.length}` : `크게 보기 · ${selectedPreviewIndex + 1}/${photoPreviewUrls.length}페이지`}</p>
+                <div className="mt-3 flex gap-2 overflow-x-auto pb-1" aria-label={en ? "Report page thumbnails" : "리포트 페이지 썸네일"}>
+                  {photoPreviewUrls.map((url, index) => {
+                    const thumbnailRegions = (pdfFileVerification?.changedRegions || []).filter((region) => region.pageNumber === index + 1);
+                    return (
+                      <button className={`relative w-28 shrink-0 overflow-hidden rounded-xl border-2 bg-white p-1 ${index === selectedPreviewIndex ? "border-emerald-500" : "border-slate-200"}`} key={url} onClick={() => setSelectedPreviewPage(index)} type="button">
+                        <span className="absolute left-2 top-2 z-20 flex h-6 min-w-6 items-center justify-center rounded-full bg-slate-900 px-1 text-[11px] font-black text-white">{index + 1}</span>
+                        <span className="relative block aspect-[210/297] w-full">
+                          <img alt={`${en ? "Report thumbnail" : "리포트 썸네일"} ${index + 1}`} className="h-full w-full object-contain" src={url} />
+                          {thumbnailRegions.map((region, regionIndex) => (
+                            <span
+                              aria-label={`${en ? "Thumbnail tampered region" : "썸네일 변조 의심 영역"} ${regionIndex + 1}`}
+                              className="pointer-events-none absolute z-10 border-2 border-rose-600 bg-rose-500/20"
+                              key={`${region.pageNumber}-${region.x}-${region.y}-thumbnail-${regionIndex}`}
+                              style={{ left: `${region.x * 100}%`, top: `${region.y * 100}%`, width: `${region.width * 100}%`, height: `${region.height * 100}%` }}
+                            />
+                          ))}
+                        </span>
+                        {thumbnailRegions.length ? <span className="absolute bottom-2 right-2 z-20 rounded-full bg-rose-700 px-2 py-0.5 text-[9px] font-black text-white">{thumbnailRegions.length}</span> : null}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             ) : null}
-            {ocrProgress.busy ? (
-              <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 p-4">
-                <div className="flex items-center justify-between text-sm font-black text-sky-900"><span>{en ? "OCR processing" : "OCR 처리 중"}</span><span>{ocrProgress.percent}%</span></div>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-sky-100"><div className="h-full bg-sky-600 transition-all" style={{ width: `${ocrProgress.percent}%` }} /></div>
-                <p className="mt-2 text-xs font-semibold text-sky-700">{ocrProgress.status}</p>
-              </div>
-            ) : null}
-            {fileName ? (
-              <div className={`mt-3 rounded-2xl border px-4 py-3 text-sm font-bold ${pdfFileVerification?.status === "TAMPERED_PDF" ? "border-rose-300 bg-rose-50 text-rose-950" : pdfFileVerification?.status === "EXACT_PDF_MATCH" || (!uploadedPdfSelected && photoVerification?.photoConsistent) ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
-                {pdfFileVerification?.status === "TAMPERED_PDF"
-                  ? pdfFileVerification.verificationMode === "PDF_METADATA_DATES"
-                    ? (en ? "Tampered PDF: CreationDate and ModDate differ." : "변조 파일: PDF 생성일과 수정일이 다릅니다.")
-                    : (en ? "Tampered PDF: exact issued-file bytes do not match." : "변조 파일: 발급 원본 PDF 바이트와 일치하지 않습니다.")
-                  : pdfFileVerification?.status === "EXACT_PDF_MATCH"
-                  ? (en ? "Exact issued-PDF byte match confirmed." : "발급 PDF 원본 바이트가 정확히 일치합니다.")
-                  : uploadedPdfSelected
-                  ? (en ? "PDF authenticity is unverified. OCR and visual similarity are reference evidence only." : "PDF 원본성 검증 불가: OCR·시각 유사도는 참고 증거이며 진위 판정이 아닙니다.")
-                  : photoVerification
-                  ? (en ? `Photo OCR comparison completed (${photoVerification.confidence}%).` : `사진 OCR 데이터셋 대조를 완료했습니다(${photoVerification.confidence}%).`)
-                  : uploadedPayloadFound
-                  ? (en ? "Verification data was found in the uploaded PDF. The button below can verify it again." : "업로드한 PDF에서 검증 데이터를 찾았습니다. 아래 버튼으로 다시 확인할 수 있습니다.")
-                  : (en ? "The uploaded PDF was read, but hidden Carbonet verification data was not found." : "업로드한 PDF는 읽었지만 숨김 Carbonet 검증 정보를 찾지 못했습니다.")}
-              </div>
-            ) : null}
-
-            <div className="mt-5">
-              <label className="text-sm font-black text-slate-800" htmlFor="manual-verification-block">
-                {en ? "Manual verification block" : "수동 검증 블록"}
-              </label>
-              <textarea
-                className="mt-2 min-h-36 w-full rounded-2xl border border-slate-300 bg-white p-4 font-mono text-xs text-slate-800 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-                id="manual-verification-block"
-                onChange={(event) => setManualBlock(event.target.value)}
-                placeholder={`${REPORT_VERIFY_BEGIN}\n...\n${REPORT_VERIFY_END}`}
-                value={manualBlock}
-              />
-              <div className="mt-3 flex justify-end">
-                <MemberButton onClick={handleManualVerify} type="button">
-                  {en ? "Verify Uploaded PDF / Block" : "업로드 PDF / 검증 블록 확인"}
-                </MemberButton>
-              </div>
-            </div>
           </section>
 
           <aside className="space-y-4">
@@ -3992,22 +4374,28 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Three Verification Signals" : "3가지 식별 방식"}</p>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Issued Registry Evidence" : "발급 원장 식별·해시 근거"}</p>
               <div className="mt-4 space-y-3">
                 {[
-                  [en ? "Certificate ID" : "인증서 ID", payload?.certificateId || "-"],
-                  [en ? "SHA-256 Fingerprint" : "SHA-256 리포트 지문", payload?.payloadHash || "-"],
-                  [en ? "Integrity Code" : "무결성 코드", payload?.integrityCode || "-"]
-                ].map(([label, value]) => (
-                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3" key={label}>
-                    <p className="text-[11px] font-black text-slate-500">{label}</p>
-                    <p className="mt-1 break-all font-mono text-xs font-black text-slate-950">{value}</p>
+                  { label: en ? "Certificate ID" : "인증서 ID", value: resolvedCertificateId },
+                  { label: en ? "Issued PDF SHA-256" : "발급 PDF SHA-256", value: registeredPdfSha256, hashComparison: true },
+                  { label: en ? "Uploaded PDF SHA-256" : "업로드 PDF SHA-256", value: uploadedPdfSha256, hashComparison: true },
+                  { label: en ? "Report fingerprint" : "SHA-256 리포트 지문", value: resolvedPayloadHash },
+                  { label: en ? "Integrity code" : "무결성 코드", value: resolvedIntegrityCode },
+                  { label: en ? "Dataset hash" : "데이터셋 해시", value: payload?.datasetHash || pdfFileVerification?.datasetHash || photoVerification?.datasetHash || selectedOcrRecord?.datasetHash || "-" }
+                ].map(({ label, value, hashComparison }) => (
+                  <div className={`rounded-xl border p-3 ${hashComparison && pdfSha256Mismatch ? "border-rose-400 bg-rose-50 ring-2 ring-rose-200" : "border-slate-100 bg-slate-50"}`} key={label}>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`text-[11px] font-black ${hashComparison && pdfSha256Mismatch ? "text-rose-700" : "text-slate-500"}`}>{label}</p>
+                      {hashComparison && pdfSha256Mismatch ? <span className="rounded-full bg-rose-600 px-2 py-1 text-[10px] font-black text-white">{en ? "MISMATCH" : "불일치"}</span> : null}
+                    </div>
+                    <p className={`mt-1 break-all font-mono text-xs font-black ${hashComparison && pdfSha256Mismatch ? "text-rose-950" : "text-slate-950"}`}>{value}</p>
                   </div>
                 ))}
               </div>
             </section>
 
-            {photoVerification ? (
+            {false && photoVerification ? (
               <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Photo OCR Evidence" : "사진 OCR 대조 근거"}</p>
                 <div className="mt-3 flex items-end justify-between"><strong className="text-3xl text-slate-950">{photoVerification.confidence}%</strong><span className="text-xs font-black text-slate-500">{en ? "CONTENT CONFIDENCE" : "내용 일치 신뢰도"}</span></div>
@@ -4027,6 +4415,30 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                     <span className="col-span-2">{en ? "Numeric cells" : "수치 셀"}: {photoVerification.matchedNumberCount || 0}/{photoVerification.numberCount || 0}</span>
                   </>}
                 </div>
+                {verificationAudienceConfig.showTechnicalOcrAudit && photoVerification.ocrEvidencePageComparisons?.length ? (
+                  <div className="mt-4 border-t border-slate-200 pt-3">
+                    <p className="text-xs font-black text-slate-900">{en ? "Ordered page evidence" : "페이지별 전체 항목·순서·중복 검증"}</p>
+                    <div className="mt-2 grid gap-2">
+                      {photoVerification.ocrEvidencePageComparisons.map((page) => (
+                        <div className={`rounded-lg border px-3 py-2 text-xs ${page.matched ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900"}`} key={`${page.pageNumber}-${page.pageType}`}>
+                          <strong>P{page.pageNumber} {page.pageType}</strong>
+                          <span className="ml-2">{page.matchedTokenCount}/{page.expectedTokenCount}</span>
+                          <span className="ml-2">{page.ordered ? "ORDER OK" : "ORDER FAIL"}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {verificationAudienceConfig.showTechnicalOcrAudit && photoVerification.ocrEvidenceTokenComparisons?.length ? (
+                  <details className="mt-4 overflow-hidden border border-slate-200 bg-white">
+                    <summary className="cursor-pointer bg-slate-50 px-3 py-2 text-xs font-black text-slate-900">
+                      {en ? "All OCR verification targets" : "전체 OCR 진위 검증 항목"} ({photoVerification.ocrEvidenceTokenComparisons.filter((token) => token.matched).length}/{photoVerification.ocrEvidenceTokenComparisons.length})
+                    </summary>
+                    <div className="max-h-[32rem] overflow-auto border-t border-slate-200">
+                      <table className="w-full min-w-[680px] border-collapse text-left text-[11px]"><thead className="sticky top-0 bg-slate-100 text-slate-700"><tr><th className="px-3 py-2">#</th><th className="px-3 py-2">{en ? "Page / section" : "페이지·구역"}</th><th className="px-3 py-2">{en ? "Issued target value" : "발급 검증 대상값"}</th><th className="px-3 py-2">{en ? "Occurrence / order" : "중복·순서"}</th><th className="px-3 py-2">{en ? "Result" : "판정"}</th></tr></thead><tbody className="divide-y divide-slate-100">{photoVerification.ocrEvidenceTokenComparisons.map((token, index) => <tr className={token.matched ? "bg-white" : "bg-rose-50"} key={`${token.pageNumber}-${token.tokenIndex}-${index}`}><td className="px-3 py-2 font-mono">{index + 1}</td><td className="px-3 py-2 font-bold">P{token.pageNumber} {token.pageType}</td><td className="max-w-80 break-all px-3 py-2 font-semibold">{token.expected === "" ? (en ? "(empty)" : "(빈값)") : token.expected}</td><td className="px-3 py-2 font-semibold">#{token.occurrence} / {token.ordered ? "ORDER OK" : "ORDER FAIL"}</td><td className={`px-3 py-2 font-black ${token.matched ? "text-emerald-700" : "text-rose-700"}`}>{token.matched ? "MATCH" : "MISMATCH"}</td></tr>)}</tbody></table>
+                    </div>
+                  </details>
+                ) : null}
                 {selectedReportType === "LCA_SUMMARY" && photoVerification.lcaFieldComparisons?.length ? (
                   <div className="mt-4 grid gap-2 sm:grid-cols-2">
                     {photoVerification.lcaFieldComparisons.map((field) => (
@@ -4038,106 +4450,18 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                     ))}
                   </div>
                 ) : null}
-                {selectedReportType !== "LCA_SUMMARY" && photoVerification.fieldMismatches?.length ? (
-                  <div className="mt-4 border-t border-rose-200 pt-3">
-                    <p className="text-xs font-black text-rose-900">{en ? "Unmatched or unreadable dataset fields" : "불일치·판독 실패 데이터"}</p>
-                    <div className="mt-2 max-h-72 space-y-2 overflow-y-auto">
-                      {photoVerification.fieldMismatches.slice(0, 30).map((item) => (
-                        <div className="border border-rose-200 bg-rose-50 p-3 text-xs" key={`${item.rowIndex}-${item.materialName}`}>
-                          <p className="font-black text-rose-950">#{item.rowIndex} {item.sectionLabel || "-"} / {item.materialName || "-"}</p>
-                          <div className="mt-2 grid grid-cols-2 gap-1 text-rose-800">
-                            {!item.materialMatched ? <span>{en ? "Material name not found" : "물질명 판독 불일치"}</span> : null}
-                            {!item.amountMatched ? <span>{en ? "Amount shown" : "화면 사용량"}: {item.amountDisplay || formatNumber(item.amount ?? 0, 2)}</span> : null}
-                            {!item.emissionFactorMatched ? <span>{en ? "Emission factor shown" : "화면 배출계수"}: {item.emissionFactorDisplay || formatNumber(item.emissionFactor ?? 0, 2)}</span> : null}
-                            {!item.totalEmissionMatched ? <span>{en ? "Emission shown" : "화면 배출량"}: {item.totalEmissionDisplay || formatNumber(item.totalEmission ?? 0, 2)}</span> : null}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="mt-2 text-[11px] font-semibold text-rose-700">{en ? "These values were not confirmed in OCR. They may be altered, covered, blurred, or misread." : "표시된 값은 OCR에서 확인되지 않았습니다. 변조·가림·흐림 또는 오인식 가능성을 검토해야 합니다."}</p>
-                  </div>
-                ) : null}
-                {photoVerification.damagedRegions?.length ? (
-                  <div className="mt-3 border-t border-amber-200 pt-3">
-                    <p className="text-xs font-black text-amber-900">{en ? "Suspected visual damage locations" : "시각 훼손 의심 위치"}</p>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {photoVerification.damagedRegions.slice(0, 16).map((region, index) => (
-                        <span className="bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-900" key={`${region.page}-${region.row}-${region.column}-${index}`}>
-                          P{region.page} R{region.row} C{region.column} ({region.difference})
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
                 <p className="mt-3 text-xs font-semibold leading-5 text-amber-800">{en ? "A photo verifies visible-content consistency, not the hidden digital signature. Use the original PDF for cryptographic authenticity." : "사진은 보이는 내용의 일치도를 검증하며 숨김 디지털 서명 자체를 증명하지는 않습니다. 완전한 진위 확인은 원본 PDF를 사용하세요."}</p>
               </section>
             ) : null}
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Dataset Comparison" : "데이터셋 대조"}</p>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black">
-                <span className={`col-span-2 rounded-lg px-3 py-2 ${pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "bg-emerald-100 text-emerald-900" : pdfFileVerification?.status === "TAMPERED_PDF" ? "bg-rose-100 text-rose-900" : uploadedPdfSelected ? "bg-amber-50 text-amber-900" : "bg-slate-100 text-slate-500"}`}>
-                  {en ? "PDF bytes vs issued original" : "PDF 원본 바이트 ↔ 발급 원장"}: {pdfFileVerification?.status === "EXACT_PDF_MATCH" ? "EXACT" : pdfFileVerification?.status === "TAMPERED_PDF" ? "TAMPERED" : uploadedPdfSelected ? "UNVERIFIABLE" : "-"}
-                </span>
-                <span className={`rounded-lg px-3 py-2 ${photoVerification || datasetVerification ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>
-                  {en ? "Pre-PDF registry dataset" : "PDF 생성 전 원장 데이터셋"}: {photoVerification || datasetVerification ? "OK" : "-"}
-                </span>
-                <span className={`rounded-lg px-3 py-2 ${datasetVerification?.datasetPresent ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>
-                  {en ? "PDF embedded dataset" : "PDF 내장 데이터셋"}: {datasetVerification?.datasetPresent ? "OK" : "-"}
-                </span>
-                <span className={`rounded-lg px-3 py-2 ${datasetVerification?.datasetMatch ? "bg-emerald-50 text-emerald-800" : datasetVerification ? "bg-rose-50 text-rose-800" : "bg-slate-100 text-slate-500"}`}>
-                  {en ? "Embedded vs registry" : "내장 ↔ 원장"}: {datasetVerification?.datasetMatch ? "OK" : datasetVerification ? "FAIL" : "-"}
-                </span>
-                <span className={`rounded-lg px-3 py-2 ${photoVerification?.photoConsistent ? "bg-emerald-50 text-emerald-800" : photoVerification ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-500"}`}>
-                  {en ? "Visible OCR vs registry" : "화면 OCR ↔ 원장"}: {photoVerification?.photoConsistent ? `${photoVerification.confidence}%` : photoVerification ? `${photoVerification.confidence}%` : "-"}
-                </span>
-                <span className={`col-span-2 rounded-lg px-3 py-2 ${photoVerification?.qrFullyMatched ? "bg-emerald-100 text-emerald-900" : photoVerification?.qrDetected ? "bg-rose-50 text-rose-800" : "bg-slate-100 text-slate-500"}`}>
-                  {en ? "Photographed QR signature vs registry" : "촬영 QR 서명 ↔ 원장"}: {photoVerification?.qrFullyMatched ? "OK" : photoVerification?.qrDetected ? "FAIL" : "-"}
-                </span>
-                <span className={`col-span-2 rounded-lg px-3 py-2 ${datasetVerification?.datasetMatch && photoVerification?.photoConsistent && (!uploadedPdfSelected || pdfFileVerification?.status === "EXACT_PDF_MATCH") ? "bg-emerald-100 text-emerald-900" : pdfFileVerification?.status === "TAMPERED_PDF" ? "bg-rose-100 text-rose-900" : "bg-slate-100 text-slate-600"}`}>
-                  {en ? "Four-way equality" : "4자 데이터 일치"}: {pdfFileVerification?.status === "TAMPERED_PDF" ? "TAMPERED" : uploadedPdfSelected && pdfFileVerification?.status !== "EXACT_PDF_MATCH" ? "UNVERIFIABLE" : datasetVerification?.datasetMatch && photoVerification?.photoConsistent && (!uploadedPdfSelected || pdfFileVerification?.status === "EXACT_PDF_MATCH") ? "OK" : datasetVerification ? (en ? "OCR REVIEW" : "OCR 검토") : (en ? "EMBEDDED DATA UNAVAILABLE" : "내장 데이터 없음")}
-                </span>
-              </div>
-              <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">
-                {datasetVerification?.datasetMatch
-                  ? (en ? "The embedded report dataset matches the issued registry. Visible report fields are listed in the detailed OCR comparison." : "PDF 내장 데이터셋이 발급 원장과 일치합니다. 눈에 보이는 레포트 항목은 OCR 상세 대조에서 확인할 수 있습니다.")
-                  : (en ? "Upload a newly issued report to compare its embedded dataset." : "내장 데이터셋 대조를 위해 새로 발급한 리포트를 업로드하세요.")}
-              </p>
-              {datasetVerification?.fieldComparisons?.length ? (
-                <details className="mt-4 overflow-hidden border border-slate-200 bg-white" open={!datasetVerification.datasetMatch}>
-                  <summary className="cursor-pointer bg-slate-50 px-4 py-3 text-sm font-black text-slate-900">
-                    {en ? "Stored dataset vs uploaded dataset" : "DB 저장값 ↔ 업로드값 상세 비교"} ({datasetVerification.matchedFieldCount || 0}/{datasetVerification.fieldCount || 0})
-                  </summary>
-                  <div className="max-h-[32rem] overflow-auto border-t border-slate-200">
-                    <table className="w-full min-w-[720px] border-collapse text-left text-xs">
-                      <thead className="sticky top-0 bg-slate-100 text-slate-700"><tr>
-                        <th className="px-3 py-3">{en ? "Field" : "항목"}</th>
-                        <th className="px-3 py-3">{en ? "Stored value" : "DB 저장값"}</th>
-                        <th className="px-3 py-3">{en ? "Uploaded value" : "업로드값"}</th>
-                        <th className="px-3 py-3">{en ? "Result" : "판정"}</th>
-                      </tr></thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {datasetVerification.fieldComparisons.map((field) => <tr className={field.matched ? "bg-white" : "bg-rose-50"} key={field.path}>
-                          <td className="px-3 py-2"><strong>{verificationFieldLabel(field.path, en)}</strong><code className="mt-1 block break-all text-[10px] text-slate-400">{field.path}</code></td>
-                          <td className="max-w-72 break-all px-3 py-2 font-semibold text-slate-800">{field.expected || "-"}</td>
-                          <td className="max-w-72 break-all px-3 py-2 font-semibold text-slate-800">{field.actual || "-"}</td>
-                          <td className={`px-3 py-2 font-black ${field.matched ? "text-emerald-700" : "text-rose-700"}`}>{field.matched ? "MATCH" : "MISMATCH"}</td>
-                        </tr>)}
-                      </tbody>
-                    </table>
-                  </div>
-                </details>
-              ) : null}
-            </section>
-
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Issued Record" : "발급 이력"}</p>
-              {matchedRecord || photoVerification?.certificateId ? (
+              {resolvedCertificateId !== "-" ? (
                 <div className="mt-3 space-y-2 text-sm font-bold text-slate-700">
-                  <p>{en ? "Certificate" : "인증서"}: {matchedRecord?.certificateId || photoVerification?.certificateId || "-"}</p>
-                  <p>{en ? "Issued at" : "발급일시"}: {(matchedRecord?.issuedAt || photoVerification?.issuedAt) ? new Date(matchedRecord?.issuedAt || photoVerification?.issuedAt || "").toLocaleString() : "-"}</p>
-                  <p>{en ? "Product" : "제품"}: {matchedRecord?.productName || photoVerification?.productName || "-"}</p>
-                  <p>{en ? "Total emission" : "총 배출량"}: {formatNumber(matchedRecord?.totalEmission ?? photoVerification?.totalEmission ?? 0, 4)} kg CO2e</p>
+                  {verificationAudienceConfig.showIssuedCertificateId ? <p>{en ? "Certificate" : "인증서"}: {resolvedCertificateId}</p> : null}
+                  <p>{en ? "Issued at" : "발급일시"}: {resolvedIssuedAt ? new Date(resolvedIssuedAt).toLocaleString() : (en ? "Not registered" : "미등록")}</p>
+                  <p>{en ? "Product" : "제품"}: {resolvedProductName || (en ? "Not registered" : "미등록")}</p>
+                  <p>{en ? "Total emission" : "총 배출량"}: {resolvedTotalEmission == null ? (en ? "Not registered" : "미등록") : `${formatNumber(resolvedTotalEmission, 4)} kg CO2e`}</p>
                 </div>
               ) : (
                 <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">
@@ -4148,7 +4472,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
           </aside>
         </div>
 
-        {photoVerification ? (
+        {false && photoVerification ? (
           <section className="mt-5 overflow-hidden border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
               <div>
@@ -4164,7 +4488,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                 <span className="bg-sky-50 px-3 py-2 text-sky-800">{en ? "Tag match" : "태그 일치"}: {photoVerification.comparisons?.filter((item) => item.verificationTagMatch).length || 0}</span>
                 <span className="bg-blue-50 px-3 py-2 text-blue-800">{en ? "Dataset exact" : "데이터셋 완전 일치"}: {photoVerification.comparisons?.filter((item) => item.datasetExactMatch).length || 0}</span>
                 <span className="bg-violet-50 px-3 py-2 text-violet-800">{en ? "Tag exact" : "태그 완전 일치"}: {photoVerification.comparisons?.filter((item) => item.tagExactMatch).length || 0}</span>
-                <span className="bg-slate-950 px-3 py-2 text-white">{en ? "Final exact" : "최종 완전 일치"}: {photoVerification.comparisons?.filter((item) => item.overallExactMatch).length || 0}</span>
+                <span className="bg-slate-950 px-3 py-2 text-white">{en ? "Final exact" : "최종 완전 일치"}: {photoVerification.comparisons?.filter(candidateFinalMatch).length || 0}</span>
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -4174,10 +4498,12 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                     <th className="px-4 py-3 font-black">{en ? "Issued report" : "발급 리포트"}</th>
                     <th className="px-4 py-3 font-black">{en ? "Confidence" : "내용 신뢰도"}</th>
                     <th className="px-4 py-3 font-black">{en ? "Dataset fields" : "데이터 항목"}</th>
-                    <th className="px-4 py-3 font-black">{en ? "Certificate ID" : "인증서 ID"}</th>
-                    <th className="px-4 py-3 font-black">{en ? "Payload hash" : "리포트 해시"}</th>
-                    <th className="px-4 py-3 font-black">{en ? "Integrity" : "무결성 코드"}</th>
-                    <th className="px-4 py-3 font-black">{en ? "Dataset hash" : "데이터셋 해시"}</th>
+                    {verificationAudienceConfig.showIdentifiers ? <>
+                      <th className="px-4 py-3 font-black">{en ? "Certificate ID" : "인증서 ID"}</th>
+                      <th className="px-4 py-3 font-black">{en ? "Payload hash" : "리포트 해시"}</th>
+                      <th className="px-4 py-3 font-black">{en ? "Integrity" : "무결성 코드"}</th>
+                      <th className="px-4 py-3 font-black">{en ? "Dataset hash" : "데이터셋 해시"}</th>
+                    </> : null}
                     <th className="px-4 py-3 font-black">{en ? "Result" : "판정"}</th>
                   </tr>
                 </thead>
@@ -4194,7 +4520,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                         <strong className={item.contentMatch ? "text-emerald-700" : item.confidence >= 55 ? "text-amber-700" : "text-rose-700"}>{item.confidence}%</strong>
                         <p className="mt-1 text-slate-500">{item.contentMatch ? (en ? "MATCH" : "일치") : item.confidence >= 55 ? (en ? "REVIEW" : "검토") : (en ? "MISMATCH" : "불일치")}</p>
                       </td>
-                      <td className="px-4 py-3 align-top leading-5 text-slate-700" colSpan={6}>
+                      <td className="px-4 py-3 align-top leading-5 text-slate-700" colSpan={verificationAudienceConfig.showIdentifiers ? 6 : 2}>
                         <p className={`mb-2 font-black ${item.datasetExactMatch ? "text-emerald-700" : "text-rose-700"}`}>{en ? "Dataset" : "데이터셋"}: {item.datasetExactMatch ? "EXACT" : "MISMATCH"}</p>
                         <p>{en ? "Product" : "제품"}: {item.productMatched ? "OK" : "-"}</p>
                         {selectedReportType === "LCA_SUMMARY" ? <p>{en ? "Title" : "제목"}: {item.titleMatched ? "OK" : "-"}</p> : null}
@@ -4207,10 +4533,10 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                           <p>{en ? "Numbers" : "수치"}: {item.matchedNumberCount}/{item.numberCount}</p>
                         </>}
                         <div className="mt-3 flex flex-wrap gap-2">
-                          <span className={`px-2 py-1 font-black ${item.tagExactMatch ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>{en ? "Verification tags" : "검증 태그"}: {item.tagExactMatch ? "EXACT" : "MISMATCH"}</span>
-                          <span className={`px-2 py-1 font-black ${item.overallExactMatch ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>{en ? "Final result" : "최종 판정"}: {item.overallExactMatch ? (en ? "EXACT MATCH" : "일치") : (en ? "MISMATCH" : "불일치")}</span>
+                          <span className={`px-2 py-1 font-black ${candidateIdentifierMatch(item, item.tagExactMatch) ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>{en ? "Verification tags" : "검증 태그"}: {candidateIdentifierMatch(item, item.tagExactMatch) ? "EXACT" : "MISMATCH"}</span>
+                          <span className={`px-2 py-1 font-black ${candidateFinalMatch(item) ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>{en ? "Final result" : "최종 판정"}: {candidateFinalMatch(item) ? (en ? "EXACT MATCH" : "일치") : (en ? "MISMATCH" : "불일치")}</span>
                         </div>
-                        <details className="mt-3 min-w-72 border border-slate-200 bg-white">
+                        <details className="mt-3 min-w-72 border border-slate-200 bg-white" open={candidateFinalMatch(item)}>
                           <summary className="cursor-pointer select-none px-3 py-2 font-black text-slate-800 hover:bg-slate-50">
                             {en ? "Show detailed comparison" : "상세 일치·불일치 내역"}
                           </summary>
@@ -4226,10 +4552,12 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                     [en ? "Product" : "제품명", item.productName || "-", item.productMatched],
                                     ...(selectedReportType === "LCA_SUMMARY" ? [[en ? "Title" : "제목", item.reportTitle || "-", item.titleMatched] as [string, string, boolean]] : []),
                                     [en ? "Total emission" : "총 배출량", String(item.totalEmission ?? "-"), item.totalEmissionMatched],
-                                    [en ? "Certificate ID" : "인증서 ID", item.certificateId || "-", item.certificateIdMatch],
-                                    [en ? "Report hash" : "리포트 해시", item.payloadHash || "-", item.payloadHashMatch],
-                                    [en ? "Integrity code" : "무결성 코드", item.integrityCode || "-", item.integrityCodeMatch],
-                                    [en ? "Dataset hash" : "데이터셋 해시", item.datasetHash || "-", item.datasetHashMatch]
+                                    ...(verificationAudienceConfig.showIdentifiers ? [
+                                      [en ? "Certificate ID" : "인증서 ID", item.certificateId || "-", candidateIdentifierMatch(item, item.certificateIdMatch)],
+                                      [en ? "Report hash" : "리포트 해시", item.payloadHash || "-", candidateIdentifierMatch(item, item.payloadHashMatch)],
+                                      [en ? "Integrity code" : "무결성 코드", item.integrityCode || "-", candidateIdentifierMatch(item, item.integrityCodeMatch)],
+                                      [en ? "Dataset hash" : "데이터셋 해시", item.datasetHash || "-", candidateIdentifierMatch(item, item.datasetHashMatch)]
+                                    ] as Array<[string, string, boolean]> : [])
                                   ] as Array<[string, string, boolean]>).map(([label, storedValue, matched]) => <tr className={matched ? "bg-white" : "bg-rose-50"} key={label}>
                                     <td className="px-3 py-2 font-bold">{label}</td><td className="max-w-64 break-all px-3 py-2 font-semibold">{storedValue}</td>
                                     <td className="max-w-64 break-all px-3 py-2 font-semibold">{matched ? storedValue : (en ? "Not confirmed in uploaded PDF" : "업로드 PDF에서 확인되지 않음")}</td>
@@ -4256,6 +4584,17 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                   [en ? "Allocated emission" : "질량 비율 배출량", field.allocatedEmissionDisplay || "-", field.allocatedEmissionMatched],
                                   [en ? "Emission per ton" : "배출량(1톤 기준)", field.emissionPerTonDisplay || "-", field.emissionPerTonMatched]
                                 ] as Array<[string, string, boolean]>).map(([label, storedValue, matched], valueIndex) => <tr className={matched ? "bg-white" : "bg-rose-50"} key={`${item.certificateId}-output-${field.rowIndex}-${valueIndex}`}><td className="px-3 py-2 font-black">{field.outputType === "BYPRODUCT" ? (en ? "Byproduct" : "부산물") : (en ? "Product" : "제품")}<span className="block font-semibold text-slate-500">{field.materialName || "-"}</span></td><td className="px-3 py-2 font-bold">{label}</td><td className="px-3 py-2 font-semibold">{storedValue}</td><td className="px-3 py-2 font-semibold">{matched ? storedValue : (en ? "Not confirmed in uploaded PDF" : "업로드 PDF에서 확인되지 않음")}</td><td className={`px-3 py-2 font-black ${matched ? "text-emerald-700" : "text-rose-700"}`}>{matched ? "MATCH" : "MISMATCH"}</td></tr>))}</tbody>
+                              </table></div>
+                            </div> : null}
+                            {selectedReportType !== "LCA_SUMMARY" && item.sectionGraphComparisons?.length ? <div className="mt-4 border-t border-slate-200 pt-3">
+                              <p className="font-black text-slate-900">{verificationLabels.graphComparison}</p>
+                              <div className="mt-2 max-h-96 overflow-auto border border-slate-200"><table className="w-full min-w-[820px] border-collapse text-left text-[11px]">
+                                <thead className="sticky top-0 bg-slate-100 text-slate-700"><tr><th className="px-3 py-2">{en ? "Page / graph" : "페이지·그래프"}</th><th className="px-3 py-2">{en ? "Section" : "섹션"}</th><th className="px-3 py-2">{en ? "Field" : "항목"}</th><th className="px-3 py-2">{en ? "Stored value" : "DB 저장값"}</th><th className="px-3 py-2">{en ? "Uploaded OCR value" : "업로드 OCR값"}</th><th className="px-3 py-2">{en ? "Result" : "판정"}</th></tr></thead>
+                                <tbody className="divide-y divide-slate-100">{item.sectionGraphComparisons.flatMap((field) => ([
+                                  [en ? "Section name" : "섹션명", field.sectionLabel || "(빈값)", field.sectionMatched ? field.sectionLabel : (en ? "Not detected" : "미검출"), field.sectionMatched],
+                                  [en ? "Emission" : "배출량", `${field.totalEmissionDisplay || "(빈값)"} kg CO2e`, field.actualTotalEmissionDisplay ? `${field.actualTotalEmissionDisplay} kg CO2e` : (en ? "Not detected" : "미검출"), field.totalEmissionMatched],
+                                  [en ? "Share" : "비중", `${field.sharePercentDisplay || "(빈값)"}%`, field.actualSharePercentDisplay ? `${field.actualSharePercentDisplay}%` : (en ? "Not detected" : "미검출"), field.sharePercentMatched]
+                                ] as Array<[string, string, string, boolean]>).map(([label, storedValue, actualValue, matched], valueIndex) => <tr className={matched ? "bg-white" : "bg-rose-50"} key={`${item.certificateId}-graph-${field.pageNumber}-${field.sectionIndex}-${valueIndex}`}><td className="px-3 py-2 font-black">P{field.pageNumber}<span className="block font-semibold text-slate-500">{field.graphType === "SECTION_BAR" ? (en ? "Bar" : "막대그래프") : (en ? "Pie" : "원그래프")}</span></td><td className="px-3 py-2 font-bold">#{field.sectionIndex} {field.sectionLabel || "(빈값)"}</td><td className="px-3 py-2 font-bold">{label}</td><td className="px-3 py-2 font-semibold">{storedValue}</td><td className="px-3 py-2 font-semibold">{actualValue}</td><td className={`px-3 py-2 font-black ${matched ? "text-emerald-700" : "text-rose-700"}`}>{matched ? "MATCH" : "MISMATCH"}</td></tr>))}</tbody>
                               </table></div>
                             </div> : null}
                             {selectedReportType === "LCA_SUMMARY" && item.lcaFieldComparisons?.length ? (
@@ -4287,7 +4626,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                               </p>
                             ) : null}
                             {selectedReportType !== "LCA_SUMMARY" && item.fieldComparisons?.length ? <div className="mt-4 border-t border-slate-200 pt-3">
-                              <p className="font-black text-slate-900">{en ? "Stored values vs uploaded OCR values" : "DB 저장값 ↔ 업로드 OCR값"} ({item.fieldComparisons.filter((field) => field.rowMatched).length}/{item.fieldComparisons.length} {en ? "rows matched" : "행 일치"})</p>
+                              <p className="font-black text-slate-900">{verificationLabels.detailComparison} · {en ? "Stored values vs uploaded OCR values" : "DB 저장값 ↔ 업로드 OCR값"} ({item.fieldComparisons.filter((field) => field.rowMatched).length}/{item.fieldComparisons.length} {en ? "rows matched" : "행 일치"})</p>
                               <div className="mt-2 max-h-96 overflow-auto border border-slate-200">
                                 <table className="w-full min-w-[760px] border-collapse text-left text-[11px]">
                                   <thead className="sticky top-0 bg-slate-100 text-slate-700"><tr>
@@ -4321,26 +4660,6 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
             </div>
           </section>
         ) : null}
-        <section className="mt-5 overflow-hidden border border-slate-300 bg-slate-950 text-slate-100 shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-700 px-5 py-3">
-            <div>
-              <h2 className="text-sm font-black">{en ? "Verification Processing Log" : "검증 처리 로그"}</h2>
-              <p className="mt-1 text-[11px] font-semibold text-slate-400">{en ? "Client processing and registry comparison events for the current upload" : "현재 업로드 파일의 브라우저 처리 및 원장 대조 이력"}</p>
-            </div>
-            <button aria-label={en ? "Clear log" : "로그 지우기"} className="p-2 text-slate-400 hover:bg-slate-800 hover:text-white" onClick={() => setVerificationLogs([])} title={en ? "Clear log" : "로그 지우기"} type="button">
-              <span className="material-symbols-outlined text-[18px]">delete_sweep</span>
-            </button>
-          </div>
-          <div className="max-h-80 overflow-y-auto p-4 font-mono text-xs">
-            {verificationLogs.length ? verificationLogs.map((entry) => (
-              <div className="grid grid-cols-[76px_52px_minmax(0,1fr)] gap-3 border-b border-slate-800 py-2 last:border-0" key={entry.id}>
-                <span className="text-slate-500">{entry.at}</span>
-                <span className={entry.level === "OK" ? "text-emerald-400" : entry.level === "WARN" ? "text-amber-400" : entry.level === "ERROR" ? "text-rose-400" : "text-sky-400"}>{entry.level}</span>
-                <span className="break-words"><strong className="text-slate-100">{entry.message}</strong>{entry.detail ? <span className="mt-1 block text-slate-400">{entry.detail}</span> : null}</span>
-              </div>
-            )) : <p className="py-4 text-center text-slate-500">{en ? "Select a PDF or image to begin logging." : "PDF 또는 이미지를 선택하면 처리 로그가 기록됩니다."}</p>}
-          </div>
-        </section>
       </AdminWorkspacePageFrame>
   );
   if (embedded) {
@@ -4392,7 +4711,7 @@ export function EmissionSurveyLcaSummaryPrintPage() {
 
   if (!report) {
     return (
-      <main className="min-h-screen bg-slate-100 p-8">
+      <main className="min-h-screen bg-slate-100 p-8" data-screen-theme="krds-v1">
         <div className="mx-auto max-w-3xl rounded-3xl border border-amber-200 bg-white p-8 shadow-sm">
           <h1 className="text-2xl font-black text-slate-950">{en ? "No report session" : "리포트 세션 없음"}</h1>
           <p className="mt-3 text-sm font-bold text-slate-600">
@@ -4577,7 +4896,7 @@ export function EmissionSurveyLcaSummaryPrintPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#e8edf3] px-4 py-8 text-slate-950 print:bg-white print:p-0">
+    <main className="min-h-screen bg-[#e8edf3] px-4 py-8 text-slate-950 print:bg-white print:p-0" data-screen-theme="krds-v1">
       <style>
         {`
           @page{size:A4;margin:60px;}

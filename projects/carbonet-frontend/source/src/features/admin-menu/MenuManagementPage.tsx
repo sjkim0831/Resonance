@@ -325,7 +325,7 @@ const MenuManagementPage: React.FC = () => {
                 cursor: 'pointer',
                 padding: 0,
                 color: textSecondaryColor,
-              }}
+              }} className="krds-control-button"
             >
               <span style={{
                 transform: item.expanded ? 'rotate(90deg)' : 'rotate(0deg)',
@@ -549,7 +549,7 @@ const MenuManagementPage: React.FC = () => {
                           borderRadius: borderRadius.md,
                           fontSize: '13px',
                           backgroundColor: surfaceBg,
-                        }}
+                        }} className="krds-control-field"
                       />
                     </div>
                     <div>
@@ -572,7 +572,7 @@ const MenuManagementPage: React.FC = () => {
                           border: `1px solid ${borderColor}`,
                           borderRadius: borderRadius.md,
                           fontSize: '13px',
-                        }}
+                        }} className="krds-control-field"
                       />
                     </div>
                   </div>
@@ -598,7 +598,7 @@ const MenuManagementPage: React.FC = () => {
                         borderRadius: borderRadius.md,
                         fontSize: '13px',
                         resize: 'vertical',
-                      }}
+                      }} className="krds-control-field"
                     />
                   </div>
 
@@ -624,7 +624,7 @@ const MenuManagementPage: React.FC = () => {
                           border: `1px solid ${borderColor}`,
                           borderRadius: borderRadius.md,
                           fontSize: '13px',
-                        }}
+                        }} className="krds-control-field"
                       />
                     </div>
                     <div>
@@ -648,7 +648,7 @@ const MenuManagementPage: React.FC = () => {
                           border: `1px solid ${borderColor}`,
                           borderRadius: borderRadius.md,
                           fontSize: '13px',
-                        }}
+                        }} className="krds-control-field"
                       />
                     </div>
                   </div>
@@ -673,7 +673,7 @@ const MenuManagementPage: React.FC = () => {
                           border: `1px solid ${borderColor}`,
                           borderRadius: borderRadius.md,
                           fontSize: '13px',
-                        }}
+                        }} className="krds-control-field"
                       >
                         <option value="">상위 메뉴 없음</option>
                         {menus.map((m) => (
@@ -700,7 +700,7 @@ const MenuManagementPage: React.FC = () => {
                           border: `1px solid ${borderColor}`,
                           borderRadius: borderRadius.md,
                           fontSize: '13px',
-                        }}
+                        }} className="krds-control-field"
                       >
                         {groups.map((g) => (
                           <option key={g.menuGroupId} value={g.menuGroupId}>{g.menuGroupNm}</option>
@@ -727,7 +727,7 @@ const MenuManagementPage: React.FC = () => {
                           border: `1px solid ${borderColor}`,
                           borderRadius: borderRadius.md,
                           fontSize: '13px',
-                        }}
+                        }} className="krds-control-field"
                       />
                     </div>
                   </div>

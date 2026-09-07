@@ -41,8 +41,13 @@ for day in "${backup_days[@]}"; do
   find "$resolved_dir" -maxdepth 1 -type f -name "postgres-roles-$timestamp-*.sql.gz" -print >> "$keep_file"
 done
 
-sort -u "$keep_file" -o "$keep_file"
-find "$resolved_dir" -maxdepth 1 -type f -print | sort | comm -23 - "$keep_file" > "$delete_file"
+# `comm` requires both inputs to use the exact same collation. Force the byte
+# order so Korean or mixed-case backup names cannot fail an otherwise healthy
+# deployment under a host-specific locale.
+LC_ALL=C sort -u "$keep_file" -o "$keep_file"
+find "$resolved_dir" -maxdepth 1 -type f -print \
+  | LC_ALL=C sort \
+  | LC_ALL=C comm -23 - "$keep_file" > "$delete_file"
 
 delete_count="$(wc -l < "$delete_file")"
 delete_bytes="$(

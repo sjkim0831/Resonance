@@ -152,6 +152,7 @@ export function EduCertificateMigrationPage() {
   return (
     <div
       className="min-h-screen bg-[linear-gradient(180deg,#f3f6fb_0%,#f8fafc_24%,#ffffff_100%)] text-slate-900"
+      data-screen-theme="krds-v1"
       style={{
         ["--kr-gov-blue" as string]: "#00378b",
         ["--kr-gov-blue-hover" as string]: "#002d72",

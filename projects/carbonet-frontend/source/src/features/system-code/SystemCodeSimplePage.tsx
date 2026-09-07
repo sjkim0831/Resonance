@@ -270,8 +270,8 @@ export function SystemCodePage() {
           title={selectedRow ? (en ? "Edit Detail Code" : "소분류 수정") : (en ? "Add Detail Code" : "소분류 등록")}
         >
           <form action="/admin/system/code/detail/create" className="space-y-4" method="post" onSubmit={handleSubmit}>
-            <input name="code" type="hidden" value={selectedRow ? stringOf(selectedRow, "code", "CODE") : ""} />
-            <input name="codeId" type="hidden" value={selectedRow ? stringOf(selectedRow, "codeId", "CODE_ID") : ""} />
+            <input name="code" type="hidden" value={selectedRow ? stringOf(selectedRow, "code", "CODE") : ""} className="krds-control-field" />
+            <input name="codeId" type="hidden" value={selectedRow ? stringOf(selectedRow, "codeId", "CODE_ID") : ""} className="krds-control-field" />
 
             <div>
               <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Class" : "대분류"}</span>
@@ -367,8 +367,8 @@ export function SystemCodePage() {
             {en ? `Delete "${stringOf(selectedRow, "code", "CODE")}"?` : `"${stringOf(selectedRow, "code", "CODE")}"을(를) 삭제하시겠습니까?`}
           </p>
           <form action="/admin/system/code/detail/delete" method="post" onSubmit={handleSubmit}>
-            <input name="code" type="hidden" value={stringOf(selectedRow, "code", "CODE")} />
-            <input name="codeId" type="hidden" value={stringOf(selectedRow, "codeId", "CODE_ID")} />
+            <input name="code" type="hidden" value={stringOf(selectedRow, "code", "CODE")} className="krds-control-field" />
+            <input name="codeId" type="hidden" value={stringOf(selectedRow, "codeId", "CODE_ID")} className="krds-control-field" />
             <div className="flex justify-end gap-2">
               <MemberButton onClick={() => { setDeleteConfirmOpen(false); setSelectedRow(null); }} type="button" variant="secondary">
                 {en ? "Cancel" : "취소"}

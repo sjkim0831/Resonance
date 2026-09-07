@@ -40,22 +40,27 @@ public class AdminCompanyAccountCommandService {
         boolean isEn = adminCompanyAccountSupportService.isEnglishRequest(request, locale);
         String currentUserId = adminCompanyAccountSupportService.extractCurrentUserId(request);
         String currentUserAuthorCode = adminAuthorityPagePayloadSupport.resolveCurrentUserAuthorCode(currentUserId);
-        AdminCompanyAccountService.SaveResult result = adminCompanyAccountService.saveCompanyAccount(
-                insttId,
-                membershipType,
-                agencyName,
-                representativeName,
-                bizRegistrationNumber,
-                zipCode,
-                companyAddress,
-                companyAddressDetail,
-                chargerName,
-                chargerEmail,
-                chargerTel,
-                fileUploads,
-                isEn,
-                adminAuthorityPagePayloadSupport.hasMemberManagementMasterAccess(currentUserId, currentUserAuthorCode),
-                true);
+        AdminCompanyAccountService.SaveResult result;
+        try {
+            result = adminCompanyAccountService.saveCompanyAccount(
+                    insttId,
+                    membershipType,
+                    agencyName,
+                    representativeName,
+                    bizRegistrationNumber,
+                    zipCode,
+                    companyAddress,
+                    companyAddressDetail,
+                    chargerName,
+                    chargerEmail,
+                    chargerTel,
+                    fileUploads,
+                    isEn,
+                    adminAuthorityPagePayloadSupport.hasMemberManagementMasterAccess(currentUserId, currentUserAuthorCode),
+                    true);
+        } catch (AdminCompanyAccountService.CompanyAccountPersistenceException exception) {
+            result = exception.getResult();
+        }
         return result.toResponseEntity();
     }
 
@@ -78,24 +83,29 @@ public class AdminCompanyAccountCommandService {
         adminCompanyAccountSupportService.primeCsrfToken(request);
         boolean isEn = adminCompanyAccountSupportService.isEnglishRequest(request, locale);
         String currentUserId = adminCompanyAccountSupportService.extractCurrentUserId(request);
-        AdminCompanyAccountService.SaveResult result = adminCompanyAccountService.saveCompanyAccount(
-                insttId,
-                membershipType,
-                agencyName,
-                representativeName,
-                bizRegistrationNumber,
-                zipCode,
-                companyAddress,
-                companyAddressDetail,
-                chargerName,
-                chargerEmail,
-                chargerTel,
-                fileUploads,
-                isEn,
-                adminAuthorityPagePayloadSupport.hasGlobalDeptRoleAccess(
-                        currentUserId,
-                        adminAuthorityPagePayloadSupport.resolveCurrentUserAuthorCode(currentUserId)),
-                false);
+        AdminCompanyAccountService.SaveResult result;
+        try {
+            result = adminCompanyAccountService.saveCompanyAccount(
+                    insttId,
+                    membershipType,
+                    agencyName,
+                    representativeName,
+                    bizRegistrationNumber,
+                    zipCode,
+                    companyAddress,
+                    companyAddressDetail,
+                    chargerName,
+                    chargerEmail,
+                    chargerTel,
+                    fileUploads,
+                    isEn,
+                    adminAuthorityPagePayloadSupport.hasGlobalDeptRoleAccess(
+                            currentUserId,
+                            adminAuthorityPagePayloadSupport.resolveCurrentUserAuthorCode(currentUserId)),
+                    false);
+        } catch (AdminCompanyAccountService.CompanyAccountPersistenceException exception) {
+            result = exception.getResult();
+        }
         if (result.isForbidden()) {
             model.addAttribute("companyAccountErrors", Collections.singletonList(result.getMessage()));
             return adminCompanyAccountSupportService.resolveFormViewName(isEn);

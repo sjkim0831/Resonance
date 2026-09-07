@@ -1,0 +1,29 @@
+{
+  "processCode": "DESIGN_ASSET_GOVERNANCE",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "DESIGN_ASSET_GOVERNANCE_S1",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/design-asset-governance/design-asset-governance-s1?step=design_asset_governance_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "DESIGN_ASSET_GOVERNANCE_S2",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/design-asset-governance/design-asset-governance-s2?step=design_asset_governance_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "DESIGN_ASSET_GOVERNANCE_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/design-asset-governance/design-asset-governance-s3?step=design_asset_governance_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "DESIGN_ASSET_GOVERNANCE_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/design-asset-governance/design-asset-governance-s4?step=design_asset_governance_s4"
+    }
+  ]
+}

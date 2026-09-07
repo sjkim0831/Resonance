@@ -352,7 +352,7 @@ export function Co2AnalysisMigrationPage() {
   return (
     <>
       <Co2AnalysisInlineStyles en={en} />
-      <div className="bg-[#f4f7fa] text-[var(--kr-gov-text-primary)] min-h-screen">
+      <div className="min-h-screen bg-[#f4f7fa] text-[var(--kr-gov-text-primary)]" data-screen-theme="krds-v1">
         <a className="skip-link" href="#main-content">{content.skipLink}</a>
 
         {/* Government Header Bar */}

@@ -1,0 +1,29 @@
+{
+  "processCode": "STAKEHOLDER_SHARING",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "STAKEHOLDER_SHARING_S1",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/stakeholder-sharing/stakeholder-sharing-s1?step=stakeholder_sharing_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "STAKEHOLDER_SHARING_S2",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/stakeholder-sharing/stakeholder-sharing-s2?step=stakeholder_sharing_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "STAKEHOLDER_SHARING_S3",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/stakeholder-sharing/stakeholder-sharing-s3?step=stakeholder_sharing_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "STAKEHOLDER_SHARING_S4",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/stakeholder-sharing/stakeholder-sharing-s4?step=stakeholder_sharing_s4"
+    }
+  ]
+}

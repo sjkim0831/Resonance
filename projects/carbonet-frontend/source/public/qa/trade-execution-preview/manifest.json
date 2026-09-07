@@ -1,0 +1,29 @@
+{
+  "processCode": "TRADE_EXECUTION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "TRADE_EXECUTION_01_PLAN",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/generated/trade-execution/trade-execution-01-plan?process=TRADE_EXECUTION&step=TRADE_EXECUTION_01_PLAN&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "TRADE_EXECUTION_02_WORK",
+      "actorCode": "SITE_DATA_OWNER",
+      "routePath": "/generated/trade-execution/trade-execution-02-work?process=TRADE_EXECUTION&step=TRADE_EXECUTION_02_WORK&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DTRADE_EXECUTION%26step%3DTRADE_EXECUTION_02_WORK&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "TRADE_EXECUTION_03_VERIFY",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/trade-execution/trade-execution-03-verify?process=TRADE_EXECUTION&step=TRADE_EXECUTION_03_VERIFY&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DTRADE_EXECUTION%26step%3DTRADE_EXECUTION_03_VERIFY&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "TRADE_EXECUTION_04_APPROVE",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/trade-execution/trade-execution-04-approve?process=TRADE_EXECUTION&step=TRADE_EXECUTION_04_APPROVE&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DTRADE_EXECUTION%26step%3DTRADE_EXECUTION_04_APPROVE&commandAudience=ADMIN"
+    }
+  ]
+}

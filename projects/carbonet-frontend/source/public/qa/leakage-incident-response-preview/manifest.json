@@ -1,0 +1,29 @@
+{
+  "processCode": "LEAKAGE_INCIDENT_RESPONSE",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "LEAKAGE_INCIDENT_RESPONSE_S1",
+      "actorCode": "SITE_DATA_OWNER",
+      "routePath": "/generated/leakage-incident-response/leakage-incident-response-s1?step=leakage_incident_response_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "LEAKAGE_INCIDENT_RESPONSE_S2",
+      "actorCode": "SITE_DATA_OWNER",
+      "routePath": "/generated/leakage-incident-response/leakage-incident-response-s2?step=leakage_incident_response_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "LEAKAGE_INCIDENT_RESPONSE_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/leakage-incident-response/leakage-incident-response-s3?step=leakage_incident_response_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "LEAKAGE_INCIDENT_RESPONSE_S4",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/generated/leakage-incident-response/leakage-incident-response-s4?step=leakage_incident_response_s4"
+    }
+  ]
+}

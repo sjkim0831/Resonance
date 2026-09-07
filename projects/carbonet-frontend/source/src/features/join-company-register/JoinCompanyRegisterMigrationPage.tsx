@@ -577,6 +577,7 @@ export function JoinCompanyRegisterMigrationPage() {
                     return (
                       <label className={`type-card group${active ? " active" : ""}`} key={card.value}>
                         <HomeRadio
+                          aria-label={card.title}
                           checked={active}
                           className="sr-only"
                           name="membership_type"

@@ -3,7 +3,6 @@ import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import {
-  UserGovernmentBar,
   UserLanguageToggle,
   UserPortalFooter,
   UserPortalHeader
@@ -232,7 +231,7 @@ export function MypageMarketingMigrationPage() {
   const displayName = stringValue(member.applcntNm) || stringValue(page?.userId) || "-";
   const sidebarItems = [
     { label: copy.profileLabel, href: buildLocalizedPath("/mypage/profile", "/en/mypage/profile"), icon: "person" },
-    { label: copy.securityLabel, href: buildLocalizedPath("/mypage/security", "/en/mypage/security"), icon: "security" },
+    { label: copy.securityLabel, href: buildLocalizedPath("/mypage/password?processCode=PROFILE_MANAGEMENT&stepCode=PROFILE_MANAGEMENT_S4&guide=1", "/en/mypage/password?processCode=PROFILE_MANAGEMENT&stepCode=PROFILE_MANAGEMENT_S4&guide=1"), icon: "security" },
     { label: copy.notificationLabel, href: buildLocalizedPath("/mypage/notification", "/en/mypage/notification"), icon: "notifications_active" },
     { label: copy.marketingLabel, href: buildLocalizedPath("/mypage/marketing", "/en/mypage/marketing"), icon: "mail", active: true },
     { label: copy.companyLabel, href: buildLocalizedPath("/mypage/company", "/en/mypage/company"), icon: "business" }
@@ -299,9 +298,8 @@ export function MypageMarketingMigrationPage() {
   }
 
   return (
-    <div className="bg-[#f8fafc] text-[var(--kr-gov-text-primary)] min-h-screen">
+    <div className="bg-[#f8fafc] text-[var(--kr-gov-text-primary)] min-h-screen" data-mypage-theme="krds-v1">
       <a className="skip-link" href="#main-content">{copy.skip}</a>
-      <UserGovernmentBar governmentText={copy.government} guidelineText={copy.guideline} />
       <UserPortalHeader
         brandSubtitle="Unified Account Hub"
         brandTitle={copy.title}

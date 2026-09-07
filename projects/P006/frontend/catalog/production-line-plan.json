@@ -1,0 +1,843 @@
+{
+  "generatedAt": "2026-08-15T04:12:07.189018+00:00",
+  "status": "PASS",
+  "lineCode": "optimized-production-line-16",
+  "lineName": "우수 대표 설비 최적 생산라인",
+  "plannedAssets": 16,
+  "factoryWidthMm": 40000,
+  "factoryHeightMm": 30000,
+  "safetyGapMm": 1200,
+  "workerAisleMm": 1800,
+  "processSteps": 16,
+  "processOrder": [
+    "melting_furnace",
+    "holding_furnace",
+    "casting_filter",
+    "ladler",
+    "turntable_furnace",
+    "casting_machine",
+    "spray_ladler",
+    "release_agent",
+    "vacuum_unit",
+    "mold_cooling",
+    "cooling_unit",
+    "takeout_robot",
+    "trimming_machine",
+    "punching_press",
+    "robot_panel",
+    "main_panel"
+  ],
+  "placements": [
+    {
+      "sequence": 1,
+      "assetId": "A0243",
+      "assetName": "ass'y(20170425)",
+      "assetCode": "catalog_a0243",
+      "variantCode": "melting_furnace-a0243",
+      "bundleCode": "melting_furnace",
+      "equipmentName": "용해로",
+      "processStep": 1,
+      "xMm": 2794,
+      "yMm": 692,
+      "widthMm": 7011,
+      "depthMm": 8316,
+      "heightMm": 7300,
+      "dimensionEvidence": "DRAWING_DIMENSION",
+      "selectionScore": 144.4,
+      "rotationY": -1.6,
+      "row": 0
+    },
+    {
+      "sequence": 2,
+      "assetId": "A0004",
+      "assetName": "보온로1",
+      "assetCode": "catalog_a0004",
+      "variantCode": "holding_furnace-a0004",
+      "bundleCode": "holding_furnace",
+      "equipmentName": "보온로",
+      "processStep": 2,
+      "xMm": 14544,
+      "yMm": 3977,
+      "widthMm": 1512,
+      "depthMm": 1746,
+      "heightMm": null,
+      "dimensionEvidence": "VERIFIED_3D_PROXY_SCALE",
+      "selectionScore": 44.4,
+      "rotationY": -2.23,
+      "row": 0
+    },
+    {
+      "sequence": 3,
+      "assetId": "A0009",
+      "assetName": "주조기_필터",
+      "assetCode": "catalog_a0009",
+      "variantCode": "casting_filter-a0009",
+      "bundleCode": "casting_filter",
+      "equipmentName": "주조기 필터",
+      "processStep": 3,
+      "xMm": 23749,
+      "yMm": 4447,
+      "widthMm": 1102,
+      "depthMm": 806,
+      "heightMm": null,
+      "dimensionEvidence": "VERIFIED_3D_PROXY_SCALE",
+      "selectionScore": 43.95,
+      "rotationY": -2.1,
+      "row": 0
+    },
+    {
+      "sequence": 4,
+      "assetId": "A0028",
+      "assetName": "베이스",
+      "assetCode": "catalog_a0028",
+      "variantCode": "ladler-a0028",
+      "bundleCode": "ladler",
+      "equipmentName": "래들러",
+      "processStep": 4,
+      "xMm": 32722,
+      "yMm": 4294,
+      "widthMm": 1156,
+      "depthMm": 1111,
+      "heightMm": null,
+      "dimensionEvidence": "VERIFIED_3D_PROXY_SCALE",
+      "selectionScore": 43.2,
+      "rotationY": 1.6,
+      "row": 0
+    },
+    {
+      "sequence": 5,
+      "assetId": "A0041",
+      "assetName": "TT-1800",
+      "assetCode": "catalog_a0041",
+      "variantCode": "turntable_furnace-a0041",
+      "bundleCode": "turntable_furnace",
+      "equipmentName": "턴테이블로",
+      "processStep": 5,
+      "xMm": 31720,
+      "yMm": 9770,
+      "widthMm": 3160,
+      "depthMm": 3160,
+      "heightMm": 2195,
+      "dimensionEvidence": "DRAWING_DIMENSION",
+      "selectionScore": 139.8,
+      "rotationY": -8.0,
+      "row": 1
+    },
+    {
+      "sequence": 6,
+      "assetId": "A0094",
+      "assetName": "전체 어셈블리",
+      "assetCode": "catalog_a0094",
+      "variantCode": "casting_machine-a0094",
+      "bundleCode": "casting_machine",
+      "equipmentName": "주조기",
+      "processStep": 6,
+      "xMm": 23151,
+      "yMm": 10162,
+      "widthMm": 2298,
+      "depthMm": 2376,
+      "heightMm": null,
+      "dimensionEvidence": "VERIFIED_3D_PROXY_SCALE",
+      "selectionScore": 44.25,
+      "rotationY": 5.87,
+      "row": 1
+    },
+    {
+      "sequence": 7,
+      "assetId": "A0006",
+      "assetName": "스프레이로봇,래들1",
+      "assetCode": "catalog_a0006",
+      "variantCode": "spray_ladler-a0006",
+      "bundleCode": "spray_ladler",
+      "equipmentName": "스프레이 로봇·래들",
+      "processStep": 7,
+      "xMm": 14006,
+      "yMm": 10321,
+      "widthMm": 2587,
+      "depthMm": 2057,
+      "heightMm": null,
+      "dimensionEvidence": "VERIFIED_3D_PROXY_SCALE",
+      "selectionScore": 44.25,
+      "rotationY": -2.42,
+      "row": 1
+    },
+    {
+      "sequence": 8,
+      "assetId": "A0007",
+      "assetName": "이형제1",
+      "assetCode": "catalog_a0007",
+      "variantCode": "release_agent-a0007",
+      "bundleCode": "release_agent",
+      "equipmentName": "이형제 장치",
+      "processStep": 8,
+      "xMm": 5767,
+      "yMm": 10338,
+      "widthMm": 1065,
+      "depthMm": 2023,
+      "heightMm": 1600,
+      "dimensionEvidence": "DRAWING_DIMENSION",
+      "selectionScore": 144.1,
+      "rotationY": -3.98,
+      "row": 1
+    },
+    {
+      "sequence": 9,
+      "assetId": "A0042",
+      "assetName": "VACUUM SUCTION UNIT",
+      "assetCode": "catalog_a0042",
+      "variantCode": "vacuum_unit-a0042",
+      "bundleCode": "vacuum_unit",
+      "equipmentName": "진공장치",
+      "processStep": 9,
+      "xMm": 5850,
+      "yMm": 17475,
+      "widthMm": 900,
+      "depthMm": 750,
+      "heightMm": 1650,
+      "dimensionEvidence": "DRAWING_DIMENSION",
+      "selectionScore": 139.7,
+      "rotationY": 6.62,
+      "row": 2
+    },
+    {
+      "sequence": 10,
+      "assetId": "A0043",
+      "assetName": "금형고압냉각장비",
+      "assetCode": "catalog_a0043",
+      "variantCode": "mold_cooling-a0043",
+      "bundleCode": "mold_cooling",
+      "equipmentName": "금형 고압냉각장비",
+      "processStep": 10,
+      "xMm": 14392,
+      "yMm": 17150,
+      "widthMm": 1816,
+      "depthMm": 1400,
+      "heightMm": null,
+      "dimensionEvidence": "VERIFIED_3D_PROXY_SCALE",
+      "selectionScore": 43.95,
+      "rotationY": 0.28,
+      "row": 2
+    },
+    {
+      "sequence": 11,
+      "assetId": "A0001",
+      "assetName": "냉각장비",
+      "assetCode": "catalog_a0001",
+      "variantCode": "cooling_unit-a0001-proxy",
+      "bundleCode": "cooling_unit",
+      "equipmentName": "냉각장비",
+      "processStep": 11,
+      "xMm": 23339,
+      "yMm": 17236,
+      "widthMm": 1921,
+      "depthMm": 1228,
+      "heightMm": null,
+      "dimensionEvidence": "VERIFIED_3D_PROXY_SCALE",
+      "selectionScore": 43.95,
+      "rotationY": -4.05,
+      "row": 2
+    },
+    {
+      "sequence": 12,
+      "assetId": "A0053",
+      "assetName": "로봇",
+      "assetCode": "catalog_a0053",
+      "variantCode": "takeout_robot-a0053",
+      "bundleCode": "takeout_robot",
+      "equipmentName": "취출 로봇",
+      "processStep": 12,
+      "xMm": 32160,
+      "yMm": 16800,
+      "widthMm": 2279,
+      "depthMm": 2099,
+      "heightMm": null,
+      "dimensionEvidence": "VERIFIED_3D_PROXY_SCALE",
+      "selectionScore": 43.2,
+      "rotationY": -5.36,
+      "row": 2
+    },
+    {
+      "sequence": 13,
+      "assetId": "A0023",
+      "assetName": "트리밍1",
+      "assetCode": "catalog_a0023",
+      "variantCode": "trimming_machine-a0023",
+      "bundleCode": "trimming_machine",
+      "equipmentName": "트리밍",
+      "processStep": 13,
+      "xMm": 32635,
+      "yMm": 23552,
+      "widthMm": 1330,
+      "depthMm": 1595,
+      "heightMm": null,
+      "dimensionEvidence": "VERIFIED_3D_PROXY_SCALE",
+      "selectionScore": 44.4,
+      "rotationY": 1.16,
+      "row": 3
+    },
+    {
+      "sequence": 14,
+      "assetId": "A0035",
+      "assetName": "punching press",
+      "assetCode": "catalog_a0035",
+      "variantCode": "punching_press-a0035",
+      "bundleCode": "punching_press",
+      "equipmentName": "펀칭 프레스",
+      "processStep": 14,
+      "xMm": 23690,
+      "yMm": 21510,
+      "widthMm": 1220,
+      "depthMm": 5680,
+      "heightMm": 4190,
+      "dimensionEvidence": "DRAWING_DIMENSION",
+      "selectionScore": 139.7,
+      "rotationY": 1.66,
+      "row": 3
+    },
+    {
+      "sequence": 15,
+      "assetId": "A0002",
+      "assetName": "로봇제어반1",
+      "assetCode": "catalog_a0002",
+      "variantCode": "robot_panel-a0002",
+      "bundleCode": "robot_panel",
+      "equipmentName": "로봇 제어반",
+      "processStep": 15,
+      "xMm": 14894,
+      "yMm": 24068,
+      "widthMm": 812,
+      "depthMm": 564,
+      "heightMm": null,
+      "dimensionEvidence": "VERIFIED_3D_PROXY_SCALE",
+      "selectionScore": 43.35,
+      "rotationY": 6.75,
+      "row": 3
+    },
+    {
+      "sequence": 16,
+      "assetId": "A0008",
+      "assetName": "제어반전체1",
+      "assetCode": "catalog_a0008",
+      "variantCode": "main_panel-a0008",
+      "bundleCode": "main_panel",
+      "equipmentName": "전체 제어반",
+      "processStep": 16,
+      "xMm": 5620,
+      "yMm": 24116,
+      "widthMm": 1360,
+      "depthMm": 468,
+      "heightMm": null,
+      "dimensionEvidence": "VERIFIED_3D_PROXY_SCALE",
+      "selectionScore": 43.95,
+      "rotationY": -8.0,
+      "row": 3
+    }
+  ],
+  "connections": {
+    "conveyor": [
+      {
+        "from": {
+          "assetId": "A0243",
+          "xMm": 6300,
+          "yMm": 4850
+        },
+        "to": {
+          "assetId": "A0004",
+          "xMm": 15300,
+          "yMm": 4850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0004",
+          "xMm": 15300,
+          "yMm": 4850
+        },
+        "to": {
+          "assetId": "A0009",
+          "xMm": 24300,
+          "yMm": 4850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0009",
+          "xMm": 24300,
+          "yMm": 4850
+        },
+        "to": {
+          "assetId": "A0028",
+          "xMm": 33300,
+          "yMm": 4850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0028",
+          "xMm": 33300,
+          "yMm": 4850
+        },
+        "to": {
+          "assetId": "A0041",
+          "xMm": 33300,
+          "yMm": 11350
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0041",
+          "xMm": 33300,
+          "yMm": 11350
+        },
+        "to": {
+          "assetId": "A0094",
+          "xMm": 24300,
+          "yMm": 11350
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0094",
+          "xMm": 24300,
+          "yMm": 11350
+        },
+        "to": {
+          "assetId": "A0006",
+          "xMm": 15300,
+          "yMm": 11350
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0006",
+          "xMm": 15300,
+          "yMm": 11350
+        },
+        "to": {
+          "assetId": "A0007",
+          "xMm": 6300,
+          "yMm": 11350
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0007",
+          "xMm": 6300,
+          "yMm": 11350
+        },
+        "to": {
+          "assetId": "A0042",
+          "xMm": 6300,
+          "yMm": 17850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0042",
+          "xMm": 6300,
+          "yMm": 17850
+        },
+        "to": {
+          "assetId": "A0043",
+          "xMm": 15300,
+          "yMm": 17850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0043",
+          "xMm": 15300,
+          "yMm": 17850
+        },
+        "to": {
+          "assetId": "A0001",
+          "xMm": 24300,
+          "yMm": 17850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0001",
+          "xMm": 24300,
+          "yMm": 17850
+        },
+        "to": {
+          "assetId": "A0053",
+          "xMm": 33300,
+          "yMm": 17850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0053",
+          "xMm": 33300,
+          "yMm": 17850
+        },
+        "to": {
+          "assetId": "A0023",
+          "xMm": 33300,
+          "yMm": 24350
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0023",
+          "xMm": 33300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0035",
+          "xMm": 24300,
+          "yMm": 24350
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0035",
+          "xMm": 24300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0002",
+          "xMm": 15300,
+          "yMm": 24350
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0002",
+          "xMm": 15300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0008",
+          "xMm": 6300,
+          "yMm": 24350
+        }
+      }
+    ],
+    "pipe": [
+      {
+        "from": {
+          "assetId": "A0243",
+          "xMm": 6300,
+          "yMm": 4850
+        },
+        "to": {
+          "assetId": "A0004",
+          "xMm": 15300,
+          "yMm": 4850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0004",
+          "xMm": 15300,
+          "yMm": 4850
+        },
+        "to": {
+          "assetId": "A0041",
+          "xMm": 33300,
+          "yMm": 11350
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0041",
+          "xMm": 33300,
+          "yMm": 11350
+        },
+        "to": {
+          "assetId": "A0094",
+          "xMm": 24300,
+          "yMm": 11350
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0094",
+          "xMm": 24300,
+          "yMm": 11350
+        },
+        "to": {
+          "assetId": "A0007",
+          "xMm": 6300,
+          "yMm": 11350
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0007",
+          "xMm": 6300,
+          "yMm": 11350
+        },
+        "to": {
+          "assetId": "A0042",
+          "xMm": 6300,
+          "yMm": 17850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0042",
+          "xMm": 6300,
+          "yMm": 17850
+        },
+        "to": {
+          "assetId": "A0043",
+          "xMm": 15300,
+          "yMm": 17850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0043",
+          "xMm": 15300,
+          "yMm": 17850
+        },
+        "to": {
+          "assetId": "A0001",
+          "xMm": 24300,
+          "yMm": 17850
+        }
+      }
+    ],
+    "electrical": [
+      {
+        "from": {
+          "assetId": "A0008",
+          "xMm": 6300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0243",
+          "xMm": 6300,
+          "yMm": 4850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0002",
+          "xMm": 15300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0004",
+          "xMm": 15300,
+          "yMm": 4850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0002",
+          "xMm": 15300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0009",
+          "xMm": 24300,
+          "yMm": 4850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0002",
+          "xMm": 15300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0028",
+          "xMm": 33300,
+          "yMm": 4850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0002",
+          "xMm": 15300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0041",
+          "xMm": 33300,
+          "yMm": 11350
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0002",
+          "xMm": 15300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0094",
+          "xMm": 24300,
+          "yMm": 11350
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0002",
+          "xMm": 15300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0006",
+          "xMm": 15300,
+          "yMm": 11350
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0008",
+          "xMm": 6300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0007",
+          "xMm": 6300,
+          "yMm": 11350
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0008",
+          "xMm": 6300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0042",
+          "xMm": 6300,
+          "yMm": 17850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0002",
+          "xMm": 15300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0043",
+          "xMm": 15300,
+          "yMm": 17850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0002",
+          "xMm": 15300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0001",
+          "xMm": 24300,
+          "yMm": 17850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0002",
+          "xMm": 15300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0053",
+          "xMm": 33300,
+          "yMm": 17850
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0002",
+          "xMm": 15300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0023",
+          "xMm": 33300,
+          "yMm": 24350
+        }
+      },
+      {
+        "from": {
+          "assetId": "A0002",
+          "xMm": 15300,
+          "yMm": 24350
+        },
+        "to": {
+          "assetId": "A0035",
+          "xMm": 24300,
+          "yMm": 24350
+        }
+      }
+    ],
+    "safetyFence": [
+      {
+        "assetId": "A0243",
+        "xMm": 2194,
+        "yMm": 92,
+        "widthMm": 8211,
+        "depthMm": 9516
+      },
+      {
+        "assetId": "A0004",
+        "xMm": 13944,
+        "yMm": 3377,
+        "widthMm": 2712,
+        "depthMm": 2946
+      },
+      {
+        "assetId": "A0041",
+        "xMm": 31120,
+        "yMm": 9170,
+        "widthMm": 4360,
+        "depthMm": 4360
+      },
+      {
+        "assetId": "A0094",
+        "xMm": 22551,
+        "yMm": 9562,
+        "widthMm": 3498,
+        "depthMm": 3576
+      },
+      {
+        "assetId": "A0023",
+        "xMm": 32035,
+        "yMm": 22952,
+        "widthMm": 2530,
+        "depthMm": 2795
+      },
+      {
+        "assetId": "A0035",
+        "xMm": 23090,
+        "yMm": 20910,
+        "widthMm": 2420,
+        "depthMm": 6880
+      }
+    ]
+  },
+  "counts": {
+    "conveyor": 15,
+    "pipe": 7,
+    "electrical": 14,
+    "safetyFence": 6,
+    "collision": 0
+  },
+  "checks": {
+    "onePerEquipmentGroup": true,
+    "processOrder": true,
+    "materialConnected": true,
+    "pipeConnected": true,
+    "electricalConnected": true,
+    "hazardFenced": true,
+    "collisionFree": true
+  },
+  "selectionPolicy": [
+    "ONE_BEST_ASSET_PER_GROUP",
+    "DIMENSION_EVIDENCE_FIRST",
+    "ORIGINAL_ASSET_FIRST",
+    "MAPPING_CONFIDENCE"
+  ],
+  "reviewQueue": []
+}

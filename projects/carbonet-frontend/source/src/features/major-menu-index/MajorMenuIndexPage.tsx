@@ -90,21 +90,6 @@ function MajorMenuIndexInlineStyles() {
         outline: 3px solid var(--kr-gov-focus);
         outline-offset: 2px;
       }
-      .home-brand-copy { min-width: 0; }
-      .home-brand-title {
-        margin: 0 !important;
-        font-size: inherit !important;
-        line-height: 1.2 !important;
-      }
-      .home-brand-subtitle {
-        margin: 0 !important;
-        line-height: 1.2;
-      }
-      .gnb-item:hover .gnb-depth2 { display: block; }
-      .gnb-depth2 { width: 560px !important; padding: 10px; }
-      .gnb-sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-      .gnb-section { border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; background: #fafafa; }
-      .gnb-section-title { display: block; font-size: 12px; font-weight: 700; color: var(--kr-gov-blue); margin-bottom: 6px; padding: 0 4px; }
       body.mobile-menu-open { overflow: hidden; }
     `}</style>
   );

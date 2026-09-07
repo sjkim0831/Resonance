@@ -10,17 +10,17 @@
     "governancePlan": "docs/architecture/verification-center-and-baseline-governance-plan.md"
   },
   "summary": {
-    "pageCount": 231,
-    "menuBoundPageCount": 231,
-    "staticMenuBoundPageCount": 230,
+    "pageCount": 233,
+    "menuBoundPageCount": 233,
+    "staticMenuBoundPageCount": 232,
     "dynamicMenuBoundPageCount": 1,
     "unmanagedPageCount": 0,
-    "routeBoundPageCount": 231,
+    "routeBoundPageCount": 233,
     "apiCount": 13,
     "uniqueRouteCount": 13,
     "functionCount": 59,
     "uniqueFunctionCount": 45,
-    "frontendE2eCount": 9,
+    "frontendE2eCount": 11,
     "backendTestCount": 0,
     "highRiskPageCount": 26,
     "highRiskApiCount": 1,
@@ -588,6 +588,13 @@
       "menuBindingType": "static"
     },
     {
+      "manifestKey": "emission-my-tasks",
+      "pageId": "emission-my-tasks",
+      "routePath": "/emission/my-tasks",
+      "menuCode": "H1010102",
+      "menuBindingType": "static"
+    },
+    {
       "manifestKey": "emission-project-list",
       "pageId": "emission-project-list",
       "routePath": "/emission/project_list",
@@ -1145,6 +1152,13 @@
       "pageId": "mypage-password",
       "routePath": "/mypage/password",
       "menuCode": "HMENU_MYPAGE_PASSWORD",
+      "menuBindingType": "static"
+    },
+    {
+      "manifestKey": "mypage-personal-data",
+      "pageId": "mypage-personal-data",
+      "routePath": "/mypage/personal-data",
+      "menuCode": "HMENU_MYPAGE_PERSONAL_DATA",
       "menuBindingType": "static"
     },
     {
@@ -2783,10 +2797,12 @@
   "tests": {
     "frontendE2e": [
       "source/e2e/admin-access-recovery.spec.ts",
+      "source/e2e/admin-recorder-audit-badge.spec.ts",
       "source/e2e/emission-data-history.spec.ts",
       "source/e2e/emission-result-detail.spec.ts",
       "source/e2e/emission-result-list.spec.ts",
       "source/e2e/emission-validate.spec.ts",
+      "source/e2e/emission-workflow-alignment.spec.ts",
       "source/e2e/full-screen-smoke.spec.ts",
       "source/e2e/member-list.spec.ts",
       "source/e2e/menu-management-route.spec.ts",

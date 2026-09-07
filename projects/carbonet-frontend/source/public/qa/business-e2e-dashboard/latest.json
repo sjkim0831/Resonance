@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "executionMode": "SI_DIRECT",
+  "containerOrchestratorUsed": false,
+  "runId": "20260904T013837Z",
+  "startedAt": "2026-09-04T01:38:37Z",
+  "finishedAt": "2026-09-04T01:42:11Z",
+  "timeoutSeconds": 900,
+  "inventory": {
+    "canonical": 25,
+    "aliases": 2,
+    "total": 27
+  },
+  "summary": {
+    "selected": 25,
+    "passed": 25,
+    "failed": 0
+  },
+  "preflight": [
+    {
+      "name": "proxy",
+      "status": "PASS"
+    },
+    {
+      "name": "frontend",
+      "status": "PASS"
+    },
+    {
+      "name": "backend",
+      "status": "PASS"
+    },
+    {
+      "name": "postgres",
+      "status": "PASS"
+    }
+  ],
+  "results": [
+    {
+      "processCode": "CALCULATION_ENGINE_PARITY",
+      "runner": "run-calculation-engine-parity-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 3000,
+      "log": "20260904T013837Z/calculation-engine-parity.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=CALCULATOR account=qacalc26 count=1\nRELAY_ACCOUNT_GATE actor=VERIFIER account=qaverify26 count=1\nPROCESS_RELAY_E2E_PASS process=CALCULATION_ENGINE_PARITY steps=3 routes=3 authority=3 database=3\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"CALCULATION_ENGINE_PARITY\",\"steps\":3,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "CCUS_LIFECYCLE_MRV",
+      "runner": "run-ccus-lifecycle-mrv-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 8000,
+      "log": "20260904T013837Z/ccus-lifecycle-mrv.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=APPROVER account=qaapprove26 count=1\nRELAY_ACCOUNT_GATE actor=CALCULATOR account=qacalc26 count=1\nRELAY_ACCOUNT_GATE actor=VERIFIER account=qaverify26 count=1\nPROCESS_RELAY_E2E_PASS process=CCUS_LIFECYCLE_MRV steps=4 routes=4 authority=4 database=4\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"CCUS_LIFECYCLE_MRV\",\"steps\":4,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "CERTIFICATE_FEE_TAX_REFUND",
+      "runner": "run-certificate-fee-tax-refund-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 3000,
+      "log": "20260904T013837Z/certificate-fee-tax-refund.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=SETTLEMENT_OPERATOR account=qacalc26 count=1\nPROCESS_RELAY_E2E_PASS process=CERTIFICATE_FEE_TAX_REFUND steps=3 routes=3 authority=3 database=3\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"CERTIFICATE_FEE_TAX_REFUND\",\"steps\":3,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "CERTIFICATION_ELIGIBILITY_CHECK",
+      "runner": "run-certification-eligibility-check-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 3000,
+      "log": "20260904T013837Z/certification-eligibility-check.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=CERTIFICATE_OFFICER account=qaverify26 count=1\nRELAY_ACCOUNT_GATE actor=SYSTEM_INTEGRATOR account=qacalc26 count=1\nPROCESS_RELAY_E2E_PASS process=CERTIFICATION_ELIGIBILITY_CHECK steps=3 routes=3 authority=3 database=3\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"CERTIFICATION_ELIGIBILITY_CHECK\",\"steps\":3,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "CHAIN_OF_CUSTODY",
+      "runner": "run-chain-of-custody-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 7000,
+      "log": "20260904T013837Z/chain-of-custody.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=APPROVER account=qaapprove26 count=1\nRELAY_ACCOUNT_GATE actor=SYSTEM_INTEGRATOR account=qacalc26 count=1\nRELAY_ACCOUNT_GATE actor=VERIFIER account=qaverify26 count=1\nPROCESS_RELAY_E2E_PASS process=CHAIN_OF_CUSTODY steps=4 routes=4 authority=4 database=4\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"CHAIN_OF_CUSTODY\",\"steps\":4,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "CO2_INJECTION_STORAGE_OPERATION",
+      "runner": "run-co2-injection-storage-operation-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 3000,
+      "log": "20260904T013837Z/co2-injection-storage-operation.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=HSE_MANAGER account=qaverify26 count=1\nRELAY_ACCOUNT_GATE actor=STORAGE_SITE_MANAGER account=qacalc26 count=1\nPROCESS_RELAY_E2E_PASS process=CO2_INJECTION_STORAGE_OPERATION steps=3 routes=3 authority=3 database=3\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"CO2_INJECTION_STORAGE_OPERATION\",\"steps\":3,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "CO2_LOT_TAG_MANAGEMENT",
+      "runner": "run-co2-lot-tag-management-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 3000,
+      "log": "20260904T013837Z/co2-lot-tag-management.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=AUDITOR account=qaverify26 count=1\nRELAY_ACCOUNT_GATE actor=TRADE_OPERATOR account=qacalc26 count=1\nPROCESS_RELAY_E2E_PASS process=CO2_LOT_TAG_MANAGEMENT steps=3 routes=3 authority=3 database=3\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"CO2_LOT_TAG_MANAGEMENT\",\"steps\":3,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "CO2_QUALITY_ANALYSIS",
+      "runner": "run-co2-quality-analysis-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 3000,
+      "log": "20260904T013837Z/co2-quality-analysis.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=CERTIFICATE_OFFICER account=qaapprove26 count=1\nRELAY_ACCOUNT_GATE actor=LAB_ANALYST account=qacalc26 count=1\nPROCESS_RELAY_E2E_PASS process=CO2_QUALITY_ANALYSIS steps=3 routes=3 authority=3 database=3\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"CO2_QUALITY_ANALYSIS\",\"steps\":3,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "COMPANY_MANAGER_DELEGATION",
+      "runner": "run-company-manager-delegation-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 33000,
+      "log": "20260904T013837Z/company-manager-delegation.log",
+      "summary": "    \"orchestrator\": \"systemd\",\n    \"proxyService\": \"carbonet-dev-proxy.service\",\n    \"frontendPort\": 5175,\n    \"backendPort\": 18080,\n    \"databasePort\": 35432,\n    \"kubernetesUsed\": false\n  }\n}"
+    },
+    {
+      "processCode": "COMPANY_ONBOARDING",
+      "runner": "run-company-onboarding-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 15000,
+      "log": "20260904T013837Z/company-onboarding.log",
+      "summary": "{\"status\":\"PASS\",\"promotionEligible\":true,\"processCode\":\"COMPANY_ONBOARDING\",\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\",\"validationCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\",\"runtimeBaseUrl\":\"http://127.0.0.1\",\"browserExecutablePath\":\"/home/sjkim/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome\",\"startedAt\":\"2026-09-04T01:39:44.209Z\",\"stepCount\":5,\"caseCount\":7,\"api\":1,\"database\":1,\"authority\":1,\"exceptionStates\":1,\"audit\":1,\"recovery\":1,\"cleanup\":1,\"responsive\":1,\"accessibility\":1,\"desktop\":1,\"mobile\":1,\"performanceP95Ms\":56,\"performanceSampleCount\":42,\"contracts\":[{\"processCode\":\"COMPANY_ONBOARDING\",\"stepCode\":\"COMPANY_ONBOARDING_APPLY\",\"processVersion\":\"2.1.3\",\"contractFingerprint\":\"c0759a7ca18f7d97509a414dfa8fa6fb\",\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"},{\"processCode\":\"COMPANY_ONBOARDING\",\"stepCode\":\"COMPANY_ONBOARDING_APPROVE\",\"processVersion\":\"2.1.3\",\"contractFingerprint\":\"efbea7ee643bd0a39a0f1abdc8b37556\",\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"},{\"processCode\":\"COMPANY_ONBOARDING\",\"stepCode\":\"COMPANY_ONBOARDING_SITE\",\"processVersion\":\"2.1.3\",\"contractFingerprint\":\"1a33fb56551d13d3fcd0142db8cf4ec4\",\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"},{\"processCode\":\"COMPANY_ONBOARDING\",\"stepCode\":\"COMPANY_ONBOARDING_ACTORS\",\"processVersion\":\"2.1.3\",\"contractFingerprint\":\"a0c62643ff338c248d24445d35694178\",\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"},{\"processCode\":\"COMPANY_ONBOARDING\",\"stepCode\":\"COMPANY_ONBOARDING_READY\",\"processVersion\":\"2.1.3\",\"contractFingerprint\":\"25d1c604f987"
+    },
+    {
+      "processCode": "COMPANY_REAPPLICATION_PUBLIC",
+      "runner": "run-company-reapplication-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 15000,
+      "log": "20260904T013837Z/company-reapplication.log",
+      "summary": "  \"promotion\": {\n    \"status\": \"PASSED_DIRECT_RUNTIME\",\n    \"sourceCommit\": \"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\",\n    \"containerOrchestratorUsed\": false\n  },\n  \"postPromotionScreenContext\": 1,\n  \"releaseFreshnessChecks\": 3\n}"
+    },
+    {
+      "processCode": "COMPANY_REGISTRATION_APPROVAL",
+      "runner": "run-company-registration-approval-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 17000,
+      "log": "20260904T013837Z/company-registration-approval.log",
+      "summary": "{\"status\":\"PASS\",\"processCode\":\"COMPANY_REGISTRATION_APPROVAL\",\"steps\":4,\"cases\":5,\"states\":{\"apply\":1,\"precheck\":1,\"verify\":1,\"approve\":1,\"invite\":1,\"activate\":1,\"expiredDenied\":1,\"reuseDenied\":1,\"crossCompanyDenied\":1,\"auth\":1,\"exception\":1,\"database\":1,\"audit\":1,\"cleanup\":1},\"routeCount\":16,\"routes\":[{\"viewport\":\"desktop\",\"label\":\"s1-user\",\"route\":\"/join/companyRegister\",\"status\":200,\"screenshot\":\"desktop-s1-user.png\"},{\"viewport\":\"desktop\",\"label\":\"s1-admin\",\"route\":\"/admin/member/company_list\",\"status\":200,\"screenshot\":\"desktop-s1-admin.png\"},{\"viewport\":\"desktop\",\"label\":\"s2-user\",\"route\":\"/join/companyRegisterComplete\",\"status\":200,\"screenshot\":\"desktop-s2-user.png\"},{\"viewport\":\"desktop\",\"label\":\"s2-admin\",\"route\":\"/admin/member/company-approve\",\"status\":200,\"screenshot\":\"desktop-s2-admin.png\"},{\"viewport\":\"desktop\",\"label\":\"s3-user\",\"route\":\"/join/companyJoinStatusDetail?lookupHandle=359b0920-a72a-4d24-b211-0110e32f4d02\",\"status\":200,\"screenshot\":\"desktop-s3-user.png\"},{\"viewport\":\"desktop\",\"label\":\"s3-admin\",\"route\":\"/admin/member/company-approve\",\"status\":200,\"screenshot\":\"desktop-s3-admin.png\"},{\"viewport\":\"desktop\",\"label\":\"s4-user\",\"route\":\"/mypage/company\",\"status\":200,\"screenshot\":\"desktop-s4-user.png\"},{\"viewport\":\"desktop\",\"label\":\"s4-admin\",\"route\":\"/admin/member/company_list\",\"status\":200,\"screenshot\":\"desktop-s4-admin.png\"},{\"viewport\":\"mobile\",\"label\":\"s1-user\",\"route\":\"/join/companyRegister\",\"status\":200,\"screenshot\":\"mobile-s1-user.png\"},{\"viewport\":\"mobile\",\"label\":\"s1-admin\",\"route\":\"/admin/member/company_list\",\"status\":200,\"screenshot\":\"mobile-s1-"
+    },
+    {
+      "processCode": "COMPARATIVE_ASSERTION_REVIEW",
+      "runner": "run-comparative-assertion-review-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 7000,
+      "log": "20260904T013837Z/comparative-assertion-review.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=APPROVER account=qaapprove26 count=1\nRELAY_ACCOUNT_GATE actor=LCA_PRACTITIONER account=qacalc26 count=1\nRELAY_ACCOUNT_GATE actor=VERIFIER account=qaverify26 count=1\nPROCESS_RELAY_E2E_PASS process=COMPARATIVE_ASSERTION_REVIEW steps=4 routes=4 authority=4 database=4\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"COMPARATIVE_ASSERTION_REVIEW\",\"steps\":4,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "DISCLOSURE_CORRECTION",
+      "runner": "run-disclosure-correction-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 7000,
+      "log": "20260904T013837Z/disclosure-correction.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=APPROVER account=qaapprove26 count=1\nRELAY_ACCOUNT_GATE actor=CALCULATOR account=qacalc26 count=1\nRELAY_ACCOUNT_GATE actor=VERIFIER account=qaverify26 count=1\nPROCESS_RELAY_E2E_PASS process=DISCLOSURE_CORRECTION steps=4 routes=8 authority=4 database=4\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"DISCLOSURE_CORRECTION\",\"steps\":4,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "EXTERNAL_VERIFICATION_ENGAGEMENT",
+      "runner": "run-external-verification-engagement-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 7000,
+      "log": "20260904T013837Z/external-verification-engagement.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=APPROVER account=qaapprove26 count=1\nRELAY_ACCOUNT_GATE actor=AUDITOR account=qaverify26 count=1\nRELAY_ACCOUNT_GATE actor=COMPANY_MANAGER account=qaowner26 count=1\nPROCESS_RELAY_E2E_PASS process=EXTERNAL_VERIFICATION_ENGAGEMENT steps=4 routes=4 authority=4 database=4\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"EXTERNAL_VERIFICATION_ENGAGEMENT\",\"steps\":4,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "FACILITY_EMERGENCY_RESPONSE",
+      "runner": "run-facility-emergency-response-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 3000,
+      "log": "20260904T013837Z/facility-emergency-response.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=FACILITY_OPERATOR account=qacalc26 count=1\nRELAY_ACCOUNT_GATE actor=HSE_MANAGER account=qaverify26 count=1\nPROCESS_RELAY_E2E_PASS process=FACILITY_EMERGENCY_RESPONSE steps=3 routes=3 authority=3 database=3\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"FACILITY_EMERGENCY_RESPONSE\",\"steps\":3,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "FACILITY_OPERATION_MONITORING",
+      "runner": "run-facility-operation-monitoring-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 3000,
+      "log": "20260904T013837Z/facility-operation-monitoring.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=FACILITY_OPERATOR account=qacalc26 count=1\nRELAY_ACCOUNT_GATE actor=HSE_MANAGER account=qaverify26 count=1\nPROCESS_RELAY_E2E_PASS process=FACILITY_OPERATION_MONITORING steps=3 routes=3 authority=3 database=3\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"FACILITY_OPERATION_MONITORING\",\"steps\":3,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "LEAKAGE_INCIDENT_RESPONSE",
+      "runner": "run-leakage-incident-response-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 7000,
+      "log": "20260904T013837Z/leakage-incident-response.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=COMPANY_MANAGER account=qaowner26 count=1\nRELAY_ACCOUNT_GATE actor=SITE_DATA_OWNER account=qadata26 count=1\nRELAY_ACCOUNT_GATE actor=VERIFIER account=qaverify26 count=1\nPROCESS_RELAY_E2E_PASS process=LEAKAGE_INCIDENT_RESPONSE steps=4 routes=4 authority=4 database=4\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"LEAKAGE_INCIDENT_RESPONSE\",\"steps\":4,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "MEASUREMENT_DATA_QUALITY",
+      "runner": "run-measurement-data-quality-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 7000,
+      "log": "20260904T013837Z/measurement-data-quality.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=APPROVER account=qaapprove26 count=1\nRELAY_ACCOUNT_GATE actor=SITE_DATA_OWNER account=qadata26 count=1\nRELAY_ACCOUNT_GATE actor=VERIFIER account=qaverify26 count=1\nPROCESS_RELAY_E2E_PASS process=MEASUREMENT_DATA_QUALITY steps=4 routes=4 authority=4 database=4\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"MEASUREMENT_DATA_QUALITY\",\"steps\":4,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "MEMBER_ADMINISTRATION",
+      "runner": "run-member-administration-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 16000,
+      "log": "20260904T013837Z/member-administration.log",
+      "summary": "{\"status\":\"PASS\",\"processCode\":\"MEMBER_ADMINISTRATION\",\"steps\":4,\"permissions\":4,\"databaseState\":\"P|QA 회원 관리 수정|QA 검증팀\",\"auditCount\":3,\"cleanupResidue\":0,\"ui\":{\"status\":\"PASS\",\"processCode\":\"MEMBER_ADMINISTRATION\",\"happy\":1,\"auth\":1,\"exception\":1,\"isolation\":1,\"recovery\":1,\"register\":1,\"duplicateRejected\":1,\"update\":1,\"deactivate\":1,\"reactivate\":1,\"responsive\":1,\"accessibility\":1,\"routes\":[{\"viewport\":\"desktop\",\"route\":\"/admin/member/register\",\"responsive\":1,\"screenshot\":\"/opt/resonance-data/dev-worktrees/certificate-verification/var/test-evidence/member-administration-fast-dev/20260904014116078/desktop-register.png\"},{\"viewport\":\"desktop\",\"route\":\"/admin/member/list?searchKeyword=qadm10411141\",\"responsive\":1,\"screenshot\":\"/opt/resonance-data/dev-worktrees/certificate-verification/var/test-evidence/member-administration-fast-dev/20260904014116078/desktop-list.png\"},{\"viewport\":\"desktop\",\"route\":\"/admin/member/edit?memberId=qadm10411141\",\"responsive\":1,\"screenshot\":\"/opt/resonance-data/dev-worktrees/certificate-verification/var/test-evidence/member-administration-fast-dev/20260904014116078/desktop-edit.png\"},{\"viewport\":\"mobile\",\"route\":\"/admin/member/register\",\"responsive\":1,\"screenshot\":\"/opt/resonance-data/dev-worktrees/certificate-verification/var/test-evidence/member-administration-fast-dev/20260904014116078/mobile-register.png\"},{\"viewport\":\"mobile\",\"route\":\"/admin/member/list?searchKeyword=qadm10411141\",\"responsive\":1,\"screenshot\":\"/opt/resonance-data/dev-worktrees/certificate-verification/var/test-evidence/member-administration-fast-dev/202609040141"
+    },
+    {
+      "processCode": "MEMBER_APPROVAL",
+      "runner": "run-member-approval-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 13000,
+      "log": "20260904T013837Z/member-approval.log",
+      "summary": "{\"status\":\"PASS\",\"processCode\":\"MEMBER_APPROVAL\",\"happy\":1,\"auth\":1,\"exception\":1,\"isolation\":1,\"recovery\":1,\"databasePending\":1,\"relayAccounts\":{\"MEMBER_ADMIN\":\"webmaster\",\"VERIFIER\":\"sjkim\",\"APPROVER\":\"resonance-approver\"},\"outcomes\":[{\"actor\":\"MEMBER_ADMIN\",\"account\":\"webmaster\",\"viewport\":\"desktop\",\"action\":\"REVIEW_QUEUE\",\"responsive\":1,\"accessible\":1},{\"actor\":\"APPROVER\",\"account\":\"resonance-approver\",\"viewport\":\"desktop\",\"action\":\"APPROVE\",\"responsive\":1,\"accessible\":1},{\"actor\":\"VERIFIER\",\"account\":\"sjkim\",\"viewport\":\"mobile\",\"action\":\"REJECT\",\"responsive\":1,\"accessible\":1},{\"actor\":\"APPROVER\",\"account\":\"resonance-approver\",\"viewport\":\"desktop\",\"action\":\"OPEN_MEMBER_LIST\",\"responsive\":1,\"accessible\":1}],\"database\":1,\"audit\":1,\"cleanup\":1,\"environment\":\"fast-dev-direct\"}"
+    },
+    {
+      "processCode": "MEMBER_REGISTRATION_STEP5",
+      "runner": "run-member-registration-step5-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 18000,
+      "log": "20260904T013837Z/member-registration-step5.log",
+      "summary": "[member-step5-e2e] PASS cases=5 public-completion=1 admin-handoff=1 database=1 audit=1 cleanup=1 evidence=e8990bbf76d8"
+    },
+    {
+      "processCode": "PCR_EPD_VERIFICATION",
+      "runner": "run-pcr-epd-verification-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 7000,
+      "log": "20260904T013837Z/pcr-epd-verification.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=APPROVER account=qaapprove26 count=1\nRELAY_ACCOUNT_GATE actor=LCA_PRACTITIONER account=qacalc26 count=1\nRELAY_ACCOUNT_GATE actor=VERIFIER account=qaverify26 count=1\nPROCESS_RELAY_E2E_PASS process=PCR_EPD_VERIFICATION steps=4 routes=4 authority=4 database=4\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"PCR_EPD_VERIFICATION\",\"steps\":4,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "PRIVACY_RETENTION_DESTRUCTION",
+      "runner": "run-privacy-retention-destruction-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 2000,
+      "log": "20260904T013837Z/privacy-retention-destruction.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=PRIVACY_OFFICER account=qaverify26 count=1\nPROCESS_RELAY_E2E_PASS process=PRIVACY_RETENTION_DESTRUCTION steps=3 routes=3 authority=3 database=3\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"PRIVACY_RETENTION_DESTRUCTION\",\"steps\":3,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    },
+    {
+      "processCode": "REGULATORY_SUBMISSION",
+      "runner": "run-regulatory-submission-business-e2e.sh",
+      "status": "PASS",
+      "reason": "",
+      "durationMs": 4000,
+      "log": "20260904T013837Z/regulatory-submission.log",
+      "summary": "RELAY_ACCOUNT_GATE actor=APPROVER account=qaapprove26 count=1\nRELAY_ACCOUNT_GATE actor=COMPANY_MANAGER account=qaowner26 count=1\nRELAY_ACCOUNT_GATE actor=VERIFIER account=qaverify26 count=1\nPROCESS_RELAY_E2E_PASS process=REGULATORY_SUBMISSION steps=4 routes=4 authority=4 database=4\n{\"status\":\"PASSED_FAST_DEV_NOT_PROMOTED\",\"processCode\":\"REGULATORY_SUBMISSION\",\"steps\":4,\"cleanup\":true,\"sourceCommit\":\"c07fdbc0dd5d67f1abe23ebb2c45600daffa90da\"}"
+    }
+  ]
+}

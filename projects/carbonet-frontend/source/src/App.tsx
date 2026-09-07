@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { UtilityFallback } from "./features/runtime-assist/UtilityFallback";
 import { getMissingInsttWarningEventName } from "./platform/telemetry/fetch";
 import { usePageTelemetry } from "./platform/telemetry/usePageTelemetry";
 import { useTelemetryTransport } from "./platform/telemetry/useTelemetryTransport";
@@ -22,10 +23,20 @@ import {
 import { useProjectTheme } from "./app/hooks/useProjectTheme";
 import { GlobalUserGnbShell, shouldUseGlobalUserGnb } from "./features/home-entry/GlobalUserGnbShell";
 import { useLayoutOverflowGuard } from "./app/hooks/useLayoutOverflowGuard";
-import { ScreenDevelopmentNotePanel } from "./features/screen-development-note/ScreenDevelopmentNotePanel";
+import {
+  isPublicWorkflowRoute,
+  isWorkflowAssistRoute,
+  localScreenWorkflowClassification,
+  type ScreenWorkContext,
+  type ScreenWorkContextCandidate,
+  type ScreenWorkflowClassification
+} from "./features/runtime-assist/screenWorkContext";
+import { RouteAuthenticationBoundary } from "./app/routes/RouteAuthenticationBoundary";
+const GeneratedScreenRuntime = lazy(() => import("./features/generated-screen/GeneratedScreenPage").then((module) => ({ default: module.GeneratedScreenPage })));
 
 const HelpOverlay = lazy(() => import("./components/help/HelpOverlay").then((module) => ({ default: module.HelpOverlay })));
-const GeneratedScreenRuntime = lazy(() => import("./features/generated-screen/GeneratedScreenPage").then((module) => ({ default: module.GeneratedScreenPage })));
+const TaskQuestPanel = lazy(() => import("./features/task-quest/TaskQuestPanel").then((module) => ({ default: module.TaskQuestPanel })));
+const ScreenDevelopmentNotePanel = lazy(() => import("./features/screen-development-note/ScreenDevelopmentNotePanel").then((module) => ({ default: module.ScreenDevelopmentNotePanel })));
 
 function buildContextSummary(match: MatchedContext | null, comment: string) {
   const base = [match?.page?.label, match?.surface?.label, match?.event?.label].filter(Boolean).join(" / ");
@@ -164,6 +175,7 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpContent, setHelpContent] = useState<PageHelpContent>(() => fallbackHelpContent(page));
   const [insttWarning, setInsttWarning] = useState("");
+  const [screenWorkContext, setScreenWorkContext] = useState<ScreenWorkContext | null>(null);
   const {
     availableChangeTargets,
     closeContextMenu,
@@ -182,11 +194,119 @@ export default function App() {
     setContextToast
   } = useScreenContextMenu(page, routePath);
   const RegisteredPage = getPageComponent(page);
-  const [generatedRuntime,setGeneratedRuntime]=useState(false);
-  useEffect(()=>{let cancelled=false;setGeneratedRuntime(false);fetch(`${locale==="en"?"/en":""}/home/api/process-executions/screen-contract?routePath=${encodeURIComponent(location.pathname)}`,{credentials:"include"}).then(response=>response.ok?response.json():null).then(result=>{if(!cancelled)setGeneratedRuntime(Boolean(result?.enabled))}).catch(()=>undefined);return()=>{cancelled=true}},[locale,location.pathname]);
-  const CurrentPage = generatedRuntime ? GeneratedScreenRuntime : RegisteredPage;
+  const initialRuntimeSource = new URLSearchParams(location.search);
+  const initialRuntimeProcess = initialRuntimeSource.get("process") || initialRuntimeSource.get("processCode");
+  const initialRuntimeStep = initialRuntimeSource.get("step") || initialRuntimeSource.get("stepCode");
+  const forcedGeneratedRuntime = Boolean(
+    initialRuntimeProcess &&
+    initialRuntimeStep &&
+    (/^\/(?:en\/)?(?:admin\/)?planned(?:\/|$)/i.test(location.pathname) ||
+      initialRuntimeSource.get("qaRecording") === "1" ||
+      location.pathname.startsWith("/generated/")),
+  );
+  const [generatedRuntime,setGeneratedRuntime]=useState(forcedGeneratedRuntime);
+  useEffect(()=>{let cancelled=false;const source=new URLSearchParams(location.search),selector=new URLSearchParams();const process=source.get("process")||source.get("processCode"),step=source.get("step")||source.get("stepCode"),hasCoordinate=Boolean(process&&step),forceQaRuntime=(source.get("qaRecording")==="1"||location.pathname.startsWith("/generated/"))&&hasCoordinate,forcePlannedRuntime=/^\/(?:en\/)?(?:admin\/)?planned(?:\/|$)/i.test(location.pathname)&&hasCoordinate,forceRuntime=forceQaRuntime||forcePlannedRuntime;setGeneratedRuntime(forceRuntime);if(process)selector.set("process",process);if(step)selector.set("step",step);const runtimeRoute=selector.size?`${location.pathname}?${selector}`:location.pathname;fetch(`${locale==="en"?"/en":""}/home/api/process-executions/screen-contract?routePath=${encodeURIComponent(runtimeRoute)}`,{credentials:"include"}).then(response=>response.ok?response.json():null).then(result=>{if(!cancelled)setGeneratedRuntime(forceRuntime||Boolean(result?.enabled))}).catch(()=>{if(!cancelled)setGeneratedRuntime(forceRuntime)});return()=>{cancelled=true}},[locale,location.pathname,location.search]);
+  const CurrentPage = forcedGeneratedRuntime || generatedRuntime ? GeneratedScreenRuntime : RegisteredPage;
   const boundaryResetKey = `${page}|${location.pathname}|${location.search}`;
-  const useGlobalUserGnb = shouldUseGlobalUserGnb(location.pathname);
+  const useGlobalUserGnb = page === "work-execution" || shouldUseGlobalUserGnb(location.pathname);
+  const showWorkflowAssist = isWorkflowAssistRoute(location.pathname);
+
+  const selectAmbiguousScreenWorkflow = useCallback((selection: ScreenWorkContextCandidate) => {
+    setScreenWorkContext((current) => {
+      if (!current?.selectionRequired) return current;
+      const candidate = (current.candidates || []).find((item) =>
+        item.processCode === selection.processCode &&
+        item.stepCode === selection.stepCode &&
+        (item.actorCode || "") === (selection.actorCode || "") &&
+        (item.audience || "") === (selection.audience || "")
+      );
+      if (!candidate) return current;
+      if (current.workflow?.processCode === candidate.processCode &&
+          current.workflow?.stepCode === candidate.stepCode &&
+          (current.workflow?.actorCode || "") === (candidate.actorCode || "")) return current;
+      return { ...current, linked: true, workflow: candidate, source: "catalog" };
+    });
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const localClassification = localScreenWorkflowClassification(location.pathname);
+    const unlinkedContext: ScreenWorkContext = {
+      linked: false,
+      routePath,
+      pageId: page,
+      source: "unlinked",
+      classification: localClassification,
+      reasonCode: localClassification === "EXCLUDED" ? "ROUTE_WORKFLOW_EXCLUDED" : "SCREEN_CONTEXT_PENDING",
+      reasonText: localClassification === "EXCLUDED"
+        ? "로그인·계정 복구·오류·인쇄 화면은 실행 업무 연결 대상에서 제외됩니다."
+        : "화면 업무 분류를 확인하고 있습니다.",
+      selectionRequired: false,
+      candidateCount: 0,
+      candidates: [],
+      identity: { canonicalRoutePath: location.pathname, routeKey: location.pathname }
+    };
+    setScreenWorkContext(unlinkedContext);
+    if (!showWorkflowAssist) return () => { cancelled = true; };
+    const source = new URLSearchParams(location.search);
+    const query = new URLSearchParams({ routePath: location.pathname, pageId: page });
+    ["tenantId", "projectId", "processCode", "stepCode", "actorCode", "audience"].forEach((key) => {
+      const alias = key === "processCode" ? source.get("processCode") || source.get("process")
+        : key === "stepCode" ? source.get("stepCode") || source.get("step")
+          : source.get(key);
+      if (alias) query.set(key, alias);
+    });
+    if (!query.has("audience")) {
+      query.set(
+        "audience",
+        /^\/(?:en\/)?admin(?:\/|$)/i.test(location.pathname)
+          ? "ADMIN"
+          : isPublicWorkflowRoute(location.pathname)
+            ? "PUBLIC"
+            : "USER"
+      );
+    }
+    fetch(`${locale === "en" ? "/en" : ""}/home/api/screen-context?${query.toString()}`, {
+      credentials: "include",
+      headers: { Accept: "application/json" }
+    })
+      .then(async (response) => {
+        if (response.status === 401 || response.status === 403 || response.status === 404) return null;
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) return null;
+        const body = await response.json();
+        if (!response.ok) return null;
+        return body as ScreenWorkContext;
+      })
+      .then((body) => {
+        if (!cancelled && body) {
+          const candidates = Array.isArray(body.candidates) ? body.candidates : [];
+          const classification = (
+            body.classification || (body.workflow || candidates.length ? "EXECUTABLE" : "REVIEW_REQUIRED")
+          ) as ScreenWorkflowClassification;
+          setScreenWorkContext({
+            ...body,
+            linked: Boolean(body.workflow),
+            classification,
+            reasonCode: body.reasonCode || (classification === "REVIEW_REQUIRED" ? "WORKFLOW_POLICY_REVIEW_REQUIRED" : ""),
+            reasonText: body.reasonText || "",
+            accessRestricted: Boolean(body.accessRestricted),
+            reviewStatus: body.reviewStatus || "",
+            candidateCount: candidates.length,
+            candidates,
+            routePath,
+            pageId: page,
+            source: "server"
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setScreenWorkContext(unlinkedContext);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [locale, location.pathname, location.search, page, routePath, showWorkflowAssist]);
 
   usePageTelemetry(page, locale);
 
@@ -456,7 +576,11 @@ export default function App() {
         도움말
       </button>
 
-      <ScreenDevelopmentNotePanel pageId={page} routePath={routePath} />
+      <ErrorBoundary resetKey={routePath} fallback={<UtilityFallback kind="design" error />}>
+      <Suspense fallback={<UtilityFallback kind="design" />}>
+        <ScreenDevelopmentNotePanel pageId={page} routePath={routePath} workContext={screenWorkContext} />
+      </Suspense>
+      </ErrorBoundary>
 
       {helpOpen ? (
         <Suspense fallback={null}>
@@ -464,6 +588,7 @@ export default function App() {
             open={helpOpen}
             pageId={page}
             helpContent={helpContent}
+            workContext={screenWorkContext}
             onClose={() => setHelpOpen(false)}
           />
         </Suspense>
@@ -509,15 +634,30 @@ export default function App() {
         </div>
       ) : null}
 
+      {showWorkflowAssist ? (
+        <ErrorBoundary resetKey={routePath} fallback={<UtilityFallback kind="work" error />}>
+        <Suspense fallback={<UtilityFallback kind="work" />}>
+          <TaskQuestPanel
+            pageId={page}
+            routePath={routePath}
+            screenContext={screenWorkContext}
+            onScreenContextSelection={selectAmbiguousScreenWorkflow}
+          />
+        </Suspense>
+        </ErrorBoundary>
+      ) : null}
+
       <ErrorBoundary resetKey={boundaryResetKey}>
         <Suspense fallback={<PageLoadingFallback />}>
-          {useGlobalUserGnb ? (
-            <GlobalUserGnbShell>
+          <RouteAuthenticationBoundary page={page} routePath={routePath}>
+            {useGlobalUserGnb ? (
+              <GlobalUserGnbShell>
+                <CurrentPage key={boundaryResetKey} />
+              </GlobalUserGnbShell>
+            ) : (
               <CurrentPage key={boundaryResetKey} />
-            </GlobalUserGnbShell>
-          ) : (
-            <CurrentPage key={boundaryResetKey} />
-          )}
+            )}
+          </RouteAuthenticationBoundary>
         </Suspense>
       </ErrorBoundary>
     </>
@@ -525,5 +665,17 @@ export default function App() {
 }
 
 function PageLoadingFallback() {
-  return null;
+  return (
+    <main className="min-h-[65vh] bg-slate-50 px-4 py-12" aria-busy="true" aria-live="polite">
+      <section className="mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+        <div className="flex items-center gap-4">
+          <span className="size-10 animate-spin rounded-full border-4 border-blue-100 border-t-[#246beb]" aria-hidden="true" />
+          <div>
+            <h1 className="gov-text-heading-sm font-black text-[#052b57]">화면을 준비하고 있습니다.</h1>
+            <p className="gov-text-body-sm mt-1 text-slate-600">계정 상태와 최신 화면 설계를 확인한 뒤 자동으로 표시합니다.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }

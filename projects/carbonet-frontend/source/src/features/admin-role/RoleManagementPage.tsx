@@ -157,7 +157,7 @@ const RoleManagementPage: React.FC = () => {
           <input
             type="checkbox"
             checked={roleMenus.has(item.menuId)}
-            onChange={() => toggleMenu(item.menuId)}
+            onChange={() => toggleMenu(item.menuId)} className="krds-control-native"
           />
           <span style={{ color: theme.colors.text }}>{item.menuNm}</span>
           <span style={{ color: theme.colors.textSecondary, fontSize: '12px' }}>
@@ -242,7 +242,7 @@ const RoleManagementPage: React.FC = () => {
                         padding: '8px',
                         border: `1px solid ${theme.colors.border}`,
                         borderRadius: theme.borderRadius.sm,
-                      }}
+                      }} className="krds-control-field"
                     />
                   </div>
                   <div style={{ flex: 1 }}>
@@ -260,7 +260,7 @@ const RoleManagementPage: React.FC = () => {
                         padding: '8px',
                         border: `1px solid ${theme.colors.border}`,
                         borderRadius: theme.borderRadius.sm,
-                      }}
+                      }} className="krds-control-field"
                     />
                   </div>
                 </div>
@@ -280,7 +280,7 @@ const RoleManagementPage: React.FC = () => {
                       padding: '8px',
                       border: `1px solid ${theme.colors.border}`,
                       borderRadius: theme.borderRadius.sm,
-                    }}
+                    }} className="krds-control-field"
                   />
                 </div>
 
@@ -299,7 +299,7 @@ const RoleManagementPage: React.FC = () => {
                         padding: '8px',
                         border: `1px solid ${theme.colors.border}`,
                         borderRadius: theme.borderRadius.sm,
-                      }}
+                      }} className="krds-control-field"
                     >
                       <option value="SYSTEM">시스템</option>
                       <option value="BUSINESS">업무</option>
@@ -325,7 +325,7 @@ const RoleManagementPage: React.FC = () => {
                         padding: '8px',
                         border: `1px solid ${theme.colors.border}`,
                         borderRadius: theme.borderRadius.sm,
-                      }}
+                      }} className="krds-control-field"
                     />
                   </div>
                 </div>

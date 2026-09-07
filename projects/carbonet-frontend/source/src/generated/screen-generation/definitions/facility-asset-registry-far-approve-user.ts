@@ -1,0 +1,818 @@
+import type { GeneratedScreenDefinition } from "../generatedScreenTypes";
+export const screen_facility_asset_registry_far_approve_user = {
+  "actorCode": "HSE_MANAGER",
+  "audience": "USER",
+  "blueprintCode": "BP_FACILITY_ASSET_REGISTRY_FAR_APPROVE_USER",
+  "designCompleteness": {
+    "checks": {
+      "accessibility": true,
+      "actions": true,
+      "actor": false,
+      "api": true,
+      "assetBindings": true,
+      "data": true,
+      "designCard": true,
+      "entry": true,
+      "errors": false,
+      "exit": true,
+      "fields": true,
+      "help": true,
+      "permissions": false,
+      "purpose": true,
+      "qa": false,
+      "responsive": true,
+      "sections": true,
+      "states": true,
+      "tests": true,
+      "validations": false,
+      "workGuide": true
+    },
+    "complete": false,
+    "score": 76
+  },
+  "designHash": "f93c68127367a70ab568a80b0b9b18e35d4adf3fc510f137647b8f7b439e3865",
+  "id": "facility-asset-registry-far-approve-user",
+  "pageId": "FACILITY_ASSET_REGISTRY_FAR_APPROVE_USER",
+  "pageName": "설비 기준정보 승인",
+  "processCode": "FACILITY_ASSET_REGISTRY",
+  "routePath": "/ccus/facility/facility-asset-registry",
+  "screenCoordinate": {
+    "actor": "HSE_MANAGER",
+    "device": "ADAPTIVE",
+    "domain": "FACILITY",
+    "locale": "MULTI",
+    "policy": "HSE_MANAGER:DEFAULT",
+    "process": "FACILITY_ASSET_REGISTRY",
+    "state": "LOADING",
+    "step": "FAR_APPROVE",
+    "variant": "KRDS_WORKFLOW",
+    "view": "WORKFLOW"
+  },
+  "screenCoordinateKey": "FACILITY::FACILITY_ASSET_REGISTRY::FAR_APPROVE::LOADING::HSE_MANAGER::HSE_MANAGER%3ADEFAULT::WORKFLOW::ADAPTIVE::MULTI::KRDS_WORKFLOW",
+  "screenType": "WORKFLOW",
+  "specification": {
+    "accessibility": "WCAG 2.1 AA, 키보드 명령, 명시적 라벨·오류·상태 안내를 제공한다.",
+    "actions": [
+      {
+        "code": "ACTION_1",
+        "label": "APPROVE_FACILITY"
+      },
+      {
+        "code": "ACTION_2",
+        "label": "SAVE_DRAFT"
+      },
+      {
+        "code": "ACTION_3",
+        "label": "REQUEST_CORRECTION"
+      }
+    ],
+    "actorResponsibilities": [],
+    "apiContracts": [
+      {
+        "code": "API_1",
+        "label": "/api/ccus/facility/facility-asset-registry/far_approve"
+      }
+    ],
+    "businessPurpose": "안전·환경 관점에서 설비 기준정보를 승인한다.",
+    "completionRule": "승인 버전과 변경 이력이 보존됨",
+    "dataContracts": [
+      {
+        "code": "DATA_1",
+        "label": "tenantId"
+      },
+      {
+        "code": "DATA_2",
+        "label": "projectId"
+      },
+      {
+        "code": "DATA_3",
+        "label": "facilityId"
+      },
+      {
+        "code": "DATA_4",
+        "label": "recordId"
+      },
+      {
+        "code": "DATA_5",
+        "label": "statusCode"
+      },
+      {
+        "code": "DATA_6",
+        "label": "rowVersion"
+      },
+      {
+        "code": "DATA_7",
+        "label": "evidenceHash"
+      }
+    ],
+    "designSystem": "KRDS_GOV",
+    "entryConditions": [
+      "다음 프로세스 시작 조건을 충족한다: 승인된 사업장과 설비 도입 근거가 존재한다. 현재 상태는 REVIEWED이며 서버가 테넌트·프로젝트·액터 권한을 확인한 경우에만 진입한다."
+    ],
+    "errors": [],
+    "exitConditions": [
+      "다음 완료 기준을 검증한다: 승인 버전과 변경 이력이 보존됨. 결과·버전·감사 증적을 저장한 뒤 COMPLETED 상태로 원자적으로 전이한다."
+    ],
+    "extensions": {},
+    "fields": [
+      {
+        "apiProperty": "projectId",
+        "audience": "USER",
+        "controlType": "PROJECT_SELECT",
+        "dataType": "STRING",
+        "editable": true,
+        "evidenceRequired": false,
+        "fieldCode": "projectId",
+        "fieldGroup": "컨텍스트",
+        "fieldName": "프로젝트",
+        "fieldOrder": 10,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_APPROVE_USER",
+        "permissionCode": "HSE_MANAGER:USER",
+        "privacyClass": "INTERNAL",
+        "required": true,
+        "route": "/ccus/facility/facility-asset-registry?step=far_approve",
+        "sourceColumn": null,
+        "sourceTable": null,
+        "validation": {
+          "allowUnknown": false,
+          "nullable": false,
+          "required": true,
+          "type": "code"
+        }
+      },
+      {
+        "apiProperty": "facilityId",
+        "audience": "USER",
+        "controlType": "FACILITY_SELECT",
+        "dataType": "STRING",
+        "editable": true,
+        "evidenceRequired": false,
+        "fieldCode": "facilityId",
+        "fieldGroup": "설비",
+        "fieldName": "설비 ID",
+        "fieldOrder": 20,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_APPROVE_USER",
+        "permissionCode": "HSE_MANAGER:USER",
+        "privacyClass": "INTERNAL",
+        "required": true,
+        "route": "/ccus/facility/facility-asset-registry?step=far_approve",
+        "sourceColumn": null,
+        "sourceTable": null,
+        "validation": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "nullable": false,
+          "required": true,
+          "trim": true,
+          "type": "string"
+        }
+      },
+      {
+        "apiProperty": "assetTag",
+        "audience": "USER",
+        "controlType": "TEXT",
+        "dataType": "STRING",
+        "editable": true,
+        "evidenceRequired": false,
+        "fieldCode": "assetTag",
+        "fieldGroup": "설비",
+        "fieldName": "설비 태그",
+        "fieldOrder": 30,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_APPROVE_USER",
+        "permissionCode": "HSE_MANAGER:USER",
+        "privacyClass": "INTERNAL",
+        "required": true,
+        "route": "/ccus/facility/facility-asset-registry?step=far_approve",
+        "sourceColumn": null,
+        "sourceTable": null,
+        "validation": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "nullable": false,
+          "required": true,
+          "trim": true,
+          "type": "string"
+        }
+      },
+      {
+        "apiProperty": "siteCode",
+        "audience": "USER",
+        "controlType": "SITE_SELECT",
+        "dataType": "CODE",
+        "editable": true,
+        "evidenceRequired": false,
+        "fieldCode": "siteCode",
+        "fieldGroup": "설비",
+        "fieldName": "사업장·저장소",
+        "fieldOrder": 40,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_APPROVE_USER",
+        "permissionCode": "HSE_MANAGER:USER",
+        "privacyClass": "INTERNAL",
+        "required": true,
+        "route": "/ccus/facility/facility-asset-registry?step=far_approve",
+        "sourceColumn": null,
+        "sourceTable": null,
+        "validation": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "nullable": false,
+          "required": true,
+          "trim": true,
+          "type": "string"
+        }
+      },
+      {
+        "apiProperty": "statusCode",
+        "audience": "USER",
+        "controlType": "STATUS_SELECT",
+        "dataType": "CODE",
+        "editable": true,
+        "evidenceRequired": false,
+        "fieldCode": "statusCode",
+        "fieldGroup": "운영",
+        "fieldName": "업무 상태",
+        "fieldOrder": 50,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_APPROVE_USER",
+        "permissionCode": "HSE_MANAGER:USER",
+        "privacyClass": "INTERNAL",
+        "required": true,
+        "route": "/ccus/facility/facility-asset-registry?step=far_approve",
+        "sourceColumn": null,
+        "sourceTable": null,
+        "validation": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "nullable": false,
+          "required": true,
+          "trim": true,
+          "type": "string"
+        }
+      },
+      {
+        "apiProperty": "effectiveAt",
+        "audience": "USER",
+        "controlType": "DATETIME",
+        "dataType": "DATETIME",
+        "editable": true,
+        "evidenceRequired": false,
+        "fieldCode": "effectiveAt",
+        "fieldGroup": "운영",
+        "fieldName": "발생·적용 일시",
+        "fieldOrder": 60,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_APPROVE_USER",
+        "permissionCode": "HSE_MANAGER:USER",
+        "privacyClass": "INTERNAL",
+        "required": true,
+        "route": "/ccus/facility/facility-asset-registry?step=far_approve",
+        "sourceColumn": null,
+        "sourceTable": null,
+        "validation": {
+          "nullable": false,
+          "required": true,
+          "type": "date-time"
+        }
+      },
+      {
+        "apiProperty": "measurementValue",
+        "audience": "USER",
+        "controlType": "NUMBER_UNIT",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "evidenceRequired": false,
+        "fieldCode": "measurementValue",
+        "fieldGroup": "전문값",
+        "fieldName": "측정·운영 값",
+        "fieldOrder": 70,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_APPROVE_USER",
+        "permissionCode": "HSE_MANAGER:USER",
+        "privacyClass": "INTERNAL",
+        "required": true,
+        "route": "/ccus/facility/facility-asset-registry?step=far_approve",
+        "sourceColumn": null,
+        "sourceTable": null,
+        "validation": {
+          "numeric": true,
+          "unitRequired": true
+        }
+      },
+      {
+        "apiProperty": "unitCode",
+        "audience": "USER",
+        "controlType": "UNIT_SELECT",
+        "dataType": "CODE",
+        "editable": true,
+        "evidenceRequired": false,
+        "fieldCode": "unitCode",
+        "fieldGroup": "전문값",
+        "fieldName": "단위",
+        "fieldOrder": 80,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_APPROVE_USER",
+        "permissionCode": "HSE_MANAGER:USER",
+        "privacyClass": "INTERNAL",
+        "required": true,
+        "route": "/ccus/facility/facility-asset-registry?step=far_approve",
+        "sourceColumn": null,
+        "sourceTable": null,
+        "validation": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "nullable": false,
+          "required": true,
+          "trim": true,
+          "type": "string"
+        }
+      },
+      {
+        "apiProperty": "riskLevel",
+        "audience": "USER",
+        "controlType": "RISK_SELECT",
+        "dataType": "CODE",
+        "editable": true,
+        "evidenceRequired": false,
+        "fieldCode": "riskLevel",
+        "fieldGroup": "위험·검토",
+        "fieldName": "위험 등급",
+        "fieldOrder": 90,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_APPROVE_USER",
+        "permissionCode": "HSE_MANAGER:USER",
+        "privacyClass": "INTERNAL",
+        "required": true,
+        "route": "/ccus/facility/facility-asset-registry?step=far_approve",
+        "sourceColumn": null,
+        "sourceTable": null,
+        "validation": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "nullable": false,
+          "required": true,
+          "trim": true,
+          "type": "string"
+        }
+      },
+      {
+        "apiProperty": "evidenceIds",
+        "audience": "USER",
+        "controlType": "FILE_UPLOAD",
+        "dataType": "ARRAY",
+        "editable": true,
+        "evidenceRequired": true,
+        "fieldCode": "evidenceIds",
+        "fieldGroup": "증빙",
+        "fieldName": "원본 증빙",
+        "fieldOrder": 100,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_APPROVE_USER",
+        "permissionCode": "HSE_MANAGER:USER",
+        "privacyClass": "INTERNAL",
+        "required": true,
+        "route": "/ccus/facility/facility-asset-registry?step=far_approve",
+        "sourceColumn": null,
+        "sourceTable": null,
+        "validation": {
+          "hashRequired": true,
+          "minItems": 1
+        }
+      },
+      {
+        "apiProperty": "approvalComment",
+        "audience": "USER",
+        "controlType": "TEXTAREA",
+        "dataType": "TEXT",
+        "editable": true,
+        "evidenceRequired": true,
+        "fieldCode": "approvalComment",
+        "fieldGroup": "승인",
+        "fieldName": "검토·승인 의견",
+        "fieldOrder": 110,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_APPROVE_USER",
+        "permissionCode": "HSE_MANAGER:USER",
+        "privacyClass": "INTERNAL",
+        "required": false,
+        "route": "/ccus/facility/facility-asset-registry?step=far_approve",
+        "sourceColumn": null,
+        "sourceTable": null,
+        "validation": {
+          "maxLength": 4000,
+          "minLength": 0,
+          "nullable": true,
+          "required": false,
+          "trim": true,
+          "type": "string"
+        }
+      },
+      {
+        "apiProperty": "rowVersion",
+        "audience": "USER",
+        "controlType": "VERSION",
+        "dataType": "INTEGER",
+        "editable": true,
+        "evidenceRequired": false,
+        "fieldCode": "rowVersion",
+        "fieldGroup": "무결성",
+        "fieldName": "데이터 버전",
+        "fieldOrder": 120,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_APPROVE_USER",
+        "permissionCode": "HSE_MANAGER:USER",
+        "privacyClass": "INTERNAL",
+        "required": true,
+        "route": "/ccus/facility/facility-asset-registry?step=far_approve",
+        "sourceColumn": null,
+        "sourceTable": null,
+        "validation": {
+          "finite": true,
+          "nullable": false,
+          "required": true,
+          "type": "number"
+        }
+      }
+    ],
+    "kpis": [
+      {
+        "code": "KPI_1",
+        "label": "진행률"
+      },
+      {
+        "code": "KPI_2",
+        "label": "기한"
+      },
+      {
+        "code": "KPI_3",
+        "label": "이상·차단"
+      },
+      {
+        "code": "KPI_4",
+        "label": "증빙 완결성"
+      }
+    ],
+    "permissions": [],
+    "responsive": "KRDS 유동 그리드: 모바일 1열, 태블릿 2열, 데스크톱 업무표+상세패널. 텍스트 넘침 없이 줄바꿈한다.",
+    "schemaVersion": "2.0.0",
+    "sections": [
+      {
+        "code": "SECTION_1",
+        "label": "업무요약"
+      },
+      {
+        "code": "SECTION_2",
+        "label": "검색·필터"
+      },
+      {
+        "code": "SECTION_3",
+        "label": "전문 데이터"
+      },
+      {
+        "code": "SECTION_4",
+        "label": "증빙·이력"
+      },
+      {
+        "code": "SECTION_5",
+        "label": "명령·다음업무"
+      }
+    ],
+    "states": [
+      "LOADING",
+      "EMPTY",
+      "ERROR",
+      "FORBIDDEN",
+      "READY",
+      "BLOCKED",
+      "CONFLICT"
+    ],
+    "support": {
+      "assetBindings": [
+        {
+          "assetCode": "SECTION_1",
+          "assetType": "SECTION",
+          "slot": "SECTION_1"
+        },
+        {
+          "assetCode": "SECTION_2",
+          "assetType": "SECTION",
+          "slot": "SECTION_2"
+        },
+        {
+          "assetCode": "SECTION_3",
+          "assetType": "SECTION",
+          "slot": "SECTION_3"
+        },
+        {
+          "assetCode": "SECTION_4",
+          "assetType": "SECTION",
+          "slot": "SECTION_4"
+        },
+        {
+          "assetCode": "SECTION_5",
+          "assetType": "SECTION",
+          "slot": "SECTION_5"
+        }
+      ],
+      "designCard": {
+        "actionCount": 3,
+        "designSystem": "KRDS_GOV",
+        "fieldCount": 12,
+        "pageName": "설비 기준정보 승인",
+        "screenType": "WORKFLOW",
+        "sectionCount": 5,
+        "summary": "안전·환경 관점에서 설비 기준정보를 승인한다.",
+        "templateCode": "KRDS_WORKFLOW",
+        "title": "설비 기준정보 승인"
+      },
+      "help": {
+        "items": [
+          {
+            "anchorSelector": "[data-help-id=\"generated-facility-asset-registry-far-approve-user-section-1\"]",
+            "body": "업무요약 영역의 업무 정보와 처리 상태를 확인합니다.",
+            "code": "SECTION_1",
+            "highlightStyle": "neutral",
+            "id": "SECTION_1",
+            "label": "업무요약",
+            "placement": "top",
+            "title": "업무요약"
+          },
+          {
+            "anchorSelector": "[data-help-id=\"generated-facility-asset-registry-far-approve-user-section-2\"]",
+            "body": "검색·필터 영역의 업무 정보와 처리 상태를 확인합니다.",
+            "code": "SECTION_2",
+            "highlightStyle": "neutral",
+            "id": "SECTION_2",
+            "label": "검색·필터",
+            "placement": "top",
+            "title": "검색·필터"
+          },
+          {
+            "anchorSelector": "[data-help-id=\"generated-facility-asset-registry-far-approve-user-section-3\"]",
+            "body": "전문 데이터 영역의 업무 정보와 처리 상태를 확인합니다.",
+            "code": "SECTION_3",
+            "highlightStyle": "neutral",
+            "id": "SECTION_3",
+            "label": "전문 데이터",
+            "placement": "top",
+            "title": "전문 데이터"
+          },
+          {
+            "anchorSelector": "[data-help-id=\"generated-facility-asset-registry-far-approve-user-section-4\"]",
+            "body": "증빙·이력 영역의 업무 정보와 처리 상태를 확인합니다.",
+            "code": "SECTION_4",
+            "highlightStyle": "neutral",
+            "id": "SECTION_4",
+            "label": "증빙·이력",
+            "placement": "top",
+            "title": "증빙·이력"
+          },
+          {
+            "anchorSelector": "[data-help-id=\"generated-facility-asset-registry-far-approve-user-section-5\"]",
+            "body": "명령·다음업무 영역의 업무 정보와 처리 상태를 확인합니다.",
+            "code": "SECTION_5",
+            "highlightStyle": "neutral",
+            "id": "SECTION_5",
+            "label": "명령·다음업무",
+            "placement": "top",
+            "title": "명령·다음업무"
+          }
+        ],
+        "pageId": "FACILITY_ASSET_REGISTRY_FAR_APPROVE_USER",
+        "summary": "안전·환경 관점에서 설비 기준정보를 승인한다.",
+        "title": "설비 기준정보 승인 도움말"
+      },
+      "qa": {
+        "acceptanceCriteria": [
+          "다음 완료 기준을 검증한다: 승인 버전과 변경 이력이 보존됨. 결과·버전·감사 증적을 저장한 뒤 COMPLETED 상태로 원자적으로 전이한다."
+        ],
+        "checks": [],
+        "requiredScenarioTypes": [
+          "HAPPY_PATH",
+          "AUTHORITY",
+          "ISOLATION",
+          "EXCEPTION",
+          "RECOVERY"
+        ],
+        "summary": "페이지와 프로세스 계약의 자동 검증 기준입니다.",
+        "title": "설비 기준정보 승인 QA"
+      },
+      "workGuide": {
+        "commands": [
+          {
+            "code": "ACTION_1",
+            "label": "APPROVE_FACILITY"
+          },
+          {
+            "code": "ACTION_2",
+            "label": "SAVE_DRAFT"
+          },
+          {
+            "code": "ACTION_3",
+            "label": "REQUEST_CORRECTION"
+          }
+        ],
+        "nextAction": {
+          "completionRule": "승인 버전과 변경 이력이 보존됨",
+          "label": "다음 업무 진행",
+          "routePath": "/ccus/facility/facility-asset-registry"
+        },
+        "steps": [
+          {
+            "code": "ENTRY",
+            "description": "다음 프로세스 시작 조건을 충족한다: 승인된 사업장과 설비 도입 근거가 존재한다. 현재 상태는 REVIEWED이며 서버가 테넌트·프로젝트·액터 권한을 확인한 경우에만 진입한다.",
+            "label": "진입 조건 확인"
+          },
+          {
+            "code": "WORK",
+            "description": "업무요약 · 검색·필터 · 전문 데이터 · 증빙·이력 · 명령·다음업무",
+            "label": "업무 정보 작성",
+            "path": "/ccus/facility/facility-asset-registry"
+          },
+          {
+            "code": "COMPLETE",
+            "description": "승인 버전과 변경 이력이 보존됨",
+            "label": "검증 후 완료"
+          }
+        ],
+        "summary": "안전·환경 관점에서 설비 기준정보를 승인한다.",
+        "title": "설비 기준정보 승인 업무 길잡이"
+      }
+    },
+    "validations": []
+  },
+  "stepCode": "FAR_APPROVE",
+  "support": {
+    "assetBindings": [
+      {
+        "assetCode": "SECTION_1",
+        "assetType": "SECTION",
+        "slot": "SECTION_1"
+      },
+      {
+        "assetCode": "SECTION_2",
+        "assetType": "SECTION",
+        "slot": "SECTION_2"
+      },
+      {
+        "assetCode": "SECTION_3",
+        "assetType": "SECTION",
+        "slot": "SECTION_3"
+      },
+      {
+        "assetCode": "SECTION_4",
+        "assetType": "SECTION",
+        "slot": "SECTION_4"
+      },
+      {
+        "assetCode": "SECTION_5",
+        "assetType": "SECTION",
+        "slot": "SECTION_5"
+      }
+    ],
+    "designCard": {
+      "actionCount": 3,
+      "designSystem": "KRDS_GOV",
+      "fieldCount": 12,
+      "pageName": "설비 기준정보 승인",
+      "screenType": "WORKFLOW",
+      "sectionCount": 5,
+      "summary": "안전·환경 관점에서 설비 기준정보를 승인한다.",
+      "templateCode": "KRDS_WORKFLOW",
+      "title": "설비 기준정보 승인"
+    },
+    "help": {
+      "items": [
+        {
+          "anchorSelector": "[data-help-id=\"generated-facility-asset-registry-far-approve-user-section-1\"]",
+          "body": "업무요약 영역의 업무 정보와 처리 상태를 확인합니다.",
+          "code": "SECTION_1",
+          "highlightStyle": "neutral",
+          "id": "SECTION_1",
+          "label": "업무요약",
+          "placement": "top",
+          "title": "업무요약"
+        },
+        {
+          "anchorSelector": "[data-help-id=\"generated-facility-asset-registry-far-approve-user-section-2\"]",
+          "body": "검색·필터 영역의 업무 정보와 처리 상태를 확인합니다.",
+          "code": "SECTION_2",
+          "highlightStyle": "neutral",
+          "id": "SECTION_2",
+          "label": "검색·필터",
+          "placement": "top",
+          "title": "검색·필터"
+        },
+        {
+          "anchorSelector": "[data-help-id=\"generated-facility-asset-registry-far-approve-user-section-3\"]",
+          "body": "전문 데이터 영역의 업무 정보와 처리 상태를 확인합니다.",
+          "code": "SECTION_3",
+          "highlightStyle": "neutral",
+          "id": "SECTION_3",
+          "label": "전문 데이터",
+          "placement": "top",
+          "title": "전문 데이터"
+        },
+        {
+          "anchorSelector": "[data-help-id=\"generated-facility-asset-registry-far-approve-user-section-4\"]",
+          "body": "증빙·이력 영역의 업무 정보와 처리 상태를 확인합니다.",
+          "code": "SECTION_4",
+          "highlightStyle": "neutral",
+          "id": "SECTION_4",
+          "label": "증빙·이력",
+          "placement": "top",
+          "title": "증빙·이력"
+        },
+        {
+          "anchorSelector": "[data-help-id=\"generated-facility-asset-registry-far-approve-user-section-5\"]",
+          "body": "명령·다음업무 영역의 업무 정보와 처리 상태를 확인합니다.",
+          "code": "SECTION_5",
+          "highlightStyle": "neutral",
+          "id": "SECTION_5",
+          "label": "명령·다음업무",
+          "placement": "top",
+          "title": "명령·다음업무"
+        }
+      ],
+      "pageId": "FACILITY_ASSET_REGISTRY_FAR_APPROVE_USER",
+      "summary": "안전·환경 관점에서 설비 기준정보를 승인한다.",
+      "title": "설비 기준정보 승인 도움말"
+    },
+    "qa": {
+      "acceptanceCriteria": [
+        "다음 완료 기준을 검증한다: 승인 버전과 변경 이력이 보존됨. 결과·버전·감사 증적을 저장한 뒤 COMPLETED 상태로 원자적으로 전이한다."
+      ],
+      "checks": [],
+      "requiredScenarioTypes": [
+        "HAPPY_PATH",
+        "AUTHORITY",
+        "ISOLATION",
+        "EXCEPTION",
+        "RECOVERY"
+      ],
+      "summary": "페이지와 프로세스 계약의 자동 검증 기준입니다.",
+      "title": "설비 기준정보 승인 QA"
+    },
+    "workGuide": {
+      "commands": [
+        {
+          "code": "ACTION_1",
+          "label": "APPROVE_FACILITY"
+        },
+        {
+          "code": "ACTION_2",
+          "label": "SAVE_DRAFT"
+        },
+        {
+          "code": "ACTION_3",
+          "label": "REQUEST_CORRECTION"
+        }
+      ],
+      "nextAction": {
+        "completionRule": "승인 버전과 변경 이력이 보존됨",
+        "label": "다음 업무 진행",
+        "routePath": "/ccus/facility/facility-asset-registry"
+      },
+      "steps": [
+        {
+          "code": "ENTRY",
+          "description": "다음 프로세스 시작 조건을 충족한다: 승인된 사업장과 설비 도입 근거가 존재한다. 현재 상태는 REVIEWED이며 서버가 테넌트·프로젝트·액터 권한을 확인한 경우에만 진입한다.",
+          "label": "진입 조건 확인"
+        },
+        {
+          "code": "WORK",
+          "description": "업무요약 · 검색·필터 · 전문 데이터 · 증빙·이력 · 명령·다음업무",
+          "label": "업무 정보 작성",
+          "path": "/ccus/facility/facility-asset-registry"
+        },
+        {
+          "code": "COMPLETE",
+          "description": "승인 버전과 변경 이력이 보존됨",
+          "label": "검증 후 완료"
+        }
+      ],
+      "summary": "안전·환경 관점에서 설비 기준정보를 승인한다.",
+      "title": "설비 기준정보 승인 업무 길잡이"
+    }
+  },
+  "templateCode": "KRDS_WORKFLOW",
+  "traceability": {
+    "caseTypeCount": 5,
+    "designReadinessScore": 100,
+    "evidenceContract": [
+      "원본 운전·계측·정비 기록",
+      "승인 이력",
+      "무결성 해시"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  }
+} as const satisfies GeneratedScreenDefinition;

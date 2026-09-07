@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "projectId": "P006",
+  "inherit": "shared-krds-frame",
+  "designFingerprint": "47a7a93e038553316d2dc0bd4a6bea672f37115111b1be14d442a4cf9b2e2378",
+  "screens": [
+    {
+      "id": "p006-dashboard",
+      "name": "Digital Twin 프로젝트",
+      "path": "/projects/P006/digital-twin",
+      "type": "DASHBOARD",
+      "actor": "PROJECT_ADMIN"
+    },
+    {
+      "id": "p006-factory-studio",
+      "name": "공장 조립 스튜디오",
+      "path": "/projects/P006/digital-twin/factory-studio",
+      "type": "STUDIO",
+      "actor": "FACTORY_DESIGNER"
+    },
+    {
+      "id": "p006-factory-simulator",
+      "name": "공장 시뮬레이터",
+      "path": "/projects/P006/digital-twin/factory-simulator",
+      "type": "VIEWER",
+      "actor": "SIMULATION_OPERATOR"
+    },
+    {
+      "id": "p006-scenarios",
+      "name": "시뮬레이션 시나리오",
+      "path": "/projects/P006/digital-twin/scenarios",
+      "type": "LIST",
+      "actor": "SIMULATION_OPERATOR"
+    },
+    {
+      "id": "p006-results",
+      "name": "실행 결과·병목 분석",
+      "path": "/projects/P006/digital-twin/results",
+      "type": "ANALYSIS",
+      "actor": "REVIEWER"
+    },
+    {
+      "id": "p006-sdui-scenario-form",
+      "screenId": "p006-sdui-scenario-form",
+      "name": "시뮬레이션 시나리오 JSON Form",
+      "path": "/projects/P006/digital-twin/sdui-scenario-form",
+      "type": "SDUI_JSON_FORM",
+      "actor": "SIMULATION_OPERATOR",
+      "allowedActors": [
+        "SIMULATION_OPERATOR",
+        "PROJECT_ADMIN"
+      ],
+      "runtimeMode": "SDUI_JSON_FORM_HOTLOAD",
+      "runtimeId": "p006-sdui-json-form-v1",
+      "screenRef": "screens/p006-scenario-form.sdui.json",
+      "testContractRef": "screens/p006-scenario-form.process-test.json",
+      "navigation": {
+        "label": "시나리오 JSON Form",
+        "order": 90,
+        "visible": true
+      }
+    }
+  ]
+}

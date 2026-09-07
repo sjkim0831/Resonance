@@ -1,0 +1,29 @@
+{
+  "processCode": "REDUCTION_PROJECT_APPROVAL",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "REDUCTION_PROJECT_APPROVAL_S1",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/reduction-project-approval/reduction-project-approval-s1?step=reduction_project_approval_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "REDUCTION_PROJECT_APPROVAL_S2",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/reduction-project-approval/reduction-project-approval-s2?step=reduction_project_approval_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "REDUCTION_PROJECT_APPROVAL_S3",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/reduction-project-approval/reduction-project-approval-s3?step=reduction_project_approval_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "REDUCTION_PROJECT_APPROVAL_S4",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/reduction-project-approval/reduction-project-approval-s4?step=reduction_project_approval_s4"
+    }
+  ]
+}

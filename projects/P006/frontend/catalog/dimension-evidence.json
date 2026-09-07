@@ -1,0 +1,55 @@
+{
+  "generatedAt": "2026-08-14T01:16:33.855499+00:00",
+  "approved": {
+    "A0007": {
+      "widthMm": 1065,
+      "depthMm": 2023,
+      "heightMm": 1600,
+      "source": "DAMP200 release-agent pressure unit layout",
+      "sourceFile": "DAMP200(이형제압송).pdf"
+    },
+    "A0041": {
+      "widthMm": 3160,
+      "depthMm": 3160,
+      "heightMm": 2195,
+      "source": "TT-1800 800kg 2-port assembly drawing",
+      "sourceFile": "턴테이블(800kg)_2port-Model.pdf"
+    },
+    "A0243": {
+      "widthMm": 7011,
+      "depthMm": 8316,
+      "heightMm": 7300,
+      "source": "1 ton/hr continuous melting furnace assembly drawing",
+      "sourceFile": "ass'y(20170425).pdf"
+    },
+    "A0035": {
+      "widthMm": 1220,
+      "depthMm": 5680,
+      "heightMm": 4190,
+      "source": "Punching press assembly drawing, front side and plan views",
+      "sourceFile": "TRIMMING DATA/LAYOUT/LAYOUT.PDF page 3"
+    },
+    "A0042": {
+      "widthMm": 900,
+      "depthMm": 750,
+      "heightMm": 1650,
+      "source": "GV32000TUN vacuum unit front and side views",
+      "sourceFile": "VACUUM HIGH VACUUM JET COOLER.dwg"
+    },
+    "G0001": {
+      "widthMm": 1350,
+      "depthMm": 1000,
+      "heightMm": 1700,
+      "source": "고진공장비 GVH2000TPN front and side views",
+      "sourceFile": "VACUUM HIGH VACUUM JET COOLER.dwg"
+    },
+    "G0002": {
+      "widthMm": 750,
+      "depthMm": 600,
+      "heightMm": 1400,
+      "source": "제트쿨러 JT800CVN front and side views",
+      "sourceFile": "VACUUM HIGH VACUUM JET COOLER.dwg"
+    }
+  },
+  "pendingPolicy": "Do not infer missing axes or apply assembly dimensions to component images"
+}

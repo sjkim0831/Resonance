@@ -30,6 +30,9 @@ public interface AuthService {
 
     boolean resetPassword(String userId, String newPassword, String resetByUserId, String resetIp, String resetSource);
 
+    boolean resetPassword(String userId, String userSe, String newPassword, String resetByUserId, String resetIp,
+            String resetSource);
+
     List<PasswordResetHistory> findRecentPasswordResetHistories(String userId);
 
     Page<PasswordResetHistory> searchPasswordResetHistories(String searchKeyword, String resetSource, String insttId, Pageable pageable);

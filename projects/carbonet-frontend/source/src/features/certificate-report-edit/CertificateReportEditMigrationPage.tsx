@@ -3,6 +3,7 @@ import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { reportRequiredErrorClass, validateReportRequiredFields } from "../report-required-fields/reportRequiredFields";
 
 type StepState = "completed" | "active" | "upcoming";
 
@@ -267,6 +268,7 @@ export function CertificateReportEditMigrationPage() {
       ? "Revised to match August LNG invoice totals and updated with the 2026 national emission factor."
       : "8월 LNG 세금계산서 합계와 일치하도록 수정하고 2026 국가표준 배출 계수를 반영했습니다."
   );
+  const [missingRequiredKeys, setMissingRequiredKeys] = useState<string[]>([]);
   const [checklistState, setChecklistState] = useState<Record<string, boolean>>({
     evidence: true,
     factor: true,
@@ -292,6 +294,17 @@ export function CertificateReportEditMigrationPage() {
     [checklistState]
   );
   const completionPercent = Math.round((checklistCompleted / content.checklist.length) * 100);
+
+  function validateBeforeSubmit(nextPath?: string) {
+    const missing = validateReportRequiredFields([
+      { key: "fuelUsage", label: content.fuelUsageLabel, value: fuelUsage, elementId: "revision-fuel-usage", valid: (value) => String(value || "").trim().length > 0 && Number.isFinite(Number(value)) && Number(value) >= 0 },
+      { key: "electricityUsage", label: content.electricityUsageLabel, value: electricityUsage, elementId: "revision-electricity-usage", valid: (value) => String(value || "").trim().length > 0 && Number.isFinite(Number(value)) && Number(value) >= 0 },
+      { key: "revisionReason", label: content.revisionReasonLabel, value: revisionReason, elementId: "revision-reason" },
+      { key: "checklist", label: content.checklistTitle, value: checklistCompleted === content.checklist.length, elementId: "revision-checklist" }
+    ]);
+    setMissingRequiredKeys(missing.map((field) => field.key));
+    if (missing.length === 0 && nextPath) navigate(nextPath);
+  }
 
   useEffect(() => {
     logGovernanceScope("PAGE", "certificate-report-edit", {
@@ -427,6 +440,7 @@ export function CertificateReportEditMigrationPage() {
             </aside>
 
             <div className="space-y-6">
+              {missingRequiredKeys.length > 0 ? <div aria-live="assertive" className="rounded-2xl border border-red-300 bg-red-50 px-5 py-4 text-sm font-bold text-red-700" role="alert">{en ? `${missingRequiredKeys.length} required revision fields are missing.` : `수정·검증 필수 항목 ${missingRequiredKeys.length}개를 완료해 주세요.`}</div> : null}
               <section className="gov-card p-6" data-help-id="certificate-report-edit-issues">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                   <div>
@@ -492,20 +506,20 @@ export function CertificateReportEditMigrationPage() {
                     <div>
                       <span className="gov-label required-mark">{content.fuelUsageLabel}</span>
                       <div className="flex gap-2">
-                        <input className="gov-input text-right" type="number" step="0.01" value={fuelUsage} onChange={(event) => setFuelUsage(event.target.value)} />
+                        <input className={`gov-input text-right${reportRequiredErrorClass(missingRequiredKeys, "fuelUsage")}`} id="revision-fuel-usage" min="0" required type="number" step="0.01" value={fuelUsage} onChange={(event) => setFuelUsage(event.target.value)} />
                         <span className="flex items-center rounded-xl border border-[var(--kr-gov-border-light)] bg-slate-100 px-4 text-sm font-bold">{content.fuelUnit}</span>
                       </div>
                     </div>
                     <div>
                       <span className="gov-label required-mark">{content.electricityUsageLabel}</span>
                       <div className="flex gap-2">
-                        <input className="gov-input text-right" type="number" step="0.01" value={electricityUsage} onChange={(event) => setElectricityUsage(event.target.value)} />
+                        <input className={`gov-input text-right${reportRequiredErrorClass(missingRequiredKeys, "electricityUsage")}`} id="revision-electricity-usage" min="0" required type="number" step="0.01" value={electricityUsage} onChange={(event) => setElectricityUsage(event.target.value)} />
                         <span className="flex items-center rounded-xl border border-[var(--kr-gov-border-light)] bg-slate-100 px-4 text-sm font-bold">{content.electricityUnit}</span>
                       </div>
                     </div>
                     <div>
                       <span className="gov-label required-mark">{content.revisionReasonLabel}</span>
-                      <textarea className="gov-input min-h-[140px] resize-y leading-6" value={revisionReason} onChange={(event) => setRevisionReason(event.target.value)} />
+                      <textarea className={`gov-input min-h-[140px] resize-y leading-6${reportRequiredErrorClass(missingRequiredKeys, "revisionReason")}`} id="revision-reason" required value={revisionReason} onChange={(event) => setRevisionReason(event.target.value)} />
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
@@ -537,7 +551,7 @@ export function CertificateReportEditMigrationPage() {
                       <h4 className="text-base font-black">{content.checklistTitle}</h4>
                       <span className="rounded-full border border-[var(--kr-gov-border-light)] bg-white px-3 py-1 text-xs font-bold text-slate-600">{checklistCompleted}/{content.checklist.length}</span>
                     </div>
-                    <div className="mt-5 space-y-3">
+                    <div className={`mt-5 space-y-3${reportRequiredErrorClass(missingRequiredKeys, "checklist")}`} id="revision-checklist" tabIndex={-1}>
                       {content.checklist.map((item) => (
                         <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4" key={item.id}>
                           <input
@@ -561,8 +575,8 @@ export function CertificateReportEditMigrationPage() {
                 </button>
                 <div className="flex flex-wrap gap-3">
                   <button className="gov-btn border border-[var(--kr-gov-blue)] bg-white px-5 py-3 text-[var(--kr-gov-blue)] hover:bg-blue-50" type="button">{content.saveAction}</button>
-                  <button className="gov-btn border border-emerald-200 bg-emerald-50 px-5 py-3 text-emerald-700 hover:bg-emerald-100" type="button">{content.validateAction}</button>
-                  <button className="gov-btn bg-[var(--kr-gov-blue)] px-5 py-3 text-white hover:bg-[var(--kr-gov-blue-hover)]" type="button" onClick={() => navigate(buildLocalizedPath("/certificate/report_list", "/en/certificate/report_list"))}>
+                  <button className="gov-btn border border-emerald-200 bg-emerald-50 px-5 py-3 text-emerald-700 hover:bg-emerald-100" type="button" onClick={() => validateBeforeSubmit()}>{content.validateAction}</button>
+                  <button className="gov-btn bg-[var(--kr-gov-blue)] px-5 py-3 text-white hover:bg-[var(--kr-gov-blue-hover)]" type="button" onClick={() => validateBeforeSubmit(buildLocalizedPath("/certificate/report_list", "/en/certificate/report_list"))}>
                     {content.submitAction}
                     <span className="material-symbols-outlined">arrow_forward</span>
                   </button>

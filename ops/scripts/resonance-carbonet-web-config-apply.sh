@@ -8,12 +8,20 @@ BASE_URL="${BASE_URL:-http://127.0.0.1}"
 
 test -s "$CONFIG_FILE"
 grep -Eq 'application/javascript[[:space:]]+mjs' "$CONFIG_FILE"
+grep -Fq 'location ^~ /admin/digital-twin/woosu-factory/' "$CONFIG_FILE"
+grep -Fq 'proxy_pass http://172.16.1.232:5173/;' "$CONFIG_FILE"
 
 kubectl -n "$NAMESPACE" create configmap carbonet-web-nginx \
   --from-file="nginx.conf=$CONFIG_FILE" \
   --dry-run=client -o yaml | kubectl apply -f -
 kubectl -n "$NAMESPACE" rollout restart "deployment/$DEPLOYMENT"
 kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT" --timeout=120s
+
+viewer_status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$BASE_URL/admin/digital-twin/woosu-factory/?view=canvas")"
+case "$viewer_status" in
+  200) ;;
+  *) echo "ERROR: Omniverse canvas route returned HTTP $viewer_status" >&2; exit 1 ;;
+esac
 
 worker_file="$(find "$ROOT_DIR/projects/carbonet-assets/static/react-app/assets" -maxdepth 1 -type f -name 'pdf.worker.min-*.mjs' -printf '%f\n' | sort | tail -1)"
 test -n "$worker_file"

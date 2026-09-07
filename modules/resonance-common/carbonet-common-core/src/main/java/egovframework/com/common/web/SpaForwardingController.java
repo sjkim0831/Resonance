@@ -28,6 +28,8 @@ public class SpaForwardingController {
             "/en/runtime/**",
             "/generated/**",
             "/en/generated/**",
+            "/planned/**",
+            "/en/planned/**",
             "/work/**",
             "/en/work/**",
             "/ccus/**",

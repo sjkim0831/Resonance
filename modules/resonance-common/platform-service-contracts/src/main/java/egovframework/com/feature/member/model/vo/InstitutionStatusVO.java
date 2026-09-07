@@ -12,6 +12,9 @@ public class InstitutionStatusVO {
     private String bizRegFilePath;
     private String insttSttus;
     private String rjctRsn;
+    private String applicantResponse;
+    private Integer reapplicationVersion;
+    private String reapplicationSubmittedAt;
     private String rjctPnttm;
     private String frstRegistPnttm;
     private String lastUpdtPnttm;
@@ -48,6 +51,12 @@ public class InstitutionStatusVO {
     public void setInsttSttus(String insttSttus) { this.insttSttus = insttSttus; }
     public String getRjctRsn() { return rjctRsn; }
     public void setRjctRsn(String rjctRsn) { this.rjctRsn = rjctRsn; }
+    public String getApplicantResponse() { return applicantResponse; }
+    public void setApplicantResponse(String applicantResponse) { this.applicantResponse = applicantResponse; }
+    public Integer getReapplicationVersion() { return reapplicationVersion; }
+    public void setReapplicationVersion(Integer reapplicationVersion) { this.reapplicationVersion = reapplicationVersion; }
+    public String getReapplicationSubmittedAt() { return reapplicationSubmittedAt; }
+    public void setReapplicationSubmittedAt(String reapplicationSubmittedAt) { this.reapplicationSubmittedAt = reapplicationSubmittedAt; }
     public String getRjctPnttm() { return rjctPnttm; }
     public void setRjctPnttm(String rjctPnttm) { this.rjctPnttm = rjctPnttm; }
     public String getFrstRegistPnttm() { return frstRegistPnttm; }

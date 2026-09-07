@@ -1,0 +1,23 @@
+{
+  "processCode": "FACILITY_OPERATION_MONITORING",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "FOM_PLAN",
+      "actorCode": "FACILITY_OPERATOR",
+      "routePath": "/ccus/facility/facility-operation-monitoring?step=fom_plan"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "FOM_OPERATE",
+      "actorCode": "FACILITY_OPERATOR",
+      "routePath": "/ccus/facility/facility-operation-monitoring?step=fom_operate"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "FOM_HANDOVER",
+      "actorCode": "HSE_MANAGER",
+      "routePath": "/ccus/facility/facility-operation-monitoring?step=fom_handover"
+    }
+  ]
+}

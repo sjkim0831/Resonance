@@ -1,4 +1,16 @@
-# Resonance Agent Startup Rule
+# Current CCUS source policy (2026-09-06)
+
+This section supersedes conflicting historical runtime instructions below.
+
+- The canonical editable source is `/opt/Resonance`. The development frontend service reads `projects/carbonet-frontend/source`; the proxy reads `ops/runtime/ccus-dev-proxy.mjs`.
+- Do not restore source from `dev-worktrees/certificate-verification` or the renamed preview stage. Their remaining unique files require explicit review against `docs/operations/ccus-canonical-unification-status.md`.
+- Do not enable `carbonet-dev-design-sync.timer` or automatic design approval/execution. Do not regenerate approved page/process definitions merely on startup or build.
+- The standard frontend build is `cd /opt/Resonance/projects/carbonet-frontend/source && npm run build`. It validates the source root and fingerprint, builds a candidate, tests it, then updates `runtime/frontend-current`.
+- Keep the existing backend/DB unchanged until authenticated workflow validation and explicit runtime cutover. Frontend compilation and health UP do not prove PDF issuance or all process E2E success.
+- Do not use the historical Kubernetes startup/deploy aliases below for the current CCUS web runtime. Inspect actual systemd paths first. No Kubernetes/Docker restart or deletion is part of source work.
+- Preserve per-change source/design/dependency evidence. Screenshots are visual evidence, not recoverable source. Do not delete prior assets until the approved retention/rollback conditions are met.
+
+# Historical Resonance Agent Startup Rule
 
 When the user says `/opt/Resonance 켜줘`, `Resonance 켜줘`, or asks to start this server, use this canonical startup command first:
 

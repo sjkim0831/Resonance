@@ -54,6 +54,8 @@ ops/config/*.env
 ops/config/certs/
 deploy/k8s/**/*.secret.yaml
 !deploy/k8s/**/*.secret.example.yaml
+.kilo/kilo.json
+!.kilo/kilo.json.example
 
 # Java
 .gradle/
@@ -98,3 +100,6 @@ ops/tools/
 !ops/tools/changelog.txt
 !ops/tools/lib/
 !ops/tools/licenses/
+
+# Server-only credentials must never enter source history.
+/.secrets/

@@ -131,7 +131,7 @@ export function DeptRoleMappingMigrationPage() {
     setMessage("");
     saveDeptRoleMapping(session, { insttId: row.insttId || insttId, cmpnyNm: row.cmpnyNm || "", deptNm: row.deptNm || "", authorCode: deptDrafts[`${row.insttId}:${row.deptNm}`] || "" })
       .then(() => loadPage(row.insttId || insttId, session, { memberSearchKeyword, memberPageIndex }))
-      .then(() => setMessage(t(page, `${row.deptNm} 부서 권한을 저장했습니다.`, `Saved the department role for ${row.deptNm}.`)))
+      .then(() => setMessage(t(page, `${row.deptNm} 부서 기본 권한 할당을 저장했습니다.`, `Saved the department role assignment for ${row.deptNm}.`)))
       .catch((err: Error) => setError(err.message));
   }
 
@@ -147,7 +147,7 @@ export function DeptRoleMappingMigrationPage() {
     setMessage("");
     saveDeptRoleMember(session, { insttId, entrprsMberId: userId, authorCode: memberDrafts[userId] || "" })
       .then(() => loadPage(insttId, session, { memberSearchKeyword, memberPageIndex }))
-      .then(() => setMessage(t(page, `${userId} 회원 권한을 저장했습니다.`, `Saved the member role for ${userId}.`)))
+      .then(() => setMessage(t(page, `${userId} 회원 권한 할당을 저장했습니다.`, `Saved the member role assignment for ${userId}.`)))
       .catch((err: Error) => setError(err.message));
   }
 
@@ -157,18 +157,18 @@ export function DeptRoleMappingMigrationPage() {
       breadcrumbs={[
         { label: t(page, "홈", "Home"), href: buildLocalizedPath("/admin/", "/en/admin/") },
         { label: t(page, "회원/권한", "Members/Authority") },
-        { label: t(page, "부서 권한 맵핑", "Department Role Mapping") }
+        { label: t(page, "부서·회원 권한 할당", "Department and Member Role Assignment") }
       ]}
-      title={t(page, "부서 권한 맵핑", "Department Role Mapping")}
+      title={t(page, "부서·회원 권한 할당", "Department and Member Role Assignment")}
       loading={!page && !error}
-      loadingLabel={t(page, "부서 권한 정보를 불러오는 중입니다.", "Loading department role data.")}
+      loadingLabel={t(page, "부서·회원 권한 할당 정보를 불러오는 중입니다.", "Loading department and member role assignments.")}
     >
       <MemberAuthorityNav activeId="dept-role" en={!!page?.isEn} />
       {(page?.deptRoleError || error) ? <PageStatusNotice tone="error">{page?.deptRoleError || error}</PageStatusNotice> : null}
-      {page?.deptRoleUpdated || message ? <PageStatusNotice tone="success">{message || (page?.deptRoleTargetInsttId ? t(page, `${page.deptRoleTargetInsttId} 부서 권한 맵핑이 저장되었습니다.`, `Saved department role mappings for ${page.deptRoleTargetInsttId}.`) : t(page, "부서 권한 맵핑이 저장되었습니다.", "Department role mappings have been saved."))}</PageStatusNotice> : null}
+      {page?.deptRoleUpdated || message ? <PageStatusNotice tone="success">{message || (page?.deptRoleTargetInsttId ? t(page, `${page.deptRoleTargetInsttId} 권한 할당이 저장되었습니다.`, `Saved role assignments for ${page.deptRoleTargetInsttId}.`) : t(page, "권한 할당이 저장되었습니다.", "Role assignments have been saved."))}</PageStatusNotice> : null}
       {page?.deptRoleMessage && !message ? <PageStatusNotice tone="warning">{page.deptRoleMessage}</PageStatusNotice> : null}
       {!page && !error && !session ? null : !canViewCompanySelector ? (
-        <MemberStateCard description={t(page, "현재 계정으로는 부서 권한 맵핑 화면을 조회할 수 없습니다.", "The current account cannot access the department role mapping screen.")} icon="lock" title={t(page, "권한이 없습니다.", "Permission denied.")} tone="warning" />
+        <MemberStateCard description={t(page, "현재 계정으로는 부서·회원 권한 할당 화면을 조회할 수 없습니다.", "The current account cannot access the department and member role assignment screen.")} icon="lock" title={t(page, "권한이 없습니다.", "Permission denied.")} tone="warning" />
       ) : null}
       <CanView allowed={canViewCompanySelector} fallback={null}>
         <AdminAuthorityPageFrame>

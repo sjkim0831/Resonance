@@ -58,10 +58,14 @@ public class AdminMenuTreeService implements AdminMenuTreeReadPort {
 
         for (MenuInfoDTO row : rows) {
             String code = safeString(row.getCode());
-            if (code.isEmpty() || !"Y".equalsIgnoreCase(safeString(row.getUseAt()))) {
+            if (code.isEmpty()) {
                 continue;
             }
-            if ("N".equalsIgnoreCase(safeString(row.getExpsrAt()))) {
+            boolean structuralDomain = code.length() == 4;
+            if (!structuralDomain && !"Y".equalsIgnoreCase(safeString(row.getUseAt()))) {
+                continue;
+            }
+            if (!structuralDomain && "N".equalsIgnoreCase(safeString(row.getExpsrAt()))) {
                 continue;
             }
             sortOrderMap.put(code, row.getSortOrdr());

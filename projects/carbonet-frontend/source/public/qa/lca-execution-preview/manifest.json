@@ -1,0 +1,29 @@
+{
+  "processCode": "LCA_EXECUTION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "LCA_EXECUTION_01_PLAN",
+      "actorCode": "LCA_PRACTITIONER",
+      "routePath": "/emission/lca?step=lca_execution_01_plan"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "LCA_EXECUTION_02_WORK",
+      "actorCode": "LCA_PRACTITIONER",
+      "routePath": "/admin/emission/survey-admin?step=lca_execution_02_work"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "LCA_EXECUTION_03_VERIFY",
+      "actorCode": "LCA_DATA_REVIEWER",
+      "routePath": "/admin/emission/survey-report?step=lca_execution_03_verify"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "LCA_EXECUTION_04_APPROVE",
+      "actorCode": "APPROVER",
+      "routePath": "/admin/emission/survey-report?step=lca_execution_04_approve"
+    }
+  ]
+}

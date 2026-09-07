@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.BufferedReader;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,6 +28,10 @@ import java.util.concurrent.locks.ReentrantLock;
 public class FileRequestExecutionLogService implements RequestExecutionLogService {
 
     private static final Logger log = LoggerFactory.getLogger(FileRequestExecutionLogService.class);
+    static final int RECENT_TAIL_BLOCK_BYTES = 64 * 1024;
+    static final int MAX_RECENT_TAIL_MATCHES = 10_000;
+    static final int MAX_REQUEST_LOG_LINE_BYTES = 1024 * 1024;
+    private static final byte[] EMPTY_BYTES = new byte[0];
 
     private final ObjectMapper objectMapper;
 
@@ -70,6 +76,13 @@ public class FileRequestExecutionLogService implements RequestExecutionLogServic
 
     @Override
     public List<RequestExecutionLogVO> readRecent(int limit) {
+        return readRecentMatching(item -> true, limit);
+    }
+
+    @Override
+    public List<RequestExecutionLogVO> readRecentMatching(
+            Predicate<RequestExecutionLogVO> filter,
+            int limit) {
         if (!enabled || limit <= 0) {
             return Collections.emptyList();
         }
@@ -81,33 +94,143 @@ public class FileRequestExecutionLogService implements RequestExecutionLogServic
         }
         lock.lock();
         try {
-            Deque<String> recentLines = new ArrayDeque<>(limit);
-            try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    if (line.trim().isEmpty()) {
-                        continue;
-                    }
-                    if (recentLines.size() == limit) {
-                        recentLines.removeFirst();
-                    }
-                    recentLines.addLast(line);
-                }
-            }
-            List<RequestExecutionLogVO> items = new ArrayList<>(recentLines.size());
-            while (!recentLines.isEmpty()) {
-                RequestExecutionLogVO item = parseLine(recentLines.removeLast());
-                if (item != null) {
-                    items.add(item);
-                }
-            }
-            return items;
+            Predicate<RequestExecutionLogVO> safeFilter = filter == null ? item -> true : filter;
+            int safeLimit = Math.min(limit, MAX_RECENT_TAIL_MATCHES);
+            return new ArrayList<>(readRecentTail(file, safeFilter, safeLimit).items());
         } catch (IOException e) {
-            log.error("Failed to read request execution log.", e);
+            log.error("Failed to read recent request execution log tail.", e);
             return Collections.emptyList();
         } finally {
             lock.unlock();
         }
+    }
+
+    TailReadResult readRecentTail(
+            Path file,
+            Predicate<RequestExecutionLogVO> filter,
+            int requestedLimit) throws IOException {
+        // Appends and tail reads share the service lock, so the captured file
+        // length is a stable snapshot. Read fixed-size blocks backwards and
+        // stop as soon as every row the caller can observe has been found.
+        int limit = Math.min(Math.max(requestedLimit, 0), MAX_RECENT_TAIL_MATCHES);
+        if (limit == 0 || file == null || !Files.exists(file)) {
+            return new TailReadResult(Collections.emptyList(), 0L, 0L, 0L);
+        }
+
+        Predicate<RequestExecutionLogVO> safeFilter = filter == null ? item -> true : filter;
+        List<RequestExecutionLogVO> matches = new ArrayList<>(Math.min(limit, 512));
+        long bytesRead = 0L;
+        long linesExamined = 0L;
+        long fileBytes;
+        byte[] newerLineBytes = EMPTY_BYTES;
+        boolean discardingOversizedLine = false;
+
+        try (FileChannel channel = FileChannel.open(file, StandardOpenOption.READ)) {
+            fileBytes = channel.size();
+            long position = fileBytes;
+            ByteBuffer buffer = ByteBuffer.allocate(RECENT_TAIL_BLOCK_BYTES);
+            while (position > 0 && matches.size() < limit) {
+                int blockSize = (int) Math.min(RECENT_TAIL_BLOCK_BYTES, position);
+                position -= blockSize;
+                buffer.clear();
+                buffer.limit(blockSize);
+                channel.position(position);
+                while (buffer.hasRemaining()) {
+                    int count = channel.read(buffer);
+                    if (count < 0) {
+                        break;
+                    }
+                    if (count == 0) {
+                        break;
+                    }
+                }
+                int actualBytes = buffer.position();
+                if (actualBytes != blockSize) {
+                    throw new IOException("Request execution log changed during tail read.");
+                }
+                bytesRead += actualBytes;
+                byte[] block = buffer.array();
+                int lineEnd = actualBytes;
+
+                for (int index = actualBytes - 1; index >= 0 && matches.size() < limit; index--) {
+                    if (block[index] != '\n') {
+                        continue;
+                    }
+                    int segmentStart = index + 1;
+                    int segmentLength = lineEnd - segmentStart;
+                    linesExamined++;
+                    if (!discardingOversizedLine) {
+                        RequestExecutionLogVO item = parseTailLine(block, segmentStart, segmentLength, newerLineBytes);
+                        if (item != null && safeFilter.test(item)) {
+                            matches.add(item);
+                        }
+                    }
+                    discardingOversizedLine = false;
+                    newerLineBytes = EMPTY_BYTES;
+                    lineEnd = index;
+                }
+
+                if (matches.size() >= limit) {
+                    break;
+                }
+                int prefixLength = lineEnd;
+                if (prefixLength > 0 && !discardingOversizedLine) {
+                    if ((long) prefixLength + newerLineBytes.length > MAX_REQUEST_LOG_LINE_BYTES) {
+                        newerLineBytes = EMPTY_BYTES;
+                        discardingOversizedLine = true;
+                    } else {
+                        newerLineBytes = joinLineBytes(block, 0, prefixLength, newerLineBytes);
+                    }
+                }
+            }
+
+            if (position == 0 && matches.size() < limit
+                    && (newerLineBytes.length > 0 || discardingOversizedLine)) {
+                linesExamined++;
+                if (!discardingOversizedLine) {
+                    RequestExecutionLogVO item = parseTailLine(EMPTY_BYTES, 0, 0, newerLineBytes);
+                    if (item != null && safeFilter.test(item)) {
+                        matches.add(item);
+                    }
+                }
+            }
+        }
+        return new TailReadResult(matches, bytesRead, linesExamined, fileBytes);
+    }
+
+    private RequestExecutionLogVO parseTailLine(
+            byte[] segment,
+            int segmentStart,
+            int segmentLength,
+            byte[] newerLineBytes) {
+        long combinedLength = (long) segmentLength + newerLineBytes.length;
+        if (combinedLength <= 0 || combinedLength > MAX_REQUEST_LOG_LINE_BYTES) {
+            return null;
+        }
+        byte[] lineBytes = joinLineBytes(segment, segmentStart, segmentLength, newerLineBytes);
+        int contentLength = lineBytes.length;
+        if (contentLength > 0 && lineBytes[contentLength - 1] == '\r') {
+            contentLength--;
+        }
+        if (contentLength == 0) {
+            return null;
+        }
+        return parseLine(new String(lineBytes, 0, contentLength, StandardCharsets.UTF_8));
+    }
+
+    private byte[] joinLineBytes(
+            byte[] segment,
+            int segmentStart,
+            int segmentLength,
+            byte[] newerLineBytes) {
+        byte[] joined = new byte[segmentLength + newerLineBytes.length];
+        if (segmentLength > 0) {
+            System.arraycopy(segment, segmentStart, joined, 0, segmentLength);
+        }
+        if (newerLineBytes.length > 0) {
+            System.arraycopy(newerLineBytes, 0, joined, segmentLength, newerLineBytes.length);
+        }
+        return joined;
     }
 
     @Override
@@ -173,5 +296,12 @@ public class FileRequestExecutionLogService implements RequestExecutionLogServic
             log.debug("Failed to parse request execution log line.", e);
             return null;
         }
+    }
+
+    record TailReadResult(
+            List<RequestExecutionLogVO> items,
+            long bytesRead,
+            long linesExamined,
+            long fileBytes) {
     }
 }

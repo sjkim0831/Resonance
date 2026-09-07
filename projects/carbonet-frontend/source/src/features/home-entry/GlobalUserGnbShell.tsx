@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { fetchHomePayload } from "../../lib/api/appBootstrap";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { CommonUserFooter } from "../../components/user-shell/CommonUserFooter";
 import { HeaderBrand, HeaderDesktopNav, HeaderMobileMenu, HomeInlineStyles } from "./HomeEntrySections";
-import { LOCALIZED_CONTENT } from "./homeEntryContent";
-import { TaskQuestPanel } from "../task-quest/TaskQuestPanel";
+import { HOME_ENTRY_ASSETS, LOCALIZED_CONTENT } from "./homeEntryContent";
 
 const USER_GNB_EXCLUDED_PATHS = [
   "/signin/",
@@ -26,13 +26,18 @@ export function shouldUseGlobalUserGnb(pathname: string) {
 export function GlobalUserGnbShell({ children }: { children: ReactNode }) {
   const en = isEnglish();
   const content = LOCALIZED_CONTENT[en ? "en" : "ko"];
+  const initialHomePayload = useMemo(
+    () => ({ isLoggedIn: false, isEn: en, homeMenu: [] }),
+    [en]
+  );
   const home = useAsyncValue(() => fetchHomePayload(), [en], {
-    initialValue: { isLoggedIn: false, isEn: en, homeMenu: [] },
+    initialValue: initialHomePayload,
     onError: () => undefined
   });
   const session = useFrontendSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const payload = home.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const payload = home.value || initialHomePayload;
+  const isLoggedIn = Boolean(payload.isLoggedIn || session.value?.authenticated);
 
   useEffect(() => {
     document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
@@ -45,9 +50,16 @@ export function GlobalUserGnbShell({ children }: { children: ReactNode }) {
       <style>{`
         [data-global-user-page] > header,
         [data-global-user-page] > div > header,
-        [data-global-user-page] > div > div > header:first-child { display: none !important; }
+        [data-global-user-page] > div > div > header:first-child,
+        [data-global-user-page] footer { display: none !important; }
       `}</style>
-      <header className="sticky top-0 z-[1000] border-b-2 border-[#001e40] bg-white" data-common-component="COMMON_USER_GNB" data-global-user-gnb="">
+      <div className="fixed inset-x-0 top-0 z-[1001] h-9 border-b border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-bg-gray)]" data-common-component="COMMON_GOVERNMENT_BAR">
+        <div className="mx-auto flex h-full max-w-7xl items-center gap-2 px-4 lg:px-8">
+          <img alt={content.govAlt} className="h-4" src={HOME_ENTRY_ASSETS.GOV_SYMBOL} />
+          <span className="text-[13px] font-medium text-[var(--kr-gov-text-secondary)]">{content.govText}</span>
+        </div>
+      </div>
+      <header className="fixed inset-x-0 top-9 z-[1000] block border-b-2 border-[#001e40] bg-white" data-common-component="COMMON_USER_GNB" data-global-user-gnb="">
         <div className="mx-auto max-w-7xl px-4 lg:px-8">
           <div className="gov-home-header relative flex items-center">
             <div aria-hidden="true" className="h-11 w-11 shrink-0 xl:hidden" />
@@ -58,7 +70,7 @@ export function GlobalUserGnbShell({ children }: { children: ReactNode }) {
                 <button className={`gov-text-caption px-2 py-1 font-bold ${en ? "bg-white text-slate-600" : "bg-[var(--kr-gov-blue)] text-white"}`} onClick={() => navigate(location.pathname.replace(/^\/en/, "") || "/home")} type="button">KO</button>
                 <button className={`gov-text-caption border-l px-2 py-1 font-bold ${en ? "bg-[var(--kr-gov-blue)] text-white" : "bg-white text-slate-600"}`} onClick={() => navigate(`/en${location.pathname}${location.search}`)} type="button">EN</button>
               </div>
-              {payload.isLoggedIn ? (
+              {isLoggedIn ? (
                 <button className="gov-home-header-action hidden items-center rounded-[var(--kr-gov-radius)] bg-[var(--kr-gov-blue)] font-bold text-white xl:inline-flex" onClick={() => void session.logout()} type="button">{content.logout}</button>
               ) : (
                 <>
@@ -71,12 +83,13 @@ export function GlobalUserGnbShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
+      <div aria-hidden="true" className="h-[134px] shrink-0" data-global-user-gnb-spacer="" />
       <div aria-hidden={!mobileMenuOpen} className={`${mobileMenuOpen ? "" : "hidden"} fixed inset-0 z-[1100] xl:hidden`} id="global-mobile-menu">
         <button aria-label={content.closeAllMenu} className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} type="button" />
-        <HeaderMobileMenu content={content} en={en} homeMenu={payload.homeMenu || []} isLoggedIn={Boolean(payload.isLoggedIn)} onClose={() => setMobileMenuOpen(false)} onLogout={session.logout} />
+        <HeaderMobileMenu content={content} en={en} homeMenu={payload.homeMenu || []} isLoggedIn={isLoggedIn} onClose={() => setMobileMenuOpen(false)} onLogout={session.logout} />
       </div>
-      {payload.isLoggedIn ? <TaskQuestPanel /> : null}
       <div data-global-user-page="">{children}</div>
+      <CommonUserFooter orgName={content.footerOrg} addressLine={content.footerAddress} serviceLine={content.footerDesc} footerLinks={[...content.footerLinks]} copyright="© 2026 CCUS Carbon Management Platform. All rights reserved." lastModifiedLabel={content.lastModified} lastModifiedText={en ? "Aug 21, 2026" : "2026.08.21"} waAlt={content.waAlt} governmentMarkSrc={HOME_ENTRY_ASSETS.FOOTER_SYMBOL} waMarkSrc={HOME_ENTRY_ASSETS.WA_MARK} />
     </>
   );
 }

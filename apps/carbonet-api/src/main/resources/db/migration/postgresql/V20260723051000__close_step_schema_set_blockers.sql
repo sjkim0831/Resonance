@@ -22,7 +22,7 @@ ALTER TABLE framework_process_step
   DISABLE TRIGGER trg_guard_locked_process_step;
 
 UPDATE framework_process_step
-SET requirement_text='Return the immutable receipt number, submission timestamp, review status, due date, and permitted next actions after membership application submission.',
+SET requirement_text='회원가입 신청 완료 후 접수번호, 신청 일시, 검토 상태, 처리 예정일 및 이후 가능한 업무를 안내한다.',
     input_contract='{"required":["applicationId","receiptNo","applicantId","submittedAt"],"context":["tenantId","processCode","stepCode","actorCode"],"constraints":["application state must be APPLICATION_SUBMITTED","receipt belongs to applicant"]}',
     output_contract='{"required":["applicationId","receiptNo","applicationStatus","submittedAt","expectedReviewDueAt","nextActions"],"states":["APPLICATION_PENDING_APPROVAL"],"nextActions":["CHECK_STATUS","GO_TO_LOGIN","CONTACT_SUPPORT"]}',
     automation_status='PLANNED'

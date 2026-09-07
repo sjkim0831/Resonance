@@ -4,6 +4,7 @@ import egovframework.com.platform.request.codex.CodexProvisionRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -21,6 +22,7 @@ public class AdminPlatformFoundationMenuBootstrapSupport {
     private final PlatformMenuProvisionSupport platformMenuProvisionSupport;
 
     @EventListener(ApplicationReadyEvent.class)
+    @Async("applicationReadyBootstrapExecutor")
     public void ensurePlatformFoundationMenus() {
         provisionMenu("A0060108", "풀스택 관리", "Full Stack Management", "/admin/system/full-stack-management", "hub");
         provisionMenu("A0060109", "플랫폼 스튜디오", "Platform Studio", "/admin/system/platform-studio", "dashboard_customize");

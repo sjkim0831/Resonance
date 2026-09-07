@@ -324,7 +324,7 @@ function defaultFrontendCandidates(target: BuilderTargetContext): FrontendCandid
       source: 'generated',
       summary: '검색, 필터, 표, 상세 패널을 우선 배치하는 운영 관리자 화면 후보입니다.',
       confidence: 91,
-      html: `<section data-builder-template="admin-density"><header><h1>${title}</h1></header><form><input placeholder="검색어" /><button>검색</button></form><table><thead><tr><th>항목</th><th>상태</th><th>관리</th></tr></thead><tbody><tr><td>Sample</td><td>READY</td><td>수정</td></tr></tbody></table></section>`,
+      html: `<section data-builder-template="admin-density"><header><h1>${title}</h1></header><form><input class="krds-control-field" placeholder="검색어" /><button class="krds-control-button">검색</button></form><table class="krds-control-table"><thead><tr><th>항목</th><th>상태</th><th>관리</th></tr></thead><tbody><tr><td>Sample</td><td>READY</td><td>수정</td></tr></tbody></table></section>`,
       createdAt: now,
     },
     {
@@ -342,7 +342,7 @@ function defaultFrontendCandidates(target: BuilderTargetContext): FrontendCandid
       source: 'generated',
       summary: '목록 선택 후 우측 상세 편집/저장으로 이어지는 화면 후보입니다.',
       confidence: 86,
-      html: `<section data-builder-template="master-detail"><aside>목록</aside><main><h1>${title}</h1><label>이름<input /></label><label>경로<input value="${path}" /></label><button>저장</button></main></section>`,
+      html: `<section data-builder-template="master-detail"><aside>목록</aside><main><h1>${title}</h1><label>이름<input class="krds-control-field" /></label><label>경로<input class="krds-control-field" value="${path}" /></label><button class="krds-control-button">저장</button></main></section>`,
       createdAt: now,
     },
     {
@@ -1672,7 +1672,7 @@ export function BuilderStudioPage() {
   }
 
   return (
-    <main className="h-screen flex flex-col bg-gray-100">
+    <main className="h-screen flex flex-col bg-[#f4f6f8] text-slate-900" data-screen-theme="krds-v1">
       <header className="bg-white border-b px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold">빌더 스튜디오</h1>
@@ -1791,7 +1791,7 @@ export function BuilderStudioPage() {
             <button key={id} onClick={() => setActiveWorkspaceTab(id as BuilderWorkspaceTab)} className={`rounded px-3 py-1.5 text-sm font-bold ${activeWorkspaceTab === id ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>{label}</button>
           ))}
           <label className="ml-auto flex items-center gap-2 text-xs font-bold text-slate-600">
-            <input type="checkbox" checked={contextCaptureEnabled} onChange={e => setContextCaptureEnabled(e.target.checked)} />
+            <input type="checkbox" checked={contextCaptureEnabled} onChange={e => setContextCaptureEnabled(e.target.checked)} className="krds-control-native" />
             우클릭 수정 캡처
           </label>
         </div>
@@ -2575,7 +2575,7 @@ export function BuilderStudioPage() {
                   ].map(([id, label, desc]) => (
                     <label key={id} className={`rounded border p-3 ${fullStackMode === id ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>
                       <span className="flex items-center gap-2 text-sm font-black text-slate-900">
-                        <input type="radio" checked={fullStackMode === id} onChange={() => setFullStackMode(id as typeof fullStackMode)} />
+                        <input type="radio" checked={fullStackMode === id} onChange={() => setFullStackMode(id as typeof fullStackMode)} className="krds-control-native" />
                         {label}
                       </span>
                       <span className="mt-1 block text-xs text-slate-500">{desc}</span>

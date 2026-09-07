@@ -1,0 +1,23 @@
+{
+  "processCode": "CO2_QUALITY_ANALYSIS",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "CQA_PLAN",
+      "actorCode": "LAB_ANALYST",
+      "routePath": "/work/co2-quality-analysis?step=cqa_plan"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "CQA_TEST",
+      "actorCode": "LAB_ANALYST",
+      "routePath": "/work/co2-quality-analysis?step=cqa_test"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "CQA_DECIDE",
+      "actorCode": "CERTIFICATE_OFFICER",
+      "routePath": "/work/co2-quality-analysis?step=cqa_decide"
+    }
+  ]
+}

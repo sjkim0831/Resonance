@@ -1,0 +1,1 @@
+.mesh-validation{align-items:center;background:#fff3f1;border:1px solid #e5aaa3;border-radius:9px;display:grid;gap:3px;grid-template-columns:1fr auto;margin:12px 0;padding:11px}.mesh-validation.pass{background:#eaf7f0;border-color:#7fc49d}.mesh-validation strong{font-size:1.25rem}.mesh-validation span{color:#49626b;font-size:.76rem;grid-column:1/-1}

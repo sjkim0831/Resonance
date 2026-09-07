@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "projectId": "P006",
+    "projectName": "Woosu Digital Twin",
+    "owner": "project-team",
+    "description": "Metadata-first Resonance project P006"
+  },
+  "installations": {
+    "commonCore": "workspace",
+    "stableGate": "v1",
+    "adapter": "none",
+    "adapterContract": "v1"
+  },
+  "bindings": {
+    "database": {
+      "bindingMode": "PROJECT_DB",
+      "projectDb": {
+        "url": "jdbc:postgresql://postgres-haproxy.carbonet-prod.svc.cluster.local:5432/woosu_digital_twin?sslmode=disable",
+        "schema": "public"
+      }
+    },
+    "theme": {
+      "id": "theme-krds-digital-twin",
+      "version": "1",
+      "tokens": {}
+    },
+    "menu": {
+      "profile": "P006-admin-v1",
+      "apiPrefix": "/api"
+    }
+  },
+  "runtime": {
+    "packagePath": "apps/carbonet-api/build/libs/carbonet-api.jar",
+    "manifestPath": "projects/P006/manifest.json",
+    "bootTarget": "var/run/project-runtime/P006/carbonet-api.jar",
+    "bootCommand": "bash ops/scripts/start-project-runtime.sh P006 18086",
+    "runtimeMode": "DEDICATED_PROJECT_RUNTIME",
+    "lane": "PROJECT_RUNTIME",
+    "sharedRuntimeId": "carbonet-api",
+    "status": "READY_FOR_DATABASE",
+    "routing": {
+      "selectorPath": "/projects/P006",
+      "routePrefix": "/r/P006",
+      "managementPath": "/api/operations/governance/runtime/projects/P006",
+      "infoPath": "/api/runtime/project-info"
+    }
+  },
+  "governance": {
+    "compatibilityClass": "METADATA_FIRST",
+    "updatedAt": "2026-08-11T12:27:57.785878Z"
+  }
+}

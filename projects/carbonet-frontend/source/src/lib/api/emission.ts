@@ -228,6 +228,9 @@ export type ReportDatasetVerificationResponse = {
   differences?: Array<{ path: string; expected: string; actual: string }>;
   fieldCount?: number;
   matchedFieldCount?: number;
+  issuedAt?: string;
+  productName?: string;
+  totalEmission?: number;
   fieldComparisons?: ReportDatasetFieldComparison[];
   message?: string;
 };
@@ -239,8 +242,39 @@ export type ReportPdfFileVerificationResponse = {
   certificateId: string;
   uploadedPdfSizeBytes?: number;
   registeredPdfSizeBytes?: number;
+  registeredPdfSha256?: string;
+  uploadedPdfSha256?: string;
+  payloadHash?: string;
+  integrityCode?: string;
+  datasetHash?: string;
+  productName?: string;
+  totalEmission?: number;
+  rowCount?: number;
+  issuedAt?: string;
   byteHashMatch?: boolean;
   sizeMatch?: boolean;
+  originalStored?: boolean;
+  originalStorageKey?: string;
+  visualComparisonAvailable?: boolean;
+  registeredPageCount?: number;
+  uploadedPageCount?: number;
+  pageCountMatch?: boolean;
+  changedPageCount?: number;
+  changedRegionCount?: number;
+  visualExactMatch?: boolean;
+  visualComparisonMillis?: number;
+  changedRegions?: Array<{
+    pageNumber: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    differencePercent: number;
+    reason: "VISIBLE_PIXEL_CHANGE" | "PAGE_SIZE_CHANGED" | "PAGE_ADDED_OR_REMOVED";
+    expectedText?: string;
+    actualText?: string;
+    addedText?: string;
+  }>;
   message?: string;
 };
 
@@ -255,10 +289,13 @@ export type ReportDatasetFieldComparison = {
 export type ReportPhotoVerificationResponse = {
   reportType?: "EMISSION_SURVEY" | "LCA_SUMMARY";
   photoConsistent: boolean;
-  status: "PHOTO_CONTENT_MATCH" | "PHOTO_REVIEW" | "PHOTO_MISMATCH" | "NOT_FOUND";
+  status: "PHOTO_CONTENT_MATCH" | "PHOTO_REVIEW" | "PHOTO_MISMATCH" | "NOT_FOUND" | "OCR_EVIDENCE_UNAVAILABLE" | "IDENTIFIER_MISMATCH" | "OCR_DATASET_MISMATCH" | "OCR_CONTENT_MISMATCH";
   verificationMode: "PHOTO_OCR_DATASET";
   confidence: number;
   certificateId?: string;
+  payloadHash?: string;
+  integrityCode?: string;
+  datasetHash?: string;
   reportTitle?: string;
   productName?: string;
   issuedAt?: string;
@@ -270,6 +307,83 @@ export type ReportPhotoVerificationResponse = {
   qrPayloadHashMatch?: boolean;
   qrIntegrityMatch?: boolean;
   qrDatasetHashMatch?: boolean;
+  tagExactMatch?: boolean;
+  datasetExactMatch?: boolean;
+  numericDataExactMatch?: boolean;
+  chartDataExactMatch?: boolean;
+  chartVisualExactMatch?: boolean;
+  chartExactMatch?: boolean;
+  semanticStatus?: "CONTENT_EXACT" | "DATA_TAMPERED" | "CHART_TAMPERED";
+  ocrEvidenceRequired?: boolean;
+  ocrEvidenceAvailable?: boolean;
+  ocrEvidenceExactMatch?: boolean;
+  ocrEvidenceTokenCount?: number;
+  matchedOcrEvidenceTokenCount?: number;
+  missingOcrEvidenceTokens?: string[];
+  ocrEvidencePageCount?: number;
+  matchedOcrEvidencePageCount?: number;
+  ocrEvidencePageCountMatch?: boolean;
+  ocrEvidencePageComparisons?: Array<{
+    pageNumber: number;
+    pageType: string;
+    expectedTokenCount: number;
+    matchedTokenCount: number;
+    actualTokenCount: number;
+    ordered: boolean;
+    tokenSequenceExact: boolean;
+    matched: boolean;
+    missingTokens: string[];
+    unexpectedTokens: string[];
+    tokenComparisons: Array<{
+      position: number;
+      expected: string;
+      actual: string;
+      expectedOccurrence: number;
+      actualOccurrenceCount: number;
+      matched: boolean;
+    }>;
+  }>;
+  ocrEvidenceTokenComparisons?: Array<{
+    pageNumber: number;
+    pageType: string;
+    tokenIndex: number;
+    expected: string;
+    occurrence: number;
+    ordered: boolean;
+    matched: boolean;
+  }>;
+  sectionSummaryAvailable?: boolean;
+  sectionSummaryExactMatch?: boolean;
+  sectionSummaryComparisons?: Array<{
+    pageNumber?: number;
+    sectionCode: string;
+    sectionLabel: string;
+    expectedTotalEmission: string;
+    actualTotalEmission: string;
+    expectedSharePercent: string;
+    actualSharePercent: string;
+    labelMatched: boolean;
+    totalEmissionMatched: boolean;
+    sharePercentMatched: boolean;
+    unexpectedNumbers: string[];
+    matched: boolean;
+  }>;
+  sectionGraphComparisons?: Array<{
+    pageNumber: number;
+    graphType: "SECTION_BAR" | "SECTION_PIE" | string;
+    sectionIndex: number;
+    sectionCode?: string;
+    sectionLabel?: string;
+    sectionMatched: boolean;
+    totalEmissionDisplay?: string;
+    actualTotalEmissionDisplay?: string;
+    totalEmissionMatched: boolean;
+    sharePercentDisplay?: string;
+    actualSharePercentDisplay?: string;
+    sharePercentMatched: boolean;
+    matched: boolean;
+  }>;
+  unexpectedSectionSummaryNumbers?: string[];
   contentConfidence?: number;
   visualProfileAvailable?: boolean;
   visualSimilarity?: number;
@@ -291,6 +405,10 @@ export type ReportPhotoVerificationResponse = {
     totalEmissionDisplay?: string;
     totalEmissionMatched: boolean;
   }>;
+  detailRowsExactMatch?: boolean;
+  comparisonItemCount?: number;
+  matchedComparisonItemCount?: number;
+  comparisonDetails?: ReportVisibleFieldComparison[];
   damagedRegions?: Array<{ page: number; row: number; column: number; difference: number }>;
   detectedCertificateId?: string;
   productMatched?: boolean;
@@ -312,6 +430,7 @@ export type ReportLcaFieldComparison = {
   field: string;
   label: string;
   expected: string;
+  actual: string;
   matched: boolean;
 };
 
@@ -319,6 +438,16 @@ export type ReportSummaryFieldComparison = {
   field: string;
   label: string;
   expected: string;
+  actual: string;
+  matched: boolean;
+};
+
+export type ReportVisibleFieldComparison = {
+  category: "DETAIL" | "CHART";
+  group: string;
+  field: string;
+  expected: string;
+  actual: string;
   matched: boolean;
 };
 
@@ -326,14 +455,19 @@ export type ReportOutputFieldComparison = {
   rowIndex: number;
   outputType: "PRODUCT" | "BYPRODUCT";
   materialName: string;
+  materialActual?: string;
   materialMatched: boolean;
   processReferenceMassDisplay?: string;
+  processReferenceMassActual?: string;
   processReferenceMassMatched: boolean;
   massSharePercentDisplay?: string;
+  massSharePercentActual?: string;
   massSharePercentMatched: boolean;
   allocatedEmissionDisplay?: string;
+  allocatedEmissionActual?: string;
   allocatedEmissionMatched: boolean;
   emissionPerTonDisplay?: string;
+  emissionPerTonActual?: string;
   emissionPerTonMatched: boolean;
   rowMatched: boolean;
 };
@@ -342,12 +476,19 @@ export type ReportOcrComparison = {
   certificateId: string;
   issuedAt?: string;
   reportTitle?: string;
+  reportTitleActual?: string;
   productName?: string;
+  productNameActual?: string;
   totalEmission?: number;
+  totalEmissionActual?: string;
   rowCount?: number;
   payloadHash?: string;
   integrityCode?: string;
   datasetHash?: string;
+  certificateIdActual?: string;
+  payloadHashActual?: string;
+  integrityCodeActual?: string;
+  datasetHashActual?: string;
   confidence: number;
   contentMatch: boolean;
   certificateIdMatch: boolean;
@@ -356,7 +497,17 @@ export type ReportOcrComparison = {
   datasetHashMatch: boolean;
   verificationTagMatch: boolean;
   datasetExactMatch: boolean;
+  numericDataExactMatch?: boolean;
+  chartDataExactMatch?: boolean;
+  chartVisualExactMatch?: boolean;
+  chartExactMatch?: boolean;
   tagExactMatch: boolean;
+  ocrEvidenceRequired: boolean;
+  ocrEvidenceAvailable: boolean;
+  ocrEvidenceExactMatch: boolean;
+  ocrEvidenceTokenCount: number;
+  matchedOcrEvidenceTokenCount: number;
+  missingOcrEvidenceTokens: string[];
   overallExactMatch: boolean;
   productMatched: boolean;
   titleMatched: boolean;
@@ -370,17 +521,51 @@ export type ReportOcrComparison = {
   lcaFieldComparisons?: ReportLcaFieldComparison[];
   reportSummaryComparisons?: ReportSummaryFieldComparison[];
   outputFieldComparisons?: ReportOutputFieldComparison[];
+  sectionSummaryComparisons?: Array<{
+    pageNumber?: number;
+    sectionCode: string;
+    sectionLabel: string;
+    expectedTotalEmission: string;
+    actualTotalEmission: string;
+    expectedSharePercent: string;
+    actualSharePercent: string;
+    labelMatched: boolean;
+    totalEmissionMatched: boolean;
+    sharePercentMatched: boolean;
+    unexpectedNumbers: string[];
+    matched: boolean;
+  }>;
+  sectionGraphComparisons?: Array<{
+    pageNumber: number;
+    graphType: "SECTION_BAR" | "SECTION_PIE" | string;
+    sectionIndex: number;
+    sectionCode?: string;
+    sectionLabel?: string;
+    sectionMatched: boolean;
+    totalEmissionDisplay?: string;
+    actualTotalEmissionDisplay?: string;
+    totalEmissionMatched: boolean;
+    sharePercentDisplay?: string;
+    actualSharePercentDisplay?: string;
+    sharePercentMatched: boolean;
+    matched: boolean;
+  }>;
+  unexpectedSectionSummaryNumbers?: string[];
   fieldComparisons?: Array<{
     rowIndex: number;
     sectionLabel?: string;
     materialName?: string;
     rowMatched: boolean;
     materialMatched: boolean;
+    actualMaterialName?: string;
     amountDisplay?: string;
+    amountActual?: string;
     amountMatched: boolean;
     emissionFactorDisplay?: string;
+    emissionFactorActual?: string;
     emissionFactorMatched: boolean;
     totalEmissionDisplay?: string;
+    totalEmissionActual?: string;
     totalEmissionMatched: boolean;
   }>;
   fieldMismatches?: Array<{
@@ -395,6 +580,10 @@ export type ReportOcrComparison = {
     totalEmissionDisplay?: string;
     totalEmissionMatched: boolean;
   }>;
+  detailRowsExactMatch?: boolean;
+  comparisonItemCount?: number;
+  matchedComparisonItemCount?: number;
+  comparisonDetails?: ReportVisibleFieldComparison[];
 };
 
 export async function issueSurveyReportVerification(payload: ReportVerificationDatasetPayload) {
@@ -413,14 +602,35 @@ export async function proofreadSurveyReportLabels(labels: string[]) {
   );
 }
 
-export async function issueSurveyReportPdf(record: ReportVerificationDatasetPayload, html: string) {
+export type ReportOcrIssuanceEvidence = {
+  schemaVersion: 3 | 4;
+  certificateId: string;
+  payloadHash: string;
+  integrityCode: string;
+  datasetHash: string;
+  pages: Array<{
+    pageNumber: number;
+    pageType: "SUMMARY" | "SECTION_BAR" | "SECTION_PIE" | "DETAIL_TABLE" | "DIGITAL_VERIFICATION";
+    visibleText: string;
+    segments: Array<{
+      segmentIndex: number;
+      text: string;
+      semanticTag: string;
+      rowIndex: number;
+      columnIndex: number;
+      box: { x: number; y: number; width: number; height: number };
+    }>;
+  }>;
+};
+
+export async function issueSurveyReportPdf(record: ReportVerificationDatasetPayload, html: string, ocrEvidence: ReportOcrIssuanceEvidence) {
   const response = await fetch(
     buildLocalizedPath("/admin/api/admin/emission-survey-report/issue-pdf", "/en/admin/api/admin/emission-survey-report/issue-pdf"),
     {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json", Accept: "application/pdf", "X-Requested-With": "XMLHttpRequest" },
-      body: JSON.stringify({ record, html })
+      body: JSON.stringify({ record, html, ocrEvidence })
     }
   );
   if (!response.ok) {
@@ -446,10 +656,20 @@ export async function verifySurveyReportPdfFile(file: File, certificateId: strin
   const form = new FormData();
   form.append("certificateId", certificateId);
   form.append("file", file, file.name);
+  if (publicHome) {
+    const response = await fetch(
+      buildLocalizedPath("/api/home/certificate-verify/verify-file", "/api/en/home/certificate-verify/verify-file"),
+      {
+        method: "POST",
+        credentials: "omit",
+        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+        body: form
+      }
+    );
+    return readJsonResponse<ReportPdfFileVerificationResponse>(response);
+  }
   return postFormData<ReportPdfFileVerificationResponse>(
-    publicHome
-      ? buildLocalizedPath("/api/home/certificate-verify/verify-file", "/api/en/home/certificate-verify/verify-file")
-      : buildLocalizedPath("/admin/api/admin/emission-survey-report/verify-file", "/en/admin/api/admin/emission-survey-report/verify-file"),
+    buildLocalizedPath("/admin/api/admin/emission-survey-report/verify-file", "/en/admin/api/admin/emission-survey-report/verify-file"),
     form
   );
 }
@@ -459,14 +679,60 @@ export async function verifySurveyReportPhoto(ocrText: string, qrEvidence?: {
   payloadHash: string;
   integrityCode: string;
   datasetHash: string;
-}, visualProfile?: { version: number; columns: number; rows: number; pages: Array<{ values: number[] }> }, reportType: "EMISSION_SURVEY" | "LCA_SUMMARY" = "EMISSION_SURVEY") {
+}, visualProfile?: { version: number; columns: number; rows: number; pages: Array<{ values: number[] }> }, reportType: "EMISSION_SURVEY" | "LCA_SUMMARY" = "EMISSION_SURVEY", ocrPages: string[] = [], ocrPageEvidence: ReportPageOcrResponse["pages"] = []) {
   const publicHome = window.location.pathname.startsWith("/home/") || window.location.pathname.startsWith("/en/home/");
   return postJson<ReportPhotoVerificationResponse>(
     publicHome
       ? buildLocalizedPath("/api/home/certificate-verify/verify-ocr", "/api/en/home/certificate-verify/verify-ocr")
       : buildLocalizedPath("/admin/api/admin/emission-survey-report/verify-ocr", "/en/admin/api/admin/emission-survey-report/verify-ocr"),
-    { ocrText, qrEvidence, visualProfile, reportType },
+    {
+      ocrText,
+      ocrPages: ocrPages.map((text, index) => ({
+        pageNumber: index + 1,
+        ocrText: text,
+        lines: ocrPageEvidence.find((page) => page.pageNumber === index + 1)?.lines || []
+      })),
+      qrEvidence,
+      visualProfile,
+      reportType
+    },
     { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+}
+
+export type ReportPageOcrResponse = {
+  engine: string;
+  license: string;
+  pageCount: number;
+  confidence: number;
+  text: string;
+  pages: Array<{
+    pageNumber: number;
+    text: string;
+    confidence: number;
+    lines: Array<{ text: string; confidence: number; polygon: number[][] }>;
+  }>;
+};
+
+export async function recognizeSurveyReportPages(files: Blob[]) {
+  const publicHome = window.location.pathname.startsWith("/home/") || window.location.pathname.startsWith("/en/home/");
+  const form = new FormData();
+  files.forEach((file, index) => form.append("files", file, `page-${index + 1}.png`));
+  if (publicHome) {
+    const response = await apiFetch(
+      buildLocalizedPath("/api/home/certificate-verify/recognize-pages", "/api/en/home/certificate-verify/recognize-pages"),
+      {
+        method: "POST",
+        credentials: "include",
+        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+        body: form
+      }
+    );
+    return readJsonResponse<ReportPageOcrResponse>(response);
+  }
+  return postFormData<ReportPageOcrResponse>(
+    buildLocalizedPath("/admin/api/admin/emission-survey-report/recognize-pages", "/en/admin/api/admin/emission-survey-report/recognize-pages"),
+    form
   );
 }
 

@@ -258,7 +258,26 @@ function resolveMenuComparablePath(value: string, preserveDirectMenu = true) {
 }
 
 function resolveMenuLinkRuntimeUrl(link: MenuLinkLike | undefined) {
-  return String(link?.u || "").trim();
+  const configuredUrl = String(link?.u || "").trim();
+  if (!configuredUrl || configuredUrl === "#") {
+    return configuredUrl;
+  }
+  try {
+    const resolved = new URL(configuredUrl, window.location.origin);
+    // Menu metadata can be shared by development and production. Always keep
+    // in-app admin navigation on the current origin so its session cookie is
+    // not lost when a stored URL contains another host or protocol.
+    // Some LCA menu entries intentionally share one React route. Preserve the
+    // clicked menu identity explicitly instead of reusing a stale menuCode
+    // from the stored URL or the previously opened workspace.
+    const menuCode = String(link?.code || "").trim().toUpperCase();
+    if (menuCode && resolved.pathname.startsWith("/admin/emission/")) {
+      resolved.searchParams.set("menuCode", menuCode);
+    }
+    return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+  } catch {
+    return configuredUrl;
+  }
 }
 
 function isLikelyMenuCodeLabel(value: string) {
@@ -588,6 +607,7 @@ export function AdminPageShell({
     () => Object.keys(menuState.value || {}).length ? (menuState.value || {}) : fallbackMenuTree,
     [fallbackMenuTree, menuState.value]
   );
+  const hasResolvedMenuTree = Object.keys(menuTree).length > 0;
   const menuIndex = useMemo(() => buildMenuIndex(menuTree), [menuTree]);
   const activeMenuEntry = useMemo(() => resolveMenuIndexEntry(menuIndex, currentPath), [menuIndex, currentPath]);
   const variantDomainKey = useMemo(() => resolveSidebarVariantDomainKey(menuTree, sidebarVariant), [menuTree, sidebarVariant]);
@@ -601,6 +621,7 @@ export function AdminPageShell({
   const selectedDomain = menuTree[selectedDomainKey] || menuTree[activeDomainKey];
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => readStoredOpenGroups());
   const [sessionRemainingMs, setSessionRemainingMs] = useState(() => Math.max(0, ensureAdminSessionExpireAt() - Date.now()));
+  const [unacknowledgedRecorderFailures, setUnacknowledgedRecorderFailures] = useState(0);
   const [sessionRefreshPending, setSessionRefreshPending] = useState(false);
   const [devSession, setDevSession] = useState<FrontendSession | null>(bootstrappedSession);
   const [simulatorPayload, setSimulatorPayload] = useState<AdminSessionSimulationPayload | null>(null);
@@ -711,17 +732,43 @@ export function AdminPageShell({
   }, [openGroups]);
 
   useEffect(() => {
-    let expired = false;
+    let disposed = false;
+    let checking = false;
+    let nextCheckAt = 0;
+
+    const verifyExpiration = async () => {
+      if (checking || Date.now() < nextCheckAt) return;
+      checking = true;
+      nextCheckAt = Date.now() + 30000;
+      try {
+        const response = await fetch("/api/frontend/session", {
+          credentials: "include", cache: "no-store",
+          headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" }
+        });
+        if (!response.ok) return;
+        const session = await response.json();
+        if (disposed) return;
+        if (session.authenticated === false) {
+          // A local display timer must never invalidate a live server session.
+          invalidateFrontendSessionCache();
+          navigate(`${buildLocalizedPath("/admin/login/loginView", "/en/admin/login/loginView")}?${new URLSearchParams({ returnUrl: window.location.pathname + window.location.search })}`);
+        } else if (session.authenticated === true) {
+          const next = Date.now() + ADMIN_SESSION_DURATION_MS;
+          window.sessionStorage.setItem(ADMIN_SESSION_STORAGE_KEY, String(next));
+          setSessionRemainingMs(ADMIN_SESSION_DURATION_MS);
+        }
+      } catch {
+        // Network failure is not evidence of logout. Retry without destroying the session.
+      } finally {
+        checking = false;
+      }
+    };
 
     const syncTimer = () => {
       const nextExpireAt = ensureAdminSessionExpireAt();
       const remaining = Math.max(0, nextExpireAt - Date.now());
       setSessionRemainingMs(remaining);
-      if (remaining <= 0 && !expired) {
-        expired = true;
-        window.alert(en ? "Your session has expired. You will be logged out." : "세션이 만료되어 로그아웃됩니다.");
-        void handleAdminLogout();
-      }
+      if (remaining <= 0) void verifyExpiration();
     };
 
     const handleActivity = () => {
@@ -741,12 +788,36 @@ export function AdminPageShell({
     document.addEventListener("click", handleActivity, { passive: true });
     document.addEventListener("keydown", handleActivity);
     return () => {
+      disposed = true;
       window.clearInterval(intervalId);
       window.removeEventListener("storage", syncTimer);
       document.removeEventListener("click", handleActivity);
       document.removeEventListener("keydown", handleActivity);
     };
   }, [en]);
+
+  useEffect(() => {
+    let active = true;
+    const loadRecorderAuditBadge = () => fetch("/api/admin/process-preview-recorder-audit", { cache: "no-store", credentials: "include" })
+      .then((response) => response.ok
+        ? response.json()
+        : fetch("/qa/process-preview-recorder-audit.json", { cache: "no-store" })
+          .then((fallback) => fallback.ok ? fallback.json() : Promise.reject(new Error(`audit ${fallback.status}`))))
+      .then((audit: { unacknowledgedCount?: number }) => {
+        if (active) setUnacknowledgedRecorderFailures(Number(audit.unacknowledgedCount) || 0);
+      })
+      .catch(() => {
+        if (active) setUnacknowledgedRecorderFailures(0);
+      });
+    void loadRecorderAuditBadge();
+    const intervalId = window.setInterval(loadRecorderAuditBadge, 60_000);
+    window.addEventListener("runtime-alerts-updated", loadRecorderAuditBadge);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("runtime-alerts-updated", loadRecorderAuditBadge);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -927,25 +998,13 @@ export function AdminPageShell({
   const resolvedLoadingLabel = loadingLabel || (en ? "Loading page data." : "화면을 불러오는 중입니다.");
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
+    if (hasResolvedMenuTree) {
+      setShowDeferredChrome(true);
     }
-    let cancelled = false;
-    const rafId = window.requestAnimationFrame(() => {
-      window.setTimeout(() => {
-        if (!cancelled) {
-          setShowDeferredChrome(true);
-        }
-      }, 0);
-    });
-    return () => {
-      cancelled = true;
-      window.cancelAnimationFrame(rafId);
-    };
-  }, []);
+  }, [hasResolvedMenuTree]);
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden bg-[#f8f9fa] text-[var(--kr-gov-text-primary)]">
+    <div className="relative flex h-screen flex-col overflow-hidden bg-[#f8f9fa] text-[var(--kr-gov-text-primary)]" data-screen-theme="krds-v1">
       <a className="skip-link" href="#main-content">{en ? "Skip to content" : "본문 바로가기"}</a>
 
       <div className="z-50 shrink-0 border-b border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-bg-gray)]">
@@ -957,6 +1016,18 @@ export function AdminPageShell({
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[11px] font-medium text-[var(--kr-gov-text-secondary)] sm:gap-4">
+            <a
+              aria-label={en ? `Preview recording alerts: ${unacknowledgedRecorderFailures} unacknowledged` : `미리보기 녹화 알림: 미확인 ${unacknowledgedRecorderFailures}건`}
+              className={`inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 font-black transition-colors ${unacknowledgedRecorderFailures > 0 ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100" : "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"}`}
+              href="/qa/process-preview-recorder-audit/index.html"
+              target="_blank"
+              rel="noreferrer"
+              data-recorder-audit-notification=""
+            >
+              <span className="material-symbols-outlined text-[16px]">{unacknowledgedRecorderFailures > 0 ? "notification_important" : "notifications_none"}</span>
+              <span className="hidden sm:inline">{en ? "Recording" : "녹화"}</span>
+              <span className="inline-flex min-w-5 justify-center rounded-full bg-white px-1.5 py-0.5 text-[10px]">{unacknowledgedRecorderFailures}</span>
+            </a>
             <span aria-label={en ? "Admin Login: Administrator" : "관리자 로그인: 관리자"}><span className="hidden sm:inline" id="admin-login-label">{en ? "Admin Login:" : "관리자 로그인:"} </span><span>{en ? "Admin" : "관리자"}</span></span>
             <button className="min-h-8 px-1 hover:underline" onClick={() => void handleAdminLogout()} type="button">{en ? "Logout" : "로그아웃"}</button>
           </div>
@@ -984,8 +1055,8 @@ export function AdminPageShell({
               </div>
             </a>
 
-            <nav aria-label={en ? "Admin Main Menu" : "관리자 주 메뉴"} className="hidden h-full min-w-0 flex-1 flex-wrap content-center items-center justify-center gap-x-0.5 gap-y-0 xl:flex 2xl:gap-x-1" id="adminGnbMenu">
-              {gnbItems.map((item) => {
+            <nav aria-label={en ? "Admin Main Menu" : "관리자 주 메뉴"} className="hidden h-full min-w-0 flex-1 items-center justify-start gap-x-0.5 overflow-x-auto lg:flex 2xl:justify-center 2xl:gap-x-1" id="adminGnbMenu">
+              {showDeferredChrome ? gnbItems.map((item) => {
                 const active = item.domain === (selectedDomainKey || activeDomainKey);
                 return (
                   <a
@@ -1006,7 +1077,7 @@ export function AdminPageShell({
                     <span className="inline-flex items-center whitespace-nowrap leading-none">{item.label}</span>
                   </a>
                 );
-              })}
+              }) : null}
             </nav>
 
             <div className="flex items-center gap-2">
@@ -1180,20 +1251,38 @@ export function AdminPageShell({
       ) : null}
 
       <div className="js-admin-layout-shell flex min-h-0 flex-1 flex-col lg:flex-row">
-        <details className="border-b border-[var(--kr-gov-border-light)] bg-white p-3 lg:hidden">
+        {showDeferredChrome ? <details className="border-b border-[var(--kr-gov-border-light)] bg-white p-3 lg:hidden">
           <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-lg bg-slate-50 px-4 font-bold text-[var(--kr-gov-text-primary)]">
-            <span className="flex items-center gap-2"><span className="material-symbols-outlined text-[20px]">menu</span>{en ? "Current domain menu" : "현재 업무 메뉴"}</span>
+            <span className="flex items-center gap-2"><span className="material-symbols-outlined text-[20px]">menu</span>{en ? "All admin menus" : "전체 관리자 메뉴"}</span>
             <span className="material-symbols-outlined text-[20px]">expand_more</span>
           </summary>
+          <nav aria-label={en ? "Mobile admin main menu" : "모바일 관리자 대메뉴"} className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {gnbItems.map((item) => {
+              const active = item.domain === (selectedDomainKey || activeDomainKey);
+              return (
+                <button
+                  className={`min-h-11 shrink-0 rounded-lg border px-3 text-sm font-bold ${active ? "border-[var(--kr-gov-blue)] bg-blue-50 text-[var(--kr-gov-blue)]" : "border-slate-200 bg-white text-slate-700"}`}
+                  key={`mobile-domain-${item.domain}`}
+                  onClick={() => {
+                    storeSelectedDomain(item.domain, currentPath);
+                    setSelectedDomainKey(item.domain);
+                  }}
+                  type="button"
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
           <nav aria-label={en ? "Mobile admin menu" : "모바일 관리자 메뉴"} className="mt-3 grid max-h-[55vh] gap-2 overflow-y-auto sm:grid-cols-2">
             {filteredSelectedDomain.groups.flatMap((group: AdminMenuGroup) => visibleLinks(group.links)).map((link, index) => {
               const runtimeUrl = resolveMenuLinkRuntimeUrl(link);
               return <a className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-700" href={runtimeUrl || "#"} key={`mobile-${link.code || runtimeUrl}-${index}`}><span className="material-symbols-outlined text-[18px]">{link.icon || "chevron_right"}</span>{resolveSidebarLinkLabel(link, en)}</a>;
             })}
           </nav>
-        </details>
+        </details> : null}
         <aside aria-label={en ? "Admin Side Menu" : "관리자 사이드 메뉴"} className="js-admin-lnb hidden w-72 flex-col bg-white p-5 lg:flex">
-          <div className="mb-6">
+          {showDeferredChrome ? <div className="mb-6">
             <div className="relative">
               <input
                 aria-label={en ? "Search admin menu" : "관리자 메뉴 검색"}
@@ -1206,7 +1295,7 @@ export function AdminPageShell({
               />
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-gray-400">search</span>
             </div>
-          </div>
+          </div> : null}
 
           <div
             className="js-admin-lnb-body space-y-5"

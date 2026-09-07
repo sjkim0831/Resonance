@@ -1,0 +1,29 @@
+{
+  "processCode": "EXTERNAL_SYSTEM_REGISTRY",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "EXTERNAL_SYSTEM_REGISTRY_S1",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "routePath": "/generated/external-system-registry/external-system-registry-s1?step=external_system_registry_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "EXTERNAL_SYSTEM_REGISTRY_S2",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "routePath": "/generated/external-system-registry/external-system-registry-s2?step=external_system_registry_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "EXTERNAL_SYSTEM_REGISTRY_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/external-system-registry/external-system-registry-s3?step=external_system_registry_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "EXTERNAL_SYSTEM_REGISTRY_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/external-system-registry/external-system-registry-s4?step=external_system_registry_s4"
+    }
+  ]
+}

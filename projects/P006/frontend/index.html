@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#083b66">
+<title>Woosu Factory Studio</title>
+<link rel="icon" href="/projects/P006/assets/p006-logo.svg">
+<link rel="stylesheet" href="/projects/P006/assets/p006.css?v=55">
+<link rel="stylesheet" href="/projects/P006/assets/sdui-json-form.css?v=20260821-3">
+<link rel="stylesheet" href="/projects/P006/assets/equipment.css">
+<link rel="stylesheet" href="/projects/P006/assets/equipment-layout.css">
+<link rel="stylesheet" href="/projects/P006/assets/asset-catalog.css?v=41">
+<link rel="stylesheet" href="/projects/P006/assets/equipment-groups.css?v=23">
+<link rel="stylesheet" href="/projects/P006/assets/layout-safety.css?v=23">
+<link rel="stylesheet" href="/projects/P006/assets/production-flow.css?v=23">
+<link rel="stylesheet" href="/projects/P006/assets/scenario-kpi.css?v=23">
+<link rel="stylesheet" href="/projects/P006/assets/telemetry-compare.css?v=23">
+<link rel="stylesheet" href="/projects/P006/assets/collector-status.css?v=23">
+<link rel="stylesheet" href="/projects/P006/assets/studio-controls.css?v=23">
+<link rel="stylesheet" href="/projects/P006/assets/catalog-objects.css?v=26">
+<link rel="stylesheet" href="/projects/P006/assets/mapping-admin.css?v=28">
+<link rel="stylesheet" href="/projects/P006/assets/mapping-review.css?v=30">
+<link rel="stylesheet" href="/projects/P006/assets/plc-monitor.css?v=34">
+<link rel="stylesheet" href="/projects/P006/assets/plc-admin.css?v=37">
+<link rel="stylesheet" href="/projects/P006/assets/asset-library.css?v=45">
+<link rel="stylesheet" href="/projects/P006/assets/asset-tabs.css?v=41">
+<link rel="stylesheet" href="/projects/P006/assets/mesh-validation.css?v=42">
+<link rel="stylesheet" href="/projects/P006/assets/asset-layout-plan.css?v=45">
+<link rel="stylesheet" href="/projects/P006/assets/production-line-plan.css?v=46">
+<link rel="stylesheet" href="/projects/P006/assets/layer-operations.css?v=49">
+<link rel="stylesheet" href="/projects/P006/assets/operations-history.css?v=59">
+<link rel="stylesheet" href="/projects/P006/assets/operations-escalation.css?v=1">
+<link rel="stylesheet" href="/projects/P006/assets/workforce-admin.css?v=1">
+<link rel="stylesheet" href="/projects/P006/assets/factory-editor.css?v=1">
+<link rel="stylesheet" href="/projects/P006/assets/factory-versions.css?v=2">
+<link rel="stylesheet" href="/projects/P006/assets/flow-plan.css?v=1">
+<link rel="stylesheet" href="/projects/P006/assets/performance-monitor.css?v=1">
+<link rel="stylesheet" href="/projects/P006/assets/rtx-telemetry-overlay.css?v=2">
+<link rel="stylesheet" href="/projects/P006/assets/threshold-admin.css?v=5">
+<link rel="stylesheet" href="/projects/P006/assets/timeline-controls.css?v=2">
+<link rel="stylesheet" href="/projects/P006/assets/studio-workbench.css?v=2">
+<link rel="stylesheet" href="/projects/P006/assets/collision-focus.css?v=1">
+<link rel="stylesheet" href="/projects/P006/assets/rtx-preview-modal.css?v=4">
+<link rel="stylesheet" href="/projects/P006/assets/roundtrip-qa.css?v=3">
+<link rel="stylesheet" href="/projects/P006/assets/performance-qa.css?v=1">
+<link rel="stylesheet" href="/projects/P006/assets/page-scroll-fix.css?v=2">
+<link rel="stylesheet" href="/projects/P006/assets/studio-clarity.css?v=3">
+<link rel="stylesheet" href="/projects/P006/assets/factory-composer.css?v=1">
+<link rel="stylesheet" href="/projects/P006/assets/asset-list-ux.css?v=1">
+<link rel="stylesheet" href="/projects/P006/assets/blueprint-studio.css?v=3">
+<link rel="stylesheet" href="/projects/P006/assets/blueprint-scene-view.css?v=1">
+<link rel="stylesheet" href="/projects/P006/assets/factory-canvas-visual.css?v=1">
+<link rel="stylesheet" href="/projects/P006/assets/factory-structure-editor.css?v=1">
+<link rel="stylesheet" href="/projects/P006/assets/canvas-layout-fix.css?v=2">
+<link rel="stylesheet" href="/projects/P006/assets/performance-benchmark-status.css?v=1">
+<link rel="stylesheet" href="/projects/P006/assets/stream-operations-status.css?v=1">
+<link rel="stylesheet" href="/projects/P006/assets/asset-audit-status.css?v=1">
+</head>
+<body>
+<div id="app">
+</div>
+<script type="module" src="/projects/P006/assets/p006.js?v=30">
+</script>
+<script type="module" src="/projects/P006/assets/asset-catalog.js?v=41">
+</script>
+<script type="module" src="/projects/P006/assets/layout-safety.js?v=43">
+</script>
+<script type="module" src="/projects/P006/assets/scenario-kpi.js?v=23">
+</script>
+<script type="module" src="/projects/P006/assets/telemetry-compare.js?v=23">
+</script>
+<script type="module" src="/projects/P006/assets/collector-status.js?v=23">
+</script>
+<script type="module" src="/projects/P006/assets/studio-controls.js?v=27">
+</script>
+<script type="module" src="/projects/P006/assets/mapping-admin.js?v=30">
+</script>
+<script type="module" src="/projects/P006/assets/plc-monitor.js?v=34">
+</script>
+<script type="module" src="/projects/P006/assets/plc-admin.js?v=37">
+</script>
+<script type="module" src="/projects/P006/assets/plc-activation.js?v=37">
+</script>
+<script type="module" src="/projects/P006/assets/equipment-master.js?v=40">
+</script>
+<script type="module" src="/projects/P006/assets/equipment-classification.js?v=39">
+</script>
+<script type="module" src="/projects/P006/assets/asset-library.js?v=77">
+</script>
+<script type="module" src="/projects/P006/assets/mesh-validation.js?v=44">
+</script>
+<script type="module" src="/projects/P006/assets/asset-layout-plan.js?v=45">
+</script>
+<script type="module" src="/projects/P006/assets/production-line-plan.js?v=49">
+</script>
+<script type="module" src="/projects/P006/assets/layer-operations.js?v=54">
+</script>
+<script type="module" src="/projects/P006/assets/operations-history.js?v=61">
+</script>
+<script type="module" src="/projects/P006/assets/operations-escalation.js?v=5">
+</script>
+<script type="module" src="/projects/P006/assets/workforce-admin.js?v=2">
+</script>
+<script type="module" src="/projects/P006/assets/factory-editor.js?v=13">
+</script>
+<script type="module" src="/projects/P006/assets/performance-monitor.js?v=7">
+</script>
+<script type="module" src="/projects/P006/assets/factory-versions.js?v=3">
+</script>
+<script type="module" src="/projects/P006/assets/flow-plan.js?v=3">
+</script>
+<script type="module" src="/projects/P006/assets/admin-command-center.js?v=14">
+</script>
+<script type="module" src="/projects/P006/assets/rtx-telemetry-overlay.js?v=16">
+</script>
+<script type="module" src="/projects/P006/assets/threshold-admin.js?v=3">
+</script>
+<script type="module" src="/projects/P006/assets/threshold-review-inbox.js?v=1">
+</script>
+<script type="module" src="/projects/P006/assets/timeline-controls.js?v=11">
+</script>
+<script type="module" src="/projects/P006/assets/studio-workbench.js?v=5">
+</script>
+<script type="module" src="/projects/P006/assets/rtx-preview-modal.js?v=66">
+</script>
+<link rel="stylesheet" href="/projects/P006/assets/multi-asset-operations.css?v=1">
+<script type="module" src="/projects/P006/assets/multi-asset-operations.js?v=1"></script>
+<script type="module" src="/projects/P006/assets/roundtrip-qa.js?v=1">
+</script>
+<script type="module" src="/projects/P006/assets/performance-qa.js?v=2">
+</script>
+<script type="module" src="/projects/P006/assets/studio-clarity.js?v=1">
+</script>
+<script type="module" src="/projects/P006/assets/factory-composer.js?v=2">
+</script>
+<script type="module" src="/projects/P006/assets/asset-list-ux.js?v=2">
+</script>
+<script type="module" src="/projects/P006/assets/blueprint-studio.js?v=5">
+</script>
+<script type="module" src="/projects/P006/assets/performance-benchmark-status.js?v=3">
+</script>
+<script type="module" src="/projects/P006/assets/stream-operations-status.js?v=1">
+</script>
+<script type="module" src="/projects/P006/assets/asset-audit-status.js?v=5">
+</script>
+<script type="module" src="/projects/P006/assets/blueprint-scene-view.js?v=8">
+</script>
+<script type="module" src="/projects/P006/assets/blueprint-legend.js?v=1">
+</script>
+<script type="module" src="/projects/P006/assets/factory-structure-editor.js?v=2">
+</script>
+<script type="module" src="/projects/P006/assets/canvas-mode-sync.js?v=2">
+</script>
+<script type="module" src="/projects/P006/assets/floorplan-accuracy.js?v=1">
+</script>
+<script type="module" src="/projects/P006/assets/sdui-json-form-runtime.js?v=20260820-2">
+</script>
+</body>
+</html>

@@ -21,6 +21,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +34,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -48,6 +51,7 @@ public class AdminAuthorityCommandService {
     private final AdminRoleAssignmentDbChangeCaptureSupport adminRoleAssignmentDbChangeCaptureSupport;
     private final DbChangeCaptureService dbChangeCaptureService;
     private final ObjectMapper objectMapper;
+    private final JdbcTemplate jdbcTemplate;
 
     public CommandResult saveAuthGroupProfile(AdminAuthorRoleProfileSaveRequestDTO payload, HttpServletRequest request, Locale locale) {
         boolean isEn = adminReactRouteSupport.isEnglishRequest(request, locale);
@@ -226,7 +230,8 @@ public class AdminAuthorityCommandService {
         CurrentUserContextService.CurrentUserContext context = currentUserContextService.resolve(request);
         AdminCompanyScopeService.CompanyScope companyScope = adminCompanyScopeService.resolve(context.getUserId());
         boolean masterAccess = context.isWebmaster() || companyScope.canManageMemberScopeAllCompanies();
-        boolean companyAccess = companyScope.canManageMemberScope();
+        boolean relayCompanyAdmin = "COMPANY_ADMIN".equals(resolveRelayActor(context.getUserId()));
+        boolean companyAccess = companyScope.canManageMemberScope() || relayCompanyAdmin;
         if (!masterAccess && !companyAccess) {
             return forbidden(isEn
                     ? "You do not have permission to change administrator roles."
@@ -247,12 +252,12 @@ public class AdminAuthorityCommandService {
         }
 
         try {
-            if (!adminCompanyScopeService.canExecuteScopedQuery(companyScope, false)) {
+            if (!relayCompanyAdmin && !adminCompanyScopeService.canExecuteScopedQuery(companyScope, false)) {
                 return forbidden(isEn
                         ? "The current administrator is not bound to a company."
                         : "현재 관리자 계정에 소속 회원사가 없습니다.");
             }
-            String actorInsttId = adminCompanyScopeService.resolveScopedInsttIdForQuery(companyScope, "", false);
+            String actorInsttId = relayCompanyAdmin ? safeString(context.getInsttId()) : adminCompanyScopeService.resolveScopedInsttIdForQuery(companyScope, "", false);
             String targetInsttId = safeString(authGroupManageService.selectAdminInsttIdByUserId(normalizedEmplyrId));
             if (!masterAccess && (!actorInsttId.equals(targetInsttId) || targetInsttId.isEmpty())) {
                 return forbidden(isEn
@@ -275,18 +280,14 @@ public class AdminAuthorityCommandService {
                         : "이 화면에서는 유효한 일반 관리자 권한 그룹만 지정할 수 있습니다.");
             }
             Map<String, String> beforeRole = adminAuthorityPagePayloadSupport.resolveAdminRoleSummary(normalizedEmplyrId);
-            authGroupManageService.updateAdminRoleAssignment(normalizedEmplyrId, normalizedAuthorCode);
-            adminRoleAssignmentDbChangeCaptureSupport.captureAdminRoleAssignment(
-                    request,
-                    context.getUserId(),
-                    context.getAuthorCode(),
-                    context.getInsttId(),
-                    normalizedEmplyrId,
-                    beforeRole,
-                    adminAuthorityPagePayloadSupport.buildAuthorSummary(normalizedAuthorCode),
-                    "AMENU_AUTH_CHANGE",
-                    "auth-change");
+            String requestId = "UAR-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20).toUpperCase(Locale.ROOT);
+            jdbcTemplate.update("insert into framework_user_authority_assignment_request(request_id,tenant_id,target_user_id,before_author_code,requested_author_code,request_reason,status,requested_by) values (?,?,?,?,?,?,?,?)",
+                    requestId, targetInsttId.isEmpty() ? actorInsttId : targetInsttId, normalizedEmplyrId,
+                    currentAssignedAuthorCode, normalizedAuthorCode, "관리자 화면 권한 변경 요청", "REQUESTED", context.getUserId());
             Map<String, Object> data = successBody();
+            data.put("requestId", requestId);
+            data.put("status", "REQUESTED");
+            data.put("applied", false);
             data.put("emplyrId", normalizedEmplyrId);
             data.put("authorCode", normalizedAuthorCode);
             data.put("beforeRole", beforeRole);
@@ -299,6 +300,45 @@ public class AdminAuthorityCommandService {
                     ? "Failed to save administrator role assignment."
                     : "관리자 권한 변경 저장에 실패했습니다.");
         }
+    }
+
+    public CommandResult authChangeRelayQueue(HttpServletRequest request, Locale locale) {
+        CurrentUserContextService.CurrentUserContext context = currentUserContextService.resolve(request);
+        String actor = resolveRelayActor(context.getUserId());
+        if (actor.isEmpty()) return forbidden("권한 변경 릴레이 계정이 아닙니다.");
+        List<Map<String, Object>> items = jdbcTemplate.queryForList("select request_id,target_user_id,before_author_code,requested_author_code,status,requested_by,assigned_by,verified_by,approved_by,requested_at,updated_at from framework_user_authority_assignment_request order by requested_at desc limit 100");
+        Map<String,Object> data=successBody(); data.put("actorCode",actor); data.put("items",items); return ok(data);
+    }
+
+    @Transactional
+    public CommandResult authChangeRelayAction(Map<String,String> payload, HttpServletRequest request, Locale locale) {
+        CurrentUserContextService.CurrentUserContext context = currentUserContextService.resolve(request);
+        String actor=resolveRelayActor(context.getUserId());
+        String requestId=safeString(payload==null?null:payload.get("requestId"));
+        String action=safeString(payload==null?null:payload.get("action")).toUpperCase(Locale.ROOT);
+        if(requestId.isEmpty()||action.isEmpty()) return badRequest("요청 ID와 처리 동작이 필요합니다.");
+        List<Map<String,Object>> rows=jdbcTemplate.queryForList("select * from framework_user_authority_assignment_request where request_id=? for update",requestId);
+        if(rows.isEmpty()) return badRequest("권한 변경 요청을 찾을 수 없습니다.");
+        Map<String,Object> row=rows.get(0); String status=String.valueOf(row.get("status"));
+        int changed=0;
+        if("AUTHORITY_ADMIN".equals(actor)&&"ASSIGN".equals(action)&&"REQUESTED".equals(status)) changed=jdbcTemplate.update("update framework_user_authority_assignment_request set status='ASSIGNED',assigned_by=?,assigned_at=current_timestamp,updated_at=current_timestamp where request_id=? and status='REQUESTED'",context.getUserId(),requestId);
+        else if("VERIFIER".equals(actor)&&"VERIFY".equals(action)&&"ASSIGNED".equals(status)) changed=jdbcTemplate.update("update framework_user_authority_assignment_request set status='VERIFIED',verified_by=?,verified_at=current_timestamp,updated_at=current_timestamp where request_id=? and status='ASSIGNED'",context.getUserId(),requestId);
+        else if("APPROVER".equals(actor)&&"APPROVE".equals(action)&&"VERIFIED".equals(status)) {
+            changed=jdbcTemplate.update("update framework_user_authority_assignment_request set status='APPROVED',approved_by=?,approved_at=current_timestamp,updated_at=current_timestamp where request_id=? and status='VERIFIED'",context.getUserId(),requestId);
+            if(changed==1){
+                String target=String.valueOf(row.get("target_user_id"));String role=String.valueOf(row.get("requested_author_code"));
+                try { authGroupManageService.updateAdminRoleAssignment(target,role); }
+                catch (Exception e) { throw new IllegalStateException("최종 권한 반영에 실패했습니다.", e); }
+                jdbcTemplate.update("update framework_user_authority_assignment_request set status='APPLIED',applied_at=current_timestamp,updated_at=current_timestamp where request_id=?",requestId);
+            }
+        }
+        if(changed!=1) return badRequest("현재 액터 또는 처리 순서가 올바르지 않습니다.");
+        Map<String,Object> data=successBody();data.put("requestId",requestId);data.put("action",action);data.put("actorCode",actor);data.put("status",jdbcTemplate.queryForObject("select status from framework_user_authority_assignment_request where request_id=?",String.class,requestId));return ok(data);
+    }
+
+    private String resolveRelayActor(String userId) {
+        List<String> actors=jdbcTemplate.queryForList("select actor_code from framework_user_process_actor_account where process_code='USER_AUTHORITY_ASSIGNMENT' and lower(user_id)=lower(?) and use_at='Y'",String.class,safeString(userId));
+        return actors.isEmpty()?"":actors.get(0);
     }
 
     public CommandResult saveDeptRoleMapping(AdminDeptRoleMappingSaveRequestDTO payload, HttpServletRequest request, Locale locale) {

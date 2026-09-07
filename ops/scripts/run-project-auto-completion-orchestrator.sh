@@ -1079,8 +1079,56 @@ if [[ "$(psqlq -c "select (to_regprocedure('framework_incremental_screen_generat
   fi
 fi
 completed="$(psqlq -c "with done as (update framework_process_definition p set process_status='DEVELOPMENT_READY',updated_at=current_timestamp from framework_process_delivery_priority_queue q where q.process_code=p.process_code and q.next_action='COMPLETE' and p.process_status<>'DEVELOPMENT_READY' returning 1) select count(*) from done;")"
+# AUTO_DESIGN_DOCUMENT_GATE_V1
+# A process is not considered safely completed unless a deterministic design
+# package exists. The generator reuses an unchanged last-known-good package.
+design_document_result='{"status":"NOT_REQUIRED"}'
+design_document_rc=0
+design_output_root="${SYSTEM_DESIGN_OUT_ROOT:-$ROOT_DIR/var/ai-runtime/system-design-generator}"
+if [[ "$completed" -gt 0 || ! -L "$design_output_root/latest" ]]; then
+  set +e
+  design_document_output="$(SYSTEM_DESIGN_OUT_ROOT="$design_output_root" \
+    SYSTEM_DESIGN_TIME_BUDGET_SECONDS="${SYSTEM_DESIGN_TIME_BUDGET_SECONDS:-175}" \
+    timeout "${SYSTEM_DESIGN_GATE_TIMEOUT_SECONDS:-180}" \
+    bash "$ROOT_DIR/ops/scripts/generate-system-design-deliverables.sh" generate 2>&1)"
+  design_document_rc=$?
+  set -e
+  if (( design_document_rc == 0 )); then
+    if SYSTEM_DESIGN_OUT_ROOT="$design_output_root" \
+      bash "$ROOT_DIR/ops/scripts/generate-system-design-deliverables.sh" check >/dev/null 2>&1; then
+      latest_design="$(readlink -f "$design_output_root/latest")"
+      design_document_result="$(jq -cn --arg status READY --arg output "$latest_design" \
+        --arg summary "$design_document_output" '{status:$status,output:$output,summary:$summary}')"
+    else
+      design_document_rc=1
+      design_document_result="$(jq -cn --arg status FAILED --arg error 'post-generation validation failed' \
+        '{status:$status,error:$error}')"
+    fi
+  else
+    design_document_result="$(jq -cn --arg status FAILED --arg error "$design_document_output" \
+      '{status:$status,error:$error}')"
+  fi
+fi
+# AUTO_MEMBER_DESIGN_RECOVERY_PACKAGE_V1
+member_package_result='{"status":"NOT_REQUIRED"}'
+if (( design_document_rc == 0 )) && [[ "$completed" -gt 0 ]]; then
+  set +e
+  member_package_output="$(timeout "${MEMBER_PACKAGE_GATE_TIMEOUT_SECONDS:-180}" bash "$ROOT_DIR/ops/scripts/generate-member-design-recovery-package.sh" 2>&1)"
+  member_package_rc=$?
+  set -e
+  if (( member_package_rc == 0 )); then
+    member_package_latest="$(readlink -f /opt/resonance-data/backups/member-process-design-recovery-auto/latest)"
+    member_package_result="$(jq -cn --arg status READY --arg output "$member_package_latest/package.zip" --arg summary "$member_package_output" '{status:$status,output:$output,summary:$summary}')"
+  else
+    design_document_rc=1
+    member_package_result="$(jq -cn --arg status FAILED --arg error "$member_package_output" '{status:$status,error:$error}')"
+  fi
+fi
+if (( design_document_rc != 0 )); then
+  dispatcher_failed=1
+fi
 blocked="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where delivery_priority='BLOCKER';")"
 remaining="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
 status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" ) || "$dispatcher_failed" -gt 0 ]] && status="ATTENTION_REQUIRED"
 psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json='{\"remainingProcesses\":$remaining,\"dispatcherFailed\":$dispatcher_failed}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
-echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried embeddedTestsSynced=$embedded_tests_synced deterministicSpecsApproved=$deterministic_specs_approved incompleteSpecDemoted=$incomplete_spec_demoted specApprovalWaiting=$spec_approval_waiting approvedGeneratorRetried=$approved_generator_retried groupedFieldGeneratorRetried=$grouped_field_generator_retried packageContractGeneratorRetried=$package_contract_generator_retried generatedDimensionRetried=$generated_dimension_retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result")"
+echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried embeddedTestsSynced=$embedded_tests_synced deterministicSpecsApproved=$deterministic_specs_approved incompleteSpecDemoted=$incomplete_spec_demoted specApprovalWaiting=$spec_approval_waiting approvedGeneratorRetried=$approved_generator_retried groupedFieldGeneratorRetried=$grouped_field_generator_retried packageContractGeneratorRetried=$package_contract_generator_retried generatedDimensionRetried=$generated_dimension_retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result memberPackage=$(jq -c '{status,output}' <<<"$member_package_result") designDocument=$(jq -c '{status,output}' <<<"$design_document_result") screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result")"

@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { StandardUserFooter } from "../../components/user-shell/StandardUserFooter";
+import { useJoinSession } from "../../app/hooks/useJoinSession";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { resetJoinSession, saveJoinStep3 } from "../../lib/api/joinSession";
+import {
+  completeJoinExternalAuth,
+  requestJoinIdentityEmail,
+  resetJoinSession,
+  saveJoinStep3,
+  startJoinExternalAuth,
+  verifyJoinIdentityEmail
+} from "../../lib/api/joinSession";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 
 type AuthOption = {
@@ -83,7 +91,21 @@ export function JoinAuthMigrationPage() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [submittingMethod, setSubmittingMethod] = useState("");
   const [error, setError] = useState("");
+  const [emailPanelOpen, setEmailPanelOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [emailChallengeId, setEmailChallengeId] = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
+  const [developmentCode, setDevelopmentCode] = useState("");
+  const [expiresInSeconds, setExpiresInSeconds] = useState(0);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const sessionState = useJoinSession();
+
+  useEffect(() => {
+    if (!sessionState.loading && (!sessionState.value || !sessionState.value.canViewStep3)) {
+      navigate(buildLocalizedPath("/join/step1?expired=1", "/join/en/step1?expired=1"));
+    }
+  }, [sessionState.loading, sessionState.value]);
 
   function resolveCertificationGatewayPath(pathname: string) {
     if (typeof window === "undefined") {
@@ -121,6 +143,14 @@ export function JoinAuthMigrationPage() {
     }
   }, [options.length, selectedIndex]);
 
+  useEffect(() => {
+    if (!emailChallengeId || expiresInSeconds <= 0) return;
+    const timer = window.setInterval(() => {
+      setExpiresInSeconds((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [emailChallengeId, expiresInSeconds]);
+
   async function handleHome() {
     await resetJoinSession();
     navigate(buildLocalizedPath("/home", "/en/home"));
@@ -140,10 +170,81 @@ export function JoinAuthMigrationPage() {
     setError("");
     setSubmittingMethod(method);
     try {
+      const started = await startJoinExternalAuth(method);
+      if (!started.txId) {
+        throw new Error(started.message || (en ? "Failed to start identity verification." : "본인확인을 시작하지 못했습니다."));
+      }
+      if (started.nextAction === "COMPLETE") {
+        await completeJoinExternalAuth(method, started.txId);
+      } else if (started.nextAction === "REDIRECT" && started.urlScheme) {
+        if (/^https?:\/\//i.test(started.urlScheme)) {
+          window.location.href = started.urlScheme;
+          return;
+        }
+        throw new Error(started.message || (en ? "Complete verification in the provider application." : "인증기관 앱에서 본인확인을 완료해 주세요."));
+      } else {
+        throw new Error(started.message || (en ? "Identity provider configuration is required." : "본인확인 기관 연동 설정이 필요합니다."));
+      }
       await saveJoinStep3(method);
       navigate(buildLocalizedPath("/join/step4", "/join/en/step4"));
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : (en ? "Failed to continue to the next step." : "다음 단계로 이동하지 못했습니다."));
+    } finally {
+      setSubmittingMethod("");
+    }
+  }
+
+  async function requestEmailCode() {
+    if (submittingMethod) return;
+    setError("");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
+      setError(en ? "Enter a valid email address." : "올바른 이메일 주소를 입력해 주세요.");
+      return;
+    }
+    setSubmittingMethod("EMAIL_REQUEST");
+    try {
+      if (sessionState.value?.identityVerificationMode === "DEVELOPMENT_BYPASS") {
+        const values = new Uint32Array(1);
+        window.crypto.getRandomValues(values);
+        const code = String(values[0] % 1_000_000).padStart(6, "0");
+        const [localPart = "", domain = ""] = email.trim().split("@");
+        const visiblePrefix = localPart.slice(0, 2);
+        setEmailChallengeId("DEVELOPMENT_BYPASS");
+        setMaskedEmail(`${visiblePrefix}***@${domain}`);
+        setDevelopmentCode(code);
+        setExpiresInSeconds(600);
+        setVerificationCode("");
+        return;
+      }
+      const issued = await requestJoinIdentityEmail(email.trim());
+      setEmailChallengeId(issued.challengeId ?? "");
+      setMaskedEmail(issued.maskedDestination ?? "");
+      setDevelopmentCode(issued.developmentCode ?? "");
+      setExpiresInSeconds(issued.expiresInSeconds ?? 600);
+      setVerificationCode("");
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : (en ? "Failed to send the verification code." : "인증번호를 발송하지 못했습니다."));
+    } finally {
+      setSubmittingMethod("");
+    }
+  }
+
+  async function verifyEmailCode() {
+    if (submittingMethod || !emailChallengeId) return;
+    setError("");
+    setSubmittingMethod("EMAIL_VERIFY");
+    try {
+      if (emailChallengeId === "DEVELOPMENT_BYPASS") {
+        if (verificationCode !== developmentCode || expiresInSeconds <= 0) {
+          throw new Error(en ? "The code is invalid or expired." : "인증번호가 올바르지 않거나 만료되었습니다.");
+        }
+      } else {
+        await verifyJoinIdentityEmail(emailChallengeId, verificationCode);
+      }
+      await saveJoinStep3("EMAIL");
+      navigate(buildLocalizedPath("/join/step4", "/join/en/step4"));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : (en ? "The code is invalid or expired." : "인증번호가 올바르지 않거나 만료되었습니다."));
     } finally {
       setSubmittingMethod("");
     }
@@ -172,11 +273,9 @@ export function JoinAuthMigrationPage() {
       return;
     }
     if (method === "EMAIL") {
-      const userEmail = window.prompt(en ? "Please enter your email address for verification." : "인증할 이메일 주소를 입력해 주세요.");
-      if (userEmail) {
-        window.alert(en ? `A verification code has been sent to ${userEmail}. (Mock)` : `${userEmail} 경로로 인증번호를 발송했습니다. (Mock)`);
-        void proceedToStep4(method);
-      }
+      setError("");
+      setEmailPanelOpen(true);
+      window.requestAnimationFrame(() => document.getElementById("join-email-verification")?.scrollIntoView({ behavior: "smooth", block: "center" }));
       return;
     }
     void proceedToStep4(method);
@@ -258,13 +357,13 @@ export function JoinAuthMigrationPage() {
     <div className="bg-[var(--kr-gov-bg-gray)] text-[var(--kr-gov-text-primary)] min-h-screen flex flex-col">
       <a className="skip-link" href="#main-content">{en ? "Skip to content" : "본문 바로가기"}</a>
 
-      <div className="bg-white border-b border-[var(--kr-gov-border-light)]">
+      <div className="bg-white border-b border-[var(--kr-gov-border-light)]" data-join-government-bar>
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img
               alt={en ? "Emblem of the Republic of Korea" : "대한민국 정부 상징"}
               className="h-4"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8BPzqtzSLVGSrjt4mzhhVBy9SocCRDssk1F3XRVu7Xq9jHh7qzzt48wFi8qduCiJmB0LRQczPB7waPe3h0gkjn3jOEDxt6UJSJjdXNf8P-4WlM2BEZrfg2SL91uSiZrFcCk9KYrsdg-biTS9dtJ_OIghDBEVoAzMc33XcCYR_UP0QQdoYzBe840YrtH40xGyB9MSr0QH4D0foqlvOhG0jX8CDayXNlDsSKlfClVd3K2aodlwg4xSxgXHB3vnnnA0L2yNBNihQQg0"
+              src="/img/egovframework/kr_gov_symbol.png"
             />
             <span className="text-[13px] font-medium text-[var(--kr-gov-text-secondary)]">
               {en ? "Official Government Service of the Republic of Korea" : "대한민국 정부 공식 서비스"}
@@ -356,17 +455,6 @@ export function JoinAuthMigrationPage() {
             </div>
           </div>
 
-          <div className="join-auth-selection-bar max-w-6xl mx-auto mb-6" role="status" aria-live="polite">
-            <div>
-              <p className="join-auth-selection-eyebrow">{en ? "Current selection" : "현재 선택"}</p>
-              <strong className="join-auth-selection-title">{selectedOption.title}</strong>
-              <p className="join-auth-selection-description">{selectedOption.description.replace(/\n/g, " ")}</p>
-            </div>
-            <p className="join-auth-selection-help">
-              {en ? "Use arrow keys to move, then press Enter or Space to continue." : "방향키로 이동한 뒤 Enter 또는 Space로 바로 진행할 수 있습니다."}
-            </p>
-          </div>
-
           <div
             aria-activedescendant={`join-auth-option-${selectedOption.method}`}
             aria-label={en ? "Select identity verification method" : "본인인증 수단 선택"}
@@ -404,6 +492,102 @@ export function JoinAuthMigrationPage() {
               </button>
             ))}
           </div>
+
+          {emailPanelOpen ? (
+            <section
+              aria-labelledby="join-email-verification-title"
+              className="max-w-3xl mx-auto mb-8 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-blue)] bg-white p-6 shadow-sm"
+              id="join-email-verification"
+            >
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <p className="mb-1 text-sm font-bold text-[var(--kr-gov-blue)]">{en ? "EMAIL VERIFICATION" : "이메일 본인확인"}</p>
+                  <h2 className="text-xl font-bold" id="join-email-verification-title">{en ? "Verify your email address" : "이메일 주소를 인증해 주세요"}</h2>
+                  <p className="mt-2 text-sm text-[var(--kr-gov-text-secondary)]">
+                    {en ? "The code expires in 10 minutes and can be attempted up to 5 times." : "인증번호는 10분간 유효하며 최대 5회까지 확인할 수 있습니다."}
+                  </p>
+                </div>
+                <button aria-label={en ? "Close email verification" : "이메일 인증 닫기"} className="rounded-md p-2 hover:bg-gray-100" onClick={() => setEmailPanelOpen(false)} type="button">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <label className="mb-2 block text-sm font-bold" htmlFor="join-verification-email">{en ? "Email address" : "이메일 주소"}</label>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  autoComplete="email"
+                  className="min-h-12 flex-1 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] px-4 focus:border-[var(--kr-gov-blue)] focus:outline-none"
+                  disabled={Boolean(emailChallengeId) || Boolean(submittingMethod)}
+                  id="join-verification-email"
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder={en ? "name@example.com" : "example@domain.com"}
+                  type="email"
+                  value={email}
+                />
+                <button
+                  className="min-h-12 rounded-[var(--kr-gov-radius)] bg-[var(--kr-gov-blue)] px-6 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={Boolean(submittingMethod) || Boolean(emailChallengeId) || !email.trim()}
+                  onClick={() => void requestEmailCode()}
+                  type="button"
+                >
+                  {submittingMethod === "EMAIL_REQUEST"
+                    ? (en ? "Sending..." : "발송 중...")
+                    : (en ? "Send code" : "인증번호 발송")}
+                </button>
+              </div>
+
+              {emailChallengeId ? (
+                <div className="mt-5 rounded-[var(--kr-gov-radius)] bg-[var(--kr-gov-bg-light)] p-4">
+                  <div aria-live="polite" className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span className="font-bold text-[var(--kr-gov-blue)]">{en ? `Sent to ${maskedEmail}` : `${maskedEmail}로 인증번호를 발송했습니다.`}</span>
+                    <span className={expiresInSeconds > 0 ? "font-bold text-red-600" : "font-bold text-gray-500"}>
+                      {String(Math.floor(expiresInSeconds / 60)).padStart(2, "0")}:{String(expiresInSeconds % 60).padStart(2, "0")}
+                    </span>
+                  </div>
+                  {developmentCode ? (
+                    <p className="mb-3 rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-bold text-orange-800">
+                      {en ? "Development verification code" : "개발 인증번호"}: {developmentCode}
+                    </p>
+                  ) : null}
+                  <label className="mb-2 block text-sm font-bold" htmlFor="join-verification-code">{en ? "6-digit verification code" : "인증번호 6자리"}</label>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <input
+                      autoComplete="one-time-code"
+                      className="min-h-12 flex-1 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] px-4 tracking-[0.3em] focus:border-[var(--kr-gov-blue)] focus:outline-none"
+                      disabled={Boolean(submittingMethod) || expiresInSeconds <= 0}
+                      id="join-verification-code"
+                      inputMode="numeric"
+                      maxLength={6}
+                      onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, ""))}
+                      placeholder="000000"
+                      type="text"
+                      value={verificationCode}
+                    />
+                    <button
+                      className="min-h-12 rounded-[var(--kr-gov-radius)] bg-[var(--kr-gov-blue)] px-6 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={Boolean(submittingMethod) || expiresInSeconds <= 0 || verificationCode.length !== 6}
+                      onClick={() => void verifyEmailCode()}
+                      type="button"
+                    >
+                      {submittingMethod === "EMAIL_VERIFY" ? (en ? "Verifying..." : "확인 중...") : (en ? "Verify and continue" : "인증하고 다음 단계")}
+                    </button>
+                  </div>
+                  <button
+                    className="mt-4 text-sm font-bold text-[var(--kr-gov-blue)] underline disabled:opacity-50"
+                    disabled={Boolean(submittingMethod)}
+                    onClick={() => {
+                      setEmailChallengeId("");
+                      setDevelopmentCode("");
+                      setExpiresInSeconds(0);
+                    }}
+                    type="button"
+                  >
+                    {en ? "Use another email or request a new code" : "다른 이메일 사용 또는 인증번호 재발송"}
+                  </button>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
 
           {error ? (
             <div className="max-w-3xl mx-auto mb-8 rounded-[var(--kr-gov-radius)] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

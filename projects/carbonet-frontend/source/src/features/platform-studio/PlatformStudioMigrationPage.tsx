@@ -1199,7 +1199,7 @@ export function PlatformStudioMigrationPage() {
                 <div className="space-y-2 rounded-[var(--kr-gov-radius)] border p-3 max-h-[14rem] overflow-auto">
                   {(commandDetail?.surfaces || []).map((item) => (
                     <label key={item.surfaceId} className="flex gap-2 text-sm">
-                      <input type="checkbox" checked={targetSelection.surfaceIds.includes(item.surfaceId)} onChange={() => setTargetSelection((current) => ({ ...current, surfaceIds: toggleSelection(current.surfaceIds, item.surfaceId) }))} />
+                      <input type="checkbox" checked={targetSelection.surfaceIds.includes(item.surfaceId)} onChange={() => setTargetSelection((current) => ({ ...current, surfaceIds: toggleSelection(current.surfaceIds, item.surfaceId) }))} className="krds-control-native" />
                       <span><strong>{item.surfaceId}</strong><br />{item.label}<br /><span className="text-[var(--kr-gov-text-secondary)]">{item.selector}</span></span>
                     </label>
                   ))}
@@ -1210,7 +1210,7 @@ export function PlatformStudioMigrationPage() {
                 <div className="space-y-2 rounded-[var(--kr-gov-radius)] border p-3 max-h-[14rem] overflow-auto">
                   {(commandDetail?.events || []).map((item) => (
                     <label key={item.eventId} className="flex gap-2 text-sm">
-                      <input type="checkbox" checked={targetSelection.eventIds.includes(item.eventId)} onChange={() => setTargetSelection((current) => ({ ...current, eventIds: toggleSelection(current.eventIds, item.eventId), functionIds: unique(toggleSelection(current.eventIds, item.eventId).includes(item.eventId) ? [...current.functionIds, item.frontendFunction] : current.functionIds.filter((value) => value !== item.frontendFunction)) }))} />
+                      <input type="checkbox" checked={targetSelection.eventIds.includes(item.eventId)} onChange={() => setTargetSelection((current) => ({ ...current, eventIds: toggleSelection(current.eventIds, item.eventId), functionIds: unique(toggleSelection(current.eventIds, item.eventId).includes(item.eventId) ? [...current.functionIds, item.frontendFunction] : current.functionIds.filter((value) => value !== item.frontendFunction)) }))} className="krds-control-native" />
                       <span><strong>{item.eventId}</strong><br />{item.label}<br /><span className="text-[var(--kr-gov-text-secondary)]">{item.frontendFunction} / {(item.apiIds || []).join(", ") || "-"}</span></span>
                     </label>
                   ))}
@@ -1221,7 +1221,7 @@ export function PlatformStudioMigrationPage() {
                 <div className="space-y-2 rounded-[var(--kr-gov-radius)] border p-3 max-h-[14rem] overflow-auto">
                   {(commandDetail?.changeTargets || []).map((item) => (
                     <label key={item.targetId} className="flex gap-2 text-sm">
-                      <input type="radio" name="changeTargetId" checked={targetSelection.changeTargetId === item.targetId} onChange={() => setTargetSelection((current) => ({ ...current, changeTargetId: item.targetId }))} />
+                      <input type="radio" name="changeTargetId" checked={targetSelection.changeTargetId === item.targetId} onChange={() => setTargetSelection((current) => ({ ...current, changeTargetId: item.targetId }))} className="krds-control-native" />
                       <span><strong>{item.targetId}</strong><br />{item.label}<br /><span className="text-[var(--kr-gov-text-secondary)]">{(item.editableFields || []).join(", ")}</span></span>
                     </label>
                   ))}
@@ -1232,13 +1232,13 @@ export function PlatformStudioMigrationPage() {
                 <div className="space-y-2 rounded-[var(--kr-gov-radius)] border p-3 max-h-[14rem] overflow-auto">
                   {(commandDetail?.apis || []).map((item) => (
                     <label key={item.apiId} className="flex gap-2 text-sm">
-                      <input type="checkbox" checked={targetSelection.apiIds.includes(item.apiId)} onChange={() => setTargetSelection((current) => ({ ...current, apiIds: toggleSelection(current.apiIds, item.apiId) }))} />
+                      <input type="checkbox" checked={targetSelection.apiIds.includes(item.apiId)} onChange={() => setTargetSelection((current) => ({ ...current, apiIds: toggleSelection(current.apiIds, item.apiId) }))} className="krds-control-native" />
                       <span><strong>{item.apiId}</strong><br />{item.method} {item.endpoint}<br /><span className="text-[var(--kr-gov-text-secondary)]">{getScreenCommandChainText(item.controllerActions, item.controllerAction, " / ")}</span></span>
                     </label>
                   ))}
                   {(commandDetail?.schemas || []).map((item) => (
                     <label key={item.schemaId} className="flex gap-2 text-sm">
-                      <input type="checkbox" checked={targetSelection.schemaIds.includes(item.schemaId)} onChange={() => setTargetSelection((current) => ({ ...current, schemaIds: toggleSelection(current.schemaIds, item.schemaId) }))} />
+                      <input type="checkbox" checked={targetSelection.schemaIds.includes(item.schemaId)} onChange={() => setTargetSelection((current) => ({ ...current, schemaIds: toggleSelection(current.schemaIds, item.schemaId) }))} className="krds-control-native" />
                       <span><strong>{item.schemaId}</strong><br />{item.tableName}<br /><span className="text-[var(--kr-gov-text-secondary)]">{(item.columns || []).slice(0, 4).join(", ")}</span></span>
                     </label>
                   ))}
@@ -1249,7 +1249,7 @@ export function PlatformStudioMigrationPage() {
                 <div className="space-y-2 rounded-[var(--kr-gov-radius)] border p-3 max-h-[14rem] overflow-auto">
                   {unique([...(registryEntry?.tableNames || []), ...derivedSelection.tables, ...(commandDetail?.schemas || []).map((item) => item.tableName)]).map((item) => (
                     <label key={item} className="flex gap-2 text-sm">
-                      <input type="checkbox" checked={targetSelection.tableNames.includes(item)} onChange={() => setTargetSelection((current) => ({ ...current, tableNames: toggleSelection(current.tableNames, item) }))} />
+                      <input type="checkbox" checked={targetSelection.tableNames.includes(item)} onChange={() => setTargetSelection((current) => ({ ...current, tableNames: toggleSelection(current.tableNames, item) }))} className="krds-control-native" />
                       <span>{item}</span>
                     </label>
                   ))}
@@ -1260,7 +1260,7 @@ export function PlatformStudioMigrationPage() {
                 <div className="space-y-2 rounded-[var(--kr-gov-radius)] border p-3 max-h-[14rem] overflow-auto">
                   {unique([...(registryEntry?.columnNames || []), ...derivedSelection.columns]).map((item) => (
                     <label key={item} className="flex gap-2 text-sm">
-                      <input type="checkbox" checked={targetSelection.columnNames.includes(item)} onChange={() => setTargetSelection((current) => ({ ...current, columnNames: toggleSelection(current.columnNames, item) }))} />
+                      <input type="checkbox" checked={targetSelection.columnNames.includes(item)} onChange={() => setTargetSelection((current) => ({ ...current, columnNames: toggleSelection(current.columnNames, item) }))} className="krds-control-native" />
                       <span>{item}</span>
                     </label>
                   ))}

@@ -794,7 +794,7 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
   },
   {
     "routeId": "dept-role",
-    "label": "부서 권한 맵핑",
+    "label": "부서·회원 권한 할당",
     "group": "admin",
     "koPath": "/admin/member/dept-role-mapping",
     "enPath": "/en/admin/member/dept-role-mapping",
@@ -1369,6 +1369,30 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
+    "routeId": "emission-project-portfolio",
+    "label": "배출량 프로젝트 포트폴리오",
+    "group": "home",
+    "koPath": "/emission/project-portfolio",
+    "enPath": "/en/emission/project-portfolio",
+    "exportName": "EmissionProjectPortfolioPage",
+    "sourcePath": "features/emission-project-list/EmissionProjectPortfolioPage.tsx",
+    "effectiveExportName": "EmissionProjectPortfolioPage",
+    "effectiveSourcePath": "features/emission-project-list/EmissionProjectPortfolioPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "emission-project-prerequisites-admin",
+    "label": "프로젝트 사전 설정",
+    "group": "admin",
+    "koPath": "/admin/emission/project-prerequisites",
+    "enPath": "/en/admin/emission/project-prerequisites",
+    "exportName": "AdminEmissionProjectPrerequisitesPage",
+    "sourcePath": "features/emission-project-list/AdminEmissionProjectPrerequisitesPage.tsx",
+    "effectiveExportName": "AdminEmissionProjectPrerequisitesPage",
+    "effectiveSourcePath": "features/emission-project-list/AdminEmissionProjectPrerequisitesPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
     "routeId": "emission-project-progress",
     "label": "프로세스 진행",
     "group": "home",
@@ -1678,6 +1702,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "sourcePath": "features/emission-validate/EmissionValidateMigrationPage.tsx",
     "effectiveExportName": "EmissionValidateMigrationPage",
     "effectiveSourcePath": "features/emission-validate/EmissionValidateMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "emission-work-assignment",
+    "label": "프로젝트 업무 배정",
+    "group": "home",
+    "koPath": "/emission/work-assignment",
+    "enPath": "/en/emission/work-assignment",
+    "exportName": "WorkAssignmentPage",
+    "sourcePath": "features/work-assignment/WorkAssignmentPage.tsx",
+    "effectiveExportName": "WorkAssignmentPage",
+    "effectiveSourcePath": "features/work-assignment/WorkAssignmentPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -2134,6 +2170,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "sourcePath": "features/join-wizard/JoinInfoMigrationPage.tsx",
     "effectiveExportName": "JoinInfoMigrationPage",
     "effectiveSourcePath": "features/join-wizard/JoinInfoMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/homeExperienceFamily.ts"
+  },
+  {
+    "routeId": "join-member-status",
+    "label": "회원가입 신청 상태 확인",
+    "group": "join",
+    "koPath": "/join/memberStatusSearch",
+    "enPath": "/join/en/memberStatusSearch",
+    "exportName": "JoinCompleteMigrationPage",
+    "sourcePath": "features/join-wizard/JoinCompleteMigrationPage.tsx",
+    "effectiveExportName": "JoinCompleteMigrationPage",
+    "effectiveSourcePath": "features/join-wizard/JoinCompleteMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/homeExperienceFamily.ts"
   },
   {
@@ -2845,6 +2893,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
+    "routeId": "privacy-policy",
+    "label": "Privacy Policy",
+    "group": "home",
+    "koPath": "/policy/privacy",
+    "enPath": "/en/policy/privacy",
+    "exportName": "PrivacyPolicyPage",
+    "sourcePath": "features/privacy-policy/PrivacyPolicyPage.tsx",
+    "effectiveExportName": "PrivacyPolicyPage",
+    "effectiveSourcePath": "features/privacy-policy/PrivacyPolicyPage.tsx",
+    "routeFamilyFile": "app/routes/families/appOwnedFamily.ts"
+  },
+  {
     "routeId": "process-orchestration",
     "label": "전문 업무 프로세스 작업공간",
     "group": "admin",
@@ -2891,6 +2951,210 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "effectiveExportName": "QnaListMigrationPage",
     "effectiveSourcePath": "features/qna-list/QnaListMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
+  },
+  {
+    "routeId": "reduction-baseline-year",
+    "label": "기준연도",
+    "group": "home",
+    "koPath": "/reduction/baseline-year",
+    "enPath": "/en/reduction/baseline-year",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "reduction-cost-effectiveness",
+    "label": "비용 대비 효과",
+    "group": "home",
+    "koPath": "/reduction/cost-effectiveness",
+    "enPath": "/en/reduction/cost-effectiveness",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "reduction-investment-plan",
+    "label": "투자 계획",
+    "group": "home",
+    "koPath": "/reduction/investment-plan",
+    "enPath": "/en/reduction/investment-plan",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "reduction-mac",
+    "label": "한계감축비용",
+    "group": "home",
+    "koPath": "/reduction/mac",
+    "enPath": "/en/reduction/mac",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "reduction-measures",
+    "label": "감축 수단 분석",
+    "group": "home",
+    "koPath": "/reduction/measures",
+    "enPath": "/en/reduction/measures",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "reduction-performance",
+    "label": "감축 실적",
+    "group": "home",
+    "koPath": "/reduction/performance",
+    "enPath": "/en/reduction/performance",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "reduction-performance-report",
+    "label": "성과 보고서",
+    "group": "home",
+    "koPath": "/reduction/performance-report",
+    "enPath": "/en/reduction/performance-report",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "reduction-prioritization",
+    "label": "우선순위",
+    "group": "home",
+    "koPath": "/reduction/prioritization",
+    "enPath": "/en/reduction/prioritization",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "reduction-roadmap",
+    "label": "감축 로드맵",
+    "group": "home",
+    "koPath": "/reduction/roadmap",
+    "enPath": "/en/reduction/roadmap",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "reduction-site-target",
+    "label": "조직·사업장 목표",
+    "group": "home",
+    "koPath": "/reduction/site-target",
+    "enPath": "/en/reduction/site-target",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "reduction-target",
+    "label": "감축 목표",
+    "group": "home",
+    "koPath": "/reduction/target",
+    "enPath": "/en/reduction/target",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "reduction-target-gap",
+    "label": "목표 대비 실적",
+    "group": "home",
+    "koPath": "/reduction/target-gap",
+    "enPath": "/en/reduction/target-gap",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "reduction-task-approval",
+    "label": "과제 승인",
+    "group": "home",
+    "koPath": "/reduction/task/approval",
+    "enPath": "/en/reduction/task/approval",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "reduction-task-estimate",
+    "label": "예상 감축량",
+    "group": "home",
+    "koPath": "/reduction/task/estimate",
+    "enPath": "/en/reduction/task/estimate",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "reduction-task-new",
+    "label": "감축 과제 등록",
+    "group": "home",
+    "koPath": "/reduction/task/new",
+    "enPath": "/en/reduction/task/new",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "reduction-task-resources",
+    "label": "담당자·예산·일정",
+    "group": "home",
+    "koPath": "/reduction/task/resources",
+    "enPath": "/en/reduction/task/resources",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "reduction-tasks",
+    "label": "감축 과제 목록",
+    "group": "home",
+    "koPath": "/reduction/tasks",
+    "enPath": "/en/reduction/tasks",
+    "exportName": "ReductionWorkflowPage",
+    "sourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "effectiveExportName": "ReductionWorkflowPage",
+    "effectiveSourcePath": "features/reduction-workflow/ReductionWorkflowPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
     "routeId": "refund-list",

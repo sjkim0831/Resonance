@@ -1,0 +1,29 @@
+{
+  "processCode": "LCA_DATA_QUALITY_UNCERTAINTY",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S1",
+      "actorCode": "LCA_PRACTITIONER",
+      "routePath": "/generated/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1?step=lca_data_quality_uncertainty_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S2",
+      "actorCode": "LCA_PRACTITIONER",
+      "routePath": "/generated/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s2?step=lca_data_quality_uncertainty_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s3?step=lca_data_quality_uncertainty_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s4?step=lca_data_quality_uncertainty_s4"
+    }
+  ]
+}

@@ -1,25 +1,57 @@
-import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, lazy, ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
-import { DeliveryControlPanel } from "./DeliveryControlPanel";
-import { ProcessDesignMap } from "./ProcessDesignMap";
-import { ProfessionalDesignCanvas } from "./ProfessionalDesignCanvas";
-import { CustomerWorkDevelopmentDashboard } from "./CustomerWorkDevelopmentDashboard";
-import { SystemProcessTestReportPanel } from "./SystemProcessTestReportPanel";
+const DeliveryControlPanel = lazy(() => import("./DeliveryControlPanel").then(module => ({ default: module.DeliveryControlPanel })));
+const ProcessDesignMap = lazy(() => import("./ProcessDesignMap").then(module => ({ default: module.ProcessDesignMap })));
+const ProfessionalDesignCanvas = lazy(() => import("./ProfessionalDesignCanvas").then(module => ({ default: module.ProfessionalDesignCanvas })));
+const VerticalScreenProcessMap = lazy(() => import("./VerticalScreenProcessMap").then(module => ({ default: module.VerticalScreenProcessMap })));
+const ScreenFlowCanvas = lazy(() => import("./ScreenFlowCanvas").then(module => ({ default: module.ScreenFlowCanvas })));
+const CommonCenteredSystemCanvas = lazy(() => import("./CommonCenteredSystemCanvas").then(module => ({ default: module.CommonCenteredSystemCanvas })));
+const CustomerWorkDevelopmentDashboard = lazy(() => import("./CustomerWorkDevelopmentDashboard").then(module => ({ default: module.CustomerWorkDevelopmentDashboard })));
+const IntegratedWorkOperationsMap = lazy(() => import("./IntegratedWorkOperationsMap").then(module => ({ default: module.IntegratedWorkOperationsMap })));
+const ProcessArchetypeCatalog = lazy(() => import("./ProcessArchetypeCatalog").then(module => ({ default: module.ProcessArchetypeCatalog })));
+const ProjectDeliveryBlueprintPanel = lazy(() => import("./ProjectDeliveryBlueprintPanel").then(module => ({ default: module.ProjectDeliveryBlueprintPanel })));
+const ProcessClosingPanel = lazy(() => import("./ProcessClosingPanel").then(module => ({ default: module.ProcessClosingPanel })));
+const ScreenWorkflowTestPanel = lazy(() => import("./ScreenWorkflowTestPanel").then(module => ({ default: module.ScreenWorkflowTestPanel })));
+const SystemProcessTestReportPanel = lazy(() => import("./SystemProcessTestReportPanel").then(module => ({ default: module.SystemProcessTestReportPanel })));
+const BusinessCapsuleDesignLedger = lazy(() => import("./BusinessCapsuleDesignLedger").then(module => ({ default: module.BusinessCapsuleDesignLedger })));
 
 type Row = Record<string, unknown>;
-type Payload = { deliveryQueue?:Row[]; deliverySummary?:Row; workTypes?:Row[]; actors: Row[]; assignments: Row[]; actorAccountReadiness?:Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; developmentEvents:Row[]; jobDependencies:Row[]; qualityGates:Row[]; qualityGateResults:Row[]; processDevelopmentProgress:Row[]; screenTypes:Row[]; referenceAssets:Row[]; automationMetrics:Row[]; screenDevelopmentGates:Row[]; processExecutions:Row[]; processExecutionEvents:Row[]; commonFeaturePackages?:Row[]; screenFeatureBindings?:Row[]; featureInstallations?:Row[]; designValidationRuns?:Row[]; screenBlueprints?:Row[]; generationBatches?:Row[]; professionalReadiness?:Row[]; professionalSummary?:Row; professionalScreenContracts?:Row[]; professionalScreenSummary?:Row; pageDesigns?:Row[]; pageDesignSummary?:Row; professionalFactoryRuns?:Row[]; screenAssetAssemblies?:Row[]; projectRegistrationCoverage?:Row[]; projectRegistrationSummary?:Row; customerJourneyGaps?:Row[]; customerJourneySummary?:Row; actorProcessMenus?:Row[]; actorProcessMenuSummary?:Row; backendProcessReadiness?:Row[]; projectCompletionRuns?:Row[]; referenceSummary?:Row; summary?: Row };
-type AssurancePayload={designAssurance?:Row[];designAssuranceSummary?:Row};
-type DesignInventory={counts:Row;themes:Row[];sections:Row[];components:Row[];duplicates:Row[];recentPreflights:Row[]};
+type Payload = { deliveryQueue?:Row[]; deliverySummary?:Row; workTypes?:Row[]; actors: Row[]; assignments: Row[]; actorAccountReadiness?:Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; developmentEvents:Row[]; jobDependencies:Row[]; qualityGates:Row[]; qualityGateResults:Row[]; processDevelopmentProgress:Row[]; screenTypes:Row[]; referenceAssets:Row[]; automationMetrics:Row[]; screenDevelopmentGates:Row[]; processExecutions:Row[]; processExecutionEvents:Row[]; commonFeaturePackages?:Row[]; screenFeatureBindings?:Row[]; featureInstallations?:Row[]; designValidationRuns?:Row[]; screenBlueprints?:Row[]; generationBatches?:Row[]; professionalReadiness?:Row[]; professionalSummary?:Row; professionalScreenContracts?:Row[]; professionalScreenSummary?:Row; pageDesigns?:Row[]; pageDesignSummary?:Row; professionalFactoryRuns?:Row[]; screenAssetAssemblies?:Row[]; projectRegistrationCoverage?:Row[]; projectRegistrationSummary?:Row; customerJourneyGaps?:Row[]; customerJourneySummary?:Row; actorProcessMenus?:Row[]; actorProcessMenuSummary?:Row; processArchetypes?:Row[]; screenArchetypeBindings?:Row[]; backendProcessReadiness?:Row[]; projectCompletionRuns?:Row[]; referenceSummary?:Row; summary?: Row };
+type AssurancePayload={designAssurance?:Row[];designAssuranceSummary?:Row;processClosing?:Row};
+type DeliveryPayload={deliveryBlueprints?:Row[];deliveryReleases?:Row[];deliveryProjects?:Row[];designSelfHealingRuns?:Row[]};
+type DesignInventory={counts:Row;themes:Row[];sections:Row[];components:Row[];mappings:Row[];duplicates:Row[];recentPreflights:Row[]};
 const empty: Payload = { workTypes:[], actors: [], assignments: [], processes: [], steps: [], cases: [], runs: [], artifacts:[], developmentRules:[], developmentJobs:[], developmentEvents:[], jobDependencies:[], qualityGates:[], qualityGateResults:[], processDevelopmentProgress:[], screenTypes:[], referenceAssets:[], automationMetrics:[], screenDevelopmentGates:[], processExecutions:[], processExecutionEvents:[] };
 const value = (row: Row, key: string) => String(row[key] ?? "");
 const fieldClass = "h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-[#246beb] focus:outline-none focus:ring-2 focus:ring-blue-100";
+type WorkspaceId = "operate" | "design" | "verify" | "delivery";
+type WorkspaceTab = { id:string; label:string };
+type WorkspaceDefinition = { id:WorkspaceId; label:string; description:string; tabs:WorkspaceTab[] };
+const WORKSPACES:WorkspaceDefinition[] = [
+  { id:"operate", label:"업무 운영", description:"업무 종류와 액터를 선택하고 전체 흐름, 현재 단계, 업무 길잡이와 실제 실행 화면을 함께 관리합니다.", tabs:[
+    {id:"work-dashboard",label:"업무 운영 지도"},{id:"work-completion",label:"완료·개발 현황"},{id:"process-map",label:"전체 프로세스 설계도"},{id:"execution",label:"종단간 업무 실행"},
+    {id:"work-types",label:"업무 종류"},{id:"actors",label:"액터"},{id:"assignments",label:"계정 배정"},
+    {id:"account-readiness",label:"액터 계정 검증"},{id:"processes",label:"프로세스"},{id:"steps",label:"단계"}
+  ]},
+  { id:"design", label:"설계", description:"프로세스·화면·필드·메뉴·공통 기능 계약을 하나의 설계 원본으로 관리하고 생성 결과를 확인합니다.", tabs:[
+    {id:"business-ledger",label:"업무 설계 원장"},{id:"vertical-screen-map",label:"전체 화면 세로 지도"},{id:"screen-flow-canvas",label:"전체 화면 순서도"},{id:"common-centered-canvas",label:"공통 중심 시스템 지도"},{id:"process-archetypes",label:"프로세스 원형 60"},{id:"design-canvas",label:"전체 화면 캔버스"},{id:"professional",label:"전문가 준비도"},{id:"page-fields",label:"페이지·컬럼 설계"},
+    {id:"screen-contracts",label:"화면 완성 계약"},{id:"registration-coverage",label:"프로젝트 등록 요건"},{id:"common-features",label:"공통 특수기능"},
+    {id:"menu-bindings",label:"액터·프로세스 메뉴"},{id:"screen-space",label:"가상 화면 공간"},{id:"references",label:"레퍼런스 자동설계"},{id:"generation",label:"대량 화면 생성"}
+  ]},
+  { id:"verify", label:"검증", description:"설계 정확성, 고객 여정, 디자인과 정상·예외·권한·격리·복구 시나리오를 검증합니다.", tabs:[
+    {id:"process-closing",label:"프로세스 Closing"},{id:"screen-workflow-test",label:"화면 업무·테스트"},{id:"system-test-report",label:"전 시스템 테스트 결과"},{id:"design-assurance",label:"설계 정확성"},{id:"customer-journey",label:"고객 여정 자동검사"},{id:"design",label:"디자인 사전검사"},
+    {id:"rules",label:"개발 규칙"},{id:"simulation",label:"시나리오·실행"}
+  ]},
+  { id:"delivery", label:"개발·배포", description:"설계에서 생성된 개발 작업의 의존성, 산출물, 품질 게이트, 재시도와 완료 상태를 추적합니다.", tabs:[
+    {id:"delivery",label:"개발 실행 큐"},{id:"automation",label:"프로세스 자동개발"},{id:"artifacts",label:"개발 산출물"},{id:"overview",label:"전체 현황"}
+  ]}
+];
 
 export function ActorProcessGovernancePage() {
   const en = isEnglish();
   const base = buildLocalizedPath("/admin/api/system/actor-process", "/en/admin/api/system/actor-process");
-  const [data, setData] = useState<Payload & AssurancePayload>(empty);
+  const [data, setData] = useState<Payload & AssurancePayload & DeliveryPayload>(empty);
   const [tab, setTab] = useState(() => new URLSearchParams(location.search).get("tab") || "work-dashboard");
   const [processFilter, setProcessFilter] = useState(() => new URLSearchParams(location.search).get("process") || "");
   const [preflightProcess,setPreflightProcess]=useState("");
@@ -32,14 +64,16 @@ export function ActorProcessGovernancePage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [design,setDesign]=useState<DesignInventory>({counts:{},themes:[],sections:[],components:[],duplicates:[],recentPreflights:[]});
+  const [design,setDesign]=useState<DesignInventory>({counts:{},themes:[],sections:[],components:[],mappings:[],duplicates:[],recentPreflights:[]});
 
   const load = useCallback(async () => {
     try {
-      const response = await fetch(base, { credentials: "include" });
+      const response = await fetch(`${base}/dashboard/core`, { credentials: "include" });
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) throw new Error(`설계 데이터 API가 JSON을 반환하지 않았습니다. (${response.status})`);
       const body = await response.json();
       if (!response.ok) throw new Error(body.message || "조회에 실패했습니다.");
-      setData(body);
+      setData(previous => ({ ...previous, ...body }));
       setError("");
     } catch (reason) { setError(reason instanceof Error ? reason.message : "조회에 실패했습니다."); }
   }, [base]);
@@ -83,27 +117,74 @@ export function ActorProcessGovernancePage() {
   const readiness = Number(data.summary?.readinessPercent ?? 0);
   const processCompletion=(row:Row)=>{const artifacts=Number(row.artifactCount||0),verified=Number(row.verifiedArtifactCount||0),cases=Number(row.caseCount||0),approved=Number(row.approvedCaseCount||0),steps=Number(row.stepCount||0);return artifacts>0&&cases>=5&&steps>0?Math.round(((verified/artifacts)*70+(approved/cases)*30)):0};
   const filteredArtifacts=useMemo(()=>data.artifacts.filter(row=>!processFilter||value(row,"processCode")===processFilter),[data.artifacts,processFilter]);
-  const tabs = [["system-test-report", "전 시스템 테스트 결과"], ["design-canvas", "전체 화면 캔버스"], ["process-map", "전체 프로세스 설계도"], ["overview", "전체 현황"], ["references", "레퍼런스 자동설계"], ["generation", "대량 화면 생성"], ["actors", "액터"], ["assignments", "계정 배정"], ["account-readiness", "액터 계정 검증"], ["work-types", "업무 종류"], ["processes", "프로세스"], ["steps", "단계"], ["execution", "종단간 업무 실행"], ["automation", "프로세스 자동개발"], ["artifacts", "개발 산출물"], ["design", "디자인 사전검사"], ["rules", "개발 규칙"], ["simulation", "시나리오·실행"]];
+  const activeWorkspace=WORKSPACES.find(workspace=>workspace.tabs.some(item=>item.id===tab))??WORKSPACES[0];
+  const screenSpaceDimensions=useMemo(()=>({
+    업무종류:Math.max(1,data.workTypes?.length??0),
+    프로세스:Math.max(1,data.processes.length),
+    단계:Math.max(1,data.steps.length),
+    상태:Math.max(1,new Set(data.steps.flatMap(row=>[value(row,"fromState"),value(row,"toState")]).filter(Boolean)).size),
+    액터:Math.max(1,data.actors.length),
+    정책:Math.max(1,data.assignments.length),
+    화면문법:Math.max(1,data.screenTypes.length),
+    디바이스:4,
+    언어:2,
+    변형:Math.max(1,data.screenAssetAssemblies?.length??0)
+  }),[data]);
+  const screenSpaceSize=useMemo(()=>Object.values(screenSpaceDimensions).reduce((total,count)=>total*BigInt(count),1n).toLocaleString("ko-KR"),[screenSpaceDimensions]);
 
   return <AdminPageShell breadcrumbs={[{ label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") }, { label: en ? "System" : "시스템 관리" }, { label: en ? "Actor & Process" : "액터·프로세스 관리" }]} title={en ? "Actor & Process Governance" : "액터·프로세스 관리"}>
     <GovernanceCompressionNav activeId="actor-process" en={en} />
+    <Suspense fallback={<div className="rounded-2xl border border-blue-100 bg-blue-50 p-6 font-bold text-blue-900">업무 작업공간을 불러오는 중입니다.</div>}>
     <div className="space-y-5">
       <section className="rounded-2xl bg-gradient-to-r from-[#052b57] to-[#174ea6] p-6 text-white shadow-sm">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+        <div>
           <div><p className="text-sm font-bold text-blue-200">PROCESS CONTROL PLANE</p><h2 className="mt-1 text-2xl font-black">액터에서 테스트까지, 개발 전 업무 설계를 한곳에서 관리합니다.</h2><p className="mt-2 max-w-3xl text-sm text-blue-50">계정과 프로젝트별 역할, 상태 전이, 완료 조건, 예외·권한·격리·복구 시나리오가 승인되어야 개발 준비 상태가 됩니다.</p></div>
-          <button disabled={busy} onClick={() => void post("standard-pack", {})} className="h-12 rounded-xl bg-white px-5 font-black text-[#174ea6] shadow disabled:opacity-50">{busy ? "반영 중..." : "표준 업무팩 일괄 등록"}</button>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{[["액터", data.actors.length], ["계정 배정", data.assignments.length], ["프로세스", data.processes.length], ["시나리오", data.cases.length], ["개발 준비", `${readyCount}/${data.processes.length}`]].map(([label, number]) => <div key={String(label)} className="rounded-xl bg-white/10 p-4"><span className="text-sm text-blue-100">{label}</span><strong className="mt-1 block text-2xl">{number}</strong></div>)}</div>
       </section>
       {message && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-800">{message}</p>}
       {error && <p className="rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{error}</p>}
-      <button onClick={() => setTab("work-dashboard")} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === "work-dashboard" ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{en ? "Customer Work Board" : "고객 업무 개발 현황판"}</button>
-      <button onClick={() => setTab("delivery")} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === "delivery" ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{en ? "Delivery Control" : "개발 실행 큐"}</button>
-      <button onClick={() => setTab("design-assurance")} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === "design-assurance" ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{en ? "Design Assurance" : "설계 정확성"}</button>
-      <nav className="flex flex-wrap gap-2">{[["professional", en ? "Professional Readiness" : "전문가 준비도"], ["page-fields", en ? "Page and Field Design" : "페이지·컬럼 설계"], ["common-features", en ? "Reusable Capabilities" : "공통 특수기능"], ["menu-bindings", en ? "Actor Process Menus" : "액터·프로세스 메뉴"], ["customer-journey", en ? "Customer Journey Gate" : "고객 여정 자동검사"], ["registration-coverage", en ? "Project Registration Requirements" : "프로젝트 등록 요건"], ["screen-contracts", en ? "Screen Completion Contracts" : "화면 완성 계약"], ...tabs].map(([id, name]) => <button key={id} onClick={() => setTab(id)} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === id ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{name}</button>)}</nav>
+      <button type="button" onClick={()=>setTab("project-delivery")} className={`min-h-11 rounded-lg px-4 py-2 text-sm font-black ${tab==="project-delivery"?"bg-[#246beb] text-white":"border border-blue-300 bg-white text-[#174ea6]"}`}>프로젝트 업무팩</button>
+      {tab === "project-delivery" && <ProjectDeliveryBlueprintPanel
+        actors={data.actors}
+        blueprints={data.deliveryBlueprints??[]}
+        busy={busy}
+        onPost={post}
+        processes={data.processes}
+        projects={data.deliveryProjects??[]}
+        releases={data.deliveryReleases??[]}
+      />}
+      {(data.designSelfHealingRuns?.length??0)>0&&<section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><h3 className="font-black text-emerald-950">최근 설계 자가복구</h3><div className="mt-3 grid gap-2 lg:grid-cols-2">{data.designSelfHealingRuns?.slice(0,4).map(row=><article className="rounded-xl border border-emerald-200 bg-white p-4" key={value(row,"runId")}><div className="flex items-center justify-between gap-3"><strong className="truncate text-sm text-[#052b57]">{value(row,"routePath")}</strong><span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-bold text-emerald-800">{value(row,"runStatus")}</span></div><p className="mt-2 text-xs text-slate-600">영향 프로세스 {value(row,"regeneratedProcessCount")} · 화면 {value(row,"generatedScreenCount")} · 오류 {value(row,"invalidScreenCount")} · 빌드 {String(row.buildRequired)==="true"?"필요":"불필요"}</p></article>)}</div></section>}
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="grid border-b border-slate-200 lg:grid-cols-4" aria-label="액터 프로세스 통합 작업공간">
+          {WORKSPACES.map((workspace,index)=><button
+            key={workspace.id}
+            type="button"
+            onClick={()=>setTab(workspace.tabs[0].id)}
+            className={`min-h-20 border-b px-5 py-4 text-left transition lg:border-b-0 lg:border-r last:border-r-0 ${activeWorkspace.id===workspace.id?"bg-[#052b57] text-white":"bg-white text-slate-700 hover:bg-blue-50"}`}
+          >
+            <span className="block text-xs font-bold tracking-[0.08em] opacity-70">WORKSPACE {index+1}</span>
+            <strong className="mt-1 block text-lg">{workspace.label}</strong>
+          </button>)}
+        </div>
+        <div className="grid gap-4 p-4 xl:grid-cols-[minmax(240px,0.8fr)_minmax(0,2.2fr)] xl:items-end">
+          <div>
+            <p className="text-xs font-black tracking-[0.08em] text-blue-700">CURRENT WORKSPACE</p>
+            <h3 className="mt-1 text-xl font-black text-[#052b57]">{activeWorkspace.label}</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{activeWorkspace.description}</p>
+          </div>
+          <nav className="flex flex-wrap gap-2" aria-label={`${activeWorkspace.label} 세부 기능`}>
+            {activeWorkspace.tabs.map(item=><button key={item.id} type="button" onClick={()=>setTab(item.id)} className={`min-h-11 rounded-lg px-4 py-2 text-sm font-bold ${tab===item.id?"bg-[#246beb] text-white shadow-sm":"border border-slate-300 bg-white text-slate-700 hover:border-blue-400 hover:bg-blue-50"}`}>{item.label}</button>)}
+          </nav>
+        </div>
+      </section>
 
-      {tab === "work-dashboard" && <CustomerWorkDevelopmentDashboard actors={data.actors} actorReadiness={data.actorAccountReadiness ?? []} artifacts={data.artifacts} assignments={data.assignments} backendReadiness={data.backendProcessReadiness ?? []} busy={busy} cases={data.cases} completionRuns={data.projectCompletionRuns ?? []} deliveryQueue={data.deliveryQueue ?? []} dependencies={data.jobDependencies} jobs={data.developmentJobs} journeyGaps={data.customerJourneyGaps ?? []} onPost={post} processes={data.processes} progress={data.processDevelopmentProgress} runs={data.runs} screenContracts={data.professionalScreenContracts ?? []} steps={data.steps} />}
+      {tab === "work-dashboard" && <IntegratedWorkOperationsMap actors={data.actors} artifacts={data.artifacts} base={base} cases={data.cases} executions={data.processExecutions} jobs={data.developmentJobs} onOpen={setTab} onProcessChange={setProcessFilter} processCode={processFilter} processes={data.processes} runs={data.runs} steps={data.steps} />}
+      {tab === "business-ledger" && <BusinessCapsuleDesignLedger />}
+      {tab === "work-completion" && <CustomerWorkDevelopmentDashboard actors={data.actors} actorReadiness={data.actorAccountReadiness ?? []} artifacts={data.artifacts} assignments={data.assignments} backendReadiness={data.backendProcessReadiness ?? []} busy={busy} cases={data.cases} completionRuns={data.projectCompletionRuns ?? []} deliveryQueue={data.deliveryQueue ?? []} dependencies={data.jobDependencies} jobs={data.developmentJobs} journeyGaps={data.customerJourneyGaps ?? []} onPost={post} processes={data.processes} progress={data.processDevelopmentProgress} runs={data.runs} screenContracts={data.professionalScreenContracts ?? []} steps={data.steps} />}
       {tab === "delivery" && <DeliveryControlPanel rows={data.deliveryQueue ?? []} summary={data.deliverySummary ?? {}} onSelect={code=>{setProcessFilter(code);setTab("automation")}} />}
+      {tab === "process-closing" && <ProcessClosingPanel busy={busy} payload={data.processClosing} onAudit={()=>void post("process-closing/audit",{})} />}
+      {tab === "screen-workflow-test" && <ScreenWorkflowTestPanel base={base} processes={data.processes}/>}
       {tab === "system-test-report" && <SystemProcessTestReportPanel base={base}/>}
       {tab === "design-assurance" && <>
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{[[en?"Processes":"전체 프로세스","processCount"],[en?"Verified":"구현 검증","verifiedCount"],[en?"Blocked":"설계 차단","blockedCount"],[en?"Pending":"구현 대기","pendingCount"],[en?"Average score":"평균 정확도","averageAccuracyScore"]].map(([label,key])=><div className="rounded-xl border bg-white p-4" key={key}><span className="text-xs font-bold text-slate-500">{label}</span><strong className="mt-1 block text-2xl text-[#052b57]">{value(data.designAssuranceSummary??{},key)}{key==="averageAccuracyScore"?"%":""}</strong></div>)}</section>
@@ -111,6 +192,10 @@ export function ActorProcessGovernancePage() {
         <Table heads={en?["Process","Status","Score","Blockers","Actor","State","Data","Routes","Screens","API","Safety tests","Implementation","Required action"]:["프로세스","판정","정확도","차단","액터","상태 전이","데이터","경로","화면 계약","API","안전 테스트","구현 증적","필수 조치"]} rows={(data.designAssurance??[]).map(row=>[`${value(row,"processName")} (${value(row,"processCode")})`,value(row,"assuranceStatus"),`${value(row,"designAccuracyScore")}%`,value(row,"designBlockerCount"),value(row,"actorContractGaps"),value(row,"stateFlowGaps"),value(row,"dataContractGaps"),value(row,"routeGaps"),value(row,"screenContractGaps"),value(row,"apiContractGaps"),`${value(row,"approvedSafetyTestTypeCount")}/5`,`${value(row,"verifiedJobCount")}/${value(row,"requiredJobCount")}`,value(row,"nextAction")])}/>
       </>}
       {tab === "design-canvas" && <ProfessionalDesignCanvas base={base} en={en}/>}
+      {tab === "vertical-screen-map" && <VerticalScreenProcessMap actors={data.actors} blueprints={data.screenBlueprints ?? []} processes={data.processes} steps={data.steps}/>}
+      {tab === "screen-flow-canvas" && <ScreenFlowCanvas actors={data.actors} bindings={data.screenFeatureBindings ?? []} blueprints={data.screenBlueprints ?? []} components={design.components} onOpen={setTab} pageDesigns={data.pageDesigns ?? []} processes={data.processes} sections={design.sections} steps={data.steps} themes={design.themes}/>}
+      {tab === "common-centered-canvas" && <CommonCenteredSystemCanvas actors={data.actors} blueprints={data.screenBlueprints ?? []} cases={data.cases} components={design.components} contracts={data.professionalScreenContracts ?? []} mappings={design.mappings} onOpen={setTab} onRefresh={()=>{void Promise.all([load(),loadDesign()])}} pageDesigns={data.pageDesigns ?? []} processes={data.processes} sections={design.sections} steps={data.steps}/>}
+      {tab === "process-archetypes" && <ProcessArchetypeCatalog archetypes={data.processArchetypes ?? []} bindings={data.screenArchetypeBindings ?? []} blueprints={data.screenBlueprints ?? []} busy={busy} onBind={body=>post("process-archetypes/bind-screen",body)}/>}
       {tab === "process-map" && <ProcessDesignMap actors={data.actors} artifacts={data.artifacts} busy={busy} cases={data.cases} jobs={data.developmentJobs} onDirectDevelop={code=>void post("development/direct",{processCode:code})} onProcessChange={setProcessFilter} processCode={processFilter} processes={data.processes} steps={data.steps}/>}
       {tab === "professional" && <>
         <Form onSubmit={event=>void submit(event,"professional-factory/execute")} cols="lg:grid-cols-3">
@@ -127,6 +212,19 @@ export function ActorProcessGovernancePage() {
       {tab === "registration-coverage" && <ProjectRegistrationCoveragePanel en={en} rows={data.projectRegistrationCoverage ?? []} summary={data.projectRegistrationSummary ?? {}} />}
       {tab === "customer-journey" && <CustomerJourneyGatePanel en={en} rows={data.customerJourneyGaps ?? []} summary={data.customerJourneySummary ?? {}} />}
       {tab === "menu-bindings" && <ActorProcessMenuPanel en={en} rows={data.actorProcessMenus ?? []} summary={data.actorProcessMenuSummary ?? {}} />}
+      {tab === "screen-space" && <>
+        <section className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-6">
+          <p className="text-xs font-black tracking-[0.12em] text-blue-700">HYPERSCALE SCREEN-SPACE RUNTIME</p>
+          <h2 className="mt-2 text-2xl font-black text-[#052b57]">파일을 복제하지 않고 {screenSpaceSize}개 화면 조합을 표현합니다.</h2>
+          <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-700">업무·프로세스·단계·상태·액터·정책·화면 문법·디바이스·언어·변형을 화면 좌표로 결합합니다. 최초 접근 시에만 계약을 구체화하고, 화면·데이터·권한·API·테스트 계약이 모두 연결된 경우에만 실행합니다.</p>
+        </section>
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">{Object.entries(screenSpaceDimensions).map(([label,count])=><article className="rounded-xl border bg-white p-4" key={label}><span className="text-xs font-bold text-slate-500">{label}</span><strong className="mt-1 block text-2xl text-[#052b57]">{count.toLocaleString("ko-KR")}</strong></article>)}</section>
+        <section className="grid gap-4 lg:grid-cols-3">
+          <RuleCard title="화면 좌표" items={["도메인·프로세스·단계·상태·액터를 고유 좌표로 결합","정책·화면 문법·디바이스·언어·변형을 실행 문맥으로 적용","화면 파일 대신 좌표 인덱스만 생성"]}/>
+          <RuleCard title="지연 구체화" items={["최초 접근한 조합만 런타임 명세로 조립","동일 좌표는 메모리 캐시에서 재사용","설계 변경 시 해당 좌표 캐시만 무효화"]}/>
+          <RuleCard title="실행 차단 검증" items={["필드·섹션·명령 코드 중복 검사","데이터·API·권한·검증 계약 필수 확인","정상·권한·격리·예외·복구 시나리오 누락 시 보완 표시"]}/>
+        </section>
+      </>}
 
       {tab === "references" && <><section className="grid gap-4 sm:grid-cols-4">{[["발견 자산","assetCount"],["분석 완료","analyzedCount"],["연결 프로세스","mappedProcesses"],["평균 신뢰도","averageConfidence"]].map(([label,key])=><div key={key} className="rounded-xl border bg-white p-4"><span className="text-xs font-bold text-slate-500">{label}</span><strong className="mt-1 block text-2xl text-[#052b57]">{value(data.referenceSummary||{},key)}{key==="averageConfidence"?"%":""}</strong></div>)}</section><section className="rounded-2xl border border-blue-200 bg-blue-50 p-5"><h3 className="font-black text-[#052b57]">근거 기반 자동설계</h3><p className="mt-1 text-sm text-slate-700">레퍼런스 파일명·형식과 기존 메뉴·페이지·API·DB를 화면 유형 및 업무 도메인으로 분류합니다. 액터·프로세스·정상/예외/권한/격리/복구 기대값을 멱등 등록하고, 구현 차이 분석 작업을 자동 승인 큐에 넣습니다.</p></section><Form onSubmit={event=>void submit(event,"references/scan")} cols="lg:grid-cols-4"><div className="lg:col-span-3"><Field label="레퍼런스 정본 경로"><input className={fieldClass} name="rootPath" defaultValue="/opt/reference" required/></Field></div><SaveButton busy={busy} label="전수조사·자동설계 시작"/></Form><Table heads={["화면 유형","필수 섹션","자동 테스트 기대값","개발 가중치"]} rows={data.screenTypes.map(row=>[`${value(row,"screenTypeName")} (${value(row,"screenType")})`,value(row,"requiredSections"),value(row,"testExpectations"),value(row,"developmentWeight")])}/><Table heads={["레퍼런스","형식","도메인","화면 유형","프로세스","상태","신뢰도"]} rows={data.referenceAssets.map(row=>[value(row,"sourceName"),value(row,"sourceType"),value(row,"domainCode"),value(row,"screenType"),value(row,"processCode"),value(row,"analysisStatus"),`${value(row,"confidence")}%`])}/></>}
 
@@ -167,7 +265,7 @@ export function ActorProcessGovernancePage() {
           <Field label="상위 단계 코드"><input className={fieldClass} name="parentStepCode" placeholder="비우면 최상위"/></Field><Field label="절차 유형"><select className={fieldClass} name="stepType"><option>TASK</option><option>SUB_PROCESS</option><option>DECISION</option><option>APPROVAL</option><option>AUTOMATION</option><option>EVENT</option></select></Field><Field label="수행 액터"><select className={fieldClass} name="actorCode">{data.actors.map(row=><option key={value(row,"actorCode")} value={value(row,"actorCode")}>{value(row,"actorName")}</option>)}</select></Field><Field label="명령 코드"><input className={fieldClass} name="commandCode" required/></Field>
           <Field label="이전 상태"><input className={fieldClass} name="fromState" required/></Field><Field label="다음 상태"><input className={fieldClass} name="toState" required/></Field><div className="lg:col-span-2"><Field label="상세 요구사항"><textarea className={`${fieldClass} h-24 py-2`} name="requirementText" required/></Field></div><div className="lg:col-span-2"><Field label="완료 규칙"><input className={fieldClass} name="completionRule" required/></Field></div>
           <Field label="입력 계약 JSON"><input className={fieldClass} name="inputContract" defaultValue="{}"/></Field><Field label="출력 계약 JSON"><input className={fieldClass} name="outputContract" defaultValue="{}"/></Field><Field label="사용자 화면 경로"><input className={fieldClass} name="userPath"/></Field><Field label="관리자 화면 경로"><input className={fieldClass} name="adminPath"/></Field><Field label="API 계약"><input className={fieldClass} name="apiContract"/></Field>
-          <div className="lg:col-span-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{[["requiresDatabase","DB"],["requiresApi","API·백엔드"],["requiresUserPage","사용자 화면"],["requiresAdminPage","관리자 화면"],["requiresNotification","알림"]].map(([name,label])=><label key={name} className="flex min-h-11 items-center gap-2 rounded-lg border bg-white px-3 text-sm font-bold"><input type="checkbox" name={name} value="true"/>{label}</label>)}</div><SaveButton busy={busy} label="절차 삽입·개발계획 생성"/>
+          <div className="lg:col-span-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{[["requiresDatabase","DB"],["requiresApi","API·백엔드"],["requiresUserPage","사용자 화면"],["requiresAdminPage","관리자 화면"],["requiresNotification","알림"]].map(([name,label])=><label key={name} className="flex min-h-11 items-center gap-2 rounded-lg border bg-white px-3 text-sm font-bold"><input type="checkbox" name={name} value="true" className="krds-control-native"/>{label}</label>)}</div><SaveButton busy={busy} label="절차 삽입·개발계획 생성"/>
         </Form>
         <section className="rounded-2xl border border-amber-300 bg-amber-50 p-5"><h3 className="text-lg font-black text-amber-950">화면 자동개발 사전검사</h3><p className="mt-1 text-sm leading-6 text-amber-900">화면 설계·기능·완료 기준, 선택된 HTML 시안, 액터 계약, 정상·예외·권한·격리·복구 테스트를 모두 통과해야 개발계획을 승인할 수 있습니다. 테마·섹션·컴포넌트 사전검사 여부도 함께 기록합니다.</p></section>
         <Form onSubmit={event=>void submit(event,"development/preflight")} cols="lg:grid-cols-4"><Field label="사전검사 프로세스"><select className={fieldClass} name="processCode" required value={preflightProcess} onChange={event=>setPreflightProcess(event.target.value)}>{data.processes.map(row=><option key={value(row,"processCode")}>{value(row,"processCode")}</option>)}</select></Field><Field label="검사할 절차"><select className={fieldClass} name="stepCode" required value={preflightStep} onChange={event=>setPreflightStep(event.target.value)}>{data.steps.filter(row=>value(row,"processCode")===preflightProcess).map(row=><option key={`${value(row,"processCode")}-${value(row,"stepCode")}`} value={value(row,"stepCode")}>{value(row,"stepName")}</option>)}</select></Field><div className="lg:col-span-2 flex items-end"><SaveButton busy={busy} label="설계·시안·액터·테스트 검사"/></div></Form>
@@ -207,6 +305,7 @@ export function ActorProcessGovernancePage() {
 
       {tab === "simulation" && <><ProcessFilter processes={data.processes} value={processFilter} onChange={setProcessFilter} /><div className="grid gap-4 xl:grid-cols-2"><Form onSubmit={event => void submit(event, "cases")} cols="sm:grid-cols-2"><Field label="시나리오 코드"><input className={fieldClass} name="caseCode" required /></Field><Field label="프로세스"><select className={fieldClass} name="processCode">{data.processes.map(row => <option key={value(row, "processCode")}>{value(row, "processCode")}</option>)}</select></Field><Field label="시나리오명"><input className={fieldClass} name="caseName" required /></Field><Field label="유형"><select className={fieldClass} name="caseType"><option>HAPPY_PATH</option><option>EXCEPTION</option><option>AUTHORITY</option><option>ISOLATION</option><option>RECOVERY</option></select></Field><Field label="사전 조건"><textarea className={`${fieldClass} h-24 py-2`} name="preconditions" required /></Field><Field label="실행 단계 JSON"><textarea className={`${fieldClass} h-24 py-2`} name="stepsJson" defaultValue="[]" required /></Field><div className="sm:col-span-2"><Field label="검증 조건 JSON"><textarea className={`${fieldClass} h-20 py-2`} name="assertionsJson" defaultValue="[]" required /></Field></div><SaveButton busy={busy} label="시나리오 저장" /></Form><Form onSubmit={event => void submit(event, "runs")} cols="sm:grid-cols-2"><Field label="시나리오"><select className={fieldClass} name="caseCode">{data.cases.map(row => <option key={value(row, "caseCode")}>{value(row, "caseCode")}</option>)}</select></Field><Field label="결과"><select className={fieldClass} name="result"><option>PASSED</option><option>FAILED</option><option>BLOCKED</option></select></Field><Field label="실패 사유"><textarea className={`${fieldClass} h-24 py-2`} name="failureReason" /></Field><Field label="증적 JSON"><textarea className={`${fieldClass} h-24 py-2`} name="evidenceJson" defaultValue="{}" /></Field><SaveButton busy={busy} label="실행 결과 기록" /></Form></div><Table heads={["시나리오", "프로세스", "이름", "유형", "상태"]} rows={selectedCases.map(row => [value(row, "caseCode"), value(row, "processCode"), value(row, "caseName"), value(row, "caseType"), value(row, "status")])} /></>}
     </div>
+    </Suspense>
   </AdminPageShell>;
 }
 

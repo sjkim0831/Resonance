@@ -1,0 +1,19 @@
+const controlUrl='/projects/P006/plc-tags/timeline-control';
+const processEquipment=[['용해','melting_furnace'],['보온','holding_furnace'],['주조','casting_machine'],['스프레이','spray_ladler'],['이형제','release_agent'],['진공','vacuum_unit'],['금형냉각','mold_cooling'],['냉각','cooling_unit'],['취출','takeout_robot'],['트리밍','trimming_machine'],['펀칭','punching_press'],['필터','casting_filter'],['턴테이블','turntable_furnace'],['래들','ladler'],['로봇제어','robot_panel'],['전체제어','main_panel']];
+const processSteps=processEquipment.map(x=>x[0]);
+async function sendTimeline(action,speed,status,extra={}){
+ status.textContent='RTX 명령 전달 중';
+ const response=await fetch(controlUrl,{method:'POST',credentials:'include',headers:{'content-type':'application/json'},body:JSON.stringify({action,speed:Number(speed),...extra})});
+ const data=await response.json();if(!response.ok)throw new Error(data.message||`HTTP ${response.status}`);
+ status.textContent=`${action==='play'?'재생':action==='pause'?'일시정지':'정지'} · ${Number(speed)}배속 · RTX 반영 대기`;
+}
+function mountTimelineControls(){
+ const viewer=document.querySelector('#viewer'),button=document.querySelector('#rtx');if(!viewer||!button||document.querySelector('.timeline-controls'))return;
+ const panel=document.createElement('section');panel.className='timeline-controls card';panel.innerHTML=`<header><div><b>RTX 공정 애니메이션</b><small>16단계 · 15개 제품 흐름 · 0~20초 반복</small></div><span data-timeline-status aria-live="polite">재생 중 · 1배속</span></header><div class="timeline-main"><button class="btn primary" data-action="play">▶ 재생</button><button class="btn" data-action="pause">Ⅱ 일시정지</button><button class="btn" data-action="stop">■ 정지·처음</button><label>속도<select data-speed><option value="0.5">0.5배</option><option value="1" selected>1배</option><option value="2">2배</option><option value="4">4배</option></select></label><label>카메라<select data-camera><option value="overview">전체</option><option value="line-start">라인 시작</option><option value="line-center">라인 중앙</option><option value="line-end">라인 끝</option></select></label></div><div class="process-step-grid" aria-label="16단계 공정 바로가기">${processSteps.map((name,index)=>`<button class="btn" data-step="${index+1}"><small>${index+1}</small>${name}</button>`).join('')}</div><footer><b>도움말</b> 공정을 누르면 해당 시간으로 이동합니다. 카메라와 속도는 스트림을 끊지 않고 적용됩니다. <span><b>QA</b> 명령 수락 후 Kit 적용 파일까지 확인</span></footer>`;viewer.before(panel);
+ const status=panel.querySelector('[data-timeline-status]'),speed=panel.querySelector('[data-speed]');
+ panel.querySelectorAll('[data-action]').forEach(x=>x.onclick=()=>sendTimeline(x.dataset.action,speed.value,status).catch(e=>status.textContent=`실패 · ${e.message}`));
+ speed.onchange=()=>sendTimeline('play',speed.value,status).catch(e=>status.textContent=`실패 · ${e.message}`);
+ panel.querySelector('[data-camera]').onchange=e=>sendTimeline('play',speed.value,status,{camera:e.target.value}).then(()=>status.textContent=`카메라 · ${e.target.selectedOptions[0].text} · 적용 대기`).catch(e=>status.textContent=`실패 · ${e.message}`);
+ panel.querySelectorAll('[data-step]').forEach(button=>button.onclick=()=>{const index=Number(button.dataset.step)-1,[name,equipment]=processEquipment[index];panel.querySelectorAll('[data-step]').forEach(x=>x.classList.toggle('active',x===button));status.textContent=`${index+1}단계 ${name} · 설비 데이터 조회 중`;document.dispatchEvent(new CustomEvent('p006:stage-selection',{detail:{equipmentCode:equipment,source:'PROCESS_STEP'}}));sendTimeline('pause',speed.value,status,{step:index+1,equipment}).then(()=>{status.textContent=`${index+1}단계 ${name} · 설비 확대 · 실시간 데이터`}).catch(e=>status.textContent=`영상 이동 실패 · 데이터 표시는 유지 · ${e.message}`)});
+}
+mountTimelineControls();let queued=false;new MutationObserver(()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;mountTimelineControls()})}).observe(document.documentElement,{childList:true,subtree:true});

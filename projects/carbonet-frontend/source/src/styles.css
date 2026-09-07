@@ -10,6 +10,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Material Symbols Outlined";
+  src: url("/assets/react/assets/fonts/MaterialSymbolsOutlined-0.46.0.woff2?v=9ec3f3de") format("woff2");
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+}
+
 :root {
   font-family: "Pretendard GOV", "Noto Sans KR", sans-serif;
   color: #10233f;
@@ -294,8 +302,10 @@ body {
 
 .help-fab {
   position: fixed;
-  top: 20px;
-  right: 20px;
+  top: auto;
+  right: auto;
+  bottom: 20px;
+  left: 20px;
   z-index: 2147483000;
   display: inline-flex;
   align-items: center;
@@ -489,8 +499,9 @@ body {
 @media (max-width: 768px) {
   .help-fab {
     top: auto;
-    right: 16px;
+    right: auto;
     bottom: 16px;
+    left: 16px;
   }
 
   .help-overlay-header,
@@ -507,8 +518,23 @@ body {
 }
 
 .material-symbols-outlined {
-  font-variation-settings: "wght" 400, "opsz" 24;
+  font-family: "Material Symbols Outlined";
+  font-style: normal;
+  font-weight: 400;
   font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "liga";
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
 }
 
 .focus-visible:focus-visible {
@@ -991,6 +1017,104 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+/* KRDS v1 fallback controls -------------------------------------------------
+ * Generated and legacy screens sometimes emit semantic controls without a
+ * component class. Give only those unstyled controls the shared KRDS baseline;
+ * explicitly styled controls, editors and print layouts keep their design.
+ * Use data-krds-unstyled on the control when a deliberately native appearance
+ * is required. */
+@media screen {
+  .krds-control-native {
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 auto;
+    accent-color: var(--kr-gov-blue);
+    cursor: pointer;
+  }
+
+  .krds-control-native:focus-visible {
+    outline: 3px solid var(--kr-gov-focus);
+    outline-offset: 2px;
+  }
+
+  .krds-control-button {
+    min-height: var(--krds-control-height-sm);
+    border: 1px solid var(--kr-gov-blue);
+    border-radius: var(--kr-gov-radius);
+    background: var(--kr-gov-blue);
+    color: #fff;
+    padding: 0.625rem 1rem;
+    font-weight: 700;
+  }
+
+  .krds-control-field {
+    width: 100%;
+    min-height: var(--krds-control-height-sm);
+    border: 1px solid var(--kr-gov-border-light);
+    border-radius: var(--kr-gov-radius);
+    background: #fff;
+    color: var(--kr-gov-text-primary);
+    padding: 0.625rem 0.75rem;
+  }
+
+  .krds-control-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+  }
+
+  html[data-screen-theme="krds-v1"] :where(button:not([class]):not([data-krds-unstyled])) {
+    min-height: var(--krds-control-height-sm);
+    border: 1px solid var(--kr-gov-blue);
+    border-radius: var(--kr-gov-radius);
+    background: var(--kr-gov-blue);
+    color: #fff;
+    padding: 0.625rem 1rem;
+    font-weight: 700;
+    line-height: 1.25;
+    cursor: pointer;
+  }
+
+  html[data-screen-theme="krds-v1"] :where(input:not([class]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([data-krds-unstyled]), select:not([class]):not([data-krds-unstyled]), textarea:not([class]):not([data-krds-unstyled])) {
+    width: 100%;
+    min-height: var(--krds-control-height-sm);
+    border: 1px solid var(--kr-gov-border-light);
+    border-radius: var(--kr-gov-radius);
+    background: #fff;
+    color: var(--kr-gov-text-primary);
+    padding: 0.625rem 0.75rem;
+  }
+
+  html[data-screen-theme="krds-v1"] :where(button:not([class]), input:not([class]), select:not([class]), textarea:not([class])):focus-visible {
+    outline: 3px solid var(--kr-gov-focus);
+    outline-offset: 2px;
+  }
+
+  html[data-screen-theme="krds-v1"] :where(button:not([class]), input:not([class]), select:not([class]), textarea:not([class])):disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  html[data-screen-theme="krds-v1"] table:not([class]):not([data-krds-unstyled]) {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+  }
+
+  html[data-screen-theme="krds-v1"] table:not([class]):not([data-krds-unstyled]) :where(th, td) {
+    border-bottom: 1px solid var(--kr-gov-border-light);
+    padding: 0.75rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  html[data-screen-theme="krds-v1"] table:not([class]):not([data-krds-unstyled]) th {
+    background: var(--kr-gov-bg-gray);
+    color: var(--kr-gov-text-primary);
+    font-weight: 700;
+  }
 }
 
 .gnb-item:hover .gnb-depth2 {
@@ -3059,4 +3183,65 @@ dd {
 :where(time):not([class*="text-"]):not([class*="gov-text-"]):not([class*="krds-type-"]) {
   font-size: var(--krds-type-caption) !important;
   line-height: var(--krds-line-compact) !important;
+}
+
+/* KRDS My Page common theme ------------------------------------------------- */
+[data-mypage-theme="krds-v1"] {
+  --mypage-primary: #246beb;
+  --mypage-primary-strong: #00378b;
+  --mypage-title: #052b57;
+  --mypage-surface: #ffffff;
+  --mypage-canvas: #f4f6f8;
+  --mypage-border: #d8e0ea;
+  background: var(--mypage-canvas) !important;
+  color: #1d2733;
+}
+
+[data-mypage-theme="krds-v1"] > header {
+  background: var(--mypage-surface);
+  border-bottom-color: var(--mypage-border);
+}
+
+[data-mypage-theme="krds-v1"] main {
+  width: 100%;
+}
+
+[data-mypage-theme="krds-v1"] [data-help-id$="-hero"] {
+  border: 1px solid var(--mypage-border) !important;
+  border-radius: 16px !important;
+  background: var(--mypage-surface) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+  color: #1d2733 !important;
+}
+
+[data-mypage-theme="krds-v1"] [data-help-id$="-hero"] h1,
+[data-mypage-theme="krds-v1"] [data-help-id$="-hero"] h2,
+[data-mypage-theme="krds-v1"] [data-help-id$="-hero"] h3 {
+  color: var(--mypage-title) !important;
+}
+
+[data-mypage-theme="krds-v1"] :is(section, aside)[class*="rounded-"] {
+  border-radius: 16px !important;
+}
+
+[data-mypage-theme="krds-v1"] :is(input, select, textarea) {
+  border-color: #b8c4d1;
+  border-radius: 8px;
+}
+
+[data-mypage-theme="krds-v1"] :is(input, select, textarea):focus {
+  border-color: var(--mypage-primary);
+  box-shadow: 0 0 0 3px rgba(36, 107, 235, 0.16);
+  outline: 0;
+}
+
+@media (max-width: 767px) {
+  [data-mypage-theme="krds-v1"] main {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  [data-mypage-theme="krds-v1"] [data-help-id$="-hero"] {
+    border-radius: 12px !important;
+  }
 }

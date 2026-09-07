@@ -5,6 +5,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -36,6 +37,7 @@ public class AdminMenuBaselineReconciliationService {
     }
 
     @EventListener(ApplicationReadyEvent.class)
+    @Async("applicationReadyBootstrapExecutor")
     public void reconcileOnStartup() {
         reconcile("startup");
     }

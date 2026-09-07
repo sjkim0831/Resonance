@@ -1,0 +1,9 @@
+.mapping-progress{padding:16px;margin-bottom:18px;display:grid;gap:10px}
+.mapping-progress div{display:flex;justify-content:space-between}
+.mapping-progress progress{width:100%;height:16px}
+.mapping-list header select{border:1px solid #aebdc6;border-radius:7px;padding:10px}
+.mapping-list header .btn{width:100%}
+.mapping-list>p{font-size:.84rem;color:#52636d}
+.mapping-review-nav{display:flex;align-items:center;justify-content:space-between;margin:12px 0}
+.mapping-empty{padding:20px;text-align:center}
+.mapping-list button small{font-size:.73rem}

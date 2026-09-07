@@ -3,7 +3,6 @@ import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import {
-  UserGovernmentBar,
   UserLanguageToggle,
   UserPortalFooter,
   UserPortalHeader
@@ -349,7 +348,7 @@ export function MypageMigrationPage() {
   const profilePath = buildLocalizedPath("/mypage/profile", "/en/mypage/profile");
   const sidebarItems = [
     { label: en ? "My Profile Settings" : "내 정보", href: profilePath, icon: "account_circle", active: true },
-    { label: en ? "Security & Password" : "보안 설정", href: buildLocalizedPath("/mypage/security", "/en/mypage/security"), icon: "security" },
+    { label: en ? "Security & Password" : "보안 설정", href: buildLocalizedPath("/mypage/password?processCode=PROFILE_MANAGEMENT&stepCode=PROFILE_MANAGEMENT_S4&guide=1", "/en/mypage/password?processCode=PROFILE_MANAGEMENT&stepCode=PROFILE_MANAGEMENT_S4&guide=1"), icon: "security" },
     { label: en ? "Linked Company Info" : "기업 정보", href: buildLocalizedPath("/mypage/company", "/en/mypage/company"), icon: "business" },
     { label: en ? "Staff Management" : "담당자 관리", href: buildLocalizedPath("/mypage/staff", "/en/mypage/staff"), icon: "groups" },
     { label: en ? "Notification Settings" : "알림 설정", href: buildLocalizedPath("/mypage/notification", "/en/mypage/notification"), icon: "notifications" }
@@ -393,7 +392,6 @@ export function MypageMigrationPage() {
     return (
       <div className="bg-[var(--kr-gov-bg-gray)] text-[var(--kr-gov-text-primary)] min-h-screen flex flex-col">
         <a className="skip-link" href="#main-content">{copy.skip}</a>
-        <UserGovernmentBar governmentText={copy.government} />
         <UserPortalHeader
           brandSubtitle="Carbon Capture, Utilization and Storage"
           brandTitle={en ? "CCUS Management Portal" : "CCUS 통합관리 포털"}
@@ -552,12 +550,11 @@ export function MypageMigrationPage() {
   }
 
   return (
-    <div className="mypage-screen bg-[#f8fafc] text-[var(--kr-gov-text-primary)] min-h-screen">
+    <div className="mypage-screen bg-[#f8fafc] text-[var(--kr-gov-text-primary)] min-h-screen" data-mypage-theme="krds-v1">
       <a className="skip-link" href="#main-content">
         {copy.skip}
       </a>
 
-      <UserGovernmentBar governmentText={copy.government} guidelineText={copy.guideline} />
 
       <UserPortalHeader
         brandSubtitle={en ? "Overseer Personal Dashboard" : "현장 담당자 개인 대시보드"}
@@ -601,30 +598,30 @@ export function MypageMigrationPage() {
           </aside>
 
           <div className="flex-1 bg-[#f8fafc] p-6 lg:p-10">
-            <section className="mb-8 rounded-[24px] bg-slate-900 p-6 text-white shadow-xl">
+            <section className="mb-8 rounded-2xl border border-slate-200 bg-white p-6 text-slate-900 shadow-sm" data-help-id="mypage-profile-hero">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                  <div className="mb-4 inline-flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
-                    <span className="material-symbols-outlined text-indigo-300">smart_toy</span>
+                  <div className="mb-4 inline-flex items-center gap-3 rounded-xl bg-blue-50 px-4 py-3">
+                    <span className="material-symbols-outlined text-[#246beb]">manage_accounts</span>
                     <div>
                       <p className="text-sm font-bold">{en ? "Dedicated Overseer's Personal Hub" : "전담 담당자 개인 허브"}</p>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-indigo-200">{en ? "Profile & Workspace" : "프로필 및 작업공간"}</p>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-blue-700">{en ? "Profile & Workspace" : "프로필 및 작업공간"}</p>
                     </div>
                   </div>
-                  <h3 className="text-3xl font-black">{en ? "Manage My Profile" : "내 정보 관리"}</h3>
-                  <p className="mt-2 text-sm text-slate-300">{en ? "Manage your personal details, communication channels, and organization settings." : "개인 프로필, 연락 채널, 소속 기관 정보를 한 화면에서 관리합니다."}</p>
+                  <h3 className="text-3xl font-black text-[#052b57]">{en ? "Manage My Profile" : "내 정보 관리"}</h3>
+                  <p className="mt-2 text-sm text-slate-600">{en ? "Manage your personal details, communication channels, and organization settings." : "개인 프로필, 연락 채널, 소속 기관 정보를 한 화면에서 관리합니다."}</p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-4">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-indigo-200">{en ? "User ID" : "사용자 ID"}</p>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">{en ? "User ID" : "사용자 ID"}</p>
                     <p className="mt-2 text-base font-black">{userId}</p>
                   </div>
-                  <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-4">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-indigo-200">{en ? "Organization" : "소속 기관"}</p>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">{en ? "Organization" : "소속 기관"}</p>
                     <p className="mt-2 text-base font-black">{companyName}</p>
                   </div>
-                  <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-4">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-indigo-200">{en ? "Status" : "계정 상태"}</p>
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700">{en ? "Status" : "계정 상태"}</p>
                     <p className="mt-2 text-base font-black">{memberStatus}</p>
                   </div>
                 </div>
@@ -745,7 +742,7 @@ export function MypageMigrationPage() {
                         <p className="text-sm font-bold text-slate-800">{en ? "Password & security" : "비밀번호 및 보안"}</p>
                         <p className="mt-1 text-xs text-slate-500">{en ? "Detailed password, MFA, and session settings continue on the dedicated security page." : "비밀번호, MFA, 세션 관리는 보안 설정 전용 화면에서 이어집니다."}</p>
                       </div>
-                      <HomeLinkButton className="shrink-0 border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700" href={buildLocalizedPath("/mypage/security", "/en/mypage/security")} variant="ghost">
+                      <HomeLinkButton className="shrink-0 border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700" href={buildLocalizedPath("/mypage/password?processCode=PROFILE_MANAGEMENT&stepCode=PROFILE_MANAGEMENT_S4&guide=1", "/en/mypage/password?processCode=PROFILE_MANAGEMENT&stepCode=PROFILE_MANAGEMENT_S4&guide=1")} variant="ghost">
                         {en ? "Go to Security" : "보안 설정 이동"}
                       </HomeLinkButton>
                     </div>

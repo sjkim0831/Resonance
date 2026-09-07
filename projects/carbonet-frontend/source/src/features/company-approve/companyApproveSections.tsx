@@ -267,6 +267,14 @@ export function CompanyApproveReviewContent({
           ["회원사 정보", <a className="font-bold text-[var(--kr-gov-blue)] hover:underline" href={String(reviewRow.editUrl || buildLocalizedPath(`/admin/member/company_account?insttId=${encodeURIComponent(insttId)}`, `/en/admin/member/company_account?insttId=${encodeURIComponent(insttId)}`))}>회원사 정보 수정 화면으로 이동</a>]
         ]} />
       </ReviewBlock>
+      <ReviewBlock title="반려·재신청 대응">
+        <ReviewDataTable rows={[
+          ["관리자 반려 사유", <span className="whitespace-pre-wrap">{String(reviewRow.rejectReason || "-")}</span>],
+          ["신청자 보완 답변", <span className="whitespace-pre-wrap font-medium">{String(reviewRow.applicantResponse || "신규 신청 또는 보완 답변 없음")}</span>],
+          ["재신청 버전", Number(reviewRow.reapplicationVersion || 0) > 0 ? `v${Number(reviewRow.reapplicationVersion)}` : "-"],
+          ["재신청 접수 일시", String(reviewRow.reapplicationSubmittedAt || "-")]
+        ]} />
+      </ReviewBlock>
       <ReviewBlock title="증빙 서류 확인">
         <div className="space-y-3 rounded-[var(--kr-gov-radius)] bg-[#f2f2f2] p-4">
           {evidenceFiles.length === 0 ? (

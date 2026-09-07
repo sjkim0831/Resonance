@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://resonance.local/schemas/sdui-screen-v1.json",
+  "title": "Resonance SDUI Screen",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schemaVersion",
+    "designVersion",
+    "screenId",
+    "pageId",
+    "menuCode",
+    "route",
+    "runtimeMode",
+    "themeRef",
+    "componentRegistryRef",
+    "authority",
+    "workflow",
+    "nodes"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "designVersion": { "type": "string", "minLength": 1 },
+    "screenId": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "pageId": { "type": "string", "minLength": 1 },
+    "menuCode": { "type": "string", "minLength": 1 },
+    "route": { "type": "string", "pattern": "^/projects/P006/" },
+    "runtimeMode": { "const": "SDUI_JSON_FORM_HOTLOAD" },
+    "status": { "enum": ["DRAFT", "PUBLISHED"] },
+    "themeRef": { "type": "string", "pattern": "^screens/" },
+    "componentRegistryRef": { "type": "string", "pattern": "^screens/" },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["nodeId", "componentId", "componentType", "sortOrder", "props"],
+        "properties": {
+          "nodeId": { "type": "string", "minLength": 1 },
+          "componentId": { "type": "string", "minLength": 1 },
+          "componentType": { "enum": ["hero", "metric-grid", "json-form", "process-steps", "card-grid"] },
+          "sortOrder": { "type": "integer", "minimum": 0 },
+          "props": { "type": "object" }
+        }
+      }
+    }
+  }
+}

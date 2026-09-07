@@ -1,6 +1,379 @@
-import { useEffect, useMemo, useState } from "react";
+import { HomeWorkGuide } from "./HomeWorkGuide";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ScreenDesignSummary } from "./ScreenDesignSummary";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
+import {
+  EMISSION_END_TO_END_PROCESS_CODE,
+  EMISSION_INTERNAL_PROCESS_CODES,
+  emissionPhaseLabel,
+  isCustomerVisibleEmissionProcess,
+  parentEmissionStepCode,
+} from "../../lib/workflow/emissionProcessHierarchy";
+import {
+  isPublicWorkflowRoute,
+  normalizeScreenRoute,
+  type ScreenWorkContext,
+  type ScreenWorkContextCandidate,
+} from "../runtime-assist/screenWorkContext";
+import { MemberDomainClosureQaCard } from "./MemberDomainClosureQaCard";
+
+const ACTOR_LABELS: Record<string, string> = {
+  "*": "전체 담당자",
+  AUTHORITY_ADMIN: "기관 관리자",
+  BUSINESS_USER: "기업 업무 담당자",
+  COMPANY_MANAGER: "기업 관리자",
+  COMPANY_ADMIN: "기업 운영 관리자",
+  WORK_ASSIGNMENT_MANAGER: "업무 배정 담당자",
+  PROJECT_OWNER: "프로젝트 책임자",
+  SITE_DATA_OWNER: "자료 담당자",
+  DATA_OWNER: "자료 담당자",
+  CALCULATOR: "산정 담당자",
+  EMISSION_CALCULATOR: "산정 담당자",
+  VERIFIER: "검증 담당자",
+  APPROVER: "승인 담당자",
+  REGULATOR: "관리기관",
+  AUDITOR: "감사 담당자",
+  REVIEWER: "검토 담당자",
+  DATA_ANALYST: "데이터 분석 담당자",
+  FACILITY_OPERATOR: "설비 운영 담당자",
+  HSE_MANAGER: "안전·환경 관리자",
+  INSTRUMENT_ENGINEER: "계측 담당자",
+  LAB_ANALYST: "시험·분석 담당자",
+  LCA_PRACTITIONER: "LCA 수행 담당자",
+  MAINTENANCE_ENGINEER: "유지보수 담당자",
+  MEMBER_ADMIN: "회원 관리자",
+  MEMBER_USER: "일반 회원",
+  PUBLIC_APPLICANT: "외부 신청자",
+  REPORT_MANAGER: "보고서 담당자",
+  CERTIFICATE_OFFICER: "인증서 발급 담당자",
+  CERTIFICATE_QA_OPERATOR: "인증서 품질 담당자",
+  REDUCTION_MANAGER: "감축 관리 담당자",
+  STORAGE_SITE_MANAGER: "저장소 관리 담당자",
+  TRADE_OPERATOR: "거래 운영 담당자",
+  SETTLEMENT_OPERATOR: "정산 담당자",
+  CONTENT_MANAGER: "콘텐츠 담당자",
+  EDUCATION_MANAGER: "교육 담당자",
+  PRIVACY_OFFICER: "개인정보 보호 담당자",
+  PLATFORM_ADMIN: "플랫폼 관리자",
+  PLATFORM_OPERATOR: "플랫폼 운영자",
+  SUPPORT_AGENT: "고객지원 담당자",
+  SYSTEM_INTEGRATOR: "시스템 연계 담당자",
+  GENERAL_ADMIN: "일반 관리자",
+  MEMBER: "회원",
+  CUSTOMER: "고객",
+  SYSTEM_ADMIN: "시스템 관리자",
+  UNASSIGNED: "담당 미지정",
+};
+
+// Container processes organize child processes but are not executable work.
+// Keep them in the design/help registry while excluding them from user choices and counts.
+const NON_EXECUTABLE_PROCESS_CONTAINERS = new Set([
+  "MEMBER_LIFECYCLE",
+  "TERMS_CONSENT",
+  "IDENTITY_VERIFICATION",
+  // These historical definitions are retained for audit only. Their user-facing
+  // screens now belong to the consolidated LOGIN_AUTHENTICATION journey.
+  "MFA_MANAGEMENT",
+  "PASSWORD_RECOVERY",
+  "ACCOUNT_LOCK_RECOVERY",
+  // Member status history is an automatic audit capability shared by signup,
+  // approval, lock, dormancy, role, and withdrawal flows. It is retained in
+  // the design ledger but must not appear as a user-executable process.
+  "MEMBER_ADMINISTRATION",
+  // These records remain as supporting audit/sub-journeys. Their approved
+  // pages are represented by MEMBER_APPROVAL and COMPANY_ONBOARDING.
+  "MEMBER_APPLICATION_STATUS",
+  "COMPANY_REGISTRATION_APPROVAL",
+  // Project work assignment was explicitly retired; delegation/reassignment
+  // is handled by COMPANY_MANAGER_DELEGATION.
+  "WORK_ASSIGNMENT",
+]);
+
+function isSelectableProcess(processCode: string) {
+  return (
+    isCustomerVisibleEmissionProcess(processCode) &&
+    !NON_EXECUTABLE_PROCESS_CONTAINERS.has(processCode)
+  );
+}
+
+function stepApplicabilityType(processCode: string, stepCode: string) {
+  if (processCode === "REGULATORY_SUBMISSION") return "CONDITIONAL";
+  if (stepCode === "ORGANIZATIONAL_BOUNDARY_S3") return "CONDITIONAL";
+  if (
+    stepCode === "REPORT_CERTIFICATION_03_VERIFY" ||
+    stepCode === "REPORT_CERTIFICATION_04_APPROVE"
+  )
+    return "CONDITIONAL";
+  return "REQUIRED";
+}
+
+function actorLabel(actorCode?: string | null) {
+  if (!actorCode) return "담당 미지정";
+  return ACTOR_LABELS[actorCode] || "업무 담당자";
+}
+
+function memberQaTimelineHref(
+  processCode?: string | null,
+  stepCode?: string | null,
+) {
+  const query = new URLSearchParams();
+  if (processCode) query.set("process", processCode);
+  if (stepCode) query.set("step", stepCode);
+  const suffix = query.toString();
+  return `/qa/member-eight-scenario/timeline.html${suffix ? `?${suffix}` : ""}`;
+}
+
+type ProcessPreviewStep = {
+  processCode: string;
+  stepCode: string;
+  stepName: string;
+  actorCode: string;
+  timeSeconds: number;
+};
+
+type ProcessPreviewRegistryEntry = {
+  processCode: string;
+  workTypeCode: string;
+  status: "PASS" | "UNREGISTERED";
+  videoUrl?: string;
+  playbackMode?: "FULL" | "TIMELINE_RANGE";
+  timelineUrl?: string;
+  manifestUrl?: string;
+  boardUrl?: string;
+  stepCount?: number;
+  passed?: number;
+  failed?: number;
+  sha256?: string;
+  recordedAt?: string;
+  environment?: string;
+};
+
+function ProcessPreviewPlayer({
+  processCode,
+  en,
+}: {
+  processCode: string;
+  en: boolean;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [entry, setEntry] = useState<ProcessPreviewRegistryEntry | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [steps, setSteps] = useState<ProcessPreviewStep[]>([]);
+  const [sourceDuration, setSourceDuration] = useState(0);
+  const [liveDuration, setLiveDuration] = useState(0);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setLoadFailed(false);
+    setEntry(null);
+    setSteps([]);
+    fetch("/qa/process-preview-registry.json", { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) throw new Error(`registry ${response.status}`);
+        return response.json();
+      })
+      .then(async (registry) => {
+        const selected =
+          (Array.isArray(registry.entries) ? registry.entries : []).find(
+            (item: ProcessPreviewRegistryEntry) =>
+              item.processCode === processCode,
+          ) || null;
+        if (!active) return;
+        setEntry(selected);
+        setLoading(false);
+        if (
+          !selected ||
+          selected.status !== "PASS" ||
+          selected.playbackMode !== "TIMELINE_RANGE" ||
+          !selected.timelineUrl ||
+          !selected.manifestUrl
+        )
+          return;
+        const [timeline, manifest] = await Promise.all([
+          fetch(selected.timelineUrl, { cache: "no-store" }).then((response) =>
+            response.json(),
+          ),
+          fetch(selected.manifestUrl, { cache: "no-store" }).then((response) =>
+            response.json(),
+          ),
+        ]);
+        if (!active) return;
+        setSteps(Array.isArray(timeline.steps) ? timeline.steps : []);
+        setSourceDuration(Number(timeline.videoDurationSeconds || 0));
+        setLiveDuration(Number(manifest.durationSeconds || 0));
+      })
+      .catch(() => {
+        if (active) {
+          setLoading(false);
+          setLoadFailed(true);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [processCode]);
+
+  const range = useMemo(() => {
+    if (entry?.playbackMode !== "TIMELINE_RANGE") return null;
+    const startIndex = steps.findIndex(
+      (step) => step.processCode === processCode,
+    );
+    if (startIndex < 0 || sourceDuration <= 0 || liveDuration <= 0) return null;
+    let endIndex = startIndex + 1;
+    while (
+      endIndex < steps.length &&
+      steps[endIndex].processCode === processCode
+    )
+      endIndex += 1;
+    const scale = liveDuration / sourceDuration;
+    return {
+      start: Math.max(0, Number(steps[startIndex].timeSeconds || 0) * scale),
+      end: Math.min(
+        liveDuration,
+        Number(steps[endIndex]?.timeSeconds || sourceDuration) * scale,
+      ),
+      items: steps.slice(startIndex, endIndex),
+    };
+  }, [entry?.playbackMode, liveDuration, processCode, sourceDuration, steps]);
+
+  useEffect(() => {
+    if (!range || !videoRef.current) return;
+    videoRef.current.currentTime = range.start;
+    videoRef.current.pause();
+  }, [range]);
+
+  if (loading)
+    return (
+      <section className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-5">
+        <strong className="text-sm text-[#052b57]">
+          {en ? "Loading preview..." : "미리보기 영상을 불러오는 중..."}
+        </strong>
+      </section>
+    );
+  if (loadFailed)
+    return (
+      <section className="mt-4 rounded-xl border border-red-300 bg-red-50 p-5">
+        <strong className="text-sm text-red-950">
+          {en ? "Preview registry unavailable" : "미리보기 원장 조회 실패"}
+        </strong>
+      </section>
+    );
+  if (!entry)
+    return (
+      <section className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-5">
+        <strong className="text-sm text-amber-950">
+          {en ? "No recorded preview" : "미리보기 영상 미등록"}
+        </strong>
+        <p className="mt-2 text-sm leading-6 text-amber-900">
+          {en
+            ? "No authenticated recording is registered for this process."
+            : "이 프로세스에 등록된 실제 업무 진행 영상이 없습니다."}
+        </p>
+      </section>
+    );
+  if (entry.status !== "PASS" || !entry.videoUrl)
+    return (
+      <section className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-5">
+        <strong className="text-sm text-amber-950">
+          {en ? "No recorded preview" : "미리보기 영상 미등록"}
+        </strong>
+      </section>
+    );
+  if (entry.playbackMode === "TIMELINE_RANGE" && !range)
+    return (
+      <section className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-5">
+        <strong className="text-sm text-[#052b57]">
+          {en ? "Loading preview..." : "미리보기 원장 불러오는 중..."}
+        </strong>
+      </section>
+    );
+  const previewSteps = range?.items || [];
+  return (
+    <section
+      className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-3"
+      data-process-preview-player={processCode}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <strong className="text-sm text-[#052b57]">
+            {en ? "Recorded process preview" : "프로세스 미리보기 영상"}
+          </strong>
+          <p className="mt-1 text-xs text-slate-600">
+            {previewSteps.length
+              ? `${previewSteps.length}${en ? " steps" : "개 절차"} · ${previewSteps.map((step) => step.stepName).join(" → ")}`
+              : `${entry.stepCount || 0}${en ? " steps" : "개 절차"} · ${entry.environment || "DEV"}`}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-800">
+            {entry.passed || 0}/{entry.stepCount || entry.passed || 0} PASS
+          </span>
+          {entry.boardUrl ? (
+            <a
+              className="rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-black text-blue-800"
+              href={`${entry.boardUrl}?process=${encodeURIComponent(processCode)}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {en ? "Open full board" : "전체 실행판"}
+            </a>
+          ) : null}
+        </div>
+      </div>
+      <video
+        className="mt-3 w-full rounded-lg bg-[#071a35]"
+        controls
+        preload="metadata"
+        ref={videoRef}
+        autoPlay={entry.playbackMode === "FULL"}
+        src={entry.videoUrl}
+        onLoadedMetadata={(event) => {
+          const duration = Number(event.currentTarget.duration || 0);
+          if (duration > 0 && Number.isFinite(duration))
+            setLiveDuration(duration);
+          if (range) event.currentTarget.currentTime = range.start;
+        }}
+        onTimeUpdate={(event) => {
+          if (range && event.currentTarget.currentTime >= range.end) {
+            event.currentTarget.pause();
+            event.currentTarget.currentTime = range.start;
+          }
+        }}
+      />
+      <p className="mt-2 break-all text-[11px] font-bold text-blue-900">
+        {range
+          ? en
+            ? "Playback is limited to this process segment."
+            : "선택한 프로세스 구간만 재생하고 종료 시 시작 위치로 돌아갑니다."
+          : `SHA-256 ${entry.sha256 || "-"}`}
+      </p>
+    </section>
+  );
+}
 import { createPortal } from "react-dom";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import {
+  buildLocalizedPath,
+  isEnglish,
+  navigate,
+} from "../../lib/navigation/runtime";
+import {
+  QA_TEST_ACCOUNTS,
+  switchQaAccount,
+} from "../home-entry/TestAccountSwitcher";
+import {
+  ContractFieldControl,
+  type ContractField,
+} from "../generated-screen/ContractFieldControl";
+import {
+  beginTaskQuestPrivateLoad,
+  canLoadTaskQuestPrivateTasks,
+  invalidateTaskQuestPrivateLoad,
+  isCurrentTaskQuestPrivateLoad,
+  resolveTaskQuestWorkflowCoordinate,
+  resolveTaskQuestWorkflowDomainCode,
+} from "./taskQuestSessionGate";
 
 type QuestTask = {
   id: number;
@@ -16,6 +389,8 @@ type QuestTask = {
   dueDate: string;
   targetUrl: string;
   actorCode?: string;
+  assignee?: string;
+  explicitlyAssigned?: boolean;
   processCode?: string;
   processName?: string;
   domainCode?: string;
@@ -111,6 +486,8 @@ type QuestResponse = {
     processCode: string;
     processName: string;
     domainCode: string;
+    parentProcessCode?: string;
+    processLevel?: number;
     goal?: string;
     status?: string;
     ownerActorCode?: string;
@@ -150,6 +527,7 @@ type QuestResponse = {
     stepCode: string;
     stepName: string;
     actorCode?: string;
+    actorName?: string;
     fromState?: string;
     commandCode?: string;
     toState?: string;
@@ -160,6 +538,63 @@ type QuestResponse = {
     userPath?: string;
     adminPath?: string;
     automationStatus?: string;
+  }>;
+  processOverviewStages?: Array<{
+    processCode: string;
+    stepOrder: number;
+    stepCode: string;
+    stepName: string;
+    actorCode?: string;
+    workPurpose?: string;
+    userPath?: string;
+    adminPath?: string;
+    sourceStepCodes?: string[];
+    assignmentRequired?: boolean;
+    assignmentMode?: "NONE" | "AUTO" | "MANUAL" | "CLAIM";
+    visibilityScope?: "PUBLIC" | "ASSIGNEE" | "ACTOR" | "SUPERVISOR";
+  }>;
+  processScreenFlow?: Array<{
+    processCode: string;
+    stepOrder: number;
+    stepCode: string;
+    stepName: string;
+    actorCode?: string;
+    workPurpose?: string;
+    userPath?: string;
+    adminPath?: string;
+    procedureCount?: number;
+    sourceStepCodes?: string;
+  }>;
+  stepApplicabilityContracts?: Array<{
+    processCode: string;
+    stepCode: string;
+    applicabilityType: "REQUIRED" | "CONDITIONAL" | "OPTIONAL" | "AUTOMATIC";
+    applicabilityRule?: string;
+    viewMode?: string;
+    completionGate?: string;
+    skipAuthorityActor?: string;
+    requiredSections?: unknown[];
+  }>;
+  stepApplicabilityDecisions?: Array<{
+    projectId: string;
+    processCode: string;
+    stepCode: string;
+    decisionStatus:
+      "PENDING" | "APPLICABLE" | "NOT_APPLICABLE" | "REASSESS_REQUIRED";
+    reasonText?: string;
+    evidenceRefs?: string[];
+    decidedBy?: string;
+    decidedAt?: string;
+    decisionVersion?: number;
+  }>;
+  processAssignments?: Array<{
+    projectId: string;
+    processCode: string;
+    stepCode: string;
+    actorCode?: string;
+    accountId: string;
+    assignedBy?: string;
+    updatedAt?: string;
   }>;
   designAssurance?: DesignAssurance[];
   designAssuranceSummary?: {
@@ -202,8 +637,29 @@ type QuestResponse = {
     pageDesignMissingCount?: number;
   };
   allVisible?: boolean;
+  assignmentManager?: boolean;
+  actorId?: string;
   accountActors?: string[];
   summary?: { total?: number; completed?: number; overdue?: number };
+};
+
+type AssignmentWorkspace = {
+  canManage?: boolean;
+  projects?: Array<{ projectId: string; projectName: string }>;
+  accounts?: Array<{
+    accountId: string;
+    accountName: string;
+    department?: string;
+    actorCodes?: string;
+  }>;
+  steps?: Array<{
+    stepCode: string;
+    stepName: string;
+    stepOrder: number;
+    actorCode: string;
+    actorName: string;
+    accountId?: string;
+  }>;
 };
 
 type TaskGuideFocusDetail = {
@@ -222,6 +678,241 @@ type QaResult = {
   executedBy?: string;
   executedAt?: string;
 };
+
+type QaActivity = {
+  id: string;
+  at: string;
+  kind: "LOAD" | "SAVE" | "RUN" | "PASS" | "FAIL";
+  message: string;
+};
+
+function parseQaFields(raw: unknown): ContractField[] {
+  const parse = (value: unknown): unknown => {
+    if (typeof value !== "string") return value;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return [];
+    }
+  };
+  const source = parse(raw);
+  const fields = Array.isArray(source)
+    ? source
+    : source &&
+        typeof source === "object" &&
+        Array.isArray((source as { fields?: unknown[] }).fields)
+      ? (source as { fields: unknown[] }).fields
+      : [];
+  return fields
+    .map((item, index) => {
+      const field =
+        item && typeof item === "object"
+          ? (item as Record<string, unknown>)
+          : {};
+      return {
+        ...field,
+        code: String(field.fieldCode || field.code || `FIELD_${index + 1}`),
+        label: String(
+          field.fieldName ||
+            field.label ||
+            field.name ||
+            field.fieldCode ||
+            field.code ||
+            `항목 ${index + 1}`,
+        ),
+        control: field.controlType || field.control || "TEXT",
+      } as ContractField;
+    })
+    .filter((field) => field.code && field.editable !== false);
+}
+
+function QaMirrorControl({
+  field,
+  value,
+  onChange,
+}: {
+  field: ContractField;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const kind = String(field.control || field.dataType || "TEXT").toUpperCase();
+  const choices = Array.isArray(field.options)
+    ? field.options.map((option, index) => {
+        if (typeof option === "string") return { value: option, label: option };
+        const row = option as Record<string, unknown>;
+        return {
+          value: String(row.value ?? row.code ?? index),
+          label: String(
+            row.label ?? row.name ?? row.value ?? row.code ?? index,
+          ),
+        };
+      })
+    : [];
+  const className =
+    "mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-[#246beb] focus:outline-none focus:ring-2 focus:ring-blue-100";
+  const id = `qa-mirror-${field.code.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+  let control;
+  if (kind.includes("SELECT") && choices.length)
+    control = (
+      <select
+        className={className}
+        value={value}
+        id={id}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        <option value="">선택</option>
+        {choices.map((choice) => (
+          <option key={choice.value} value={choice.value}>
+            {choice.label}
+          </option>
+        ))}
+      </select>
+    );
+  else if (kind.includes("CHECKBOX"))
+    control = (
+      <input
+        className="mt-2 size-5 accent-[#246beb]"
+        checked={value === "true"}
+        id={id}
+        type="checkbox"
+        onChange={(event) => onChange(String(event.target.checked))}
+      />
+    );
+  else if (kind.includes("TEXTAREA"))
+    control = (
+      <textarea
+        className={`${className} min-h-24 py-3`}
+        value={value}
+        id={id}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    );
+  else
+    control = (
+      <input
+        className={className}
+        value={value}
+        id={id}
+        min={field.min as string | number | undefined}
+        max={field.max as string | number | undefined}
+        maxLength={
+          typeof field.maxLength === "number" ? field.maxLength : undefined
+        }
+        placeholder={String(field.placeholder || "")}
+        type={
+          kind.includes("NUMBER")
+            ? "number"
+            : kind.includes("DATE")
+              ? "date"
+              : kind.includes("EMAIL")
+                ? "email"
+                : "text"
+        }
+        onChange={(event) => onChange(event.target.value)}
+      />
+    );
+  const guide = qaFieldGuide(field);
+  return (
+    <div className="rounded-xl border border-violet-100 bg-white p-3">
+      <label className="text-xs font-black text-slate-800" htmlFor={id}>
+        {field.label}
+        {field.required === true ? (
+          <span className="ml-1 text-red-600">*</span>
+        ) : null}
+        {control}
+      </label>
+      <dl className="mt-2 space-y-1 text-[11px] leading-4 text-slate-600">
+        <div>
+          <dt className="inline font-black text-violet-800">입력 목적 · </dt>
+          <dd className="inline">{guide.purpose}</dd>
+        </div>
+        <div>
+          <dt className="inline font-black text-violet-800">형식·범위 · </dt>
+          <dd className="inline">{guide.format}</dd>
+        </div>
+        <div>
+          <dt className="inline font-black text-violet-800">예시·출처 · </dt>
+          <dd className="inline">
+            {guide.example} · {guide.source}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
+function qaFieldGuide(field: ContractField) {
+  const kind = String(field.control || field.dataType || "TEXT").toUpperCase();
+  const key = `${field.code} ${field.label}`.toLowerCase();
+  const limits = [
+    field.min !== undefined ? `최소 ${field.min}` : "",
+    field.max !== undefined ? `최대 ${field.max}` : "",
+    field.maxLength !== undefined ? `${field.maxLength}자 이내` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  let purpose = String(
+    field.helpText ||
+      field.description ||
+      "현재 절차의 처리·판정 및 다음 업무 인계에 사용하는 값입니다.",
+  );
+  let format =
+    limits ||
+    (kind.includes("SELECT")
+      ? "등록된 선택지 중 1개 선택"
+      : kind.includes("DATE")
+        ? "YYYY-MM-DD"
+        : kind.includes("NUMBER")
+          ? "숫자"
+          : kind.includes("CHECKBOX")
+            ? "선택 또는 해제"
+            : "문자열");
+  let example = String(field.placeholder || "업무 기준에 맞는 값을 입력");
+  let source = "현재 화면·절차 설계 계약";
+  if (key.includes("검색") || key.includes("keyword")) {
+    purpose = "프로젝트명·식별자를 검색해 대상 업무를 찾습니다.";
+    example = "CCUS";
+    source = "프로젝트 원장";
+  } else if (key.includes("project")) {
+    purpose = "업무 데이터와 실행 이력을 같은 프로젝트로 연결합니다.";
+    example = "PRJ-ACTOR-TEST";
+    source = "프로젝트 원장";
+  } else if (key.includes("tenant")) {
+    purpose = "다른 기업의 데이터와 완전히 격리합니다.";
+    example = "DEFAULT";
+    source = "로그인 세션";
+  } else if (key.includes("status") || key.includes("상태")) {
+    purpose = "조회하거나 처리할 업무 상태를 제한합니다.";
+    example = "진행";
+    source = "프로세스 상태 계약";
+  } else if (key.includes("사업장") || key.includes("site")) {
+    purpose = "배출자료와 산정 결과의 조직·사업장 경계를 지정합니다.";
+    example = "등록 사업장 선택";
+    source = "기업·사업장 기준정보";
+  } else if (key.includes("page") || key.includes("페이지")) {
+    purpose = "목록 조회 위치를 지정합니다.";
+    format = "1 이상의 정수";
+    example = "1";
+    source = "목록 조회 계약";
+  } else if (key.includes("summary") || key.includes("요약")) {
+    purpose = "수행 결과를 검토자와 다음 담당자가 즉시 이해하도록 기록합니다.";
+    example = "대상 프로젝트를 확인하고 다음 업무를 선택함";
+    source = "업무 수행자 입력";
+  } else if (key.includes("근거") || key.includes("reason")) {
+    purpose = "판단과 계산 결과를 재현할 수 있는 근거를 기록합니다.";
+    example = "프로젝트 상태·사업장·담당자 조건을 확인함";
+    source = "업무 수행 기록";
+  } else if (key.includes("증빙") || key.includes("document")) {
+    purpose = "결과를 원문·첨부·감사 이력과 연결합니다.";
+    example = "DOC-QA-001";
+    source = "문서·증빙 원장";
+  } else if (key.includes("checksum") || key.includes("무결성")) {
+    purpose = "저장 이후 데이터 변조 여부를 확인합니다.";
+    example = "SHA-256 해시";
+    source = "시스템 자동 계산";
+  }
+  return { purpose, format, example, source };
+}
 
 function dueLabel(value: string, en: boolean) {
   if (!value) return en ? "No deadline" : "기한 미설정";
@@ -250,8 +941,27 @@ function taskHref(task: QuestTask, en: boolean) {
   if (!url.searchParams.has("projectId") && !url.searchParams.has("id")) {
     url.searchParams.set("projectId", task.projectId);
   }
+  if (task.processCode) url.searchParams.set("processCode", task.processCode);
+  if (task.processStepCode)
+    url.searchParams.set("stepCode", task.processStepCode);
+  if (task.actorCode) url.searchParams.set("actorCode", task.actorCode);
+  url.searchParams.set("requestId", String(task.id));
+  url.searchParams.set("taskId", String(task.id));
   const target = `${url.pathname}${url.search}${url.hash}`;
   return en ? `/en${target}` : target;
+}
+function executionHref(task: QuestTask, en: boolean) {
+  if (!task.processCode || !task.processStepCode) return "";
+  const query = new URLSearchParams({
+    projectId: task.projectId,
+    processCode: task.processCode,
+    stepCode: task.processStepCode,
+    actorCode: task.actorCode || "",
+    requestId: String(task.id),
+    taskId: String(task.id),
+  });
+  const base = en ? "/en/work/execution" : "/work/execution";
+  return `${base}?${query}`;
 }
 
 function statusPresentation(task: QuestTask, en: boolean) {
@@ -293,6 +1003,7 @@ function workTypeLabel(code: string, en: boolean) {
     EDUCATION: ["교육·지원", "Education & Support"],
     MEMBER: ["회원·기업·권한", "Members & Organizations"],
     SYSTEM: ["시스템 운영", "System Operations"],
+    WORK_ASSIGNMENT: ["업무 배정", "Work Assignment"],
     COMMON: ["공통 업무", "Common Tasks"],
   };
   const matched = Object.entries(labels).find(
@@ -348,32 +1059,417 @@ function runtimeStateLabel(state: string, en: boolean) {
   return (labels[state] || [state, state])[en ? 1 : 0];
 }
 
-export function TaskQuestPanel() {
+type TaskQuestPanelProps = {
+  pageId?: string;
+  routePath?: string;
+  screenContext?: ScreenWorkContext | null;
+  onScreenContextSelection?: (candidate: ScreenWorkContextCandidate) => void;
+};
+
+function PublicWorkflowAssist({
+  context,
+  en,
+  onOverview,
+}: {
+  context: ScreenWorkContext;
+  en: boolean;
+  onOverview: () => void;
+}) {
+  const certificateVerificationPage = /^\/(en\/)?home\/certificate-verify\/?$/.test(window.location.pathname);
+  const approvedProcessNames: Record<string, string> = {
+    MEMBER_REGISTRATION: "회원가입",
+    MEMBER_APPROVAL: "회원가입 검토·승인·반려",
+    COMPANY_ONBOARDING: "기업·사업장 온보딩",
+    CONTACT_REVERIFICATION: "이메일·휴대전화 변경·재인증",
+    ACCOUNT_WITHDRAWAL: "회원 탈퇴·보유정보 처리",
+    ORGANIZATION_DEPARTMENT: "조직·부서 관리",
+    LOGIN_AUTHENTICATION: "로그인·계정 찾기·접근 복구",
+    PROFILE_MANAGEMENT: "내 정보·알림·보안 설정",
+    COMPANY_MANAGER_DELEGATION: "회원사 담당자 위임·승계·업무 인계",
+    COMPANY_REAPPLICATION_PUBLIC: "반려 기업 신청 보완·재신청",
+    COMPANY_MEMBER_INVITATION: "회원사 직원 초대·소속 가입·액터 배정",
+    PERSONAL_DATA_RIGHTS: "개인정보 열람·정정·다운로드",
+  };
+  const approvedStepNames: Record<string, string> = {
+    COMPANY_ONBOARDING_ACTORS: "회사 직원·기본 권한 확인",
+    CONTACT_LOAD: "현재 연락처와 권한 조회",
+    OTP_REQUEST: "신규 연락처 검증·OTP 발송",
+    OTP_CONFIRM_APPLY: "OTP 확인·연락처 변경",
+    CMD_REQUEST: "위임·승계 요청과 후보 검증",
+    CMD_APPROVE: "직무분리·권한 변경 승인",
+    CMD_HANDOVER: "미결업무 인계·통지·종결",
+  };
+  const [open, setOpen] = useState(
+    () => {
+      const query = new URLSearchParams(window.location.search);
+      return Boolean(
+        query.get("guide") === "1" ||
+        query.get("processCode") ||
+        query.get("process") ||
+        query.get("stepCode") ||
+        query.get("step"),
+      );
+    },
+  );
+  const [qaOpen, setQaOpen] = useState(false);
+
+  const routeQuery = new URLSearchParams(window.location.search);
+  const routeProcessCode = routeQuery.get("processCode") || "";
+  const routeStepCode = routeQuery.get("stepCode") || "";
+  const routeFallback: ScreenWorkContextCandidate[] = routeProcessCode
+    ? [
+        {
+          processCode: routeProcessCode,
+          processName:
+            approvedProcessNames[routeProcessCode] || routeProcessCode,
+          stepCode: routeStepCode || `${routeProcessCode}_ENTRY`,
+          stepName:
+            approvedStepNames[routeStepCode] ||
+            (en ? "Current page" : "현재 화면 확인"),
+          stepOrder: 1,
+          actorCode: "MEMBER_USER",
+          actorName: en ? "Current user" : "현재 사용자",
+          inputContract: en ? "Current page context" : "현재 화면 정보",
+          outputContract: en ? "Work result" : "업무 처리 결과",
+          audience: "PUBLIC",
+        },
+      ]
+    : [];
+  const candidates = context.candidates?.length
+    ? context.candidates
+    : context.workflow
+      ? [context.workflow]
+      : routeFallback;
+  const workflow = context.workflow || candidates[0];
+  const qaScenarios = en
+    ? ["Happy path", "Authority", "Isolation", "Exception", "Recovery"]
+    : ["정상", "권한", "격리", "예외", "복구"];
+  return (
+    <>
+      {/^\/(en\/)?(home(\/index)?)?\/?$/.test(window.location.pathname) ? <HomeWorkGuide en={en} onOverview={onOverview} /> : (
+      <aside
+        className="fixed bottom-3 right-3 top-auto z-[950] w-[calc(100vw-1.5rem)] max-w-[23rem] sm:bottom-auto sm:right-5 sm:top-[9.25rem] lg:right-8"
+        data-task-quest-panel=""
+        data-utility-panel-state={open ? "open" : "closed"}
+      >
+        {!open ? (
+          <button
+            aria-label={en ? "Public workflow guide" : "공개 업무 길잡이"}
+            className="ml-auto flex min-h-12 items-center gap-2 rounded-full border border-[#16408d] bg-white px-4 py-2 font-bold text-[#12356b] shadow-[0_10px_30px_rgba(15,43,87,.2)]"
+            onClick={() => setOpen(true)}
+            type="button"
+          >
+            <span className="material-symbols-outlined text-[21px]">
+              account_tree
+            </span>
+            {en ? "Workflow guide" : "업무 길잡이"}
+            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-black text-[#16408d]">
+              {en ? "Design" : "화면 설계"}
+            </span>
+          </button>
+        ) : (
+          <div className="max-h-[calc(100vh-8rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-[0_18px_55px_rgba(15,43,87,.22)]">
+            <div className="flex items-center justify-between bg-[#052b57] px-4 py-3 text-white">
+              <strong>
+                {en ? "Public workflow guide" : "공개 업무 길잡이"}
+              </strong>
+              <button
+                aria-label={en ? "Collapse" : "접기"}
+                className="rounded-lg px-2 py-1 hover:bg-white/15"
+                onClick={() => setOpen(false)}
+                type="button"
+              >
+                −
+              </button>
+            </div>
+            <div className="space-y-3 p-4" data-public-workflow-guidance="">
+              <section className="rounded-xl border border-blue-200 bg-blue-50 p-3">
+                <p className="text-xs font-bold text-blue-700">
+                  {workflow?.processCode || (en ? "WORKFLOW" : "업무 안내")}
+                </p>
+                <h3 className="mt-1 font-black text-blue-950">
+                  {workflow?.processName ||
+                    (certificateVerificationPage
+                      ? (en ? "Certificate authenticity verification" : "인증서 진위여부 확인")
+                      : (en ? "Workflow guide" : "업무 길잡이"))}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-blue-900">
+                  {workflow?.workPurpose ||
+                    (en
+                      ? "Review the current page and its linked work."
+                      : "현재 화면과 연결된 업무를 확인합니다.")}
+                </p>
+              </section>
+              <section className="rounded-xl border border-slate-200 p-3">
+                <h4 className="font-bold">
+                  {en ? "Steps and accounts" : "단계·사용 계정"}
+                </h4>
+                <ol className="mt-2 space-y-2 text-sm">
+                  {candidates.map((step, index) => (
+                    <li
+                      className="rounded-lg bg-slate-50 px-3 py-2"
+                      key={`${step.stepCode}-${index}`}
+                    >
+                      <strong>
+                        {step.stepOrder || index + 1}.{" "}
+                        {step.stepName || step.stepCode}
+                      </strong>
+                      <p className="mt-1 text-slate-600">
+                        {step.actorName ||
+                          ACTOR_LABELS[step.actorCode || ""] ||
+                          step.actorCode ||
+                          (en ? "Public account" : "일반 회원 계정")}
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+              <section className="rounded-xl border border-slate-200 p-3">
+                <h4 className="font-bold">
+                  {en ? "Input and output" : "입력·출력 계약"}
+                </h4>
+                <p className="mt-2 text-sm">
+                  <strong>{en ? "Input" : "입력"}:</strong>{" "}
+                  {workflow?.inputContract ||
+                    (en
+                      ? (certificateVerificationPage ? "Issued PDF or certificate page images" : "See the current screen input requirements")
+                      : (certificateVerificationPage ? "발급받은 PDF 또는 인증서 페이지 이미지" : "현재 화면의 입력 항목 확인"))}
+                </p>
+                <p className="mt-1 text-sm">
+                  <strong>{en ? "Output" : "출력"}:</strong>{" "}
+                  {workflow?.outputContract ||
+                    (en
+                      ? (certificateVerificationPage ? "Authenticity verdict and original/upload hash evidence" : "See the current screen result")
+                      : (certificateVerificationPage ? "진위 판정 및 발급 원본·업로드 해시 대조 근거" : "현재 화면의 처리 결과 확인"))}
+                </p>
+              </section>
+              <section
+                className="rounded-xl border border-emerald-200 bg-emerald-50 p-3"
+                data-process-qa-card=""
+              >
+                <h4 className="font-bold text-emerald-950">
+                  {en ? "QA verification" : "QA 검증"}
+                </h4>
+                <p className="mt-1 text-xs text-emerald-800">
+                  {en
+                    ? "Public guidance is read-only; execution evidence is verified by the isolated harness."
+                    : "공개 안내는 읽기 전용이며 실행 증거는 격리 하네스로 검증합니다."}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {qaScenarios.map((scenario) => (
+                    <span
+                      className="rounded-full bg-white px-2 py-1 text-xs font-bold text-emerald-800"
+                      key={scenario}
+                    >
+                      {scenario}
+                    </span>
+                  ))}
+                </div>
+              </section>
+              <section className="rounded-xl border border-slate-200 p-3">
+                <h4 className="font-bold">
+                  {en
+                    ? "Screen design and full workflow"
+                    : "화면 설계·전체 업무 보기"}
+                </h4>
+                <p className="mt-1 text-sm text-slate-600">
+                  {en
+                    ? "The screen contract links identity verification, password reset, completion, and login handoff without exposing private task data."
+                    : "현재 화면의 단계·사용 계정·입력·출력과 후속 업무 연결을 확인합니다."}
+                </p>
+                <button
+                  className="mt-3 min-h-10 rounded-lg bg-[#246beb] px-4 text-sm font-black text-white"
+                  onClick={onOverview}
+                  type="button"
+                >
+                  {en ? "View all work" : "전체 업무 보기"}
+                </button>
+              </section>
+            </div>
+          </div>
+        )}
+      </aside>
+      )}
+      <aside
+        className={`fixed z-[1260] ${qaOpen ? "right-3 top-1/2 -translate-y-1/2 sm:right-5 lg:right-8" : "bottom-20 left-3 sm:left-5"}`}
+        data-process-qa-card=""
+        data-utility-panel-state={qaOpen ? "open" : "closed"}
+      >
+        {!qaOpen ? (
+          <button
+            aria-label={en ? "QA workflow" : "QA 업무"}
+            className="flex min-h-12 items-center gap-2 rounded-full border border-emerald-700 bg-white px-4 py-2 font-bold text-emerald-800 shadow-lg"
+            onClick={() => setQaOpen(true)}
+            type="button"
+          >
+            <span className="material-symbols-outlined">fact_check</span>
+            {en ? "QA workflow" : "QA 업무"}
+          </button>
+        ) : (
+          <section className="w-[calc(100vw-1.5rem)] max-w-[30rem] overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-2xl">
+            <header className="flex items-center justify-between bg-emerald-800 px-4 py-3 text-white">
+              <strong>{en ? "QA verification" : "QA 검증"}</strong>
+              <button
+                aria-label={en ? "Close" : "닫기"}
+                onClick={() => setQaOpen(false)}
+                type="button"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </header>
+            <div className="p-4">
+              <p className="text-sm font-bold text-slate-700">
+                {en ? "Home workflow QA scenarios" : "홈 업무 연결 QA 시나리오"}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {qaScenarios.map((scenario) => (
+                  <span
+                    className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800"
+                    key={scenario}
+                  >
+                    {scenario}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+      </aside>
+
+    </>
+  );
+}
+
+export function TaskQuestPanel({
+  pageId = "",
+  routePath = `${window.location.pathname}${window.location.search}`,
+  screenContext = null,
+  onScreenContextSelection,
+}: TaskQuestPanelProps = {}) {
   const en = isEnglish();
+  const screenClassification =
+    screenContext?.classification ||
+    (screenContext?.workflow || screenContext?.candidates?.length
+      ? "EXECUTABLE"
+      : "REVIEW_REQUIRED");
+  const screenContextExecutable = screenClassification === "EXECUTABLE";
+  const sessionState = useFrontendSession();
+  const [taskGuideAuthenticated, setTaskGuideAuthenticated] = useState(
+    () => canLoadTaskQuestPrivateTasks(sessionState.value),
+  );
+  useEffect(() => {
+    let active = true;
+    fetch("/api/frontend/session", {
+      credentials: "include",
+      headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((session) => {
+        if (active) setTaskGuideAuthenticated(session?.authenticated === true);
+      })
+      .catch(() => {
+        if (active) setTaskGuideAuthenticated(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [sessionState.value?.authenticated]);
+  const canLoadPrivateTasks =
+    taskGuideAuthenticated || canLoadTaskQuestPrivateTasks(sessionState.value);
   const api = buildLocalizedPath(
-    "/home/api/emission-tasks",
-    "/en/home/api/emission-tasks",
+    "/home/api/emission-tasks?compact=false",
+    "/en/home/api/emission-tasks?compact=false",
   );
   const [data, setData] = useState<QuestResponse | null>(null);
+  const privateLoadSequence = useRef(0);
+  const guideRequested = useMemo(() => {
+    try {
+      const query = new URL(routePath, window.location.origin).searchParams;
+      return Boolean(
+        query.get("guide") === "1" ||
+        query.get("processCode") ||
+        query.get("process") ||
+        query.get("stepCode") ||
+        query.get("step"),
+      );
+    } catch {
+      const query = new URLSearchParams(window.location.search);
+      return Boolean(
+        query.get("guide") === "1" ||
+        query.get("processCode") ||
+        query.get("process") ||
+        query.get("stepCode") ||
+        query.get("step"),
+      );
+    }
+  }, [routePath]);
   const [open, setOpen] = useState(
-    () => localStorage.getItem("task-quest-open") === "1",
+    () =>
+      Boolean(
+        new URLSearchParams(window.location.search).get("guide") === "1" ||
+        new URLSearchParams(window.location.search).get("processCode") ||
+        new URLSearchParams(window.location.search).get("process") ||
+        new URLSearchParams(window.location.search).get("stepCode") ||
+        new URLSearchParams(window.location.search).get("step"),
+      ) ||
+      localStorage.getItem("task-quest-open") === "1",
   );
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [applicabilityReason, setApplicabilityReason] = useState("");
+  const [applicabilityEvidence, setApplicabilityEvidence] = useState("");
+  const [applicabilitySaving, setApplicabilitySaving] = useState(false);
   const [flowOpen, setFlowOpen] = useState(false);
-  const [qaOpen, setQaOpen] = useState(false);
+  const [qaOpen, setQaOpen] = useState(
+    () =>
+      localStorage.getItem("process-qa-card-open") === "1" &&
+      localStorage.getItem("task-quest-open") !== "1",
+  );
   const [qaBusy, setQaBusy] = useState(false);
   const [qaMessage, setQaMessage] = useState("");
   const [qaResults, setQaResults] = useState<QaResult[]>([]);
+  const [qaTenantId, setQaTenantId] = useState("");
+  const [qaPreFields, setQaPreFields] = useState<ContractField[]>([]);
+  const [qaPreValues, setQaPreValues] = useState<Record<string, string>>({});
+  const [qaScreenFields, setQaScreenFields] = useState<ContractField[]>([]);
+  const [qaScreenValues, setQaScreenValues] = useState<Record<string, string>>(
+    {},
+  );
+  const qaScreenDirtyRef = useRef(false);
+  const [qaDraftVersion, setQaDraftVersion] = useState(0);
+  const [qaActivity, setQaActivity] = useState<QaActivity[]>([]);
+  const [qaInputLoading, setQaInputLoading] = useState(false);
+  const [qaAccountId, setQaAccountId] = useState<string>(
+    QA_TEST_ACCOUNTS[0].id,
+  );
+  const [qaCompanyId, setQaCompanyId] = useState<string>(
+    QA_TEST_ACCOUNTS[0].companyId,
+  );
+  const [qaCycleType, setQaCycleType] = useState("ONCE");
+  const [qaPeriodStart, setQaPeriodStart] = useState("");
+  const [qaPeriodEnd, setQaPeriodEnd] = useState("");
+  const [processKeyword, setProcessKeyword] = useState("");
+  const [processMapZoom, setProcessMapZoom] = useState(100);
+  const [processMapMode] = useState<"FLOW" | "ACTOR" | "CANVAS">("FLOW");
+  const processCanvasRef = useRef<HTMLDivElement | null>(null);
+  const emissionIndexGuideInitializedRef = useRef(false);
+  const synchronizedScreenRouteRef = useRef("");
+  const userSelectedCatalogProcessRef = useRef(false);
+  const userSelectedCatalogStepRef = useRef(false);
+  const [processViewport, setProcessViewport] = useState({
+    left: 0,
+    width: 100,
+  });
   const [selectedWorkType, setSelectedWorkType] = useState(
     () => localStorage.getItem("task-quest-work-type") || "ALL",
   );
   const [selectedCatalogProcessCode, setSelectedCatalogProcessCode] = useState(
     () => localStorage.getItem("task-quest-catalog-process") || "",
   );
-  const [selectedCatalogStep, setSelectedCatalogStep] = useState(
-    () => Number(localStorage.getItem("task-quest-catalog-step") || 0),
+  const [selectedCatalogStep, setSelectedCatalogStep] = useState(() =>
+    Number(localStorage.getItem("task-quest-catalog-step") || 0),
   );
+  const [previewProcessCode, setPreviewProcessCode] = useState("");
   const [selectedOverviewProjectId, setSelectedOverviewProjectId] = useState(
     () => localStorage.getItem("task-quest-overview-project") || "",
   );
@@ -390,57 +1486,163 @@ export function TaskQuestPanel() {
       return null;
     }
   });
+  const [focusedStepCode, setFocusedStepCode] = useState(
+    () => localStorage.getItem("task-quest-focused-step") || "",
+  );
+  const [assignmentWorkspace, setAssignmentWorkspace] =
+    useState<AssignmentWorkspace | null>(null);
+  const [stepAssignees, setStepAssignees] = useState<Record<string, string>>(
+    {},
+  );
+  const [assignmentBusy, setAssignmentBusy] = useState(false);
+  const [assignmentMessage, setAssignmentMessage] = useState("");
+
+  useEffect(() => {
+    if (!guideRequested) return;
+    setOpen(true);
+    setQaOpen(false);
+    localStorage.setItem("task-quest-open", "1");
+    localStorage.setItem("process-qa-card-open", "0");
+  }, [guideRequested, routePath]);
+
+  useEffect(() => {
+    if (!canLoadPrivateTasks) return;
+    setOpen(true);
+    setQaOpen(false);
+    localStorage.setItem("task-quest-open", "1");
+    localStorage.setItem("process-qa-card-open", "0");
+  }, [canLoadPrivateTasks]);
 
   async function load() {
+    const sequence = beginTaskQuestPrivateLoad(privateLoadSequence);
+    if (!canLoadPrivateTasks) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
     try {
       const response = await fetch(api, { credentials: "include" });
-      if (response.status === 401 || response.status === 403) return;
+      if (response.status === 401 || response.status === 403) {
+        if (isCurrentTaskQuestPrivateLoad(privateLoadSequence, sequence))
+          setData(null);
+        return;
+      }
       const body = await response.json();
       if (!response.ok)
         throw new Error(
           body.message ||
             (en ? "Unable to load tasks." : "업무를 불러오지 못했습니다."),
         );
+      if (!isCurrentTaskQuestPrivateLoad(privateLoadSequence, sequence)) return;
       setData(body);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : String(error));
+      if (isCurrentTaskQuestPrivateLoad(privateLoadSequence, sequence))
+        setMessage(error instanceof Error ? error.message : String(error));
     } finally {
-      setLoading(false);
+      if (isCurrentTaskQuestPrivateLoad(privateLoadSequence, sequence))
+        setLoading(false);
     }
   }
 
   useEffect(() => {
+    if (!canLoadPrivateTasks) {
+      invalidateTaskQuestPrivateLoad(privateLoadSequence);
+      setData(null);
+      setLoading(false);
+      return;
+    }
     void load();
     const timer = window.setInterval(() => void load(), 60_000);
-    return () => window.clearInterval(timer);
-  }, [api]);
+    return () => {
+      window.clearInterval(timer);
+      invalidateTaskQuestPrivateLoad(privateLoadSequence);
+    };
+  }, [api, canLoadPrivateTasks]);
+
+
+  const qaCompanies = useMemo(
+    () => [
+      ...new Map(
+        QA_TEST_ACCOUNTS.map((account) => [
+          account.companyId,
+          { id: account.companyId, name: account.companyName },
+        ]),
+      ).values(),
+    ],
+    [],
+  );
+  const qaCompanyAccounts = useMemo(
+    () =>
+      QA_TEST_ACCOUNTS.filter((account) => account.companyId === qaCompanyId),
+    [qaCompanyId],
+  );
+  useEffect(() => {
+    const current = QA_TEST_ACCOUNTS.find(
+      (account) =>
+        account.id.toLowerCase() === String(data?.actorId || "").toLowerCase(),
+    );
+    if (current) {
+      setQaCompanyId(current.companyId);
+      setQaAccountId(current.id);
+    }
+  }, [data?.actorId]);
+  useEffect(() => {
+    if (
+      !qaCompanyAccounts.some((account) => account.id === qaAccountId) &&
+      qaCompanyAccounts[0]
+    )
+      setQaAccountId(qaCompanyAccounts[0].id);
+  }, [qaAccountId, qaCompanyAccounts]);
 
   useEffect(() => {
     const synchronizeGuide = (event: Event) => {
       const detail = (event as CustomEvent<TaskGuideFocusDetail>).detail;
       if (!detail?.processCode) return;
+      const normalizedProcessCode = EMISSION_INTERNAL_PROCESS_CODES.has(
+        detail.processCode,
+      )
+        ? EMISSION_END_TO_END_PROCESS_CODE
+        : detail.processCode;
+      const normalizedStepCode =
+        normalizedProcessCode === EMISSION_END_TO_END_PROCESS_CODE
+          ? parentEmissionStepCode(detail.processCode) || detail.stepCode || ""
+          : detail.stepCode || "";
       const processSteps = (data?.processCatalogSteps || [])
-        .filter((step) => step.processCode === detail.processCode)
+        .filter((step) => step.processCode === normalizedProcessCode)
         .sort((a, b) => Number(a.stepOrder) - Number(b.stepOrder));
       const stepIndex = Math.max(
         0,
-        detail.stepCode
-          ? processSteps.findIndex((step) => step.stepCode === detail.stepCode)
+        normalizedStepCode
+          ? processSteps.findIndex(
+              (step) => step.stepCode === normalizedStepCode,
+            )
           : 0,
       );
-      setSelectedCatalogProcessCode(detail.processCode);
+      setSelectedCatalogProcessCode(normalizedProcessCode);
       setSelectedCatalogStep(stepIndex);
-      localStorage.setItem("task-quest-catalog-process", detail.processCode);
+      setFocusedStepCode(normalizedStepCode);
+      localStorage.setItem("task-quest-catalog-process", normalizedProcessCode);
       localStorage.setItem("task-quest-catalog-step", String(stepIndex));
+      if (normalizedStepCode)
+        localStorage.setItem("task-quest-focused-step", normalizedStepCode);
+      else localStorage.removeItem("task-quest-focused-step");
       if (detail.projectId) {
         const focus = {
           projectId: detail.projectId,
-          processCode: detail.processCode,
+          processCode: normalizedProcessCode,
         };
         setSelectedOverviewProjectId(detail.projectId);
         setFocusedWorkflow(focus);
         localStorage.setItem("task-quest-overview-project", detail.projectId);
-        localStorage.setItem("task-quest-focused-workflow", JSON.stringify(focus));
+        localStorage.setItem(
+          "task-quest-focused-workflow",
+          JSON.stringify(focus),
+        );
+      } else if (normalizedProcessCode === "EMISSION_PROJECT_PORTFOLIO") {
+        setSelectedOverviewProjectId("");
+        setFocusedWorkflow(null);
+        localStorage.removeItem("task-quest-overview-project");
+        localStorage.removeItem("task-quest-focused-workflow");
       }
       setOpen(true);
       localStorage.setItem("task-quest-open", "1");
@@ -448,8 +1650,75 @@ export function TaskQuestPanel() {
     };
     window.addEventListener("resonance:task-guide-focus", synchronizeGuide);
     return () =>
-      window.removeEventListener("resonance:task-guide-focus", synchronizeGuide);
+      window.removeEventListener(
+        "resonance:task-guide-focus",
+        synchronizeGuide,
+      );
   }, [data?.processCatalogSteps]);
+
+  useEffect(() => {
+    const pathname = window.location.pathname.replace(/\/$/, "") || "/";
+    if (pathname !== "/emission/index" && pathname !== "/en/emission/index")
+      return;
+    if (
+      emissionIndexGuideInitializedRef.current ||
+      !data?.processCatalogSteps?.length
+    )
+      return;
+    emissionIndexGuideInitializedRef.current = true;
+    const query = new URLSearchParams(window.location.search);
+    const requestedProcessCode =
+      query.get("processCode") || query.get("process") || "";
+    const persistedProcessCode =
+      localStorage.getItem("task-quest-catalog-process") || "";
+    const availableProcessCodes = new Set(
+      (data.processCatalog || []).map((process) => process.processCode),
+    );
+    if (
+      (requestedProcessCode &&
+        availableProcessCodes.has(requestedProcessCode)) ||
+      (persistedProcessCode && availableProcessCodes.has(persistedProcessCode))
+    ) {
+      return;
+    }
+    const processCode = "EMISSION_PROJECT_PORTFOLIO";
+    const stepCode = "EMISSION_PROJECT_PORTFOLIO_LIST";
+    const processSteps = (data?.processCatalogSteps || [])
+      .filter((step) => step.processCode === processCode)
+      .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
+    const stepIndex = Math.max(
+      0,
+      processSteps.findIndex((step) => step.stepCode === stepCode),
+    );
+    setSelectedCatalogProcessCode(processCode);
+    setSelectedCatalogStep(stepIndex);
+    setFocusedStepCode(stepCode);
+    setSelectedWorkType("EMISSION");
+    setSelectedOverviewProjectId("");
+    setFocusedWorkflow(null);
+    setOpen(true);
+    localStorage.setItem("task-quest-catalog-process", processCode);
+    localStorage.setItem("task-quest-catalog-step", String(stepIndex));
+    localStorage.setItem("task-quest-focused-step", stepCode);
+    localStorage.setItem("task-quest-work-type", "EMISSION");
+    localStorage.setItem("task-quest-open", "1");
+    localStorage.removeItem("task-quest-overview-project");
+    localStorage.removeItem("task-quest-focused-workflow");
+  }, [data?.processCatalog, data?.processCatalogSteps]);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("assignment") !== "1")
+      return;
+    setSelectedWorkType("EMISSION");
+    setSelectedCatalogProcessCode("WORK_ASSIGNMENT");
+    setSelectedCatalogStep(0);
+    setOpen(true);
+    setFlowOpen(true);
+    localStorage.setItem("task-quest-work-type", "EMISSION");
+    localStorage.setItem("task-quest-catalog-process", "WORK_ASSIGNMENT");
+    localStorage.setItem("task-quest-catalog-step", "0");
+    localStorage.setItem("task-quest-open", "1");
+  }, []);
 
   useEffect(() => {
     if (!flowOpen) return;
@@ -493,13 +1762,18 @@ export function TaskQuestPanel() {
   }, [rawWorkflowItems]);
 
   const effectiveProjectId =
-    contextProjectId || selectedOverviewProjectId || focusedWorkflow?.projectId || "";
+    contextProjectId ||
+    selectedOverviewProjectId ||
+    focusedWorkflow?.projectId ||
+    "";
 
   useEffect(() => {
     if (contextProjectId || !overviewProjects.length) return;
     if (
       selectedOverviewProjectId &&
-      overviewProjects.some((project) => project.id === selectedOverviewProjectId)
+      overviewProjects.some(
+        (project) => project.id === selectedOverviewProjectId,
+      )
     )
       return;
     const pendingProject = rawWorkflowItems.find(
@@ -508,9 +1782,67 @@ export function TaskQuestPanel() {
     const next = pendingProject || overviewProjects[0].id;
     setSelectedOverviewProjectId(next);
     localStorage.setItem("task-quest-overview-project", next);
-  }, [contextProjectId, overviewProjects, rawWorkflowItems, selectedOverviewProjectId]);
+  }, [
+    contextProjectId,
+    overviewProjects,
+    rawWorkflowItems,
+    selectedOverviewProjectId,
+  ]);
 
   const task = useMemo(() => {
+    const liveRoute =
+      typeof window === "undefined" ? undefined : new URL(window.location.href);
+    const routeProcessCode =
+      liveRoute?.searchParams.get("processCode") ||
+      liveRoute?.searchParams.get("process") ||
+      "";
+    const routeStepCode =
+      liveRoute?.searchParams.get("stepCode") ||
+      liveRoute?.searchParams.get("step") ||
+      "";
+    // A process/step deep link describes the screen currently being viewed.
+    // Prefer that explicit coordinate over an unrelated pending task retained
+    // from a previous page, while leaving ordinary dashboard task selection intact.
+    if (routeProcessCode || selectedCatalogProcessCode === "EMISSION_PROJECT_PORTFOLIO") {
+      const pinnedProcessCode = routeProcessCode || selectedCatalogProcessCode;
+      const catalogProcess = (data?.processCatalog || []).find(
+        (item) => item.processCode === pinnedProcessCode,
+      );
+      const catalogSteps = (data?.processCatalogSteps || [])
+        .filter((item) => item.processCode === pinnedProcessCode)
+        .sort(
+          (left, right) => Number(left.stepOrder) - Number(right.stepOrder),
+        );
+      const catalogStep =
+        catalogSteps.find((item) => item.stepCode === routeStepCode) ||
+        catalogSteps.find((item) => item.stepCode === focusedStepCode) ||
+        catalogSteps[0];
+      if (catalogProcess && catalogStep) {
+        return {
+          id: -1,
+          projectId: "",
+          projectName: catalogProcess.processName,
+          name: catalogStep.stepName,
+          status: "IN_PROGRESS",
+          priority: "NORMAL",
+          dueDate: "",
+          targetUrl:
+            catalogStep.userPath ||
+            (catalogProcess.processCode === "EMISSION_PROJECT_PORTFOLIO"
+              ? "/emission/project-portfolio"
+              : "/emission/index"),
+          actorCode: catalogStep.actorCode || catalogProcess.ownerActorCode,
+          processCode: catalogProcess.processCode,
+          processName: catalogProcess.processName,
+          domainCode: catalogProcess.domainCode,
+          processStepCode: catalogStep.stepCode,
+          stepOrder: catalogStep.stepOrder,
+          completionRule: catalogStep.completionRule,
+          workPurpose: catalogStep.workPurpose || catalogProcess.goal,
+          actionable: true,
+        } satisfies QuestTask;
+      }
+    }
     const pending = [...(data?.items || [])].filter(
       (item) => item.status !== "DONE",
     );
@@ -524,14 +1856,36 @@ export function TaskQuestPanel() {
     const contextual = effectiveProjectId
       ? pending.filter((item) => item.projectId === effectiveProjectId)
       : [];
-    return [
-      ...(focused.length ? focused : contextual.length ? contextual : pending),
-    ].sort((a, b) => {
+    const exactStep = focusedStepCode
+      ? (data?.items || []).find(
+          (item) =>
+            item.projectId === effectiveProjectId &&
+            (!focusedWorkflow?.processCode ||
+              item.processCode === focusedWorkflow.processCode) &&
+            item.processStepCode === focusedStepCode,
+        )
+      : undefined;
+    if (exactStep) return exactStep;
+    // A route-bound project is a hard scope. Never fall back to another
+    // project's pending task when the current account has no task in scope.
+    const candidates = focused.length
+      ? focused
+      : effectiveProjectId
+        ? contextual
+        : pending;
+    return [...candidates].sort((a, b) => {
       const aw = taskWeight(a),
         bw = taskWeight(b);
       return aw[0] - bw[0] || aw[1] - bw[1];
     })[0];
-  }, [data, effectiveProjectId, focusedWorkflow]);
+  }, [
+    data,
+    effectiveProjectId,
+    en,
+    focusedStepCode,
+    focusedWorkflow,
+    selectedCatalogProcessCode,
+  ]);
 
   const workflowItems = useMemo(() => {
     const scoped = effectiveProjectId
@@ -549,9 +1903,15 @@ export function TaskQuestPanel() {
 
   const availableWorkTypes = useMemo(() => {
     const counts = new Map<string, number>();
+    const visibleCatalogCounts = new Map<string, number>();
     workflowItems.forEach((item) => {
       const code = String(item.domainCode || "EMISSION").toUpperCase();
       counts.set(code, (counts.get(code) || 0) + 1);
+    });
+    (data?.processCatalog || []).forEach((process) => {
+      if (!isSelectableProcess(process.processCode)) return;
+      const code = String(process.domainCode || "EMISSION").toUpperCase();
+      visibleCatalogCounts.set(code, (visibleCatalogCounts.get(code) || 0) + 1);
     });
     const definitions = new Map(
       (data?.workTypes || []).map((item) => [
@@ -586,7 +1946,9 @@ export function TaskQuestPanel() {
         return {
           code,
           count: counts.get(code) || 0,
-          definedCount: Number(item.definedProcessCount || 0),
+          definedCount:
+            visibleCatalogCounts.get(code) ??
+            Number(item.definedProcessCount || 0),
           verifiedCount: Number(quality?.verifiedProcessCount || 0),
           blockedCount: Number(quality?.blockedProcessCount || 0),
           pendingCount: Number(quality?.pendingProcessCount || 0),
@@ -597,7 +1959,13 @@ export function TaskQuestPanel() {
           description: item.description || "",
         };
       });
-  }, [data?.workTypeAssurance, data?.workTypes, en, workflowItems]);
+  }, [
+    data?.processCatalog,
+    data?.workTypeAssurance,
+    data?.workTypes,
+    en,
+    workflowItems,
+  ]);
   const definedProcessTotal = useMemo(
     () => availableWorkTypes.reduce((sum, item) => sum + item.definedCount, 0),
     [availableWorkTypes],
@@ -629,8 +1997,15 @@ export function TaskQuestPanel() {
       (data?.processCatalog || [])
         .filter(
           (item) =>
-            selectedWorkType === "ALL" ||
-            String(item.domainCode).toUpperCase() === selectedWorkType,
+            (selectedWorkType === "ALL" ||
+              String(item.domainCode).toUpperCase() === selectedWorkType) &&
+            isSelectableProcess(item.processCode),
+        )
+        .sort(
+          (left, right) =>
+            Number(left.workflowOrder || Number.MAX_SAFE_INTEGER) -
+              Number(right.workflowOrder || Number.MAX_SAFE_INTEGER) ||
+            left.processCode.localeCompare(right.processCode),
         )
         .map((item) => {
           const runtimeTasks = workflowItems.filter(
@@ -672,11 +2047,11 @@ export function TaskQuestPanel() {
                     ? "IMPLEMENTATION_PENDING"
                     : !item.businessScreenImplemented
                       ? "PAGE_NOT_IMPLEMENTED"
-                    : selectedProjectId && !applicability
-                      ? "NOT_APPLICABLE"
-                      : item.targetUrl
-                        ? "TASK_NOT_CREATED"
-                        : "PAGE_NOT_IMPLEMENTED";
+                      : selectedProjectId && !applicability
+                        ? "NOT_APPLICABLE"
+                        : item.targetUrl
+                          ? "TASK_NOT_CREATED"
+                          : "PAGE_NOT_IMPLEMENTED";
           const reason =
             applicability?.reasonText || assurance?.nextAction || "";
           return {
@@ -733,7 +2108,135 @@ export function TaskQuestPanel() {
       ),
     [selectedDefinedProcesses, selectedCatalogProcessCode],
   );
+  const emissionEndToEndSteps = useMemo(() => {
+    if (selectedCatalogProcessCode !== EMISSION_END_TO_END_PROCESS_CODE)
+      return [];
+    return (data?.processCatalogSteps || [])
+      .filter((step) => step.processCode === EMISSION_END_TO_END_PROCESS_CODE)
+      .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
+  }, [data?.processCatalogSteps, selectedCatalogProcessCode]);
   const selectedProcessWaves = useMemo(() => {
+    if (
+      selectedCatalogProcess &&
+      selectedCatalogProcess.processCode !== "WORK_ASSIGNMENT"
+    ) {
+      const overviewSteps = (data?.processOverviewStages || [])
+        .filter(
+          (step) => step.processCode === selectedCatalogProcess.processCode,
+        )
+        .sort(
+          (left, right) => Number(left.stepOrder) - Number(right.stepOrder),
+        );
+      const screenFlowSteps = (data?.processScreenFlow || [])
+        .filter(
+          (step) => step.processCode === selectedCatalogProcess.processCode,
+        )
+        .sort(
+          (left, right) => Number(left.stepOrder) - Number(right.stepOrder),
+        );
+      const selectedProcessSteps = overviewSteps.length
+        ? overviewSteps
+        : screenFlowSteps.length
+          ? screenFlowSteps
+          : selectedCatalogProcess.processCode ===
+              EMISSION_END_TO_END_PROCESS_CODE
+            ? emissionEndToEndSteps
+            : (data?.processCatalogSteps || [])
+                .filter(
+                  (step) =>
+                    step.processCode === selectedCatalogProcess.processCode,
+                )
+                .sort(
+                  (left, right) =>
+                    Number(left.stepOrder) - Number(right.stepOrder),
+                );
+      if (selectedProcessSteps.length) {
+        const screenSteps = [
+          ...selectedProcessSteps
+            .reduce((screens, step) => {
+              const screenPath =
+                step.userPath || step.adminPath || step.stepCode;
+              const identity = selectedCatalogProcess.domainCode === "MEMBER"
+                ? `${step.processCode || selectedCatalogProcess.processCode}:${step.stepCode || step.stepOrder}`
+                : screenPath;
+              if (!screens.has(identity)) screens.set(identity, step);
+              return screens;
+            }, new Map<string, (typeof selectedProcessSteps)[number]>())
+            .values(),
+        ];
+        const mappedScreenSteps = screenSteps.map((step, index) => ({
+          wave: index + 1,
+          processes: [selectedCatalogProcess],
+          stepCode: step.stepCode,
+          stepName:
+            selectedCatalogProcess.processCode ===
+            EMISSION_END_TO_END_PROCESS_CODE
+              ? `${emissionPhaseLabel(step.stepCode, en)} · ${step.stepName}`
+              : step.stepName,
+          screenPath: step.userPath || step.adminPath || "",
+          screenDescription: step.workPurpose || "",
+          isOptionalBranch: [
+            "MEMBER_REGISTRATION_COMPANY_REGISTER",
+            "COMPANY_JOIN_STATUS_GUIDE",
+          ].includes(step.stepCode),
+          branchRejoins: step.stepCode !== "COMPANY_JOIN_STATUS_GUIDE",
+        }));
+        if (selectedCatalogProcess.processCode === "ACCOUNT_WITHDRAWAL") {
+          const base = en ? "/en" : "";
+          return [
+            {
+              wave: 1,
+              processes: [selectedCatalogProcess],
+              stepCode: "ACCOUNT_WITHDRAWAL_S1",
+              stepName: en ? "Submit withdrawal request" : "회원 탈퇴 신청",
+              screenPath: `${base}/planned/member/account-withdrawal/account-withdrawal-s1`,
+              screenDescription: en
+                ? "Review the impact and retention notice, back up data, and submit the request."
+                : "탈퇴 영향과 보유정보 안내를 확인하고 자료를 백업한 뒤 신청합니다.",
+              isOptionalBranch: false,
+              branchRejoins: true,
+            },
+            {
+              wave: 2,
+              processes: [selectedCatalogProcess],
+              stepCode: "ACCOUNT_WITHDRAWAL_S2",
+              stepName: en ? "Withdrawal request status" : "탈퇴 신청 대기·현황 확인",
+              screenPath: `${base}/planned/member/account-withdrawal/account-withdrawal-s2`,
+              screenDescription: en
+                ? "The applicant checks whether the request is pending, under review, approved, or rejected."
+                : "신청자가 대기·검토·승인·반려 상태와 처리 이력을 확인합니다.",
+              isOptionalBranch: false,
+              branchRejoins: true,
+            },
+            {
+              wave: 3,
+              processes: [selectedCatalogProcess],
+              stepCode: "ACCOUNT_WITHDRAWAL_S3",
+              stepName: en ? "Administrator review and decision" : "관리자 탈퇴 검토·처리",
+              screenPath: `${base}/admin/planned/member/account-withdrawal/account-withdrawal-s3`,
+              screenDescription: en
+                ? "Authorized officers review, approve, reject, and complete withdrawal requests."
+                : "권한을 가진 관리자가 신청을 검토하고 승인·반려·탈퇴 완료 처리합니다.",
+              isOptionalBranch: false,
+              branchRejoins: true,
+            },
+            {
+              wave: 4,
+              processes: [selectedCatalogProcess],
+              stepCode: "ACCOUNT_WITHDRAWAL_S4",
+              stepName: en ? "Withdrawal result" : "탈퇴 완료·결과 확인",
+              screenPath: `${base}/planned/member/account-withdrawal/account-withdrawal-s4`,
+              screenDescription: en
+                ? "The applicant checks the final result and statutory retention schedule."
+                : "신청자가 최종 처리 결과와 법정 보존·파기 예정 정보를 확인합니다.",
+              isOptionalBranch: false,
+              branchRejoins: true,
+            },
+          ];
+        }
+        return mappedScreenSteps;
+      }
+    }
     const waves = new Map<number, typeof selectedDefinedProcesses>();
     selectedDefinedProcesses.forEach((process) => {
       const wave = Number(process.executionWave || process.workflowOrder || 1);
@@ -746,10 +2249,158 @@ export function TaskQuestPanel() {
       .map(([wave, processes]) => ({
         wave,
         processes: processes.sort(
-          (left, right) => Number(left.laneOrder || 1) - Number(right.laneOrder || 1),
+          (left, right) =>
+            Number(left.laneOrder || 1) - Number(right.laneOrder || 1),
         ),
+        stepCode: "",
+        stepName: "",
+        screenPath: "",
+        screenDescription: "",
+        isOptionalBranch: false,
+        branchRejoins: false,
       }));
-  }, [selectedDefinedProcesses]);
+  }, [
+    data?.processCatalogSteps,
+    data?.processOverviewStages,
+    data?.processScreenFlow,
+    emissionEndToEndSteps,
+    en,
+    selectedCatalogProcess,
+    selectedDefinedProcesses,
+  ]);
+  const visibleProcessWaves = useMemo(() => {
+    const keyword = processKeyword.trim().toLocaleLowerCase();
+    if (!keyword) return selectedProcessWaves;
+    return selectedProcessWaves
+      .map((wave) => ({
+        ...wave,
+        processes: wave.processes.filter((process) =>
+          [
+            process.processName,
+            process.processCode,
+            process.workflowPhase,
+            process.laneCode,
+            wave.stepName,
+            wave.screenPath,
+            wave.screenDescription,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLocaleLowerCase()
+            .includes(keyword),
+        ),
+      }))
+      .filter((wave) => wave.processes.length > 0);
+  }, [processKeyword, selectedProcessWaves]);
+  const visibleActorLanes = useMemo(() => {
+    const accountActors = new Set(data?.accountActors || []);
+    const actorVisible = (actorCode?: string) =>
+      Boolean(
+        data?.allVisible ||
+        (actorCode && accountActors.has(actorCode)) ||
+        (data?.assignmentManager && actorCode === "WORK_ASSIGNMENT_MANAGER"),
+      );
+    const laneMap = new Map<
+      string,
+      Array<{
+        wave: number;
+        process: (typeof selectedDefinedProcesses)[number];
+        step?: NonNullable<QuestResponse["processCatalogSteps"]>[number];
+        stepIndex: number;
+      }>
+    >();
+    visibleProcessWaves.forEach((wave) => {
+      wave.processes.forEach((process) => {
+        if (process.processCode === "WORK_ASSIGNMENT") {
+          const actorCode = process.ownerActorCode || "WORK_ASSIGNMENT_MANAGER";
+          if (!actorVisible(actorCode)) return;
+          const lane = laneMap.get(actorCode) || [];
+          lane.push({
+            wave: wave.wave,
+            process,
+            stepIndex: Math.max(0, wave.wave - 1),
+          });
+          laneMap.set(actorCode, lane);
+          return;
+        }
+        const processSteps = (data?.processCatalogSteps || [])
+          .filter((step) =>
+            wave.stepCode
+              ? step.stepCode === wave.stepCode
+              : step.processCode === process.processCode,
+          )
+          .filter((step) => !wave.stepCode || step.stepCode === wave.stepCode)
+          .sort(
+            (left, right) => Number(left.stepOrder) - Number(right.stepOrder),
+          );
+        if (processSteps.length) {
+          processSteps.forEach((step) => {
+            const actorCode =
+              step.actorCode || process.ownerActorCode || "UNASSIGNED";
+            const lane = laneMap.get(actorCode) || [];
+            lane.push({
+              wave: wave.wave,
+              process,
+              step,
+              stepIndex: Math.max(0, wave.wave - 1),
+            });
+            laneMap.set(actorCode, lane);
+          });
+          return;
+        }
+        const actorCode = process.ownerActorCode || "UNASSIGNED";
+        const lane = laneMap.get(actorCode) || [];
+        lane.push({
+          wave: wave.wave,
+          process,
+          stepIndex: Math.max(0, wave.wave - 1),
+        });
+        laneMap.set(actorCode, lane);
+      });
+    });
+    return [...laneMap.entries()].map(([actorCode, processes]) => ({
+      actorCode,
+      processes: processes.sort(
+        (left, right) =>
+          left.wave - right.wave ||
+          Number(left.process.laneOrder || 1) -
+            Number(right.process.laneOrder || 1),
+      ),
+    }));
+  }, [
+    data?.accountActors,
+    data?.allVisible,
+    data?.processCatalogSteps,
+    visibleProcessWaves,
+  ]);
+  function synchronizeProcessViewport() {
+    const canvas = processCanvasRef.current;
+    if (!canvas) return;
+    const total = Math.max(canvas.scrollWidth, 1);
+    const width = Math.min(
+      100,
+      Math.max(6, (canvas.clientWidth / total) * 100),
+    );
+    setProcessViewport({
+      left: Math.min(100 - width, (canvas.scrollLeft / total) * 100),
+      width,
+    });
+  }
+  function fitProcessCanvas() {
+    setProcessMapZoom(80);
+    const canvas = processCanvasRef.current;
+    if (canvas) canvas.scrollTo({ left: 0, top: 0, behavior: "smooth" });
+    window.requestAnimationFrame(synchronizeProcessViewport);
+  }
+  useEffect(() => {
+    if (!flowOpen || processMapMode !== "CANVAS") return;
+    const frame = window.requestAnimationFrame(synchronizeProcessViewport);
+    window.addEventListener("resize", synchronizeProcessViewport);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", synchronizeProcessViewport);
+    };
+  }, [flowOpen, processMapMode, processMapZoom, visibleProcessWaves.length]);
   const selectedUnifiedProcess = useMemo(
     () =>
       selectedDefinedProcesses.find(
@@ -759,10 +2410,446 @@ export function TaskQuestPanel() {
   );
   const selectedCatalogSteps = useMemo(
     () =>
-      (data?.processCatalogSteps || [])
-        .filter((item) => item.processCode === selectedCatalogProcessCode)
-        .sort((a, b) => Number(a.stepOrder) - Number(b.stepOrder)),
-    [data?.processCatalogSteps, selectedCatalogProcessCode],
+      selectedCatalogProcessCode === EMISSION_END_TO_END_PROCESS_CODE
+        ? emissionEndToEndSteps
+        : (data?.processCatalogSteps || [])
+            .filter((item) => item.processCode === selectedCatalogProcessCode)
+            .sort((a, b) => Number(a.stepOrder) - Number(b.stepOrder)),
+    [
+      data?.processCatalogSteps,
+      emissionEndToEndSteps,
+      selectedCatalogProcessCode,
+    ],
+  );
+  const selectedEmissionPhase =
+    selectedCatalogProcessCode === EMISSION_END_TO_END_PROCESS_CODE
+      ? emissionPhaseLabel(
+          selectedCatalogSteps[selectedCatalogStep]?.stepCode || "",
+          en,
+        )
+      : "";
+  const stepGuidanceContracts = useMemo(
+    () =>
+      new Map(
+        (data?.stepApplicabilityContracts || []).map((contract) => [
+          `${contract.processCode}|${contract.stepCode}`,
+          contract,
+        ]),
+      ),
+    [data?.stepApplicabilityContracts],
+  );
+  function stepGuidanceContract(
+    step: NonNullable<QuestResponse["processCatalogSteps"]>[number],
+  ) {
+    return stepGuidanceContracts.get(`${step.processCode}|${step.stepCode}`);
+  }
+  const stepApplicabilityDecisions = useMemo(
+    () =>
+      new Map(
+        (data?.stepApplicabilityDecisions || []).map((decision) => [
+          `${decision.projectId}|${decision.processCode}|${decision.stepCode}`,
+          decision,
+        ]),
+      ),
+    [data?.stepApplicabilityDecisions],
+  );
+  function stepApplicabilityDecision(
+    step?: NonNullable<QuestResponse["processCatalogSteps"]>[number],
+  ) {
+    if (!step) return undefined;
+    return stepApplicabilityDecisions.get(
+      `${effectiveProjectId}|${step.processCode}|${step.stepCode}`,
+    );
+  }
+  useEffect(() => {
+    const step = selectedCatalogSteps[selectedCatalogStep];
+    const decision = step ? stepApplicabilityDecision(step) : undefined;
+    setApplicabilityReason(decision?.reasonText || "");
+    setApplicabilityEvidence(
+      Array.isArray(decision?.evidenceRefs)
+        ? decision.evidenceRefs.join(", ")
+        : "",
+    );
+  }, [
+    effectiveProjectId,
+    selectedCatalogStep,
+    selectedCatalogSteps,
+    stepApplicabilityDecisions,
+  ]);
+  useEffect(() => {
+    userSelectedCatalogProcessRef.current = false;
+    userSelectedCatalogStepRef.current = false;
+  }, [routePath]);
+  useEffect(() => {
+    if (userSelectedCatalogStepRef.current) return;
+    const routeUrl = new URL(
+      window.location.href || routePath,
+      window.location.origin,
+    );
+    const query = routeUrl.searchParams;
+    const routeMatches = (data?.processCatalogSteps || []).filter((step) => {
+      const paths = [step.userPath, step.adminPath]
+        .filter(Boolean)
+        .map((path) => normalizeScreenRoute(String(path)));
+      return paths.includes(normalizeScreenRoute(routeUrl.pathname));
+    });
+    const routeProcessCode =
+      query.get("processCode") ||
+      query.get("process") ||
+      screenContext?.workflow?.processCode ||
+      (routeMatches.length === 1 ? routeMatches[0].processCode : "");
+    if (userSelectedCatalogProcessRef.current) return;
+    if (
+      !routeProcessCode ||
+      !(data?.processCatalog || []).some(
+        (process) => process.processCode === routeProcessCode,
+      )
+    ) {
+      if (screenContext && synchronizedScreenRouteRef.current !== routePath) {
+        synchronizedScreenRouteRef.current = routePath;
+        setSelectedCatalogProcessCode("");
+        setSelectedCatalogStep(0);
+        localStorage.removeItem("task-quest-catalog-process");
+        localStorage.setItem("task-quest-catalog-step", "0");
+      }
+      return;
+    }
+    synchronizedScreenRouteRef.current = routePath;
+    const routeProcess = (data?.processCatalog || []).find(
+      (process) => process.processCode === routeProcessCode,
+    );
+    const normalizedRouteProcessCode = EMISSION_INTERNAL_PROCESS_CODES.has(
+      routeProcessCode,
+    )
+      ? EMISSION_END_TO_END_PROCESS_CODE
+      : routeProcessCode;
+    const normalizedRouteProcess =
+      (data?.processCatalog || []).find(
+        (process) => process.processCode === normalizedRouteProcessCode,
+      ) || routeProcess;
+    if (
+      normalizedRouteProcess?.domainCode &&
+      normalizedRouteProcess.domainCode !== selectedWorkType
+    ) {
+      setSelectedWorkType(normalizedRouteProcess.domainCode);
+      localStorage.setItem(
+        "task-quest-work-type",
+        normalizedRouteProcess.domainCode,
+      );
+    }
+    if (normalizedRouteProcessCode !== selectedCatalogProcessCode) {
+      setSelectedCatalogProcessCode(normalizedRouteProcessCode);
+      localStorage.setItem(
+        "task-quest-catalog-process",
+        normalizedRouteProcessCode,
+      );
+    }
+  }, [
+    data?.processCatalog,
+    data?.processCatalogSteps,
+    routePath,
+    screenContext?.linked,
+    screenContext?.selectionRequired,
+    screenContext?.workflow?.processCode,
+    selectedCatalogProcessCode,
+    selectedWorkType,
+  ]);
+  useEffect(() => {
+    // The route chooses the initial step only. Once the user clicks a card,
+    // keep that explicit selection instead of snapping back to the route step.
+    if (userSelectedCatalogStepRef.current) return;
+    const routeUrl = new URL(
+      window.location.href || routePath,
+      window.location.origin,
+    );
+    const query = routeUrl.searchParams;
+    const routeProcessCode =
+      query.get("processCode") ||
+      query.get("process") ||
+      screenContext?.workflow?.processCode ||
+      "";
+    const routeMatches = selectedCatalogSteps.filter((step) => {
+      const paths = [step.userPath, step.adminPath]
+        .filter(Boolean)
+        .map((path) => normalizeScreenRoute(String(path)));
+      return paths.includes(normalizeScreenRoute(routeUrl.pathname));
+    });
+    const routeStepCode =
+      parentEmissionStepCode(routeProcessCode) ||
+      query.get("stepCode") ||
+      query.get("step") ||
+      screenContext?.workflow?.stepCode ||
+      (routeMatches.length === 1 ? routeMatches[0].stepCode : "");
+    const routeStepIndex = selectedCatalogSteps.findIndex(
+      (step) => step.stepCode === routeStepCode,
+    );
+    if (routeStepIndex < 0 || routeStepIndex === selectedCatalogStep) return;
+    setSelectedCatalogStep(routeStepIndex);
+    localStorage.setItem("task-quest-catalog-step", String(routeStepIndex));
+  }, [
+    routePath,
+    screenContext?.workflow?.processCode,
+    screenContext?.workflow?.stepCode,
+    selectedCatalogStep,
+    selectedCatalogSteps,
+  ]);
+  const selectedQaStep = selectedCatalogSteps[selectedCatalogStep];
+  const selectedQaStepMatchesScreen = Boolean(
+    selectedQaStep &&
+    ((screenContext?.workflow?.processCode === selectedQaStep.processCode &&
+      screenContext.workflow.stepCode === selectedQaStep.stepCode) ||
+      (screenContext?.candidates || []).some(
+        (candidate) =>
+          candidate.processCode === selectedQaStep.processCode &&
+          candidate.stepCode === selectedQaStep.stepCode,
+      )),
+  );
+  const qaScreenExecutionAllowed =
+    screenContextExecutable &&
+    !screenContext?.accessRestricted &&
+    selectedQaStepMatchesScreen;
+  useEffect(() => {
+    if (
+      !screenContext?.selectionRequired ||
+      !selectedQaStep ||
+      !onScreenContextSelection
+    )
+      return;
+    const candidate = (screenContext.candidates || []).find(
+      (item) =>
+        item.processCode === selectedQaStep.processCode &&
+        item.stepCode === selectedQaStep.stepCode,
+    );
+    if (candidate) onScreenContextSelection(candidate);
+  }, [
+    onScreenContextSelection,
+    screenContext?.candidates,
+    screenContext?.selectionRequired,
+    selectedQaStep,
+  ]);
+  const qaCompletedSteps = selectedCatalogSteps.filter((step) => {
+    const runtime = (data?.items || []).find(
+      (item) =>
+        item.processCode === step.processCode &&
+        item.processStepCode === step.stepCode &&
+        (!effectiveProjectId || item.projectId === effectiveProjectId),
+    );
+    return runtime?.status === "DONE";
+  }).length;
+  const qaProgress = selectedCatalogSteps.length
+    ? Math.round((qaCompletedSteps / selectedCatalogSteps.length) * 100)
+    : 0;
+  const qaMissingRequired = qaPreFields.filter(
+    (field) =>
+      field.required === true && !String(qaPreValues[field.code] || "").trim(),
+  );
+  const qaRuntimeSteps = useMemo(
+    () =>
+      (data?.items || [])
+        .filter(
+          (item) =>
+            item.processCode === selectedCatalogProcessCode &&
+            (!effectiveProjectId || item.projectId === effectiveProjectId),
+        )
+        .sort(
+          (left, right) =>
+            Number(left.stepOrder || 0) - Number(right.stepOrder || 0),
+        ),
+    [data?.items, effectiveProjectId, selectedCatalogProcessCode],
+  );
+  const qaCurrentRuntimeStep =
+    qaRuntimeSteps.find((item) => item.status === "IN_PROGRESS") ||
+    qaRuntimeSteps.find(
+      (item) => item.status === "READY" && item.actionable !== false,
+    ) ||
+    qaRuntimeSteps.find((item) => item.status !== "DONE") ||
+    qaRuntimeSteps[qaRuntimeSteps.length - 1];
+
+  useEffect(() => {
+    if (
+      !qaOpen ||
+      !qaScreenExecutionAllowed ||
+      !selectedQaStep ||
+      !effectiveProjectId
+    ) {
+      setQaPreFields([]);
+      setQaPreValues({});
+      return;
+    }
+    void loadQaPreInputs(selectedQaStep);
+    // The selected procedure is the source of truth for its input contract.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    qaOpen,
+    effectiveProjectId,
+    qaScreenExecutionAllowed,
+    selectedQaStep?.processCode,
+    selectedQaStep?.stepCode,
+  ]);
+
+  useEffect(() => {
+    if (!qaOpen || !qaScreenExecutionAllowed) {
+      setQaScreenFields([]);
+      setQaScreenValues({});
+      return;
+    }
+    const scan = () => detectCurrentScreenInputs();
+    scan();
+    const main = document.querySelector("main");
+    const observer = main ? new MutationObserver(scan) : null;
+    if (main && observer)
+      observer.observe(main, { childList: true, subtree: true });
+    const timer = window.setInterval(scan, 1500);
+    return () => {
+      observer?.disconnect();
+      window.clearInterval(timer);
+    };
+    // Current screen controls can change without a full route reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qaOpen, qaScreenExecutionAllowed, routePath]);
+  const assignmentSteps = useMemo(
+    () => assignmentWorkspace?.steps || [],
+    [assignmentWorkspace?.steps],
+  );
+  const assignmentTargetProcessCode =
+    selectedCatalogProcessCode === "WORK_ASSIGNMENT"
+      ? "EMISSION_PROJECT"
+      : selectedCatalogProcessCode;
+  useEffect(() => {
+    if (
+      !flowOpen ||
+      !data?.assignmentManager ||
+      selectedCatalogProcessCode !== "WORK_ASSIGNMENT"
+    )
+      return;
+    const query = new URLSearchParams();
+    if (effectiveProjectId) query.set("projectId", effectiveProjectId);
+    if (assignmentTargetProcessCode)
+      query.set("processCode", assignmentTargetProcessCode);
+    let cancelled = false;
+    fetch(
+      `${buildLocalizedPath("/home/api/work-assignments", "/en/home/api/work-assignments")}?${query}`,
+      { credentials: "include" },
+    )
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok)
+          throw new Error(body.message || "WORK_ASSIGNMENT_LOAD_FAILED");
+        return body as AssignmentWorkspace;
+      })
+      .then((body) => {
+        if (cancelled) return;
+        setAssignmentWorkspace(body);
+        const next: Record<string, string> = {};
+        (body.steps || []).forEach((step) => {
+          next[step.stepCode] = step.accountId || "";
+        });
+        setStepAssignees(next);
+        setAssignmentMessage("");
+      })
+      .catch((error) => {
+        if (!cancelled)
+          setAssignmentMessage(
+            error instanceof Error ? error.message : String(error),
+          );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    assignmentTargetProcessCode,
+    data?.assignmentManager,
+    effectiveProjectId,
+    flowOpen,
+    selectedCatalogProcessCode,
+  ]);
+
+  useEffect(() => {
+    if (
+      !assignmentWorkspace ||
+      new URLSearchParams(window.location.search).get("assignment") !== "1"
+    )
+      return;
+    const timer = window.setTimeout(() => {
+      document
+        .querySelector<HTMLElement>("[data-work-assignment-console]")
+        ?.scrollIntoView({ block: "start" });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [assignmentWorkspace]);
+
+  function assignActorDefault(actorCode: string, accountId: string) {
+    setStepAssignees((current) => {
+      const next = { ...current };
+      assignmentSteps
+        .filter((step) => step.actorCode === actorCode)
+        .forEach((step) => {
+          next[step.stepCode] = accountId;
+        });
+      return next;
+    });
+  }
+
+  async function saveAssignments() {
+    if (!effectiveProjectId || !assignmentTargetProcessCode) return;
+    const assignments = assignmentSteps.map((step) => ({
+      stepCode: step.stepCode,
+      accountId: stepAssignees[step.stepCode] || "",
+    }));
+    if (!assignments.length || assignments.some((item) => !item.accountId)) {
+      setAssignmentMessage(
+        en
+          ? "Select an account for every step."
+          : "모든 단계의 담당 계정을 선택해 주세요.",
+      );
+      return;
+    }
+    setAssignmentBusy(true);
+    setAssignmentMessage("");
+    try {
+      const response = await fetch(
+        buildLocalizedPath(
+          "/home/api/work-assignments",
+          "/en/home/api/work-assignments",
+        ),
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            projectId: effectiveProjectId,
+            processCode: assignmentTargetProcessCode,
+            assignments,
+          }),
+        },
+      );
+      const body = await response.json();
+      if (!response.ok)
+        throw new Error(body.message || "WORK_ASSIGNMENT_SAVE_FAILED");
+      setAssignmentWorkspace(body);
+      setAssignmentMessage(
+        en
+          ? `${body.updatedTaskCount || assignments.length} steps assigned.`
+          : `${body.updatedTaskCount || assignments.length}개 단계 배정을 저장했습니다.`,
+      );
+      await load();
+    } catch (error) {
+      setAssignmentMessage(
+        error instanceof Error ? error.message : String(error),
+      );
+    } finally {
+      setAssignmentBusy(false);
+    }
+  }
+  const selectedNextProcess = useMemo(
+    () =>
+      selectedDefinedProcesses.find(
+        (item) => item.processCode === selectedCatalogProcess?.nextProcessCode,
+      ),
+    [selectedCatalogProcess?.nextProcessCode, selectedDefinedProcesses],
   );
 
   useEffect(() => {
@@ -808,12 +2895,57 @@ export function TaskQuestPanel() {
     return Array.from(groups.entries());
   }, [selectedCatalogProcessCode, selectedWorkflowItems]);
 
-  if (!data) return null;
+  const normalizedRoute = normalizeScreenRoute(routePath);
+  const homeRoute =
+    normalizedRoute === "/" ||
+    normalizedRoute === "/home" ||
+    normalizedRoute === "/home/index";
+  const homeLoadingContext: ScreenWorkContext = {
+    linked: true,
+    routePath: normalizedRoute,
+    pageId: pageId || "home",
+    source: "catalog" as const,
+    classification: "INFORMATIONAL" as const,
+    reasonCode: "WORK_LEDGER_LOADING",
+    reasonText: en
+      ? "The work ledger is being connected."
+      : "기존 업무·프로세스 원장을 연결하고 있습니다.",
+    workflow: {
+      processCode: "WORK_LEDGER",
+      processName: en ? "Work guide" : "업무 길잡이",
+      stepCode: "WORK_LEDGER_LOADING",
+      stepName: en
+        ? "Loading the existing work ledger"
+        : "기존 업무 원장 불러오기",
+      stepOrder: 1,
+      actorCode: "MEMBER",
+      actorName: en ? "Signed-in user" : "로그인 사용자",
+      inputContract: en
+        ? "Signed-in account and permissions"
+        : "로그인 계정·권한",
+      outputContract: en ? "Existing workflow guide" : "기존 업무 길잡이",
+    },
+    candidates: [],
+  };
+  const publicAssistContext = homeRoute ? homeLoadingContext : screenContext || {linked:false,routePath:normalizedRoute,pageId,classification:"REVIEW_REQUIRED" as const,reasonText:"현재 화면의 업무 연결 정보가 없습니다."};
+  const usePublicAssist = !canLoadPrivateTasks || !data;
 
   function toggle() {
     const next = !open;
     setOpen(next);
     localStorage.setItem("task-quest-open", next ? "1" : "0");
+    if (next) {
+      setQaOpen(false);
+      localStorage.setItem("process-qa-card-open", "0");
+    }
+  }
+
+  function openQaPanel() {
+    setOpen(false);
+    localStorage.setItem("task-quest-open", "0");
+    setQaOpen(true);
+    localStorage.setItem("process-qa-card-open", "1");
+    void loadQaResults();
   }
 
   function focusWorkflow(item: QuestTask) {
@@ -821,19 +2953,56 @@ export function TaskQuestPanel() {
     const domainCode = String(item.domainCode || "EMISSION").toUpperCase();
     const next = { projectId: item.projectId, processCode: item.processCode };
     setFocusedWorkflow(next);
+    setFocusedStepCode(item.processStepCode || "");
     setSelectedWorkType(domainCode);
     localStorage.setItem("task-quest-focused-workflow", JSON.stringify(next));
+    if (item.processStepCode)
+      localStorage.setItem("task-quest-focused-step", item.processStepCode);
     localStorage.setItem("task-quest-work-type", domainCode);
     setOpen(true);
     setFlowOpen(false);
   }
 
   function selectWorkType(code: string) {
+    // Keep an explicit work-type choice stable while the workflow modal is open.
+    // Route synchronization is re-enabled only when routePath actually changes.
+    userSelectedCatalogProcessRef.current = true;
     setSelectedWorkType(code);
+    setSelectedCatalogStep(0);
     localStorage.setItem("task-quest-work-type", code);
+    localStorage.setItem("task-quest-catalog-step", "0");
+    clearWorkflowFocus();
+    const processes = (data?.processCatalog || [])
+      .filter(
+        (process) =>
+          code !== "ALL" && String(process.domainCode).toUpperCase() === code,
+      )
+      .sort(
+        (left, right) =>
+          Number(left.workflowOrder || Number.MAX_SAFE_INTEGER) -
+            Number(right.workflowOrder || Number.MAX_SAFE_INTEGER) ||
+          left.processCode.localeCompare(right.processCode),
+      );
+    const preferredProcessCode =
+      code === "EMISSION" &&
+      processes.some(
+        (process) => process.processCode === EMISSION_END_TO_END_PROCESS_CODE,
+      )
+        ? EMISSION_END_TO_END_PROCESS_CODE
+        : "";
+    const onlyProcessCode =
+      preferredProcessCode ||
+      (processes.length === 1 ? processes[0].processCode : "");
+    setSelectedCatalogProcessCode(onlyProcessCode);
+    if (onlyProcessCode) {
+      localStorage.setItem("task-quest-catalog-process", onlyProcessCode);
+    } else {
+      localStorage.removeItem("task-quest-catalog-process");
+    }
   }
 
   function selectCatalogProcess(code: string) {
+    userSelectedCatalogProcessRef.current = true;
     setSelectedCatalogProcessCode(code);
     setSelectedCatalogStep(0);
     localStorage.setItem("task-quest-catalog-step", "0");
@@ -851,72 +3020,313 @@ export function TaskQuestPanel() {
     }
   }
 
-  function guideRuntimeStep(step: NonNullable<QuestResponse["processCatalogSteps"]>[number]) {
+  function selectCatalogProcessFromMap(code: string, stepIndex = 0) {
+    selectCatalogProcess(code);
+    selectCatalogStepByUser(stepIndex);
+    setPreviewProcessCode(code);
+  }
+
+  function selectCatalogStepByUser(index: number) {
+    userSelectedCatalogStepRef.current = true;
+    setSelectedCatalogStep(index);
+    localStorage.setItem("task-quest-catalog-step", String(index));
+  }
+
+  function openFullWorkflow() {
+    // routePath is normalized to a pathname by the shell, so it cannot carry
+    // the process/step coordinate selected by a deep link. Read the live URL
+    // first and only fall back to routePath when no browser query is present.
+    const routeUrl = new URL(
+      window.location.href || routePath,
+      window.location.origin,
+    );
+    const routeProcessCode =
+      routeUrl.searchParams.get("processCode") ||
+      routeUrl.searchParams.get("process") ||
+      "";
+    const routeStepCode = routeUrl.searchParams.get("stepCode") || "";
+    const requestedCoordinate = resolveTaskQuestWorkflowCoordinate({
+      screenContext: screenContext?.workflow,
+      route: { processCode: routeProcessCode, stepCode: routeStepCode },
+      selectedProcessCode: selectedCatalogProcessCode,
+      focused: {
+        processCode: focusedWorkflow?.processCode,
+        stepCode: focusedStepCode,
+      },
+      task: { processCode: task?.processCode, stepCode: task?.processStepCode },
+    });
+    const requestedProcessCode = requestedCoordinate.processCode;
+    const processCode = EMISSION_INTERNAL_PROCESS_CODES.has(
+      requestedProcessCode,
+    )
+      ? EMISSION_END_TO_END_PROCESS_CODE
+      : requestedProcessCode;
+    const process = (data?.processCatalog || []).find(
+      (item) => item.processCode === processCode,
+    );
+    const domainCode = resolveTaskQuestWorkflowDomainCode(
+      process?.domainCode,
+      task?.domainCode,
+      selectedWorkType,
+    );
+    if (domainCode && domainCode !== "ALL") {
+      setSelectedWorkType(domainCode);
+      localStorage.setItem("task-quest-work-type", domainCode);
+    }
+    if (processCode) {
+      const processSteps = (data?.processCatalogSteps || [])
+        .filter((step) => step.processCode === processCode)
+        .sort(
+          (left, right) => Number(left.stepOrder) - Number(right.stepOrder),
+        );
+      const requestedStepCode =
+        processCode === EMISSION_END_TO_END_PROCESS_CODE
+          ? parentEmissionStepCode(requestedProcessCode) ||
+            requestedCoordinate.stepCode
+          : requestedCoordinate.stepCode;
+      const stepIndex = Math.max(
+        0,
+        requestedStepCode
+          ? processSteps.findIndex(
+              (step) => step.stepCode === requestedStepCode,
+            )
+          : 0,
+      );
+      setSelectedCatalogProcessCode(processCode);
+      setSelectedCatalogStep(stepIndex);
+      localStorage.setItem("task-quest-catalog-process", processCode);
+      localStorage.setItem("task-quest-catalog-step", String(stepIndex));
+    }
+    setFlowOpen(true);
+  }
+
+  function guideRuntimeStep(
+    step: NonNullable<QuestResponse["processCatalogSteps"]>[number],
+  ) {
     return workflowItems.find(
       (item) =>
         item.processCode === step.processCode &&
-        (item.processStepCode === step.stepCode || Number(item.stepOrder) === Number(step.stepOrder)),
+        (item.processStepCode === step.stepCode ||
+          Number(item.stepOrder) === Number(step.stepOrder)),
     );
   }
 
-  function guideRoute(step: NonNullable<QuestResponse["processCatalogSteps"]>[number],runtime?: QuestTask) {
-    if(runtime?.targetUrl) return runtime.targetUrl;
-    if(data?.allVisible) return step.adminPath || step.userPath || "";
+  function explicitProcessAssignment(processCode: string, stepCode: string) {
+    return (data?.processAssignments || []).find(
+      (assignment) =>
+        assignment.projectId === effectiveProjectId &&
+        assignment.processCode === processCode &&
+        assignment.stepCode === stepCode,
+    );
+  }
+
+  function guideRoute(
+    step: NonNullable<QuestResponse["processCatalogSteps"]>[number],
+    runtime?: QuestTask,
+  ) {
+    if (runtime?.targetUrl) return runtime.targetUrl;
+    const userPortal =
+      !window.location.pathname.startsWith("/admin/") &&
+      window.location.pathname !== "/admin";
+    if (userPortal) return step.userPath || step.adminPath || "";
+    if (data?.allVisible) return step.adminPath || step.userPath || "";
     return step.userPath || "";
   }
 
-  function guideActorAllowed(step: NonNullable<QuestResponse["processCatalogSteps"]>[number],runtime?: QuestTask) {
-    if(data?.allVisible) return true;
-    if(runtime) return runtime.actorActionable !== false;
+  function guideActorAllowed(
+    step: NonNullable<QuestResponse["processCatalogSteps"]>[number],
+    runtime?: QuestTask,
+  ) {
+    if (data?.allVisible) return true;
+    if (runtime) return runtime.actorActionable !== false;
     return (data?.accountActors || []).includes(String(step.actorCode || ""));
   }
 
-  function guideTarget(route:string,step:NonNullable<QuestResponse["processCatalogSteps"]>[number],runtime?:QuestTask) {
-    const localized=en&&!route.startsWith("/en/")&&!route.startsWith("/join/")?`/en${route}`:route;
-    const target=new URL(localized,window.location.origin);
-    if(effectiveProjectId&&!target.searchParams.has("projectId")) target.searchParams.set("projectId",effectiveProjectId);
-    target.searchParams.set("processCode",step.processCode);
-    target.searchParams.set("stepCode",step.stepCode);
-    if(step.actorCode) target.searchParams.set("actorCode",step.actorCode);
-    if(runtime?.id) target.searchParams.set("taskId",String(runtime.id));
-    target.searchParams.set("guide","1");
-    return `${target.pathname}${target.search}${target.hash}`;
+  function guideTarget(
+    route: string,
+    step: NonNullable<QuestResponse["processCatalogSteps"]>[number],
+    runtime?: QuestTask,
+  ) {
+    const localized =
+      en && !route.startsWith("/en/") && !route.startsWith("/join/")
+        ? `/en${route}`
+        : route;
+    const target = new URL(localized, window.location.origin);
+    if (effectiveProjectId && !target.searchParams.has("projectId"))
+      target.searchParams.set("projectId", effectiveProjectId);
+    target.searchParams.set("processCode", step.processCode);
+    target.searchParams.set("stepCode", step.stepCode);
+    if (step.actorCode) target.searchParams.set("actorCode", step.actorCode);
+    if (runtime?.id) {
+      target.searchParams.set("requestId", String(runtime.id));
+      target.searchParams.set("taskId", String(runtime.id));
+    }
+    const guidanceContract = stepGuidanceContract(step);
+    if (guidanceContract?.viewMode)
+      target.searchParams.set("mode", guidanceContract.viewMode);
+    target.searchParams.set("guide", "1");
+    const canonical = `${target.pathname}${target.search}${target.hash}`;
+    return canonical;
+  }
+
+  async function saveStepApplicabilityDecision(
+    decisionStatus: "APPLICABLE" | "NOT_APPLICABLE" | "REASSESS_REQUIRED",
+  ) {
+    const step = selectedCatalogSteps[selectedCatalogStep];
+    if (!step || !effectiveProjectId) return;
+    setApplicabilitySaving(true);
+    setMessage("");
+    try {
+      const response = await fetch(
+        `/home/api/emission-projects/${encodeURIComponent(effectiveProjectId)}/step-applicability/${encodeURIComponent(step.processCode)}/${encodeURIComponent(step.stepCode)}`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            decisionStatus,
+            reasonText: applicabilityReason.trim(),
+            evidenceRefs: applicabilityEvidence.trim(),
+          }),
+        },
+      );
+      const body = await response.json();
+      if (!response.ok)
+        throw new Error(
+          body?.message || "조건부 절차 판정을 저장하지 못했습니다.",
+        );
+      await load();
+      setMessage(
+        decisionStatus === "NOT_APPLICABLE"
+          ? "적용 제외 판정과 이력이 저장되었습니다."
+          : "조건부 절차 판정이 저장되었습니다.",
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "조건부 절차 판정 저장 중 오류가 발생했습니다.",
+      );
+    } finally {
+      setApplicabilitySaving(false);
+    }
   }
 
   function startSelectedProcessGuide() {
+    if (
+      selectedCatalogProcessCode === "WORK_ASSIGNMENT" &&
+      data?.assignmentManager
+    ) {
+      const target = new URL(
+        buildLocalizedPath(
+          "/emission/work-assignment",
+          "/en/emission/work-assignment",
+        ),
+        window.location.origin,
+      );
+      if (effectiveProjectId)
+        target.searchParams.set("projectId", effectiveProjectId);
+      target.searchParams.set("workTypeCode", "EMISSION");
+      target.searchParams.set("processCode", "EMISSION_PROJECT");
+      if (new URLSearchParams(window.location.search).get("testMode") === "1") {
+        target.searchParams.set("testMode", "1");
+      }
+      target.searchParams.set("guide", "1");
+      setFlowOpen(false);
+      window.location.href = `${target.pathname}${target.search}`;
+      return;
+    }
+    const selectedOverviewScreen = selectedProcessWaves[selectedCatalogStep];
+    if (selectedOverviewScreen?.screenPath) {
+      const target = new URL(
+        selectedOverviewScreen.screenPath,
+        window.location.origin,
+      );
+      target.searchParams.set("processCode", selectedCatalogProcessCode);
+      if (selectedOverviewScreen.stepCode)
+        target.searchParams.set("stepCode", selectedOverviewScreen.stepCode);
+      target.searchParams.set("guide", "1");
+      setFocusedStepCode(selectedOverviewScreen.stepCode || "");
+      localStorage.setItem(
+        "task-quest-focused-step",
+        selectedOverviewScreen.stepCode || "",
+      );
+      localStorage.setItem(
+        "task-quest-catalog-step",
+        String(selectedCatalogStep),
+      );
+      setFlowOpen(false);
+      navigate(`${target.pathname}${target.search}${target.hash}`);
+      return;
+    }
+    const available = (
+      step: NonNullable<QuestResponse["processCatalogSteps"]>[number],
+    ) => {
+      const runtime = guideRuntimeStep(step),
+        route = guideRoute(step, runtime);
+      if (
+        !route ||
+        !guideActorAllowed(step, runtime) ||
+        runtime?.pendingPredecessors
+      )
+        return false;
+      return (
+        !runtime || runtime.status === "DONE" || runtime.actionable !== false
+      );
+    };
     const index = Math.min(
-      Math.max(selectedCatalogStep, 0),
-      selectedCatalogSteps.length - 1,
+      Math.max(0, selectedCatalogStep),
+      Math.max(0, selectedCatalogSteps.length - 1),
     );
-    const step = selectedCatalogSteps[index];
-    if (!step) return;
-    const runtime = guideRuntimeStep(step);
-    const route = guideRoute(step, runtime);
-    const available = Boolean(
-      route &&
-        guideActorAllowed(step, runtime) &&
-        !runtime?.pendingPredecessors &&
-        (!runtime || runtime.status === "DONE" || runtime.actionable !== false),
-    );
-    if (!available) return;
-    window.location.href=guideTarget(route,step,runtime);
-  }
-
-  function selectedCatalogGuideAvailable() {
-    const step = selectedCatalogSteps[selectedCatalogStep];
-    if (!step) return false;
-    const runtime = guideRuntimeStep(step);
-    return Boolean(
-      guideRoute(step, runtime) &&
-        guideActorAllowed(step, runtime) &&
-        !runtime?.pendingPredecessors &&
-        (!runtime || runtime.status === "DONE" || runtime.actionable !== false),
-    );
+    if (!selectedCatalogSteps[index]) return;
+    const applicability = stepApplicabilityDecision(
+      selectedCatalogSteps[index],
+    )?.decisionStatus;
+    if (applicability === "NOT_APPLICABLE") {
+      const nextIndex = Math.min(
+        index + 1,
+        Math.max(0, selectedCatalogSteps.length - 1),
+      );
+      setSelectedCatalogStep(nextIndex);
+      localStorage.setItem("task-quest-catalog-step", String(nextIndex));
+      return;
+    }
+    if (
+      stepGuidanceContract(selectedCatalogSteps[index])?.applicabilityType ===
+        "CONDITIONAL" &&
+      applicability !== "APPLICABLE"
+    )
+      return;
+    if (!available(selectedCatalogSteps[index])) return;
+    const step = selectedCatalogSteps[index],
+      runtime = guideRuntimeStep(step),
+      route = guideRoute(step, runtime);
+    setSelectedCatalogStep(index);
+    setFocusedStepCode(step.stepCode);
+    localStorage.setItem("task-quest-focused-step", step.stepCode);
+    if (effectiveProjectId) {
+      const nextFocus = {
+        projectId: effectiveProjectId,
+        processCode: step.processCode,
+      };
+      setFocusedWorkflow(nextFocus);
+      localStorage.setItem(
+        "task-quest-focused-workflow",
+        JSON.stringify(nextFocus),
+      );
+    }
+    setOpen(true);
+    localStorage.setItem("task-quest-open", "1");
+    localStorage.setItem("task-quest-catalog-step", String(index));
+    setFlowOpen(false);
+    navigate(guideTarget(route, step, runtime));
   }
 
   function clearWorkflowFocus() {
     setFocusedWorkflow(null);
+    setFocusedStepCode("");
     localStorage.removeItem("task-quest-focused-workflow");
+    localStorage.removeItem("task-quest-focused-step");
   }
 
   async function activateTask(selected: QuestTask) {
@@ -947,7 +3357,7 @@ export function TaskQuestPanel() {
   }
 
   async function startTask() {
-    if (!task || task.actionable === false) return;
+    if (!task || taskExecutionBlocked) return;
     setMessage("");
     focusWorkflow(task);
     try {
@@ -974,17 +3384,106 @@ export function TaskQuestPanel() {
   }
 
   const blocked = Boolean(task && task.actionable === false);
-  const focusedTasks = focusedWorkflow
+  const focusedProcessCode =
+    focusedWorkflow?.processCode || task?.processCode || "";
+  const focusedProjectId =
+    focusedWorkflow?.projectId || task?.projectId || effectiveProjectId;
+  const focusedTasks = focusedProcessCode
     ? (data?.items || []).filter(
         (item) =>
-          item.projectId === focusedWorkflow.projectId &&
-          item.processCode === focusedWorkflow.processCode,
+          (!focusedProjectId || item.projectId === focusedProjectId) &&
+          item.processCode === focusedProcessCode,
       )
     : [];
-  const total = focusedTasks.length || Number(data?.summary?.total || 0);
-  const completed = focusedTasks.length
-    ? focusedTasks.filter((item) => item.status === "DONE").length
-    : Number(data?.summary?.completed || 0);
+  const focusedContractSteps = focusedProcessCode
+    ? (data?.processCatalogSteps || [])
+        .filter((step) => step.processCode === focusedProcessCode)
+        .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder))
+    : [];
+  // Runtime tasks may have been created from an older process revision. Use
+  // the current design contract for progress and import only matching evidence.
+  const focusedContractCodes = new Set(
+    focusedContractSteps.map((step) => step.stepCode),
+  );
+  const contractBackedTasks = focusedContractSteps.length
+    ? focusedTasks.filter((item) =>
+        focusedContractCodes.has(String(item.processStepCode || "")),
+      )
+    : focusedTasks;
+  const total =
+    focusedContractSteps.length ||
+    focusedTasks.length ||
+    Number(data?.summary?.total || 0);
+  const completed = focusedContractSteps.length
+    ? contractBackedTasks.filter((item) => item.status === "DONE").length
+    : focusedTasks.length
+      ? focusedTasks.filter((item) => item.status === "DONE").length
+      : Number(data?.summary?.completed || 0);
+  const focusedContractStep = focusedContractSteps.find(
+    (step) => step.stepCode === task?.processStepCode,
+  );
+  const focusedContractStepIndex = focusedContractStep
+    ? focusedContractSteps.findIndex(
+        (step) => step.stepCode === focusedContractStep.stepCode,
+      )
+    : -1;
+  const displayedNextStep =
+    focusedContractStepIndex >= 0
+      ? focusedContractSteps[focusedContractStepIndex + 1]
+      : undefined;
+  const linkedScreenWorkflow = screenContext?.workflow;
+  const screenWorkflowMatchesTask =
+    !linkedScreenWorkflow ||
+    Boolean(
+      task &&
+      task.processCode === linkedScreenWorkflow.processCode &&
+      task.processStepCode === linkedScreenWorkflow.stepCode,
+    );
+  const screenTaskMismatch = Boolean(
+    linkedScreenWorkflow && task && !screenWorkflowMatchesTask,
+  );
+  const taskExecutionBlocked =
+    blocked ||
+    screenTaskMismatch ||
+    Boolean(screenContext?.accessRestricted) ||
+    Boolean(linkedScreenWorkflow && !screenContextExecutable);
+  const publicWorkflowOnly = Boolean(
+    !task &&
+    linkedScreenWorkflow &&
+    screenContext?.identity?.audience === "PUBLIC" &&
+    screenContextExecutable,
+  );
+  const displayedProcessName =
+    linkedScreenWorkflow?.processName ||
+    task?.processName ||
+    task?.processCode ||
+    "-";
+  const displayedStepOrder =
+    linkedScreenWorkflow?.stepOrder ||
+    focusedContractStep?.stepOrder ||
+    task?.stepOrder;
+  const displayedStepName =
+    linkedScreenWorkflow?.stepName ||
+    focusedContractStep?.stepName ||
+    task?.name ||
+    "";
+  const displayedActorName =
+    linkedScreenWorkflow?.actorName ||
+    focusedContractStep?.actorName ||
+    actorLabel(
+      linkedScreenWorkflow?.actorCode ||
+        focusedContractStep?.actorCode ||
+        task?.actorCode,
+    );
+  const displayedWorkPurpose =
+    linkedScreenWorkflow?.workPurpose ||
+    focusedContractStep?.workPurpose ||
+    task?.workPurpose ||
+    displayedStepName;
+  const displayedCompletionRule =
+    linkedScreenWorkflow?.completionRule ||
+    focusedContractStep?.completionRule ||
+    task?.completionRule;
   const progress =
     total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
   const workflowTotal = selectedWorkflowItems.length;
@@ -1013,75 +3512,896 @@ export function TaskQuestPanel() {
     }
   }
 
+  function appendQaActivity(kind: QaActivity["kind"], activityMessage: string) {
+    setQaActivity((current) =>
+      [
+        {
+          id: `${Date.now()}-${Math.random()}`,
+          at: new Date().toISOString(),
+          kind,
+          message: activityMessage,
+        },
+        ...current,
+      ].slice(0, 20),
+    );
+  }
+
+  function detectCurrentScreenInputs() {
+    const controls = Array.from(
+      document.querySelectorAll<
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >("main input, main select, main textarea"),
+    ).filter(
+      (control) =>
+        !control.disabled &&
+        !("readOnly" in control && control.readOnly) &&
+        control.type !== "hidden" &&
+        control.type !== "file",
+    );
+    const used = new Map<string, number>();
+    const fields: ContractField[] = [];
+    const values: Record<string, string> = {};
+    controls.forEach((control, index) => {
+      const baseCode =
+        control.getAttribute("data-field-code") ||
+        control.name ||
+        control.id ||
+        control.getAttribute("aria-label") ||
+        `SCREEN_FIELD_${index + 1}`;
+      const duplicate = used.get(baseCode) || 0;
+      used.set(baseCode, duplicate + 1);
+      const code = duplicate ? `${baseCode}__${duplicate + 1}` : baseCode;
+      const explicitLabel =
+        control.labels?.[0]?.textContent?.trim() ||
+        control.getAttribute("aria-label") ||
+        control.getAttribute("placeholder") ||
+        baseCode;
+      const optionValues =
+        control instanceof HTMLSelectElement
+          ? Array.from(control.options)
+              .filter((option) => option.value)
+              .map((option) => ({
+                value: option.value,
+                label: option.textContent?.trim() || option.value,
+              }))
+          : undefined;
+      const controlType =
+        control instanceof HTMLSelectElement
+          ? "SELECT"
+          : control instanceof HTMLTextAreaElement
+            ? "TEXTAREA"
+            : control.type === "checkbox" || control.type === "radio"
+              ? "CHECKBOX"
+              : control.type === "number"
+                ? "NUMBER"
+                : control.type === "date"
+                  ? "DATE"
+                  : control.type === "email"
+                    ? "EMAIL"
+                    : "TEXT";
+      const maxLength =
+        control instanceof HTMLInputElement ||
+        control instanceof HTMLTextAreaElement
+          ? control.maxLength
+          : -1;
+      const describedBy = control.getAttribute("aria-describedby");
+      const description =
+        control.getAttribute("title") ||
+        (describedBy
+          ? document.getElementById(describedBy)?.textContent?.trim()
+          : "") ||
+        undefined;
+      fields.push({
+        code,
+        label: explicitLabel.replace(/\s+/g, " ").slice(0, 80),
+        control: controlType,
+        required: control.required,
+        min: control.getAttribute("min") || undefined,
+        max: control.getAttribute("max") || undefined,
+        maxLength: maxLength > 0 ? maxLength : undefined,
+        placeholder: control.getAttribute("placeholder") || undefined,
+        description,
+        options: optionValues,
+      });
+      values[code] =
+        control instanceof HTMLInputElement && control.type === "checkbox"
+          ? String(control.checked)
+          : control.value;
+    });
+    setQaScreenFields((current) =>
+      JSON.stringify(current) === JSON.stringify(fields) ? current : fields,
+    );
+    if (!qaScreenDirtyRef.current)
+      setQaScreenValues((current) =>
+        JSON.stringify(current) === JSON.stringify(values) ? current : values,
+      );
+  }
+
+  function updateCurrentScreenInput(fieldCode: string, value: string) {
+    qaScreenDirtyRef.current = true;
+    setQaScreenValues((current) => ({ ...current, [fieldCode]: value }));
+  }
+
+  function qaRecommendedScreenValue(field: ContractField) {
+    const current = qaScreenValues[field.code] || "";
+    if (current) return current;
+    const kind = String(
+      field.control || field.dataType || "TEXT",
+    ).toUpperCase();
+    const key = `${field.code} ${field.label}`.toLowerCase();
+    const choices = Array.isArray(field.options) ? field.options : [];
+    if (choices.length) {
+      const first = choices[0];
+      return typeof first === "string"
+        ? first
+        : String(
+            (first as Record<string, unknown>).value ??
+              (first as Record<string, unknown>).code ??
+              "",
+          );
+    }
+    if (key.includes("tenant")) return qaTenantId || "DEFAULT";
+    if (key.includes("project")) return effectiveProjectId || "PRJ-ACTOR-TEST";
+    if (key.includes("process")) return selectedCatalogProcessCode;
+    if (key.includes("step") || key.includes("단계"))
+      return selectedQaStep?.stepCode || "";
+    if (key.includes("검색") || key.includes("keyword")) return "CCUS";
+    if (key.includes("page") || key.includes("페이지")) return "1";
+    if (key.includes("summary") || key.includes("요약"))
+      return "대상 프로젝트를 확인하고 다음 업무를 선택했습니다.";
+    if (key.includes("근거") || key.includes("reason"))
+      return "프로젝트 상태·사업장·담당자 조건과 절차 완료 기준을 확인했습니다.";
+    if (key.includes("증빙") || key.includes("document"))
+      return `DOC-QA-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`;
+    if (key.includes("url") || key.includes("저장소"))
+      return window.location.href;
+    if (key.includes("checksum") || key.includes("무결성"))
+      return "SYSTEM_CALCULATED";
+    if (kind.includes("DATE")) return new Date().toISOString().slice(0, 10);
+    if (kind.includes("NUMBER")) return String(field.min ?? 1);
+    if (kind.includes("CHECKBOX"))
+      return field.required === true ? "true" : "false";
+    if (kind.includes("EMAIL")) return "qa@resonance.test";
+    return "테스트 입력값";
+  }
+
+  function fillQaScreenRecommendedValues() {
+    if (!qaScreenExecutionAllowed) {
+      setQaMessage(
+        en
+          ? "This screen is not linked to the selected executable procedure."
+          : "현재 화면과 선택 절차의 실행 계약이 일치하지 않아 입력할 수 없습니다.",
+      );
+      return;
+    }
+    const values = Object.fromEntries(
+      qaScreenFields.map((field) => [
+        field.code,
+        qaRecommendedScreenValue(field),
+      ]),
+    );
+    qaScreenDirtyRef.current = true;
+    setQaScreenValues(values);
+    appendQaActivity(
+      "SAVE",
+      `현재 절차의 권장 테스트값 ${qaScreenFields.length}개를 준비했습니다.`,
+    );
+    setQaMessage(
+      `권장 테스트값 ${qaScreenFields.length}개를 채웠습니다. 내용을 확인한 뒤 현재 화면에 적용하세요.`,
+    );
+  }
+
+  function validateQaScreenInputs() {
+    if (!qaScreenExecutionAllowed) {
+      setQaMessage(
+        en
+          ? "QA input is available only for an executable workflow linked to this screen."
+          : "현재 화면에 연결된 실행 가능 절차에서만 QA 입력을 검증할 수 있습니다.",
+      );
+      return false;
+    }
+    const failures = qaScreenFields.flatMap((field) => {
+      const value = String(qaScreenValues[field.code] || "").trim();
+      const issues: string[] = [];
+      if (field.required === true && !value)
+        issues.push(`${field.label}: 필수값 누락`);
+      if (
+        value &&
+        field.maxLength !== undefined &&
+        value.length > Number(field.maxLength)
+      )
+        issues.push(`${field.label}: 최대 길이 초과`);
+      if (
+        value &&
+        String(field.control || field.dataType || "")
+          .toUpperCase()
+          .includes("NUMBER")
+      ) {
+        const number = Number(value);
+        if (!Number.isFinite(number))
+          issues.push(`${field.label}: 숫자 형식 오류`);
+        if (field.min !== undefined && number < Number(field.min))
+          issues.push(`${field.label}: 최소값 ${field.min} 미만`);
+        if (field.max !== undefined && number > Number(field.max))
+          issues.push(`${field.label}: 최대값 ${field.max} 초과`);
+      }
+      return issues;
+    });
+    if (failures.length) {
+      appendQaActivity(
+        "FAIL",
+        `입력 검증 실패 ${failures.length}건 · ${failures.join(" / ")}`,
+      );
+      setQaMessage(
+        `입력 검증 실패 ${failures.length}건: ${failures.join(" / ")}`,
+      );
+      return false;
+    }
+    appendQaActivity(
+      "PASS",
+      `현재 화면 입력 ${qaScreenFields.length}개가 형식·범위·필수값 검증을 통과했습니다.`,
+    );
+    setQaMessage(`입력값 ${qaScreenFields.length}개가 검증을 통과했습니다.`);
+    return true;
+  }
+
+  function applyCurrentScreenInput(fieldCode: string, value: string) {
+    const baseCode = fieldCode.replace(/__\d+$/, "");
+    const duplicateIndex = Number(fieldCode.match(/__(\d+)$/)?.[1] || 1) - 1;
+    const allControls = Array.from(
+      document.querySelectorAll<
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >("main input, main select, main textarea"),
+    ).filter(
+      (control) =>
+        !control.disabled &&
+        !("readOnly" in control && control.readOnly) &&
+        control.type !== "hidden" &&
+        control.type !== "file",
+    );
+    const syntheticIndex =
+      Number(baseCode.match(/^SCREEN_FIELD_(\d+)$/)?.[1] || 0) - 1;
+    const candidates = allControls.filter(
+      (control) =>
+        (control.getAttribute("data-field-code") ||
+          control.name ||
+          control.id ||
+          control.getAttribute("aria-label")) === baseCode,
+    );
+    const control =
+      syntheticIndex >= 0
+        ? allControls[syntheticIndex]
+        : candidates[Math.max(0, duplicateIndex)];
+    if (!control) return;
+    if (control instanceof HTMLInputElement && control.type === "checkbox") {
+      const checkedSetter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "checked",
+      )?.set;
+      if (checkedSetter) checkedSetter.call(control, value === "true");
+      else control.checked = value === "true";
+    } else {
+      const prototype =
+        control instanceof HTMLSelectElement
+          ? HTMLSelectElement.prototype
+          : control instanceof HTMLTextAreaElement
+            ? HTMLTextAreaElement.prototype
+            : HTMLInputElement.prototype;
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        prototype,
+        "value",
+      )?.set;
+      if (valueSetter) valueSetter.call(control, value);
+      else control.value = value;
+    }
+    control.dispatchEvent(new Event("input", { bubbles: true }));
+    control.dispatchEvent(new Event("change", { bubbles: true }));
+    const storageKey = `qa-form:${window.location.pathname}:${baseCode}`;
+    localStorage.setItem(storageKey, value);
+  }
+
+  function applyQaScreenInputs() {
+    if (!qaScreenExecutionAllowed) {
+      setQaMessage(
+        en
+          ? "The selected procedure cannot write to this screen."
+          : "선택한 절차는 현재 화면에 입력할 수 없습니다.",
+      );
+      return;
+    }
+    if (!validateQaScreenInputs()) return;
+    qaScreenFields.forEach((field) =>
+      applyCurrentScreenInput(field.code, qaScreenValues[field.code] || ""),
+    );
+    qaScreenDirtyRef.current = false;
+    appendQaActivity(
+      "SAVE",
+      `현재 화면 입력 ${qaScreenFields.length}개를 일괄 반영했습니다.`,
+    );
+    setQaMessage(
+      `현재 화면 입력 요소 ${qaScreenFields.length}개를 반영했습니다.`,
+    );
+    window.setTimeout(detectCurrentScreenInputs, 100);
+  }
+
+  function qaStorageKey(stepCode: string) {
+    return `qa-preinput:${qaCompanyId}:${effectiveProjectId}:${selectedCatalogProcessCode}:${stepCode}`;
+  }
+
+  function qaDefaultValue(field: ContractField) {
+    const code = field.code.toLowerCase();
+    const choices = Array.isArray(field.options) ? field.options : [];
+    if (choices.length) {
+      const first = choices[0];
+      return typeof first === "string"
+        ? first
+        : String(
+            (first as Record<string, unknown>).value ||
+              (first as Record<string, unknown>).code ||
+              "",
+          );
+    }
+    if (code === "projectid" || code === "project_id")
+      return effectiveProjectId;
+    if (code === "tenantid" || code === "tenant_id")
+      return qaTenantId || "DEFAULT";
+    if (code.includes("actor")) return selectedQaStep?.actorCode || "";
+    if (code.includes("year")) return String(new Date().getFullYear());
+    if (code.includes("date")) return new Date().toISOString().slice(0, 10);
+    if (code.includes("status")) return "CONFIRMED";
+    if (code.includes("scope")) return "SCOPE_1";
+    if (
+      String(field.control || field.dataType || "")
+        .toUpperCase()
+        .includes("NUMBER")
+    )
+      return String(field.min ?? 1);
+    return "";
+  }
+
+  async function loadQaPreInputs(
+    step: NonNullable<QuestResponse["processCatalogSteps"]>[number],
+  ) {
+    const route = resolveQaRoute(step);
+    if (!route) {
+      setQaPreFields([]);
+      setQaPreValues({});
+      return;
+    }
+    setQaInputLoading(true);
+    try {
+      let tenantId = qaTenantId;
+      if (!tenantId) {
+        const optionResponse = await fetch(
+          buildLocalizedPath(
+            "/home/api/emission-projects/options",
+            "/en/home/api/emission-projects/options",
+          ),
+          { credentials: "include" },
+        );
+        const optionBody = optionResponse.ok
+          ? ((await optionResponse.json()) as Record<string, unknown>)
+          : {};
+        tenantId = String(optionBody.tenantId || "DEFAULT");
+        setQaTenantId(tenantId);
+      }
+      const screenPath = new URL(route, window.location.origin).pathname;
+      const contractResponse = await fetch(
+        `${buildLocalizedPath("/home/api/process-executions/screen-contract", "/en/home/api/process-executions/screen-contract")}?routePath=${encodeURIComponent(screenPath)}&processCode=${encodeURIComponent(step.processCode)}&stepCode=${encodeURIComponent(step.stepCode)}`,
+        { credentials: "include" },
+      );
+      const contractBody = contractResponse.ok
+        ? ((await contractResponse.json()) as Record<string, unknown>)
+        : {};
+      let fields = parseQaFields(
+        contractBody.fieldContractJson ||
+          contractBody.fields ||
+          contractBody.fieldContract,
+      );
+      if (!fields.length) {
+        const versionQuery = new URLSearchParams({
+          routePath: screenPath,
+          processCode: step.processCode,
+          stepCode: step.stepCode,
+          audience: screenPath.startsWith("/admin") ? "ADMIN" : "USER",
+        });
+        const versionResponse = await fetch(
+          `/runtime/screens/resolve?${versionQuery}`,
+          { credentials: "include" },
+        );
+        const versionBody = versionResponse.ok
+          ? ((await versionResponse.json()) as Record<string, unknown>)
+          : {};
+        const contract =
+          versionBody.contract && typeof versionBody.contract === "object"
+            ? (versionBody.contract as Record<string, unknown>)
+            : {};
+        const dataLayer =
+          contract.data && typeof contract.data === "object"
+            ? (contract.data as Record<string, unknown>)
+            : {};
+        fields = parseQaFields(dataLayer.fields);
+      }
+      let draftVersion = 0;
+      let persisted: Record<string, string> = {};
+      if (tenantId && effectiveProjectId) {
+        const query = new URLSearchParams({
+          tenantId,
+          projectId: effectiveProjectId,
+          processCode: step.processCode,
+          stepCode: step.stepCode,
+        });
+        const draftResponse = await fetch(
+          `${buildLocalizedPath("/home/api/process-executions/draft", "/en/home/api/process-executions/draft")}?${query}`,
+          { credentials: "include" },
+        );
+        if (draftResponse.ok) {
+          const draftBody = (await draftResponse.json()) as Record<
+            string,
+            unknown
+          >;
+          const draft =
+            draftBody.draft && typeof draftBody.draft === "object"
+              ? (draftBody.draft as Record<string, unknown>)
+              : {};
+          draftVersion = Number(draft.draftVersion || 0);
+          try {
+            const payload =
+              typeof draft.payloadJson === "string"
+                ? JSON.parse(draft.payloadJson)
+                : draft.payloadJson;
+            if (payload && typeof payload === "object")
+              persisted = Object.fromEntries(
+                Object.entries(payload as Record<string, unknown>).map(
+                  ([key, value]) => [key, String(value ?? "")],
+                ),
+              );
+          } catch {
+            persisted = {};
+          }
+        }
+      }
+      const local = localStorage.getItem(qaStorageKey(step.stepCode));
+      if (local) {
+        try {
+          persisted = { ...persisted, ...JSON.parse(local) };
+        } catch {
+          /* ignore stale QA input */
+        }
+      }
+      const values = Object.fromEntries(
+        fields.map((field) => [
+          field.code,
+          persisted[field.code] ?? qaDefaultValue(field),
+        ]),
+      );
+      setQaPreFields(fields);
+      setQaPreValues(values);
+      setQaDraftVersion(draftVersion);
+      appendQaActivity(
+        "LOAD",
+        `${step.stepName}: ${fields.length}개 입력 항목과 저장값을 불러왔습니다.`,
+      );
+    } catch (error) {
+      setQaPreFields([]);
+      setQaPreValues({});
+      appendQaActivity(
+        "FAIL",
+        `입력 계약 조회 실패: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setQaInputLoading(false);
+    }
+  }
+
+  async function saveQaPreInputs() {
+    const step = selectedQaStep;
+    if (
+      !qaScreenExecutionAllowed ||
+      !step ||
+      !effectiveProjectId ||
+      !qaTenantId
+    )
+      return;
+    if (qaMissingRequired.length) {
+      setQaMessage(
+        `필수 입력 ${qaMissingRequired.length}개를 먼저 입력하세요: ${qaMissingRequired.map((field) => field.label).join(", ")}`,
+      );
+      return;
+    }
+    setQaBusy(true);
+    try {
+      localStorage.setItem(
+        qaStorageKey(step.stepCode),
+        JSON.stringify(qaPreValues),
+      );
+      const response = await fetch(
+        buildLocalizedPath(
+          "/home/api/process-executions/draft",
+          "/en/home/api/process-executions/draft",
+        ),
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tenantId: qaTenantId,
+            projectId: effectiveProjectId,
+            processCode: step.processCode,
+            stepCode: step.stepCode,
+            actorCode: step.actorCode || "",
+            expectedVersion: qaDraftVersion,
+            payloadJson: JSON.stringify(qaPreValues),
+            evidenceJson: "{}",
+          }),
+        },
+      );
+      const body = (await response.json()) as Record<string, unknown>;
+      if (!response.ok)
+        throw new Error(String(body.message || response.status));
+      const draft =
+        body.draft && typeof body.draft === "object"
+          ? (body.draft as Record<string, unknown>)
+          : {};
+      setQaDraftVersion(Number(draft.draftVersion || qaDraftVersion + 1));
+      setQaMessage(
+        `${step.stepName} 선입력 ${qaPreFields.length}개를 저장했습니다.`,
+      );
+      appendQaActivity(
+        "SAVE",
+        `${step.stepName}: 선입력 ${qaPreFields.length}개 저장 완료`,
+      );
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      setQaMessage(`저장 실패: ${reason}`);
+      appendQaActivity("FAIL", `선입력 저장 실패: ${reason}`);
+    } finally {
+      setQaBusy(false);
+    }
+  }
+
   function fillCurrentScreen() {
+    if (!qaScreenExecutionAllowed) {
+      setQaMessage(
+        en
+          ? "Open the selected procedure's linked screen before filling inputs."
+          : "선택 절차에 연결된 화면을 연 뒤 입력을 실행하세요.",
+      );
+      return;
+    }
     let filled = 0;
     const controls = Array.from(
-      document.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
-        "main input, main select, main textarea",
-      ),
+      document.querySelectorAll<
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >("main input, main select, main textarea"),
     );
     controls.forEach((control) => {
-      if (control.disabled || ("readOnly" in control && control.readOnly) || control.type === "hidden" || control.type === "file") return;
-      if (control instanceof HTMLInputElement && ["checkbox", "radio"].includes(control.type)) {
-        control.checked = true;
-      } else if (control instanceof HTMLSelectElement) {
-        const option = Array.from(control.options).find((item) => item.value && !item.disabled);
+      if (
+        control.disabled ||
+        ("readOnly" in control && control.readOnly) ||
+        control.type === "hidden" ||
+        control.type === "file"
+      )
+        return;
+      const fieldKey =
+        control.name ||
+        control.id ||
+        control.getAttribute("aria-label") ||
+        control.getAttribute("data-field-code") ||
+        "";
+      const storageKey = fieldKey
+        ? `qa-form:${window.location.pathname}:${fieldKey}`
+        : "";
+      const contractedValue = fieldKey ? qaPreValues[fieldKey] : undefined;
+      const savedValue =
+        contractedValue !== undefined
+          ? contractedValue
+          : storageKey
+            ? localStorage.getItem(storageKey)
+            : null;
+      if (
+        control instanceof HTMLInputElement &&
+        ["checkbox", "radio"].includes(control.type)
+      )
+        control.checked = savedValue === null ? true : savedValue === "true";
+      else if (control instanceof HTMLSelectElement) {
+        const option =
+          Array.from(control.options).find(
+            (item) => savedValue !== null && item.value === savedValue,
+          ) ||
+          Array.from(control.options).find(
+            (item) => item.value && !item.disabled,
+          );
         if (!option) return;
         control.value = option.value;
       } else if (!control.value) {
-        if (control instanceof HTMLInputElement && control.type === "number") control.value = "1";
-        else if (control instanceof HTMLInputElement && control.type === "date") control.value = new Date().toISOString().slice(0, 10);
-        else if (control instanceof HTMLInputElement && control.type === "email") control.value = "qa@resonance.test";
+        if (savedValue !== null) control.value = savedValue;
+        else if (
+          control instanceof HTMLInputElement &&
+          control.type === "number"
+        )
+          control.value = control.min || "1";
+        else if (control instanceof HTMLInputElement && control.type === "date")
+          control.value = new Date().toISOString().slice(0, 10);
+        else if (
+          control instanceof HTMLInputElement &&
+          control.type === "email"
+        )
+          control.value = "qa@resonance.test";
+        else if (control.placeholder)
+          control.value = control.placeholder
+            .replace(/예[:)]?\s*/g, "")
+            .slice(0, Number(control.getAttribute("maxlength") || 100));
         else control.value = `QA-${Date.now()}`;
       }
       control.dispatchEvent(new Event("input", { bubbles: true }));
       control.dispatchEvent(new Event("change", { bubbles: true }));
+      if (storageKey)
+        localStorage.setItem(
+          storageKey,
+          control instanceof HTMLInputElement &&
+            ["checkbox", "radio"].includes(control.type)
+            ? String(control.checked)
+            : control.value,
+        );
       filled += 1;
     });
-    setQaMessage(en ? `${filled} controls populated.` : `${filled}개 입력 항목을 테스트 값으로 채웠습니다.`);
+    setQaMessage(
+      en
+        ? `${filled} controls populated.`
+        : `${filled}개 입력 항목에 저장된 QA 값을 반영했습니다.`,
+    );
+    appendQaActivity(
+      "LOAD",
+      `현재 화면에 저장된 선입력값 ${filled}개를 반영했습니다.`,
+    );
   }
 
-  function openQaStep() {
-    const step = selectedCatalogSteps[selectedCatalogStep];
-    if (!step) return;
-    const administrativeActor = /ADMIN|MANAGER|REVIEW|VERIFY|APPROV|AUDIT|REGULATOR/.test(
-      String(step.actorCode || "").toUpperCase(),
-    );
-    const route = administrativeActor
+  function resolveQaRoute(
+    step: NonNullable<QuestResponse["processCatalogSteps"]>[number],
+  ) {
+    const actor = String(step.actorCode || "").toUpperCase();
+    const administrativeActor =
+      /^(PLATFORM_ADMIN|PLATFORM_OPERATOR|SYSTEM_ADMIN|GENERAL_ADMIN|AUTHORITY_ADMIN|MEMBER_ADMIN|CONTENT_MANAGER|EDUCATION_MANAGER|PRIVACY_OFFICER|REGULATOR|AUDITOR|CERTIFICATE_OFFICER|CERTIFICATE_QA_OPERATOR|SUPPORT_AGENT|SYSTEM_INTEGRATOR)$/.test(
+        actor,
+      );
+    return administrativeActor
       ? step.adminPath || step.userPath
       : step.userPath || step.adminPath;
-    if (!route) {
-      setQaMessage(en ? "No screen is bound to this step." : "이 절차에 연결된 화면이 없습니다.");
+  }
+
+  async function ensureQaActor(
+    step: NonNullable<QuestResponse["processCatalogSteps"]>[number],
+  ) {
+    const target = QA_TEST_ACCOUNTS.find(
+      (account) =>
+        account.companyId === qaCompanyId &&
+        account.actorCode === String(step.actorCode || ""),
+    );
+    if (
+      !target ||
+      String(data?.actorId || "").toLowerCase() === target.id.toLowerCase()
+    )
+      return true;
+    setQaMessage(`${target.actor} 계정으로 자동 전환하고 있습니다.`);
+    const result = await switchQaAccount(target.id);
+    if (!result.ok)
+      throw new Error(result.body.errors || "TEST_ACCOUNT_SWITCH_FAILED");
+    setQaAccountId(target.id);
+    await load();
+    return true;
+  }
+
+  async function openQaStep() {
+    const step = selectedCatalogSteps[selectedCatalogStep];
+    if (!qaScreenExecutionAllowed || !step) {
+      setQaMessage(
+        en
+          ? "Use Shortcut to open the selected procedure's linked screen first."
+          : "바로가기로 선택 절차의 연결 화면을 먼저 여세요.",
+      );
       return;
     }
-    const url = new URL(route, window.location.origin);
-    if (effectiveProjectId && !url.searchParams.has("projectId")) url.searchParams.set("projectId", effectiveProjectId);
-    url.searchParams.set("processCode", step.processCode);
-    url.searchParams.set("stepCode", step.stepCode);
-    url.searchParams.set("qa", "1");
-    window.location.assign(`${url.pathname}${url.search}${url.hash}`);
+    const route = resolveQaRoute(step);
+    if (!route) {
+      setQaMessage(
+        en
+          ? "No screen is bound to this step."
+          : "이 절차에 연결된 화면이 없습니다.",
+      );
+      return;
+    }
+    setQaBusy(true);
+    try {
+      await ensureQaActor(step);
+      const runtime = guideRuntimeStep(step);
+      const target = new URL(
+        guideTarget(route, step, runtime),
+        window.location.origin,
+      );
+      target.searchParams.set("qa", "1");
+      target.searchParams.set("testMode", "1");
+      localStorage.setItem(
+        qaStorageKey(step.stepCode),
+        JSON.stringify(qaPreValues),
+      );
+      appendQaActivity("RUN", `${step.stepName} 절차 화면을 실행했습니다.`);
+      navigate(`${target.pathname}${target.search}${target.hash}`);
+    } catch (error) {
+      setQaMessage(
+        `${en ? "Failed" : "실패"}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setQaBusy(false);
+    }
+  }
+
+  function openQaShortcut() {
+    const step = selectedCatalogSteps[selectedCatalogStep];
+    if (!step) return;
+    const route = resolveQaRoute(step);
+    if (!route) {
+      setQaMessage(
+        en
+          ? "No screen is bound to this step."
+          : "이 절차에 연결된 화면이 없습니다.",
+      );
+      return;
+    }
+    const target = new URL(route, window.location.origin);
+    if (effectiveProjectId && !target.searchParams.has("projectId"))
+      target.searchParams.set("projectId", effectiveProjectId);
+    target.searchParams.set("processCode", step.processCode);
+    target.searchParams.set("stepCode", step.stepCode);
+    if (step.actorCode) target.searchParams.set("actorCode", step.actorCode);
+    target.searchParams.set("qa", "1");
+    target.searchParams.set("testMode", "1");
+    navigate(`${target.pathname}${target.search}${target.hash}`);
+  }
+
+  async function switchQaLogin() {
+    setQaBusy(true);
+    setQaMessage("");
+    try {
+      const result = await switchQaAccount(qaAccountId);
+      if (!result.ok)
+        throw new Error(result.body.errors || "TEST_ACCOUNT_SWITCH_FAILED");
+      window.location.reload();
+    } catch (error) {
+      setQaMessage(
+        `${en ? "Failed" : "실패"}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      setQaBusy(false);
+    }
+  }
+
+  async function manageQaInstance(
+    action: "CREATE" | "UPDATE" | "RESET" | "DELETE",
+  ) {
+    if (!qaScreenExecutionAllowed) {
+      setQaMessage(
+        en
+          ? "QA instances can be changed only on the selected executable procedure's screen."
+          : "선택한 실행 절차의 연결 화면에서만 QA 인스턴스를 변경할 수 있습니다.",
+      );
+      return;
+    }
+    if (!effectiveProjectId || !selectedCatalogProcessCode) {
+      setQaMessage(
+        en
+          ? "Select a project and process."
+          : "프로젝트와 프로세스를 선택하세요.",
+      );
+      return;
+    }
+    if (
+      (action === "RESET" || action === "DELETE") &&
+      !window.confirm(
+        action === "RESET"
+          ? "선택한 QA 인스턴스를 초기화할까요?"
+          : "선택한 QA 인스턴스를 삭제할까요?",
+      )
+    )
+      return;
+    setQaBusy(true);
+    setQaMessage("");
+    try {
+      const response = await fetch(
+        buildLocalizedPath(
+          "/home/api/process-executions/qa-instance",
+          "/en/home/api/process-executions/qa-instance",
+        ),
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Carbonet-Test-Mode": "1",
+          },
+          body: JSON.stringify({
+            action,
+            projectId: effectiveProjectId,
+            processCode: selectedCatalogProcessCode,
+            actorCode: selectedCatalogSteps[0]?.actorCode || "",
+            cycleType: qaCycleType,
+            periodStart: qaPeriodStart,
+            periodEnd: qaPeriodEnd,
+          }),
+        },
+      );
+      const body = await response.json();
+      if (!response.ok)
+        throw new Error(body.message || String(response.status));
+      const label =
+        action === "CREATE"
+          ? "추가"
+          : action === "UPDATE"
+            ? "수정"
+            : action === "RESET"
+              ? "초기화"
+              : "삭제";
+      setQaMessage(
+        en
+          ? `QA instance ${action.toLowerCase()} completed.`
+          : `QA 인스턴스 ${label}가 완료되었습니다.`,
+      );
+      await load();
+    } catch (error) {
+      setQaMessage(
+        `${en ? "Failed" : "실패"}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setQaBusy(false);
+    }
   }
 
   async function runQaSequence() {
     const step = selectedCatalogSteps[selectedCatalogStep];
-    if (!selectedCatalogProcessCode || !step) return;
+    if (!qaScreenExecutionAllowed || !selectedCatalogProcessCode || !step) {
+      setQaMessage(
+        en
+          ? "Select an executable procedure linked to this screen."
+          : "현재 화면에 연결된 실행 가능 절차를 선택하세요.",
+      );
+      return;
+    }
     setQaBusy(true);
-    setQaMessage(en ? "Running isolated sequential verification..." : "격리된 순차 자동 검증을 실행하고 있습니다.");
+    setQaMessage(
+      en
+        ? "Running isolated sequential verification..."
+        : "격리된 순차 자동 검증을 실행하고 있습니다.",
+    );
     try {
       const response = await fetch(
-        buildLocalizedPath("/home/api/process-executions/qa-smoke", "/en/home/api/process-executions/qa-smoke"),
+        buildLocalizedPath(
+          "/home/api/process-executions/qa-smoke",
+          "/en/home/api/process-executions/qa-smoke",
+        ),
         {
           method: "POST",
           credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ processCode: selectedCatalogProcessCode, stepCode: step.stepCode }),
+          headers: {
+            "Content-Type": "application/json",
+            "X-Carbonet-Test-Mode": "1",
+          },
+          body: JSON.stringify({
+            processCode: selectedCatalogProcessCode,
+            stepCode: step.stepCode,
+          }),
         },
       );
       const body = await response.json();
-      if (!response.ok) throw new Error(body.message || "QA verification failed");
-      setQaMessage(en ? `Passed ${body.result?.stepCount || 0} sequential steps; business data was rolled back.` : `${body.result?.stepCount || 0}개 절차 순차 실행 통과 · 업무 데이터는 롤백되었습니다.`);
+      if (!response.ok)
+        throw new Error(body.message || "QA verification failed");
+      setQaMessage(
+        en
+          ? `Passed ${body.result?.stepCount || 0} sequential steps; business data was rolled back.`
+          : `${body.result?.stepCount || 0}개 절차 순차 실행 통과 · 업무 데이터는 롤백되었습니다.`,
+      );
     } catch (error) {
-      setQaMessage(`${en ? "Failed" : "실패"}: ${error instanceof Error ? error.message : String(error)}`);
+      setQaMessage(
+        `${en ? "Failed" : "실패"}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     } finally {
       setQaBusy(false);
       await loadQaResults();
@@ -1090,12 +4410,16 @@ export function TaskQuestPanel() {
 
   return (
     <>
+      {usePublicAssist ? <PublicWorkflowAssist context={publicAssistContext} en={en} onOverview={openFullWorkflow} /> : <>
+      {homeRoute ? <HomeWorkGuide en={en} onOverview={openFullWorkflow} /> : (
       <aside
-        className="fixed right-3 top-[6.75rem] z-[950] w-[calc(100vw-1.5rem)] max-w-[23rem] sm:right-5 lg:right-8"
+        className="fixed right-3 top-[10.25rem] z-[950] w-[calc(100vw-1.5rem)] max-w-[23rem] sm:right-5 lg:right-8"
         data-task-quest-panel=""
+        data-utility-panel-state={open ? "open" : "closed"}
       >
         {!open ? (
           <button
+            aria-label={en ? "Work guide" : "업무 길잡이"}
             className="ml-auto flex min-h-12 items-center gap-2 rounded-full border border-[#16408d] bg-white px-4 py-2 font-bold text-[#12356b] shadow-[0_10px_30px_rgba(15,43,87,.2)]"
             onClick={toggle}
             type="button"
@@ -1103,7 +4427,10 @@ export function TaskQuestPanel() {
             <span className="material-symbols-outlined text-[21px]">
               assistant_navigation
             </span>
-            {en ? "My next task" : "다음 업무"}
+            {en ? "Work guide" : "업무 길잡이"}
+            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-black text-[#16408d]">
+              {en ? "Design" : "화면 설계"}
+            </span>
             {task ? (
               <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs text-white">
                 1
@@ -1129,6 +4456,21 @@ export function TaskQuestPanel() {
               </button>
             </div>
             <div className="p-4">
+              <ScreenDesignSummary routePath={routePath} context={screenContext} en={en} />
+              {screenContext?.accessRestricted ? (
+                <p
+                  className="mb-3 rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm font-bold text-violet-950"
+                  data-screen-access-restricted=""
+                >
+                  <span className="material-symbols-outlined mr-1 align-middle text-[18px]">
+                    admin_panel_settings
+                  </span>
+                  {screenContext.reasonText ||
+                    (en
+                      ? "This screen runs a workflow, but it is outside the current account's actor or permission scope."
+                      : "이 화면은 실행 업무 화면이지만 현재 계정의 담당 액터·권한 범위 밖입니다.")}
+                </p>
+              ) : null}
               {loading ? (
                 <p className="py-5 text-center text-sm text-slate-500">
                   {en
@@ -1137,17 +4479,20 @@ export function TaskQuestPanel() {
                 </p>
               ) : task ? (
                 <>
+                  <h3 className="mb-2 text-sm font-black text-slate-700" data-my-work-heading="">
+                    {en ? "Continue my work" : "내 업무 이어하기"}
+                  </h3>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-[#246beb]">
                         {task.projectName || task.projectId}
                       </p>
                       <h2 className="mt-1 text-lg font-black leading-6 text-slate-900">
-                        {task.name}
+                        {displayedStepName}
                       </h2>
                       {focusedWorkflow ? (
                         <p className="mt-1 text-xs font-semibold text-slate-500">
-                          {task.processName || task.processCode} ·{" "}
+                          {displayedProcessName} ·{" "}
                           {en ? "Focused workflow" : "선택 프로세스 진행 중"}
                         </p>
                       ) : null}
@@ -1172,10 +4517,35 @@ export function TaskQuestPanel() {
                   <dl className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 text-sm">
                     <div className="flex gap-2">
                       <dt className="w-16 shrink-0 font-bold text-slate-500">
-                        {en ? "Actor" : "담당 액터"}
+                        {en ? "Process" : "프로세스"}
                       </dt>
                       <dd className="font-semibold text-slate-800">
-                        {task.actorCode || "-"}
+                        {displayedProcessName}
+                      </dd>
+                    </div>
+                    <div className="flex gap-2">
+                      <dt className="w-16 shrink-0 font-bold text-slate-500">
+                        {en ? "Step" : "현재 단계"}
+                      </dt>
+                      <dd className="font-semibold text-[#16408d]">
+                        {displayedStepOrder ? `${displayedStepOrder}. ` : ""}
+                        {displayedStepName}
+                      </dd>
+                    </div>
+                    <div className="flex gap-2">
+                      <dt className="w-16 shrink-0 font-bold text-slate-500">
+                        {en ? "Assignee" : "담당자"}
+                      </dt>
+                      <dd className="font-semibold text-slate-800">
+                        {displayedActorName}
+                      </dd>
+                    </div>
+                    <div className="flex gap-2">
+                      <dt className="w-16 shrink-0 font-bold text-slate-500">
+                        {en ? "Account" : "담당 계정"}
+                      </dt>
+                      <dd className="font-semibold text-slate-800">
+                        {task.assignee || (en ? "Not assigned" : "미배정")}
                       </dd>
                     </div>
                     <div className="flex gap-2">
@@ -1183,7 +4553,7 @@ export function TaskQuestPanel() {
                         {en ? "Purpose" : "업무 목적"}
                       </dt>
                       <dd className="line-clamp-2 text-slate-700">
-                        {task.workPurpose || task.name}
+                        {displayedWorkPurpose}
                       </dd>
                     </div>
                     <div className="flex gap-2">
@@ -1191,20 +4561,25 @@ export function TaskQuestPanel() {
                         {en ? "Done when" : "완료 조건"}
                       </dt>
                       <dd className="line-clamp-2 text-slate-700">
-                        {task.completionRule ||
+                        {displayedCompletionRule ||
                           (en
                             ? "Complete the required action on the task page."
                             : "업무 화면의 필수 처리를 완료하세요.")}
                       </dd>
                     </div>
-                    {task.nextTaskName ? (
+                    {displayedNextStep ||
+                    (!focusedContractSteps.length && task.nextTaskName) ? (
                       <div className="flex gap-2">
                         <dt className="w-16 shrink-0 font-bold text-slate-500">
                           {en ? "Next" : "다음 업무"}
                         </dt>
                         <dd className="text-slate-700">
-                          <b>{task.nextTaskName}</b>
-                          {task.nextActorCode ? ` · ${task.nextActorCode}` : ""}
+                          <b>
+                            {displayedNextStep?.stepName || task.nextTaskName}
+                          </b>
+                          {displayedNextStep?.actorCode || task.nextActorCode
+                            ? ` · ${actorLabel(displayedNextStep?.actorCode || task.nextActorCode)}`
+                            : ""}
                         </dd>
                       </div>
                     ) : null}
@@ -1221,6 +4596,19 @@ export function TaskQuestPanel() {
                           : "선행 업무를 먼저 완료해야 합니다.")}
                     </p>
                   ) : null}
+                  {screenTaskMismatch ? (
+                    <p
+                      className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-900"
+                      data-screen-task-mismatch=""
+                    >
+                      <span className="material-symbols-outlined mr-1 align-middle text-[18px]">
+                        warning
+                      </span>
+                      {en
+                        ? "The task recommended for this account does not match this screen's linked procedure. Open the matching screen from the full workflow."
+                        : "현재 계정의 추천 업무와 이 화면에 연결된 절차가 일치하지 않습니다. 전체 업무 보기에서 해당 절차 화면을 열어주세요."}
+                    </p>
+                  ) : null}
                   {message ? (
                     <p className="mt-3 text-sm font-bold text-red-700">
                       {message}
@@ -1228,7 +4616,7 @@ export function TaskQuestPanel() {
                   ) : null}
                   <button
                     className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#246beb] px-4 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-                    disabled={blocked}
+                    disabled={taskExecutionBlocked}
                     onClick={() => void startTask()}
                     type="button"
                   >
@@ -1243,6 +4631,19 @@ export function TaskQuestPanel() {
                       arrow_forward
                     </span>
                   </button>
+                  {!taskExecutionBlocked && executionHref(task, en) ? (
+                    <a
+                      className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#246beb] bg-white px-4 font-bold text-[#246beb]"
+                      href={executionHref(task, en)}
+                    >
+                      {en
+                        ? "Enter data and complete"
+                        : "\uC5C5\uBB34 \uC785\uB825\u00B7\uC644\uB8CC"}
+                      <span className="material-symbols-outlined text-[19px]">
+                        task_alt
+                      </span>
+                    </a>
+                  ) : null}
                   {focusedWorkflow ? (
                     <button
                       className="mt-2 w-full text-xs font-bold text-slate-500 hover:text-[#246beb]"
@@ -1255,6 +4656,48 @@ export function TaskQuestPanel() {
                     </button>
                   ) : null}
                 </>
+              ) : publicWorkflowOnly && linkedScreenWorkflow ? (
+                <div className="py-2" data-public-workflow-guidance="">
+                  <p className="text-xs font-bold text-[#246beb]">
+                    {en ? "Public workflow guidance" : "공개 업무 절차 안내"}
+                  </p>
+                  <h2 className="mt-1 text-lg font-black leading-6 text-slate-900">
+                    {linkedScreenWorkflow.stepName ||
+                      linkedScreenWorkflow.stepCode}
+                  </h2>
+                  <dl className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 text-sm">
+                    <div className="flex gap-2">
+                      <dt className="w-16 shrink-0 font-bold text-slate-500">
+                        {en ? "Process" : "프로세스"}
+                      </dt>
+                      <dd className="font-semibold text-slate-800">
+                        {linkedScreenWorkflow.processName ||
+                          linkedScreenWorkflow.processCode}
+                      </dd>
+                    </div>
+                    <div className="flex gap-2">
+                      <dt className="w-16 shrink-0 font-bold text-slate-500">
+                        {en ? "Purpose" : "업무 목적"}
+                      </dt>
+                      <dd className="text-slate-700">
+                        {linkedScreenWorkflow.workPurpose || "-"}
+                      </dd>
+                    </div>
+                    <div className="flex gap-2">
+                      <dt className="w-16 shrink-0 font-bold text-slate-500">
+                        {en ? "Done when" : "완료 조건"}
+                      </dt>
+                      <dd className="text-slate-700">
+                        {linkedScreenWorkflow.completionRule || "-"}
+                      </dd>
+                    </div>
+                  </dl>
+                  <p className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm font-bold text-blue-900">
+                    {en
+                      ? "This is public registration guidance. Account switching and internal task execution become available after sign-in."
+                      : "공개 회원가입 절차 안내입니다. 계정 전환과 내부 업무 실행은 로그인 후 사용할 수 있습니다."}
+                  </p>
+                </div>
               ) : (
                 <div className="py-4 text-center">
                   <span className="material-symbols-outlined text-4xl text-emerald-600">
@@ -1267,10 +4710,30 @@ export function TaskQuestPanel() {
                   </p>
                 </div>
               )}
+              {selectedWorkType === "MEMBER" ? (
+                <a
+                  className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 text-sm font-black text-emerald-900"
+                  data-member-qa-ledger-link="guide"
+                  href={memberQaTimelineHref(
+                    selectedCatalogProcessCode,
+                    selectedCatalogSteps[selectedCatalogStep]?.stepCode,
+                  )}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span className="material-symbols-outlined text-[19px]">
+                    movie
+                  </span>
+                  {en
+                    ? "Open 84-step member QA ledger"
+                    : "회원 84단계 영상 원장 열기"}
+                </a>
+              ) : null}
               <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-sm font-bold">
                 <button
                   className="text-[#246beb] hover:underline"
-                  onClick={() => setFlowOpen(true)}
+                  data-full-workflow-trigger=""
+                  onClick={openFullWorkflow}
                   type="button"
                 >
                   {en ? "View full workflow" : "전체 업무 보기"}
@@ -1292,71 +4755,816 @@ export function TaskQuestPanel() {
           </div>
         )}
       </aside>
-      <aside className="fixed right-3 top-1/2 z-[949] -translate-y-1/2 sm:right-5 lg:right-8" data-process-qa-card="">
+      )}
+      <aside
+        className={`fixed z-[1260] ${qaOpen ? "right-3 top-1/2 -translate-y-1/2 sm:right-5 lg:right-8" : "bottom-20 left-3 right-auto top-auto translate-y-0 sm:left-5"}`}
+        data-process-qa-card=""
+        data-utility-panel-state={qaOpen ? "open" : "closed"}
+      >
         {!qaOpen ? (
           <button
-            className="flex min-h-12 items-center gap-2 rounded-full border border-emerald-700 bg-white px-4 py-2 font-bold text-emerald-800 shadow-[0_10px_30px_rgba(15,43,87,.18)]"
-            onClick={() => { setQaOpen(true); void loadQaResults(); }}
+            aria-label={en ? "QA workflow" : "QA 업무"}
+            className="flex min-h-12 items-center gap-2 rounded-full border border-emerald-700 bg-white px-4 py-2 font-bold text-emerald-800 shadow-lg"
+            onClick={openQaPanel}
             type="button"
           >
-            <span className="material-symbols-outlined text-[20px]">fact_check</span>
+            <span className="material-symbols-outlined">fact_check</span>
             {en ? "QA workflow" : "QA 업무"}
           </button>
         ) : (
-          <section className="w-[calc(100vw-1.5rem)] max-w-[24rem] overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-[0_18px_55px_rgba(15,43,87,.22)]">
+          <section className="w-[calc(100vw-1.5rem)] max-w-[36rem] overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-2xl">
             <header className="flex items-center justify-between bg-emerald-800 px-4 py-3 text-white">
-              <div className="flex items-center gap-2"><span className="material-symbols-outlined">fact_check</span><strong>{en ? "QA workflow runner" : "QA 업무 실행"}</strong></div>
-              <button aria-label={en ? "Close" : "닫기"} className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/15" onClick={() => setQaOpen(false)} type="button"><span className="material-symbols-outlined">close</span></button>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined">fact_check</span>
+                <strong>{en ? "QA workflow runner" : "QA 업무 실행"}</strong>
+              </div>
+              <button
+                aria-label={en ? "Close" : "닫기"}
+                onClick={() => {
+                  setQaOpen(false);
+                  localStorage.setItem("process-qa-card-open", "0");
+                }}
+                type="button"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
             </header>
             <div className="max-h-[70vh] overflow-y-auto p-4">
-              <label className="block text-xs font-black text-slate-600">{en ? "Process" : "프로세스"}</label>
-              <select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={selectedCatalogProcessCode} onChange={(event) => { selectCatalogProcess(event.target.value); void loadQaResults(event.target.value); }}>
-                <option value="">{en ? "Select process" : "프로세스 선택"}</option>
-                {selectedDefinedProcesses.map((process) => <option key={process.processCode} value={process.processCode}>{process.processName}</option>)}
+              <MemberDomainClosureQaCard
+                enabled={selectedWorkType === "MEMBER"}
+                en={en}
+                processCode={selectedCatalogProcessCode}
+                stepCode={selectedCatalogSteps[selectedCatalogStep]?.stepCode}
+              />
+              <div
+                className={`mb-3 rounded-xl border p-3 text-xs font-bold ${screenContext?.accessRestricted ? "border-violet-200 bg-violet-50 text-violet-950" : screenClassification === "EXECUTABLE" && screenContext?.workflow ? "border-emerald-200 bg-emerald-50 text-emerald-900" : screenClassification === "EXECUTABLE" && screenContext?.selectionRequired ? "border-amber-200 bg-amber-50 text-amber-900" : screenClassification === "INFORMATIONAL" ? "border-blue-200 bg-blue-50 text-blue-900" : screenClassification === "REVIEW_REQUIRED" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-slate-200 bg-slate-50 text-slate-700"}`}
+                data-qa-screen-context=""
+                data-screen-classification={screenClassification}
+                data-screen-access-restricted={
+                  screenContext?.accessRestricted ? "true" : "false"
+                }
+              >
+                {screenContext?.accessRestricted
+                  ? screenContext.reasonText ||
+                    (en
+                      ? "Executable workflow screen, but outside this account's actor or permission scope."
+                      : "실행 업무 화면이지만 현재 계정의 담당 액터·권한 범위 밖입니다.")
+                  : screenClassification === "INFORMATIONAL"
+                    ? screenContext?.reasonText ||
+                      (en
+                        ? "This is an informational screen and does not run a workflow step."
+                        : "정보 조회 화면으로 실행 절차가 필요하지 않습니다.")
+                    : screenClassification === "EXCLUDED"
+                      ? screenContext?.reasonText ||
+                        (en
+                          ? "This security, recovery, or print screen is excluded from workflow execution."
+                          : "보안·계정 복구·인쇄 화면은 업무 실행 연동 대상에서 제외됩니다.")
+                      : screenClassification === "REVIEW_REQUIRED"
+                        ? screenContext?.reasonText ||
+                          (en
+                            ? "The workflow contract for this screen requires design review."
+                            : "이 화면의 업무 연결 계약은 설계 검토가 필요합니다.")
+                        : screenContext?.workflow
+                          ? `${screenContext.workflow.processName || screenContext.workflow.processCode} · ${screenContext.workflow.stepName || screenContext.workflow.stepCode}`
+                          : screenContext?.selectionRequired
+                            ? en
+                              ? "Select one of this screen's linked procedures below."
+                              : "이 화면에 연결된 업무 절차를 아래에서 선택하세요."
+                            : en
+                              ? "No executable workflow is linked to this screen yet."
+                              : "이 화면에는 아직 실행 업무 절차가 연결되지 않았습니다."}
+                {!screenContext?.accessRestricted &&
+                screenClassification === "EXECUTABLE" &&
+                screenContext?.selectionRequired &&
+                screenContext.candidates?.length ? (
+                  <label className="mt-2 block">
+                    <span className="sr-only">
+                      {en ? "Linked procedure" : "현재 화면 연결 절차"}
+                    </span>
+                    <select
+                      aria-label={
+                        en ? "Linked procedure" : "현재 화면 연결 절차"
+                      }
+                      className="h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-xs font-bold text-slate-900"
+                      defaultValue=""
+                      onChange={(event) => {
+                        const candidate =
+                          screenContext.candidates?.[
+                            Number(event.target.value)
+                          ];
+                        if (candidate) onScreenContextSelection?.(candidate);
+                      }}
+                    >
+                      <option value="">
+                        {en ? "Select a linked procedure" : "연결 절차 선택"}
+                      </option>
+                      {screenContext.candidates.map((candidate, index) => (
+                        <option
+                          key={`${candidate.processCode}|${candidate.stepCode}|${candidate.actorCode || ""}|${candidate.audience || ""}`}
+                          value={index}
+                        >
+                          {candidate.processName || candidate.processCode} ·{" "}
+                          {candidate.stepName || candidate.stepCode} ·{" "}
+                          {candidate.actorName ||
+                            actorLabel(candidate.actorCode)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="block text-xs font-black text-slate-600">
+                  {en ? "Company" : "테스트 회사"}
+                  <select
+                    className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"
+                    value={qaCompanyId}
+                    onChange={(event) => setQaCompanyId(event.target.value)}
+                  >
+                    {qaCompanies.map((company) => (
+                      <option key={company.id} value={company.id}>
+                        {company.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-xs font-black text-slate-600">
+                  {en ? "Account and actor" : "계정·담당자"}
+                  <select
+                    className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"
+                    value={qaAccountId}
+                    onChange={(event) => setQaAccountId(event.target.value)}
+                  >
+                    {qaCompanyAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.actor} · {account.id} · {account.steps}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-xs font-black text-slate-600">
+                  {en ? "Work type" : "업무 종류"}
+                  <select
+                    className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"
+                    value={selectedWorkType}
+                    onChange={(event) => selectWorkType(event.target.value)}
+                  >
+                    <option value="ALL">{en ? "All work" : "전체 업무"}</option>
+                    {availableWorkTypes.map((work) => (
+                      <option key={work.code} value={work.code}>
+                        {work.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <button
+                className="mt-2 min-h-10 w-full rounded-lg bg-[#052b57] px-3 text-sm font-black text-white disabled:opacity-50"
+                disabled={qaBusy}
+                onClick={() => void switchQaLogin()}
+                type="button"
+              >
+                {en ? "Switch login" : "선택 계정으로 전환 로그인"}
+              </button>
+              <label className="block text-xs font-black text-slate-600">
+                {en ? "Process" : "프로세스"}
+              </label>
+              <select
+                className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"
+                value={selectedCatalogProcessCode}
+                onChange={(event) => {
+                  selectCatalogProcess(event.target.value);
+                  void loadQaResults(event.target.value);
+                }}
+              >
+                <option value="">
+                  {en ? "Select process" : "프로세스 선택"}
+                </option>
+                {selectedDefinedProcesses.map((process) => (
+                  <option key={process.processCode} value={process.processCode}>
+                    {Number(process.processLevel || 1) >= 3 ||
+                    [
+                      "TERMS_CONSENT",
+                      "IDENTITY_VERIFICATION",
+                      "MFA_MANAGEMENT",
+                      "PASSWORD_RECOVERY",
+                      "ACCOUNT_LOCK_RECOVERY",
+                    ].includes(process.processCode)
+                      ? "↳ "
+                      : ""}
+                    {process.processName}
+                  </option>
+                ))}
               </select>
-              <label className="mt-3 block text-xs font-black text-slate-600">{en ? "Procedure" : "절차"}</label>
-              <select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={selectedCatalogStep} onChange={(event) => { const index=Number(event.target.value); setSelectedCatalogStep(index); localStorage.setItem("task-quest-catalog-step", String(index)); }}>
-                {selectedCatalogSteps.map((step,index) => <option key={step.stepCode} value={index}>{index+1}. {step.stepName} · {step.actorCode}</option>)}
+              <label className="mt-3 block text-xs font-black text-slate-600">
+                {en ? "Procedure" : "절차"}
+              </label>
+              <select
+                className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"
+                value={selectedCatalogStep}
+                onChange={(event) =>
+                  selectCatalogStepByUser(Number(event.target.value))
+                }
+              >
+                {selectedCatalogSteps.map((step, index) => (
+                  <option key={step.stepCode} value={index}>
+                    {selectedCatalogProcessCode ===
+                    EMISSION_END_TO_END_PROCESS_CODE
+                      ? `${emissionPhaseLabel(step.stepCode, en)} · `
+                      : ""}
+                    {index + 1}. {step.stepName} ·{" "}
+                    {(screenContext?.workflow?.processCode ===
+                      step.processCode &&
+                    screenContext.workflow.stepCode === step.stepCode
+                      ? screenContext.workflow.actorName
+                      : "") ||
+                      step.actorName ||
+                      actorLabel(step.actorCode)}
+                  </option>
+                ))}
+              </select>
+              <label className="mt-3 block text-xs font-black text-slate-600">
+                {en ? "Work instance and project" : "업무 인스턴스·프로젝트"}
+              </label>
+              <select
+                className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"
+                value={effectiveProjectId}
+                onChange={(event) => {
+                  setSelectedOverviewProjectId(event.target.value);
+                  localStorage.setItem(
+                    "task-quest-overview-project",
+                    event.target.value,
+                  );
+                }}
+              >
+                <option value="">
+                  {en ? "Select project" : "프로젝트 선택"}
+                </option>
+                {overviewProjects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
               </select>
               {selectedCatalogSteps[selectedCatalogStep] ? (
                 <dl className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-700">
-                  <div><dt className="font-black text-slate-500">{en ? "Purpose" : "업무 목적"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].workPurpose || "-"}</dd></div>
-                  <div><dt className="font-black text-slate-500">{en ? "Done when" : "완료 조건"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].completionRule || "-"}</dd></div>
-                  <div><dt className="font-black text-slate-500">{en ? "Screen" : "연결 화면"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].userPath || selectedCatalogSteps[selectedCatalogStep].adminPath || "-"}</dd></div>
+                  <div>
+                    <dt className="font-black text-slate-500">
+                      {en ? "Purpose" : "업무 목적"}
+                    </dt>
+                    <dd>
+                      {selectedCatalogSteps[selectedCatalogStep].workPurpose ||
+                        "-"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-black text-slate-500">
+                      {en ? "Input guide" : "입력 범위·가이드"}
+                    </dt>
+                    <dd className="whitespace-pre-wrap">
+                      {selectedCatalogSteps[selectedCatalogStep]
+                        .inputContract ||
+                        "저장값을 우선 불러오고, 필수값·최솟값·선택지·예시값 순서로 입력합니다."}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-black text-slate-500">
+                      {en ? "Done when" : "완료 조건"}
+                    </dt>
+                    <dd>
+                      {selectedCatalogSteps[selectedCatalogStep]
+                        .completionRule || "-"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-black text-slate-500">
+                      {en ? "Screen" : "연결 화면"}
+                    </dt>
+                    <dd>
+                      {selectedCatalogSteps[selectedCatalogStep].userPath ||
+                        selectedCatalogSteps[selectedCatalogStep].adminPath ||
+                        "-"}
+                    </dd>
+                  </div>
                 </dl>
               ) : null}
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <button className="rounded-lg border border-[#246beb] px-2 py-2.5 text-xs font-black text-[#246beb] disabled:opacity-40" disabled={!selectedCatalogSteps.length} onClick={fillCurrentScreen} type="button">{en ? "Fill" : "입력"}</button>
-                <button className="rounded-lg border border-[#052b57] px-2 py-2.5 text-xs font-black text-[#052b57] disabled:opacity-40" disabled={!selectedCatalogSteps.length} onClick={openQaStep} type="button">{en ? "Open step" : "절차 실행"}</button>
-                <button className="rounded-lg bg-emerald-700 px-2 py-2.5 text-xs font-black text-white disabled:bg-slate-300" disabled={qaBusy || !selectedCatalogSteps.length} onClick={() => void runQaSequence()} type="button">{qaBusy ? (en ? "Running" : "실행 중") : (en ? "Run all" : "순차 실행")}</button>
+              <section
+                className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3"
+                data-qa-current-step=""
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <strong className="text-sm text-[#052b57]">
+                    {en ? "Current process position" : "현재 프로세스 위치"}
+                  </strong>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-black ${qaCurrentRuntimeStep?.status === "IN_PROGRESS" ? "bg-blue-700 text-white" : qaCurrentRuntimeStep?.status === "DONE" ? "bg-emerald-700 text-white" : "bg-white text-slate-700"}`}
+                  >
+                    {qaCurrentRuntimeStep?.status ||
+                      (en ? "Not started" : "미시작")}
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                  <div className="rounded-lg bg-white p-3">
+                    <span className="block font-bold text-slate-500">
+                      {en ? "Running now" : "현재 실행 중"}
+                    </span>
+                    <strong className="mt-1 block text-slate-900">
+                      {qaCurrentRuntimeStep
+                        ? `${Number(qaCurrentRuntimeStep.stepOrder || 0)}. ${qaCurrentRuntimeStep.name}`
+                        : en
+                          ? "No running procedure"
+                          : "실행 중인 절차 없음"}
+                    </strong>
+                    <span className="mt-1 block text-slate-500">
+                      {actorLabel(qaCurrentRuntimeStep?.actorCode)}
+                    </span>
+                  </div>
+                  <div className="rounded-lg bg-white p-3">
+                    <span className="block font-bold text-slate-500">
+                      {en ? "Selected for QA" : "QA 선택 절차"}
+                    </span>
+                    <strong className="mt-1 block text-slate-900">
+                      {selectedQaStep
+                        ? `${selectedCatalogStep + 1}. ${selectedQaStep.stepName}`
+                        : "-"}
+                    </strong>
+                    <span
+                      className={`mt-1 block font-bold ${qaCurrentRuntimeStep?.processStepCode === selectedQaStep?.stepCode ? "text-emerald-700" : "text-amber-700"}`}
+                    >
+                      {qaCurrentRuntimeStep?.processStepCode ===
+                      selectedQaStep?.stepCode
+                        ? en
+                          ? "Matches running step"
+                          : "실행 단계와 일치"
+                        : en
+                          ? "Different from running step"
+                          : "실행 단계와 다름"}
+                    </span>
+                  </div>
+                </div>
+              </section>
+              <section
+                className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3"
+                data-qa-pre-inputs=""
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-black text-[#052b57]">
+                      {en ? "Pre-input and edit" : "절차 선입력·수정"}
+                    </h4>
+                    <p className="mt-1 text-xs text-slate-600">
+                      {en
+                        ? "Review and save values before opening the work screen."
+                        : "업무 화면을 열기 전에 입력값을 확인·수정하고 저장합니다."}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-black text-emerald-800">
+                    {qaPreFields.length}
+                    {en ? " fields" : "개 항목"}
+                  </span>
+                </div>
+                {qaInputLoading ? (
+                  <p className="mt-3 rounded-lg bg-white p-3 text-xs font-bold text-slate-600">
+                    {en
+                      ? "Loading the input contract..."
+                      : "입력 계약과 저장값을 불러오는 중입니다."}
+                  </p>
+                ) : qaPreFields.length ? (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {qaPreFields.map((field) => (
+                      <ContractFieldControl
+                        field={field}
+                        key={field.code}
+                        value={qaPreValues[field.code] || ""}
+                        onChange={(value) =>
+                          setQaPreValues((current) => ({
+                            ...current,
+                            [field.code]: value,
+                          }))
+                        }
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-600">
+                    {en
+                      ? "No editable field contract is registered for this procedure."
+                      : "이 절차에 등록된 수정 가능 입력 항목이 없습니다. 화면 입력 버튼으로 현재 화면 값을 확인할 수 있습니다."}
+                  </p>
+                )}
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <span
+                    className={`text-xs font-bold ${qaMissingRequired.length ? "text-red-700" : "text-emerald-800"}`}
+                  >
+                    {qaMissingRequired.length
+                      ? `${en ? "Missing required" : "필수 미입력"} ${qaMissingRequired.length}`
+                      : en
+                        ? "Required fields ready"
+                        : "필수 입력 준비 완료"}
+                  </span>
+                  <button
+                    className="min-h-10 rounded-lg bg-emerald-700 px-4 text-xs font-black text-white disabled:bg-slate-300"
+                    disabled={
+                      qaBusy ||
+                      !qaScreenExecutionAllowed ||
+                      qaInputLoading ||
+                      !qaPreFields.length
+                    }
+                    onClick={() => void saveQaPreInputs()}
+                    type="button"
+                  >
+                    {en ? "Save changes" : "수정값 저장"}
+                  </button>
+                </div>
+              </section>
+              <section
+                className="mt-3 rounded-xl border border-violet-200 bg-violet-50/40 p-3"
+                data-qa-screen-inputs=""
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-black text-[#052b57]">
+                      {en ? "Current screen inputs" : "현재 화면 입력 요소"}
+                    </h4>
+                    <p className="mt-1 text-xs text-slate-600">
+                      {en
+                        ? "Edits are reflected immediately on the open screen."
+                        : "QA 카드에서 수정하면 현재 화면 입력 요소에 즉시 반영됩니다."}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-black text-violet-800">
+                    {qaScreenFields.length}
+                    {en ? " controls" : "개 요소"}
+                  </span>
+                </div>
+                {qaScreenFields.length ? (
+                  <>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      {qaScreenFields.map((field) => (
+                        <QaMirrorControl
+                          field={field}
+                          key={field.code}
+                          value={qaScreenValues[field.code] || ""}
+                          onChange={(value) =>
+                            updateCurrentScreenInput(field.code, value)
+                          }
+                        />
+                      ))}
+                    </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                      <button
+                        className="min-h-10 rounded-lg border border-violet-300 bg-white px-3 text-xs font-black text-violet-800 disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={!qaScreenExecutionAllowed}
+                        onClick={fillQaScreenRecommendedValues}
+                        type="button"
+                      >
+                        {en ? "Fill recommended values" : "권장값 자동 채우기"}
+                      </button>
+                      <button
+                        className="min-h-10 rounded-lg border border-emerald-300 bg-white px-3 text-xs font-black text-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={!qaScreenExecutionAllowed}
+                        onClick={validateQaScreenInputs}
+                        type="button"
+                      >
+                        {en ? "Validate inputs" : "입력값 검증"}
+                      </button>
+                      <button
+                        className="min-h-10 rounded-lg bg-violet-700 px-4 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                        disabled={!qaScreenExecutionAllowed}
+                        onClick={applyQaScreenInputs}
+                        type="button"
+                      >
+                        {en ? "Apply to current screen" : "검증 후 화면 적용"}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-600">
+                    {en
+                      ? "No editable inputs were detected on the current screen."
+                      : "현재 화면에서 수정 가능한 입력 요소가 감지되지 않았습니다."}
+                  </p>
+                )}
+              </section>
+              <section
+                className="mt-3 rounded-xl border border-slate-200 bg-white p-3"
+                data-qa-progress=""
+              >
+                <div className="flex items-center justify-between text-xs">
+                  <strong className="text-[#052b57]">
+                    {en ? "Procedure progress" : "절차 진행상황"}
+                  </strong>
+                  <span className="font-black text-blue-700">
+                    {qaCompletedSteps}/{selectedCatalogSteps.length} ·{" "}
+                    {qaProgress}%
+                  </span>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className="h-full rounded-full bg-[#246beb] transition-[width]"
+                    style={{ width: `${qaProgress}%` }}
+                  />
+                </div>
+                <ol className="mt-3 grid gap-1.5">
+                  {selectedCatalogSteps.map((step, index) => {
+                    const runtime = (data?.items || []).find(
+                      (item) =>
+                        item.processCode === step.processCode &&
+                        item.processStepCode === step.stepCode &&
+                        (!effectiveProjectId ||
+                          item.projectId === effectiveProjectId),
+                    );
+                    const active = index === selectedCatalogStep;
+                    const phase =
+                      selectedCatalogProcessCode ===
+                      EMISSION_END_TO_END_PROCESS_CODE
+                        ? emissionPhaseLabel(step.stepCode, en)
+                        : "";
+                    const previousPhase =
+                      index > 0 &&
+                      selectedCatalogProcessCode ===
+                        EMISSION_END_TO_END_PROCESS_CODE
+                        ? emissionPhaseLabel(
+                            selectedCatalogSteps[index - 1].stepCode,
+                            en,
+                          )
+                        : "";
+                    return (
+                      <li key={step.stepCode}>
+                        {phase && phase !== previousPhase ? (
+                          <p className="mb-1 mt-2 text-[11px] font-black text-[#246beb] first:mt-0">
+                            {phase}
+                          </p>
+                        ) : null}
+                        <button
+                          className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs ${active ? "bg-blue-50 text-blue-900 ring-1 ring-blue-200" : "bg-slate-50 text-slate-600"}`}
+                          onClick={() => selectCatalogStepByUser(index)}
+                          type="button"
+                        >
+                          <span className="font-bold">
+                            {index + 1}. {step.stepName}
+                          </span>
+                          <span className="font-black">
+                            {runtime?.status === "DONE"
+                              ? en
+                                ? "Done"
+                                : "완료"
+                              : active
+                                ? en
+                                  ? "Selected"
+                                  : "선택"
+                                : en
+                                  ? "Waiting"
+                                  : "대기"}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </section>
+              <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 p-3">
+                <div className="flex flex-wrap items-end gap-2">
+                  <label className="text-xs font-black text-slate-600">
+                    {en ? "Cycle" : "실행 주기"}
+                    <select
+                      className="ml-2 h-10 rounded-lg border border-slate-300 bg-white px-2"
+                      value={qaCycleType}
+                      onChange={(event) => setQaCycleType(event.target.value)}
+                    >
+                      {[
+                        "ONCE",
+                        "MONTHLY",
+                        "QUARTERLY",
+                        "HALF_YEARLY",
+                        "ANNUAL",
+                        "AD_HOC",
+                      ].map((value) => (
+                        <option key={value}>{value}</option>
+                      ))}
+                    </select>
+                  </label>
+                  {qaCycleType !== "ONCE" ? (
+                    <>
+                      <input
+                        aria-label="기간 시작"
+                        className="h-10 rounded-lg border border-slate-300 bg-white px-2 text-xs"
+                        type="date"
+                        value={qaPeriodStart}
+                        onChange={(event) =>
+                          setQaPeriodStart(event.target.value)
+                        }
+                      />
+                      <input
+                        aria-label="기간 종료"
+                        className="h-10 rounded-lg border border-slate-300 bg-white px-2 text-xs"
+                        type="date"
+                        value={qaPeriodEnd}
+                        onChange={(event) => setQaPeriodEnd(event.target.value)}
+                      />
+                    </>
+                  ) : null}
+                </div>
+                <div className="mt-2 grid grid-cols-4 gap-2">
+                  {(["CREATE", "UPDATE", "RESET", "DELETE"] as const).map(
+                    (action) => (
+                      <button
+                        className={`rounded-lg border py-2 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50 ${action === "DELETE" ? "border-red-300 bg-white text-red-700" : "border-blue-300 bg-white text-blue-800"}`}
+                        disabled={qaBusy || !qaScreenExecutionAllowed}
+                        key={action}
+                        onClick={() => void manageQaInstance(action)}
+                        type="button"
+                      >
+                        {action === "CREATE"
+                          ? "추가"
+                          : action === "UPDATE"
+                            ? "수정"
+                            : action === "RESET"
+                              ? "초기화"
+                              : "삭제"}
+                      </button>
+                    ),
+                  )}
+                </div>
               </div>
-              {qaMessage ? <p className={`mt-3 rounded-lg p-3 text-xs font-bold ${qaMessage.startsWith("실패") || qaMessage.startsWith("Failed") ? "bg-red-50 text-red-800" : "bg-emerald-50 text-emerald-900"}`}>{qaMessage}</p> : null}
-              <div className="mt-4 border-t border-slate-200 pt-3">
-                <div className="flex items-center justify-between"><strong className="text-xs text-[#052b57]">{en ? "Recent verification" : "최근 검증 이력"}</strong><button className="text-xs font-bold text-[#246beb]" onClick={() => void loadQaResults()} type="button">{en ? "Refresh" : "새로고침"}</button></div>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-6">
+                <button
+                  className="rounded-lg border border-blue-300 py-2.5 text-xs font-black text-blue-800"
+                  onClick={openFullWorkflow}
+                  type="button"
+                >
+                  {en ? "Canvas/table" : "캔버스·표"}
+                </button>
+                <button
+                  className="rounded-lg border border-slate-300 py-2.5 text-xs font-black text-slate-700"
+                  disabled={!selectedCatalogSteps.length}
+                  onClick={openQaShortcut}
+                  type="button"
+                >
+                  {en ? "Shortcut" : "바로가기"}
+                </button>
+                <button
+                  className="rounded-lg border border-[#246beb] py-2.5 text-xs font-black text-[#246beb] disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={
+                    !qaScreenExecutionAllowed || !selectedCatalogSteps.length
+                  }
+                  onClick={fillCurrentScreen}
+                  type="button"
+                >
+                  {en ? "Fill" : "입력"}
+                </button>
+                <button
+                  className="rounded-lg border border-[#052b57] py-2.5 text-xs font-black text-[#052b57] disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={
+                    qaBusy ||
+                    !qaScreenExecutionAllowed ||
+                    !selectedCatalogSteps.length
+                  }
+                  onClick={() => void openQaStep()}
+                  type="button"
+                >
+                  {en ? "Run step" : "절차 실행"}
+                </button>
+                <button
+                  className="col-span-2 rounded-lg bg-emerald-700 py-2.5 text-xs font-black text-white disabled:bg-slate-300"
+                  disabled={
+                    qaBusy ||
+                    !qaScreenExecutionAllowed ||
+                    !selectedCatalogSteps.length
+                  }
+                  onClick={() => void runQaSequence()}
+                  type="button"
+                >
+                  {qaBusy
+                    ? en
+                      ? "Running"
+                      : "실행 중"
+                    : en
+                      ? "Run all"
+                      : "순차 실행·판정"}
+                </button>
+              </div>
+              {qaMessage ? (
+                <p
+                  className={`mt-3 rounded-lg p-3 text-xs font-bold ${qaMessage.startsWith("실패") || qaMessage.startsWith("Failed") ? "bg-red-50 text-red-800" : "bg-emerald-50 text-emerald-900"}`}
+                >
+                  {qaMessage}
+                </p>
+              ) : null}
+              <div className="mt-3 border-t border-slate-200 pt-3">
+                <div className="flex items-center justify-between">
+                  <strong className="text-xs text-[#052b57]">
+                    {en ? "Inputs and execution log" : "입력값·진행 기록"}
+                  </strong>
+                  <button
+                    className="text-xs font-bold text-slate-500"
+                    onClick={() => setQaActivity([])}
+                    type="button"
+                  >
+                    {en ? "Clear" : "기록 지우기"}
+                  </button>
+                </div>
                 <ul className="mt-2 space-y-2">
-                  {qaResults.slice(0,5).map((item) => <li className="rounded-lg border border-slate-200 px-3 py-2 text-xs" key={item.qaRunId}><div className="flex items-center justify-between gap-2"><b className={item.result === "PASSED" ? "text-emerald-700" : "text-red-700"}>{item.result}</b><span className="text-slate-500">{item.executedAt ? new Date(item.executedAt).toLocaleString() : "-"}</span></div>{item.failureReason ? <p className="mt-1 text-red-700">{item.failureReason}</p> : null}</li>)}
-                  {!qaResults.length ? <li className="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">{en ? "No verification history." : "저장된 검증 이력이 없습니다."}</li> : null}
+                  {qaActivity.map((item) => (
+                    <li
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs"
+                      key={item.id}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <span
+                          className={`font-black ${item.kind === "FAIL" ? "text-red-700" : item.kind === "PASS" || item.kind === "SAVE" ? "text-emerald-700" : "text-blue-700"}`}
+                        >
+                          {item.kind}
+                        </span>
+                        <time className="shrink-0 text-slate-400">
+                          {new Date(item.at).toLocaleTimeString()}
+                        </time>
+                      </div>
+                      <p className="mt-1 text-slate-700">{item.message}</p>
+                    </li>
+                  ))}
+                  {!qaActivity.length ? (
+                    <li className="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+                      {en
+                        ? "Input changes and procedure execution will appear here."
+                        : "입력 저장·수정과 절차 실행 결과가 시간순으로 표시됩니다."}
+                    </li>
+                  ) : null}
+                </ul>
+              </div>
+              <div className="mt-4 border-t border-slate-200 pt-3">
+                <div className="flex justify-between">
+                  <strong className="text-xs text-[#052b57]">
+                    {en ? "Recent verification" : "최근 검증 이력"}
+                  </strong>
+                  <button
+                    className="text-xs font-bold text-[#246beb]"
+                    onClick={() => void loadQaResults()}
+                    type="button"
+                  >
+                    {en ? "Refresh" : "새로고침"}
+                  </button>
+                </div>
+                <ul className="mt-2 space-y-2">
+                  {qaResults.slice(0, 5).map((item) => (
+                    <li
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-xs"
+                      key={item.qaRunId}
+                    >
+                      <div className="flex justify-between">
+                        <b
+                          className={
+                            item.result === "PASSED"
+                              ? "text-emerald-700"
+                              : "text-red-700"
+                          }
+                        >
+                          {item.result}
+                        </b>
+                        <span className="text-slate-500">
+                          {item.executedAt
+                            ? new Date(item.executedAt).toLocaleString()
+                            : "-"}
+                        </span>
+                      </div>
+                      {item.failureReason ? (
+                        <p className="mt-1 text-red-700">
+                          {item.failureReason}
+                        </p>
+                      ) : null}
+                    </li>
+                  ))}
+                  {!qaResults.length ? (
+                    <li className="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+                      {en
+                        ? "No verification history."
+                        : "저장된 검증 이력이 없습니다."}
+                    </li>
+                  ) : null}
                 </ul>
               </div>
             </div>
           </section>
         )}
       </aside>
+      </>}
       {flowOpen
         ? createPortal(
             <div
               aria-labelledby="task-process-map-title"
               aria-modal="true"
               className="fixed inset-0 z-[1400] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-[2px] sm:p-6"
+              data-full-workflow-dialog=""
               role="dialog"
             >
               <button
-                aria-label={en ? "Close workflow" : "전체 업무 닫기"}
+                aria-hidden="true"
                 className="absolute inset-0 cursor-default"
                 onClick={() => setFlowOpen(false)}
+                tabIndex={-1}
                 type="button"
               />
-              <section className="relative flex max-h-[88vh] w-full max-w-[78rem] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+              <section className="relative flex max-h-[94vh] w-full max-w-[96rem] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
                 <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-7 sm:py-5">
                   <div>
                     <p className="text-sm font-bold text-[#246beb]">
@@ -1370,6 +5578,7 @@ export function TaskQuestPanel() {
                     >
                       {en ? "My full task workflow" : "전체 업무 프로세스"}
                     </h2>
+                    {usePublicAssist && <p role="status" className="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">{canLoadPrivateTasks ? "전체 업무 원장을 불러오는 중입니다. 조회에 실패하면 잠시 후 다시 열어 주세요." : "계정별 업무 목록은 로그인 후 확인할 수 있습니다. 현재 표시된 0건은 실제 업무 수가 아닙니다."}</p>}
                     <p className="mt-1 text-sm text-slate-600">
                       {en
                         ? "Follow the flow from left to right. Select a task to open its working screen."
@@ -1377,6 +5586,7 @@ export function TaskQuestPanel() {
                     </p>
                   </div>
                   <button
+                    aria-label={en ? "Close workflow" : "전체 업무 닫기"}
                     className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100"
                     onClick={() => setFlowOpen(false)}
                     type="button"
@@ -1418,135 +5628,1367 @@ export function TaskQuestPanel() {
                         </select>
                       </label>
                     </div>
+                    {selectedWorkType === "MEMBER" ? (
+                      <a
+                        className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-black text-white"
+                        data-member-qa-ledger-link="overview"
+                        href={memberQaTimelineHref(
+                          selectedCatalogProcessCode,
+                          selectedCatalogSteps[selectedCatalogStep]?.stepCode,
+                        )}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span className="material-symbols-outlined text-[19px]">
+                          movie
+                        </span>
+                        {en
+                          ? "Open member QA timeline"
+                          : "회원 QA 영상 원장 열기"}
+                      </a>
+                    ) : null}
                   </section>
                   {selectedDefinedProcesses.length ? (
                     <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
                       <div className="flex flex-wrap items-end justify-between gap-3">
                         <div>
                           <p className="text-xs font-black uppercase tracking-wide text-[#246beb]">
-                            {en ? "Select process" : "업무 프로세스 선택"}
+                            {en ? "Select work" : "업무 선택"}
                           </p>
                           <h3 className="mt-1 text-lg font-black text-[#052b57]">
                             {en
-                              ? "Select one process and proceed step by step"
-                              : "프로세스를 선택해 하나씩 구현·검증"}
+                              ? "Review the workflow and select the work to continue"
+                              : "전체 흐름을 확인하고 진행할 업무를 선택하세요"}
                           </h3>
                         </div>
-                        <span className="text-xs font-bold text-slate-500">
-                          {selectedDefinedProcesses.length}{" "}
-                          {en ? "processes" : "개 프로세스"}
-                        </span>
+                        <label className="min-w-[18rem] text-sm font-bold text-slate-700">
+                          {en ? "Work" : "업무"}
+                          <select
+                            aria-label={en ? "Work" : "업무"}
+                            className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-semibold text-[#052b57]"
+                            onChange={(event) => {
+                              const processCode = event.target.value;
+                              if (processCode)
+                                selectCatalogProcessFromMap(processCode);
+                              else selectCatalogProcess(processCode);
+                            }}
+                            value={selectedCatalogProcessCode}
+                          >
+                            <option value="">
+                              {en
+                                ? "Select a process"
+                                : "프로세스를 선택하세요"}
+                            </option>
+                            {selectedDefinedProcesses.map((process, index) => (
+                              <option
+                                key={`process-select-${process.processCode}`}
+                                value={process.processCode}
+                              >
+                                {index + 1}.{" "}
+                                {Number(process.processLevel || 1) >= 3 ||
+                                [
+                                  "TERMS_CONSENT",
+                                  "IDENTITY_VERIFICATION",
+                                  "MFA_MANAGEMENT",
+                                  "PASSWORD_RECOVERY",
+                                  "ACCOUNT_LOCK_RECOVERY",
+                                ].includes(process.processCode)
+                                  ? "↳ "
+                                  : ""}
+                                {process.processName}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
                       </div>
-                      <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${String(selectedUnifiedProcess?.runtimeState)==="DESIGN_BLOCKED"?"border-red-200 bg-red-50 text-red-800":"border-blue-200 bg-blue-50 text-blue-900"}`}><div className="flex flex-wrap items-center justify-between gap-2"><strong>{runtimeStateLabel(String(selectedUnifiedProcess?.runtimeState||"PROJECT_NOT_SELECTED"),en)}</strong><span className="text-xs font-black">{en?"Design accuracy":"설계 정확도"} {Number(selectedUnifiedProcess?.designAccuracyScore||0)}%</span></div>{selectedUnifiedProcess?.stateReason?<p className="mt-1 text-xs leading-5">{selectedUnifiedProcess.stateReason}</p>:null}</div>
-                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        {[
-                          [en ? "Page designs" : "화면 설계", selectedUnifiedProcess?.pageDesignCount || 0],
-                          [en ? "Field contracts" : "컬럼 계약", selectedUnifiedProcess?.fieldCount || 0],
-                          [en ? "DB resolved" : "DB 연결", selectedUnifiedProcess?.dbResolvedFieldCount || 0],
-                          [en ? "Data handoffs" : "데이터 인계", selectedUnifiedProcess?.handoffCount || 0],
-                        ].map(([label, metric]) => <div className="rounded-lg bg-slate-50 px-3 py-2" key={String(label)}><span className="block text-[11px] font-bold text-slate-500">{label}</span><strong className="text-base text-[#052b57]">{metric}</strong></div>)}
-                      </div>
-                      <div className="mt-4 overflow-x-auto pb-2">
-                        <ol className="flex min-w-max items-center gap-0">
-                          {selectedProcessWaves.map((wave, waveIndex) => (
-                            <li className="flex items-center" key={`wave-${wave.wave}`}>
-                              <section className="w-64 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                                <div className="mb-2 flex items-center justify-between gap-2">
-                                  <strong className="text-xs text-[#052b57]">{en ? `Wave ${wave.wave}` : `${wave.wave}차 실행`}</strong>
-                                  <span className={`rounded-full px-2 py-1 text-[11px] font-black ${wave.processes.length > 1 ? "bg-violet-100 text-violet-800" : "bg-slate-200 text-slate-700"}`}>
-                                    {wave.processes.length > 1 ? (en ? `${wave.processes.length} parallel lanes` : `${wave.processes.length}개 병렬 레인`) : (en ? "Sequential" : "순차")}
-                                  </span>
-                                </div>
-                                <div className="space-y-2">
-                                {wave.processes.map((process) => (
+                      <div className="mt-4 grid grid-cols-1 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                        <div className="min-w-0 border-b border-slate-200">
+                          <div className="flex flex-col gap-2 border-b border-slate-200 bg-white p-3 sm:flex-row sm:items-center">
+                            <label className="relative block min-w-0 flex-1">
+                              <span className="sr-only">
+                                {en ? "Search processes" : "업무 프로세스 검색"}
+                              </span>
+                              <span
+                                aria-hidden="true"
+                                className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-slate-400"
+                              >
+                                search
+                              </span>
+                              <input
+                                className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 text-sm outline-none focus:border-[#246beb] focus:ring-2 focus:ring-blue-100"
+                                onChange={(event) =>
+                                  setProcessKeyword(event.target.value)
+                                }
+                                placeholder={
+                                  en
+                                    ? "Search by process name or code"
+                                    : "프로세스명 또는 코드 검색"
+                                }
+                                type="search"
+                                value={processKeyword}
+                              />
+                            </label>
+                            <div className="flex h-10 shrink-0 items-center rounded-lg border border-slate-300 bg-white">
                               <button
-                                className={`flex min-h-32 w-full flex-col rounded-xl border-2 p-3 text-left ${selectedCatalogProcessCode === process.processCode ? "border-[#246beb] bg-blue-50" : "border-slate-200 bg-white"}`}
-                                key={`sequence-${process.processCode}`}
+                                aria-label={en ? "Zoom out" : "축소"}
+                                className="h-full w-10 text-lg font-bold text-slate-600 disabled:text-slate-300"
+                                disabled={processMapZoom <= 80}
                                 onClick={() =>
-                                  selectCatalogProcess(process.processCode)
+                                  setProcessMapZoom((value) =>
+                                    Math.max(80, value - 20),
+                                  )
                                 }
                                 type="button"
                               >
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="text-[11px] font-black text-[#246beb]">
-                                    {process.laneCode || "PRIMARY"} · {process.executionMode || "SEQUENTIAL"}
-                                  </span>
-                                  <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-600">
-                                    {process.workflowPhase}
-                                  </span>
-                                </div>
-                                <strong className="mt-3 text-sm text-[#052b57]">
-                                  {process.processName}
-                                </strong>
-                                <div className="mt-auto pt-3">
-                                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                                    <div
-                                      className="h-full rounded-full bg-[#246beb]"
-                                      style={{
-                                        width: `${Math.max(0, Math.min(100, Number(process.completionScore || 0)))}%`,
-                                      }}
-                                    />
-                                  </div>
-                                  <span className="mt-1 block text-[11px] font-bold text-slate-500">
-                                    {process.completedTasks || 0}/
-                                    {process.requiredTasks || 0} Task ·{" "}
-                                    {Number(process.completionScore || 0)}%
-                                  </span>
-                                </div>
+                                −
                               </button>
-                                ))}
+                              <span className="min-w-14 border-x border-slate-200 text-center text-xs font-black text-slate-700">
+                                {processMapZoom}%
+                              </span>
+                              <button
+                                aria-label={en ? "Zoom in" : "확대"}
+                                className="h-full w-10 text-lg font-bold text-slate-600 disabled:text-slate-300"
+                                disabled={processMapZoom >= 120}
+                                onClick={() =>
+                                  setProcessMapZoom((value) =>
+                                    Math.min(120, value + 20),
+                                  )
+                                }
+                                type="button"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                          <div
+                            className={`relative overflow-auto p-4 ${processMapMode === "CANVAS" ? "min-h-[38rem] bg-slate-100" : processMapMode === "FLOW" ? "min-h-[25rem]" : "min-h-0"}`}
+                            onScroll={
+                              processMapMode === "CANVAS"
+                                ? synchronizeProcessViewport
+                                : undefined
+                            }
+                            ref={processCanvasRef}
+                          >
+                            {processMapMode === "CANVAS" ? (
+                              <div className="sticky left-full top-0 z-30 w-40 -translate-x-full rounded-xl border border-slate-300 bg-white/95 p-2 shadow-lg backdrop-blur">
+                                <div className="flex items-center justify-between text-[10px] font-black text-slate-600">
+                                  <span>
+                                    {en
+                                      ? "Process minimap"
+                                      : "전체 프로세스 위치"}
+                                  </span>
+                                  <button
+                                    className="text-[#246beb]"
+                                    onClick={fitProcessCanvas}
+                                    type="button"
+                                  >
+                                    {en ? "Fit" : "화면 맞춤"}
+                                  </button>
                                 </div>
-                                <p className="mt-2 text-[11px] font-bold text-slate-500">
-                                  {wave.wave === 1 ? (en ? "Entry wave" : "시작 파동") : `${wave.processes[0]?.joinStrategy || "ALL"} ${en ? "join" : "합류"}`}
-                                </p>
-                              </section>
-                              {waveIndex < selectedProcessWaves.length - 1 ? (
-                                <span
-                                  aria-hidden="true"
-                                  className="material-symbols-outlined mx-2 text-2xl text-slate-300"
+                                <button
+                                  aria-label={
+                                    en
+                                      ? "Move process canvas"
+                                      : "전체 프로세스 위치 이동"
+                                  }
+                                  className="relative mt-2 block h-12 w-full cursor-pointer overflow-hidden rounded border border-slate-200 bg-slate-50"
+                                  onClick={(event) => {
+                                    const canvas = processCanvasRef.current;
+                                    if (!canvas) return;
+                                    const bounds =
+                                      event.currentTarget.getBoundingClientRect();
+                                    const ratio = Math.min(
+                                      1,
+                                      Math.max(
+                                        0,
+                                        (event.clientX - bounds.left) /
+                                          bounds.width,
+                                      ),
+                                    );
+                                    canvas.scrollTo({
+                                      left: Math.max(
+                                        0,
+                                        ratio * canvas.scrollWidth -
+                                          canvas.clientWidth / 2,
+                                      ),
+                                      behavior: "smooth",
+                                    });
+                                  }}
+                                  type="button"
                                 >
-                                  arrow_forward
+                                  {visibleActorLanes
+                                    .slice(0, 5)
+                                    .map((lane, laneIndex) => (
+                                      <div
+                                        className="absolute left-2 right-2 flex items-center gap-1"
+                                        key={`minimap-${lane.actorCode}`}
+                                        style={{
+                                          top: `${5 + laneIndex * 8}px`,
+                                        }}
+                                      >
+                                        {visibleProcessWaves.map((wave) => (
+                                          <i
+                                            className="h-1 flex-1 rounded-full bg-blue-300"
+                                            key={`minimap-${lane.actorCode}-${wave.wave}`}
+                                          />
+                                        ))}
+                                      </div>
+                                    ))}
+                                  <span
+                                    className="pointer-events-none absolute inset-y-1 rounded border-2 border-[#246beb] bg-blue-100/20 transition-[left,width]"
+                                    style={{
+                                      left: `${processViewport.left}%`,
+                                      width: `${processViewport.width}%`,
+                                    }}
+                                  />
+                                </button>
+                              </div>
+                            ) : null}
+                            {visibleProcessWaves.length ? (
+                              processMapMode === "FLOW" ? (
+                                <ol
+                                  className={`flex min-w-max items-center pt-5 transition-transform ${visibleProcessWaves.some((wave) => wave.isOptionalBranch) ? "pb-64" : "pb-5"}`}
+                                  style={{
+                                    transform: `scale(${processMapZoom / 100})`,
+                                    transformOrigin: "left top",
+                                  }}
+                                >
+                                  <li className="flex items-center">
+                                    <span className="rounded-full border-2 border-slate-300 bg-white px-4 py-2 text-xs font-black text-slate-600">
+                                      {en ? "Start" : "시작"}
+                                    </span>
+                                    <span className="h-0.5 w-8 bg-[#246beb]" />
+                                  </li>
+                                  {visibleProcessWaves
+                                    .filter((wave) => !wave.isOptionalBranch)
+                                    .map((wave, mainWaveIndex, mainWaves) => {
+                                      const waveIndex =
+                                        visibleProcessWaves.findIndex(
+                                          (candidate) =>
+                                            candidate.wave === wave.wave,
+                                        );
+                                      const optionalBranch =
+                                        visibleProcessWaves[waveIndex + 1]
+                                          ?.isOptionalBranch
+                                          ? visibleProcessWaves[waveIndex + 1]
+                                          : undefined;
+                                      return (
+                                        <li
+                                          className="relative flex items-center"
+                                          key={`wave-${wave.wave}`}
+                                        >
+                                          <section className="relative w-52 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                                            <div
+                                              className={`space-y-2 ${wave.processes.length > 1 ? "border-l-2 border-violet-200 pl-2" : ""}`}
+                                            >
+                                              {wave.processes.map((process) => {
+                                                const selected =
+                                                  selectedCatalogProcessCode ===
+                                                  process.processCode;
+                                                return (
+                                                  <button
+                                                    aria-pressed={selected}
+                                                    className={`group w-full rounded-xl border-2 p-3 text-left transition ${selected ? "border-[#246beb] bg-blue-50 shadow" : "border-slate-200 bg-white hover:border-blue-300"}`}
+                                                    key={`map-${process.processCode}`}
+                                                    onClick={() => {
+                                                      if (
+                                                        wave.stepCode ===
+                                                        "ACCOUNT_WITHDRAWAL_ACCOUNT_STATE_CHECK"
+                                                      )
+                                                        return;
+                                                      if (
+                                                        selectedCatalogProcess &&
+                                                        wave.stepCode
+                                                      ) {
+                                                        const targetStepIndex =
+                                                          selectedCatalogSteps.findIndex(
+                                                            (step) =>
+                                                              step.stepCode ===
+                                                              wave.stepCode,
+                                                          );
+                                                        if (
+                                                          targetStepIndex >= 0
+                                                        )
+                                                          selectCatalogStepByUser(
+                                                            targetStepIndex,
+                                                          );
+                                                        return;
+                                                      }
+                                                      selectCatalogProcessFromMap(
+                                                        process.processCode,
+                                                      );
+                                                    }}
+                                                    type="button"
+                                                  >
+                                                    <div className="flex items-start justify-between gap-2">
+                                                      <div>
+                                                        {wave.isOptionalBranch ? (
+                                                          <span className="mb-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-800">
+                                                            {en
+                                                              ? "OPTIONAL BRANCH"
+                                                              : "선택 분기"}
+                                                          </span>
+                                                        ) : null}
+                                                        <strong className="block text-sm leading-5 text-[#052b57]">
+                                                          {wave.stepName ||
+                                                            process.processName}
+                                                        </strong>
+                                                      </div>
+                                                      <span
+                                                        className={`material-symbols-outlined shrink-0 text-[19px] ${selected ? "text-[#246beb]" : "text-slate-300"}`}
+                                                      >
+                                                        {selected
+                                                          ? "check_circle"
+                                                          : "radio_button_unchecked"}
+                                                      </span>
+                                                    </div>
+                                                    <span className="mt-2 block text-[11px] leading-4 text-slate-600">
+                                                      {wave.screenDescription ||
+                                                        process.goal ||
+                                                        (en
+                                                          ? "Open this screen to continue the work."
+                                                          : "이 화면에서 관련 기능을 진행합니다.")}
+                                                    </span>
+                                                    {wave.screenPath ? (
+                                                      <span className="mt-2 block truncate rounded bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">
+                                                        {wave.screenPath}
+                                                      </span>
+                                                    ) : null}
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
+                                          </section>
+                                          {optionalBranch ? (
+                                            <aside className="absolute left-[13.5rem] top-[calc(100%+3.25rem)] z-10 w-52 rounded-2xl border border-amber-200 bg-amber-50 p-3 shadow-lg">
+                                              <span
+                                                aria-hidden="true"
+                                                className="absolute -left-10 -top-10 text-3xl font-black text-[#246beb]"
+                                              >
+                                                ↘
+                                              </span>
+                                              <button
+                                                className={`w-full rounded-xl border-2 p-3 text-left transition ${selectedCatalogStep === waveIndex + 1 ? "border-[#246beb] bg-blue-50" : "border-blue-300 bg-white hover:border-[#246beb]"}`}
+                                                onClick={() => {
+                                                  if (
+                                                    optionalBranch.stepCode ===
+                                                      "ACCOUNT_WITHDRAWAL_DORMANT_RECOVERY" &&
+                                                    optionalBranch.screenPath
+                                                  ) {
+                                                    window.location.assign(
+                                                      optionalBranch.screenPath,
+                                                    );
+                                                    return;
+                                                  }
+                                                  selectCatalogStepByUser(
+                                                    waveIndex + 1,
+                                                  );
+                                                }}
+                                                type="button"
+                                              >
+                                                <span className="mb-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-800">
+                                                  {en
+                                                    ? "OPTIONAL BRANCH"
+                                                    : "선택 분기"}
+                                                </span>
+                                                <strong className="block text-sm leading-5 text-[#052b57]">
+                                                  {optionalBranch.stepName}
+                                                </strong>
+                                                <span className="mt-2 block text-[11px] leading-4 text-slate-600">
+                                                  {
+                                                    optionalBranch.screenDescription
+                                                  }
+                                                </span>
+                                                <span className="mt-2 block truncate rounded bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">
+                                                  {optionalBranch.screenPath}
+                                                </span>
+                                              </button>
+                                              {optionalBranch.branchRejoins ? (
+                                                <span
+                                                  aria-hidden="true"
+                                                  className="absolute -right-10 -top-10 text-3xl font-black text-[#246beb]"
+                                                >
+                                                  ↗
+                                                </span>
+                                              ) : null}
+                                            </aside>
+                                          ) : null}
+                                          {optionalBranch ? (
+                                            <span className="mx-2 flex w-56 items-center text-[#246beb]">
+                                              <span className="h-0.5 flex-1 bg-[#246beb]" />
+                                              <span className="material-symbols-outlined text-2xl">
+                                                arrow_forward
+                                              </span>
+                                            </span>
+                                          ) : (
+                                            <span
+                                              className={`material-symbols-outlined mx-2 text-2xl ${mainWaveIndex < mainWaves.length - 1 ? "text-[#246beb]" : "text-slate-400"}`}
+                                            >
+                                              arrow_forward
+                                            </span>
+                                          )}
+                                        </li>
+                                      );
+                                    })}
+                                  <li>
+                                    <span className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-emerald-400 bg-white text-xs font-black text-emerald-700">
+                                      {en ? "Done" : "완료"}
+                                    </span>
+                                  </li>
+                                </ol>
+                              ) : (
+                                <div
+                                  className={`overflow-hidden rounded-xl border border-slate-200 bg-white ${processMapMode === "CANVAS" ? "my-4 max-w-none shadow-xl" : "w-full max-w-full"}`}
+                                  style={{
+                                    ...(processMapMode === "CANVAS"
+                                      ? {
+                                          width: `${selectedWorkType === "WORK_ASSIGNMENT" ? 44 : Math.max(112, 9 + visibleProcessWaves.length * 14)}rem`,
+                                          minWidth: `${selectedWorkType === "WORK_ASSIGNMENT" ? 44 : Math.max(112, 9 + visibleProcessWaves.length * 14)}rem`,
+                                          zoom: processMapZoom / 100,
+                                        }
+                                      : {
+                                          transform: `scale(${processMapZoom / 100})`,
+                                          transformOrigin: "left top",
+                                        }),
+                                  }}
+                                >
+                                  <div
+                                    className="grid border-b border-slate-200 bg-slate-50"
+                                    style={{
+                                      gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, ${processMapMode === "CANVAS" ? (selectedWorkType === "WORK_ASSIGNMENT" ? "32rem" : "14rem") : "minmax(0, 1fr)"})`,
+                                    }}
+                                  >
+                                    <strong className="flex min-h-14 items-center border-r border-slate-200 px-4 text-xs text-[#052b57]">
+                                      {en ? "Assignee" : "담당자"}
+                                    </strong>
+                                    {visibleProcessWaves.map((wave) => (
+                                      <div
+                                        className="flex min-h-16 flex-col items-center justify-center border-r border-dashed border-slate-200 px-3 py-2 text-center last:border-r-0"
+                                        key={`actor-head-${wave.wave}`}
+                                      >
+                                        <strong
+                                          className="line-clamp-2 text-xs leading-5 text-[#052b57]"
+                                          title={wave.processes
+                                            .map(
+                                              (process) => process.processName,
+                                            )
+                                            .join(" · ")}
+                                        >
+                                          {wave.stepName ||
+                                            wave.processes
+                                              .map(
+                                                (process) =>
+                                                  process.processName,
+                                              )
+                                              .join(" · ")}
+                                        </strong>
+                                        <span className="mt-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-black text-[#164f86]">
+                                          {en
+                                            ? `Step ${wave.wave}`
+                                            : `${wave.wave}단계`}
+                                          {wave.processes.length > 1
+                                            ? en
+                                              ? " · Parallel"
+                                              : " · 병렬"
+                                            : ""}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {visibleActorLanes.map((lane) => (
+                                    <div
+                                      className="grid border-b border-slate-200 last:border-b-0"
+                                      key={`actor-lane-${lane.actorCode}`}
+                                      style={{
+                                        gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, ${processMapMode === "CANVAS" ? (selectedWorkType === "WORK_ASSIGNMENT" ? "32rem" : "14rem") : "minmax(0, 1fr)"})`,
+                                      }}
+                                    >
+                                      <div className="flex min-h-28 items-center gap-2 border-r border-slate-200 bg-[#052b57] px-3 text-white">
+                                        <span className="material-symbols-outlined flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[18px] text-[#052b57]">
+                                          person
+                                        </span>
+                                        <span className="min-w-0">
+                                          <strong className="block break-words text-xs leading-5">
+                                            {actorLabel(lane.actorCode)}
+                                          </strong>
+                                        </span>
+                                      </div>
+                                      {visibleProcessWaves.map((wave) => {
+                                        const waveProcesses =
+                                          lane.processes.filter(
+                                            (item) => item.wave === wave.wave,
+                                          );
+                                        return (
+                                          <div
+                                            className="relative flex min-h-28 items-center justify-center border-r border-dashed border-slate-200 px-3 py-4 last:border-r-0"
+                                            key={`${lane.actorCode}-${wave.wave}`}
+                                          >
+                                            {waveProcesses.length ? (
+                                              <div className="relative z-10 w-full space-y-2">
+                                                {waveProcesses.map(
+                                                  ({
+                                                    process,
+                                                    step,
+                                                    stepIndex,
+                                                  }) => {
+                                                    const runtimeStep = step
+                                                      ? guideRuntimeStep(step)
+                                                      : workflowItems.find(
+                                                          (item) =>
+                                                            item.processCode ===
+                                                            process.processCode,
+                                                        );
+                                                    const assignment =
+                                                      explicitProcessAssignment(
+                                                        process.processCode,
+                                                        step?.stepCode ||
+                                                          "__PROCESS__",
+                                                      );
+                                                    const assignedAccount =
+                                                      assignment?.accountId ||
+                                                      (runtimeStep?.explicitlyAssigned
+                                                        ? runtimeStep.assignee
+                                                        : undefined);
+                                                    const assignedToAccount =
+                                                      Boolean(
+                                                        assignedAccount &&
+                                                        data?.actorId &&
+                                                        assignedAccount.toLocaleLowerCase() ===
+                                                          data.actorId.toLocaleLowerCase(),
+                                                      );
+                                                    const explicitlyAssigned =
+                                                      Boolean(assignedAccount);
+                                                    const selected =
+                                                      selectedCatalogProcessCode ===
+                                                        process.processCode &&
+                                                      stepIndex ===
+                                                        selectedCatalogStep;
+                                                    const feedback =
+                                                      /REJECT|REVISION|RECALC|SUPPLEMENT|RETURN/i.test(
+                                                        `${step?.commandCode || ""} ${step?.toState || ""}`,
+                                                      );
+                                                    const status =
+                                                      Number(
+                                                        process.blockedTasks ||
+                                                          0,
+                                                      ) > 0
+                                                        ? en
+                                                          ? "Revision"
+                                                          : "보완"
+                                                        : process.runtimeState ===
+                                                              "COMPLETED" ||
+                                                            Number(
+                                                              process.completionScore ||
+                                                                0,
+                                                            ) >= 100
+                                                          ? en
+                                                            ? "Done"
+                                                            : "완료"
+                                                          : Number(
+                                                                process.runtimeTaskCount ||
+                                                                  0,
+                                                              ) > 0
+                                                            ? en
+                                                              ? "Active"
+                                                              : "진행중"
+                                                            : en
+                                                              ? "Waiting"
+                                                              : "대기";
+                                                    return (
+                                                      <button
+                                                        aria-pressed={selected}
+                                                        className={`relative w-full rounded-xl border-2 px-3 py-2.5 text-left text-xs font-black leading-5 transition ${feedback ? "border-violet-300 bg-violet-50" : selected ? "border-[#246beb] bg-blue-50 text-[#052b57] shadow" : "border-blue-200 bg-white text-slate-700 hover:border-[#246beb]"}`}
+                                                        data-process-code={
+                                                          process.processCode
+                                                        }
+                                                        data-step-code={
+                                                          step?.stepCode ||
+                                                          "__PROCESS__"
+                                                        }
+                                                        data-step-index={
+                                                          stepIndex
+                                                        }
+                                                        key={`actor-process-${process.processCode}-${step?.stepCode || "process"}`}
+                                                        onClick={() => {
+                                                          selectCatalogProcessFromMap(
+                                                            process.processCode,
+                                                            stepIndex,
+                                                          );
+                                                        }}
+                                                        type="button"
+                                                      >
+                                                        <span className="block pr-12">
+                                                          {step?.stepName ||
+                                                            process.processName}
+                                                        </span>
+                                                        {step ? (
+                                                          <span
+                                                            className={`mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[9px] font-black ${(stepGuidanceContract(step)?.applicabilityType || stepApplicabilityType(step.processCode, step.stepCode)) === "REQUIRED" ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}
+                                                          >
+                                                            {(stepGuidanceContract(
+                                                              step,
+                                                            )
+                                                              ?.applicabilityType ||
+                                                              stepApplicabilityType(
+                                                                step.processCode,
+                                                                step.stepCode,
+                                                              )) === "REQUIRED"
+                                                              ? en
+                                                                ? "Required"
+                                                                : "필수"
+                                                              : en
+                                                                ? "Conditional"
+                                                                : "조건부"}
+                                                          </span>
+                                                        ) : null}
+                                                        {process.processCode ===
+                                                          "WORK_ASSIGNMENT" &&
+                                                        !step ? (
+                                                          <span className="mt-3 grid grid-cols-4 gap-1.5">
+                                                            {(
+                                                              data?.processCatalogSteps ||
+                                                              []
+                                                            )
+                                                              .filter(
+                                                                (item) =>
+                                                                  item.processCode ===
+                                                                  "WORK_ASSIGNMENT",
+                                                              )
+                                                              .sort(
+                                                                (left, right) =>
+                                                                  Number(
+                                                                    left.stepOrder,
+                                                                  ) -
+                                                                  Number(
+                                                                    right.stepOrder,
+                                                                  ),
+                                                              )
+                                                              .map((item) => (
+                                                                <span
+                                                                  className="rounded-lg border border-blue-200 bg-white px-1.5 py-2 text-center"
+                                                                  key={`assignment-mini-${item.stepCode}`}
+                                                                >
+                                                                  <b className="mx-auto flex h-5 w-5 items-center justify-center rounded-full bg-[#0755b5] text-[10px] text-white">
+                                                                    {
+                                                                      item.stepOrder
+                                                                    }
+                                                                  </b>
+                                                                  <small className="mt-1 block break-keep text-[9px] leading-3 text-slate-600">
+                                                                    {
+                                                                      item.stepName
+                                                                    }
+                                                                  </small>
+                                                                </span>
+                                                              ))}
+                                                          </span>
+                                                        ) : null}
+                                                        <small
+                                                          className={`absolute right-2 top-2 rounded-full px-1.5 py-0.5 text-[9px] ${status === "완료" || status === "Done" ? "bg-emerald-100 text-emerald-700" : status === "보완" || status === "Revision" ? "bg-orange-100 text-orange-700" : status === "진행중" || status === "Active" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"}`}
+                                                        >
+                                                          {status}
+                                                        </small>
+                                                        <span
+                                                          className={`mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[9px] font-black ${assignedToAccount ? "bg-[#052b57] text-white" : explicitlyAssigned ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}
+                                                        >
+                                                          {assignedToAccount
+                                                            ? en
+                                                              ? "Assigned to me"
+                                                              : "내 배정 업무"
+                                                            : explicitlyAssigned
+                                                              ? en
+                                                                ? `Assigned to ${assignedAccount}`
+                                                                : `배정됨 · ${assignedAccount}`
+                                                              : en
+                                                                ? "Unassigned"
+                                                                : "미배정"}
+                                                        </span>
+                                                      </button>
+                                                    );
+                                                  },
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <span
+                                                className="h-px w-full bg-slate-100"
+                                                aria-hidden="true"
+                                              />
+                                            )}
+                                            {wave.wave <
+                                              visibleProcessWaves[
+                                                visibleProcessWaves.length - 1
+                                              ]?.wave &&
+                                            waveProcesses.length ? (
+                                              <span
+                                                className="material-symbols-outlined absolute -right-3 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[18px] text-[#246beb]"
+                                                aria-hidden="true"
+                                              >
+                                                arrow_forward
+                                              </span>
+                                            ) : null}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ))}
+                                </div>
+                              )
+                            ) : (
+                              <div className="flex min-h-[22rem] flex-col items-center justify-center text-center">
+                                <span className="material-symbols-outlined text-4xl text-slate-400">
+                                  search_off
                                 </span>
+                                <p className="mt-2 text-sm font-bold text-slate-700">
+                                  {en
+                                    ? "No matching processes"
+                                    : "일치하는 업무 프로세스가 없습니다."}
+                                </p>
+                                <button
+                                  className="mt-3 rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold"
+                                  onClick={() => setProcessKeyword("")}
+                                  type="button"
+                                >
+                                  {en ? "Clear search" : "검색 초기화"}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <aside className="flex min-h-0 flex-col bg-white p-5">
+                          {selectedCatalogProcess ? (
+                            <>
+                              <p className="text-xs font-black uppercase tracking-wide text-[#246beb]">
+                                {en ? "Selected work" : "선택한 업무"}
+                              </p>
+                              <div className="mt-3 flex items-start gap-3">
+                                <div>
+                                  <h4 className="text-lg font-black leading-6 text-[#052b57]">
+                                    {selectedCatalogProcess.processName}
+                                  </h4>
+                                  {selectedEmissionPhase ? (
+                                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                                      <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-800">
+                                        {en
+                                          ? "Current phase"
+                                          : "현재 업무 구간"}{" "}
+                                        · {selectedEmissionPhase}
+                                      </span>
+                                      <span className="text-xs font-bold text-slate-500">
+                                        {en
+                                          ? "5 phases · 7 procedures"
+                                          : "5개 업무 구간 · 7개 절차"}
+                                      </span>
+                                    </div>
+                                  ) : null}
+                                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                                    {selectedCatalogProcess.goal ||
+                                      selectedCatalogSteps[0]?.workPurpose ||
+                                      (en
+                                        ? "Follow the guided steps to complete this work."
+                                        : "길잡이의 절차에 따라 업무를 완료합니다.")}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50 p-4">
+                                <strong className="text-sm text-[#052b57]">
+                                  {en ? "Screen function" : "선택 화면 기능"}
+                                </strong>
+                                <p className="mt-2 text-sm leading-6 text-slate-700">
+                                  {selectedProcessWaves[selectedCatalogStep]
+                                    ?.screenDescription ||
+                                    selectedCatalogSteps[selectedCatalogStep]
+                                      ?.workPurpose ||
+                                    selectedCatalogProcess.goal ||
+                                    (en
+                                      ? "Select a screen in the flow to read its main function."
+                                      : "순서도에서 화면을 선택하면 주요 기능을 간단히 확인할 수 있습니다.")}
+                                </p>
+                                {selectedProcessWaves[selectedCatalogStep]
+                                  ?.screenPath ||
+                                selectedCatalogSteps[selectedCatalogStep]
+                                  ?.userPath ||
+                                selectedCatalogSteps[selectedCatalogStep]
+                                  ?.adminPath ? (
+                                  <code className="mt-2 block break-all rounded bg-white px-2 py-1.5 text-xs text-slate-600">
+                                    {selectedProcessWaves[selectedCatalogStep]
+                                      ?.screenPath ||
+                                      selectedCatalogSteps[selectedCatalogStep]
+                                        ?.userPath ||
+                                      selectedCatalogSteps[selectedCatalogStep]
+                                        ?.adminPath}
+                                  </code>
+                                ) : null}
+                                <p className="mt-2 text-xs text-blue-800">
+                                  {en
+                                    ? "Inputs, permissions, evidence and detailed tests remain in Help and QA."
+                                    : "입력값·권한·증적·상세 테스트는 도움말과 QA 카드에서 확인합니다."}
+                                </p>
+                              </div>
+                              {selectedNextProcess ? (
+                                <div className="mt-4 rounded-xl bg-slate-50 p-3">
+                                  <span className="text-[11px] font-bold text-slate-500">
+                                    {en ? "Next work" : "다음 업무"}
+                                  </span>
+                                  <strong className="mt-1 block text-sm text-[#052b57]">
+                                    {selectedNextProcess.processName}
+                                  </strong>
+                                </div>
                               ) : null}
-                            </li>
-                          ))}
-                        </ol>
+                              {(() => {
+                                const step =
+                                  selectedCatalogSteps[selectedCatalogStep];
+                                if (
+                                  !step ||
+                                  stepGuidanceContract(step)
+                                    ?.applicabilityType !== "CONDITIONAL"
+                                )
+                                  return null;
+                                const decision =
+                                  stepApplicabilityDecision(step);
+                                const status =
+                                  decision?.decisionStatus || "PENDING";
+                                return (
+                                  <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <strong className="text-sm text-amber-950">
+                                        조건부 절차 적용 판정
+                                      </strong>
+                                      <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-amber-800">
+                                        {
+                                          {
+                                            PENDING: "판정 필요",
+                                            APPLICABLE: "적용",
+                                            NOT_APPLICABLE: "적용 제외",
+                                            REASSESS_REQUIRED: "재판정 필요",
+                                          }[status]
+                                        }
+                                      </span>
+                                    </div>
+                                    <p className="mt-2 text-xs leading-5 text-amber-900">
+                                      {
+                                        stepGuidanceContract(step)
+                                          ?.applicabilityRule
+                                      }
+                                    </p>
+                                    <textarea
+                                      className="mt-3 min-h-20 w-full rounded-lg border border-amber-200 bg-white p-2.5 text-sm"
+                                      placeholder="판정 사유 (적용 제외·재판정 시 필수)"
+                                      value={applicabilityReason}
+                                      onChange={(event) =>
+                                        setApplicabilityReason(
+                                          event.target.value,
+                                        )
+                                      }
+                                    />
+                                    <input
+                                      className="mt-2 h-10 w-full rounded-lg border border-amber-200 bg-white px-2.5 text-sm"
+                                      placeholder="증적 참조 ID 또는 URL (쉼표로 구분)"
+                                      value={applicabilityEvidence}
+                                      onChange={(event) =>
+                                        setApplicabilityEvidence(
+                                          event.target.value,
+                                        )
+                                      }
+                                    />
+                                    <div className="mt-3 grid grid-cols-3 gap-2">
+                                      <button
+                                        className="rounded-lg bg-[#246beb] px-2 py-2 text-xs font-black text-white disabled:opacity-50"
+                                        disabled={applicabilitySaving}
+                                        onClick={() =>
+                                          saveStepApplicabilityDecision(
+                                            "APPLICABLE",
+                                          )
+                                        }
+                                        type="button"
+                                      >
+                                        적용
+                                      </button>
+                                      <button
+                                        className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-black text-slate-700 disabled:opacity-50"
+                                        disabled={
+                                          applicabilitySaving ||
+                                          !applicabilityReason.trim()
+                                        }
+                                        onClick={() =>
+                                          saveStepApplicabilityDecision(
+                                            "NOT_APPLICABLE",
+                                          )
+                                        }
+                                        type="button"
+                                      >
+                                        적용 제외
+                                      </button>
+                                      <button
+                                        className="rounded-lg border border-amber-300 bg-white px-2 py-2 text-xs font-black text-amber-800 disabled:opacity-50"
+                                        disabled={
+                                          applicabilitySaving ||
+                                          !applicabilityReason.trim()
+                                        }
+                                        onClick={() =>
+                                          saveStepApplicabilityDecision(
+                                            "REASSESS_REQUIRED",
+                                          )
+                                        }
+                                        type="button"
+                                      >
+                                        재판정
+                                      </button>
+                                    </div>
+                                    {decision?.decidedBy ? (
+                                      <p className="mt-2 text-[11px] text-amber-800">
+                                        판정자 {decision.decidedBy} · 버전{" "}
+                                        {decision.decisionVersion || 1}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                );
+                              })()}
+                              <button
+                                className="mt-auto rounded-xl bg-[#052b57] px-4 py-3.5 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                                disabled={(() => {
+                                  if (
+                                    selectedCatalogProcessCode ===
+                                    "WORK_ASSIGNMENT"
+                                  ) {
+                                    return !data?.assignmentManager;
+                                  }
+                                  if (
+                                    selectedProcessWaves[selectedCatalogStep]
+                                      ?.screenPath
+                                  )
+                                    return false;
+                                  const step =
+                                    selectedCatalogSteps[selectedCatalogStep];
+                                  if (!step) return true;
+                                  const contract = stepGuidanceContract(step);
+                                  const decision =
+                                    stepApplicabilityDecision(
+                                      step,
+                                    )?.decisionStatus;
+                                  if (
+                                    contract?.applicabilityType ===
+                                      "CONDITIONAL" &&
+                                    !["APPLICABLE", "NOT_APPLICABLE"].includes(
+                                      decision || "PENDING",
+                                    )
+                                  )
+                                    return true;
+                                  if (decision === "NOT_APPLICABLE")
+                                    return false;
+                                  const runtimeStep = guideRuntimeStep(step);
+                                  return (
+                                    !guideRoute(step, runtimeStep) ||
+                                    !guideActorAllowed(step, runtimeStep) ||
+                                    Boolean(runtimeStep?.pendingPredecessors) ||
+                                    (runtimeStep?.status !== "DONE" &&
+                                      runtimeStep?.actionable === false)
+                                  );
+                                })()}
+                                onClick={startSelectedProcessGuide}
+                                type="button"
+                              >
+                                {stepApplicabilityDecision(
+                                  selectedCatalogSteps[selectedCatalogStep],
+                                )?.decisionStatus === "NOT_APPLICABLE"
+                                  ? en
+                                    ? "Skip and continue"
+                                    : "적용 제외 확인·다음 절차"
+                                  : en
+                                    ? "Open selected step"
+                                    : "선택 단계 업무 길잡이 시작"}
+                              </button>
+                            </>
+                          ) : (
+                            <div className="flex flex-1 flex-col items-center justify-center text-center">
+                              <span className="material-symbols-outlined text-4xl text-slate-300">
+                                account_tree
+                              </span>
+                              <p className="mt-3 text-sm font-bold text-slate-700">
+                                {en
+                                  ? "Select a process on the map."
+                                  : "왼쪽 순서도에서 업무를 선택하세요."}
+                              </p>
+                            </div>
+                          )}
+                        </aside>
                       </div>
                     </section>
                   ) : null}
-                  {data?.processNavigationSummary ? (
+                  {data?.assignmentManager &&
+                  selectedCatalogProcessCode === "WORK_ASSIGNMENT" &&
+                  selectedCatalogProcess ? (
+                    <section
+                      className="mb-5 rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm sm:p-5"
+                      data-work-assignment-console=""
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-wide text-[#246beb]">
+                            {en ? "WORK ASSIGNMENT" : "기업 업무 배정"}
+                          </p>
+                          <h3 className="mt-1 text-lg font-black text-[#052b57]">
+                            {en
+                              ? "Review assignment status"
+                              : "프로젝트 담당자 배정 현황"}
+                          </h3>
+                          <p className="mt-1 text-sm leading-6 text-blue-900">
+                            {en
+                              ? "Use the dedicated workspace to assign or change company accounts and notify assignees."
+                              : "전체 업무 보기에서는 배정 현황을 확인하고, 전용 화면에서 계정 지정·변경·알림을 처리합니다."}
+                          </p>
+                        </div>
+                        <a
+                          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#0755b5] px-5 font-black text-white"
+                          href={buildLocalizedPath(
+                            `/emission/work-assignment${effectiveProjectId ? `?projectId=${encodeURIComponent(effectiveProjectId)}` : ""}`,
+                            `/en/emission/work-assignment${effectiveProjectId ? `?projectId=${encodeURIComponent(effectiveProjectId)}` : ""}`,
+                          )}
+                        >
+                          <span className="material-symbols-outlined">
+                            assignment_ind
+                          </span>
+                          {en
+                            ? "Open assignment workspace"
+                            : "업무 배정 관리 열기"}
+                        </a>
+                      </div>
+                    </section>
+                  ) : null}
+                  {false &&
+                  data?.assignmentManager &&
+                  selectedCatalogProcessCode === "WORK_ASSIGNMENT" &&
+                  selectedCatalogProcess &&
+                  effectiveProjectId ? (
+                    <section
+                      className="mb-5 rounded-2xl border border-blue-200 bg-white p-4 shadow-sm sm:p-5"
+                      data-work-assignment-console=""
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-wide text-[#246beb]">
+                            {en ? "WORK ASSIGNMENT" : "기업 업무 배정"}
+                          </p>
+                          <h3 className="mt-1 text-lg font-black text-[#052b57]">
+                            {en
+                              ? "Assign actors and process steps"
+                              : "액터·단계별 담당 계정 배정"}
+                          </h3>
+                          <p className="mt-1 text-sm leading-6 text-slate-600">
+                            {en
+                              ? "Only active accounts in your company can be assigned. Actor defaults can be overridden per step."
+                              : "현재 기업의 활성 계정만 선택할 수 있습니다. 액터 기본 담당자를 적용한 뒤 단계별로 변경할 수 있습니다."}
+                          </p>
+                        </div>
+                        <label className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black text-blue-900">
+                          {en ? "Project" : "배정 프로젝트"}
+                          <select
+                            className="max-w-64 bg-transparent outline-none"
+                            onChange={(event) => {
+                              setSelectedOverviewProjectId(event.target.value);
+                              localStorage.setItem(
+                                "task-quest-overview-project",
+                                event.target.value,
+                              );
+                            }}
+                            value={effectiveProjectId}
+                          >
+                            {(assignmentWorkspace?.projects || []).map(
+                              (project) => (
+                                <option
+                                  key={project.projectId}
+                                  value={project.projectId}
+                                >
+                                  {project.projectName} · {project.projectId}
+                                </option>
+                              ),
+                            )}
+                          </select>
+                        </label>
+                      </div>
+                      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.5fr)]">
+                        <div>
+                          <h4 className="text-sm font-black text-slate-900">
+                            {en ? "Actor defaults" : "액터 기본 담당자"}
+                          </h4>
+                          <div className="mt-3 space-y-3">
+                            {[
+                              ...new Set(
+                                assignmentSteps.map(
+                                  (step) => step.actorCode || "UNASSIGNED",
+                                ),
+                              ),
+                            ].map((actorCode) => {
+                              const actorSteps = assignmentSteps.filter(
+                                (step) =>
+                                  (step.actorCode || "UNASSIGNED") ===
+                                  actorCode,
+                              );
+                              const assigned = [
+                                ...new Set(
+                                  actorSteps
+                                    .map((step) => stepAssignees[step.stepCode])
+                                    .filter(Boolean),
+                                ),
+                              ];
+                              return (
+                                <label
+                                  className="block rounded-xl border border-slate-200 bg-slate-50 p-3"
+                                  key={actorCode}
+                                >
+                                  <span className="text-xs font-black text-[#052b57]">
+                                    {actorLabel(actorCode)}{" "}
+                                    <small className="ml-1 font-bold text-slate-500">
+                                      {actorSteps.length}
+                                      {en ? " steps" : "개 단계"}
+                                    </small>
+                                  </span>
+                                  <select
+                                    className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"
+                                    onChange={(event) =>
+                                      assignActorDefault(
+                                        actorCode,
+                                        event.target.value,
+                                      )
+                                    }
+                                    value={
+                                      assigned.length === 1 ? assigned[0] : ""
+                                    }
+                                  >
+                                    <option value="">
+                                      {en
+                                        ? "Select company account"
+                                        : "기업 계정 선택"}
+                                    </option>
+                                    {(assignmentWorkspace?.accounts || []).map(
+                                      (account) => (
+                                        <option
+                                          key={`${actorCode}-${account.accountId}`}
+                                          value={account.accountId}
+                                        >
+                                          {account.accountName} ·{" "}
+                                          {account.accountId}
+                                          {account.department
+                                            ? ` · ${account.department}`
+                                            : ""}
+                                        </option>
+                                      ),
+                                    )}
+                                  </select>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between gap-3">
+                            <h4 className="text-sm font-black text-slate-900">
+                              {en ? "Step assignments" : "단계별 담당 계정"}
+                            </h4>
+                            <span className="text-xs font-bold text-slate-500">
+                              {selectedCatalogSteps.length}
+                              {en ? " steps" : "개 단계"}
+                            </span>
+                          </div>
+                          <ol className="mt-3 space-y-2">
+                            {assignmentSteps.map((step) => (
+                              <li
+                                className="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-[2.5rem_minmax(0,1fr)_minmax(13rem,0.9fr)] sm:items-center"
+                                key={`assign-${step.stepCode}`}
+                              >
+                                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#052b57] text-xs font-black text-white">
+                                  {step.stepOrder}
+                                </span>
+                                <span>
+                                  <strong className="block text-sm text-[#052b57]">
+                                    {step.stepName}
+                                  </strong>
+                                  <small className="font-bold text-slate-500">
+                                    {actorLabel(step.actorCode)}
+                                  </small>
+                                </span>
+                                <select
+                                  aria-label={`${step.stepName} 담당 계정`}
+                                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"
+                                  onChange={(event) =>
+                                    setStepAssignees((current) => ({
+                                      ...current,
+                                      [step.stepCode]: event.target.value,
+                                    }))
+                                  }
+                                  value={stepAssignees[step.stepCode] || ""}
+                                >
+                                  <option value="">
+                                    {en ? "Select account" : "담당 계정 선택"}
+                                  </option>
+                                  {(assignmentWorkspace?.accounts || []).map(
+                                    (account) => (
+                                      <option
+                                        key={`${step.stepCode}-${account.accountId}`}
+                                        value={account.accountId}
+                                      >
+                                        {account.accountName} ·{" "}
+                                        {account.accountId}
+                                      </option>
+                                    ),
+                                  )}
+                                </select>
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      </div>
+                      {assignmentMessage ? (
+                        <p
+                          className={`mt-4 rounded-lg p-3 text-sm font-bold ${assignmentMessage.includes("저장") || assignmentMessage.includes("assigned") ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}
+                          role="status"
+                        >
+                          {assignmentMessage}
+                        </p>
+                      ) : null}
+                      <div className="mt-4 flex justify-end">
+                        <button
+                          className="min-h-12 rounded-lg bg-[#0755b5] px-6 font-black text-white disabled:bg-slate-300"
+                          disabled={
+                            assignmentBusy || !selectedCatalogSteps.length
+                          }
+                          onClick={() => void saveAssignments()}
+                          type="button"
+                        >
+                          {assignmentBusy
+                            ? en
+                              ? "Saving..."
+                              : "저장 중..."
+                            : en
+                              ? "Save assignments and notify"
+                              : "배정 저장·담당자 알림"}
+                        </button>
+                      </div>
+                    </section>
+                  ) : null}
+                  {false &&
+                  selectedCatalogProcessCode ===
+                    "EMISSION_PROJECT_PORTFOLIO" ? (
+                    <section className="mb-5 rounded-2xl border border-blue-200 bg-blue-50 p-4 sm:p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-wide text-blue-700">
+                            {en
+                              ? "Connected project workflow"
+                              : "프로젝트 선택 후 연결 업무"}
+                          </p>
+                          <h3 className="mt-1 text-lg font-black text-[#052b57]">
+                            {en
+                              ? "Carbon emission project · 7 steps"
+                              : "탄소배출 프로젝트 수행 · 7단계"}
+                          </h3>
+                          <p className="mt-1 text-sm text-blue-900">
+                            {en
+                              ? "The dashboard selects a project, then the same seven steps shown on the page continue here."
+                              : "배출량 현황에서 프로젝트를 선택하면 화면의 STEP 1~7과 동일한 순서로 업무가 이어집니다."}
+                          </p>
+                        </div>
+                        <button
+                          className="rounded-lg bg-[#246beb] px-4 py-2.5 text-sm font-black text-white"
+                          onClick={() =>
+                            selectCatalogProcess("EMISSION_PROJECT")
+                          }
+                          type="button"
+                        >
+                          {en ? "Open 7-step workflow" : "7단계 프로세스 열기"}
+                        </button>
+                      </div>
+                      <ol className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-7">
+                        {(data?.processCatalogSteps || [])
+                          .filter(
+                            (step) => step.processCode === "EMISSION_PROJECT",
+                          )
+                          .sort(
+                            (left, right) =>
+                              Number(left.stepOrder) - Number(right.stepOrder),
+                          )
+                          .map((step) => (
+                            <li
+                              className="rounded-xl border border-blue-100 bg-white p-3"
+                              key={step.stepCode}
+                            >
+                              <span className="text-[11px] font-black text-blue-700">
+                                STEP {step.stepOrder}
+                              </span>
+                              <strong className="mt-1 block text-sm text-slate-900">
+                                {step.stepName}
+                              </strong>
+                              <span className="mt-2 block text-[11px] font-bold text-slate-500">
+                                {actorLabel(step.actorCode)}
+                              </span>
+                            </li>
+                          ))}
+                      </ol>
+                    </section>
+                  ) : null}
+                  {false && data?.processNavigationSummary ? (
                     <section className="mb-5 rounded-2xl border border-blue-200 bg-blue-50 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <p className="text-xs font-black uppercase tracking-wide text-blue-700">
-                            {en ? "Navigation and implementation" : "메뉴·화면 실제 연결"}
+                            {en
+                              ? "Navigation and implementation"
+                              : "메뉴·화면 실제 연결"}
                           </p>
                           <h3 className="mt-1 font-black text-[#052b57]">
-                            {Number(data.processNavigationSummary.navigationMissingCount || 0) === 0
-                              ? en ? "Every process has a safe destination" : "모든 프로세스 안전한 진입점 연결"
-                              : en ? "Navigation gaps remain" : "프로세스 진입점 누락 있음"}
+                            {Number(
+                              data.processNavigationSummary
+                                .navigationMissingCount || 0,
+                            ) === 0
+                              ? en
+                                ? "Every process has a safe destination"
+                                : "모든 프로세스 안전한 진입점 연결"
+                              : en
+                                ? "Navigation gaps remain"
+                                : "프로세스 진입점 누락 있음"}
                           </h3>
                         </div>
                         <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-blue-800">
-                          {data.processNavigationSummary.navigationBoundCount || 0}/{data.processNavigationSummary.processCount || 0}
+                          {data.processNavigationSummary.navigationBoundCount ||
+                            0}
+                          /{data.processNavigationSummary.processCount || 0}
                         </span>
                       </div>
                       <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
                         {[
-                          [en ? "Navigation gaps" : "진입점 누락", data.processNavigationSummary.navigationMissingCount],
-                          [en ? "Business screens" : "실제 업무 화면", data.processNavigationSummary.businessScreenReadyCount],
-                          [en ? "Design workspaces" : "설계 작업공간", data.processNavigationSummary.designWorkspaceOnlyCount],
-                          [en ? "Design gaps" : "화면 설계 누락", data.processNavigationSummary.pageDesignMissingCount],
+                          [
+                            en ? "Navigation gaps" : "진입점 누락",
+                            data.processNavigationSummary
+                              .navigationMissingCount,
+                          ],
+                          [
+                            en ? "Business screens" : "실제 업무 화면",
+                            data.processNavigationSummary
+                              .businessScreenReadyCount,
+                          ],
+                          [
+                            en ? "Design workspaces" : "설계 작업공간",
+                            data.processNavigationSummary
+                              .designWorkspaceOnlyCount,
+                          ],
+                          [
+                            en ? "Design gaps" : "화면 설계 누락",
+                            data.processNavigationSummary
+                              .pageDesignMissingCount,
+                          ],
                         ].map(([label, count]) => (
-                          <div className="rounded-lg bg-white px-3 py-2 text-slate-700" key={String(label)}>
+                          <div
+                            className="rounded-lg bg-white px-3 py-2 text-slate-700"
+                            key={String(label)}
+                          >
                             <span className="block font-bold">{label}</span>
-                            <strong className="text-lg text-[#052b57]">{count || 0}</strong>
+                            <strong className="text-lg text-[#052b57]">
+                              {count || 0}
+                            </strong>
                           </div>
                         ))}
                       </div>
                     </section>
                   ) : null}
-                  <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="hidden">
                     {[
                       [en ? "Total" : "전체", workflowTotal, "assignment"],
                       [en ? "Complete" : "완료", workflowCompleted, "task_alt"],
@@ -1577,7 +7019,7 @@ export function TaskQuestPanel() {
                       </div>
                     ))}
                   </div>
-                  {data?.workCatalogAudit ? (
+                  {false && data?.workCatalogAudit ? (
                     <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -1651,60 +7093,45 @@ export function TaskQuestPanel() {
                       </div>
                     </section>
                   ) : null}
-                  {selectedCatalogProcess ? (
+                  {false && selectedCatalogProcess ? (
                     <section className="mb-5 rounded-2xl border-2 border-[#246beb] bg-white p-4 sm:p-5">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-black text-[#246beb]">
-                            {en
-                              ? "Selected process guide"
-                              : "선택한 프로세스 업무 길잡이"}
-                          </p>
-                          <h3 className="mt-1 text-lg font-black text-[#052b57]">
-                            {selectedCatalogProcess.processName}
-                          </h3>
-                          <p className="mt-1 max-w-3xl text-sm text-slate-600">
-                            {selectedCatalogProcess.goal}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            className="rounded-lg bg-[#246beb] px-4 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-                            disabled={!selectedCatalogGuideAvailable()}
-                            onClick={startSelectedProcessGuide}
-                            type="button"
-                          >
-                            {en ? "Start selected step" : "선택 단계 업무 길잡이 시작"}
-                          </button>
-                        {data.allVisible ? (
-                          <a
-                            className="rounded-lg bg-[#052b57] px-4 py-2.5 text-xs font-black text-white"
-                            href={buildLocalizedPath(
-                              `/admin/system/actor-process?process=${encodeURIComponent(selectedCatalogProcess.processCode)}`,
-                              `/en/admin/system/actor-process?process=${encodeURIComponent(selectedCatalogProcess.processCode)}`,
-                            )}
-                          >
-                            {en ? "Open development board" : "개발 현황 열기"}
-                          </a>
-                        ) : null}
-                        </div>
+                      <div>
+                        <p className="text-xs font-black text-[#246beb]">
+                          {en ? "Step-by-step guide" : "업무 진행 절차"}
+                        </p>
+                        <h3 className="mt-1 text-lg font-black text-[#052b57]">
+                          {en
+                            ? "Complete the selected work in this order"
+                            : "선택한 업무를 아래 순서대로 진행합니다"}
+                        </h3>
                       </div>
-                      <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${String(selectedUnifiedProcess?.runtimeState)==="DESIGN_BLOCKED"?"border-red-200 bg-red-50 text-red-800":"border-blue-200 bg-blue-50 text-blue-900"}`}><div className="flex flex-wrap items-center justify-between gap-2"><strong>{runtimeStateLabel(String(selectedUnifiedProcess?.runtimeState||"PROJECT_NOT_SELECTED"),en)}</strong><span className="text-xs font-black">{en?"Design accuracy":"설계 정확도"} {Number(selectedUnifiedProcess?.designAccuracyScore||0)}%</span></div>{selectedUnifiedProcess?.stateReason?<p className="mt-1 text-xs leading-5">{selectedUnifiedProcess.stateReason}</p>:null}</div>
                       <div className="mt-4 overflow-x-auto pb-2">
                         <ol className="flex min-w-max items-stretch gap-2">
                           {selectedCatalogSteps.map((step, index) => {
                             const runtimeStep = guideRuntimeStep(step);
-                            const route = guideRoute(step,runtimeStep) ||
-                              (data.allVisible ? selectedCatalogProcess.targetUrl || "" : "");
-                            const blockedByPredecessor = Boolean(runtimeStep?.pendingPredecessors);
-                            const actorAllowed = guideActorAllowed(step,runtimeStep);
+                            const route =
+                              guideRoute(step, runtimeStep) ||
+                              (data.allVisible
+                                ? selectedCatalogProcess.targetUrl || ""
+                                : "");
+                            const blockedByPredecessor = Boolean(
+                              runtimeStep?.pendingPredecessors,
+                            );
+                            const actorAllowed = guideActorAllowed(
+                              step,
+                              runtimeStep,
+                            );
                             const canStart = Boolean(
-                              route && actorAllowed && !blockedByPredecessor &&
-                                (!runtimeStep || runtimeStep.actionable !== false),
+                              route &&
+                              actorAllowed &&
+                              !blockedByPredecessor &&
+                              (!runtimeStep ||
+                                runtimeStep.actionable !== false),
                             );
                             const canReview = Boolean(
-                              route && runtimeStep?.status === "DONE" &&
-                                runtimeStep.actorActionable !== false,
+                              route &&
+                              runtimeStep?.status === "DONE" &&
+                              runtimeStep.actorActionable !== false,
                             );
                             const active = index === selectedCatalogStep;
                             return (
@@ -1717,7 +7144,7 @@ export function TaskQuestPanel() {
                                     {index + 1}
                                   </span>
                                   <span className="text-[11px] font-black text-slate-500">
-                                    {step.actorCode}
+                                    {actorLabel(step.actorCode)}
                                   </span>
                                 </div>
                                 <strong className="mt-3 text-sm text-[#052b57]">
@@ -1728,25 +7155,33 @@ export function TaskQuestPanel() {
                                 </p>
                                 {runtimeStep ? (
                                   <div className="mt-2 space-y-1 text-[11px] font-bold text-slate-600">
-                                    <p>{en ? "Actual task" : "실제 업무"}: {runtimeStep.name}</p>
-                                    <p>{en ? "Status" : "상태"}: {runtimeStep.status}</p>
+                                    <p>
+                                      {en ? "Actual task" : "실제 업무"}:{" "}
+                                      {runtimeStep.name}
+                                    </p>
+                                    <p>
+                                      {en ? "Status" : "상태"}:{" "}
+                                      {runtimeStep.status}
+                                    </p>
                                     {blockedByPredecessor ? (
                                       <p className="text-amber-700">
-                                        {en ? "Waiting for" : "선행 업무 대기"}: {runtimeStep.pendingPredecessors}
+                                        {en ? "Waiting for" : "선행 업무 대기"}:{" "}
+                                        {runtimeStep.pendingPredecessors}
                                       </p>
                                     ) : null}
                                   </div>
                                 ) : (
                                   <p className="mt-2 text-[11px] font-bold text-amber-700">
-                                    {en ? "The actual project task has not been created." : "실제 프로젝트 업무가 아직 생성되지 않았습니다."}
+                                    {en
+                                      ? "The actual project task has not been created."
+                                      : "실제 프로젝트 업무가 아직 생성되지 않았습니다."}
                                   </p>
                                 )}
                                 <div className="mt-auto flex items-center justify-between gap-2 pt-3">
                                   <button
                                     className="text-xs font-black text-blue-700"
                                     onClick={() => {
-                                      setSelectedCatalogStep(index);
-                                      localStorage.setItem("task-quest-catalog-step",String(index));
+                                      selectCatalogStepByUser(index);
                                     }}
                                     type="button"
                                   >
@@ -1755,19 +7190,33 @@ export function TaskQuestPanel() {
                                   {canStart || canReview ? (
                                     <a
                                       className="rounded-lg bg-[#246beb] px-3 py-2 text-xs font-black text-white"
-                                      href={guideTarget(route,step,runtimeStep)}
+                                      href={guideTarget(
+                                        route,
+                                        step,
+                                        runtimeStep,
+                                      )}
                                     >
                                       {canReview
-                                        ? en ? "View result" : "결과 보기"
-                                        : en ? "Start task" : "업무 진행"}
+                                        ? en
+                                          ? "View result"
+                                          : "결과 보기"
+                                        : en
+                                          ? "Start task"
+                                          : "업무 진행"}
                                     </a>
                                   ) : route && runtimeStep ? (
                                     <span className="text-xs font-bold text-slate-500">
                                       {blockedByPredecessor
-                                        ? en ? "Predecessor pending" : "선행 업무 대기"
+                                        ? en
+                                          ? "Predecessor pending"
+                                          : "선행 업무 대기"
                                         : !actorAllowed
-                                          ? en ? "Assigned actor only" : "담당 액터만 진행 가능"
-                                          : en ? "Not ready" : "업무 시작 대기"}
+                                          ? en
+                                            ? "Assignee only"
+                                            : "담당자만 진행 가능"
+                                          : en
+                                            ? "Not ready"
+                                            : "업무 시작 대기"}
                                     </span>
                                   ) : (
                                     <span className="text-xs font-bold text-amber-700">
@@ -1789,11 +7238,14 @@ export function TaskQuestPanel() {
                           }
                           onClick={() =>
                             setSelectedCatalogStep((value) => {
-                              const next=Math.min(
+                              const next = Math.min(
                                 selectedCatalogSteps.length - 1,
                                 value + 1,
                               );
-                              localStorage.setItem("task-quest-catalog-step",String(next));
+                              localStorage.setItem(
+                                "task-quest-catalog-step",
+                                String(next),
+                              );
                               return next;
                             })
                           }
@@ -1804,7 +7256,7 @@ export function TaskQuestPanel() {
                       </div>
                     </section>
                   ) : null}
-                  {selectedUnifiedProcess ? (
+                  {false && selectedUnifiedProcess ? (
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-xs font-black uppercase tracking-wide text-[#246beb]">
@@ -1821,33 +7273,40 @@ export function TaskQuestPanel() {
                             <select
                               className="max-w-56 bg-transparent font-black text-[#052b57] outline-none"
                               onChange={(event) => {
-                                setSelectedOverviewProjectId(event.target.value);
-                                localStorage.setItem("task-quest-overview-project", event.target.value);
+                                setSelectedOverviewProjectId(
+                                  event.target.value,
+                                );
+                                localStorage.setItem(
+                                  "task-quest-overview-project",
+                                  event.target.value,
+                                );
                                 clearWorkflowFocus();
                               }}
                               value={effectiveProjectId}
                             >
                               {overviewProjects.map((project) => (
-                                <option key={project.id} value={project.id}>{project.name}</option>
+                                <option key={project.id} value={project.id}>
+                                  {project.name}
+                                </option>
                               ))}
                             </select>
                           </label>
                         ) : null}
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-black ${selectedUnifiedProcess.runtimeState === "COMPLETED" ? "bg-emerald-100 text-emerald-800" : selectedUnifiedProcess.runtimeState === "IN_PROGRESS" ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"}`}
-                      >
-                        {runtimeStateLabel(
-                          String(
-                            selectedUnifiedProcess.runtimeState ||
-                              "TASK_NOT_CREATED",
-                          ),
-                          en,
-                        )}
-                      </span>
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-black ${selectedUnifiedProcess.runtimeState === "COMPLETED" ? "bg-emerald-100 text-emerald-800" : selectedUnifiedProcess.runtimeState === "IN_PROGRESS" ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"}`}
+                        >
+                          {runtimeStateLabel(
+                            String(
+                              selectedUnifiedProcess.runtimeState ||
+                                "TASK_NOT_CREATED",
+                            ),
+                            en,
+                          )}
+                        </span>
                       </div>
                     </div>
                   ) : null}
-                  {processGroups.length ? (
+                  {false && processGroups.length ? (
                     <div className="space-y-5">
                       {processGroups.map(([key, items]) => {
                         const first = items[0];
@@ -1908,18 +7367,33 @@ export function TaskQuestPanel() {
                               <ol className="grid min-w-max auto-cols-[15rem] grid-flow-col items-stretch gap-3">
                                 {items.map((item, index) => {
                                   const state = statusPresentation(item, en);
-                                  const executionWave = Number(item.executionWave || item.stepOrder || index + 1);
-                                  const parallelLane = items
-                                    .slice(0, index)
-                                    .filter((candidate) => Number(candidate.executionWave || candidate.stepOrder || 0) === executionWave).length + 1;
+                                  const executionWave = Number(
+                                    item.executionWave ||
+                                      item.stepOrder ||
+                                      index + 1,
+                                  );
+                                  const parallelLane =
+                                    items
+                                      .slice(0, index)
+                                      .filter(
+                                        (candidate) =>
+                                          Number(
+                                            candidate.executionWave ||
+                                              candidate.stepOrder ||
+                                              0,
+                                          ) === executionWave,
+                                      ).length + 1;
                                   return (
                                     <li
                                       className="flex items-stretch"
                                       key={item.id}
-                                      style={{ gridColumnStart: executionWave, gridRowStart: parallelLane }}
+                                      style={{
+                                        gridColumnStart: executionWave,
+                                        gridRowStart: parallelLane,
+                                      }}
                                     >
                                       <button
-                                        className={`group flex min-h-[15rem] w-[15rem] flex-col rounded-xl border-2 p-3 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${state.style}`}
+                                        className={`group flex min-h-[15rem] w-[15rem] flex-col rounded-xl border-2 p-3 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${state.style} ${focusedStepCode === item.processStepCode ? "ring-4 ring-[#246beb]/30 shadow-lg" : ""}`}
                                         onClick={() =>
                                           item.actionable === false
                                             ? focusWorkflow(item)
@@ -1947,7 +7421,28 @@ export function TaskQuestPanel() {
                                               {en ? "Actor" : "액터"}:{" "}
                                             </dt>
                                             <dd className="inline">
-                                              {item.actorCode || "-"}
+                                              {actorLabel(item.actorCode)}
+                                            </dd>
+                                          </div>
+                                          <div>
+                                            <dt className="inline font-black">
+                                              {en ? "Account" : "담당 계정"}
+                                              :{" "}
+                                            </dt>
+                                            <dd className="inline">
+                                              {item.assignee ||
+                                                (en
+                                                  ? "Not assigned"
+                                                  : "미배정")}
+                                            </dd>
+                                          </div>
+                                          <div>
+                                            <dt className="inline font-black">
+                                              {en ? "Step code" : "단계 코드"}
+                                              :{" "}
+                                            </dt>
+                                            <dd className="inline break-all">
+                                              {item.processStepCode || "-"}
                                             </dd>
                                           </div>
                                           <div>
@@ -2002,13 +7497,7 @@ export function TaskQuestPanel() {
                         );
                       })}
                     </div>
-                  ) : (
-                    <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center font-bold text-slate-500">
-                      {en
-                        ? "No assigned workflow was found."
-                        : "현재 계정에 배정된 업무 프로세스가 없습니다."}
-                    </div>
-                  )}
+                  ) : null}
                 </div>
                 <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-white px-5 py-4 sm:px-7">
                   <p className="hidden text-sm text-slate-500 sm:block">
@@ -2035,6 +7524,118 @@ export function TaskQuestPanel() {
                     </button>
                   </div>
                 </footer>
+              </section>
+            </div>,
+            document.body,
+          )
+        : null}
+      {previewProcessCode
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[1700] flex items-center justify-center bg-slate-950/70 p-4"
+              data-process-preview-dialog=""
+            >
+              <section
+                aria-modal="true"
+                className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+                role="dialog"
+              >
+                <header className="flex items-center justify-between bg-[#052b57] px-5 py-4 text-white">
+                  <div>
+                    <p className="text-xs font-bold text-blue-200">
+                      {previewProcessCode}
+                    </p>
+                    <h2 className="mt-1 text-xl font-black">
+                      {en ? "Process preview" : "프로세스 미리보기"}
+                    </h2>
+                  </div>
+                  <button
+                    aria-label={en ? "Close preview" : "미리보기 닫기"}
+                    className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-white/15"
+                    onClick={() => setPreviewProcessCode("")}
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </header>
+                <div className="overflow-y-auto p-5">
+                  {(() => {
+                    const process = (data?.processCatalog || []).find(
+                      (item) => item.processCode === previewProcessCode,
+                    );
+                    const overviewSteps = (data?.processOverviewStages || [])
+                      .filter((step) => step.processCode === previewProcessCode)
+                      .sort(
+                        (left, right) =>
+                          Number(left.stepOrder) - Number(right.stepOrder),
+                      );
+                    const screenFlowSteps = (data?.processScreenFlow || [])
+                      .filter((step) => step.processCode === previewProcessCode)
+                      .sort(
+                        (left, right) =>
+                          Number(left.stepOrder) - Number(right.stepOrder),
+                      );
+                    const steps = overviewSteps.length
+                      ? overviewSteps
+                      : screenFlowSteps.length
+                        ? screenFlowSteps
+                        : (data?.processCatalogSteps || [])
+                            .filter(
+                              (step) => step.processCode === previewProcessCode,
+                            )
+                            .sort(
+                              (left, right) =>
+                                Number(left.stepOrder) -
+                                Number(right.stepOrder),
+                            );
+                    const firstPath =
+                      steps[0]?.userPath || steps[0]?.adminPath || "/home";
+                    return (
+                      <>
+                        <h3 className="text-lg font-black text-[#052b57]">
+                          {process?.processName || previewProcessCode}
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-600">
+                          {steps.length}
+                          {en ? " steps" : "개 절차"} ·{" "}
+                          {actorLabel(process?.ownerActorCode)}
+                        </p>
+                        <ProcessPreviewPlayer
+                          en={en}
+                          processCode={previewProcessCode}
+                        />
+                        <a
+                          className="mt-3 inline-flex rounded-lg bg-[#246beb] px-3 py-2 text-xs font-black text-white"
+                          href={firstPath}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {en
+                            ? "Open screen separately"
+                            : "업무 화면 별도 열기"}
+                        </a>
+                        <ol className="mt-4 grid gap-2 sm:grid-cols-2">
+                          {steps.map((step, index) => (
+                            <li
+                              className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+                              key={`preview-${step.stepCode}`}
+                            >
+                              <span className="text-[11px] font-black text-[#246beb]">
+                                STEP {index + 1}
+                              </span>
+                              <strong className="mt-1 block text-sm text-[#052b57]">
+                                {step.stepName}
+                              </strong>
+                              <span className="mt-1 block text-xs text-slate-500">
+                                {actorLabel(step.actorCode)}
+                              </span>
+                            </li>
+                          ))}
+                        </ol>
+                      </>
+                    );
+                  })()}
+                </div>
               </section>
             </div>,
             document.body,

@@ -35,4 +35,6 @@ public interface GeneralMemberRepository extends JpaRepository<GnrlMber, String>
     Optional<GnrlMber> findFirstByAuthCi(String authCi);
 
     Optional<GnrlMber> findFirstByAuthDi(String authDi);
+
+    Optional<GnrlMber> findFirstByMberIdIgnoreCase(String mberId);
 }

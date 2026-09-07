@@ -1,0 +1,2081 @@
+{
+  "version": "member-current-design-timeline-v1",
+  "generatedFrom": "DB_DESIGN_RUNTIME",
+  "processCount": 21,
+  "stepCount": 81,
+  "videoDurationSeconds": 44.550000000000004,
+  "steps": [
+    {
+      "processCode": "ACCOUNT_LOCK_RECOVERY",
+      "processName": "휴면·잠금 계정 복구",
+      "stepCode": "ACCOUNT_LOCK_RECOVERY_S1",
+      "stepName": "복구 요청 접수·범위 확인",
+      "actorCode": "MEMBER_USER",
+      "fromState": "READY",
+      "toState": "REQUESTED",
+      "routePath": "/signin/loginForbidden",
+      "stepOrder": 999,
+      "inputKeys": [
+        "email",
+        "language",
+        "requestIp",
+        "userAgent",
+        "userId"
+      ],
+      "outputKeys": [
+        "developmentCode",
+        "message",
+        "requestId",
+        "status"
+      ],
+      "scenarioId": "ACCOUNT_LOCK_RECOVERY",
+      "scenarioLabel": "휴면·잠금 계정 복구",
+      "timeSeconds": 0.0
+    },
+    {
+      "processCode": "ACCOUNT_LOCK_RECOVERY",
+      "processName": "휴면·잠금 계정 복구",
+      "stepCode": "ACCOUNT_LOCK_RECOVERY_S2",
+      "stepName": "서버 신원검증·복구 증명 발급",
+      "actorCode": "MEMBER_USER",
+      "fromState": "REQUESTED",
+      "toState": "IDENTITY_VERIFIED",
+      "routePath": "/signin/findPassword",
+      "stepOrder": 999,
+      "inputKeys": [
+        "code",
+        "language",
+        "requestId",
+        "requestIp"
+      ],
+      "outputKeys": [
+        "message",
+        "recoveryProof",
+        "status"
+      ],
+      "scenarioId": "ACCOUNT_LOCK_RECOVERY",
+      "scenarioLabel": "휴면·잠금 계정 복구",
+      "timeSeconds": 0.55
+    },
+    {
+      "processCode": "ACCOUNT_LOCK_RECOVERY",
+      "processName": "휴면·잠금 계정 복구",
+      "stepCode": "ACCOUNT_LOCK_RECOVERY_S3",
+      "stepName": "잠금 원인·위험 독립 검토",
+      "actorCode": "MEMBER_ADMIN",
+      "fromState": "IDENTITY_VERIFIED",
+      "toState": "REVIEW_APPROVED",
+      "routePath": "/signin/findPassword/result",
+      "stepOrder": 999,
+      "inputKeys": [
+        "language",
+        "newPassword",
+        "recoveryProof",
+        "requestId",
+        "userId"
+      ],
+      "outputKeys": [
+        "errors",
+        "status"
+      ],
+      "scenarioId": "ACCOUNT_LOCK_RECOVERY",
+      "scenarioLabel": "휴면·잠금 계정 복구",
+      "timeSeconds": 1.1
+    },
+    {
+      "processCode": "ACCOUNT_LOCK_RECOVERY",
+      "processName": "휴면·잠금 계정 복구",
+      "stepCode": "ACCOUNT_LOCK_RECOVERY_S4",
+      "stepName": "복구 승인·원자적 적용·통지",
+      "actorCode": "APPROVER",
+      "fromState": "REVIEW_APPROVED",
+      "toState": "COMPLETED",
+      "routePath": "/signin/loginView",
+      "stepOrder": 999,
+      "inputKeys": [
+        "completionGrant",
+        "requestPath"
+      ],
+      "outputKeys": [
+        "nextPath",
+        "resultPage"
+      ],
+      "scenarioId": "ACCOUNT_LOCK_RECOVERY",
+      "scenarioLabel": "휴면·잠금 계정 복구",
+      "timeSeconds": 1.6500000000000001
+    },
+    {
+      "processCode": "ACCOUNT_WITHDRAWAL",
+      "processName": "회원 탈퇴·보유정보 처리",
+      "stepCode": "ACCOUNT_WITHDRAWAL_S1",
+      "stepName": "회원 탈퇴·보유정보 처리 - 요청·범위·필수정보 확인",
+      "actorCode": "PRIVACY_OFFICER",
+      "fromState": "READY",
+      "toState": "STEP_1_COMPLETED",
+      "routePath": "/mypage/profile",
+      "stepOrder": 1,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "ACCOUNT_WITHDRAWAL",
+      "scenarioLabel": "회원 탈퇴·보유정보 처리",
+      "timeSeconds": 2.2
+    },
+    {
+      "processCode": "ACCOUNT_WITHDRAWAL",
+      "processName": "회원 탈퇴·보유정보 처리",
+      "stepCode": "ACCOUNT_WITHDRAWAL_S2",
+      "stepName": "회원 탈퇴·보유정보 처리 - 업무 실행·중간 결과 저장",
+      "actorCode": "PRIVACY_OFFICER",
+      "fromState": "STEP_1_COMPLETED",
+      "toState": "STEP_2_COMPLETED",
+      "routePath": "/mypage/profile",
+      "stepOrder": 2,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "ACCOUNT_WITHDRAWAL",
+      "scenarioLabel": "회원 탈퇴·보유정보 처리",
+      "timeSeconds": 2.75
+    },
+    {
+      "processCode": "ACCOUNT_WITHDRAWAL",
+      "processName": "회원 탈퇴·보유정보 처리",
+      "stepCode": "ACCOUNT_WITHDRAWAL_S3",
+      "stepName": "회원 탈퇴·보유정보 처리 - 독립 검토·보완·권한 검증",
+      "actorCode": "VERIFIER",
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "routePath": "/mypage/profile",
+      "stepOrder": 3,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "ACCOUNT_WITHDRAWAL",
+      "scenarioLabel": "회원 탈퇴·보유정보 처리",
+      "timeSeconds": 3.3000000000000003
+    },
+    {
+      "processCode": "ACCOUNT_WITHDRAWAL",
+      "processName": "회원 탈퇴·보유정보 처리",
+      "stepCode": "ACCOUNT_WITHDRAWAL_S4",
+      "stepName": "회원 탈퇴·보유정보 처리 - 승인·확정·통지·후속업무 연결",
+      "actorCode": "APPROVER",
+      "fromState": "STEP_3_COMPLETED",
+      "toState": "STEP_4_COMPLETED",
+      "routePath": "/signin/loginView",
+      "stepOrder": 4,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "ACCOUNT_WITHDRAWAL",
+      "scenarioLabel": "회원 탈퇴·보유정보 처리",
+      "timeSeconds": 3.8500000000000005
+    },
+    {
+      "processCode": "BUSINESS_SITE_ADMINISTRATION",
+      "processName": "사업장 관리",
+      "stepCode": "BUSINESS_SITE_ADMINISTRATION_S1",
+      "stepName": "사업장 관리 - 요청·범위·필수정보 확인",
+      "actorCode": "COMPANY_ADMIN",
+      "fromState": "READY",
+      "toState": "STEP_1_COMPLETED",
+      "routePath": "/mypage/company",
+      "stepOrder": 1,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "BUSINESS_SITE_ADMINISTRATION",
+      "scenarioLabel": "사업장 관리",
+      "timeSeconds": 4.4
+    },
+    {
+      "processCode": "BUSINESS_SITE_ADMINISTRATION",
+      "processName": "사업장 관리",
+      "stepCode": "BUSINESS_SITE_ADMINISTRATION_S2",
+      "stepName": "사업장 관리 - 업무 실행·중간 결과 저장",
+      "actorCode": "COMPANY_ADMIN",
+      "fromState": "STEP_1_COMPLETED",
+      "toState": "STEP_2_COMPLETED",
+      "routePath": "/mypage/company",
+      "stepOrder": 2,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "BUSINESS_SITE_ADMINISTRATION",
+      "scenarioLabel": "사업장 관리",
+      "timeSeconds": 4.95
+    },
+    {
+      "processCode": "BUSINESS_SITE_ADMINISTRATION",
+      "processName": "사업장 관리",
+      "stepCode": "BUSINESS_SITE_ADMINISTRATION_S3",
+      "stepName": "사업장 관리 - 독립 검토·보완·권한 검증",
+      "actorCode": "VERIFIER",
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "routePath": "/emission/project_list",
+      "stepOrder": 3,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "BUSINESS_SITE_ADMINISTRATION",
+      "scenarioLabel": "사업장 관리",
+      "timeSeconds": 5.5
+    },
+    {
+      "processCode": "BUSINESS_SITE_ADMINISTRATION",
+      "processName": "사업장 관리",
+      "stepCode": "BUSINESS_SITE_ADMINISTRATION_S4",
+      "stepName": "사업장 관리 - 승인·확정·통지·후속업무 연결",
+      "actorCode": "APPROVER",
+      "fromState": "STEP_3_COMPLETED",
+      "toState": "STEP_4_COMPLETED",
+      "routePath": "/mypage/company",
+      "stepOrder": 4,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "BUSINESS_SITE_ADMINISTRATION",
+      "scenarioLabel": "사업장 관리",
+      "timeSeconds": 6.050000000000001
+    },
+    {
+      "processCode": "COMPANY_MANAGER_DELEGATION",
+      "processName": "회원사 담당자 위임·승계·업무 인계",
+      "stepCode": "CMD_REQUEST",
+      "stepName": "위임·승계 요청과 후보 검증",
+      "actorCode": "COMPANY_ADMIN",
+      "fromState": "READY",
+      "toState": "IN_PROGRESS",
+      "routePath": "/work/company-manager-delegation?step=cmd_request",
+      "stepOrder": 1,
+      "inputKeys": [
+        "businessId",
+        "projectId",
+        "rowVersion",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "evidenceHash",
+        "nextTask",
+        "recordId",
+        "statusCode"
+      ],
+      "scenarioId": "COMPANY_MANAGER_DELEGATION",
+      "scenarioLabel": "회원사 담당자 위임·승계·업무 인계",
+      "timeSeconds": 6.6000000000000005
+    },
+    {
+      "processCode": "COMPANY_MANAGER_DELEGATION",
+      "processName": "회원사 담당자 위임·승계·업무 인계",
+      "stepCode": "CMD_APPROVE",
+      "stepName": "직무분리·권한 변경 승인",
+      "actorCode": "AUTHORITY_ADMIN",
+      "fromState": "IN_PROGRESS",
+      "toState": "REVIEW_READY",
+      "routePath": "/work/company-manager-delegation?step=cmd_approve",
+      "stepOrder": 2,
+      "inputKeys": [
+        "businessId",
+        "projectId",
+        "rowVersion",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "evidenceHash",
+        "nextTask",
+        "recordId",
+        "statusCode"
+      ],
+      "scenarioId": "COMPANY_MANAGER_DELEGATION",
+      "scenarioLabel": "회원사 담당자 위임·승계·업무 인계",
+      "timeSeconds": 7.15
+    },
+    {
+      "processCode": "COMPANY_MANAGER_DELEGATION",
+      "processName": "회원사 담당자 위임·승계·업무 인계",
+      "stepCode": "CMD_HANDOVER",
+      "stepName": "미결업무 인계·통지·종결",
+      "actorCode": "COMPANY_ADMIN",
+      "fromState": "REVIEW_READY",
+      "toState": "COMPLETED",
+      "routePath": "/work/company-manager-delegation?step=cmd_handover",
+      "stepOrder": 3,
+      "inputKeys": [
+        "businessId",
+        "projectId",
+        "rowVersion",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "evidenceHash",
+        "nextTask",
+        "recordId",
+        "statusCode"
+      ],
+      "scenarioId": "COMPANY_MANAGER_DELEGATION",
+      "scenarioLabel": "회원사 담당자 위임·승계·업무 인계",
+      "timeSeconds": 7.700000000000001
+    },
+    {
+      "processCode": "COMPANY_MEMBER_INVITATION",
+      "processName": "회원사 직원 초대·소속 가입·액터 배정",
+      "stepCode": "INVITE_ISSUE",
+      "stepName": "직원 정보·액터 검증 및 1회용 초대 발급",
+      "actorCode": "COMPANY_ADMIN",
+      "fromState": "READY",
+      "toState": "INVITED",
+      "routePath": "/mypage/staff",
+      "stepOrder": 1,
+      "inputKeys": [
+        "actorCode",
+        "email",
+        "memberName",
+        "tenantFromSession"
+      ],
+      "outputKeys": [
+        "activationPath",
+        "expiresAt",
+        "invitationId",
+        "status"
+      ],
+      "scenarioId": "COMPANY_MEMBER_INVITATION",
+      "scenarioLabel": "회원사 직원 초대·소속 가입·액터 배정",
+      "timeSeconds": 8.25
+    },
+    {
+      "processCode": "COMPANY_MEMBER_INVITATION",
+      "processName": "회원사 직원 초대·소속 가입·액터 배정",
+      "stepCode": "INVITE_ACTIVATE",
+      "stepName": "초대 확인·계정 생성·소속 확정",
+      "actorCode": "PUBLIC_APPLICANT",
+      "fromState": "INVITED",
+      "toState": "ACTIVATED",
+      "routePath": "/join/companyMemberInvite",
+      "stepOrder": 2,
+      "inputKeys": [
+        "accountId",
+        "insttId",
+        "password",
+        "token",
+        "userName"
+      ],
+      "outputKeys": [
+        "accountId",
+        "actorCode",
+        "authorityCode",
+        "status"
+      ],
+      "scenarioId": "COMPANY_MEMBER_INVITATION",
+      "scenarioLabel": "회원사 직원 초대·소속 가입·액터 배정",
+      "timeSeconds": 8.8
+    },
+    {
+      "processCode": "COMPANY_MEMBER_INVITATION",
+      "processName": "회원사 직원 초대·소속 가입·액터 배정",
+      "stepCode": "ASSIGNMENT_VERIFY",
+      "stepName": "소속·액터·권한 및 로그인 인계 검증",
+      "actorCode": "COMPANY_ADMIN",
+      "fromState": "ACTIVATED",
+      "toState": "COMPLETED",
+      "routePath": "/mypage/staff",
+      "stepOrder": 3,
+      "inputKeys": [
+        "accountId",
+        "actorCode",
+        "invitationId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "assignmentStatus",
+        "authorityCode",
+        "nextProcess"
+      ],
+      "scenarioId": "COMPANY_MEMBER_INVITATION",
+      "scenarioLabel": "회원사 직원 초대·소속 가입·액터 배정",
+      "timeSeconds": 9.350000000000001
+    },
+    {
+      "processCode": "COMPANY_ONBOARDING",
+      "processName": "기업·사업장 온보딩",
+      "stepCode": "COMPANY_ONBOARDING_APPLY",
+      "stepName": "기업 등록 신청",
+      "actorCode": "COMPANY_MANAGER",
+      "fromState": "READY",
+      "toState": "APPLIED",
+      "routePath": "/join/companyRegister",
+      "stepOrder": 1,
+      "inputKeys": [
+        "required"
+      ],
+      "outputKeys": [
+        "state"
+      ],
+      "scenarioId": "COMPANY_ONBOARDING",
+      "scenarioLabel": "기업·사업장 온보딩",
+      "timeSeconds": 9.9
+    },
+    {
+      "processCode": "COMPANY_ONBOARDING",
+      "processName": "기업·사업장 온보딩",
+      "stepCode": "COMPANY_ONBOARDING_APPROVE",
+      "stepName": "기업 심사·승인",
+      "actorCode": "APPROVER",
+      "fromState": "APPLIED",
+      "toState": "APPROVED",
+      "routePath": "/join/companyJoinStatusDetail",
+      "stepOrder": 2,
+      "inputKeys": [
+        "required"
+      ],
+      "outputKeys": [
+        "state"
+      ],
+      "scenarioId": "COMPANY_ONBOARDING",
+      "scenarioLabel": "기업·사업장 온보딩",
+      "timeSeconds": 10.450000000000001
+    },
+    {
+      "processCode": "COMPANY_ONBOARDING",
+      "processName": "기업·사업장 온보딩",
+      "stepCode": "COMPANY_ONBOARDING_SITE",
+      "stepName": "조직·사업장 등록",
+      "actorCode": "COMPANY_MANAGER",
+      "fromState": "APPROVED",
+      "toState": "SITE_READY",
+      "routePath": "/mypage/company",
+      "stepOrder": 3,
+      "inputKeys": [
+        "required"
+      ],
+      "outputKeys": [
+        "state"
+      ],
+      "scenarioId": "COMPANY_ONBOARDING",
+      "scenarioLabel": "기업·사업장 온보딩",
+      "timeSeconds": 11.0
+    },
+    {
+      "processCode": "COMPANY_ONBOARDING",
+      "processName": "기업·사업장 온보딩",
+      "stepCode": "COMPANY_ONBOARDING_ACTORS",
+      "stepName": "담당 액터·업무분리 배정",
+      "actorCode": "COMPANY_MANAGER",
+      "fromState": "SITE_READY",
+      "toState": "ACTORS_READY",
+      "routePath": "/mypage/staff",
+      "stepOrder": 4,
+      "inputKeys": [
+        "requiredActors"
+      ],
+      "outputKeys": [
+        "state"
+      ],
+      "scenarioId": "COMPANY_ONBOARDING",
+      "scenarioLabel": "기업·사업장 온보딩",
+      "timeSeconds": 11.55
+    },
+    {
+      "processCode": "COMPANY_ONBOARDING",
+      "processName": "기업·사업장 온보딩",
+      "stepCode": "COMPANY_ONBOARDING_READY",
+      "stepName": "프로젝트 착수 준비 진단",
+      "actorCode": "COMPANY_MANAGER",
+      "fromState": "ACTORS_READY",
+      "toState": "READY_FOR_PROJECT",
+      "routePath": "/emission/project/create",
+      "stepOrder": 5,
+      "inputKeys": [
+        "required"
+      ],
+      "outputKeys": [
+        "ready"
+      ],
+      "scenarioId": "COMPANY_ONBOARDING",
+      "scenarioLabel": "기업·사업장 온보딩",
+      "timeSeconds": 12.100000000000001
+    },
+    {
+      "processCode": "COMPANY_REAPPLICATION_PUBLIC",
+      "processName": "반려 기업 신청 보완·재신청",
+      "stepCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT",
+      "stepName": "반려 사유 확인·정보 보완·재신청",
+      "actorCode": "PUBLIC_APPLICANT",
+      "fromState": "REJECTED",
+      "toState": "APPLIED",
+      "routePath": "/join/companyReapply",
+      "stepOrder": 1,
+      "inputKeys": [
+        "filePolicy",
+        "required"
+      ],
+      "outputKeys": [
+        "receipt",
+        "required",
+        "state"
+      ],
+      "scenarioId": "COMPANY_REAPPLICATION_PUBLIC",
+      "scenarioLabel": "반려 기업 신청 보완·재신청",
+      "timeSeconds": 12.65
+    },
+    {
+      "processCode": "COMPANY_REAPPLICATION_PUBLIC",
+      "processName": "반려 기업 신청 보완·재신청",
+      "stepCode": "COMPANY_REAPPLICATION_APPROVER_REVIEW",
+      "stepName": "재신청 회원사 승인 또는 재반려",
+      "actorCode": "APPROVER",
+      "fromState": "APPLIED",
+      "toState": "P",
+      "routePath": "/admin/member/company-approve",
+      "stepOrder": 2,
+      "inputKeys": [
+        "actionValues",
+        "optional",
+        "required",
+        "targetOneOf"
+      ],
+      "outputKeys": [
+        "internalTargetStatus",
+        "produces"
+      ],
+      "scenarioId": "COMPANY_REAPPLICATION_PUBLIC",
+      "scenarioLabel": "반려 기업 신청 보완·재신청",
+      "timeSeconds": 13.200000000000001
+    },
+    {
+      "processCode": "COMPANY_REGISTRATION_APPROVAL",
+      "processName": "기업 등록·승인",
+      "stepCode": "COMPANY_REGISTRATION_APPROVAL_S1",
+      "stepName": "기업 등록·승인 - 요청·범위·필수정보 확인",
+      "actorCode": "COMPANY_ADMIN",
+      "fromState": "READY",
+      "toState": "STEP_1_COMPLETED",
+      "routePath": "/join/companyRegister",
+      "stepOrder": 1,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "COMPANY_REGISTRATION_APPROVAL",
+      "scenarioLabel": "기업 등록·승인",
+      "timeSeconds": 13.750000000000002
+    },
+    {
+      "processCode": "COMPANY_REGISTRATION_APPROVAL",
+      "processName": "기업 등록·승인",
+      "stepCode": "COMPANY_REGISTRATION_APPROVAL_S2",
+      "stepName": "기업 등록·승인 - 업무 실행·중간 결과 저장",
+      "actorCode": "COMPANY_ADMIN",
+      "fromState": "STEP_1_COMPLETED",
+      "toState": "STEP_2_COMPLETED",
+      "routePath": "/join/companyRegisterComplete",
+      "stepOrder": 2,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "COMPANY_REGISTRATION_APPROVAL",
+      "scenarioLabel": "기업 등록·승인",
+      "timeSeconds": 14.3
+    },
+    {
+      "processCode": "COMPANY_REGISTRATION_APPROVAL",
+      "processName": "기업 등록·승인",
+      "stepCode": "COMPANY_REGISTRATION_APPROVAL_S3",
+      "stepName": "기업 등록·승인 - 독립 검토·보완·권한 검증",
+      "actorCode": "VERIFIER",
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "routePath": "/join/companyJoinStatusDetail",
+      "stepOrder": 3,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "COMPANY_REGISTRATION_APPROVAL",
+      "scenarioLabel": "기업 등록·승인",
+      "timeSeconds": 14.850000000000001
+    },
+    {
+      "processCode": "COMPANY_REGISTRATION_APPROVAL",
+      "processName": "기업 등록·승인",
+      "stepCode": "COMPANY_REGISTRATION_APPROVAL_S4",
+      "stepName": "기업 등록·승인 - 승인·확정·통지·후속업무 연결",
+      "actorCode": "APPROVER",
+      "fromState": "STEP_3_COMPLETED",
+      "toState": "STEP_4_COMPLETED",
+      "routePath": "/mypage/company",
+      "stepOrder": 4,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "COMPANY_REGISTRATION_APPROVAL",
+      "scenarioLabel": "기업 등록·승인",
+      "timeSeconds": 15.400000000000002
+    },
+    {
+      "processCode": "CONTACT_REVERIFICATION",
+      "processName": "이메일·휴대전화 변경·재인증",
+      "stepCode": "CONTACT_LOAD",
+      "stepName": "현재 연락처와 권한 조회",
+      "actorCode": "MEMBER_USER",
+      "fromState": "READY",
+      "toState": "LOADED",
+      "routePath": "/mypage/email",
+      "stepOrder": 1,
+      "inputKeys": [
+        "session"
+      ],
+      "outputKeys": [
+        "email",
+        "phone"
+      ],
+      "scenarioId": "CONTACT_REVERIFICATION",
+      "scenarioLabel": "이메일·휴대전화 변경·재인증",
+      "timeSeconds": 15.950000000000001
+    },
+    {
+      "processCode": "CONTACT_REVERIFICATION",
+      "processName": "이메일·휴대전화 변경·재인증",
+      "stepCode": "OTP_REQUEST",
+      "stepName": "신규 연락처 검증·OTP 발송",
+      "actorCode": "MEMBER_USER",
+      "fromState": "LOADED",
+      "toState": "OTP_SENT",
+      "routePath": "/mypage/email",
+      "stepOrder": 2,
+      "inputKeys": [
+        "channel",
+        "targetValue"
+      ],
+      "outputKeys": [
+        "challengeId",
+        "expiresInSeconds"
+      ],
+      "scenarioId": "CONTACT_REVERIFICATION",
+      "scenarioLabel": "이메일·휴대전화 변경·재인증",
+      "timeSeconds": 16.5
+    },
+    {
+      "processCode": "CONTACT_REVERIFICATION",
+      "processName": "이메일·휴대전화 변경·재인증",
+      "stepCode": "OTP_CONFIRM_APPLY",
+      "stepName": "OTP 확인·연락처 변경·단일사용 잠금",
+      "actorCode": "MEMBER_USER",
+      "fromState": "OTP_SENT",
+      "toState": "COMPLETED",
+      "routePath": "/mypage/email",
+      "stepOrder": 3,
+      "inputKeys": [
+        "challengeId",
+        "verificationCode"
+      ],
+      "outputKeys": [
+        "channel",
+        "saved"
+      ],
+      "scenarioId": "CONTACT_REVERIFICATION",
+      "scenarioLabel": "이메일·휴대전화 변경·재인증",
+      "timeSeconds": 17.05
+    },
+    {
+      "processCode": "IDENTITY_VERIFICATION",
+      "processName": "이메일·휴대전화·본인 확인",
+      "stepCode": "IDENTITY_VERIFICATION_S1",
+      "stepName": "이메일·휴대전화·본인 확인 - 요청·범위·필수정보 확인",
+      "actorCode": "PUBLIC_APPLICANT",
+      "fromState": "READY",
+      "toState": "STEP_1_COMPLETED",
+      "routePath": "/signin/authChoice",
+      "stepOrder": 1,
+      "inputKeys": [
+        "applicantSessionId",
+        "authMethod",
+        "email"
+      ],
+      "outputKeys": [
+        "authType",
+        "requestAccepted",
+        "state"
+      ],
+      "scenarioId": "IDENTITY_VERIFICATION",
+      "scenarioLabel": "이메일·휴대전화·본인 확인",
+      "timeSeconds": 17.6
+    },
+    {
+      "processCode": "IDENTITY_VERIFICATION",
+      "processName": "이메일·휴대전화·본인 확인",
+      "stepCode": "IDENTITY_VERIFICATION_S2",
+      "stepName": "이메일·휴대전화·본인 확인 - 업무 실행·중간 결과 저장",
+      "actorCode": "PUBLIC_APPLICANT",
+      "fromState": "STEP_1_COMPLETED",
+      "toState": "STEP_2_COMPLETED",
+      "routePath": "/join/step4",
+      "stepOrder": 2,
+      "inputKeys": [
+        "clientIp",
+        "email",
+        "rateLimit",
+        "sessionId"
+      ],
+      "outputKeys": [
+        "challengeId",
+        "expiresInSeconds",
+        "maskedDestination",
+        "otpPlaintextPersisted",
+        "state"
+      ],
+      "scenarioId": "IDENTITY_VERIFICATION",
+      "scenarioLabel": "이메일·휴대전화·본인 확인",
+      "timeSeconds": 18.150000000000002
+    },
+    {
+      "processCode": "IDENTITY_VERIFICATION",
+      "processName": "이메일·휴대전화·본인 확인",
+      "stepCode": "IDENTITY_VERIFICATION_S3",
+      "stepName": "이메일·휴대전화·본인 확인 - 독립 검토·보완·권한 검증",
+      "actorCode": "VERIFIER",
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "routePath": "/signin/findId",
+      "stepOrder": 3,
+      "inputKeys": [
+        "challengeId",
+        "code",
+        "maxAttempts",
+        "sessionId"
+      ],
+      "outputKeys": [
+        "attemptLimit",
+        "sessionBound",
+        "singleUse",
+        "state",
+        "status"
+      ],
+      "scenarioId": "IDENTITY_VERIFICATION",
+      "scenarioLabel": "이메일·휴대전화·본인 확인",
+      "timeSeconds": 18.700000000000003
+    },
+    {
+      "processCode": "IDENTITY_VERIFICATION",
+      "processName": "이메일·휴대전화·본인 확인",
+      "stepCode": "IDENTITY_VERIFICATION_S4",
+      "stepName": "이메일·휴대전화·본인 확인 - 승인·확정·통지·후속업무 연결",
+      "actorCode": "APPROVER",
+      "fromState": "STEP_3_COMPLETED",
+      "toState": "STEP_4_COMPLETED",
+      "routePath": "/signin/loginView",
+      "stepOrder": 4,
+      "inputKeys": [
+        "identityCi",
+        "identityDi",
+        "nextProcessCode",
+        "verifiedChallenge"
+      ],
+      "outputKeys": [
+        "identityEvidenceStored",
+        "nextProcessCode",
+        "nextRoute",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "IDENTITY_VERIFICATION",
+      "scenarioLabel": "이메일·휴대전화·본인 확인",
+      "timeSeconds": 19.25
+    },
+    {
+      "processCode": "LOGIN_AUTHENTICATION",
+      "processName": "로그인·세션·로그아웃",
+      "stepCode": "LOGIN_AUTHENTICATION_S1",
+      "stepName": "로그인·세션·로그아웃 - 요청·범위·필수정보 확인",
+      "actorCode": "MEMBER_USER",
+      "fromState": "READY",
+      "toState": "STEP_1_COMPLETED",
+      "routePath": "/signin/loginView",
+      "stepOrder": 1,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "LOGIN_AUTHENTICATION",
+      "scenarioLabel": "로그인·세션·로그아웃",
+      "timeSeconds": 19.8
+    },
+    {
+      "processCode": "LOGIN_AUTHENTICATION",
+      "processName": "로그인·세션·로그아웃",
+      "stepCode": "LOGIN_AUTHENTICATION_S2",
+      "stepName": "로그인·세션·로그아웃 - 업무 실행·중간 결과 저장",
+      "actorCode": "MEMBER_USER",
+      "fromState": "STEP_1_COMPLETED",
+      "toState": "STEP_2_COMPLETED",
+      "routePath": "/signin/authChoice",
+      "stepOrder": 2,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "LOGIN_AUTHENTICATION",
+      "scenarioLabel": "로그인·세션·로그아웃",
+      "timeSeconds": 20.35
+    },
+    {
+      "processCode": "LOGIN_AUTHENTICATION",
+      "processName": "로그인·세션·로그아웃",
+      "stepCode": "LOGIN_AUTHENTICATION_S3",
+      "stepName": "로그인·세션·로그아웃 - 독립 검토·보완·권한 검증",
+      "actorCode": "VERIFIER",
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "routePath": "/mypage/password",
+      "stepOrder": 3,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "LOGIN_AUTHENTICATION",
+      "scenarioLabel": "로그인·세션·로그아웃",
+      "timeSeconds": 20.900000000000002
+    },
+    {
+      "processCode": "LOGIN_AUTHENTICATION",
+      "processName": "로그인·세션·로그아웃",
+      "stepCode": "LOGIN_AUTHENTICATION_S4",
+      "stepName": "로그인·세션·로그아웃 - 승인·확정·통지·후속업무 연결",
+      "actorCode": "APPROVER",
+      "fromState": "STEP_3_COMPLETED",
+      "toState": "STEP_4_COMPLETED",
+      "routePath": "/mypage/index",
+      "stepOrder": 4,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "LOGIN_AUTHENTICATION",
+      "scenarioLabel": "로그인·세션·로그아웃",
+      "timeSeconds": 21.450000000000003
+    },
+    {
+      "processCode": "MEMBER_ADMINISTRATION",
+      "processName": "회원 상태·이력 관리",
+      "stepCode": "MEMBER_ADMINISTRATION_S1",
+      "stepName": "회원 상태·이력 관리 - 요청·범위·필수정보 확인",
+      "actorCode": "MEMBER_ADMIN",
+      "fromState": "READY",
+      "toState": "STEP_1_COMPLETED",
+      "routePath": "/mypage/profile",
+      "stepOrder": 1,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "MEMBER_ADMINISTRATION",
+      "scenarioLabel": "회원 상태·이력 관리",
+      "timeSeconds": 22.0
+    },
+    {
+      "processCode": "MEMBER_ADMINISTRATION",
+      "processName": "회원 상태·이력 관리",
+      "stepCode": "MEMBER_ADMINISTRATION_S2",
+      "stepName": "회원 상태·이력 관리 - 업무 실행·중간 결과 저장",
+      "actorCode": "MEMBER_ADMIN",
+      "fromState": "STEP_1_COMPLETED",
+      "toState": "STEP_2_COMPLETED",
+      "routePath": "/mypage/profile",
+      "stepOrder": 2,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "MEMBER_ADMINISTRATION",
+      "scenarioLabel": "회원 상태·이력 관리",
+      "timeSeconds": 22.55
+    },
+    {
+      "processCode": "MEMBER_ADMINISTRATION",
+      "processName": "회원 상태·이력 관리",
+      "stepCode": "MEMBER_ADMINISTRATION_S3",
+      "stepName": "회원 상태·이력 관리 - 독립 검토·보완·권한 검증",
+      "actorCode": "VERIFIER",
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "routePath": "/mypage/profile",
+      "stepOrder": 3,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "MEMBER_ADMINISTRATION",
+      "scenarioLabel": "회원 상태·이력 관리",
+      "timeSeconds": 23.1
+    },
+    {
+      "processCode": "MEMBER_ADMINISTRATION",
+      "processName": "회원 상태·이력 관리",
+      "stepCode": "MEMBER_ADMINISTRATION_S4",
+      "stepName": "회원 상태·이력 관리 - 승인·확정·통지·후속업무 연결",
+      "actorCode": "APPROVER",
+      "fromState": "STEP_3_COMPLETED",
+      "toState": "STEP_4_COMPLETED",
+      "routePath": "/mypage/profile",
+      "stepOrder": 4,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "MEMBER_ADMINISTRATION",
+      "scenarioLabel": "회원 상태·이력 관리",
+      "timeSeconds": 23.650000000000002
+    },
+    {
+      "processCode": "MEMBER_APPROVAL",
+      "processName": "가입 검토·승인·반려",
+      "stepCode": "MEMBER_APPROVAL_S1",
+      "stepName": "가입 검토·승인·반려 - 요청·범위·필수정보 확인",
+      "actorCode": "MEMBER_ADMIN",
+      "fromState": "READY",
+      "toState": "STEP_1_COMPLETED",
+      "routePath": "/join/companyJoinStatusSearch",
+      "stepOrder": 1,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "MEMBER_APPROVAL",
+      "scenarioLabel": "가입 검토·승인·반려",
+      "timeSeconds": 24.200000000000003
+    },
+    {
+      "processCode": "MEMBER_APPROVAL",
+      "processName": "가입 검토·승인·반려",
+      "stepCode": "MEMBER_APPROVAL_S2",
+      "stepName": "가입 검토·승인·반려 - 업무 실행·중간 결과 저장",
+      "actorCode": "MEMBER_ADMIN",
+      "fromState": "STEP_1_COMPLETED",
+      "toState": "STEP_2_COMPLETED",
+      "routePath": "/join/companyJoinStatusDetail",
+      "stepOrder": 2,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "MEMBER_APPROVAL",
+      "scenarioLabel": "가입 검토·승인·반려",
+      "timeSeconds": 24.750000000000004
+    },
+    {
+      "processCode": "MEMBER_APPROVAL",
+      "processName": "가입 검토·승인·반려",
+      "stepCode": "MEMBER_APPROVAL_S3",
+      "stepName": "가입 검토·승인·반려 - 독립 검토·보완·권한 검증",
+      "actorCode": "VERIFIER",
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "routePath": "/join/companyJoinStatusDetail",
+      "stepOrder": 3,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "MEMBER_APPROVAL",
+      "scenarioLabel": "가입 검토·승인·반려",
+      "timeSeconds": 25.3
+    },
+    {
+      "processCode": "MEMBER_APPROVAL",
+      "processName": "가입 검토·승인·반려",
+      "stepCode": "MEMBER_APPROVAL_S4",
+      "stepName": "가입 검토·승인·반려 - 승인·확정·통지·후속업무 연결",
+      "actorCode": "APPROVER",
+      "fromState": "STEP_3_COMPLETED",
+      "toState": "STEP_4_COMPLETED",
+      "routePath": "/signin/loginView",
+      "stepOrder": 4,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "MEMBER_APPROVAL",
+      "scenarioLabel": "가입 검토·승인·반려",
+      "timeSeconds": 25.85
+    },
+    {
+      "processCode": "MEMBER_LIFECYCLE",
+      "processName": "회원·기업 생애주기",
+      "stepCode": "MEMBER_LIFECYCLE_01_PLAN",
+      "stepName": "계획·범위 확정",
+      "actorCode": "COMPANY_MANAGER",
+      "fromState": "DRAFT",
+      "toState": "PLANNED",
+      "routePath": "/work/execution?processCode=MEMBER_LIFECYCLE&stepCode=MEMBER_LIFECYCLE_01_PLAN&guide=1",
+      "stepOrder": 1,
+      "inputKeys": [
+        "actorCode",
+        "fromState",
+        "processCode",
+        "stepCode"
+      ],
+      "outputKeys": [
+        "completionRule",
+        "evidenceRequired",
+        "toState"
+      ],
+      "scenarioId": "MEMBER_LIFECYCLE",
+      "scenarioLabel": "회원·기업 생애주기",
+      "timeSeconds": 26.400000000000002
+    },
+    {
+      "processCode": "MEMBER_LIFECYCLE",
+      "processName": "회원·기업 생애주기",
+      "stepCode": "MEMBER_LIFECYCLE_02_WORK",
+      "stepName": "자료 입력·업무 수행",
+      "actorCode": "SITE_DATA_OWNER",
+      "fromState": "PLANNED",
+      "toState": "SUBMITTED",
+      "routePath": "/work/execution?processCode=MEMBER_LIFECYCLE&stepCode=MEMBER_LIFECYCLE_02_WORK&guide=1",
+      "stepOrder": 2,
+      "inputKeys": [
+        "actorCode",
+        "fromState",
+        "processCode",
+        "stepCode"
+      ],
+      "outputKeys": [
+        "completionRule",
+        "evidenceRequired",
+        "toState"
+      ],
+      "scenarioId": "MEMBER_LIFECYCLE",
+      "scenarioLabel": "회원·기업 생애주기",
+      "timeSeconds": 26.950000000000003
+    },
+    {
+      "processCode": "MEMBER_LIFECYCLE",
+      "processName": "회원·기업 생애주기",
+      "stepCode": "MEMBER_LIFECYCLE_03_VERIFY",
+      "stepName": "검증·보완",
+      "actorCode": "VERIFIER",
+      "fromState": "SUBMITTED",
+      "toState": "VERIFIED",
+      "routePath": "/work/execution?processCode=MEMBER_LIFECYCLE&stepCode=MEMBER_LIFECYCLE_03_VERIFY&guide=1",
+      "stepOrder": 3,
+      "inputKeys": [
+        "actorCode",
+        "fromState",
+        "processCode",
+        "stepCode"
+      ],
+      "outputKeys": [
+        "completionRule",
+        "evidenceRequired",
+        "toState"
+      ],
+      "scenarioId": "MEMBER_LIFECYCLE",
+      "scenarioLabel": "회원·기업 생애주기",
+      "timeSeconds": 27.500000000000004
+    },
+    {
+      "processCode": "MEMBER_LIFECYCLE",
+      "processName": "회원·기업 생애주기",
+      "stepCode": "MEMBER_LIFECYCLE_04_APPROVE",
+      "stepName": "승인·확정",
+      "actorCode": "APPROVER",
+      "fromState": "VERIFIED",
+      "toState": "COMPLETED",
+      "routePath": "/work/execution?processCode=MEMBER_LIFECYCLE&stepCode=MEMBER_LIFECYCLE_04_APPROVE&guide=1",
+      "stepOrder": 4,
+      "inputKeys": [
+        "actorCode",
+        "fromState",
+        "processCode",
+        "stepCode"
+      ],
+      "outputKeys": [
+        "completionRule",
+        "evidenceRequired",
+        "toState"
+      ],
+      "scenarioId": "MEMBER_LIFECYCLE",
+      "scenarioLabel": "회원·기업 생애주기",
+      "timeSeconds": 28.05
+    },
+    {
+      "processCode": "MEMBER_REGISTRATION",
+      "processName": "회원가입 신청",
+      "stepCode": "MEMBER_REGISTRATION_S1",
+      "stepName": "회원가입 신청 - 요청·범위·필수정보 확인",
+      "actorCode": "PUBLIC_APPLICANT",
+      "fromState": "READY",
+      "toState": "STEP_1_COMPLETED",
+      "routePath": "/join/step1",
+      "stepOrder": 1,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "MEMBER_REGISTRATION",
+      "scenarioLabel": "회원가입 신청",
+      "timeSeconds": 28.6
+    },
+    {
+      "processCode": "MEMBER_REGISTRATION",
+      "processName": "회원가입 신청",
+      "stepCode": "MEMBER_REGISTRATION_S2",
+      "stepName": "회원가입 신청 - 업무 실행·중간 결과 저장",
+      "actorCode": "PUBLIC_APPLICANT",
+      "fromState": "STEP_1_COMPLETED",
+      "toState": "STEP_2_COMPLETED",
+      "routePath": "/join/step3",
+      "stepOrder": 2,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "MEMBER_REGISTRATION",
+      "scenarioLabel": "회원가입 신청",
+      "timeSeconds": 29.150000000000002
+    },
+    {
+      "processCode": "MEMBER_REGISTRATION",
+      "processName": "회원가입 신청",
+      "stepCode": "MEMBER_REGISTRATION_S3",
+      "stepName": "회원가입 신청 - 독립 검토·보완·권한 검증",
+      "actorCode": "VERIFIER",
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "routePath": "/join/step4",
+      "stepOrder": 3,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "MEMBER_REGISTRATION",
+      "scenarioLabel": "회원가입 신청",
+      "timeSeconds": 29.700000000000003
+    },
+    {
+      "processCode": "MEMBER_REGISTRATION",
+      "processName": "회원가입 신청",
+      "stepCode": "MEMBER_REGISTRATION_S4",
+      "stepName": "회원가입 신청 - 승인·확정·통지·후속업무 연결",
+      "actorCode": "APPROVER",
+      "fromState": "STEP_3_COMPLETED",
+      "toState": "STEP_4_COMPLETED",
+      "routePath": "/join/step5",
+      "stepOrder": 4,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "MEMBER_REGISTRATION",
+      "scenarioLabel": "회원가입 신청",
+      "timeSeconds": 30.250000000000004
+    },
+    {
+      "processCode": "MEMBER_REGISTRATION",
+      "processName": "회원가입 신청",
+      "stepCode": "MEMBER_REGISTRATION_S5",
+      "stepName": "가입 신청 완료·접수번호 확인",
+      "actorCode": "PUBLIC_APPLICANT",
+      "fromState": "APPLICATION_SUBMITTED",
+      "toState": "APPLICATION_PENDING_APPROVAL",
+      "routePath": "/join/step5",
+      "stepOrder": 5,
+      "inputKeys": [
+        "constraints",
+        "context",
+        "required"
+      ],
+      "outputKeys": [
+        "nextActions",
+        "required",
+        "states"
+      ],
+      "scenarioId": "MEMBER_REGISTRATION",
+      "scenarioLabel": "회원가입 신청",
+      "timeSeconds": 30.800000000000004
+    },
+    {
+      "processCode": "MFA_MANAGEMENT",
+      "processName": "다중인증 등록·복구",
+      "stepCode": "MFA_MANAGEMENT_S1",
+      "stepName": "다중인증 등록·복구 - 요청·범위·필수정보 확인",
+      "actorCode": "MEMBER_USER",
+      "fromState": "READY",
+      "toState": "STEP_1_COMPLETED",
+      "routePath": "/mypage/password",
+      "stepOrder": 1,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "MFA_MANAGEMENT",
+      "scenarioLabel": "다중인증 등록·복구",
+      "timeSeconds": 31.35
+    },
+    {
+      "processCode": "MFA_MANAGEMENT",
+      "processName": "다중인증 등록·복구",
+      "stepCode": "MFA_MANAGEMENT_S2",
+      "stepName": "다중인증 등록·복구 - 업무 실행·중간 결과 저장",
+      "actorCode": "MEMBER_USER",
+      "fromState": "STEP_1_COMPLETED",
+      "toState": "STEP_2_COMPLETED",
+      "routePath": "/mypage/password",
+      "stepOrder": 2,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "MFA_MANAGEMENT",
+      "scenarioLabel": "다중인증 등록·복구",
+      "timeSeconds": 31.900000000000002
+    },
+    {
+      "processCode": "MFA_MANAGEMENT",
+      "processName": "다중인증 등록·복구",
+      "stepCode": "MFA_MANAGEMENT_S3",
+      "stepName": "다중인증 등록·복구 - 독립 검토·보완·권한 검증",
+      "actorCode": "VERIFIER",
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "routePath": "/mypage/password",
+      "stepOrder": 3,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "MFA_MANAGEMENT",
+      "scenarioLabel": "다중인증 등록·복구",
+      "timeSeconds": 32.45
+    },
+    {
+      "processCode": "MFA_MANAGEMENT",
+      "processName": "다중인증 등록·복구",
+      "stepCode": "MFA_MANAGEMENT_S4",
+      "stepName": "다중인증 등록·복구 - 승인·확정·통지·후속업무 연결",
+      "actorCode": "APPROVER",
+      "fromState": "STEP_3_COMPLETED",
+      "toState": "STEP_4_COMPLETED",
+      "routePath": "/mypage/password",
+      "stepOrder": 4,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "MFA_MANAGEMENT",
+      "scenarioLabel": "다중인증 등록·복구",
+      "timeSeconds": 33.0
+    },
+    {
+      "processCode": "ORGANIZATION_DEPARTMENT",
+      "processName": "조직·부서 관리",
+      "stepCode": "ORGANIZATION_DEPARTMENT_S1",
+      "stepName": "조직·부서 관리 - 요청·범위·필수정보 확인",
+      "actorCode": "COMPANY_ADMIN",
+      "fromState": "READY",
+      "toState": "STEP_1_COMPLETED",
+      "routePath": "/mypage/company",
+      "stepOrder": 1,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "ORGANIZATION_DEPARTMENT",
+      "scenarioLabel": "조직·부서 관리",
+      "timeSeconds": 33.550000000000004
+    },
+    {
+      "processCode": "ORGANIZATION_DEPARTMENT",
+      "processName": "조직·부서 관리",
+      "stepCode": "ORGANIZATION_DEPARTMENT_S2",
+      "stepName": "조직·부서 관리 - 업무 실행·중간 결과 저장",
+      "actorCode": "COMPANY_ADMIN",
+      "fromState": "STEP_1_COMPLETED",
+      "toState": "STEP_2_COMPLETED",
+      "routePath": "/mypage/staff",
+      "stepOrder": 2,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "ORGANIZATION_DEPARTMENT",
+      "scenarioLabel": "조직·부서 관리",
+      "timeSeconds": 34.1
+    },
+    {
+      "processCode": "ORGANIZATION_DEPARTMENT",
+      "processName": "조직·부서 관리",
+      "stepCode": "ORGANIZATION_DEPARTMENT_S3",
+      "stepName": "조직·부서 관리 - 독립 검토·보완·권한 검증",
+      "actorCode": "VERIFIER",
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "routePath": "/mypage/staff",
+      "stepOrder": 3,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "ORGANIZATION_DEPARTMENT",
+      "scenarioLabel": "조직·부서 관리",
+      "timeSeconds": 34.650000000000006
+    },
+    {
+      "processCode": "ORGANIZATION_DEPARTMENT",
+      "processName": "조직·부서 관리",
+      "stepCode": "ORGANIZATION_DEPARTMENT_S4",
+      "stepName": "조직·부서 관리 - 승인·확정·통지·후속업무 연결",
+      "actorCode": "APPROVER",
+      "fromState": "STEP_3_COMPLETED",
+      "toState": "STEP_4_COMPLETED",
+      "routePath": "/mypage/company",
+      "stepOrder": 4,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "ORGANIZATION_DEPARTMENT",
+      "scenarioLabel": "조직·부서 관리",
+      "timeSeconds": 35.2
+    },
+    {
+      "processCode": "PASSWORD_RECOVERY",
+      "processName": "비밀번호 재설정",
+      "stepCode": "PASSWORD_RECOVERY_S1",
+      "stepName": "비밀번호 재설정 - 요청·범위·필수정보 확인",
+      "actorCode": "MEMBER_USER",
+      "fromState": "READY",
+      "toState": "STEP_1_COMPLETED",
+      "routePath": "/signin/findPassword",
+      "stepOrder": 1,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "PASSWORD_RECOVERY",
+      "scenarioLabel": "비밀번호 재설정",
+      "timeSeconds": 35.75
+    },
+    {
+      "processCode": "PASSWORD_RECOVERY",
+      "processName": "비밀번호 재설정",
+      "stepCode": "PASSWORD_RECOVERY_S2",
+      "stepName": "비밀번호 재설정 - 업무 실행·중간 결과 저장",
+      "actorCode": "MEMBER_USER",
+      "fromState": "STEP_1_COMPLETED",
+      "toState": "STEP_2_COMPLETED",
+      "routePath": "/signin/findPassword",
+      "stepOrder": 2,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "PASSWORD_RECOVERY",
+      "scenarioLabel": "비밀번호 재설정",
+      "timeSeconds": 36.300000000000004
+    },
+    {
+      "processCode": "PASSWORD_RECOVERY",
+      "processName": "비밀번호 재설정",
+      "stepCode": "PASSWORD_RECOVERY_S3",
+      "stepName": "비밀번호 재설정 - 독립 검토·보완·권한 검증",
+      "actorCode": "VERIFIER",
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "routePath": "/signin/findPassword/result",
+      "stepOrder": 3,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "PASSWORD_RECOVERY",
+      "scenarioLabel": "비밀번호 재설정",
+      "timeSeconds": 36.85
+    },
+    {
+      "processCode": "PASSWORD_RECOVERY",
+      "processName": "비밀번호 재설정",
+      "stepCode": "PASSWORD_RECOVERY_S4",
+      "stepName": "비밀번호 재설정 - 승인·확정·통지·후속업무 연결",
+      "actorCode": "APPROVER",
+      "fromState": "STEP_3_COMPLETED",
+      "toState": "STEP_4_COMPLETED",
+      "routePath": "/signin/loginView",
+      "stepOrder": 4,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "PASSWORD_RECOVERY",
+      "scenarioLabel": "비밀번호 재설정",
+      "timeSeconds": 37.400000000000006
+    },
+    {
+      "processCode": "PERSONAL_DATA_RIGHTS",
+      "processName": "개인정보 열람·정정·다운로드",
+      "stepCode": "PERSONAL_DATA_SCOPE",
+      "stepName": "본인 데이터 범위 열람",
+      "actorCode": "MEMBER_USER",
+      "fromState": "READY",
+      "toState": "DATA_VIEWED",
+      "routePath": "/mypage/personal-data",
+      "stepOrder": 1,
+      "inputKeys": [
+        "session"
+      ],
+      "outputKeys": [
+        "data",
+        "excludedFields"
+      ],
+      "scenarioId": "PERSONAL_DATA_RIGHTS",
+      "scenarioLabel": "개인정보 열람·정정·다운로드",
+      "timeSeconds": 37.95
+    },
+    {
+      "processCode": "PERSONAL_DATA_RIGHTS",
+      "processName": "개인정보 열람·정정·다운로드",
+      "stepCode": "PERSONAL_DATA_CORRECTION_ROUTE",
+      "stepName": "정정 대상별 검증 화면 선택",
+      "actorCode": "MEMBER_USER",
+      "fromState": "DATA_VIEWED",
+      "toState": "CORRECTION_ROUTED",
+      "routePath": "/mypage/personal-data",
+      "stepOrder": 2,
+      "inputKeys": [
+        "correctionType"
+      ],
+      "outputKeys": [
+        "route"
+      ],
+      "scenarioId": "PERSONAL_DATA_RIGHTS",
+      "scenarioLabel": "개인정보 열람·정정·다운로드",
+      "timeSeconds": 38.5
+    },
+    {
+      "processCode": "PERSONAL_DATA_RIGHTS",
+      "processName": "개인정보 열람·정정·다운로드",
+      "stepCode": "PERSONAL_DATA_EXPORT",
+      "stepName": "개인정보 사본 생성·해시 확정",
+      "actorCode": "MEMBER_USER",
+      "fromState": "DATA_VIEWED",
+      "toState": "EXPORT_READY",
+      "routePath": "/mypage/personal-data",
+      "stepOrder": 3,
+      "inputKeys": [
+        "scope",
+        "session"
+      ],
+      "outputKeys": [
+        "contentType",
+        "sha256"
+      ],
+      "scenarioId": "PERSONAL_DATA_RIGHTS",
+      "scenarioLabel": "개인정보 열람·정정·다운로드",
+      "timeSeconds": 39.050000000000004
+    },
+    {
+      "processCode": "PERSONAL_DATA_RIGHTS",
+      "processName": "개인정보 열람·정정·다운로드",
+      "stepCode": "PERSONAL_DATA_DOWNLOAD_AUDIT",
+      "stepName": "다운로드 완료·감사 확인",
+      "actorCode": "MEMBER_USER",
+      "fromState": "EXPORT_READY",
+      "toState": "COMPLETED",
+      "routePath": "/mypage/personal-data",
+      "stepOrder": 4,
+      "inputKeys": [
+        "memberId"
+      ],
+      "outputKeys": [
+        "exportHistory"
+      ],
+      "scenarioId": "PERSONAL_DATA_RIGHTS",
+      "scenarioLabel": "개인정보 열람·정정·다운로드",
+      "timeSeconds": 39.6
+    },
+    {
+      "processCode": "PROFILE_MANAGEMENT",
+      "processName": "내 정보·알림·보안 설정",
+      "stepCode": "PROFILE_MANAGEMENT_S1",
+      "stepName": "내 정보·알림·보안 설정 - 요청·범위·필수정보 확인",
+      "actorCode": "MEMBER_USER",
+      "fromState": "READY",
+      "toState": "STEP_1_COMPLETED",
+      "routePath": "/mypage/profile",
+      "stepOrder": 1,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "PROFILE_MANAGEMENT",
+      "scenarioLabel": "내 정보·알림·보안 설정",
+      "timeSeconds": 40.150000000000006
+    },
+    {
+      "processCode": "PROFILE_MANAGEMENT",
+      "processName": "내 정보·알림·보안 설정",
+      "stepCode": "PROFILE_MANAGEMENT_S2",
+      "stepName": "내 정보·알림·보안 설정 - 업무 실행·중간 결과 저장",
+      "actorCode": "MEMBER_USER",
+      "fromState": "STEP_1_COMPLETED",
+      "toState": "STEP_2_COMPLETED",
+      "routePath": "/mypage/notification",
+      "stepOrder": 2,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "PROFILE_MANAGEMENT",
+      "scenarioLabel": "내 정보·알림·보안 설정",
+      "timeSeconds": 40.7
+    },
+    {
+      "processCode": "PROFILE_MANAGEMENT",
+      "processName": "내 정보·알림·보안 설정",
+      "stepCode": "PROFILE_MANAGEMENT_S3",
+      "stepName": "내 정보·알림·보안 설정 - 독립 검토·보완·권한 검증",
+      "actorCode": "VERIFIER",
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "routePath": "/mypage/marketing",
+      "stepOrder": 3,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "PROFILE_MANAGEMENT",
+      "scenarioLabel": "내 정보·알림·보안 설정",
+      "timeSeconds": 41.25
+    },
+    {
+      "processCode": "PROFILE_MANAGEMENT",
+      "processName": "내 정보·알림·보안 설정",
+      "stepCode": "PROFILE_MANAGEMENT_S4",
+      "stepName": "내 정보·알림·보안 설정 - 승인·확정·통지·후속업무 연결",
+      "actorCode": "APPROVER",
+      "fromState": "STEP_3_COMPLETED",
+      "toState": "STEP_4_COMPLETED",
+      "routePath": "/mypage/password",
+      "stepOrder": 4,
+      "inputKeys": [
+        "actorCode",
+        "businessPayload",
+        "idempotencyKey",
+        "projectId",
+        "tenantId"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "evidence",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "PROFILE_MANAGEMENT",
+      "scenarioLabel": "내 정보·알림·보안 설정",
+      "timeSeconds": 41.800000000000004
+    },
+    {
+      "processCode": "TERMS_CONSENT",
+      "processName": "약관·개인정보·GWP 고지 동의",
+      "stepCode": "TERMS_CONSENT_S1",
+      "stepName": "약관·개인정보·GWP 고지 동의 - 요청·범위·필수정보 확인",
+      "actorCode": "PUBLIC_APPLICANT",
+      "fromState": "READY",
+      "toState": "STEP_1_COMPLETED",
+      "routePath": "/join/step1",
+      "stepOrder": 1,
+      "inputKeys": [
+        "locale",
+        "membershipType",
+        "policyCodes"
+      ],
+      "outputKeys": [
+        "displayedPolicyVersions",
+        "optionalConsentCount",
+        "requiredConsentCount",
+        "state"
+      ],
+      "scenarioId": "TERMS_CONSENT",
+      "scenarioLabel": "약관·개인정보·GWP 고지 동의",
+      "timeSeconds": 42.35
+    },
+    {
+      "processCode": "TERMS_CONSENT",
+      "processName": "약관·개인정보·GWP 고지 동의",
+      "stepCode": "TERMS_CONSENT_S2",
+      "stepName": "약관·개인정보·GWP 고지 동의 - 업무 실행·중간 결과 저장",
+      "actorCode": "PUBLIC_APPLICANT",
+      "fromState": "STEP_1_COMPLETED",
+      "toState": "STEP_2_COMPLETED",
+      "routePath": "/join/step2",
+      "stepOrder": 2,
+      "inputKeys": [
+        "agreeGwp",
+        "agreePrivacy",
+        "agreeTerms",
+        "idempotencyKey",
+        "marketingYn",
+        "policyVersions"
+      ],
+      "outputKeys": [
+        "evidence",
+        "marketingConsent",
+        "requiredConsentsAccepted",
+        "state"
+      ],
+      "scenarioId": "TERMS_CONSENT",
+      "scenarioLabel": "약관·개인정보·GWP 고지 동의",
+      "timeSeconds": 42.900000000000006
+    },
+    {
+      "processCode": "TERMS_CONSENT",
+      "processName": "약관·개인정보·GWP 고지 동의",
+      "stepCode": "TERMS_CONSENT_S3",
+      "stepName": "약관·개인정보·GWP 고지 동의 - 독립 검토·보완·권한 검증",
+      "actorCode": "VERIFIER",
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "routePath": "/join/step2",
+      "stepOrder": 3,
+      "inputKeys": [
+        "clientTimestamp",
+        "consentPayload",
+        "policyVersions",
+        "requestFingerprint"
+      ],
+      "outputKeys": [
+        "auditEvent",
+        "duplicateWritePrevented",
+        "state",
+        "validationResult"
+      ],
+      "scenarioId": "TERMS_CONSENT",
+      "scenarioLabel": "약관·개인정보·GWP 고지 동의",
+      "timeSeconds": 43.45
+    },
+    {
+      "processCode": "TERMS_CONSENT",
+      "processName": "약관·개인정보·GWP 고지 동의",
+      "stepCode": "TERMS_CONSENT_S4",
+      "stepName": "약관·개인정보·GWP 고지 동의 - 승인·확정·통지·후속업무 연결",
+      "actorCode": "APPROVER",
+      "fromState": "STEP_3_COMPLETED",
+      "toState": "STEP_4_COMPLETED",
+      "routePath": "/join/step3",
+      "stepOrder": 4,
+      "inputKeys": [
+        "applicantSessionId",
+        "nextProcessCode",
+        "validatedConsent"
+      ],
+      "outputKeys": [
+        "consentReceiptId",
+        "historyRows",
+        "nextProcessCode",
+        "nextTaskCreated",
+        "state"
+      ],
+      "scenarioId": "TERMS_CONSENT",
+      "scenarioLabel": "약관·개인정보·GWP 고지 동의",
+      "timeSeconds": 44.0
+    }
+  ]
+}

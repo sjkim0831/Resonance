@@ -8,30 +8,29 @@ import time
 from pathlib import Path
 from typing import Iterator
 
-NVIDIA_API_KEYS = [
-    "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",
-    "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",
-    "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",
-    "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",
-    "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",
-    "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",
-    "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",
-    "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",
-    "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",
-    "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",
-    "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",
-    "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",
-    "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",
-    "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",
-    "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",
-    "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",
-]
+NVIDIA_API_KEYS_FILE_DEFAULT = "/etc/resonance/secrets/nvidia-api-keys"
 
 API_ENDPOINT = "https://integrate.api.nvidia.com/v1"
 
 
-def get_key(round_robin: int) -> str:
-    return NVIDIA_API_KEYS[round_robin % len(NVIDIA_API_KEYS)]
+def _load_api_keys() -> list[str]:
+    """Load NVIDIA API keys from the secret file (never hardcode keys here).
+
+    Same convention as ops/scripts/import-hermes-nvidia-key-pool.py:
+    NVIDIA_API_KEYS_FILE env var, defaulting to /etc/resonance/secrets/nvidia-api-keys
+    (one key per line, file must exist and be non-empty).
+    """
+    keys_file = Path(os.environ.get("NVIDIA_API_KEYS_FILE", NVIDIA_API_KEYS_FILE_DEFAULT))
+    if not keys_file.is_file():
+        raise SystemExit(f"missing NVIDIA API keys file: {keys_file}")
+    keys = [line.strip() for line in keys_file.read_text().splitlines() if line.strip()]
+    if not keys:
+        raise SystemExit(f"NVIDIA API keys file is empty: {keys_file}")
+    return keys
+
+
+def get_key(round_robin: int, keys: list[str]) -> str:
+    return keys[round_robin % len(keys)]
 
 
 def chunked(file_path: Path, chunk_size: int = 500) -> Iterator[list[dict]]:
@@ -81,7 +80,7 @@ def generate_embedding(text: str, api_key: str, model: str = "nvidia/nv-embed-v2
         return None
 
 
-def process_batch(batch: list[dict], round_robin: int, model: str) -> tuple[list[dict], int]:
+def process_batch(batch: list[dict], round_robin: int, model: str, keys: list[str]) -> tuple[list[dict], int]:
     """Process a batch of records and return with updated round_robin."""
     results = []
     for record in batch:
@@ -89,7 +88,7 @@ def process_batch(batch: list[dict], round_robin: int, model: str) -> tuple[list
         if not text:
             continue
 
-        api_key = get_key(round_robin)
+        api_key = get_key(round_robin, keys)
         round_robin += 1
 
         embedding = generate_embedding(text, api_key, model)
@@ -122,6 +121,8 @@ def main():
     parser.add_argument("--batch-size", type=int, default=500,
                         help="Records per batch")
     args = parser.parse_args()
+
+    keys = _load_api_keys()
 
     input_dir = Path(args.input_dir)
     output_path = Path(args.output)
@@ -164,11 +165,11 @@ def main():
     for batch_file in batch_files:
         print(f"Processing {batch_file.name}...")
         for chunk in chunked(batch_file, args.batch_size):
-            results, round_robin = process_batch(chunk, round_robin, args.model)
+            results, round_robin = process_batch(chunk, round_robin, args.model, keys)
 
             if results:
                 embedding_rows = [
-                    (r["id"], r["text"], r.get("korean"), 
+                    (r["id"], r["text"], r.get("korean"),
                      json.dumps(r["embedding"]), r.get("type"), r.get("category"))
                     for r in results
                 ]

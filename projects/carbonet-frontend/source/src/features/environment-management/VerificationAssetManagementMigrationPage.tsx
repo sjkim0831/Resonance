@@ -216,7 +216,7 @@ export function VerificationAssetManagementMigrationPage() {
                 <input className={inputClassName()} onChange={(event) => setBaselineForm((current) => ({ ...current, datasetId: event.target.value }))} value={baselineForm.datasetId} />
               </Field>
               <label className="flex items-center gap-2 text-sm">
-                <input checked={baselineForm.stale} onChange={(event) => setBaselineForm((current) => ({ ...current, stale: event.target.checked }))} type="checkbox" />
+                <input checked={baselineForm.stale} onChange={(event) => setBaselineForm((current) => ({ ...current, stale: event.target.checked }))} type="checkbox" className="krds-control-native" />
                 <span>{en ? "Mark as stale" : "stale로 표시"}</span>
               </label>
               <MemberButton disabled={busyKey === "baseline"} onClick={() => void handleBaselineSave()} variant="primary">{en ? "Save baseline" : "baseline 저장"}</MemberButton>

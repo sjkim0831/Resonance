@@ -1,0 +1,84 @@
+{
+  "status": "PASS",
+  "scenarioCount": 8,
+  "passed": 8,
+  "failed": 0,
+  "scenarios": [
+    {
+      "id": "S01",
+      "name": "PUBLIC_ONBOARDING",
+      "status": "PASS",
+      "seconds": 40,
+      "exitCode": 0,
+      "log": "logs/S01.log"
+    },
+    {
+      "id": "S02",
+      "name": "ENTERPRISE_ONBOARDING",
+      "status": "PASS",
+      "seconds": 16,
+      "exitCode": 0,
+      "log": "logs/S02.log"
+    },
+    {
+      "id": "S03",
+      "name": "REAPPLICATION",
+      "status": "PASS",
+      "seconds": 0,
+      "exitCode": 0,
+      "log": "/opt/resonance-data/dev-evidence/member-eight-scenario-qa/s03-final-20260901T031442Z/run.log"
+    },
+    {
+      "id": "S04",
+      "name": "STAFF_INVITATION",
+      "status": "PASS",
+      "seconds": 7,
+      "exitCode": 0,
+      "log": "logs/S04.log"
+    },
+    {
+      "id": "S05",
+      "name": "ACCOUNT_RECOVERY",
+      "status": "PASS",
+      "seconds": 8,
+      "exitCode": 0,
+      "log": "logs/S05.log"
+    },
+    {
+      "id": "S06",
+      "name": "SECURITY_HARDENING",
+      "status": "PASS",
+      "seconds": 6,
+      "exitCode": 0,
+      "log": "logs/S06.log"
+    },
+    {
+      "id": "S07",
+      "name": "PROFILE_AND_DATA_RIGHTS",
+      "status": "PASS",
+      "seconds": 4,
+      "exitCode": 0,
+      "log": "logs/S07.log"
+    },
+    {
+      "id": "S08",
+      "name": "ACCOUNT_EXIT",
+      "status": "PASS",
+      "seconds": 31,
+      "exitCode": 0,
+      "log": "logs/S08.log"
+    }
+  ],
+  "coverage": {
+    "scenarioChains": 8,
+    "processes": 22,
+    "steps": 84,
+    "screenGaps": 0,
+    "accountGaps": 0
+  },
+  "recording": {
+    "mode": "ORDERED_ACTUAL_EVIDENCE_REPLAY",
+    "durationSeconds": 200.333333,
+    "liveInteractionRecording": false
+  }
+}

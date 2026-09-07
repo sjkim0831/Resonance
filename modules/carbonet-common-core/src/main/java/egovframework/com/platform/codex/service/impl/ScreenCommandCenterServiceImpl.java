@@ -1621,7 +1621,7 @@ public class ScreenCommandCenterServiceImpl implements ScreenCommandCenterServic
     }
 
     private Map<String, Object> buildDeptRolePage() {
-        Map<String, Object> page = pageOption("dept-role", "부서 권한 맵핑", "/admin/member/dept-role-mapping", "AMENU_DEPT_ROLE", "admin");
+        Map<String, Object> page = pageOption("dept-role", "부서·회원 권한 할당", "/admin/member/dept-role-mapping", "AMENU_DEPT_ROLE", "admin");
         page.put("summary", "회사별 부서 기본 권한과 회원 권한을 함께 관리하는 운영 화면입니다.");
         page.put("source", "frontend/src/features/dept-role-mapping/DeptRoleMappingMigrationPage.tsx");
         page.put("surfaces", Arrays.asList(

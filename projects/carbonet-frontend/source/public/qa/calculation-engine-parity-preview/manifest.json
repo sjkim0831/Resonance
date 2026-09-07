@@ -1,0 +1,23 @@
+{
+  "processCode": "CALCULATION_ENGINE_PARITY",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "CEP_BASELINE",
+      "actorCode": "VERIFIER",
+      "routePath": "/work/calculation-engine-parity?step=cep_baseline&step=cep_baseline"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "CEP_COMPARE",
+      "actorCode": "CALCULATOR",
+      "routePath": "/work/calculation-engine-parity?step=cep_compare&step=cep_compare"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "CEP_GATE",
+      "actorCode": "VERIFIER",
+      "routePath": "/work/calculation-engine-parity?step=cep_gate&step=cep_gate"
+    }
+  ]
+}

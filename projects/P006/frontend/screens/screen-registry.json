@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0",
+  "runtimeId": "p006-sdui-json-form-v1",
+  "designFingerprint": "47a7a93e038553316d2dc0bd4a6bea672f37115111b1be14d442a4cf9b2e2378",
+  "screens": [
+    {
+      "screenId": "p006-sdui-scenario-form",
+      "route": "/projects/P006/digital-twin/sdui-scenario-form",
+      "screenRef": "screens/p006-scenario-form.sdui.json",
+      "status": "PUBLISHED",
+      "navigation": {
+        "label": "시나리오 JSON Form",
+        "order": 90,
+        "visible": true
+      }
+    }
+  ]
+}

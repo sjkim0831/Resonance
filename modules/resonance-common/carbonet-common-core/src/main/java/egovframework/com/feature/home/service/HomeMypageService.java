@@ -25,5 +25,20 @@ public interface HomeMypageService {
 
     Map<String, Object> updateEmailAddress(boolean en, String email, HttpServletRequest request);
 
+    Map<String, Object> requestContactVerification(boolean en, String channel, String targetValue,
+            HttpServletRequest request);
+
+    Map<String, Object> confirmContactVerification(boolean en, String challengeId, String verificationCode,
+            HttpServletRequest request);
+
     Map<String, Object> updatePassword(boolean en, String currentPassword, String newPassword, HttpServletRequest request);
+
+    Map<String, Object> buildMfaStatus(boolean en, HttpServletRequest request);
+
+    Map<String, Object> requestMfaEnrollment(boolean en, HttpServletRequest request);
+
+    Map<String, Object> verifyMfaEnrollment(boolean en, String challengeId, String verificationCode,
+            HttpServletRequest request);
+
+    Map<String, Object> disableMfa(boolean en, String currentPassword, HttpServletRequest request);
 }

@@ -40,6 +40,14 @@ public class AuthLoginMapper extends BaseMapperSupport {
         return selectOne("authLoginMapper.selectActiveAuthToken", userId);
     }
 
+    public Integer acquireCredentialMutationLock(String userId) {
+        return selectOne("authLoginMapper.acquireCredentialMutationLock", userId);
+    }
+
+    public Map<String, Object> selectActiveAuthTokenForUpdate(String userId) {
+        return selectOne("authLoginMapper.selectActiveAuthTokenForUpdate", userId);
+    }
+
     public int insertAuthToken(Map<String, Object> params) {
         return insert("authLoginMapper.insertAuthToken", params);
     }
@@ -54,6 +62,10 @@ public class AuthLoginMapper extends BaseMapperSupport {
 
     public int touchAuthToken(String tokenKey) {
         return update("authLoginMapper.touchAuthToken", tokenKey);
+    }
+
+    public int rotateAuthToken(Map<String, Object> params) {
+        return update("authLoginMapper.rotateAuthToken", params);
     }
 
     private Map<String, Object> loginParams(String userId) {

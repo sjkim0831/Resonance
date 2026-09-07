@@ -4,6 +4,7 @@ import egovframework.com.common.governance.model.ProjectManifestVO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 
@@ -38,11 +39,19 @@ public class ProjectManifestService {
         }
         
         // Fallback to global registry path (useful for operations console)
-        java.io.File globalFile = new java.io.File(GLOBAL_MANIFEST_PATH);
+        java.io.File globalFile = resolveGlobalManifestPath().toFile();
         if (globalFile.exists()) {
             return objectMapper.readValue(globalFile, Map.class);
         }
 
         throw new java.io.FileNotFoundException("Manifest file not found in local or global paths.");
+    }
+
+    private Path resolveGlobalManifestPath() {
+        String rootDir = System.getenv("ROOT_DIR");
+        if (rootDir != null && !rootDir.isBlank()) {
+            return Paths.get(rootDir.trim()).resolve(GLOBAL_MANIFEST_PATH).normalize();
+        }
+        return Paths.get(GLOBAL_MANIFEST_PATH);
     }
 }

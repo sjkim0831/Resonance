@@ -143,6 +143,19 @@ public class AdminAuthorityController {
         return adminAuthorityApiCommandService.saveAuthChange(payload, request, locale);
     }
 
+    @GetMapping("/api/admin/auth-change/relay")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> authChangeRelayQueueApi(HttpServletRequest request, Locale locale) {
+        return adminAuthorityApiCommandService.authChangeRelayQueue(request, locale);
+    }
+
+    @PostMapping("/api/admin/auth-change/relay/action")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> authChangeRelayActionApi(
+            @RequestBody Map<String, String> payload, HttpServletRequest request, Locale locale) {
+        return adminAuthorityApiCommandService.authChangeRelayAction(payload, request, locale);
+    }
+
     @RequestMapping(value = { "/member/dept-role-mapping", "/system/dept-role-mapping" }, method = RequestMethod.GET)
     public String deptRolePage(
             @RequestParam(value = "updated", required = false) String updated,

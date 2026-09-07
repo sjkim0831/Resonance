@@ -76,7 +76,7 @@ public class FrameworkAuthorityPolicyService {
         if (isGlobalCompanyRole(normalizedAuthorCode)) {
             return "global";
         }
-        if (isOperationAdmin(normalizedAuthorCode)) {
+        if (isOperationAdmin(normalizedAuthorCode) || isCompanyAdmin(normalizedAuthorCode)) {
             return "own-company";
         }
         return "role-scoped";
@@ -100,6 +100,10 @@ public class FrameworkAuthorityPolicyService {
 
     public boolean isOperationAdmin(String authorCode) {
         return ROLE_OPERATION_ADMIN.equals(normalizeAuthorCode(authorCode));
+    }
+
+    public boolean isCompanyAdmin(String authorCode) {
+        return ROLE_COMPANY_ADMIN.equals(normalizeAuthorCode(authorCode));
     }
 
     public boolean isGlobalCompanyRole(String authorCode) {

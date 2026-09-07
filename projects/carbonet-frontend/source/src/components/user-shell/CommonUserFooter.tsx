@@ -17,6 +17,8 @@ export type CommonUserFooterProps = {
 };
 
 function resolveFooterHref(label: string) {
+  if (label === "개인정보처리방침") return "/policy/privacy";
+  if (label === "Privacy Policy") return "/en/policy/privacy";
   if (label === "사이트맵") return "/sitemap";
   if (label === "Sitemap") return "/en/sitemap";
   return "#";

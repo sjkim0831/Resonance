@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="${ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+SRC="$ROOT/projects/P006/frontend"
+OUT="$ROOT/projects/carbonet-frontend/src/main/resources/static/react-app/p006"
+mkdir -p "$OUT/assets"
+cp "$SRC/index.html" "$OUT/index.html"
+cp "$SRC/p006.js" "$OUT/assets/p006.js"
+cp "$SRC/p006.css" "$OUT/assets/p006.css"
+cp "$SRC/equipment.css" "$OUT/assets/equipment.css"
+cp "$SRC/equipment-layout.css" "$OUT/assets/equipment-layout.css"
+cp "$SRC/p006-logo.svg" "$OUT/assets/p006-logo.svg"
+mkdir -p "$OUT/assets/equipment"
+rsync -a --delete "$SRC/equipment/" "$OUT/assets/equipment/"
+test -s "$OUT/index.html" && test -s "$OUT/assets/p006.js"
+echo "P006_FRONTEND_BUILD_OK out=$OUT"

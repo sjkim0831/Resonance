@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: p006-host-proxy
+  namespace: carbonet-prod
+  labels: {app: p006-host-proxy, project: P006}
+spec:
+  ports:
+    - {name: http, port: 5174, targetPort: 5174, protocol: TCP}
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: p006-host-proxy
+  namespace: carbonet-prod
+  labels: {app: p006-host-proxy, project: P006}
+subsets:
+  - addresses:
+      - ip: 172.16.1.232
+    ports:
+      - {name: http, port: 5174, protocol: TCP}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: p006-project-routes
+  namespace: carbonet-prod
+  labels: {app: p006-host-proxy, project: P006}
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 2g
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /projects/P006
+            pathType: Prefix
+            backend:
+              service:
+                name: p006-host-proxy
+                port: {number: 5174}

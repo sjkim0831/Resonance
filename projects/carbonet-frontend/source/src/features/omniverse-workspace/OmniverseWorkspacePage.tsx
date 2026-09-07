@@ -1,5 +1,6 @@
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildResilientCsrfHeaders } from "../../lib/api/core";
+import { CommonEmbeddedWorkspace } from "../../components/common-design/CommonDesignPrimitives";
 
 type Asset = { name: string; size: number; modifiedAt: string; downloadUrl: string };
 type Payload = { items: Asset[]; streamUrl?: string; status?: string; maxUploadBytes?: number };
@@ -82,7 +83,7 @@ export function OmniverseWorkspacePage() {
     finally { setBusy(false); }
   }
 
-  return <main className="min-h-screen bg-slate-50 px-5 py-8 text-slate-900">
+  return <CommonEmbeddedWorkspace workspaceId="OMNIVERSE_WORKSPACE" className="px-5 py-8 text-slate-900">
     <div className="mx-auto max-w-[1700px]">
       <header className="flex flex-col gap-4 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div><p className="text-sm font-black uppercase tracking-[0.18em] text-blue-700">System · Digital Twin</p><h1 className="mt-2 text-3xl font-black text-[#052b57]">우수 스마트 팩토리 디지털 트윈</h1><p className="mt-2 text-slate-600">설비 색상, RTX 조명과 공정 애니메이션이 포함된 Omniverse 공장 뷰어입니다.</p></div>
@@ -102,5 +103,5 @@ export function OmniverseWorkspacePage() {
       </section>
       <section className="mt-5 grid gap-4 md:grid-cols-4">{[["설비","컨베이어·탱크·배관·로봇 셀"],["색상","강철·공정·안전 구역 팔레트"],["조명","RTX 환경광·천장등·경광등"],["애니메이션","10초 루프 롤러·로봇·비콘"]].map(([title,body]) => <div key={title} className="rounded-xl border border-slate-200 bg-white p-5"><strong className="text-[#052b57]">{title}</strong><p className="mt-2 text-sm text-slate-600">{body}</p></div>)}</section>
     </div>
-  </main>;
+  </CommonEmbeddedWorkspace>;
 }

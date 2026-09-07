@@ -60,59 +60,15 @@ export default defineConfig({
     outDir: buildTarget,
     emptyOutDir: true,
     manifest: true,
+    // Hundreds of immutable chunks are verified by the asset-closure gate.
+    // Recomputing every gzip size during each deploy adds latency without
+    // changing emitted bytes or the fail-closed publication contract.
+    reportCompressedSize: false,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes("node_modules/react") || id.includes("react/jsx-runtime")) {
             return "vendor-react";
-          }
-          if (id.includes("/src/features/screen-builder/catalog/buttonCatalogCore")) {
-            return "screenBuilderCatalogSource";
-          }
-          if (id.includes("/src/features/screen-builder/catalog/screenBuilderCatalogPreview")) {
-            return "screenBuilderCatalogPreview";
-          }
-          if (id.includes("/src/features/screen-builder/panels/ScreenBuilderEditorPanels")
-            || id.includes("/src/features/screen-builder/hooks/useScreenBuilderEditor")
-            || id.includes("/src/features/screen-builder/shared/screenBuilderPreview")) {
-            return "screenBuilderEditor";
-          }
-          if (id.includes("/src/features/screen-builder/panels/ScreenBuilderGovernancePanels")
-            || id.includes("/src/features/screen-builder/hooks/useScreenBuilderGovernanceState")
-            || id.includes("/src/features/screen-builder/catalog/buttonCatalogCore")) {
-            return "screenBuilderGovernance";
-          }
-          if (id.includes("/src/features/screen-builder/panels/ScreenBuilderOverviewPanels")
-            || id.includes("/src/features/screen-builder/hooks/useScreenBuilderWorkspaceState")
-            || id.includes("/src/features/screen-builder/hooks/useScreenBuilderMutations")
-            || id.includes("/src/features/screen-builder/shared/screenBuilderShared")
-            || id.includes("/src/features/screen-builder/shared/screenBuilderUtils")) {
-            return "screenBuilderWorkspace";
-          }
-          if (id.includes("/src/lib/api/screenBuilder") || id.includes("/src/lib/api/screenGovernance")) {
-            return "screenBuilderApi";
-          }
-          if (id.includes("/src/features/platform-studio/")) {
-            return "platformStudio";
-          }
-          if (id.includes("/src/features/environment-management/")) {
-            if (id.includes("EnvironmentManagementHubPage")) {
-              return "environmentManagementHub";
-            }
-            if (id.includes("VerificationCenterMigrationPage")) {
-              return "environmentManagementVerificationCenter";
-            }
-            if (id.includes("VerificationAssetManagementMigrationPage")) {
-              return "environmentManagementVerificationAsset";
-            }
-            if (
-              id.includes("environmentManagementFamily")
-              || id.includes("environmentManagementShared")
-              || id.includes("useEnvironmentGovernance")
-            ) {
-              return "environmentManagementShared";
-            }
-            return "environmentManagement";
           }
         }
       }
@@ -120,8 +76,125 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    allowedHosts: [
+      "production.172.16.1.232.nip.io",
+      "production.211.50.135.232.nip.io",
+      "172.16.1.232",
+      "211.50.135.232",
+      "localhost",
+    ],
     proxy: {
+      "/assets/react/full-screen-quality-report.json": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "^/(?:en/)?admin/.+/page-data(?:\\?.*)?$": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/assets/react/img": {
+        target: "http://127.0.0.1:5175",
+        changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/assets\/react/, "")
+      },
+      "/assets/react/assets": {
+        target: "http://127.0.0.1:5175",
+        changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/assets\/react/, "")
+      },
       "/api": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/runtime/screens": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/home/api": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/home/api": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/join/api": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "^/join/(?:checkId|checkEmail|searchCompany|checkCompanyNameDplct)(?:\\?.*)?$": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/join/downloadInsttFile": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/join/api": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/signin/actionLogin": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/signin/actionLogin": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/signin/actionLogout": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/signin/actionLogout": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/signin/refreshSession": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/signin/refreshSession": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/signin/external-auth": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/signin/external-auth": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/admin/login/actionLogin": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/admin/login/actionLogin": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/admin/login/actionLogout": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/admin/login/actionLogout": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/admin/login/refreshSession": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/admin/login/refreshSession": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/admin/system/menu-data": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/admin/system/menu-data": {
         target: "http://localhost:18000",
         changeOrigin: true
       },

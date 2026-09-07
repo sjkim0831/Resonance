@@ -22,12 +22,13 @@ export function HomeLandingPage() {
   const en = isEnglish();
   const content = en ? LOCALIZED_CONTENT.en : LOCALIZED_CONTENT.ko;
   const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const initialHome = useMemo(() => initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] }, [initialPayload, en]);
   const [publishedSections, setPublishedSections] = useState(() => new Set(["SUMMARY", "CERTIFICATE_VERIFY", "CORE_SERVICES", "NOTICE_SUPPORT", "NEWSLETTER"]));
   const payloadState = useAsyncValue<HomePayload>(
-    () => initialPayload && !initialPayload.isLoggedIn ? Promise.resolve(initialPayload) : fetchHomePayload(),
+    () => fetchHomePayload(),
     [en],
     {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      initialValue: initialHome,
       onError: () => undefined
     }
   );
