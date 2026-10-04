@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 7,
+  "blueprintCode": "BP_ADOPT_5017BA97DAE43BF0B5AC",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_5017BA97DAE43BF0B5AC"
+  },
+  "route": "/admin/certificate/rec_check",
+  "pageName": "REC 중복 확인",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1120120",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "349dc25952f7e5f3102be34d6d47cea8ef35ea5877da8750b0cd810207fca627",
+  "artifactHash": "2bafe9a4d37f3f96844e542a4dc7c8352087365300bfc181aa0ccbc6bb00177a"
+}

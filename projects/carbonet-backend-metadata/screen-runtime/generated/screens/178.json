@@ -1,0 +1,127 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 178,
+  "blueprintCode": "BP_EMISSION_PROJECT_EMISSION_PROJECT_CALCULATE_USER",
+  "identity": {
+    "processCode": "REDUCTION_EXECUTION",
+    "stepCode": "REDUCTION_EXECUTION_02_WORK",
+    "actorCode": "REDUCTION_MANAGER",
+    "audience": "USER",
+    "pageId": "AUTO_B81128F03B832A92F9D3"
+  },
+  "route": "/emission/simulate",
+  "pageName": "감축 전략 시나리오",
+  "screenType": "CONTENT",
+  "templateCode": "KRDS_CONTENT",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "kpis": [
+      "예상 감축량; 목표 격차; 투자 대비 효과"
+    ],
+    "errors": [
+      {
+        "code": "FORBIDDEN",
+        "recovery": "권한·업무분리 확인"
+      },
+      {
+        "code": "CONFLICT",
+        "recovery": "최신 버전 재조회"
+      },
+      {
+        "code": "DEPENDENCY_FAILURE",
+        "recovery": "멱등키로 안전 재시도"
+      }
+    ],
+    "fields": [
+      "기술 투자; 효율 개선률; 재생에너지 비율; CCUS 적용률"
+    ],
+    "states": [
+      "LOADING",
+      "READY",
+      "EMPTY",
+      "SIMULATED",
+      "SAVED",
+      "SUBMITTED",
+      "ERROR",
+      "FORBIDDEN"
+    ],
+    "actions": [
+      "시나리오 계산; 저장; 비교; 검증 요청"
+    ],
+    "sections": [
+      "전략 제언; 배출 추세; 시나리오 빌더; 예상 효과; 저장 이력"
+    ],
+    "extensions": {
+      "contractId": 251,
+      "sharedRuntime": true
+    },
+    "responsive": {
+      "mobile": "single-column-actions-bottom",
+      "tablet": "adaptive-grid",
+      "desktop": "list-detail-workspace"
+    },
+    "permissions": [
+      {
+        "code": "REDUCTION_MANAGER",
+        "scope": "TENANT_PROJECT",
+        "segregationOfDuties": true,
+        "serverAuthorization": true
+      }
+    ],
+    "validations": [
+      {
+        "code": "ENTRY_AND_REQUIRED_FIELDS",
+        "type": "CONTRACT"
+      },
+      {
+        "code": "STATE_AND_VERSION",
+        "type": "CONCURRENCY"
+      }
+    ],
+    "apiContracts": [
+      "reduction-scenario-workflow"
+    ],
+    "designSystem": "KRDS_GOV",
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG_2_1_AA",
+      "nonColorStatus": true,
+      "focusManagement": true
+    },
+    "dataContracts": [
+      "reduction scenario; emission baseline; reduction target"
+    ],
+    "schemaVersion": "2.0.0",
+    "completionRule": "선택한 시나리오의 감축량, 비용, 목표 격차와 저장 버전이 기록된다.",
+    "exitConditions": [
+      "선택한 시나리오의 감축량, 비용, 목표 격차와 저장 버전이 기록된다."
+    ],
+    "businessPurpose": "기술 투자, 공정 효율, 재생에너지 및 CCUS 변수를 비교하여 실행 가능한 감축 경로를 수립한다.",
+    "entryConditions": [
+      "감축 기준연도와 목표 및 비교 가능한 배출량 기준선이 존재한다."
+    ],
+    "actorResponsibilities": [
+      "REDUCTION_MANAGER 액터가 권한·업무분리 정책에 따라 감축 전략 시나리오 업무를 수행한다."
+    ]
+  },
+  "traceability": {
+    "contractId": 251,
+    "requirementIds": [
+      "REDUCTION_EXECUTION:REDUCTION_EXECUTION_02_WORK:USER"
+    ],
+    "generationBatchId": 115,
+    "designReadinessScore": 100,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "68c077b7ed1375dd8d98676b6418552bf363f736e07120799e8b6e41674fd5b8",
+  "artifactHash": "a82c9903929b017f5410fde36aa40f082f22b9af1aba00f9c3cb5b03f51b4799"
+}

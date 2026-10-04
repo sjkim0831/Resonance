@@ -1,0 +1,17 @@
+{
+  "seconds": 0.29,
+  "backup": "/opt/Resonance/projects/P006/runtime/equipment-registry/backups/blocked26-20260910-193048",
+  "unchangedSourceAndEntryFiles": 848,
+  "all62RowsPreserved": true,
+  "all724AssetsPreserved": true,
+  "usdWrites": 0,
+  "newAssets": 0,
+  "reviewCounts": {
+    "REFERENCE_MATCH_POSSIBLE": 0,
+    "EXISTING_ASSET_MODIFICATION": 6,
+    "EXISTING_ASSET_COMBINATION": 0,
+    "NEW_ASSET_REQUIRED": 0,
+    "EQUIPMENT_INFO_REQUIRED": 20
+  },
+  "reviewDataBytes": 158617
+}

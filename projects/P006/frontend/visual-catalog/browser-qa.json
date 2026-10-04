@@ -1,0 +1,18 @@
+{
+  "totalAssets": 666,
+  "allRequiredCardFields": true,
+  "imageDecodePass": 666,
+  "search": true,
+  "categoryFilter": true,
+  "renderFilter": true,
+  "noPreviewFilter": true,
+  "pagination": true,
+  "all666View": true,
+  "zoom": true,
+  "escapeClose": true,
+  "mobileOverflow": false,
+  "errors": [],
+  "businessWrites": 0,
+  "deviceWrites": 0,
+  "seconds": 4.046
+}

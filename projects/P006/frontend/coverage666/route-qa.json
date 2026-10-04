@@ -1,0 +1,8 @@
+{
+  "checks": [
+    "usd-coverage redirects to current666",
+    "bulk-coverage redirects to current666",
+    "stable resolver alias666"
+  ],
+  "businessWrites": 0
+}

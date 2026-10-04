@@ -79,9 +79,11 @@ function unwrapEcoinventResponse<T>(response: EcoinventApiResponse<T>, fallback:
 }
 
 export async function fetchChemicalMaterialSuggestions(keyword: string) {
-  const response = await fetch(`/api/chemical-materials/suggestions?keyword=${encodeURIComponent(keyword)}`);
+  const response = await fetch(`${buildLocalizedPath('/admin/emission/survey-admin/api/chemical-materials','/en/admin/emission/survey-admin/api/chemical-materials')}?keyword=${encodeURIComponent(keyword)}`, {credentials:'include'});
   if (!response.ok) throw new Error('Failed to fetch chemical material suggestions');
-  return response.json();
+  const body = await response.json();
+  if (body.success === false || !Array.isArray(body.data)) throw new Error(body.message || 'Invalid chemical material response');
+  return body.data;
 }
 
 export async function fetchDropdownList() {

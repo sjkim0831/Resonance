@@ -1,0 +1,21 @@
+{
+  "scope": "DESIGN_STATIC_ONLY",
+  "status": "PASS",
+  "releaseStatus": "BLOCKED",
+  "requirements": 115,
+  "scenarios": 98,
+  "mappings": 212,
+  "unmappedStaticControls": 0,
+  "requirementsWithoutScenarios": 0,
+  "checks": [
+    "unique requirement/scenario/HTML IDs",
+    "all scenario references valid",
+    "all 212 source mappings retained",
+    "all internal anchors valid",
+    "all 115 trace ledger entries present",
+    "runtime release remains blocked"
+  ],
+  "runtimeTestsExecuted": 0,
+  "generatorDurationMs": 7,
+  "generatedAt": "2026-10-01T04:43:00.491Z"
+}

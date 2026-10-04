@@ -1,0 +1,3525 @@
+{
+  "seconds": 0.2613351345062256,
+  "rows": [
+    {
+      "id": "E001",
+      "path": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/cuter_low/asset.usda",
+      "checkedAt": 1789009517.6291246,
+      "exists": true,
+      "sha256": "c57b3bd570df8ed3d2d1cc37e4c57ea6eb6d932de999a35144c22b3b404984c4",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.489003896713257,
+        5.937997817993164,
+        2.799843668937683
+      ],
+      "min": [
+        -1.2445019483566284,
+        0.0,
+        -1.3999218344688416
+      ]
+    },
+    {
+      "id": "E002",
+      "path": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/pourrobot/asset.usda",
+      "checkedAt": 1789009517.644434,
+      "exists": true,
+      "sha256": "1e7dd93043172cf143cf26687ea1a229bd335e199bf1879532b75c8539146ea4",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.8241724533600596,
+        4.819999933242798,
+        2.3822307334244908
+      ],
+      "min": [
+        -0.9120862266800297,
+        0.0,
+        -1.1911153667122456
+      ]
+    },
+    {
+      "id": "E003",
+      "path": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/clearRobot/asset.usda",
+      "checkedAt": 1789009517.648491,
+      "exists": true,
+      "sha256": "fa99c5c89090c3b2d0329e89ca5cec6f12a29986bbd82d766ab4a8eff84755ff",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.140486049551056,
+        2.6982798012433347,
+        2.2384384112877105
+      ],
+      "min": [
+        -0.570243024775528,
+        0.0,
+        -1.1192192056438555
+      ]
+    },
+    {
+      "id": "E004",
+      "path": "/home/sjkim/OmniverseProjects/p006-outerRobot-normalmap-v3/asset.usda",
+      "checkedAt": 1789009517.6663036,
+      "exists": true,
+      "sha256": "3fcc17a54414b0564bc97ee36bdbc74f9b1c3a519d32a512151a09a0826f409a",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.3442968428134918,
+        3.6280062289147152,
+        2.4255248616229945
+      ],
+      "min": [
+        -0.6721484214067459,
+        0.0,
+        -1.2127624308114973
+      ]
+    },
+    {
+      "id": "E005",
+      "path": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/furnace/asset.usda",
+      "checkedAt": 1789009517.7051063,
+      "exists": true,
+      "sha256": "f814b5d8d3dec139222e9f9f42f7f84e096a4536d62c223ed6da7c0086dd48f6",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        9.406997203826904,
+        8.049886643886566,
+        6.967646360397339
+      ],
+      "min": [
+        -4.703498601913452,
+        0.0,
+        -3.4838231801986694
+      ]
+    },
+    {
+      "id": "E006",
+      "path": "/home/sjkim/OmniverseProjects/p006-watercooler-pbr-v2/asset.usda",
+      "checkedAt": 1789009517.725226,
+      "exists": true,
+      "sha256": "b90a48a15047479d79871ec25a7481ee2601f8ede6b89dc87b1ee31aa702916b",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.788996696472168,
+        2.749622993171215,
+        3.545073986053467
+      ],
+      "min": [
+        -0.894498348236084,
+        0.0,
+        -1.7725369930267334
+      ]
+    },
+    {
+      "id": "E023",
+      "path": "/home/sjkim/OmniverseProjects/p006-basic-modules-20260909-v1/floor/asset.usda",
+      "checkedAt": 1789009517.7264667,
+      "exists": true,
+      "sha256": "579f4e2bc094e085545ed86598411f58014e15e99a8242577f080828ba40f007",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        6.0,
+        0.15000000596046448,
+        6.0
+      ],
+      "min": [
+        -3.0,
+        -2.980232241545089e-09,
+        -3.0
+      ]
+    },
+    {
+      "id": "E024",
+      "path": "/home/sjkim/OmniverseProjects/p006-basic-modules-20260909-v1/wall/asset.usda",
+      "checkedAt": 1789009517.726957,
+      "exists": true,
+      "sha256": "cc3d209cae95ff6acef882ed208321df060d0aac014f7bb71bab771dfa4b2061",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        4.0,
+        3.0,
+        0.20000000298023224
+      ],
+      "min": [
+        -2.0,
+        0.0,
+        -0.10000000149011612
+      ]
+    },
+    {
+      "id": "E025",
+      "path": "/home/sjkim/OmniverseProjects/p006-basic-modules-20260909-v1/door/asset.usda",
+      "checkedAt": 1789009517.7273345,
+      "exists": true,
+      "sha256": "d9352162ff0a16780d8af0d04704ce00d3befe1fa47256978472a0458144b4ac",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.500000001490116,
+        2.450000048428774,
+        0.15000000596046448
+      ],
+      "min": [
+        -0.750000000745058,
+        -4.768371586472142e-08,
+        -0.07500000298023224
+      ]
+    },
+    {
+      "id": "E026",
+      "path": "/home/sjkim/OmniverseProjects/p006-basic-modules-20260909-v1/column/asset.usda",
+      "checkedAt": 1789009517.7277813,
+      "exists": true,
+      "sha256": "d33f50c477d974e68fd915196f1d3cbac1502bc5ed4aed5e390ac7f7cdb8d4fc",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.3499999940395355,
+        3.0,
+        0.3499999940395355
+      ],
+      "min": [
+        -0.17499999701976776,
+        0.0,
+        -0.17499999701976776
+      ]
+    },
+    {
+      "id": "E027",
+      "path": "/home/sjkim/OmniverseProjects/p006-basic-modules-20260909-v1/window/asset.usda",
+      "checkedAt": 1789009517.7281556,
+      "exists": true,
+      "sha256": "744c1252115a605b54cb0fcc97871189a7723ee5a939acf0c6b8d358d7a91674",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.9000000014901162,
+        1.250000024586916,
+        0.15000000596046448
+      ],
+      "min": [
+        -0.9500000007450581,
+        -2.384185793236071e-08,
+        -0.07500000298023224
+      ]
+    },
+    {
+      "id": "E029",
+      "path": "/home/sjkim/OmniverseProjects/p006-basic-modules-20260909-v1/zone/asset.usda",
+      "checkedAt": 1789009517.72859,
+      "exists": true,
+      "sha256": "0eec1b72656f804fb8073061c1a47bad9b86afe8be9e07352883559aa7731ba5",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        4.0,
+        0.01999999960884452,
+        4.0
+      ],
+      "min": [
+        -2.0,
+        1.6763806315323038e-10,
+        -2.0
+      ]
+    },
+    {
+      "id": "E030",
+      "path": "/home/sjkim/OmniverseProjects/p006-basic-modules-20260909-v1/aisle/asset.usda",
+      "checkedAt": 1789009517.729035,
+      "exists": true,
+      "sha256": "07bcd2674cb8db12e65b13cb02e67c3d0d0a08eaed135fc317afbb95e73a7810",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2000000476837158,
+        0.01999999960884452,
+        5.0
+      ],
+      "min": [
+        -0.6000000238418579,
+        1.6763806315323038e-10,
+        -2.5
+      ]
+    },
+    {
+      "id": "E031",
+      "path": "/home/sjkim/OmniverseProjects/p006-basic-modules-20260909-v1/fence/asset.usda",
+      "checkedAt": 1789009517.7294543,
+      "exists": true,
+      "sha256": "13ed8deecad2e798eb347a240f47b3ea2d4b8ee55d4a6b4e9f24cb520de79b3e",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.0599999986588955,
+        1.5,
+        0.05999999865889549
+      ],
+      "min": [
+        -1.0299999993294477,
+        0.0,
+        -0.029999999329447746
+      ]
+    },
+    {
+      "id": "E032",
+      "path": "/home/sjkim/OmniverseProjects/p006-basic-modules-20260909-v1/buffer/asset.usda",
+      "checkedAt": 1789009517.730668,
+      "exists": true,
+      "sha256": "1e49b5b7223591a482b4f0d8e8565ed8215abcdf36d38918f025bac3eaadc6f0",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.7999999523162842,
+        0.8500000067055226,
+        1.2000000476837158
+      ],
+      "min": [
+        -0.8999999761581421,
+        -5.960464455334602e-09,
+        -0.6000000238418579
+      ]
+    },
+    {
+      "id": "E033",
+      "path": "/home/sjkim/OmniverseProjects/p006-basic-modules-20260909-v1/rack/asset.usda",
+      "checkedAt": 1789009517.731201,
+      "exists": true,
+      "sha256": "7ba4d06f09fd3194bf555d8e51011e70e5c3197264d864682d27bfd9ac974f01",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.7999999523162842,
+        2.0999999046325684,
+        1.2000000476837158
+      ],
+      "min": [
+        -0.8999999761581421,
+        4.768371586472142e-08,
+        -0.6000000238418579
+      ]
+    },
+    {
+      "id": "E034",
+      "path": "/home/sjkim/OmniverseProjects/p006-basic-modules-20260909-v1/conveyor/asset.usda",
+      "checkedAt": 1789009517.7323303,
+      "exists": true,
+      "sha256": "e3cd7ed41449aae110172b75b5a0b4490766dfd5925ee13bf5f6db37333e3c86",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        3.0,
+        0.9750000035762787,
+        1.2000000476837158
+      ],
+      "min": [
+        -1.5,
+        -5.960464455334602e-09,
+        -0.6000000238418579
+      ]
+    },
+    {
+      "id": "E035",
+      "path": "/home/sjkim/OmniverseProjects/p006-extra-modules-20260909-v1/shutter/asset.usda",
+      "checkedAt": 1789009517.7338338,
+      "exists": true,
+      "sha256": "f60127fe92332a9070b8561865fc5dea5dbef7dcdd33da4d7f7f31420ec9a164",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        4.300000190734863,
+        4.274999997019767,
+        0.44999998807907104
+      ],
+      "min": [
+        -2.1500000953674316,
+        0.0,
+        -0.22499999403953552
+      ]
+    },
+    {
+      "id": "E039",
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/stairs/asset.usda",
+      "checkedAt": 1789009517.7348266,
+      "exists": true,
+      "sha256": "d2d3df38d8551e7ca648ac4bfe548d7955f03a1345909b386be576c6a52deba5",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2000000476837158,
+        1.440000057220459,
+        2.240000001192093
+      ],
+      "min": [
+        -0.6000000238418579,
+        -2.8610229518832853e-08,
+        -0.14000000059604645
+      ]
+    },
+    {
+      "id": "E040",
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/ramp/asset.usda",
+      "checkedAt": 1789009517.73545,
+      "exists": true,
+      "sha256": "560e2e8178c61369771f6a3cae726138b482c4715fff00774bbad38cac7a5fd6",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.5,
+        0.6000000238418579,
+        3.0
+      ],
+      "min": [
+        -0.75,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "E041",
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/platform/asset.usda",
+      "checkedAt": 1789009517.7357864,
+      "exists": true,
+      "sha256": "cc3cc5a6e2ed47667ea719037d0c2d7b7adad1fb764632fc8db5cf30e1978e51",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.0,
+        1.1500000029802322,
+        2.0
+      ],
+      "min": [
+        -1.0,
+        0.0,
+        -1.0
+      ]
+    },
+    {
+      "id": "E042",
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/railing/asset.usda",
+      "checkedAt": 1789009517.7363644,
+      "exists": true,
+      "sha256": "0a6f492c70dfbe75b8073000ceb7deff3f26f0354cc82c923c727c192a364bf0",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.050000000745058,
+        1.100000023841858,
+        0.05000000074505806
+      ],
+      "min": [
+        -1.025000000372529,
+        -1.1920928910669204e-08,
+        -0.02500000037252903
+      ]
+    },
+    {
+      "id": "E043",
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/mezzanine/asset.usda",
+      "checkedAt": 1789009517.7369926,
+      "exists": true,
+      "sha256": "f82a8ff9b9e19fdb5bd4bef387f0c5689b68efe3c8101b6dac89de0fc560c1d5",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        4.0,
+        3.1500000029802324,
+        4.0
+      ],
+      "min": [
+        -2.0,
+        0.0,
+        -2.0
+      ]
+    },
+    {
+      "id": "E044",
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/beam/asset.usda",
+      "checkedAt": 1789009517.737834,
+      "exists": true,
+      "sha256": "df5f15faff048d0e757584869b73fc7b37e70661db895742b0718713e4b7f291",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        4.0,
+        0.40000000074505804,
+        0.20000000298023224
+      ],
+      "min": [
+        -2.0,
+        -3.725290284584126e-10,
+        -0.10000000149011612
+      ]
+    },
+    {
+      "id": "E045",
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/drain/asset.usda",
+      "checkedAt": 1789009517.7383573,
+      "exists": true,
+      "sha256": "dd15fdbd4cc3a049e320e809f1858deb01b8fb66ede3a8aef71db71d56d562bd",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.0,
+        0.23500000156462192,
+        0.4000000059604645
+      ],
+      "min": [
+        -1.0,
+        -1.4901161138336505e-09,
+        -0.20000000298023224
+      ]
+    },
+    {
+      "id": "E046",
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/bollard/asset.usda",
+      "checkedAt": 1789009517.73955,
+      "exists": true,
+      "sha256": "9caf13b9b335f1f22b6086f21800016d2b9b56693ab6324b2b4a638b87f54386",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.30000001192092896,
+        0.9399999876320362,
+        0.30000001192092896
+      ],
+      "min": [
+        -0.15000000596046448,
+        4.470348362317633e-10,
+        -0.15000000596046448
+      ]
+    },
+    {
+      "id": "E047",
+      "path": "/home/sjkim/OmniverseProjects/p006-logistics-modules-20260909-v1/cart/asset.usda",
+      "checkedAt": 1789009517.7399979,
+      "exists": true,
+      "sha256": "c24b790ebd6432d8aad23434a93b84f2c49f8a213ac7562a01ee41d001769267",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.8500000238418579,
+        1.0924999982118608,
+        1.239999994635582
+      ],
+      "min": [
+        -0.42500001192092896,
+        2.682209010451686e-09,
+        -0.619999997317791
+      ]
+    },
+    {
+      "id": "E048",
+      "path": "/home/sjkim/OmniverseProjects/p006-logistics-modules-20260909-v1/rollcage/asset.usda",
+      "checkedAt": 1789009517.7406473,
+      "exists": true,
+      "sha256": "6f6ed89d8c0c5ba83e66dd7e189009c4a53767c514a72d3006c800ff6bcc24a8",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.8500000238418579,
+        1.7700000211596487,
+        1.239999994635582
+      ],
+      "min": [
+        -0.42500001192092896,
+        2.682209010451686e-09,
+        -0.619999997317791
+      ]
+    },
+    {
+      "id": "E049",
+      "path": "/home/sjkim/OmniverseProjects/p006-logistics-modules-20260909-v1/pallettruck/asset.usda",
+      "checkedAt": 1789009517.7420282,
+      "exists": true,
+      "sha256": "f52c2c441b1bb0ce835a60c67d5e724db1bcd18004d06f76fae520ecd9da36c2",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.5999999964237213,
+        1.222499998509884,
+        1.5149999853968619
+      ],
+      "min": [
+        -0.29999999821186063,
+        2.384185793236071e-09,
+        -0.5399999973177909
+      ]
+    },
+    {
+      "id": "E050",
+      "path": "/home/sjkim/OmniverseProjects/p006-logistics-modules-20260909-v1/forklift/asset.usda",
+      "checkedAt": 1789009517.7427068,
+      "exists": true,
+      "sha256": "118d13811672d6969184032fe879c22138e4de93e2ea2b613871d51aeea4dfaa",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.0500000035762787,
+        2.200000047683716,
+        2.9499999821186065
+      ],
+      "min": [
+        -0.5250000017881393,
+        -2.3841857821338408e-08,
+        -0.8749999940395355
+      ]
+    },
+    {
+      "id": "E051",
+      "path": "/home/sjkim/OmniverseProjects/p006-workshop-modules-20260909-v1/toolcabinet/asset.usda",
+      "checkedAt": 1789009517.7437208,
+      "exists": true,
+      "sha256": "e7c18466146666a763b8eee4db56cd3cdfb28c620f35456f93a443598c997a00",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.9399999976158142,
+        1.0399999995529652,
+        0.6025000116229058
+      ],
+      "min": [
+        -0.4699999988079071,
+        0.0,
+        -0.27000001072883606
+      ]
+    },
+    {
+      "id": "E052",
+      "path": "/home/sjkim/OmniverseProjects/p006-workshop-modules-20260909-v1/partsstorage/asset.usda",
+      "checkedAt": 1789009517.7445564,
+      "exists": true,
+      "sha256": "0fb594bd806ec0a29870ca934aae5ef31addaaa7b678bb13d95d44693d86a88b",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2000000476837158,
+        1.5,
+        0.5
+      ],
+      "min": [
+        -0.6000000238418579,
+        0.0,
+        -0.25
+      ]
+    },
+    {
+      "id": "E053",
+      "path": "/home/sjkim/OmniverseProjects/p006-workshop-modules-20260909-v1/inspectionbench/asset.usda",
+      "checkedAt": 1789009517.7471445,
+      "exists": true,
+      "sha256": "708218bfb5fd7a6652f92b0b7f824d54684cb11ef3e59eadc2183b9889837d85",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.600000023841858,
+        1.8200000112503767,
+        0.800000011920929
+      ],
+      "min": [
+        -0.800000011920929,
+        -1.1920928966180355e-08,
+        -0.4000000059604645
+      ]
+    },
+    {
+      "id": "E054",
+      "path": "/home/sjkim/OmniverseProjects/p006-utility-modules-20260909-v1/compressor/asset.usda",
+      "checkedAt": 1789009517.7480986,
+      "exists": true,
+      "sha256": "2347fdc9358162544cd08af2c52770ce0867742f8028157e9fbef6442f4b7f0c",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2950000268220903,
+        1.1199999986588955,
+        0.8275000059045852
+      ],
+      "min": [
+        -0.6000000238418579,
+        1.341104505225843e-09,
+        -0.4000000059604645
+      ]
+    },
+    {
+      "id": "E055",
+      "path": "/home/sjkim/OmniverseProjects/p006-utility-modules-20260909-v1/airreceiver/asset.usda",
+      "checkedAt": 1789009517.7490928,
+      "exists": true,
+      "sha256": "1e67869bde4ba4144b2510d8d6d18fbea5f6ed3bb5111c1ffb9a54e93f2c6d3e",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.1000000029802321,
+        2.0000000008940697,
+        0.8565000059045851
+      ],
+      "min": [
+        -0.5500000014901161,
+        5.960464483090178e-10,
+        -0.4000000059604645
+      ]
+    },
+    {
+      "id": "E056",
+      "path": "/home/sjkim/OmniverseProjects/p006-utility-modules-20260909-v1/dustcollector/asset.usda",
+      "checkedAt": 1789009517.749766,
+      "exists": true,
+      "sha256": "7e7619462ea63b96fd84fd22d2c93b2163650e29d0f1e9885c8ccea609727ec0",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.3500000178813933,
+        2.6000000089406967,
+        0.9599999876320362
+      ],
+      "min": [
+        -0.550000011920929,
+        -2.980232227667301e-09,
+        -0.44999998807907104
+      ]
+    },
+    {
+      "id": "E057",
+      "path": "/home/sjkim/OmniverseProjects/p006-safety-modules-20260909-v1/extinguisher/asset.usda",
+      "checkedAt": 1789009517.7506382,
+      "exists": true,
+      "sha256": "3239018e6f44d06d2de46d68ea522e64b65bdf978018ff94c7df3e61f1fc4457",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.2279999980330467,
+        0.4989999996870756,
+        0.1899999976158142
+      ],
+      "min": [
+        -0.0949999988079071,
+        -7.450580430390374e-11,
+        -0.0949999988079071
+      ]
+    },
+    {
+      "id": "E058",
+      "path": "/home/sjkim/OmniverseProjects/p006-safety-modules-20260909-v1/eyewash/asset.usda",
+      "checkedAt": 1789009517.7513423,
+      "exists": true,
+      "sha256": "ad9dbab0148b5aac2e430f2f67518c76dd220ba392770832220218ec2ec66e68",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.5749999922513962,
+        1.6300000010430813,
+        0.48249999482184647
+      ],
+      "min": [
+        -0.23999999463558197,
+        4.470348362317633e-10,
+        -0.24250000018626452
+      ]
+    },
+    {
+      "id": "E073",
+      "path": "/home/sjkim/OmniverseProjects/p006-process-modules-20260909-v1/coolantpump/asset.usda",
+      "checkedAt": 1789009517.7525756,
+      "exists": true,
+      "sha256": "4d675d087e1aba3cdc74977ef54e3a12d91427ab0b1878332fe0e71a2d172d1a",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.5,
+        0.9300000067055225,
+        0.6499999761581421
+      ],
+      "min": [
+        -0.75,
+        -7.450580569168253e-10,
+        -0.32499998807907104
+      ]
+    },
+    {
+      "id": "E074",
+      "path": "/home/sjkim/OmniverseProjects/p006-process-modules-20260909-v1/feedhopper/asset.usda",
+      "checkedAt": 1789009517.7551284,
+      "exists": true,
+      "sha256": "9bfa1ceed05ce3ad0c6e9a041aaab05052bf2553d9c4263fb4698f90993e6ab6",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.250000000745058,
+        1.6750000242143868,
+        1.250000000745058
+      ],
+      "min": [
+        -0.625000000372529,
+        -2.384185793236071e-08,
+        -0.625000000372529
+      ]
+    },
+    {
+      "id": "E075",
+      "path": "/home/sjkim/OmniverseProjects/p006-handling-options-20260909-v1/scrapcontainer/asset.usda",
+      "checkedAt": 1789009517.7562797,
+      "exists": true,
+      "sha256": "fe1f9a774a3b1075a6bdcd977d37d870cacd2b7537c724469557cd25c26bcb13",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.8799999952316284,
+        1.3399999986588955,
+        1.2200000014901162
+      ],
+      "min": [
+        -0.9399999976158142,
+        4.470348362317633e-10,
+        -0.6100000007450581
+      ]
+    },
+    {
+      "id": "E077",
+      "path": "/home/sjkim/OmniverseProjects/p006-transfer-modules-20260909-v1/junction/asset.usda",
+      "checkedAt": 1789009517.7573757,
+      "exists": true,
+      "sha256": "00585f249546db7275e7c8cd38397b28510caccc25b2bedc751b47e2a219eb8f",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.0,
+        0.9400000017881394,
+        2.0
+      ],
+      "min": [
+        -1.0,
+        0.0,
+        -0.5
+      ]
+    },
+    {
+      "id": "E078",
+      "path": "/home/sjkim/OmniverseProjects/p006-transfer-modules-20260909-v1/conveyorlift/asset.usda",
+      "checkedAt": 1789009517.7585008,
+      "exists": true,
+      "sha256": "9a45668210c2cdfb5f5b219d398cb0fb15bbb7175a39905d44f402cdd16d0f72",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.5,
+        2.699999997764826,
+        1.2999999523162842
+      ],
+      "min": [
+        -0.75,
+        1.341104505225843e-09,
+        -0.6499999761581421
+      ]
+    },
+    {
+      "id": "E079",
+      "path": "/home/sjkim/OmniverseProjects/p006-transfer-modules-20260909-v1/rotarytransfer/asset.usda",
+      "checkedAt": 1789009517.7593696,
+      "exists": true,
+      "sha256": "beacaf321f72f96835be3168214e7655eb0b9781cf6bc68822b56c45418fbdc8",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.600000023841858,
+        0.910000002682209,
+        1.600000023841858
+      ],
+      "min": [
+        -0.800000011920929,
+        -3.5762786898541066e-09,
+        -0.800000011920929
+      ]
+    },
+    {
+      "id": "E080",
+      "path": "/home/sjkim/OmniverseProjects/p006-transfer-modules-20260909-v1/materialfeeder/asset.usda",
+      "checkedAt": 1789009517.7599924,
+      "exists": true,
+      "sha256": "c8ed898cfcab921ea621f129873c003186ba43ff73e35e0677785a946fef2823",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.7999999757111071,
+        1.0299999880790711,
+        0.6999999991059304
+      ],
+      "min": [
+        -0.8999999995529652,
+        1.1920928966180355e-08,
+        -0.3499999995529652
+      ]
+    },
+    {
+      "id": "E081",
+      "path": "/home/sjkim/OmniverseProjects/p006-shipping-modules-20260909-v1/palletscale/asset.usda",
+      "checkedAt": 1789009517.7606816,
+      "exists": true,
+      "sha256": "5ebee4bb0876e828b34c64f8328c9d320aa2a34ae068afd118be2a41db286dd7",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.6750000059604644,
+        1.2400000031292437,
+        1.25
+      ],
+      "min": [
+        -0.625,
+        4.470348362317633e-10,
+        -0.625
+      ]
+    },
+    {
+      "id": "E082",
+      "path": "/home/sjkim/OmniverseProjects/p006-shipping-modules-20260909-v1/labelprinter/asset.usda",
+      "checkedAt": 1789009517.7613738,
+      "exists": true,
+      "sha256": "289896d979b33ca851c53fa31b88545ffeafca1b0954881a77897d3ed6661890",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.33000001311302185,
+        0.2599999989569187,
+        0.5199999958276749
+      ],
+      "min": [
+        -0.16500000655651093,
+        5.960464483090178e-10,
+        -0.20499999821186066
+      ]
+    },
+    {
+      "id": "E083",
+      "path": "/home/sjkim/OmniverseProjects/p006-shipping-modules-20260909-v1/cartonsealer/asset.usda",
+      "checkedAt": 1789009517.7619433,
+      "exists": true,
+      "sha256": "4df0167ceafa0ba9ae765dde2b5f586befcfd9e8e9d5c4e6ab893ccc835e9a05",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.5,
+        2.0299999892711638,
+        1.0399999618530273
+      ],
+      "min": [
+        -0.75,
+        5.960464455334602e-09,
+        -0.5199999809265137
+      ]
+    },
+    {
+      "id": "E084",
+      "path": "/home/sjkim/OmniverseProjects/p006-shipping-modules-20260909-v1/palletwrapper/asset.usda",
+      "checkedAt": 1789009517.7628937,
+      "exists": true,
+      "sha256": "41152e2666d90a95fc12da8f3554297269f947a91bdd41d69f64ac0867769f44",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.2750000178813936,
+        2.5200000484287743,
+        1.7000000476837158
+      ],
+      "min": [
+        -0.8500000238418579,
+        -7.450580569168253e-10,
+        -0.8500000238418579
+      ]
+    },
+    {
+      "id": "E085",
+      "path": "/home/sjkim/OmniverseProjects/p006-shipping-modules-20260909-v1/dockleveler/asset.usda",
+      "checkedAt": 1789009517.763485,
+      "exists": true,
+      "sha256": "5a11fe84da91bca960c558940538d348b89dd5b3ddf808ad1f872aa6c353f866",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.0,
+        0.2800000010430813,
+        2.4199999552965163
+      ],
+      "min": [
+        -1.0,
+        -1.4901161138336505e-09,
+        -1.0499999523162842
+      ]
+    },
+    {
+      "id": "E086",
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/palletmagazine/asset.usda",
+      "checkedAt": 1789009517.7642138,
+      "exists": true,
+      "sha256": "a92040a442ab5994c54e2ac544812d12cbd135b9c3b30a2e1a949fa6cf71732a",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.5,
+        2.3599999977648256,
+        1.399999976158142
+      ],
+      "min": [
+        -0.75,
+        1.341104505225843e-09,
+        -0.699999988079071
+      ]
+    },
+    {
+      "id": "E089",
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/lightcurtain/asset.usda",
+      "checkedAt": 1789009517.765168,
+      "exists": true,
+      "sha256": "167a95d62a7dcee8a354047b420c5746f4e50d1711e8826229d1a9e9d5f30d83",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.45,
+        1.5399999995529652,
+        0.25
+      ],
+      "min": [
+        -0.725,
+        4.470348362317633e-10,
+        -0.125
+      ]
+    },
+    {
+      "id": "E090",
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/estopstand/asset.usda",
+      "checkedAt": 1789009517.7657692,
+      "exists": true,
+      "sha256": "d06cd9cf2e39bd601ab92830980667f019d4078ea2d4fc19507d422f4b25ceaa",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.3499999940395355,
+        1.2099999997764828,
+        0.3499999940395355
+      ],
+      "min": [
+        -0.17499999701976776,
+        -3.725290284584126e-10,
+        -0.17499999701976776
+      ]
+    },
+    {
+      "id": "E091",
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/spilltray/asset.usda",
+      "checkedAt": 1789009517.766279,
+      "exists": true,
+      "sha256": "296921b18885032377e6cb35c42605eb003dff1b5f5a10e0396a94c5c2219d68",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2000000476837158,
+        0.2200000010430813,
+        0.800000011920929
+      ],
+      "min": [
+        -0.6000000238418579,
+        4.470348362317633e-10,
+        -0.4000000059604645
+      ]
+    },
+    {
+      "id": "E094",
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/junctionbox/asset.usda",
+      "checkedAt": 1789009517.7672014,
+      "exists": true,
+      "sha256": "59bad592e8cb7bcb817662c80d4c462d3e42eb17449b6f3cb0456f1b64984389",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.44999998807907104,
+        0.550000011920929,
+        0.26249999951571223
+      ],
+      "min": [
+        -0.22499999403953552,
+        -5.960464455334602e-09,
+        -0.14999999932944774
+      ]
+    },
+    {
+      "id": "E095",
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/drillpress/asset.usda",
+      "checkedAt": 1789009517.7677736,
+      "exists": true,
+      "sha256": "ca9b9132276439cc4c65a5fae385b7a8f9ffa208bc83d6bdc7b19b741357552a",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.6000000238418579,
+        1.8000000067055224,
+        0.894999997317791
+      ],
+      "min": [
+        -0.30000001192092896,
+        -7.450580569168253e-10,
+        -0.519999997317791
+      ]
+    },
+    {
+      "id": "E096",
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/smallpress/asset.usda",
+      "checkedAt": 1789009517.7684226,
+      "exists": true,
+      "sha256": "5c66ae7f0fa0f75e624bce036cb4ccffccb9d57a4958b174096fdb261cae5b29",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.8500000238418579,
+        1.540000002235174,
+        0.6499999761581421
+      ],
+      "min": [
+        -0.42500001192092896,
+        1.341104505225843e-09,
+        -0.32499998807907104
+      ]
+    },
+    {
+      "id": "E097",
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/washbooth/asset.usda",
+      "checkedAt": 1789009517.7690868,
+      "exists": true,
+      "sha256": "84b2f851e7b3c9e5e1215744f1486490332cc264904735138f565025a0907be5",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.3999999991059304,
+        1.9600000008195637,
+        1.0
+      ],
+      "min": [
+        -0.6999999995529652,
+        -1.4901161138336505e-09,
+        -0.5
+      ]
+    },
+    {
+      "id": "E098",
+      "path": "/home/sjkim/OmniverseProjects/p006-finishing-modules-20260909-v1/dryingoven/asset.usda",
+      "checkedAt": 1789009517.7701209,
+      "exists": true,
+      "sha256": "2d9c8d8676fe6cd4b44d339eee4de604e9146ae2f03954ba75351bd490060a0c",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.100000023841858,
+        1.6899999973177908,
+        0.9599999874085188
+      ],
+      "min": [
+        -0.550000011920929,
+        1.341104505225843e-09,
+        -0.44999998807907104
+      ]
+    },
+    {
+      "id": "E099",
+      "path": "/home/sjkim/OmniverseProjects/p006-finishing-modules-20260909-v1/deburrbench/asset.usda",
+      "checkedAt": 1789009517.770785,
+      "exists": true,
+      "sha256": "71be5d281096b8bc43794bc1cc5859ab38629f04373a489f736a2ef677bfc3e9",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.3999999991059304,
+        1.5000000178813933,
+        1.010000005364418
+      ],
+      "min": [
+        -0.6999999995529652,
+        -5.960464455334602e-09,
+        -0.6099999994039536
+      ]
+    },
+    {
+      "id": "E101",
+      "path": "/home/sjkim/OmniverseProjects/p006-support-modules-20260909-v1/silo/asset.usda",
+      "checkedAt": 1789009517.772524,
+      "exists": true,
+      "sha256": "baeb3361320ea5288e8d742a9dba3fc556edc127e1dfba56f608a757f42b8d81",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.440000057220459,
+        2.9799999752640725,
+        1.440000057220459
+      ],
+      "min": [
+        -0.7200000286102295,
+        2.384185793236071e-08,
+        -0.7200000286102295
+      ]
+    },
+    {
+      "id": "E102",
+      "path": "/home/sjkim/OmniverseProjects/p006-support-modules-20260909-v1/beltgrinder/asset.usda",
+      "checkedAt": 1789009517.774623,
+      "exists": true,
+      "sha256": "7e4c25c68e2c310dc71ef7a5a58add2508c81f7b82339a0d910f223f34c264d8",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.6000000238418579,
+        1.5699999964237212,
+        0.7700000178813935
+      ],
+      "min": [
+        -0.30000001192092896,
+        8.940696724635266e-10,
+        -0.30000001192092896
+      ]
+    },
+    {
+      "id": "E104",
+      "path": "/home/sjkim/OmniverseProjects/p006-service-modules-20260909-v1/portablefan/asset.usda",
+      "checkedAt": 1789009517.7754407,
+      "exists": true,
+      "sha256": "5f19633cc9be144755f630dc3368e02b64fab5bbdee43b582644a605e6545f20",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.786110508113988,
+        1.1930552576332725,
+        0.5200000035762786
+      ],
+      "min": [
+        -0.393055254056994,
+        -3.5762786898541066e-09,
+        -0.2700000035762787
+      ]
+    },
+    {
+      "id": "E105",
+      "path": "/home/sjkim/OmniverseProjects/p006-service-modules-20260909-v1/hosereel/asset.usda",
+      "checkedAt": 1789009517.7774897,
+      "exists": true,
+      "sha256": "54992840fb8b5751125c7b8d12f6dc0f1b381c3d9a8a387116be2800e0626ae0",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.5299999995529652,
+        0.6800000035017728,
+        0.46000000834465027
+      ],
+      "min": [
+        -0.25,
+        6.705522526129215e-10,
+        -0.23000000417232513
+      ]
+    },
+    {
+      "id": "E106",
+      "path": "/home/sjkim/OmniverseProjects/p006-service-modules-20260909-v1/worklight/asset.usda",
+      "checkedAt": 1789009517.7780602,
+      "exists": true,
+      "sha256": "e0fb4500a648a3a130b10b98941315fc266ba8dc157d6d3f0f380693269d77a8",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.6849999867379666,
+        1.6850000049173832,
+        0.6396152395884541
+      ],
+      "min": [
+        -0.32499998807907104,
+        4.470348362317633e-10,
+        -0.319807619794227
+      ]
+    },
+    {
+      "id": "E109",
+      "path": "/home/sjkim/OmniverseProjects/p006-container-modules-20260909-v1/closeddrum/asset.usda",
+      "checkedAt": 1789009517.7786589,
+      "exists": true,
+      "sha256": "516eabe76a1c26eecc00c4bfb32dc08ad938c733b55ca0031be6ba349a167f57",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.5799999833106995,
+        0.8899999997392296,
+        0.5799999833106995
+      ],
+      "min": [
+        -0.28999999165534973,
+        4.470348362317633e-10,
+        -0.28999999165534973
+      ]
+    },
+    {
+      "id": "E110",
+      "path": "/home/sjkim/OmniverseProjects/p006-container-modules-20260909-v1/ibccontainer/asset.usda",
+      "checkedAt": 1789009517.7792263,
+      "exists": true,
+      "sha256": "76a0244b494c3eb5d3df87518937eed7ec655c1174ed72bf7bcf599aff2f63d5",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2000000476837158,
+        1.0899999990314244,
+        1.0499999986588955
+      ],
+      "min": [
+        -0.6000000238418579,
+        1.341104505225843e-09,
+        -0.5
+      ]
+    },
+    {
+      "id": "E114",
+      "path": "/home/sjkim/OmniverseProjects/p006-air-options-20260909-v1/airdryer/asset.usda",
+      "checkedAt": 1789009517.7811513,
+      "exists": true,
+      "sha256": "126b868b71f8b0a897c2754980b33173f65b45fc9adaaf9ca293b68ef319c119",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.6499999761581421,
+        0.9999999977648257,
+        0.5925000057928265
+      ],
+      "min": [
+        -0.32499998807907104,
+        8.940696724635266e-10,
+        -0.2750000059604645
+      ]
+    },
+    {
+      "id": "E115",
+      "path": "/home/sjkim/OmniverseProjects/p006-air-options-20260909-v1/condensatecan/asset.usda",
+      "checkedAt": 1789009517.782088,
+      "exists": true,
+      "sha256": "1ae755726c8fdde7cdef9fd34efc331b2a74864ee0f5c0dbd341c82b7adc812e",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.3700000047683716,
+        0.5225000031664968,
+        0.3700000047683716
+      ],
+      "min": [
+        -0.1850000023841858,
+        -2.980232227667301e-09,
+        -0.1850000023841858
+      ]
+    },
+    {
+      "id": "E118",
+      "path": "/home/sjkim/OmniverseProjects/p006-mobile-screen-20260909-v1/mobilescreen/asset.usda",
+      "checkedAt": 1789009517.7827468,
+      "exists": true,
+      "sha256": "b7b66a12b9c83043285968d8f4218be8bd3e25ca0f7431c6f4c02085ee2dca33",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.9799999982118606,
+        2.0000000006705525,
+        0.7000000005960465
+      ],
+      "min": [
+        -0.9899999991059303,
+        -2.98023217215615e-10,
+        -0.35000000029802325
+      ]
+    },
+    {
+      "id": "E119",
+      "path": "/home/sjkim/OmniverseProjects/p006-operator-console-20260909-v1/operatorconsole/asset.usda",
+      "checkedAt": 1789009517.784486,
+      "exists": true,
+      "sha256": "28be5ac86722f61c2e537cd0657b10bd8c38a7e4024e7e83d6b51ac9183c977d",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.6200000047683716,
+        1.4900000032782554,
+        0.5
+      ],
+      "min": [
+        -0.3100000023841858,
+        8.940696724635266e-10,
+        -0.25
+      ]
+    },
+    {
+      "id": "E120",
+      "path": "/home/sjkim/OmniverseProjects/p006-cnclathe-20260909-v2/cnclathe/asset.usda",
+      "checkedAt": 1789009517.7853289,
+      "exists": true,
+      "sha256": "b540b5f1ccde9f93304a455232cc9ca1ed717860c1ec06cb578b56fd8cbf0188",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.599999949336052,
+        1.5499999947845935,
+        1.2810000118613243
+      ],
+      "min": [
+        -1.2999999523162842,
+        5.364418020903372e-09,
+        -0.550000011920929
+      ]
+    },
+    {
+      "id": "E121",
+      "path": "/home/sjkim/OmniverseProjects/p006-machiningcenter-20260909-v2/machiningcenter/asset.usda",
+      "checkedAt": 1789009517.7871234,
+      "exists": true,
+      "sha256": "b703b427cd851f417817d3ac552f25f9effa6b67996f437c7e5334bf3b3c435d",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.255000004768372,
+        2.0999999925494195,
+        1.6950000114738941
+      ],
+      "min": [
+        -1.0000000035762788,
+        6.5565109175214076e-09,
+        -0.800000011920929
+      ]
+    },
+    {
+      "id": "E122",
+      "path": "/home/sjkim/OmniverseProjects/p006-screwdriver-20260909-v2/screwdriver/asset.usda",
+      "checkedAt": 1789009517.7892094,
+      "exists": true,
+      "sha256": "ee1f7ea14f1bf0fc35f041324ba84ac645fd55489758478c3bb6958beccb12a2",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.5,
+        1.7800000002980232,
+        0.8500000238418579
+      ],
+      "min": [
+        -0.75,
+        0.0,
+        -0.42500001192092896
+      ]
+    },
+    {
+      "id": "E123",
+      "path": "/home/sjkim/OmniverseProjects/p006-cmm-20260909-v2/cmm/asset.usda",
+      "checkedAt": 1789009517.7909648,
+      "exists": true,
+      "sha256": "6d204d3d04e5c4b9741794ff0d07a96a4cf5b8d53e4bc7c9ac5feef8090e8181",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.9450000268220902,
+        1.9349999983608723,
+        1.0499999523162842
+      ],
+      "min": [
+        -0.7250000238418579,
+        -1.490116086078075e-10,
+        -0.5249999761581421
+      ]
+    },
+    {
+      "id": "E124",
+      "path": "/home/sjkim/OmniverseProjects/p006-caseerector-20260909-v2/asset.usda",
+      "checkedAt": 1789009517.7928853,
+      "exists": true,
+      "sha256": "f06226ab1cbbe13eea106b214c3da74b92d162e84de12afb9a2e2cdcbcc0ae17",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.540000023841858,
+        1.8100000000745058,
+        1.0830000007264315
+      ],
+      "min": [
+        -1.225000023841858,
+        6.705522526129215e-10,
+        -0.5425000008940697
+      ]
+    },
+    {
+      "id": "E125",
+      "path": "/home/sjkim/OmniverseProjects/p006-priority10-20260909-v1/amr/asset.usda",
+      "checkedAt": 1789009517.7946577,
+      "exists": true,
+      "sha256": "a949018655e64b5a7c358b21f537784a76d6a85b352d92e96be88b83f849400b",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.945500001564622,
+        0.4300000018626452,
+        0.699999988079071
+      ],
+      "min": [
+        -0.4600000014901161,
+        -1.4901161138336505e-09,
+        -0.3499999940395355
+      ]
+    },
+    {
+      "id": "E127",
+      "path": "/home/sjkim/OmniverseProjects/p006-priority10-20260909-v1/locker/asset.usda",
+      "checkedAt": 1789009517.7953477,
+      "exists": true,
+      "sha256": "b6e2a572a875497765e80104bcd36041c517c55cb9abe3066bc566f2383079b5",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2000000476837158,
+        1.7999999523162842,
+        0.5495000001862644
+      ],
+      "min": [
+        -0.6000000238418579,
+        2.384185793236071e-08,
+        -0.25
+      ]
+    },
+    {
+      "id": "E128",
+      "path": "/home/sjkim/OmniverseProjects/p006-priority10-20260909-v1/workchair/asset.usda",
+      "checkedAt": 1789009517.7963219,
+      "exists": true,
+      "sha256": "6393bcd03ee9413ef8a50867ba685927bfa63c661aa55f0df1541d297c232a61",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.5,
+        0.9750000047683716,
+        0.5074999989569187
+      ],
+      "min": [
+        -0.25,
+        1.1920928966180355e-09,
+        -0.25749999985098837
+      ]
+    },
+    {
+      "id": "E130",
+      "path": "/home/sjkim/OmniverseProjects/p006-strapper-20260910-v1/strapper/asset.usda",
+      "checkedAt": 1789009517.7970438,
+      "exists": true,
+      "sha256": "7f237fa0379a49a263a9c800ad326f3b5146f3dfb0aad223038e0080760715f5",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2225000236742198,
+        1.8500000008940698,
+        0.800000011920929
+      ],
+      "min": [
+        -0.6224999998323619,
+        -1.490116086078075e-10,
+        -0.4000000059604645
+      ]
+    },
+    {
+      "id": "E131",
+      "path": "/home/sjkim/OmniverseProjects/p006-shrink-20260910-v1/shrink/asset.usda",
+      "checkedAt": 1789009517.798231,
+      "exists": true,
+      "sha256": "f6c4f548c321ce1a05018f2d57787e288511566f8c44d6561b2861b4ab20de7f",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.5,
+        1.7109999993555247,
+        1.0629999987110494
+      ],
+      "min": [
+        -1.25,
+        6.705522526129215e-10,
+        -0.4799999986588955
+      ]
+    },
+    {
+      "id": "E132",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C003/asset.usda",
+      "checkedAt": 1789009517.8001528,
+      "exists": true,
+      "sha256": "2d883ed247d380b35ea7ce3671685708c1a732564c2ffd1b644ea9f9e5c8e37b",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        3.2900000005960464,
+        1.4200000122189522,
+        1.7000000476837158
+      ],
+      "min": [
+        -1.5,
+        0.0,
+        -0.8500000238418579
+      ]
+    },
+    {
+      "id": "E133",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C004/asset.usda",
+      "checkedAt": 1789009517.8012962,
+      "exists": true,
+      "sha256": "1a8bf2d25b632eac5a7401266aadb95f3bf8937b5a70519d5d5573339186d65f",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        3.519999998807907,
+        1.4200000122189522,
+        1.8399999982118607
+      ],
+      "min": [
+        -1.5,
+        0.0,
+        -0.9199999991059303
+      ]
+    },
+    {
+      "id": "E134",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C005/asset.usda",
+      "checkedAt": 1789009517.8025026,
+      "exists": true,
+      "sha256": "58552fb8400eb09c2ddee2d2c1fa15d4d69dc6bffb510490f997b8e3de546e7d",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.839999994635582,
+        1.480000016093254,
+        0.8999999761581421
+      ],
+      "min": [
+        -0.9099999904632569,
+        0.0,
+        -0.44999998807907104
+      ]
+    },
+    {
+      "id": "E135",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C006/asset.usda",
+      "checkedAt": 1789009517.8032196,
+      "exists": true,
+      "sha256": "9045e5f717b04502f781040bf667f6ff0c1e32b9682eac6b3942a27f8a514805",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.7900000005960464,
+        2.2500000059604646,
+        1.1335000123828651
+      ],
+      "min": [
+        -1.25,
+        0.0,
+        -0.575000011920929
+      ]
+    },
+    {
+      "id": "E136",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C007/asset.usda",
+      "checkedAt": 1789009517.8049529,
+      "exists": true,
+      "sha256": "d4badb3e9ba5a9c6a6512acaef781243199b3bcfc26f8415e7f2fc2ee473e9c2",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.7900000005960464,
+        2.2500000059604646,
+        1.7000000000000002
+      ],
+      "min": [
+        -1.25,
+        0.0,
+        -0.575000011920929
+      ]
+    },
+    {
+      "id": "E137",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C008/asset.usda",
+      "checkedAt": 1789009517.8057327,
+      "exists": true,
+      "sha256": "e7e943dbd1e174c79f42fca017f784b579a7b618669e8eda22d3fa34d92b98c5",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.7000000476837158,
+        1.824999988079071,
+        1.0749999970197677
+      ],
+      "min": [
+        -0.8500000238418579,
+        0.0,
+        -0.5749999970197678
+      ]
+    },
+    {
+      "id": "E138",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C009/asset.usda",
+      "checkedAt": 1789009517.8064854,
+      "exists": true,
+      "sha256": "f6ca1215d44d42129cd61c4869f7f1609f55cde0f7868a45c656b33c53a51ba1",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.7600000232458115,
+        1.824999988079071,
+        1.0749999970197677
+      ],
+      "min": [
+        -0.8500000238418579,
+        0.0,
+        -0.5749999970197678
+      ]
+    },
+    {
+      "id": "E139",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C010/asset.usda",
+      "checkedAt": 1789009517.8074515,
+      "exists": true,
+      "sha256": "6ac3ee1c7b9536b576f5929a13ed9158f61ae85eb55003538dfc562ea2140540",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.6899999997019766,
+        1.9299999862909318,
+        1.125000011920929
+      ],
+      "min": [
+        -0.6499999991059303,
+        0.0,
+        -0.575
+      ]
+    },
+    {
+      "id": "E140",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C011/asset.usda",
+      "checkedAt": 1789009517.808401,
+      "exists": true,
+      "sha256": "d46d97b2d115c4e1c5e3200263b97a16449c8b70b448b08a04b0f102b63dcdfa",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.6899999997019766,
+        2.0599999815225605,
+        1.125000011920929
+      ],
+      "min": [
+        -0.6499999991059303,
+        0.0,
+        -0.575
+      ]
+    },
+    {
+      "id": "E141",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C012/asset.usda",
+      "checkedAt": 1789009517.8093235,
+      "exists": true,
+      "sha256": "1e04fc5f286ae8b1a8cbc520147db41f1e3a0fa182ccef904f46299c82b5150f",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.8299999594747467,
+        0.9550000301285144,
+        1.124999995237534
+      ],
+      "min": [
+        -1.2999999535142825,
+        0.0,
+        -0.32499998807907104
+      ]
+    },
+    {
+      "id": "E142",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C013/asset.usda",
+      "checkedAt": 1789009517.8099484,
+      "exists": true,
+      "sha256": "d0fc85110f12949dbad5042ce95d1b75cb5a39f9484ef8ad2e982e3d2ed0edf9",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2000000476837158,
+        1.749999988079071,
+        0.8999999761581421
+      ],
+      "min": [
+        -0.6000000238418579,
+        0.0,
+        -0.44999998807907104
+      ]
+    },
+    {
+      "id": "E143",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C014/asset.usda",
+      "checkedAt": 1789009517.810592,
+      "exists": true,
+      "sha256": "1d439250d04f16135070db287d3fe21bfe8c3b5a09a55735188cb19e41dd6cdc",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2000000476837158,
+        1.7999999523162842,
+        1.108500000461936
+      ],
+      "min": [
+        -0.6000000238418579,
+        0.0,
+        -0.5
+      ]
+    },
+    {
+      "id": "E144",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C015/asset.usda",
+      "checkedAt": 1789009517.8112679,
+      "exists": true,
+      "sha256": "699900297741e19c5f46a5bc4605274a97f2f9ece53c9e2fea55cee351284b5d",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.370000022649765,
+        2.299999976158142,
+        1.7999999523162842
+      ],
+      "min": [
+        -0.800000011920929,
+        0.0,
+        -0.6999999761581421
+      ]
+    },
+    {
+      "id": "E145",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C017/asset.usda",
+      "checkedAt": 1789009517.8119595,
+      "exists": true,
+      "sha256": "b4d851136eb7ad831295e3258ba8e3d9a4c8efeffa059b87ac9ff59a7dd42a81",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.0,
+        1.6849999976158143,
+        0.699999988079071
+      ],
+      "min": [
+        -0.5,
+        0.0,
+        -0.3499999940395355
+      ]
+    },
+    {
+      "id": "E146",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C018/asset.usda",
+      "checkedAt": 1789009517.8126101,
+      "exists": true,
+      "sha256": "6b9e44dc678e7f356929e3b303ee1f60032cda7333e699a9b300ade2aa27b3a1",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.0,
+        1.6200000002980233,
+        0.699999988079071
+      ],
+      "min": [
+        -0.5,
+        0.0,
+        -0.3499999940395355
+      ]
+    },
+    {
+      "id": "E147",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C019/asset.usda",
+      "checkedAt": 1789009517.8134727,
+      "exists": true,
+      "sha256": "765d5e26e83692b36b328af40350753c90586cd355de2650dcc981879df8a25f",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.1200000005960464,
+        1.6849999976158143,
+        0.699999988079071
+      ],
+      "min": [
+        -0.5,
+        0.0,
+        -0.3499999940395355
+      ]
+    },
+    {
+      "id": "E148",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C020/asset.usda",
+      "checkedAt": 1789009517.8144066,
+      "exists": true,
+      "sha256": "0ba89cb0b37442cd6adc379b5481bdb5fce6b8ff147b13fa65673f7f6ccf0b44",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.0,
+        1.6849999976158143,
+        0.7349999941885471
+      ],
+      "min": [
+        -0.5,
+        0.0,
+        -0.3499999940395355
+      ]
+    },
+    {
+      "id": "E149",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C021/asset.usda",
+      "checkedAt": 1789009517.8152392,
+      "exists": true,
+      "sha256": "0cb7ff0bc43c4ab9d57ae53484b99ead157fdb81c26465a446d896d0386a5128",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.0000000005960463,
+        1.2149999970197678,
+        0.6999999955296516
+      ],
+      "min": [
+        -0.5,
+        0.0,
+        -0.3499999940395355
+      ]
+    },
+    {
+      "id": "E150",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C022/asset.usda",
+      "checkedAt": 1789009517.8160236,
+      "exists": true,
+      "sha256": "9d7a33807083a4cb84d511c5b612c9901bf3f35ba7aeaaf17fa6099238d00bb7",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.0000000005960463,
+        1.2149999970197678,
+        0.7199999926984311
+      ],
+      "min": [
+        -0.5,
+        0.0,
+        -0.3499999940395355
+      ]
+    },
+    {
+      "id": "E151",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C023/asset.usda",
+      "checkedAt": 1789009517.816851,
+      "exists": true,
+      "sha256": "09f85b268334c1f01ad4bae8d6d928c1c0576f0c834e80983f22ce5a69316512",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.0,
+        1.35,
+        0.699999988079071
+      ],
+      "min": [
+        -0.5,
+        0.0,
+        -0.3499999940395355
+      ]
+    },
+    {
+      "id": "E154",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C027/asset.usda",
+      "checkedAt": 1789009517.817587,
+      "exists": true,
+      "sha256": "d94c951772614cc8823ee01194dd5b3b5fe11c91555261b2f4bf9bdcb34d7694",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2000000476837158,
+        1.3249999970197677,
+        0.800000011920929
+      ],
+      "min": [
+        -0.6000000238418579,
+        0.0,
+        -0.4000000059604645
+      ]
+    },
+    {
+      "id": "E155",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C028/asset.usda",
+      "checkedAt": 1789009517.8183649,
+      "exists": true,
+      "sha256": "481169843becad47cf594d5e6c24c7c045c6fb883658c1ba337947caa26e8743",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2000000476837158,
+        1.35,
+        0.800000011920929
+      ],
+      "min": [
+        -0.6000000238418579,
+        0.0,
+        -0.4000000059604645
+      ]
+    },
+    {
+      "id": "E156",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C029/asset.usda",
+      "checkedAt": 1789009517.8191838,
+      "exists": true,
+      "sha256": "7e9e8b2cf520f2aa15ec75ce4982f18857c021bafef5c03c8434015d3d03fe6b",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2000000476837158,
+        1.5149999976158142,
+        0.800000011920929
+      ],
+      "min": [
+        -0.6000000238418579,
+        0.0,
+        -0.4000000059604645
+      ]
+    },
+    {
+      "id": "E157",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C030/asset.usda",
+      "checkedAt": 1789009517.819842,
+      "exists": true,
+      "sha256": "6550a89cc1b20bcc4932ba74e1496326d1376e91d25031824c4fd9ef17cc1654",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2000000476837158,
+        2.1700000002980233,
+        0.800000011920929
+      ],
+      "min": [
+        -0.6000000238418579,
+        0.0,
+        -0.4000000059604645
+      ]
+    },
+    {
+      "id": "E158",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C031/asset.usda",
+      "checkedAt": 1789009517.8206306,
+      "exists": true,
+      "sha256": "0b80b101a621ca884f74e35f79e64d6c3d086c0ffa229b6c9e9e2e9c695c1cc3",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.200000047683716,
+        1.4250000113248826,
+        0.7649999871850014
+      ],
+      "min": [
+        -1.100000023841858,
+        0.0,
+        -0.43999999910593035
+      ]
+    },
+    {
+      "id": "E159",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C032/asset.usda",
+      "checkedAt": 1789009517.8213737,
+      "exists": true,
+      "sha256": "ad82c174b5e2a2dc483103faae2f22bde67e929bca69811cfddc72b216c74ded",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.200000047683716,
+        1.4800000150501726,
+        0.9000000014901162
+      ],
+      "min": [
+        -1.100000023841858,
+        0.0,
+        -0.4500000007450581
+      ]
+    },
+    {
+      "id": "E160",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C033/asset.usda",
+      "checkedAt": 1789009517.8221765,
+      "exists": true,
+      "sha256": "591720a3afbdbf815b065fea403b433e6954588866351dadb61813de84f54fcb",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.200000047683716,
+        1.6800000129640105,
+        1.118500000461936
+      ],
+      "min": [
+        -1.100000023841858,
+        0.0,
+        -0.5
+      ]
+    },
+    {
+      "id": "E161",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C034/asset.usda",
+      "checkedAt": 1789009517.8229475,
+      "exists": true,
+      "sha256": "5e91f77ce1d5702f4f7d96e38bea523f8efb9ef8dcee3a1e447e223c930fa0e3",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2400000244379044,
+        1.3749999970197677,
+        0.800000011920929
+      ],
+      "min": [
+        -0.6000000238418579,
+        0.0,
+        -0.4000000059604645
+      ]
+    },
+    {
+      "id": "E162",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C035/asset.usda",
+      "checkedAt": 1789009517.8237665,
+      "exists": true,
+      "sha256": "e510e9b0b9b0a25d603329cb72842cfe3f71aafec82195a476c64879729fdf60",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2000000476837158,
+        1.1749999970197678,
+        0.800000011920929
+      ],
+      "min": [
+        -0.6000000238418579,
+        0.0,
+        -0.4000000059604645
+      ]
+    },
+    {
+      "id": "E163",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C039/asset.usda",
+      "checkedAt": 1789009517.8245633,
+      "exists": true,
+      "sha256": "6e285fbb5415d0d8478d26c67d4e9e787ae04a30b7d639f5940b55a734906bdf",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.0,
+        1.4121966530379164,
+        1.069103880001284
+      ],
+      "min": [
+        -0.5,
+        0.0,
+        -0.570603879539348
+      ]
+    },
+    {
+      "id": "E164",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C040/asset.usda",
+      "checkedAt": 1789009517.825317,
+      "exists": true,
+      "sha256": "7233e651b324696edbfe1e6ba479e324fc31f6fa3ae7f4056fa027261aeb6dc3",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.1399999886751175,
+        2.06999999165535,
+        0.800000011920929
+      ],
+      "min": [
+        -0.44999998807907104,
+        0.0,
+        -0.4000000059604645
+      ]
+    },
+    {
+      "id": "E165",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C041/asset.usda",
+      "checkedAt": 1789009517.8262017,
+      "exists": true,
+      "sha256": "43041c661d274170c617a38dbffd4582f008e4cb32457025114fd716124297af",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.600000023841858,
+        1.620000014603138,
+        0.5500000014901161
+      ],
+      "min": [
+        -0.800000011920929,
+        0.0,
+        -0.3000000014901161
+      ]
+    },
+    {
+      "id": "E166",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C042/asset.usda",
+      "checkedAt": 1789009517.8269687,
+      "exists": true,
+      "sha256": "8b9e10ffc95cc4c7a76391f413e5c56ee8e6c83b4bcf51c4b99bd6f15b29ff22",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.200000047683716,
+        1.760000011920929,
+        0.9349999867379666
+      ],
+      "min": [
+        -1.100000023841858,
+        0.0,
+        -0.6099999986588955
+      ]
+    },
+    {
+      "id": "E167",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C043/asset.usda",
+      "checkedAt": 1789009517.8277526,
+      "exists": true,
+      "sha256": "89a599db7510f46d13378d97e7348a474e49d9f4c43ba6cd2b145a3d268c9e78",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.200000047683716,
+        1.3750000113248824,
+        0.8549999874085188
+      ],
+      "min": [
+        -1.100000023841858,
+        0.0,
+        -0.5299999993294477
+      ]
+    },
+    {
+      "id": "E168",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C044/asset.usda",
+      "checkedAt": 1789009517.8284974,
+      "exists": true,
+      "sha256": "0522cf07dd9d0d5014b83e8dd1eb369a66bd2c78de8332c0750ec49c1b6fac19",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.393012985592515,
+        1.380000001192093,
+        0.6000000238418579
+      ],
+      "min": [
+        -0.44999998807907104,
+        0.0,
+        -0.30000001192092896
+      ]
+    },
+    {
+      "id": "E169",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C045/asset.usda",
+      "checkedAt": 1789009517.829116,
+      "exists": true,
+      "sha256": "61560151f2b53c8207ca840b8eaab616005d4c00945234666ed9537257042f3a",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.200000047683716,
+        1.7700000146031378,
+        0.7583333229025204
+      ],
+      "min": [
+        -1.100000023841858,
+        0.0,
+        -0.43333333482344943
+      ]
+    },
+    {
+      "id": "E170",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C047/asset.usda",
+      "checkedAt": 1789009517.8298845,
+      "exists": true,
+      "sha256": "9976dfff074d9ef3b0ca4162661eca665f16a94b81e4c63cab6b387f0dbf52e3",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.100000023841858,
+        0.7500000059604645,
+        1.1000000002980233
+      ],
+      "min": [
+        -0.550000011920929,
+        0.0,
+        -0.3850000001490116
+      ]
+    },
+    {
+      "id": "E171",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C048/asset.usda",
+      "checkedAt": 1789009517.8307114,
+      "exists": true,
+      "sha256": "813b4d6d424f901c7f151b496e4c46a917f02c8cf66f2643bcb3b8154cf5c758",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        4.800000011920929,
+        3.1500000059604645,
+        1.0
+      ],
+      "min": [
+        -2.4000000059604645,
+        0.0,
+        -0.5
+      ]
+    },
+    {
+      "id": "E172",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C049/asset.usda",
+      "checkedAt": 1789009517.8314066,
+      "exists": true,
+      "sha256": "0e02cef207374e577f189e963df8193a86c2462912d5ba2a9f1629827765b3b3",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.2500000059604646,
+        2.690000002682209,
+        0.800000011920929
+      ],
+      "min": [
+        -0.4000000059604645,
+        0.0,
+        -0.4000000059604645
+      ]
+    },
+    {
+      "id": "E173",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C050/asset.usda",
+      "checkedAt": 1789009517.8320997,
+      "exists": true,
+      "sha256": "218f9e41a6917db42c62b96a504e3b607eb6ea118a97787f3d9e5c96caeae263",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.44999998807907104,
+        1.107000003676174,
+        0.30000001192092896
+      ],
+      "min": [
+        -0.22499999403953552,
+        -3.29779043123661e-18,
+        -0.15000000596046448
+      ]
+    },
+    {
+      "id": "E174",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C051/asset.usda",
+      "checkedAt": 1789009517.8327157,
+      "exists": true,
+      "sha256": "4c48434bc0e3456b4748cd2f36aafef19f7a996159d5008be734b3cb15e56cd8",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.039999994635582,
+        0.8250000050236258,
+        0.839999994635582
+      ],
+      "min": [
+        -0.519999997317791,
+        0.0,
+        -0.419999997317791
+      ]
+    },
+    {
+      "id": "E175",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C052/asset.usda",
+      "checkedAt": 1789009517.8334324,
+      "exists": true,
+      "sha256": "7f71348ff75b7282f7a0023a91f531b0511351ca6fa36071567cdec4b1b7c59d",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.1199999984353781,
+        1.2999999523162842,
+        0.7999999982118606
+      ],
+      "min": [
+        -0.48999999910593034,
+        0.0,
+        -0.3899999991059303
+      ]
+    },
+    {
+      "id": "E176",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C053/asset.usda",
+      "checkedAt": 1789009517.8345027,
+      "exists": true,
+      "sha256": "3ee1fd9d18f5753921877d8aba8dcce01e496966f19e0b741d18028e8ff1245f",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.9500000059604645,
+        3.0750000029802322,
+        1.5
+      ],
+      "min": [
+        -0.9750000029802323,
+        0.0,
+        -0.75
+      ]
+    },
+    {
+      "id": "E177",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C054/asset.usda",
+      "checkedAt": 1789009517.8352122,
+      "exists": true,
+      "sha256": "bd4142cd7cba9f05f3113536a11f5564e57fb8f61d16f6b0b686a8a8c5f6c753",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.774999997019768,
+        1.4999999940395354,
+        0.5799999982118607
+      ],
+      "min": [
+        -1.25,
+        0.0,
+        -0.28999999910593033
+      ]
+    },
+    {
+      "id": "E178",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C055/asset.usda",
+      "checkedAt": 1789009517.8358374,
+      "exists": true,
+      "sha256": "ec0f8cc6921c6e18284f03f9fde5d483099d64b11a41c04b878c6bc841a408fa",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.1,
+        1.6600000092977805,
+        0.800000011920929
+      ],
+      "min": [
+        -0.5,
+        0.0,
+        -0.4000000059604645
+      ]
+    },
+    {
+      "id": "E179",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C056/asset.usda",
+      "checkedAt": 1789009517.8369,
+      "exists": true,
+      "sha256": "5379a4785bc93f8edde8221a430e35c743bb5f3dcecaeb8c8c5533551a423f3d",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.325028302560104,
+        1.0717428873934307,
+        0.6000000238418579
+      ],
+      "min": [
+        -0.75,
+        0.0,
+        -0.30000001192092896
+      ]
+    },
+    {
+      "id": "E180",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C057/asset.usda",
+      "checkedAt": 1789009517.8376138,
+      "exists": true,
+      "sha256": "aa61ae35a86c930ce64e4d16b2791e23b2209ff7adc4251310b3a0b5380f8b06",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        3.0,
+        1.0899999996997705,
+        0.1599999964237213
+      ],
+      "min": [
+        -1.5,
+        1.716565207170043e-19,
+        -0.07999999821186066
+      ]
+    },
+    {
+      "id": "E181",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C058/asset.usda",
+      "checkedAt": 1789009517.8384733,
+      "exists": true,
+      "sha256": "354edddd9bdf41072360b067a15e02ea0e27d9f4695874fa5d13063f2a941474",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.3900000244379043,
+        1.7000000476837158,
+        1.0
+      ],
+      "min": [
+        -0.6000000238418579,
+        0.0,
+        -0.5
+      ]
+    },
+    {
+      "id": "E182",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C059/asset.usda",
+      "checkedAt": 1789009517.839419,
+      "exists": true,
+      "sha256": "0408a69a16fba9706dbde4001bb365d715b3a1b18621791d42a6366198dd7479",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.0,
+        1.0128624004999147,
+        0.6499999761581421
+      ],
+      "min": [
+        -0.5,
+        0.0,
+        -0.32499998807907104
+      ]
+    },
+    {
+      "id": "E183",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C060/asset.usda",
+      "checkedAt": 1789009517.840222,
+      "exists": true,
+      "sha256": "bb93538e3b48852ff99f651638ed7a4293b167d05a3cb6d2696fa1c1aa57e745",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.4099999867379664,
+        1.750000024586916,
+        1.399999976158142
+      ],
+      "min": [
+        -0.7099999986588955,
+        0.0,
+        -0.699999988079071
+      ]
+    },
+    {
+      "id": "E184",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C061/asset.usda",
+      "checkedAt": 1789009517.8409874,
+      "exists": true,
+      "sha256": "89935734df7a4004b93fb2822c80beda8878aee05969b825c34df48b90e98279",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.500000001490116,
+        3.200000047683716,
+        1.5499999947845935
+      ],
+      "min": [
+        -1.250000000745058,
+        0.0,
+        -0.5500000007450581
+      ]
+    },
+    {
+      "id": "E185",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C062/asset.usda",
+      "checkedAt": 1789009517.8417695,
+      "exists": true,
+      "sha256": "3178131d57724371c655b6f8562631b83eecc61c979344234a1b71f09e518fd9",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.7000000476837158,
+        2.5999999046325684,
+        1.6250000178813935
+      ],
+      "min": [
+        -0.8500000238418579,
+        0.0,
+        -0.550000011920929
+      ]
+    },
+    {
+      "id": "E187",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C065/asset.usda",
+      "checkedAt": 1789009517.8426118,
+      "exists": true,
+      "sha256": "84ffd4604b971c9608bd44410fc3e024fd578089bbd65c63eb9e6c7d8a30e6f5",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.649999976158142,
+        2.0399999991059303,
+        1.0499999523162842
+      ],
+      "min": [
+        -0.824999988079071,
+        0.0,
+        -0.5249999761581421
+      ]
+    },
+    {
+      "id": "E188",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C066/asset.usda",
+      "checkedAt": 1789009517.843812,
+      "exists": true,
+      "sha256": "69257658f5d284efcf5b5ac18705318d4cede5871f256ea2e0092239d4d867ae",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.8999999761581421,
+        1.4000000089406968,
+        0.7500000059604646
+      ],
+      "min": [
+        -0.44999998807907104,
+        0.0,
+        -0.3500000059604645
+      ]
+    },
+    {
+      "id": "E189",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C067/asset.usda",
+      "checkedAt": 1789009517.844547,
+      "exists": true,
+      "sha256": "7203ba4514e84c1d415d9b31d419678dd287e114728bad13fd33484629d7a91c",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.949999988079071,
+        1.430000023841858,
+        0.5799999982118607
+      ],
+      "min": [
+        -0.4749999940395355,
+        0.0,
+        -0.28999999910593033
+      ]
+    },
+    {
+      "id": "E190",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C068/asset.usda",
+      "checkedAt": 1789009517.8453074,
+      "exists": true,
+      "sha256": "8513a4fcf3be3d5b0c8e586123f4dc50421f3b766f3c9b550db8bd763b3b0ca7",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.1299999997019767,
+        1.6700000274181366,
+        0.7799999982118606
+      ],
+      "min": [
+        -0.3899999991059303,
+        0.0,
+        -0.3899999991059303
+      ]
+    },
+    {
+      "id": "E191",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C069/asset.usda",
+      "checkedAt": 1789009517.8461065,
+      "exists": true,
+      "sha256": "9934eea118dbb9c04b48b95bc1f156f6793b375d07ec8472c5ddb13edcf3b96d",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.5499999523162842,
+        2.550000000745058,
+        1.5
+      ],
+      "min": [
+        -0.7749999761581421,
+        0.0,
+        -0.75
+      ]
+    },
+    {
+      "id": "E192",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C070/asset.usda",
+      "checkedAt": 1789009517.8477368,
+      "exists": true,
+      "sha256": "216a3f4454fef76809bb91b266012527b8ab0779730b37dabaff81581af3d439",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.0400000005960464,
+        1.2350000214311954,
+        1.058500000461936
+      ],
+      "min": [
+        -1.0,
+        0.0,
+        -0.5
+      ]
+    },
+    {
+      "id": "E193",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C071/asset.usda",
+      "checkedAt": 1789009517.8486745,
+      "exists": true,
+      "sha256": "081ee39fc1522a390b341965b936a474658ebee206f973ac9caf5c13a3730da6",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.8999999761581421,
+        1.4250000137090684,
+        0.9450000037252902
+      ],
+      "min": [
+        -0.44999998807907104,
+        0.0,
+        -0.3850000001490116
+      ]
+    },
+    {
+      "id": "E194",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C072/asset.usda",
+      "checkedAt": 1789009517.8496156,
+      "exists": true,
+      "sha256": "bffba82c8c0b05fe8a3698221c6ed60fe98d49d56d6d9c8b60af4205d492f8c4",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2000000476837158,
+        0.9000000016391276,
+        0.6000000238418579
+      ],
+      "min": [
+        -0.6000000238418579,
+        0.0,
+        -0.30000001192092896
+      ]
+    },
+    {
+      "id": "E195",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C073/asset.usda",
+      "checkedAt": 1789009517.8519769,
+      "exists": true,
+      "sha256": "68b2f612981a7d459862861e6cff613125816fb206aa307152ec734d3704b995",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.800000011920929,
+        1.4500000476837158,
+        0.743499988541007
+      ],
+      "min": [
+        -0.4000000059604645,
+        0.0,
+        -0.32499998807907104
+      ]
+    },
+    {
+      "id": "E197",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C075/asset.usda",
+      "checkedAt": 1789009517.852765,
+      "exists": true,
+      "sha256": "b363a6693dc2361406bd001b5a659ff3e1bca5883de11e538907678a45b84f31",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.0400000005960464,
+        1.6350000214311953,
+        1.058500000461936
+      ],
+      "min": [
+        -1.0,
+        0.0,
+        -0.5
+      ]
+    },
+    {
+      "id": "E198",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C076/asset.usda",
+      "checkedAt": 1789009517.8547764,
+      "exists": true,
+      "sha256": "83c8a1025eba21f231c42e057452ca116a04961763286ed2a4507e2276cd76f1",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.9400000125169754,
+        1.650000014901161,
+        1.600000023841858
+      ],
+      "min": [
+        -0.800000011920929,
+        0.0,
+        -0.800000011920929
+      ]
+    },
+    {
+      "id": "E199",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C077/asset.usda",
+      "checkedAt": 1789009517.855554,
+      "exists": true,
+      "sha256": "a842f767eeace55e482a0588cfa0395e2183a8d0b5f8e8842da8d6c3ee4f3a6d",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.6499999761581421,
+        1.399999976158142,
+        0.843500000461936
+      ],
+      "min": [
+        -0.32499998807907104,
+        0.0,
+        -0.375
+      ]
+    },
+    {
+      "id": "E200",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C078/asset.usda",
+      "checkedAt": 1789009517.8563952,
+      "exists": true,
+      "sha256": "5f94a3d37c6004c664980bb99c2332984cb8463f61038c485ef0239849982611",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.200000047683716,
+        1.7749999955296516,
+        1.038500000461936
+      ],
+      "min": [
+        -1.100000023841858,
+        0.0,
+        -0.5
+      ]
+    },
+    {
+      "id": "E201",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C079/asset.usda",
+      "checkedAt": 1789009517.8572235,
+      "exists": true,
+      "sha256": "6d4c0f5a08e148ebe2095439564bba28edfa8f2665b1aed51b7d0ad57476514d",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2399999991059303,
+        1.350000009536743,
+        0.8500000238418579
+      ],
+      "min": [
+        -0.6199999995529651,
+        0.0,
+        -0.42500001192092896
+      ]
+    },
+    {
+      "id": "E202",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C080/asset.usda",
+      "checkedAt": 1789009517.8580165,
+      "exists": true,
+      "sha256": "1681e320c1164c90490423a6b06d3e94dbf778d1b41e3472a4860afa4485a19a",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        3.1999999582767487,
+        1.5,
+        1.2600000126659872
+      ],
+      "min": [
+        -1.2999999523162842,
+        0.0,
+        -0.550000011920929
+      ]
+    },
+    {
+      "id": "E204",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C083/asset.usda",
+      "checkedAt": 1789009517.858684,
+      "exists": true,
+      "sha256": "fea2ff06ce0b0d247b6ce9fc897460f5ffd4172e909090b32db04f41e3cd6a72",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2400000020861626,
+        1.3449999970197677,
+        0.6000000238418579
+      ],
+      "min": [
+        -0.14000000059604645,
+        0.0,
+        -0.30000001192092896
+      ]
+    },
+    {
+      "id": "E205",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C085/asset.usda",
+      "checkedAt": 1789009517.8593764,
+      "exists": true,
+      "sha256": "86be7530f12f6c688c3ef5538a79f43b8340aba1f94ff61100ab669249113b93",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.399999976158142,
+        1.1750000106115612,
+        0.6499999761581421
+      ],
+      "min": [
+        -0.699999988079071,
+        0.0,
+        -0.32499998807907104
+      ]
+    },
+    {
+      "id": "E206",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C086/asset.usda",
+      "checkedAt": 1789009517.8600967,
+      "exists": true,
+      "sha256": "89d82d114983d03cbd2a25a9b911274a6ddf4be5b1fa050cc664599ce2c97232",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.419999998807907,
+        2.3100000232458116,
+        1.0
+      ],
+      "min": [
+        -0.7099999994039535,
+        0.0,
+        -0.5
+      ]
+    },
+    {
+      "id": "E207",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C087/asset.usda",
+      "checkedAt": 1789009517.86091,
+      "exists": true,
+      "sha256": "a7416f5d1104d636f6ee32dcee41610cd0108a8d9bda1fb2be96d22ac4bcfe1e",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.2999999523162842,
+        1.7500000238418578,
+        0.6000000020861627
+      ],
+      "min": [
+        -0.6499999761581421,
+        0.0,
+        -0.23999999910593034
+      ]
+    },
+    {
+      "id": "E208",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C088/asset.usda",
+      "checkedAt": 1789009517.8616343,
+      "exists": true,
+      "sha256": "34f87f1f6f1da9da63aacc52d633cc1a66101e521ced40bb589e5ecf3ce3346b",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.4600000083446503,
+        0.8149999958276749,
+        0.557500010561198
+      ],
+      "min": [
+        -0.7300000041723251,
+        0.0,
+        -0.27000001072883606
+      ]
+    },
+    {
+      "id": "E209",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C089/asset.usda",
+      "checkedAt": 1789009517.8623545,
+      "exists": true,
+      "sha256": "c410a33030c1497c13f5b31dfe67499de7c480dd555da6fef5dc9008d2383fdf",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.7999999523162842,
+        2.150000011920929,
+        0.5799999982118607
+      ],
+      "min": [
+        -0.8999999761581421,
+        0.0,
+        -0.28999999910593033
+      ]
+    },
+    {
+      "id": "E210",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C090/asset.usda",
+      "checkedAt": 1789009517.863084,
+      "exists": true,
+      "sha256": "7629a9ce42119d8d31b837d8d9e98758464eb208e25efffaf25c33e98d0a93e8",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.800000011920929,
+        0.8999999761581421,
+        0.8850000056251883
+      ],
+      "min": [
+        -0.4000000059604645,
+        0.0,
+        -0.4000000059604645
+      ]
+    },
+    {
+      "id": "E220",
+      "path": "/home/sjkim/OmniverseProjects/p006-safety-extra-20260910-v1/emergencyshower/asset.usda",
+      "checkedAt": 1789009517.86372,
+      "exists": true,
+      "sha256": "162fc5100e3c7ff700fa956f340a42777c491148658d9c949fa9054ce0377af2",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.5049999955296516,
+        2.339999975711107,
+        1.0349999904632567
+      ],
+      "min": [
+        -0.22499999403953552,
+        4.470348362317633e-10,
+        -0.22499999403953552
+      ]
+    },
+    {
+      "id": "E221",
+      "path": "/home/sjkim/OmniverseProjects/p006-safety-extra-20260910-v1/spillkit/asset.usda",
+      "checkedAt": 1789009517.8644595,
+      "exists": true,
+      "sha256": "7bdb37e131c4a030b18766e7bb85ca9a3cace30009d9618a2c38853f0b527478",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.9500000007450581,
+        1.400000000298023,
+        0.6075000004470348
+      ],
+      "min": [
+        -0.47500000037252904,
+        -7.450580569168253e-10,
+        -0.29500000037252905
+      ]
+    },
+    {
+      "id": "E224",
+      "path": "/home/sjkim/OmniverseProjects/p006-peripheral10-20260910-v1/airfr/asset.usda",
+      "checkedAt": 1789009517.8655105,
+      "exists": true,
+      "sha256": "22b19f0b98d0b709adc2b852415fc276eccdb544b28b8c50459a7a81d52ae839",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.3799999952316284,
+        0.4450000014528632,
+        0.2050000001490116
+      ],
+      "min": [
+        -0.1899999976158142,
+        3.3527612630646075e-10,
+        -0.09750000007450581
+      ]
+    },
+    {
+      "id": "E225",
+      "path": "/home/sjkim/OmniverseProjects/p006-peripheral10-20260910-v1/watertank/asset.usda",
+      "checkedAt": 1789009517.8662035,
+      "exists": true,
+      "sha256": "ea3ac309f0826781132caf52077d69331576de2a911d038b19782297dd510ef0",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        1.8500000178813933,
+        1.6300000005960464,
+        1.1799999877437948
+      ],
+      "min": [
+        -0.800000011920929,
+        -1.4901161138336505e-09,
+        -0.574999988079071
+      ]
+    },
+    {
+      "id": "E226",
+      "path": "/home/sjkim/OmniverseProjects/p006-peripheral10-20260910-v1/coolingtower/asset.usda",
+      "checkedAt": 1789009517.8667746,
+      "exists": true,
+      "sha256": "821c17ed6ef2d5c140247f70cba7ff524fd0a11d78d069a77655032222d98c70",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        2.0,
+        2.7674999941140412,
+        1.8100000002980232
+      ],
+      "min": [
+        -1.0,
+        5.960464483090178e-09,
+        -0.9050000001490116
+      ]
+    },
+    {
+      "id": "E229",
+      "path": "/home/sjkim/OmniverseProjects/p006-peripheral10-20260910-v1/stacklight/asset.usda",
+      "checkedAt": 1789009517.8683534,
+      "exists": true,
+      "sha256": "f038deaa6f538114c98936ab61be4d3a3b75e1717ac9a049b590838686ee418a",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.15000000596046448,
+        0.5404999996870756,
+        0.15000000596046448
+      ],
+      "min": [
+        -0.07500000298023224,
+        -7.450580430390374e-11,
+        -0.07500000298023224
+      ]
+    },
+    {
+      "id": "E230",
+      "path": "/home/sjkim/OmniverseProjects/p006-peripheral10-20260910-v1/interlock/asset.usda",
+      "checkedAt": 1789009517.8689952,
+      "exists": true,
+      "sha256": "cfdd3d6f93896523fb42dac8f66048bbc9e072f6e29f0050eb80967aa9f664ec",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.06499999761581421,
+        0.22999999780207872,
+        0.03999999910593033
+      ],
+      "min": [
+        -0.032499998807907104,
+        2.384185793236071e-09,
+        -0.019999999552965164
+      ]
+    },
+    {
+      "id": "E232",
+      "path": "/home/sjkim/OmniverseProjects/p006-instrument4-20260910-v1/pressuregauge/asset.usda",
+      "checkedAt": 1789009517.8695383,
+      "exists": true,
+      "sha256": "2c680dac8cf2172d115af366cdc4791382e063627024beddb3ac3b3deabd5d6f",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.12999999523162842,
+        0.18999999694526196,
+        0.04799999964796006
+      ],
+      "min": [
+        -0.06499999761581421,
+        6.705522526129215e-10,
+        -0.019999999552965164
+      ]
+    },
+    {
+      "id": "E233",
+      "path": "/home/sjkim/OmniverseProjects/p006-instrument4-20260910-v1/flowmeter/asset.usda",
+      "checkedAt": 1789009517.8704093,
+      "exists": true,
+      "sha256": "804c7ca91c28cb48f81f2585cdba34094991c408fd19f97309ab37388e1c80ae",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.42500000037252905,
+        0.4699999970197678,
+        0.2199999988079071
+      ],
+      "min": [
+        -0.21250000018626453,
+        5.960464483090178e-10,
+        -0.10999999940395355
+      ]
+    },
+    {
+      "id": "E234",
+      "path": "/home/sjkim/OmniverseProjects/p006-instrument4-20260910-v1/netswitch/asset.usda",
+      "checkedAt": 1789009517.8710382,
+      "exists": true,
+      "sha256": "195ded552e6b22f0569da6f3a9af07875ce0696014295438d6235537429c36fe",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.0949999988079071,
+        0.18000000715255737,
+        0.10549999945610761
+      ],
+      "min": [
+        -0.04749999940395355,
+        -3.5762786898541066e-09,
+        -0.04749999940395355
+      ]
+    },
+    {
+      "id": "E235",
+      "path": "/home/sjkim/OmniverseProjects/p006-instrument4-20260910-v1/gateway/asset.usda",
+      "checkedAt": 1789009517.8721762,
+      "exists": true,
+      "sha256": "17551bcdf38107b351a238817f35533c7d18bcfb94440ae45f942b53de13c4e7",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.1899999976158142,
+        0.3400000017881393,
+        0.07099999891594053
+      ],
+      "min": [
+        -0.0949999988079071,
+        1.7881393449270533e-09,
+        -0.032499998807907104
+      ]
+    },
+    {
+      "id": "E236",
+      "path": "/home/sjkim/OmniverseProjects/p006-sensor4-20260910-v1/temperature/asset.usda",
+      "checkedAt": 1789009517.8728766,
+      "exists": true,
+      "sha256": "186c439803fb751fc88087e818f0da0ae95da435d05889b5e8fe0c1110f1045a",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.11450000049173832,
+        0.3389999992102385,
+        0.09600000083446503
+      ],
+      "min": [
+        -0.04800000041723251,
+        5.960464483090178e-10,
+        -0.04800000041723251
+      ]
+    },
+    {
+      "id": "E237",
+      "path": "/home/sjkim/OmniverseProjects/p006-sensor4-20260910-v1/ultrasonic/asset.usda",
+      "checkedAt": 1789009517.8737662,
+      "exists": true,
+      "sha256": "cbb832fccdc2a414e8eb7d25452554dd8b0e68a6ae00221527489d5dbc6a26e3",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.13549999780207872,
+        0.21999999871850012,
+        0.12999999523162842
+      ],
+      "min": [
+        -0.06499999761581421,
+        3.8743019036002746e-10,
+        -0.06499999761581421
+      ]
+    },
+    {
+      "id": "E238",
+      "path": "/home/sjkim/OmniverseProjects/p006-sensor4-20260910-v1/encoder/asset.usda",
+      "checkedAt": 1789009517.8743958,
+      "exists": true,
+      "sha256": "0ec5b3e0cf4f9aac36aee791225879c4d5ae3647c990843a8bb2d5f3811823a7",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.09000000357627869,
+        0.09000000357627869,
+        0.12400000108405948
+      ],
+      "min": [
+        -0.04500000178813934,
+        -1.7881393449270533e-09,
+        -0.0405000001899898
+      ]
+    },
+    {
+      "id": "E239",
+      "path": "/home/sjkim/OmniverseProjects/p006-sensor4-20260910-v1/proximity/asset.usda",
+      "checkedAt": 1789009517.8754745,
+      "exists": true,
+      "sha256": "20dd24e6a043626b0d4670d1a9ef74ee6c1d46e333bda3447a755ddcfa241328",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.017999999225139618,
+        0.01899999966006726,
+        0.14500000143423677
+      ],
+      "min": [
+        -0.008999999612569809,
+        3.8743019036002746e-10,
+        -0.10750000149011613
+      ]
+    },
+    {
+      "id": "E240",
+      "path": "/home/sjkim/OmniverseProjects/p006-drive4-20260910-v1/servomotor/asset.usda",
+      "checkedAt": 1789009517.8761933,
+      "exists": true,
+      "sha256": "5e4431c13b98f6df38efbb3c69d5419c85d89127b8088c72e3d4779751b41171",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.1899999976158142,
+        0.19000000178813936,
+        0.3925000008195638
+      ],
+      "min": [
+        -0.0949999988079071,
+        -2.980232241545089e-09,
+        -0.17999999932944774
+      ]
+    },
+    {
+      "id": "E241",
+      "path": "/home/sjkim/OmniverseProjects/p006-drive4-20260910-v1/inverter/asset.usda",
+      "checkedAt": 1789009517.8768036,
+      "exists": true,
+      "sha256": "103cd682fbbf54634e4a500022908a460ed7e8a3af6440649cde0671bfe44fd4",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.20000000298023224,
+        0.3199999928474426,
+        0.24550000108405948
+      ],
+      "min": [
+        -0.10000000149011612,
+        3.5762786898541066e-09,
+        -0.12250000089406968
+      ]
+    },
+    {
+      "id": "E242",
+      "path": "/home/sjkim/OmniverseProjects/p006-drive4-20260910-v1/solenoidbank/asset.usda",
+      "checkedAt": 1789009517.877898,
+      "exists": true,
+      "sha256": "169387e797efea1fc386fad110423dfc01814b484e17d765ef06b5c03f9553fc",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.41999998688697815,
+        0.12349999934248626,
+        0.21749999962747096
+      ],
+      "min": [
+        -0.20999999344348907,
+        6.705522526129215e-10,
+        -0.13749999985098837
+      ]
+    },
+    {
+      "id": "E243",
+      "path": "/home/sjkim/OmniverseProjects/p006-drive4-20260910-v1/footswitch/asset.usda",
+      "checkedAt": 1789009517.87921,
+      "exists": true,
+      "sha256": "e9853f9338621a086683eb055cb28eecdc0d7c74e54013642e6aa3e46cef5778",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.16000000043213367,
+        0.15750000001862643,
+        0.25999999046325684
+      ],
+      "min": [
+        -0.08000000021606683,
+        -1.862645142292063e-10,
+        -0.12999999523162842
+      ]
+    },
+    {
+      "id": "E244",
+      "path": "/home/sjkim/OmniverseProjects/p006-actuator2-20260910-v1/aircylinder/asset.usda",
+      "checkedAt": 1789009517.8801975,
+      "exists": true,
+      "sha256": "97f7df06f43a6ca77ee9973cef6544e6b25d5d2dfffab084586e97fa8553267d",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.11800000052154064,
+        0.10999999940395355,
+        0.5164999996870756
+      ],
+      "min": [
+        -0.05000000074505806,
+        2.980232241545089e-10,
+        -0.15750000007450582
+      ]
+    },
+    {
+      "id": "E245",
+      "path": "/home/sjkim/OmniverseProjects/p006-actuator2-20260910-v1/gearbox/asset.usda",
+      "checkedAt": 1789009517.8810015,
+      "exists": true,
+      "sha256": "494652271b7a7a54a80a5082d4e424d82f6b1b60132722451cbe16da05c7bbf9",
+      "composed": true,
+      "unit": 1.0,
+      "upAxis": "Y",
+      "dimensions": [
+        0.3525000029802322,
+        0.2879999992772937,
+        0.40000000670552255
+      ],
+      "min": [
+        -0.20500000149011613,
+        3.3527612630646075e-10,
+        -0.15000000596046448
+      ]
+    }
+  ]
+}

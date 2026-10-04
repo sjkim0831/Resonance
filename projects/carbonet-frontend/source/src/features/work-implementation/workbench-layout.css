@@ -1,0 +1,53 @@
+.work-design-workspace { display:grid; gap:12px; grid-template-columns:minmax(0,1fr) 320px; min-width:0; }
+.work-design-workspace > header { grid-column:1/-1; align-items:center; }
+.work-design-workspace > header h1 { font-size:20px; margin:0; }
+.work-design-workspace > header p { display:none; }
+.work-design-workspace > header a { padding:8px 12px; font-size:12px; }
+.work-design-workspace > section.sm\:grid-cols-3 { grid-column:1/-1; display:flex; gap:20px; }
+.work-design-workspace > section.sm\:grid-cols-3 article { padding:0; background:none; border:0; display:flex; gap:8px; align-items:center; }
+.work-design-workspace > section.sm\:grid-cols-3 strong { font-size:16px; margin:0; }
+.work-design-workspace > details { grid-column:1/-1; order:5; }
+.work-design-workspace > [role] { grid-column:1/-1; }
+.work-design-workspace > section.flex { grid-column:1/-1; order:1; padding:8px 12px; }
+.work-design-workspace > [aria-label="업무 설계 지도"] { order:2; grid-column:1; grid-row:4; min-width:0; }
+.work-design-workspace > [aria-label="개발 통합 작업실"] { order:3; grid-column:2; grid-row:4; min-width:0; padding:14px; overflow:auto; }
+.work-design-workspace [aria-label="개발 통합 작업실"] > header h2 { font-size:18px; }
+.work-design-workspace [aria-label="개발 통합 작업실"] > header p { font-size:12px; overflow-wrap:anywhere; }
+.work-design-workspace [aria-label="개발 통합 작업실"] > .grid { display:flex; flex-direction:column; }
+.work-design-workspace [aria-label="개발 통합 작업실"] > .grid > .space-y-4 { display:contents; }
+.work-design-workspace [aria-label="개발 통합 작업실"] > .grid > .space-y-4 > :first-child { order:0; }
+.work-design-workspace [aria-label="개발 통합 작업실"] > .grid > aside { order:1; padding:12px; }
+.work-design-workspace [aria-label="개발 통합 작업실"] > .grid > .space-y-4 > :nth-child(2) { order:2; margin:0; padding:10px; }
+.work-design-workspace [aria-label="개발 통합 작업실"] > .grid > .space-y-4 > :last-child { order:3; margin:0; }
+.work-design-workspace [aria-label="개발 통합 작업실"] button { padding:7px 10px; font-size:12px; }
+.work-design-workspace [aria-label="개발 통합 작업실"] ul { max-height:140px; }
+.work-design-workspace [aria-label="업무 설계 지도"] > .grid { grid-template-columns:220px minmax(0,1fr); grid-template-rows:minmax(240px,1fr) minmax(220px,1fr); min-height:0; flex:1; overflow:auto; }
+.work-design-workspace [aria-label="선택 항목 상세"] { display:block; grid-column:2; min-width:0; min-height:0; overflow:auto; }
+.work-design-workspace [aria-label="선택 항목 상세"] dl { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.work-design-workspace [aria-label="업무 탐색"] { grid-row:1 / span 2; min-width:0; }
+.work-design-workspace [aria-label="업무 탐색"] button,
+.work-design-workspace [aria-label="업무 탐색"] summary { overflow-wrap:anywhere; }
+.work-design-workspace > [aria-label="업무 설계 지도"] { display:flex; flex-direction:column; }
+.work-design-workspace [aria-label="업무 탐색"], .work-design-workspace [aria-label="업무 설계 지도"] main { max-height:none; overflow:auto; padding:12px; }
+.work-design-workspace [aria-label="업무 설계 지도"] table { min-width:560px; font-size:12px; }
+.work-design-workspace [aria-label="업무 설계 지도"] th, .work-design-workspace [aria-label="업무 설계 지도"] td { padding:9px; }
+.work-design-workspace [aria-label="설계 확인 필요 항목"] { padding:10px; max-height:100px; overflow:auto; }
+.work-design-workspace [aria-label="업무 설계 보기"] { padding:8px; }
+.work-design-workspace [aria-label="업무 설계 보기"] button { padding:6px 10px; min-height:34px; }
+.work-contract-dialog { width:min(1000px,94vw); max-height:88vh; overflow:auto; border:1px solid #d2d9e1; border-radius:16px; padding:20px; }
+.work-contract-dialog::backdrop { background:rgb(15 23 42 / .45); }
+@media(min-width:1280px) {
+ body:has(.work-design-workspace) .js-admin-layout-shell > main { padding:16px 24px; min-width:0; }
+ body:has(.work-design-workspace) .js-admin-layout-shell > main > nav,
+ body:has(.work-design-workspace) .js-admin-layout-shell > main > .mb-8 { display:none; }
+ .work-design-workspace > [aria-label="업무 설계 지도"], .work-design-workspace > [aria-label="개발 통합 작업실"] { height:calc(100dvh - 380px); min-height:440px; }
+}
+@media(min-width:1280px) and (max-width:1599px) {
+ .work-design-workspace { grid-template-columns:minmax(0,1fr); }
+ .work-design-workspace > [aria-label="개발 통합 작업실"] { grid-column:1; grid-row:auto; height:auto; min-height:0; }
+}
+@media(max-width:1279px) {
+ .work-design-workspace { display:flex; flex-direction:column; }
+ .work-design-workspace [aria-label="업무 설계 지도"] > .grid { display:block; }
+ .work-design-workspace [aria-label="업무 탐색"] { max-height:200px; }
+}

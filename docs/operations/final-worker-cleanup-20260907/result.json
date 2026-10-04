@@ -1,0 +1,83 @@
+[
+  {
+    "path": "/opt/resonance-data/dev-worktrees/final-worker-a3535f284",
+    "head": "a3535f284167b290229861394df42d5a9885256b",
+    "dirty": false,
+    "ignoredCount": 1425,
+    "unknownIgnored": [
+      "var/ai-search-index/574d0eaf3bd709ec14cafdcac4ec433baa8474484289c6ec9fb8af5f85ebdd8f.context",
+      "var/ai-search-index/cc38326f5468d46f0b3de059c983aa4293972a8151da12773c1f87847e8e6d53.context",
+      "var/ai-search-index/current",
+      "var/ai-search-index/snapshots/a3535f284167b290229861394df42d5a9885256b-v2/README.txt",
+      "var/ai-search-index/snapshots/a3535f284167b290229861394df42d5a9885256b-v2/references.txt",
+      "var/ai-search-index/snapshots/a3535f284167b290229861394df42d5a9885256b-v2/repository.tsv",
+      "var/ai-search-index/snapshots/a3535f284167b290229861394df42d5a9885256b-v2/routes.txt"
+    ],
+    "remoteTrackingRefs": [
+      "refs/remotes/origin/HEAD",
+      "refs/remotes/origin/codex/canonical-batch-no-deploy-20260824",
+      "refs/remotes/origin/codex/reduction-batch-staged-20260824",
+      "refs/remotes/origin/main"
+    ],
+    "openFiles": false,
+    "runtimePids": [],
+    "removed": true,
+    "searchIndexPreserved": true,
+    "removalMessage": ""
+  },
+  {
+    "path": "/opt/resonance-data/dev-worktrees/final-worker-449edd076",
+    "head": "449edd076a321af8548903cb2d86ff81a6d2f2d2",
+    "dirty": false,
+    "ignoredCount": 1387,
+    "unknownIgnored": [
+      "var/ai-search-index/5e96873c876453d91ecd1728473b1a89f9efeb8177f712044eac4718acc3f030.context",
+      "var/ai-search-index/a0643c49898e91cd810383eeea5f8587fe16b268b85e4452db14635e83904335.context",
+      "var/ai-search-index/a10eb27ec60f70bf8412c8e93c06e4bd0bc72733ad25c74df03f6e87a7724fc1.context",
+      "var/ai-search-index/current",
+      "var/ai-search-index/snapshots/449edd076a321af8548903cb2d86ff81a6d2f2d2-v2/README.txt",
+      "var/ai-search-index/snapshots/449edd076a321af8548903cb2d86ff81a6d2f2d2-v2/references.txt",
+      "var/ai-search-index/snapshots/449edd076a321af8548903cb2d86ff81a6d2f2d2-v2/repository.tsv",
+      "var/ai-search-index/snapshots/449edd076a321af8548903cb2d86ff81a6d2f2d2-v2/routes.txt"
+    ],
+    "remoteTrackingRefs": [
+      "refs/remotes/origin/HEAD",
+      "refs/remotes/origin/codex/canonical-batch-no-deploy-20260824",
+      "refs/remotes/origin/codex/reduction-batch-staged-20260824",
+      "refs/remotes/origin/main"
+    ],
+    "openFiles": false,
+    "runtimePids": [],
+    "removed": true,
+    "searchIndexPreserved": true,
+    "removalMessage": ""
+  },
+  {
+    "path": "/opt/resonance-data/dev-worktrees/final-worker-b49221b8e",
+    "head": "b49221b8eaf1431a175c9b1e548d68c4c34f07af",
+    "dirty": false,
+    "ignoredCount": 1635,
+    "unknownIgnored": [
+      "var/ai-search-index/08f19a88fb25026265115d6fe05e417e6348062603fd7e3bc08575ffa2c216c2.context",
+      "var/ai-search-index/14e9406085619e1d32abdc1c02b349381efb63cf7c2d264c3e23773b65e907f6.context",
+      "var/ai-search-index/2399d3a38e9767b801b2a92e7a4b7ac7ec2b0bdd89643b408a2f50ecfbb7f1bb.context",
+      "var/ai-search-index/326234783d21008552913729375723585981a265737e97bee360ef820665cfba.context",
+      "var/ai-search-index/6deeb9cd9809c89602e032c76b4cbb70049755a266356891d75decc8680d4a1d.context",
+      "var/ai-search-index/bcc0d7d2bf5133803b01b8b6d7f0824928db5d20fc45d09a1ed4ff1b85e8c43f.context",
+      "var/ai-search-index/current",
+      "var/ai-search-index/d719d701e85c01f57e0c5b398f5b91df3bcd59949e3e5cde8de9100d25b07319.context",
+      "var/ai-search-index/snapshots/b49221b8eaf1431a175c9b1e548d68c4c34f07af-v2/README.txt",
+      "var/ai-search-index/snapshots/b49221b8eaf1431a175c9b1e548d68c4c34f07af-v2/references.txt",
+      "var/ai-search-index/snapshots/b49221b8eaf1431a175c9b1e548d68c4c34f07af-v2/repository.tsv",
+      "var/ai-search-index/snapshots/b49221b8eaf1431a175c9b1e548d68c4c34f07af-v2/routes.txt"
+    ],
+    "remoteTrackingRefs": [
+      "refs/remotes/origin/codex/canonical-batch-no-deploy-20260824"
+    ],
+    "openFiles": false,
+    "runtimePids": [],
+    "removed": true,
+    "searchIndexPreserved": true,
+    "removalMessage": ""
+  }
+]

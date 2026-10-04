@@ -1,0 +1,25 @@
+'use strict';
+(()=>{
+ const button=document.createElement('button');button.id='stageExport';button.textContent='USD Stage 생성';button.className='primary';document.querySelector('.documentbar').append(button);
+ const panel=document.createElement('dialog');panel.id='stageDialog';panel.innerHTML='<div class="dialoghead"><strong>Composer → USD Stage · 단방향</strong><button id="stageClose">닫기</button></div><p>DB에 저장된 버전을 참조합니다. 설비는 Entry USD Reference, 건축 객체는 파라미터 형상으로 생성됩니다. Layout·원장·READY/REAL은 수정하지 않습니다.</p><div id="stageProgress" role="status"></div><div id="stageResult"></div><p><a href="stage-design.md" target="_blank">좌표 계약·설계·QA·다음 업무</a></p>';document.body.append(panel);panel.querySelector('#stageClose').onclick=()=>panel.close();
+ const show=job=>{
+  if(job.layoutId===doc?.id){const u=new URL(location.href);u.searchParams.set('stage',job.id);history.replaceState(null,'',u)}
+  const r=job.report;
+  panel.querySelector('#stageProgress').textContent=`Layout v${job.version} · ${job.state}`;
+  if(!r){panel.querySelector('#stageResult').textContent=job.error||'저장 데이터 → Reference → Transform → 건축 → 관계 → 저장·재오픈 검사 중';return}
+  const c=r.counts||{};
+  panel.querySelector('#stageResult').innerHTML=`<p>객체 ${c.instances??'—'} · 설비 참조 ${c.equipmentReferences??'—'} · 건축 ${c.buildingObjects??'—'} · 관계 ${c.relationships??'—'} · ${r.seconds}초</p><table style="width:100%;font-size:13px"><tbody>${Object.entries(r.states).map(([s,v])=>`<tr><th style="text-align:left;padding:5px 10px 5px 0">${esc(s)}</th><td>${v?'PASS':'미검증 / 별도 증거 필요'}</td></tr>`).join('')}</tbody></table><p>${esc(r.errors.join(' / '))}</p>${r.stagePath?`<label>Omniverse File → Open 서버 경로<textarea readonly rows="3" style="width:100%">${esc(r.stagePath)}</textarea></label><p><a href="${API}/stages/${job.id}/usd">Factory.usda 다운로드</a> · <a href="${API}/stages/${job.id}/report">구조 검증 JSON</a> · <a href="${API}/stages/${job.id}/snapshot">Layout 스냅샷</a></p>`:''}${r.guiEvidence?`<p><a href="${API}/stages/${job.id}/gui-evidence">별도 GUI 검수 증거</a> · <a href="${API}/stages/${job.id}/kit-evidence">Kit 재오픈 결과</a></p><a href="${API}/stages/${job.id}/gui" target="_blank"><img alt="실제 Omniverse GUI 검수 화면" style="max-width:100%" src="${API}/stages/${job.id}/gui"></a>`:''}<p>다운로드 USD는 서버 공통 라이브러리를 참조합니다. 단독 파일만 다른 PC로 옮기면 참조 경로가 없을 수 있습니다. GUI/RTX 판정은 자동 승격하지 않습니다.</p>`;
+  const detail=document.createElement('details');detail.innerHTML='<summary>객체별 저장값 → USD 변환값 확인</summary><div style="overflow:auto"></div>';panel.querySelector('#stageResult').append(detail);
+  api('/stages/'+job.id+'/snapshot').then(d=>{detail.querySelector('div').innerHTML='<table style="font-size:12px;min-width:640px"><thead><tr><th>객체 / Asset</th><th>Position m</th><th>Canvas 회전 °</th><th>USD 회전 °</th><th>Scale</th><th>건축 W/L/H m</th></tr></thead><tbody>'+d.instances.map(i=>`<tr><td>${esc(i.label)} / ${esc(i.assetId||i.templateId)}</td><td>${esc(i.position.join(', '))}</td><td>${esc(i.rotation.join(', '))}</td><td>${esc([i.rotation[0],-i.rotation[1],i.rotation[2]].join(', '))}</td><td>${esc(i.scale.join(', '))}</td><td>${i.templateId?esc([i.parameters.width,i.parameters.length,i.parameters.height].join(' / ')):'Entry 참조'}</td></tr>`).join('')+'</tbody></table>'}).catch(e=>{detail.querySelector('div').textContent=e.message});
+ };
+ async function poll(id){for(let n=0;n<240;n++){const j=await api('/stages/'+id);show(j);if(j.state!=='RUNNING')return;await new Promise(r=>setTimeout(r,n<10?250:1000))}throw Error('확인 시간 초과. 기존 Layout은 보존됩니다.')}
+ button.onclick=()=>guard(async()=>{
+  if(!window.composerReady||!doc?.version||dirty)throw Error('먼저 DB 저장을 완료하세요. 미저장 변경은 USD에 포함되지 않습니다.');
+  button.disabled=true;panel.showModal();panel.querySelector('#stageResult').textContent='';
+  try{const body={layoutId:doc.id,version:doc.version},previous=localStorage.getItem('p006-stage:'+doc.id);if(previous){const prior=await api('/stages/'+previous);if(prior.layoutId===doc.id&&prior.report?.result==='VERIFIED_NO_GUI_EVIDENCE')body.previousStageId=previous}const j=await api('/stages',body);localStorage.setItem('p006-stage:'+doc.id,j.id);await poll(j.id)}catch(e){panel.querySelector('#stageProgress').textContent='생성 요청 실패';panel.querySelector('#stageResult').textContent=e.message;throw e}finally{button.disabled=false}
+ });
+ const review=document.createElement('button');review.textContent='최근 Stage 결과';review.id='stageReview';document.querySelector('.documentbar').append(review);
+ review.onclick=()=>guard(async()=>{const id=localStorage.getItem('p006-stage:'+doc?.id);if(!id)throw Error('이 브라우저에서 생성한 Stage가 없습니다.');panel.showModal();await poll(id)});
+ const linkedJob=new URLSearchParams(location.search).get('stage');
+ if(linkedJob&&/^[0-9a-f-]{36}$/.test(linkedJob)){const t=setInterval(()=>{if(window.composerReady){clearInterval(t);guard(async()=>{const j=await api('/stages/'+linkedJob);if(j.layoutId!==doc.id)throw Error('Stage의 Layout이 현재 문서와 다릅니다.');localStorage.setItem('p006-stage:'+doc.id,linkedJob);panel.showModal();show(j)})}},250)}
+})();

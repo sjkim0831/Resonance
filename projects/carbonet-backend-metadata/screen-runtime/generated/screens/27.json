@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 27,
+  "blueprintCode": "BP_ADOPT_7873B022C9703A33915C",
+  "identity": {
+    "processCode": "LCA_EXECUTION",
+    "stepCode": "LCA_EXECUTION_01_PLAN",
+    "actorCode": "LCA_PRACTITIONER",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_7873B022C9703A33915C"
+  },
+  "route": "/admin/emission/definition-studio",
+  "pageName": "LCA 데이터 정의",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "LCA",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1040310",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "d445ea6de1ef915b5ce3fd45207803b954da5d15816de18a3a7510ca72414c7a",
+  "artifactHash": "5979401635d52bd5b3eef7a2565dfcd2eeec0e72344bdd883f7e6c5466e89b1a"
+}

@@ -1,0 +1,59 @@
+{
+  "tests": [
+    {
+      "name": "LIVE_62_ROWS",
+      "pass": true
+    },
+    {
+      "name": "UNKNOWN_OWNERS_62",
+      "pass": true
+    },
+    {
+      "name": "PENDING_FILTER_62",
+      "pass": true
+    },
+    {
+      "name": "REFERENCE_FILTER_36",
+      "pass": true
+    },
+    {
+      "name": "IMAGE_EXPANSION",
+      "pass": true
+    },
+    {
+      "name": "BLOCKED_FILTER_26",
+      "pass": true
+    },
+    {
+      "name": "SEARCH_6",
+      "pass": true
+    },
+    {
+      "name": "SELECT_VISIBLE_6",
+      "pass": true
+    },
+    {
+      "name": "NO_FAKE_PROCESS_ASSIGNMENT",
+      "pass": true
+    },
+    {
+      "name": "RESTORED_62",
+      "pass": true
+    },
+    {
+      "name": "SOURCE_EVIDENCE_VISIBLE",
+      "pass": true
+    },
+    {
+      "name": "MOBILE_BODY_NO_OVERFLOW",
+      "pass": true
+    },
+    {
+      "name": "NO_JS_ERRORS",
+      "pass": true
+    }
+  ],
+  "businessWrites": 0,
+  "mocked": false,
+  "seconds": 3.4
+}

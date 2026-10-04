@@ -1,0 +1,979 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 184,
+  "blueprintCode": "BP_EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+  "identity": {
+    "processCode": "EMISSION_PROJECT",
+    "stepCode": "EMISSION_PROJECT_APPROVE",
+    "actorCode": "APPROVER",
+    "audience": "USER",
+    "pageId": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER"
+  },
+  "route": "/emission/validate",
+  "pageName": "검토·승인·확정",
+  "screenType": "WORKFLOW",
+  "templateCode": "KRDS_WORKFLOW",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "kpis": [
+      "권한 없는 결정 0건",
+      "상태 전이 오류 0건",
+      "사유 없는 보완·반려 0건",
+      "승인 산정 버전 잠금률 100%",
+      "결정·이벤트 감사 일치율 100%"
+    ],
+    "step": "EMISSION_PROJECT_APPROVE",
+    "actor": "APPROVER",
+    "domain": "EMISSION",
+    "fields": [
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "projectId",
+        "fieldName": "프로젝트 ID",
+        "fieldGroup": "프로젝트",
+        "fieldOrder": 1,
+        "validation": {
+          "source": "SERVER_CONTEXT",
+          "required": true,
+          "immutable": true
+        },
+        "apiProperty": "project.id",
+        "controlType": "HIDDEN",
+        "sourceTable": "emission_project_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "project_id",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "projectName",
+        "fieldName": "프로젝트명",
+        "fieldGroup": "프로젝트",
+        "fieldOrder": 2,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "project.name",
+        "controlType": "TEXT",
+        "sourceTable": "emission_project_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "project_name",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "siteName",
+        "fieldName": "사업장명",
+        "fieldGroup": "프로젝트",
+        "fieldOrder": 3,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "project.site",
+        "controlType": "TEXT",
+        "sourceTable": "emission_project_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "site_name",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "LONG",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "submissionId",
+        "fieldName": "제출본 ID",
+        "fieldGroup": "제출 버전",
+        "fieldOrder": 4,
+        "validation": {
+          "minimum": 1
+        },
+        "apiProperty": "submissions[].id",
+        "controlType": "SELECT",
+        "sourceTable": "emission_activity_submission",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "submission_id",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "INTEGER",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "submissionVersion",
+        "fieldName": "제출 버전",
+        "fieldGroup": "제출 버전",
+        "fieldOrder": 5,
+        "validation": {
+          "minimum": 1
+        },
+        "apiProperty": "submissions[].version",
+        "controlType": "TEXT",
+        "sourceTable": "emission_activity_submission",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "version_no",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "submissionState",
+        "fieldName": "제출 상태",
+        "fieldGroup": "제출 버전",
+        "fieldOrder": 6,
+        "validation": {
+          "enum": [
+            "SUBMITTED",
+            "IN_VERIFICATION",
+            "VERIFIED",
+            "CORRECTION_REQUIRED",
+            "APPROVED"
+          ]
+        },
+        "apiProperty": "submissions[].state",
+        "controlType": "STATUS",
+        "sourceTable": "emission_activity_submission",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "submission_state",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "submittedActor",
+        "fieldName": "제출자",
+        "fieldGroup": "제출 버전",
+        "fieldOrder": 7,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "submissions[].submittedActor",
+        "controlType": "TEXT",
+        "sourceTable": "emission_activity_submission",
+        "privacyClass": "PERSONAL",
+        "sourceColumn": "submitted_actor",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "DATETIME",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "submittedAt",
+        "fieldName": "제출 일시",
+        "fieldGroup": "제출 버전",
+        "fieldOrder": 8,
+        "validation": {
+          "type": "date-time",
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "submissions[].submittedAt",
+        "controlType": "DATETIME",
+        "sourceTable": "emission_activity_submission",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "submitted_at",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "decision",
+        "fieldName": "결정",
+        "fieldGroup": "검토 입력",
+        "fieldOrder": 9,
+        "validation": {
+          "enum": [
+            "STARTED",
+            "PASSED",
+            "CORRECTION_REQUESTED",
+            "APPROVED",
+            "REJECTED"
+          ]
+        },
+        "apiProperty": "command.decision",
+        "controlType": "ACTION_GROUP",
+        "sourceTable": "emission_submission_review",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "decision",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_DECIDE",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": false,
+        "fieldCode": "reviewComment",
+        "fieldName": "검토 의견",
+        "fieldGroup": "검토 입력",
+        "fieldOrder": 10,
+        "validation": {
+          "maxLength": 4000,
+          "requiredWhen": [
+            "CORRECTION_REQUESTED",
+            "REJECTED"
+          ]
+        },
+        "apiProperty": "command.comment",
+        "controlType": "TEXTAREA",
+        "sourceTable": "emission_submission_review",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "comment_text",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_DECIDE",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "INTEGER",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "issueCount",
+        "fieldName": "오류 건수",
+        "fieldGroup": "검토 입력",
+        "fieldOrder": 11,
+        "validation": {
+          "minimum": 0
+        },
+        "apiProperty": "command.issueCount",
+        "controlType": "NUMBER",
+        "sourceTable": "emission_submission_review",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "issue_count",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_VERIFY",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "LONG",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "reviewId",
+        "fieldName": "검토 이력 ID",
+        "fieldGroup": "검토 이력",
+        "fieldOrder": 12,
+        "validation": {
+          "minimum": 1
+        },
+        "apiProperty": "reviews[].id",
+        "controlType": "HIDDEN",
+        "sourceTable": "emission_submission_review",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "review_id",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "reviewStage",
+        "fieldName": "검토 단계",
+        "fieldGroup": "검토 이력",
+        "fieldOrder": 13,
+        "validation": {
+          "enum": [
+            "VERIFICATION",
+            "APPROVAL"
+          ]
+        },
+        "apiProperty": "reviews[].stage",
+        "controlType": "STATUS",
+        "sourceTable": "emission_submission_review",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "review_stage",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "reviewerId",
+        "fieldName": "검토자",
+        "fieldGroup": "검토 이력",
+        "fieldOrder": 14,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "reviews[].reviewer",
+        "controlType": "TEXT",
+        "sourceTable": "emission_submission_review",
+        "privacyClass": "PERSONAL",
+        "sourceColumn": "reviewer_id",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "DATETIME",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "reviewCreatedAt",
+        "fieldName": "결정 일시",
+        "fieldGroup": "검토 이력",
+        "fieldOrder": 15,
+        "validation": {
+          "type": "date-time",
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "reviews[].createdAt",
+        "controlType": "DATETIME",
+        "sourceTable": "emission_submission_review",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "created_at",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "LONG",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": false,
+        "fieldCode": "reviewCalculationId",
+        "fieldName": "산정 버전 ID",
+        "fieldGroup": "검토 이력",
+        "fieldOrder": 16,
+        "validation": {
+          "minimum": 1
+        },
+        "apiProperty": "reviews[].calculationId",
+        "controlType": "LINK",
+        "sourceTable": "emission_submission_review",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "calculation_id",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "actorCode",
+        "fieldName": "배정 액터",
+        "fieldGroup": "액터 권한",
+        "fieldOrder": 17,
+        "validation": {
+          "enum": [
+            "VERIFIER",
+            "APPROVER"
+          ]
+        },
+        "apiProperty": "actors[].actorCode",
+        "controlType": "BADGE_LIST",
+        "sourceTable": "framework_project_actor_assignment",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "actor_code",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "actorUserId",
+        "fieldName": "배정 사용자",
+        "fieldGroup": "액터 권한",
+        "fieldOrder": 18,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "actors[].userId",
+        "controlType": "TEXT",
+        "sourceTable": "framework_project_actor_assignment",
+        "privacyClass": "PERSONAL",
+        "sourceColumn": "user_id",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "BOOLEAN",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "actorActiveYn",
+        "fieldName": "액터 활성 여부",
+        "fieldGroup": "액터 권한",
+        "fieldOrder": 19,
+        "validation": {
+          "type": "boolean",
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "actors[].activeYn",
+        "controlType": "STATUS",
+        "sourceTable": "framework_project_actor_assignment",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "active_yn",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "LONG",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "calculationId",
+        "fieldName": "산정 실행 ID",
+        "fieldGroup": "산정 잠금",
+        "fieldOrder": 20,
+        "validation": {
+          "minimum": 1
+        },
+        "apiProperty": "latestCalculation.id",
+        "controlType": "HIDDEN",
+        "sourceTable": "emission_calculation_run",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "calculation_id",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "INTEGER",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "calculationVersion",
+        "fieldName": "산정 버전",
+        "fieldGroup": "산정 잠금",
+        "fieldOrder": 21,
+        "validation": {
+          "minimum": 1
+        },
+        "apiProperty": "latestCalculation.version",
+        "controlType": "TEXT",
+        "sourceTable": "emission_calculation_run",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "version_no",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "DECIMAL",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "totalEmission",
+        "fieldName": "총 배출량",
+        "fieldGroup": "산정 잠금",
+        "fieldOrder": 22,
+        "validation": {
+          "minimum": 0
+        },
+        "apiProperty": "latestCalculation.totalEmission",
+        "controlType": "NUMBER",
+        "sourceTable": "emission_calculation_run",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "total_emission",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "snapshotHash",
+        "fieldName": "입력 지문",
+        "fieldGroup": "산정 잠금",
+        "fieldOrder": 23,
+        "validation": {
+          "minLength": 32
+        },
+        "apiProperty": "latestCalculation.snapshotHash",
+        "controlType": "HASH",
+        "sourceTable": "emission_calculation_run",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "input_snapshot_hash",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "DATETIME",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": false,
+        "fieldCode": "lockedAt",
+        "fieldName": "잠금 일시",
+        "fieldGroup": "산정 잠금",
+        "fieldOrder": 24,
+        "validation": {
+          "type": "date-time",
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "latestCalculation.lockedAt",
+        "controlType": "DATETIME",
+        "sourceTable": "emission_calculation_run",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "locked_at",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": false,
+        "fieldCode": "lockedBy",
+        "fieldName": "잠금 수행자",
+        "fieldGroup": "산정 잠금",
+        "fieldOrder": 25,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "latestCalculation.lockedBy",
+        "controlType": "TEXT",
+        "sourceTable": "emission_calculation_run",
+        "privacyClass": "PERSONAL",
+        "sourceColumn": "locked_by",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "eventType",
+        "fieldName": "상태 이벤트",
+        "fieldGroup": "상태 감사",
+        "fieldOrder": 26,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "events[].eventType",
+        "controlType": "TIMELINE",
+        "sourceTable": "emission_activity_submission_event",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "event_type",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "previousState",
+        "fieldName": "이전 상태",
+        "fieldGroup": "상태 감사",
+        "fieldOrder": 27,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "events[].previousState",
+        "controlType": "STATUS",
+        "sourceTable": "emission_activity_submission_event",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "previous_state",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "newState",
+        "fieldName": "변경 상태",
+        "fieldGroup": "상태 감사",
+        "fieldOrder": 28,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "events[].newState",
+        "controlType": "STATUS",
+        "sourceTable": "emission_activity_submission_event",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "new_state",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": true,
+        "fieldCode": "eventActor",
+        "fieldName": "상태 변경자",
+        "fieldGroup": "상태 감사",
+        "fieldOrder": 29,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "events[].eventActor",
+        "controlType": "TEXT",
+        "sourceTable": "emission_activity_submission_event",
+        "privacyClass": "PERSONAL",
+        "sourceColumn": "event_actor",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/emission/validate?tab=approval",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_APPROVE_USER",
+        "required": false,
+        "fieldCode": "eventNote",
+        "fieldName": "상태 변경 사유",
+        "fieldGroup": "상태 감사",
+        "fieldOrder": 30,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "events[].eventNote",
+        "controlType": "TEXT",
+        "sourceTable": "emission_activity_submission_event",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "event_note",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_EMISSION_REVIEW_READ",
+        "evidenceRequired": false
+      }
+    ],
+    "states": [
+      "LOADING",
+      "EMPTY",
+      "SUBMITTED",
+      "IN_VERIFICATION",
+      "VERIFIED",
+      "CORRECTION_REQUIRED",
+      "APPROVED",
+      "SAVING",
+      "SUCCESS",
+      "CONFLICT",
+      "ERROR",
+      "FORBIDDEN",
+      "SESSION_EXPIRED"
+    ],
+    "process": "EMISSION_PROJECT",
+    "toState": "APPROVED",
+    "commands": [
+      {
+        "api": "POST /home/api/emission-projects/{projectId}/submissions/{submissionId}/verification/start",
+        "code": "START_VERIFICATION",
+        "guard": "SUBMITTED + VERIFIER"
+      },
+      {
+        "api": "POST .../verification/decision",
+        "code": "PASS_VERIFICATION",
+        "guard": "IN_VERIFICATION + VERIFIER",
+        "payload": {
+          "decision": "PASSED"
+        }
+      },
+      {
+        "api": "POST .../verification/decision",
+        "code": "REQUEST_CORRECTION",
+        "guard": "IN_VERIFICATION + VERIFIER + comment",
+        "payload": {
+          "decision": "CORRECTION_REQUESTED"
+        }
+      },
+      {
+        "api": "POST .../approval/decision",
+        "code": "APPROVE",
+        "guard": "VERIFIED + APPROVER",
+        "payload": {
+          "decision": "APPROVED"
+        }
+      },
+      {
+        "api": "POST .../approval/decision",
+        "code": "REJECT",
+        "guard": "VERIFIED + APPROVER + comment",
+        "payload": {
+          "decision": "REJECTED"
+        }
+      }
+    ],
+    "sections": [
+      {
+        "id": "project-context",
+        "purpose": "프로젝트·사업장·액터 범위"
+      },
+      {
+        "id": "submission-versions",
+        "purpose": "제출 버전과 현재 상태 선택"
+      },
+      {
+        "id": "decision-panel",
+        "purpose": "상태·액터별 허용 명령과 필수 의견"
+      },
+      {
+        "id": "calculation-evidence",
+        "purpose": "총 배출량·입력 지문·산정 버전 검토"
+      },
+      {
+        "id": "review-history",
+        "purpose": "검증·승인 결정 이력"
+      },
+      {
+        "id": "state-audit",
+        "purpose": "이전·신규 상태와 수행자 감사"
+      }
+    ],
+    "fromState": "VERIFIED",
+    "responsive": "{\"mobile\":\"single column; version selector before decision controls; table horizontal scroll only\",\"tablet\":\"stacked project context and decision panel\",\"desktop\":\"version rail with decision workspace\",\"overflow\":\"wrap identifiers and comments; never clip action labels\"}",
+    "screenType": "WORKFLOW",
+    "commandCode": "APPROVE",
+    "apiContracts": [
+      {
+        "path": "/home/api/emission-projects/{projectId}/review-workflow",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/emission-projects/{projectId}/submissions/{submissionId}/verification/start",
+        "method": "POST"
+      },
+      {
+        "path": "/home/api/emission-projects/{projectId}/submissions/{submissionId}/verification/decision",
+        "method": "POST"
+      },
+      {
+        "path": "/home/api/emission-projects/{projectId}/submissions/{submissionId}/approval/decision",
+        "method": "POST"
+      }
+    ],
+    "designSystem": "KRDS_GOV",
+    "accessibility": "{\"standard\":\"WCAG 2.1 AA\",\"keyboard\":\"version and decision controls keyboard reachable\",\"status\":\"save, conflict, forbidden and validation messages announced\",\"forms\":\"explicit labels and error association\",\"contrast\":\"KRDS tokens\"}",
+    "dataContracts": [
+      {
+        "lock": "FOR UPDATE",
+        "entity": "emission_activity_submission",
+        "version": "version_no",
+        "tenantScope": "tenant_id + project_id"
+      },
+      {
+        "mode": "append-only decision history",
+        "entity": "emission_submission_review"
+      },
+      {
+        "mode": "append-only state audit",
+        "entity": "emission_activity_submission_event"
+      },
+      {
+        "entity": "emission_calculation_run",
+        "version": "version_no",
+        "approvalEffect": "locked_at + locked_by"
+      },
+      {
+        "entity": "framework_project_actor_assignment",
+        "authority": "active VERIFIER or APPROVER"
+      }
+    ],
+    "exitCondition": "승인 또는 반려 결정, 사유, 승인자, 산정 버전 잠금과 상태 이벤트가 하나의 트랜잭션으로 저장된다.",
+    "completionRule": "검토 의견·승인 이력·확정 버전이 저장되고 승인 권한과 업무 분리가 검증된다.",
+    "entryCondition": "제출본이 VERIFIED 상태이고 프로젝트 APPROVER 배정과 최신 산정 버전이 존재한다.",
+    "businessPurpose": "테넌트 범위의 제출 버전과 산정 결과를 독립 검증하고, 보완 요청 또는 통과 후 승인자가 결과 버전을 확정·잠금한다."
+  },
+  "traceability": {
+    "caseTypeCount": 5,
+    "evidenceContract": [
+      {
+        "tests": [
+          "HAPPY_PATH",
+          "AUTHORITY",
+          "TENANT_ISOLATION",
+          "INVALID_STATE",
+          "REQUIRED_REASON",
+          "CONCURRENT_DECISION",
+          "RECOVERY"
+        ],
+        "version": "2.0.0",
+        "atomicWrites": [
+          "submission state",
+          "review history",
+          "state event",
+          "workflow task",
+          "calculation lock"
+        ]
+      }
+    ],
+    "designReadinessScore": 100,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "8e1a18fdf1e6d7ab266fb88493fdff4b7d0150feb23132b47d732fb824609053",
+  "artifactHash": "5887c4b2ea41c30f47f21960634c2ccefde694f066f6d26680304878a05725c4"
+}

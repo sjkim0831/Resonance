@@ -1,0 +1,1414 @@
+{
+  "generatedAt": "2026-09-10T03:30:18.523Z",
+  "gate": "E2E_VERIFIED",
+  "processId": "EMISSION_PROJECT",
+  "projectId": "PRJ-2026-F024B4",
+  "verifiedScope": "필수 6단계 + 조건부 보완 반복; 단일 사업장, 현재 입력·승인·보고 연결",
+  "currentContract": {
+    "tenant_id": "TEST_COMPANY_001",
+    "project_id": "PRJ-2026-F024B4",
+    "approver_id": "qaapprove26",
+    "data_revision": 9,
+    "submission_id": 538,
+    "calculation_id": 458,
+    "input_revision": 13,
+    "request_status": "APPROVED",
+    "approval_current": true,
+    "submission_state": "APPROVED",
+    "calculation_status": "LOCKED",
+    "submission_version": 7,
+    "approval_request_id": 15,
+    "calculation_current": true,
+    "calculation_version": 7,
+    "input_snapshot_hash": "a8c3c4bc76f1dc802ea56772e2f55343ba86ff2f7253d213b74ffcb606bef65d"
+  },
+  "uiActions": 23,
+  "uiPages": 7,
+  "uiChecks": 35,
+  "actors": 5,
+  "negativeBaseline": [
+    {
+      "id": "N1",
+      "name": "등록만으로 완료 금지",
+      "label": "unapproved-not-complete",
+      "status": "PASS",
+      "http": 200,
+      "evidence": "acceptance-relay.json#unapproved-not-complete"
+    },
+    {
+      "id": "N2",
+      "name": "과거 승인으로 현재 버전 완료 금지",
+      "label": "old-evidence-not-current-v4",
+      "status": "PASS",
+      "http": 200,
+      "evidence": "acceptance-relay.json#old-evidence-not-current-v4"
+    },
+    {
+      "id": "N3",
+      "name": "반려 요청 완료 금지",
+      "label": "rejected-not-complete",
+      "status": "PASS",
+      "http": 200,
+      "evidence": "acceptance-relay.json#rejected-not-complete"
+    },
+    {
+      "id": "N4",
+      "name": "재신청은 최신 요청 대상",
+      "label": "approver-current-request-v5",
+      "status": "PASS",
+      "http": 200,
+      "evidence": "acceptance-relay.json#approver-current-request-v5"
+    },
+    {
+      "id": "N5",
+      "name": "승인 중 상류 변경 무효화",
+      "label": "stale-request-decision-blocked-v3",
+      "status": "PASS",
+      "http": 409,
+      "evidence": "acceptance-relay.json#stale-request-decision-blocked-v3"
+    },
+    {
+      "id": "N6a",
+      "name": "동일 키 중복 요청 멱등성",
+      "label": "same-key-request-idempotent",
+      "status": "PASS",
+      "http": 200,
+      "evidence": "acceptance-relay.json#same-key-request-idempotent"
+    },
+    {
+      "id": "N6b",
+      "name": "다른 키 중복 요청 차단",
+      "label": "duplicate-new-key-request-blocked",
+      "status": "PASS",
+      "http": 409,
+      "evidence": "acceptance-relay.json#duplicate-new-key-request-blocked"
+    },
+    {
+      "id": "N6c",
+      "name": "중복 승인 차단",
+      "label": "duplicate-approval-blocked-v5",
+      "status": "PASS",
+      "http": 409,
+      "evidence": "acceptance-relay.json#duplicate-approval-blocked-v5"
+    },
+    {
+      "id": "N7",
+      "name": "무권한 승인 차단",
+      "label": "unauthorized-approval-blocked",
+      "status": "PASS",
+      "http": 403,
+      "evidence": "acceptance-relay.json#unauthorized-approval-blocked"
+    }
+  ],
+  "negativeFinal": [
+    {
+      "actor": "qadata26",
+      "requestId": 15,
+      "http": 403,
+      "body": {
+        "message": "ACTOR_NOT_AUTHORIZED:APPROVER"
+      }
+    },
+    {
+      "actor": "qaapprove26",
+      "requestId": 15,
+      "http": 409,
+      "body": {
+        "message": "APPROVAL_REQUEST_NOT_CURRENT_PENDING"
+      }
+    },
+    {
+      "actor": "qaapprove26",
+      "requestId": 12,
+      "http": 409,
+      "body": {
+        "message": "CURRENT_VERSION_CALCULATION_REQUIRED"
+      }
+    },
+    {
+      "actor": "qaapprove26",
+      "requestId": 11,
+      "http": 409,
+      "body": {
+        "message": "CURRENT_VERSION_CALCULATION_REQUIRED"
+      }
+    }
+  ],
+  "mandatoryUnverified": 0,
+  "commonRules": [
+    {
+      "id": "CC-01",
+      "status": "PASS",
+      "evidence": [
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#start-v5",
+          "detail": {
+            "actor": "qaowner26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 9,
+              "data_revision": 7,
+              "submission_id": 534,
+              "submission_version": 5,
+              "submission_state": "APPROVED",
+              "calculation_id": 454,
+              "calculation_version": 5,
+              "input_snapshot_hash": "95a7872a59d7a8ff127147974581c0280b08dcf3506dc1f5099767896f51392c",
+              "calculation_status": "LOCKED",
+              "approval_request_id": 11,
+              "request_status": "APPROVED",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": true
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#upstream-created",
+          "detail": {
+            "actor": "qadata26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 10,
+              "data_revision": 8,
+              "submission_id": null,
+              "submission_version": null,
+              "submission_state": null,
+              "calculation_id": null,
+              "calculation_version": null,
+              "input_snapshot_hash": null,
+              "calculation_status": null,
+              "approval_request_id": 11,
+              "request_status": "INVALIDATED",
+              "approver_id": "qaapprove26",
+              "calculation_current": false,
+              "approval_current": false
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#submitted",
+          "detail": {
+            "actor": "qadata26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 10,
+              "data_revision": 8,
+              "submission_id": 535,
+              "submission_version": 6,
+              "submission_state": "SUBMITTED",
+              "calculation_id": null,
+              "calculation_version": null,
+              "input_snapshot_hash": null,
+              "calculation_status": null,
+              "approval_request_id": 11,
+              "request_status": "INVALIDATED",
+              "approver_id": "qaapprove26",
+              "calculation_current": false,
+              "approval_current": false
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#accepted",
+          "detail": {
+            "actor": "qaowner26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 10,
+              "data_revision": 8,
+              "submission_id": 535,
+              "submission_version": 6,
+              "submission_state": "SUBMITTED",
+              "calculation_id": null,
+              "calculation_version": null,
+              "input_snapshot_hash": null,
+              "calculation_status": null,
+              "approval_request_id": 11,
+              "request_status": "INVALIDATED",
+              "approver_id": "qaapprove26",
+              "calculation_current": false,
+              "approval_current": false
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#calculated",
+          "detail": {
+            "actor": "qacalc26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 12,
+              "data_revision": 8,
+              "submission_id": 535,
+              "submission_version": 6,
+              "submission_state": "SUBMITTED",
+              "calculation_id": 455,
+              "calculation_version": 6,
+              "input_snapshot_hash": "f4aee6c7eaf007f060610031553c8fbb45905ed636fdbd6d567ef16167d8a24d",
+              "calculation_status": "CALCULATED",
+              "approval_request_id": 11,
+              "request_status": "INVALIDATED",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": false
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#verified",
+          "detail": {
+            "actor": "qaverify26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 12,
+              "data_revision": 8,
+              "submission_id": 535,
+              "submission_version": 6,
+              "submission_state": "VERIFIED",
+              "calculation_id": 455,
+              "calculation_version": 6,
+              "input_snapshot_hash": "f4aee6c7eaf007f060610031553c8fbb45905ed636fdbd6d567ef16167d8a24d",
+              "calculation_status": "CALCULATED",
+              "approval_request_id": 11,
+              "request_status": "INVALIDATED",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": false
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#requested",
+          "detail": {
+            "actor": "qaowner26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 12,
+              "data_revision": 8,
+              "submission_id": 535,
+              "submission_version": 6,
+              "submission_state": "VERIFIED",
+              "calculation_id": 455,
+              "calculation_version": 6,
+              "input_snapshot_hash": "f4aee6c7eaf007f060610031553c8fbb45905ed636fdbd6d567ef16167d8a24d",
+              "calculation_status": "CALCULATED",
+              "approval_request_id": 12,
+              "request_status": "PENDING",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": false
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#rejected",
+          "detail": {
+            "actor": "qaapprove26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 12,
+              "data_revision": 8,
+              "submission_id": 535,
+              "submission_version": 6,
+              "submission_state": "CORRECTION_REQUIRED",
+              "calculation_id": 455,
+              "calculation_version": 6,
+              "input_snapshot_hash": "f4aee6c7eaf007f060610031553c8fbb45905ed636fdbd6d567ef16167d8a24d",
+              "calculation_status": "CALCULATED",
+              "approval_request_id": 12,
+              "request_status": "REJECTED",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": false
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#applicant-rejection",
+          "detail": {
+            "actor": "qaowner26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 12,
+              "data_revision": 8,
+              "submission_id": 535,
+              "submission_version": 6,
+              "submission_state": "CORRECTION_REQUIRED",
+              "calculation_id": 455,
+              "calculation_version": 6,
+              "input_snapshot_hash": "f4aee6c7eaf007f060610031553c8fbb45905ed636fdbd6d567ef16167d8a24d",
+              "calculation_status": "CALCULATED",
+              "approval_request_id": 12,
+              "request_status": "REJECTED",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": false
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#applicant-rejection",
+          "detail": {
+            "actor": "qaowner26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 12,
+              "data_revision": 8,
+              "submission_id": 535,
+              "submission_version": 6,
+              "submission_state": "CORRECTION_REQUIRED",
+              "calculation_id": 455,
+              "calculation_version": 6,
+              "input_snapshot_hash": "f4aee6c7eaf007f060610031553c8fbb45905ed636fdbd6d567ef16167d8a24d",
+              "calculation_status": "CALCULATED",
+              "approval_request_id": 12,
+              "request_status": "REJECTED",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": false
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#corrected",
+          "detail": {
+            "actor": "qadata26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 13,
+              "data_revision": 9,
+              "submission_id": null,
+              "submission_version": null,
+              "submission_state": null,
+              "calculation_id": null,
+              "calculation_version": null,
+              "input_snapshot_hash": null,
+              "calculation_status": null,
+              "approval_request_id": 12,
+              "request_status": "REJECTED",
+              "approver_id": "qaapprove26",
+              "calculation_current": false,
+              "approval_current": false
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#resubmitted",
+          "detail": {
+            "actor": "qadata26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 13,
+              "data_revision": 9,
+              "submission_id": 538,
+              "submission_version": 7,
+              "submission_state": "SUBMITTED",
+              "calculation_id": null,
+              "calculation_version": null,
+              "input_snapshot_hash": null,
+              "calculation_status": null,
+              "approval_request_id": 12,
+              "request_status": "REJECTED",
+              "approver_id": "qaapprove26",
+              "calculation_current": false,
+              "approval_current": false
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#reaccepted",
+          "detail": {
+            "actor": "qaowner26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 13,
+              "data_revision": 9,
+              "submission_id": 538,
+              "submission_version": 7,
+              "submission_state": "SUBMITTED",
+              "calculation_id": null,
+              "calculation_version": null,
+              "input_snapshot_hash": null,
+              "calculation_status": null,
+              "approval_request_id": 12,
+              "request_status": "REJECTED",
+              "approver_id": "qaapprove26",
+              "calculation_current": false,
+              "approval_current": false
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#recalculated",
+          "detail": {
+            "actor": "qacalc26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 13,
+              "data_revision": 9,
+              "submission_id": 538,
+              "submission_version": 7,
+              "submission_state": "SUBMITTED",
+              "calculation_id": 458,
+              "calculation_version": 7,
+              "input_snapshot_hash": "a8c3c4bc76f1dc802ea56772e2f55343ba86ff2f7253d213b74ffcb606bef65d",
+              "calculation_status": "CALCULATED",
+              "approval_request_id": 12,
+              "request_status": "REJECTED",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": false
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#rerequested",
+          "detail": {
+            "actor": "qaowner26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 13,
+              "data_revision": 9,
+              "submission_id": 538,
+              "submission_version": 7,
+              "submission_state": "VERIFIED",
+              "calculation_id": 458,
+              "calculation_version": 7,
+              "input_snapshot_hash": "a8c3c4bc76f1dc802ea56772e2f55343ba86ff2f7253d213b74ffcb606bef65d",
+              "calculation_status": "CALCULATED",
+              "approval_request_id": 15,
+              "request_status": "PENDING",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": false
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#latest-pending",
+          "detail": {
+            "actor": "qaapprove26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 13,
+              "data_revision": 9,
+              "submission_id": 538,
+              "submission_version": 7,
+              "submission_state": "VERIFIED",
+              "calculation_id": 458,
+              "calculation_version": 7,
+              "input_snapshot_hash": "a8c3c4bc76f1dc802ea56772e2f55343ba86ff2f7253d213b74ffcb606bef65d",
+              "calculation_status": "CALCULATED",
+              "approval_request_id": 15,
+              "request_status": "PENDING",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": false
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#approved",
+          "detail": {
+            "actor": "qaapprove26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 13,
+              "data_revision": 9,
+              "submission_id": 538,
+              "submission_version": 7,
+              "submission_state": "APPROVED",
+              "calculation_id": 458,
+              "calculation_version": 7,
+              "input_snapshot_hash": "a8c3c4bc76f1dc802ea56772e2f55343ba86ff2f7253d213b74ffcb606bef65d",
+              "calculation_status": "APPROVED",
+              "approval_request_id": 15,
+              "request_status": "APPROVED",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": true
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#locked",
+          "detail": {
+            "actor": "qaapprove26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 13,
+              "data_revision": 9,
+              "submission_id": 538,
+              "submission_version": 7,
+              "submission_state": "APPROVED",
+              "calculation_id": 458,
+              "calculation_version": 7,
+              "input_snapshot_hash": "a8c3c4bc76f1dc802ea56772e2f55343ba86ff2f7253d213b74ffcb606bef65d",
+              "calculation_status": "LOCKED",
+              "approval_request_id": 15,
+              "request_status": "APPROVED",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": true
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#issued",
+          "detail": {
+            "actor": "qaapprove26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 13,
+              "data_revision": 9,
+              "submission_id": 538,
+              "submission_version": 7,
+              "submission_state": "APPROVED",
+              "calculation_id": 458,
+              "calculation_version": 7,
+              "input_snapshot_hash": "a8c3c4bc76f1dc802ea56772e2f55343ba86ff2f7253d213b74ffcb606bef65d",
+              "calculation_status": "LOCKED",
+              "approval_request_id": 15,
+              "request_status": "APPROVED",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": true
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#final-qaowner26",
+          "detail": {
+            "actor": "qaowner26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 13,
+              "data_revision": 9,
+              "submission_id": 538,
+              "submission_version": 7,
+              "submission_state": "APPROVED",
+              "calculation_id": 458,
+              "calculation_version": 7,
+              "input_snapshot_hash": "a8c3c4bc76f1dc802ea56772e2f55343ba86ff2f7253d213b74ffcb606bef65d",
+              "calculation_status": "LOCKED",
+              "approval_request_id": 15,
+              "request_status": "APPROVED",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": true
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#final-qadata26",
+          "detail": {
+            "actor": "qadata26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 13,
+              "data_revision": 9,
+              "submission_id": 538,
+              "submission_version": 7,
+              "submission_state": "APPROVED",
+              "calculation_id": 458,
+              "calculation_version": 7,
+              "input_snapshot_hash": "a8c3c4bc76f1dc802ea56772e2f55343ba86ff2f7253d213b74ffcb606bef65d",
+              "calculation_status": "LOCKED",
+              "approval_request_id": 15,
+              "request_status": "APPROVED",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": true
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#final-qacalc26",
+          "detail": {
+            "actor": "qacalc26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 13,
+              "data_revision": 9,
+              "submission_id": 538,
+              "submission_version": 7,
+              "submission_state": "APPROVED",
+              "calculation_id": 458,
+              "calculation_version": 7,
+              "input_snapshot_hash": "a8c3c4bc76f1dc802ea56772e2f55343ba86ff2f7253d213b74ffcb606bef65d",
+              "calculation_status": "LOCKED",
+              "approval_request_id": 15,
+              "request_status": "APPROVED",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": true
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#final-qaverify26",
+          "detail": {
+            "actor": "qaverify26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 13,
+              "data_revision": 9,
+              "submission_id": 538,
+              "submission_version": 7,
+              "submission_state": "APPROVED",
+              "calculation_id": 458,
+              "calculation_version": 7,
+              "input_snapshot_hash": "a8c3c4bc76f1dc802ea56772e2f55343ba86ff2f7253d213b74ffcb606bef65d",
+              "calculation_status": "LOCKED",
+              "approval_request_id": 15,
+              "request_status": "APPROVED",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": true
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-business-relay.json#final-qaapprove26",
+          "detail": {
+            "actor": "qaapprove26",
+            "contract": {
+              "project_id": "PRJ-2026-F024B4",
+              "tenant_id": "TEST_COMPANY_001",
+              "input_revision": 13,
+              "data_revision": 9,
+              "submission_id": 538,
+              "submission_version": 7,
+              "submission_state": "APPROVED",
+              "calculation_id": 458,
+              "calculation_version": 7,
+              "input_snapshot_hash": "a8c3c4bc76f1dc802ea56772e2f55343ba86ff2f7253d213b74ffcb606bef65d",
+              "calculation_status": "LOCKED",
+              "approval_request_id": 15,
+              "request_status": "APPROVED",
+              "approver_id": "qaapprove26",
+              "calculation_current": true,
+              "approval_current": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "CC-02",
+      "status": "PASS",
+      "evidence": [
+        {
+          "pass": true,
+          "source": "ui-final-db-evidence.json#requests/7",
+          "detail": {
+            "tenant_id": "TEST_COMPANY_001",
+            "decided_at": "2026-09-10T11:31:16.968718",
+            "decided_by": "qaapprove26",
+            "project_id": "PRJ-2026-F024B4",
+            "approver_id": "qaapprove26",
+            "requested_at": "2026-09-10T11:31:16.606806",
+            "requested_by": "qaowner26",
+            "submission_id": 530,
+            "calculation_id": 450,
+            "input_revision": 5,
+            "invalidated_at": null,
+            "request_status": "REJECTED",
+            "decision_reason": "QA 반려: 전력 사용량 증빙과 수량 보완",
+            "idempotency_key": "E2E-APPROVAL-PRJ-2026-F024B4-1",
+            "approval_request_id": 7,
+            "calculation_version": 1,
+            "input_snapshot_hash": "c0ba0c83e2db4881bb06293bd054b4a016617994a2480a5cf5cc24f13109016e",
+            "invalidation_reason": null
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-final-db-evidence.json#requests/8",
+          "detail": {
+            "tenant_id": "TEST_COMPANY_001",
+            "decided_at": null,
+            "decided_by": null,
+            "project_id": "PRJ-2026-F024B4",
+            "approver_id": "qaapprove26",
+            "requested_at": "2026-09-10T11:31:17.620349",
+            "requested_by": "qaowner26",
+            "submission_id": 531,
+            "calculation_id": 451,
+            "input_revision": 6,
+            "invalidated_at": "2026-09-10T11:31:17.649128",
+            "request_status": "INVALIDATED",
+            "decision_reason": null,
+            "idempotency_key": "E2E-APPROVAL-PRJ-2026-F024B4-2",
+            "approval_request_id": 8,
+            "calculation_version": 2,
+            "input_snapshot_hash": "216e7e20ca565a20a84b89e4e70db6cbc52c93bb1bf3af2afcce3f427b67a1fd",
+            "invalidation_reason": "UPSTREAM_CHANGED"
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-final-db-evidence.json#requests/9",
+          "detail": {
+            "tenant_id": "TEST_COMPANY_001",
+            "decided_at": "2026-09-10T11:31:18.346513",
+            "decided_by": "qaapprove26",
+            "project_id": "PRJ-2026-F024B4",
+            "approver_id": "qaapprove26",
+            "requested_at": "2026-09-10T11:31:18.04653",
+            "requested_by": "qaowner26",
+            "submission_id": 532,
+            "calculation_id": 452,
+            "input_revision": 7,
+            "invalidated_at": "2026-09-10T11:31:18.798266",
+            "request_status": "INVALIDATED",
+            "decision_reason": "QA 최신 요청 승인 3",
+            "idempotency_key": "E2E-APPROVAL-PRJ-2026-F024B4-3",
+            "approval_request_id": 9,
+            "calculation_version": 3,
+            "input_snapshot_hash": "d34d7d0dee2a811f31336fa97bf1e3704a77f8e6c50f7d8b2d1d2cf3d504948a",
+            "invalidation_reason": "UPSTREAM_CHANGED"
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-final-db-evidence.json#requests/10",
+          "detail": {
+            "tenant_id": "TEST_COMPANY_001",
+            "decided_at": "2026-09-10T11:31:19.813165",
+            "decided_by": "qaapprove26",
+            "project_id": "PRJ-2026-F024B4",
+            "approver_id": "qaapprove26",
+            "requested_at": "2026-09-10T11:31:19.442961",
+            "requested_by": "qaowner26",
+            "submission_id": 533,
+            "calculation_id": 453,
+            "input_revision": 8,
+            "invalidated_at": "2026-09-10T11:31:20.380134",
+            "request_status": "INVALIDATED",
+            "decision_reason": "QA 최신 요청 승인 4",
+            "idempotency_key": "E2E-APPROVAL-PRJ-2026-F024B4-4",
+            "approval_request_id": 10,
+            "calculation_version": 4,
+            "input_snapshot_hash": "724dff0493c71a9acc29f5ffba94d7ad084227e554360ff9d041f98030484b84",
+            "invalidation_reason": "UPSTREAM_CHANGED"
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-final-db-evidence.json#requests/11",
+          "detail": {
+            "tenant_id": "TEST_COMPANY_001",
+            "decided_at": "2026-09-10T11:31:21.748154",
+            "decided_by": "qaapprove26",
+            "project_id": "PRJ-2026-F024B4",
+            "approver_id": "qaapprove26",
+            "requested_at": "2026-09-10T11:31:21.32568",
+            "requested_by": "qaowner26",
+            "submission_id": 534,
+            "calculation_id": 454,
+            "input_revision": 9,
+            "invalidated_at": "2026-09-10T11:52:30.970329",
+            "request_status": "INVALIDATED",
+            "decision_reason": "QA 최신 요청 승인 5",
+            "idempotency_key": "E2E-APPROVAL-PRJ-2026-F024B4-5",
+            "approval_request_id": 11,
+            "calculation_version": 5,
+            "input_snapshot_hash": "95a7872a59d7a8ff127147974581c0280b08dcf3506dc1f5099767896f51392c",
+            "invalidation_reason": "UPSTREAM_CHANGED"
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-final-db-evidence.json#requests/12",
+          "detail": {
+            "tenant_id": "TEST_COMPANY_001",
+            "decided_at": "2026-09-10T11:53:34.266177",
+            "decided_by": "qaapprove26",
+            "project_id": "PRJ-2026-F024B4",
+            "approver_id": "qaapprove26",
+            "requested_at": "2026-09-10T11:53:32.782282",
+            "requested_by": "qaowner26",
+            "submission_id": 535,
+            "calculation_id": 455,
+            "input_revision": 12,
+            "invalidated_at": null,
+            "request_status": "REJECTED",
+            "decision_reason": "QA UI 반려: 전력 사용량을 650으로 보완",
+            "idempotency_key": "APPROVAL-PRJ-2026-F024B4-12-535-455",
+            "approval_request_id": 12,
+            "calculation_version": 6,
+            "input_snapshot_hash": "f4aee6c7eaf007f060610031553c8fbb45905ed636fdbd6d567ef16167d8a24d",
+            "invalidation_reason": null
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-final-db-evidence.json#requests/15",
+          "detail": {
+            "tenant_id": "TEST_COMPANY_001",
+            "decided_at": "2026-09-10T12:05:39.154933",
+            "decided_by": "qaapprove26",
+            "project_id": "PRJ-2026-F024B4",
+            "approver_id": "qaapprove26",
+            "requested_at": "2026-09-10T12:05:37.43755",
+            "requested_by": "qaowner26",
+            "submission_id": 538,
+            "calculation_id": 458,
+            "input_revision": 13,
+            "invalidated_at": null,
+            "request_status": "APPROVED",
+            "decision_reason": "QA UI 최신 요청 승인",
+            "idempotency_key": "APPROVAL-PRJ-2026-F024B4-13-538-458",
+            "approval_request_id": 15,
+            "calculation_version": 7,
+            "input_snapshot_hash": "a8c3c4bc76f1dc802ea56772e2f55343ba86ff2f7253d213b74ffcb606bef65d",
+            "invalidation_reason": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "CC-03",
+      "status": "PASS",
+      "evidence": [
+        {
+          "pass": true,
+          "source": "acceptance-report.json#N5",
+          "detail": {
+            "id": "N5",
+            "name": "승인 중 상류 변경 무효화",
+            "label": "stale-request-decision-blocked-v3",
+            "status": "PASS",
+            "http": 409,
+            "evidence": "acceptance-relay.json#stale-request-decision-blocked-v3"
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-final-db-evidence.json#requests/11"
+        }
+      ]
+    },
+    {
+      "id": "CC-04",
+      "status": "PASS",
+      "evidence": [
+        {
+          "pass": true,
+          "source": "ui-final-db-evidence.json#requests",
+          "detail": {
+            "rejected": {
+              "tenant_id": "TEST_COMPANY_001",
+              "decided_at": "2026-09-10T11:53:34.266177",
+              "decided_by": "qaapprove26",
+              "project_id": "PRJ-2026-F024B4",
+              "approver_id": "qaapprove26",
+              "requested_at": "2026-09-10T11:53:32.782282",
+              "requested_by": "qaowner26",
+              "submission_id": 535,
+              "calculation_id": 455,
+              "input_revision": 12,
+              "invalidated_at": null,
+              "request_status": "REJECTED",
+              "decision_reason": "QA UI 반려: 전력 사용량을 650으로 보완",
+              "idempotency_key": "APPROVAL-PRJ-2026-F024B4-12-535-455",
+              "approval_request_id": 12,
+              "calculation_version": 6,
+              "input_snapshot_hash": "f4aee6c7eaf007f060610031553c8fbb45905ed636fdbd6d567ef16167d8a24d",
+              "invalidation_reason": null
+            },
+            "current": {
+              "tenant_id": "TEST_COMPANY_001",
+              "decided_at": "2026-09-10T12:05:39.154933",
+              "decided_by": "qaapprove26",
+              "project_id": "PRJ-2026-F024B4",
+              "approver_id": "qaapprove26",
+              "requested_at": "2026-09-10T12:05:37.43755",
+              "requested_by": "qaowner26",
+              "submission_id": 538,
+              "calculation_id": 458,
+              "input_revision": 13,
+              "invalidated_at": null,
+              "request_status": "APPROVED",
+              "decision_reason": "QA UI 최신 요청 승인",
+              "idempotency_key": "APPROVAL-PRJ-2026-F024B4-13-538-458",
+              "approval_request_id": 15,
+              "calculation_version": 7,
+              "input_snapshot_hash": "a8c3c4bc76f1dc802ea56772e2f55343ba86ff2f7253d213b74ffcb606bef65d",
+              "invalidation_reason": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "CC-05",
+      "status": "PASS",
+      "evidence": [
+        {
+          "pass": true,
+          "source": "acceptance-report.json#N6a",
+          "detail": {
+            "id": "N6a",
+            "name": "동일 키 중복 요청 멱등성",
+            "label": "same-key-request-idempotent",
+            "status": "PASS",
+            "http": 200,
+            "evidence": "acceptance-relay.json#same-key-request-idempotent"
+          }
+        },
+        {
+          "pass": true,
+          "source": "acceptance-report.json#N6b",
+          "detail": {
+            "id": "N6b",
+            "name": "다른 키 중복 요청 차단",
+            "label": "duplicate-new-key-request-blocked",
+            "status": "PASS",
+            "http": 409,
+            "evidence": "acceptance-relay.json#duplicate-new-key-request-blocked"
+          }
+        },
+        {
+          "pass": true,
+          "source": "acceptance-report.json#N6c",
+          "detail": {
+            "id": "N6c",
+            "name": "중복 승인 차단",
+            "label": "duplicate-approval-blocked-v5",
+            "status": "PASS",
+            "http": 409,
+            "evidence": "acceptance-relay.json#duplicate-approval-blocked-v5"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CC-06",
+      "status": "PASS",
+      "evidence": [
+        {
+          "pass": true,
+          "source": "ui-final-db-evidence.json#requests/current",
+          "detail": {
+            "tenant_id": "TEST_COMPANY_001",
+            "decided_at": "2026-09-10T12:05:39.154933",
+            "decided_by": "qaapprove26",
+            "project_id": "PRJ-2026-F024B4",
+            "approver_id": "qaapprove26",
+            "requested_at": "2026-09-10T12:05:37.43755",
+            "requested_by": "qaowner26",
+            "submission_id": 538,
+            "calculation_id": 458,
+            "input_revision": 13,
+            "invalidated_at": null,
+            "request_status": "APPROVED",
+            "decision_reason": "QA UI 최신 요청 승인",
+            "idempotency_key": "APPROVAL-PRJ-2026-F024B4-13-538-458",
+            "approval_request_id": 15,
+            "calculation_version": 7,
+            "input_snapshot_hash": "a8c3c4bc76f1dc802ea56772e2f55343ba86ff2f7253d213b74ffcb606bef65d",
+            "invalidation_reason": null
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-final-actors.json#negative",
+          "detail": {
+            "actor": "qadata26",
+            "requestId": 15,
+            "http": 403,
+            "body": {
+              "message": "ACTOR_NOT_AUTHORIZED:APPROVER"
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-final-actors.json#negative",
+          "detail": {
+            "actor": "qaapprove26",
+            "requestId": 15,
+            "http": 409,
+            "body": {
+              "message": "APPROVAL_REQUEST_NOT_CURRENT_PENDING"
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-final-actors.json#negative",
+          "detail": {
+            "actor": "qaapprove26",
+            "requestId": 12,
+            "http": 409,
+            "body": {
+              "message": "CURRENT_VERSION_CALCULATION_REQUIRED"
+            }
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-final-actors.json#negative",
+          "detail": {
+            "actor": "qaapprove26",
+            "requestId": 11,
+            "http": 409,
+            "body": {
+              "message": "CURRENT_VERSION_CALCULATION_REQUIRED"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "CC-07",
+      "status": "PASS",
+      "evidence": [
+        {
+          "pass": true,
+          "source": "acceptance-report.json#N1",
+          "detail": {
+            "id": "N1",
+            "name": "등록만으로 완료 금지",
+            "label": "unapproved-not-complete",
+            "status": "PASS",
+            "http": 200,
+            "evidence": "acceptance-relay.json#unapproved-not-complete"
+          }
+        },
+        {
+          "pass": true,
+          "source": "acceptance-report.json#N2",
+          "detail": {
+            "id": "N2",
+            "name": "과거 승인으로 현재 버전 완료 금지",
+            "label": "old-evidence-not-current-v4",
+            "status": "PASS",
+            "http": 200,
+            "evidence": "acceptance-relay.json#old-evidence-not-current-v4"
+          }
+        },
+        {
+          "pass": true,
+          "source": "acceptance-report.json#N3",
+          "detail": {
+            "id": "N3",
+            "name": "반려 요청 완료 금지",
+            "label": "rejected-not-complete",
+            "status": "PASS",
+            "http": 200,
+            "evidence": "acceptance-relay.json#rejected-not-complete"
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-final-db-evidence.json#current"
+        }
+      ]
+    },
+    {
+      "id": "CC-08",
+      "status": "PASS",
+      "evidence": [
+        {
+          "pass": true,
+          "source": "ui-final-actors.json#qaowner26",
+          "detail": {
+            "id": 10882,
+            "taskCode": "APPROVAL",
+            "stepOrder": 5,
+            "executionWave": 5,
+            "predecessorCodes": "VERIFICATION",
+            "projectId": "PRJ-2026-F024B4",
+            "projectName": "QA 현재버전 E2E 1789007476248",
+            "site": "서울 테스트 사업장",
+            "name": "검토·승인",
+            "type": null,
+            "status": "DONE",
+            "priority": "NORMAL",
+            "assignee": "qaapprove26",
+            "explicitlyAssigned": false,
+            "dueDate": "2026-12-13",
+            "targetUrl": "/emission/validate?tab=approval&projectId=PRJ-2026-F024B4",
+            "processCode": "EMISSION_PROJECT",
+            "processName": "탄소배출 프로젝트 수행",
+            "domainCode": "EMISSION",
+            "processStepCode": "EMISSION_PROJECT_APPROVE",
+            "actorCode": "APPROVER",
+            "completionRule": "권한 있는 승인자가 결과를 승인함",
+            "blockedReason": "다른 액터에게 배정된 단계입니다.",
+            "entryState": "VERIFIED",
+            "workPurpose": "승인권자가 검증 결과, 중요 오류, 예외와 책임 범위를 검토하여 승인·반려하고 승인 버전을 잠근다.",
+            "requiredInputs": "{\"required\": [\"projectId\", \"verificationId\", \"calculationId\", \"materialFindings\", \"approvalComment\"]}",
+            "expectedOutput": "{\"produces\": [\"approvalId\", \"decision\", \"lockedCalculationVersion\", \"approvedAt\", \"auditEventId\"]}",
+            "commandCode": "APPROVE",
+            "nextTaskName": "확정·보고",
+            "nextActorCode": "COMPANY_MANAGER",
+            "nextTaskUrl": "/emission/report_submit?projectId=PRJ-2026-F024B4",
+            "actionable": false,
+            "pendingPredecessors": "",
+            "inputRevision": 13,
+            "approvalRequestId": 15,
+            "approvalRequestStatus": "APPROVED",
+            "completionSatisfied": true,
+            "completionEvidence": "완료 조건을 충족한 업무 증적이 저장되어 있습니다.",
+            "actorActionable": false,
+            "canonicalSupportStatus": "INVALID",
+            "canonicalSupportReason": "PUBLISHED_SUPPORT_HASH_OR_LANE_INVALID"
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-final-actors.json#qadata26",
+          "detail": {
+            "id": 10882,
+            "taskCode": "APPROVAL",
+            "stepOrder": 5,
+            "executionWave": 5,
+            "predecessorCodes": "VERIFICATION",
+            "projectId": "PRJ-2026-F024B4",
+            "projectName": "QA 현재버전 E2E 1789007476248",
+            "site": "서울 테스트 사업장",
+            "name": "검토·승인",
+            "type": null,
+            "status": "DONE",
+            "priority": "NORMAL",
+            "assignee": "qaapprove26",
+            "explicitlyAssigned": false,
+            "dueDate": "2026-12-13",
+            "targetUrl": "/emission/validate?tab=approval&projectId=PRJ-2026-F024B4",
+            "processCode": "EMISSION_PROJECT",
+            "processName": "탄소배출 프로젝트 수행",
+            "domainCode": "EMISSION",
+            "processStepCode": "EMISSION_PROJECT_APPROVE",
+            "actorCode": "APPROVER",
+            "completionRule": "권한 있는 승인자가 결과를 승인함",
+            "blockedReason": "다른 액터에게 배정된 단계입니다.",
+            "entryState": "VERIFIED",
+            "workPurpose": "승인권자가 검증 결과, 중요 오류, 예외와 책임 범위를 검토하여 승인·반려하고 승인 버전을 잠근다.",
+            "requiredInputs": "{\"required\": [\"projectId\", \"verificationId\", \"calculationId\", \"materialFindings\", \"approvalComment\"]}",
+            "expectedOutput": "{\"produces\": [\"approvalId\", \"decision\", \"lockedCalculationVersion\", \"approvedAt\", \"auditEventId\"]}",
+            "commandCode": "APPROVE",
+            "nextTaskName": "확정·보고",
+            "nextActorCode": "COMPANY_MANAGER",
+            "nextTaskUrl": "/emission/report_submit?projectId=PRJ-2026-F024B4",
+            "actionable": false,
+            "pendingPredecessors": "",
+            "inputRevision": 13,
+            "approvalRequestId": 15,
+            "approvalRequestStatus": "APPROVED",
+            "completionSatisfied": true,
+            "completionEvidence": "완료 조건을 충족한 업무 증적이 저장되어 있습니다.",
+            "actorActionable": false,
+            "canonicalSupportStatus": "INVALID",
+            "canonicalSupportReason": "PUBLISHED_SUPPORT_HASH_OR_LANE_INVALID"
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-final-actors.json#qacalc26",
+          "detail": {
+            "id": 10882,
+            "taskCode": "APPROVAL",
+            "stepOrder": 5,
+            "executionWave": 5,
+            "predecessorCodes": "VERIFICATION",
+            "projectId": "PRJ-2026-F024B4",
+            "projectName": "QA 현재버전 E2E 1789007476248",
+            "site": "서울 테스트 사업장",
+            "name": "검토·승인",
+            "type": null,
+            "status": "DONE",
+            "priority": "NORMAL",
+            "assignee": "qaapprove26",
+            "explicitlyAssigned": false,
+            "dueDate": "2026-12-13",
+            "targetUrl": "/emission/validate?tab=approval&projectId=PRJ-2026-F024B4",
+            "processCode": "EMISSION_PROJECT",
+            "processName": "탄소배출 프로젝트 수행",
+            "domainCode": "EMISSION",
+            "processStepCode": "EMISSION_PROJECT_APPROVE",
+            "actorCode": "APPROVER",
+            "completionRule": "권한 있는 승인자가 결과를 승인함",
+            "blockedReason": "다른 액터에게 배정된 단계입니다.",
+            "entryState": "VERIFIED",
+            "workPurpose": "승인권자가 검증 결과, 중요 오류, 예외와 책임 범위를 검토하여 승인·반려하고 승인 버전을 잠근다.",
+            "requiredInputs": "{\"required\": [\"projectId\", \"verificationId\", \"calculationId\", \"materialFindings\", \"approvalComment\"]}",
+            "expectedOutput": "{\"produces\": [\"approvalId\", \"decision\", \"lockedCalculationVersion\", \"approvedAt\", \"auditEventId\"]}",
+            "commandCode": "APPROVE",
+            "nextTaskName": "확정·보고",
+            "nextActorCode": "COMPANY_MANAGER",
+            "nextTaskUrl": "/emission/report_submit?projectId=PRJ-2026-F024B4",
+            "actionable": false,
+            "pendingPredecessors": "",
+            "inputRevision": 13,
+            "approvalRequestId": 15,
+            "approvalRequestStatus": "APPROVED",
+            "completionSatisfied": true,
+            "completionEvidence": "완료 조건을 충족한 업무 증적이 저장되어 있습니다.",
+            "actorActionable": false,
+            "canonicalSupportStatus": "INVALID",
+            "canonicalSupportReason": "PUBLISHED_SUPPORT_HASH_OR_LANE_INVALID"
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-final-actors.json#qaverify26",
+          "detail": {
+            "id": 10882,
+            "taskCode": "APPROVAL",
+            "stepOrder": 5,
+            "executionWave": 5,
+            "predecessorCodes": "VERIFICATION",
+            "projectId": "PRJ-2026-F024B4",
+            "projectName": "QA 현재버전 E2E 1789007476248",
+            "site": "서울 테스트 사업장",
+            "name": "검토·승인",
+            "type": null,
+            "status": "DONE",
+            "priority": "NORMAL",
+            "assignee": "qaapprove26",
+            "explicitlyAssigned": false,
+            "dueDate": "2026-12-13",
+            "targetUrl": "/emission/validate?tab=approval&projectId=PRJ-2026-F024B4",
+            "processCode": "EMISSION_PROJECT",
+            "processName": "탄소배출 프로젝트 수행",
+            "domainCode": "EMISSION",
+            "processStepCode": "EMISSION_PROJECT_APPROVE",
+            "actorCode": "APPROVER",
+            "completionRule": "권한 있는 승인자가 결과를 승인함",
+            "blockedReason": "다른 액터에게 배정된 단계입니다.",
+            "entryState": "VERIFIED",
+            "workPurpose": "승인권자가 검증 결과, 중요 오류, 예외와 책임 범위를 검토하여 승인·반려하고 승인 버전을 잠근다.",
+            "requiredInputs": "{\"required\": [\"projectId\", \"verificationId\", \"calculationId\", \"materialFindings\", \"approvalComment\"]}",
+            "expectedOutput": "{\"produces\": [\"approvalId\", \"decision\", \"lockedCalculationVersion\", \"approvedAt\", \"auditEventId\"]}",
+            "commandCode": "APPROVE",
+            "nextTaskName": "확정·보고",
+            "nextActorCode": "COMPANY_MANAGER",
+            "nextTaskUrl": "/emission/report_submit?projectId=PRJ-2026-F024B4",
+            "actionable": false,
+            "pendingPredecessors": "",
+            "inputRevision": 13,
+            "approvalRequestId": 15,
+            "approvalRequestStatus": "APPROVED",
+            "completionSatisfied": true,
+            "completionEvidence": "완료 조건을 충족한 업무 증적이 저장되어 있습니다.",
+            "actorActionable": false,
+            "canonicalSupportStatus": "INVALID",
+            "canonicalSupportReason": "PUBLISHED_SUPPORT_HASH_OR_LANE_INVALID"
+          }
+        },
+        {
+          "pass": true,
+          "source": "ui-final-actors.json#qaapprove26",
+          "detail": {
+            "id": 10882,
+            "taskCode": "APPROVAL",
+            "stepOrder": 5,
+            "executionWave": 5,
+            "predecessorCodes": "VERIFICATION",
+            "projectId": "PRJ-2026-F024B4",
+            "projectName": "QA 현재버전 E2E 1789007476248",
+            "site": "서울 테스트 사업장",
+            "name": "검토·승인",
+            "type": null,
+            "status": "DONE",
+            "priority": "NORMAL",
+            "assignee": "qaapprove26",
+            "explicitlyAssigned": false,
+            "dueDate": "2026-12-13",
+            "targetUrl": "/emission/validate?tab=approval&projectId=PRJ-2026-F024B4",
+            "processCode": "EMISSION_PROJECT",
+            "processName": "탄소배출 프로젝트 수행",
+            "domainCode": "EMISSION",
+            "processStepCode": "EMISSION_PROJECT_APPROVE",
+            "actorCode": "APPROVER",
+            "completionRule": "권한 있는 승인자가 결과를 승인함",
+            "blockedReason": null,
+            "entryState": "VERIFIED",
+            "workPurpose": "승인권자가 검증 결과, 중요 오류, 예외와 책임 범위를 검토하여 승인·반려하고 승인 버전을 잠근다.",
+            "requiredInputs": "{\"required\": [\"projectId\", \"verificationId\", \"calculationId\", \"materialFindings\", \"approvalComment\"]}",
+            "expectedOutput": "{\"produces\": [\"approvalId\", \"decision\", \"lockedCalculationVersion\", \"approvedAt\", \"auditEventId\"]}",
+            "commandCode": "APPROVE",
+            "nextTaskName": "확정·보고",
+            "nextActorCode": "COMPANY_MANAGER",
+            "nextTaskUrl": "/emission/report_submit?projectId=PRJ-2026-F024B4",
+            "actionable": false,
+            "pendingPredecessors": "",
+            "inputRevision": 13,
+            "approvalRequestId": 15,
+            "approvalRequestStatus": "APPROVED",
+            "completionSatisfied": true,
+            "completionEvidence": "완료 조건을 충족한 업무 증적이 저장되어 있습니다.",
+            "actorActionable": true,
+            "canonicalSupportStatus": "INVALID",
+            "canonicalSupportReason": "PUBLISHED_SUPPORT_HASH_OR_LANE_INVALID"
+          }
+        }
+      ]
+    }
+  ],
+  "exclusions": [
+    "규제기관 실제 제출·수리와 다른 업무 프로세스는 이번 통과 범위가 아니다. 전체 프로젝트 complete=false는 정상이다.",
+    "첨부 증빙 교체·전역 계수 개정·다사업장 조합·동시 요청 경합은 추가 회귀 범위이다. 이번 입력량 수정·단일 사업장·순차 중복 실행 결과로 이를 통과 처리하지 않는다.",
+    "신규 생성부터 V5까지는 보존한 실제 계정 API 릴레이 증거이고, V5부터 반려·보완·V7 승인·보고서까지는 실제 화면 버튼 릴레이 증거이다."
+  ],
+  "elapsedSeconds": {
+    "baselineApi": 7.467,
+    "uiSession": 1097.268,
+    "finalScreens": 19.999,
+    "finalActors": 8.383
+  },
+  "reportId": 428,
+  "certificateId": "CER-2026-3513CD7D-27C"
+}

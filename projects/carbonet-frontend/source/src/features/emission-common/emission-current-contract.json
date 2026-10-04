@@ -1,0 +1,29 @@
+{
+  "version": "2026-09-10.1",
+  "processId": "EMISSION_PROJECT",
+  "name": "탄소배출 프로젝트 수행",
+  "completionRule": "과거 승인 존재 여부가 아니라 현재 유효 버전에 연결된 승인만 완료 근거로 인정한다.",
+  "identity": "projectId → inputRevision/dataRevision → submissionId → calculationId/version/hash → approvalRequestId → requestStatus → 잠금·보고 산출물",
+  "rules": [
+    {"id":"CC-01","text":"모든 단계는 같은 projectId와 현재 입력 버전을 사용한다."},
+    {"id":"CC-02","text":"승인 요청에는 제출 ID, 산정 ID·버전·해시와 입력 버전을 고정한다."},
+    {"id":"CC-03","text":"상류 입력이 바뀌면 대기·승인 요청은 INVALIDATED로 전환해 현재 완료 근거에서 제외한다. 반려 요청의 사유와 이력은 보존한다."},
+    {"id":"CC-04","text":"반려 요청과 사유·원버전은 보존하고 자료를 보완해 새 제출본을 만든다."},
+    {"id":"CC-05","text":"재신청은 새 요청 ID이다. 동일 키 재요청은 멱등 처리하고 중복 승인 실행은 차단한다."},
+    {"id":"CC-06","text":"지정된 결재자가 현재 PENDING 요청만 승인·반려한다. 다른 역할은 승인할 수 없다."},
+    {"id":"CC-07","text":"등록·저장 성공은 프로세스 완료가 아니다. 필수 6단계와 현재 승인·잠금·보고 산출물이 모두 필요하다."},
+    {"id":"CC-08","text":"신청자·결재자의 업무 목록, 길잡이, 상세와 후속 화면은 동일한 현재 요청을 참조한다."}
+  ],
+  "pages": [
+    {"path":"/emission/project/detail","name":"프로젝트 상세","step":"BASIC_INFO","actor":"COMPANY_MANAGER","input":"projectId","output":"현재 프로젝트·기간·사업장·입력 버전·업무 상태","action":"현재 프로젝트와 입력 버전을 확인한 뒤 활동자료 화면으로 이동한다."},
+    {"path":"/emission/activity-data","name":"활동자료 입력·품질검사·제출","step":"ACTIVITY_DATA","actor":"SITE_DATA_OWNER","input":"사업장·활동자료명·구분·월·활동량·단위·증빙 근거","output":"활동자료 ID·현재 데이터 리비전·새 제출 ID","action":"원천 자료를 저장하고 품질검사를 실행한다. 차단 오류를 보완한 뒤 전체 자료를 새 버전으로 제출한다."},
+    {"path":"/emission/data-request","name":"자료 요청·접수","step":"ACTIVITY_DATA","actor":"COMPANY_MANAGER","input":"현재 제출 ID·접수 또는 보완 사유","output":"요청별 ACCEPTED 또는 CORRECTION_REQUIRED","action":"현재 제출본을 검토한다. 모든 활성 요청을 접수해야 산정할 수 있다."},
+    {"path":"/emission/calculation","name":"배출계수 매핑·산정","step":"CALCULATION","actor":"CALCULATOR","input":"현재 접수 제출 ID·배출계수 결정","output":"현재 입력 버전의 산정 ID·버전·해시","action":"접수 자료의 계수·단위를 확인하고 산정 버전을 생성한다. 검증 화면으로 같은 프로젝트를 전달한다."},
+    {"path":"/emission/result","name":"산정 결과","step":"CALCULATION","actor":"CALCULATOR","input":"projectId·현재 산정 ID","output":"현재 산정 결과와 과거 비교 이력","action":"과거 산정 버전은 이력이다. 현재 승인 대상을 결과 ID와 해시로 대조한다."},
+    {"path":"/emission/validate","name":"검증·보완·승인·잠금","step":"APPROVAL","actor":"VERIFIER → COMPANY_MANAGER → APPROVER","input":"현재 제출 ID·산정 ID·입력 버전·결재자·검토 의견","output":"VERIFIED → PENDING → REJECTED 또는 APPROVED → LOCKED","action":"검증자가 검증을 통과시키면 신청자가 결재자를 선택해 승인 요청한다. 결재자는 같은 최신 요청을 반려 또는 승인한다. 반려 시 원천자료 보완·재제출·재산정·재검증 후 새 요청을 만든다. 승인 후 결과를 잠근다."},
+    {"path":"/emission/report_submit","name":"보고서 확정·인증서 발급","step":"REPORT","actor":"CALCULATOR → VERIFIER → APPROVER","input":"현재 승인·잠금 산정 ID·보고서 제목·요약","output":"현재 산정에 연결된 보고서 ID·인증서 ID","action":"산정 담당자가 보고서 초안을 생성하고 검증자가 확정한 뒤 결재자가 인증서를 발급한다. 별도 규제기관 제출까지 자동 완료하지 않는다."}
+  ],
+  "qa": ["저장만으로 완료되지 않음","과거 승인으로 최신 버전 완료 불가","반려 상태는 미완료","재신청의 새 요청 ID 확인","승인 중 상류 변경 시 이전 요청 무효화","중복 요청·승인 차단","무권한 승인 차단","신청자·결재자·후속 화면의 현재 ID/버전/상태 일치"],
+  "referenceAcceptance": {"projectId":"PRJ-2026-F024B4","inputRevision":13,"submissionId":538,"calculationId":458,"approvalRequestId":15,"reportId":428},
+  "gate": "E2E_VERIFIED"
+}

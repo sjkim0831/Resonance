@@ -1,0 +1,63 @@
+{
+  "capturedAt": "2026-09-22T08:41:55.611256+00:00",
+  "source": "/opt/Resonance/projects/P006/frontend/equipment-registry/p006-asset-motion-connection-registry.json",
+  "rows": [
+    {
+      "sourceAssetId": "A393",
+      "targetAssetId": "E056",
+      "relationshipType": "connectionProducts",
+      "status": "CANDIDATE",
+      "provenance": "집진 계통의 전파 차단 검토"
+    },
+    {
+      "sourceAssetId": "A393",
+      "targetAssetId": "A004",
+      "relationshipType": "connectionProducts",
+      "status": "CANDIDATE",
+      "provenance": "압력 방출과 격리의 시스템 구성 검토"
+    },
+    {
+      "sourceAssetId": "E001",
+      "targetAssetId": "E034",
+      "relationshipType": "connectionProducts",
+      "status": "CANDIDATE",
+      "provenance": "기존 Wave 0 후보: 소재 공급 물류 관계만 확인되며 Port 계약은 확인되지 않음"
+    },
+    {
+      "sourceAssetId": "E001",
+      "targetAssetId": "E075",
+      "relationshipType": "connectionProducts",
+      "status": "CANDIDATE",
+      "provenance": "기존 Wave 0 후보: 트리밍 잔재 회수 관계만 확인되며 Port 계약은 확인되지 않음"
+    },
+    {
+      "sourceAssetId": "E056",
+      "targetAssetId": null,
+      "relationshipType": "connectionProducts",
+      "status": "TYPE_ONLY",
+      "provenance": "Port type contract is verified, but a specific Catalog target with a verified reciprocal physical Port is not established."
+    },
+    {
+      "sourceAssetId": "E056",
+      "targetAssetId": null,
+      "relationshipType": "connectionProducts",
+      "status": "CANDIDATE",
+      "provenance": "Existing Wave 0 relationship candidate; not a physical Port connection."
+    },
+    {
+      "sourceAssetId": "E056",
+      "targetAssetId": null,
+      "relationshipType": "intermediate",
+      "status": "LOGICAL_VERIFIED_PHYSICAL_PENDING",
+      "provenance": "E056 INLET logical contract; reciprocal target Asset ID and physical anchor are not verified."
+    },
+    {
+      "sourceAssetId": "E056",
+      "targetAssetId": null,
+      "relationshipType": "intermediate",
+      "status": "LOGICAL_VERIFIED_PHYSICAL_PENDING",
+      "provenance": "E056 OUTLET logical contract; reciprocal target Asset ID and physical anchor are not verified."
+    }
+  ],
+  "sha256": "1f3997b4a8a113d438a516ebff369aec2daade27c78d0c054bc86b292a373095"
+}

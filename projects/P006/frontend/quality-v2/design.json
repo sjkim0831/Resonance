@@ -1,0 +1,68 @@
+{
+  "version": "P006-REFERENCE-FACTORY-1.0",
+  "baselineCount": 724,
+  "scope": "REFERENCE_LAYOUT",
+  "sizeBasis": "버전과 해시로 고정한 프로젝트 기준 설계. 실물 제조사 치수나 현장 안전 인증이 아님.",
+  "realGate": "UNBOUND",
+  "scoreWeights": [20,15,15,15,10,10,5,10],
+  "criteria": ["범용 사용", "공정 재사용", "배치 기준", "물류 연결", "공간/안전 영향", "제어 연결", "부모/기준", "E2E 단절 영향"],
+  "profiles": {
+    "BUILD":[5,5,5,3,5,1,5,4],"RECEIVE":[5,4,3,5,4,4,2,5],"STORE":[5,5,4,5,4,2,3,5],
+    "CONVEY":[5,5,4,5,4,4,4,5],"AGV":[3,5,3,5,5,5,3,4],"MACHINE":[3,3,3,2,4,5,3,3],
+    "SHEET":[2,3,3,2,4,5,3,3],"CAST":[2,2,4,3,5,5,4,3],"JOIN":[3,4,3,3,4,5,3,4],
+    "HEAT":[2,3,3,3,5,5,3,3],"SURFACE":[3,4,3,3,5,4,3,3],"POLY":[2,2,3,3,4,5,3,3],
+    "ASSEMBLY":[5,5,4,5,4,4,4,5],"METROLOGY":[5,5,3,4,3,4,2,5],"PACK":[5,5,3,5,3,4,3,5],
+    "ROBOT":[3,4,3,4,5,5,3,4],"POWER":[4,5,2,2,4,5,4,3],"AIR":[4,5,2,2,4,5,4,3],
+    "HYD":[3,4,2,2,5,5,4,3],"PIPE":[4,5,4,4,5,4,4,4],"ELEC":[5,5,4,3,5,5,5,5],
+    "NET":[5,5,3,4,4,5,5,5],"SENSE":[5,5,2,4,4,5,3,5],"UTIL":[5,5,4,4,5,4,5,5],
+    "ENV":[4,4,4,3,5,4,3,4],"SAFE":[5,5,5,4,5,5,4,5],"MAINT":[4,5,2,2,4,3,2,3],
+    "QUALITY":[3,4,2,2,3,3,2,3],"WORKER":[5,5,3,4,4,3,3,4],"TOOL":[3,4,2,2,4,4,3,3],
+    "SEMI":[1,2,3,3,4,5,3,2],"BAT":[1,2,3,3,5,5,3,2],"FOOD":[2,3,3,3,5,4,3,2]
+  },
+  "overrides": {
+    "E023":[5,5,5,5,5,1,5,5],"E024":[5,5,5,3,5,1,5,4],"E025":[5,5,4,5,5,2,3,5],
+    "E030":[5,5,5,5,5,1,5,5],"E031":[5,5,4,4,5,2,3,5],"E032":[5,5,4,5,4,3,4,5],
+    "E033":[5,5,4,5,4,2,4,5],"E034":[5,5,4,5,4,5,4,5],"E053":[5,5,3,5,3,3,3,5],
+    "E075":[5,5,2,5,4,1,2,5]
+  },
+  "core": [
+    {"id":"E023","family":"slab","dimensions":[20,0.12,12],"variant":"foundation","role":"공장 바닥","portsApplicable":false},
+    {"id":"E024","family":"panel","dimensions":[20,2.4,0.12],"variant":"wall","role":"외곽 벽","portsApplicable":false},
+    {"id":"E025","family":"panel","dimensions":[1.4,2.2,0.12],"variant":"door","role":"출입 개구 경계","portsApplicable":false},
+    {"id":"E030","family":"slab","dimensions":[16,0.004,1.5],"variant":"aisle","role":"작업자 이송 통로","portsApplicable":false},
+    {"id":"E031","family":"panel","dimensions":[2,1.8,0.08],"variant":"fence","role":"경계 가드","portsApplicable":false},
+    {"id":"E032","family":"frame","dimensions":[1.2,0.8,0.75],"variant":"workbench","role":"수동 조립·재작업·포장","portsApplicable":true},
+    {"id":"E033","family":"frame","dimensions":[1.2,1.8,0.6],"variant":"rack","role":"원료·완제품 보관","portsApplicable":true},
+    {"id":"E034","family":"roller","dimensions":[3.048,0.8,0.71],"variant":"gravity","role":"수동/중력 보조 이송","portsApplicable":true},
+    {"id":"E053","family":"frame","dimensions":[1.2,0.8,0.75],"variant":"inspection","role":"수동 검사 판정","portsApplicable":true},
+    {"id":"E075","family":"container","dimensions":[0.8,0.7,0.6],"variant":"scrap","role":"불량 폐기 인계","portsApplicable":true}
+  ],
+  "instances": [
+    {"name":"floor","asset":"E023","xyz":[0,0,0],"yaw":0},
+    {"name":"backwall","asset":"E024","xyz":[0,0.12,-5.9],"yaw":0},
+    {"name":"entrance","asset":"E025","xyz":[-8,0.12,5.8],"yaw":0},
+    {"name":"aisle","asset":"E030","xyz":[0,0.12,0.5],"yaw":0},
+    {"name":"guard","asset":"E031","xyz":[-2,0.12,-4.7],"yaw":0},
+    {"name":"receiving","asset":"E033","xyz":[-7,0.12,-2],"yaw":0},
+    {"name":"transfer","asset":"E034","xyz":[-4,0.12,-2],"yaw":0},
+    {"name":"assembly","asset":"E032","xyz":[-1,0.12,-2],"yaw":0},
+    {"name":"inspection","asset":"E053","xyz":[1.5,0.12,-2],"yaw":0},
+    {"name":"packing","asset":"E032","xyz":[4,0.12,-2],"yaw":0},
+    {"name":"shipping","asset":"E033","xyz":[7,0.12,-2],"yaw":0},
+    {"name":"rework","asset":"E032","xyz":[1.5,0.12,3],"yaw":0},
+    {"name":"scrap","asset":"E075","xyz":[4,0.12,3],"yaw":0}
+  ],
+  "routes": {
+    "PASS":["receiving","transfer","assembly","inspection","packing","shipping"],
+    "REWORK_PASS":["receiving","transfer","assembly","inspection","rework","inspection","packing","shipping"],
+    "SCRAP":["receiving","transfer","assembly","inspection","scrap"]
+  },
+  "workpieceDimensions":[0.2,0.05,0.15],
+  "movementMode":"SIMULATED_OPERATOR_TRANSFER_KINEMATIC",
+  "clearanceMeters":0.8,
+  "clearanceBasis":"프로젝트 배치 시험 조건; 법규 안전거리 인증이 아님",
+  "sources":[
+    {"url":"https://www.dornerconveyors.com/products/2200-series/2200-gravity-roller","scope":"롤러 이송 폭 610mm, 길이 구성 및 롤러 직경 참고. 전체 프레임 폭 710mm와 받침 높이 800mm는 자체 기준 설계."},
+    {"url":"https://www.boschrexroth.com/en/us/products/product-groups/assembly-technology/topics/manual-production-systems/ergonomics","scope":"작업면 높이를 작업과 작업자 조건에 맞춰야 한다는 설계 참고. 본 테이블 치수는 제조사 모델 실측값이 아님."}
+  ]
+}

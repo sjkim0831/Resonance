@@ -1,0 +1,38 @@
+[
+  {
+    "command": [
+      "/home/sjkim/.local/bin/pnpm",
+      "--version"
+    ],
+    "code": 0,
+    "stdout": "11.9.0\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "/home/sjkim/.local/bin/python3.11",
+      "--version"
+    ],
+    "code": 0,
+    "stdout": "Python 3.11.15\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "/home/sjkim/.local/bin/python3.12",
+      "--version"
+    ],
+    "code": 0,
+    "stdout": "Python 3.12.13\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "/home/sjkim/.local/bin/nvim",
+      "--version"
+    ],
+    "code": 0,
+    "stdout": "NVIM v0.12.3\nBuild type: Release\nLuaJIT 2.1.1774638290\nRun \"nvim -V1 -v\" for more info\n",
+    "stderr": ""
+  }
+]

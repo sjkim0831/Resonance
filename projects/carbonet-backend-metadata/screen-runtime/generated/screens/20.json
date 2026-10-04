@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 20,
+  "blueprintCode": "BP_ADOPT_3BEF722BE1B8315CA642",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_3BEF722BE1B8315CA642"
+  },
+  "route": "/admin/content/qna",
+  "pageName": "문의 관리",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1080301",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "dfc52d34c241da865ddb1e03cebaaf1f2a86a07ad831d2cb55b57a31addf682e",
+  "artifactHash": "dbf7d95d267cb4ba44e0c1594d3e15faf35bace243a9261e94a9d143d0b625b5"
+}

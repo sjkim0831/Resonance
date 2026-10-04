@@ -2,6 +2,7 @@ import { FormEvent, lazy, ReactNode, Suspense, useCallback, useEffect, useMemo, 
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
+import { WorkflowDefinitionComparison } from "./WorkflowDefinitionComparison";
 const DeliveryControlPanel = lazy(() => import("./DeliveryControlPanel").then(module => ({ default: module.DeliveryControlPanel })));
 const ProcessDesignMap = lazy(() => import("./ProcessDesignMap").then(module => ({ default: module.ProcessDesignMap })));
 const ProfessionalDesignCanvas = lazy(() => import("./ProfessionalDesignCanvas").then(module => ({ default: module.ProfessionalDesignCanvas })));
@@ -30,9 +31,9 @@ type WorkspaceTab = { id:string; label:string };
 type WorkspaceDefinition = { id:WorkspaceId; label:string; description:string; tabs:WorkspaceTab[] };
 const WORKSPACES:WorkspaceDefinition[] = [
   { id:"operate", label:"업무 운영", description:"업무 종류와 액터를 선택하고 전체 흐름, 현재 단계, 업무 길잡이와 실제 실행 화면을 함께 관리합니다.", tabs:[
-    {id:"work-dashboard",label:"업무 운영 지도"},{id:"work-completion",label:"완료·개발 현황"},{id:"process-map",label:"전체 프로세스 설계도"},{id:"execution",label:"종단간 업무 실행"},
+    {id:"workflow-reference",label:"전체 업무 대조"},{id:"work-dashboard",label:"업무 운영 지도"},{id:"work-completion",label:"완료·개발 현황"},{id:"process-map",label:"전체 프로세스 설계도"},{id:"execution",label:"종단간 업무 실행"},
     {id:"work-types",label:"업무 종류"},{id:"actors",label:"액터"},{id:"assignments",label:"계정 배정"},
-    {id:"account-readiness",label:"액터 계정 검증"},{id:"processes",label:"프로세스"},{id:"steps",label:"단계"}
+    {id:"account-readiness",label:"액터 계정 검증"},{id:"processes",label:"프로세스 관리"},{id:"steps",label:"절차 관리"}
   ]},
   { id:"design", label:"설계", description:"프로세스·화면·필드·메뉴·공통 기능 계약을 하나의 설계 원본으로 관리하고 생성 결과를 확인합니다.", tabs:[
     {id:"business-ledger",label:"업무 설계 원장"},{id:"vertical-screen-map",label:"전체 화면 세로 지도"},{id:"screen-flow-canvas",label:"전체 화면 순서도"},{id:"common-centered-canvas",label:"공통 중심 시스템 지도"},{id:"process-archetypes",label:"프로세스 원형 60"},{id:"design-canvas",label:"전체 화면 캔버스"},{id:"professional",label:"전문가 준비도"},{id:"page-fields",label:"페이지·컬럼 설계"},
@@ -52,7 +53,7 @@ export function ActorProcessGovernancePage() {
   const en = isEnglish();
   const base = buildLocalizedPath("/admin/api/system/actor-process", "/en/admin/api/system/actor-process");
   const [data, setData] = useState<Payload & AssurancePayload & DeliveryPayload>(empty);
-  const [tab, setTab] = useState(() => new URLSearchParams(location.search).get("tab") || "work-dashboard");
+  const [tab, setTab] = useState(() => new URLSearchParams(location.search).get("tab") || "workflow-reference");
   const [processFilter, setProcessFilter] = useState(() => new URLSearchParams(location.search).get("process") || "");
   const [preflightProcess,setPreflightProcess]=useState("");
   const [preflightStep,setPreflightStep]=useState("");
@@ -133,7 +134,8 @@ export function ActorProcessGovernancePage() {
   const screenSpaceSize=useMemo(()=>Object.values(screenSpaceDimensions).reduce((total,count)=>total*BigInt(count),1n).toLocaleString("ko-KR"),[screenSpaceDimensions]);
 
   return <AdminPageShell breadcrumbs={[{ label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") }, { label: en ? "System" : "시스템 관리" }, { label: en ? "Actor & Process" : "액터·프로세스 관리" }]} title={en ? "Actor & Process Governance" : "액터·프로세스 관리"}>
-    <GovernanceCompressionNav activeId="actor-process" en={en} />
+    <GovernanceCompressionNav activeId={tab === "processes" ? "process-management" : tab === "steps" ? "step-management" : tab === "workflow-reference" ? "workflow-reference" : "actor-process"} en={en} />
+    {tab === "workflow-reference" && <WorkflowDefinitionComparison />}
     <Suspense fallback={<div className="rounded-2xl border border-blue-100 bg-blue-50 p-6 font-bold text-blue-900">업무 작업공간을 불러오는 중입니다.</div>}>
     <div className="space-y-5">
       <section className="rounded-2xl bg-gradient-to-r from-[#052b57] to-[#174ea6] p-6 text-white shadow-sm">

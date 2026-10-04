@@ -1,0 +1,86 @@
+{
+  "tests": [
+    {
+      "name": "OPEN_DROPDOWN_SELECTED",
+      "pass": true
+    },
+    {
+      "name": "ENGLISH_SEARCH_EXISTING_TRANSLATION",
+      "pass": true
+    },
+    {
+      "name": "ALL724_RESTORED_BROWSER",
+      "pass": true
+    },
+    {
+      "name": "RESAVE_VERSION_2",
+      "pass": true
+    },
+    {
+      "name": "TWO_TAB_CONFLICT_VISIBLE",
+      "pass": true
+    },
+    {
+      "name": "CONFLICT_LOCAL_WORK_PRESERVED",
+      "pass": true
+    },
+    {
+      "name": "CONFLICT_DIRTY_RETAINED",
+      "pass": true
+    },
+    {
+      "name": "TWO_TAB_DB_NOT_OVERWRITTEN",
+      "pass": true
+    },
+    {
+      "name": "PUBLIC_TAMPER_ENTRY_409",
+      "pass": true
+    },
+    {
+      "name": "PUBLIC_NEGATIVE_SCALE_400",
+      "pass": true
+    },
+    {
+      "name": "RESAVE_RELOAD_4_INSTANCES",
+      "pass": true
+    },
+    {
+      "name": "FLOOR_EXACT_PARAMS",
+      "pass": true
+    },
+    {
+      "name": "GUIDANCE_DESIGN_QA_NEXT",
+      "pass": true
+    },
+    {
+      "name": "NEW_LAYOUT_NOT_OLD_SCENE",
+      "pass": true
+    },
+    {
+      "name": "EXPLICIT_REOPEN_FULL_RESTORE",
+      "pass": true
+    },
+    {
+      "name": "FINAL_MOBILE_NO_OVERFLOW",
+      "pass": true
+    }
+  ],
+  "mocked": false,
+  "layoutId": "b327100a-6ad1-4011-9d8d-1a4c973e65eb",
+  "steps": [
+    {
+      "action": "기존 QA Layout 이름 수정 → 재저장",
+      "input": "검증용 공장 배치 · 바닥·벽·설비 2종",
+      "output": "version 2"
+    },
+    {
+      "action": "2번째 탭의 v1 저장 시도",
+      "output": "409 UI 표시, 로컬 편집 유지, DB v2 보존"
+    }
+  ],
+  "equipmentAssetWrites": 0,
+  "layoutWrites": 1,
+  "url": "http://172.16.1.232/projects/P006/assets/equipment-registry/composer.html?layout=b327100a-6ad1-4011-9d8d-1a4c973e65eb",
+  "seconds": 15.33,
+  "passed": 16
+}

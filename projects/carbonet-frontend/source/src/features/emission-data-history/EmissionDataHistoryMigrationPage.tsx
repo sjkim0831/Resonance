@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -268,7 +269,7 @@ export function EmissionDataHistoryMigrationPage() {
           icon="history"
           title={en ? "History Filter" : "이력 조회 조건"}
         >
-          <form className="grid grid-cols-1 gap-6 md:grid-cols-4" onSubmit={(event) => {
+          <form className="ccus-search-host" onSubmit={(event) => {
             event.preventDefault();
             logGovernanceScope("ACTION", "emission-data-history-search", {
               searchKeyword: draft.searchKeyword,
@@ -276,8 +277,15 @@ export function EmissionDataHistoryMigrationPage() {
               changeTarget: draft.changeTarget
             });
             setFilters({ ...draft, pageIndex: 1 });
-          }}>
-            <div>
+          }}><CommonSearchSection basic={<><div className="ccus-search-field"><div className="md:col-span-2">
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="searchKeyword">{en ? "Keyword" : "검색어"}</label>
+              <div className="flex gap-2">
+                <AdminInput className="flex-1" id="searchKeyword" placeholder={en ? "Search by project, site, user, or change value" : "프로젝트명, 배출지명, 작업자, 변경값 검색"} value={draft.searchKeyword} onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))} />
+                
+                
+              </div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="changeType">{en ? "Change Type" : "변경 유형"}</label>
               <AdminSelect id="changeType" value={draft.changeType} onChange={(event) => setDraft((current) => ({ ...current, changeType: event.target.value }))}>
                 {changeTypeOptions.map((option, index) => (
@@ -286,8 +294,7 @@ export function EmissionDataHistoryMigrationPage() {
                   </option>
                 ))}
               </AdminSelect>
-            </div>
-            <div>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="changeTarget">{en ? "Target Field" : "대상 항목"}</label>
               <AdminSelect id="changeTarget" value={draft.changeTarget} onChange={(event) => setDraft((current) => ({ ...current, changeTarget: event.target.value }))}>
                 {changeTargetOptions.map((option, index) => (
@@ -296,25 +303,8 @@ export function EmissionDataHistoryMigrationPage() {
                   </option>
                 ))}
               </AdminSelect>
-            </div>
-            <div className="md:col-span-2">
-              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="searchKeyword">{en ? "Keyword" : "검색어"}</label>
-              <div className="flex gap-2">
-                <AdminInput className="flex-1" id="searchKeyword" placeholder={en ? "Search by project, site, user, or change value" : "프로젝트명, 배출지명, 작업자, 변경값 검색"} value={draft.searchKeyword} onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))} />
-                <button className="gov-btn gov-btn-primary" type="submit">{en ? "Search" : "검색"}</button>
-                <button
-                  className="gov-btn gov-btn-secondary"
-                  type="button"
-                  onClick={() => {
-                    setDraft(DEFAULT_FILTERS);
-                    setFilters(DEFAULT_FILTERS);
-                  }}
-                >
-                  {en ? "Reset" : "초기화"}
-                </button>
-              </div>
-            </div>
-            <div className="md:col-span-4">
+            </div></div>
+<div className="ccus-search-field"><div className="md:col-span-4">
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="resultId">{en ? "Emission Result ID" : "산정 결과 ID"}</label>
               <div className="flex flex-col gap-2 md:flex-row">
                 <AdminInput className="flex-1" id="resultId" placeholder={en ? "Scope audit rows to a result ID" : "특정 산정 결과 ID로 감사 이력 좁히기"} value={draft.resultId} onChange={(event) => setDraft((current) => ({ ...current, resultId: event.target.value }))} />
@@ -324,8 +314,17 @@ export function EmissionDataHistoryMigrationPage() {
                   </a>
                 ) : null}
               </div>
-            </div>
-          </form>
+            </div></div></>} actions={<><button
+                  className="gov-btn gov-btn-secondary"
+                  type="button"
+                  onClick={() => {
+                    setDraft(DEFAULT_FILTERS);
+                    setFilters(DEFAULT_FILTERS);
+                  }}
+                >
+                  {en ? "Reset" : "초기화"}
+                </button>
+<button className="gov-btn gov-btn-primary" type="submit">{en ? "Search" : "검색"}</button></>}></CommonSearchSection></form>
         </CollectionResultPanel>
 
         {!isDefaultFilters(filters) ? (

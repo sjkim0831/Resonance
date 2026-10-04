@@ -1,0 +1,32 @@
+{
+  "assetId": "N142",
+  "assetName": "델타 로봇",
+  "representationType": "VISUAL_ARTICULATED_ROBOT",
+  "motionSource": "VISUAL_FUNCTIONAL_SIMULATION",
+  "manufacturerVerified": false,
+  "kinematicsVerified": false,
+  "sourceGLB": "/projects/P006/assets/functional-simulation/derived-mechanical-53/N142.glb",
+  "derivedGLB": "/projects/P006/assets/functional-simulation/robot-articulated-9/N142.glb",
+  "tool": "weldingTool",
+  "jointHierarchy": [
+    "robotRoot",
+    "base",
+    "shoulder",
+    "elbow",
+    "wrist",
+    "weldingTool"
+  ],
+  "jointCount": 5,
+  "animatedJointCount": 4,
+  "sequenceType": "PICK_AND_PLACE",
+  "sequencePoses": [
+    "HOME",
+    "APPROACH",
+    "PICK",
+    "LIFT",
+    "TRANSFER",
+    "PLACE",
+    "RETRACT",
+    "HOME"
+  ]
+}

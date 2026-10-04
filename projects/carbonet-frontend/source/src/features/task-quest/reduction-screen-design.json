@@ -1,0 +1,598 @@
+{
+  "groups": [
+    {
+      "id": "REDUCTION_TARGET_PLANNING",
+      "flow": "기준연도 → 감축 목표 → 조직·사업장 목표 → 감축 목표 관리 (공유 화면)",
+      "legacy": [
+        {
+          "stepCode": "REDUCTION_TARGET_PLANNING_S1",
+          "path": "/generated/reduction-target-planning/reduction-target-planning-s1",
+          "adminPath": "/admin/generated/reduction-target-planning/reduction-target-planning-s1",
+          "name": "감축 목표·기준연도 설정 - 요청·범위·필수정보 확인"
+        },
+        {
+          "stepCode": "REDUCTION_TARGET_PLANNING_S2",
+          "path": "/generated/reduction-target-planning/reduction-target-planning-s2",
+          "adminPath": "/admin/generated/reduction-target-planning/reduction-target-planning-s2",
+          "name": "감축 목표·기준연도 설정 - 업무 실행·중간 결과 저장"
+        },
+        {
+          "stepCode": "REDUCTION_TARGET_PLANNING_S3",
+          "path": "/generated/reduction-target-planning/reduction-target-planning-s3",
+          "adminPath": "/admin/generated/reduction-target-planning/reduction-target-planning-s3",
+          "name": "감축 목표·기준연도 설정 - 독립 검토·보완·권한 검증"
+        },
+        {
+          "stepCode": "REDUCTION_TARGET_PLANNING_S4",
+          "path": "/generated/reduction-target-planning/reduction-target-planning-s4",
+          "adminPath": "/admin/generated/reduction-target-planning/reduction-target-planning-s4",
+          "name": "감축 목표·기준연도 설정 - 승인·확정·통지·후속업무 연결"
+        }
+      ],
+      "name": "기준선·감축 목표 설정",
+      "pages": [
+        {
+          "status": "페이지 존재 · 저장/인계 미검증",
+          "actor": "COMPANY_MANAGER",
+          "description": "기준선 선택 · 완전성 검증 · 기준선 잠금",
+          "path": "/reduction/baseline-year",
+          "name": "기준연도",
+          "inputs": [
+            "기준연도",
+            "기준 배출량",
+            "근거 자료"
+          ],
+          "outputs": [
+            "확정 기준선"
+          ]
+        },
+        {
+          "status": "페이지 존재 · 저장/인계 미검증",
+          "actor": "COMPANY_MANAGER",
+          "description": "목표 등록 · 단위·기간 검증 · 초안 저장",
+          "path": "/reduction/target",
+          "name": "감축 목표",
+          "inputs": [
+            "기준 범위",
+            "목표연도",
+            "목표 감축량"
+          ],
+          "outputs": [
+            "감축 목표안"
+          ]
+        },
+        {
+          "status": "페이지 존재 · 저장/인계 미검증",
+          "actor": "COMPANY_MANAGER",
+          "description": "목표 배분 · 합계 검증 · 책임자 지정",
+          "path": "/reduction/site-target",
+          "name": "조직·사업장 목표",
+          "inputs": [
+            "조직 목록",
+            "사업장 배출량",
+            "전체 목표"
+          ],
+          "outputs": [
+            "조직·사업장 목표"
+          ]
+        },
+        {
+          "actor": "관리자 · 기능 일치 확인 필요",
+          "path": "/admin/emission/definition-studio",
+          "description": "관리자 메뉴의 현재 연결 경로. 감축 전용 기능 여부 미검증",
+          "name": "감축 목표 관리 (공유 화면)",
+          "status": "메뉴 별칭 · 탄소배출 공통 화면"
+        }
+      ]
+    },
+    {
+      "id": "REDUCTION_SCENARIO",
+      "flow": "감축 수단 분석 → 비용 대비 효과 → 한계감축비용 → 감축 시나리오 → 감축 전략 시뮬레이션 → 시나리오 관리 (공유 화면) → 감축계수·산정 기준 (공유 화면)",
+      "legacy": [
+        {
+          "stepCode": "REDUCTION_SCENARIO_S1",
+          "path": "/generated/reduction-scenario/reduction-scenario-s1",
+          "adminPath": "/admin/generated/reduction-scenario/reduction-scenario-s1",
+          "name": "감축 시나리오 비교 - 요청·범위·필수정보 확인"
+        },
+        {
+          "stepCode": "REDUCTION_SCENARIO_S2",
+          "path": "/generated/reduction-scenario/reduction-scenario-s2",
+          "adminPath": "/admin/generated/reduction-scenario/reduction-scenario-s2",
+          "name": "감축 시나리오 비교 - 업무 실행·중간 결과 저장"
+        },
+        {
+          "stepCode": "REDUCTION_SCENARIO_S3",
+          "path": "/generated/reduction-scenario/reduction-scenario-s3",
+          "adminPath": "/admin/generated/reduction-scenario/reduction-scenario-s3",
+          "name": "감축 시나리오 비교 - 독립 검토·보완·권한 검증"
+        },
+        {
+          "stepCode": "REDUCTION_SCENARIO_S4",
+          "path": "/generated/reduction-scenario/reduction-scenario-s4",
+          "adminPath": "/admin/generated/reduction-scenario/reduction-scenario-s4",
+          "name": "감축 시나리오 비교 - 승인·확정·통지·후속업무 연결"
+        }
+      ],
+      "name": "감축 수단·시나리오 비교",
+      "pages": [
+        {
+          "status": "페이지 존재 · 저장/인계 미검증",
+          "actor": "CALCULATOR",
+          "description": "수단 비교 · 시나리오 분석 · 위험 평가",
+          "path": "/reduction/measures",
+          "name": "감축 수단 분석",
+          "inputs": [
+            "감축 수단",
+            "적용성",
+            "위험",
+            "비용"
+          ],
+          "outputs": [
+            "감축 수단 후보"
+          ]
+        },
+        {
+          "status": "페이지 존재 · 저장/인계 미검증",
+          "actor": "CALCULATOR",
+          "description": "tCO2e당 비용 계산 · 회수기간 계산 · 비교",
+          "path": "/reduction/cost-effectiveness",
+          "name": "비용 대비 효과",
+          "inputs": [
+            "투자비",
+            "운영비",
+            "감축량"
+          ],
+          "outputs": [
+            "비용효과 분석"
+          ]
+        },
+        {
+          "status": "페이지 존재 · 저장/인계 미검증",
+          "actor": "CALCULATOR",
+          "description": "MAC 계산 · 곡선 생성 · 민감도 분석",
+          "path": "/reduction/mac",
+          "name": "한계감축비용",
+          "inputs": [
+            "수단별 비용",
+            "수단별 감축량"
+          ],
+          "outputs": [
+            "한계감축비용 곡선"
+          ]
+        },
+        {
+          "actor": "REDUCTION_MANAGER",
+          "path": "/emission/reduction",
+          "description": "기존 시나리오 화면",
+          "name": "감축 시나리오",
+          "status": "연계 검증 필요"
+        },
+        {
+          "actor": "DATA_ANALYST",
+          "path": "/emission/simulate",
+          "description": "기존 전략 시뮬레이션 화면",
+          "name": "감축 전략 시뮬레이션",
+          "status": "연계 검증 필요"
+        },
+        {
+          "actor": "관리자 · 기능 일치 확인 필요",
+          "path": "/admin/emission/calculation-rule",
+          "description": "관리자 메뉴의 현재 연결 경로. 감축 전용 기능 여부 미검증",
+          "name": "시나리오 관리 (공유 화면)",
+          "status": "메뉴 별칭 · 탄소배출 공통 화면"
+        },
+        {
+          "actor": "관리자 · 기능 일치 확인 필요",
+          "path": "/admin/emission/factor-management",
+          "description": "관리자 메뉴의 현재 연결 경로. 감축 전용 기능 여부 미검증",
+          "name": "감축계수·산정 기준 (공유 화면)",
+          "status": "메뉴 별칭 · 탄소배출 공통 화면"
+        }
+      ]
+    },
+    {
+      "id": "REDUCTION_ROADMAP",
+      "flow": "우선순위 → 감축 로드맵 → 감축 과제 목록",
+      "legacy": [
+        {
+          "stepCode": "REDUCTION_ROADMAP_S1",
+          "path": "/generated/reduction-roadmap/reduction-roadmap-s1",
+          "adminPath": "/admin/generated/reduction-roadmap/reduction-roadmap-s1",
+          "name": "감축 로드맵 수립 - 요청·범위·필수정보 확인"
+        },
+        {
+          "stepCode": "REDUCTION_ROADMAP_S2",
+          "path": "/generated/reduction-roadmap/reduction-roadmap-s2",
+          "adminPath": "/admin/generated/reduction-roadmap/reduction-roadmap-s2",
+          "name": "감축 로드맵 수립 - 업무 실행·중간 결과 저장"
+        },
+        {
+          "stepCode": "REDUCTION_ROADMAP_S3",
+          "path": "/generated/reduction-roadmap/reduction-roadmap-s3",
+          "adminPath": "/admin/generated/reduction-roadmap/reduction-roadmap-s3",
+          "name": "감축 로드맵 수립 - 독립 검토·보완·권한 검증"
+        },
+        {
+          "stepCode": "REDUCTION_ROADMAP_S4",
+          "path": "/generated/reduction-roadmap/reduction-roadmap-s4",
+          "adminPath": "/admin/generated/reduction-roadmap/reduction-roadmap-s4",
+          "name": "감축 로드맵 수립 - 승인·확정·통지·후속업무 연결"
+        }
+      ],
+      "name": "우선순위·로드맵 수립",
+      "pages": [
+        {
+          "status": "페이지 존재 · 저장/인계 미검증",
+          "actor": "VERIFIER",
+          "description": "점수화 · 제약 검증 · 순위 추천",
+          "path": "/reduction/prioritization",
+          "name": "우선순위",
+          "inputs": [
+            "비용효과",
+            "위험",
+            "의존관계"
+          ],
+          "outputs": [
+            "감축 투자 우선순위"
+          ]
+        },
+        {
+          "status": "페이지 존재 · 저장/인계 미검증",
+          "actor": "COMPANY_MANAGER",
+          "description": "로드맵 편집 · 선후관계 검증 · 책임자 배정",
+          "path": "/reduction/roadmap",
+          "name": "감축 로드맵",
+          "inputs": [
+            "연차 목표",
+            "마일스톤",
+            "의존관계"
+          ],
+          "outputs": [
+            "감축 로드맵"
+          ]
+        },
+        {
+          "status": "등록·저장·재조회·계산·승인 요청 9개 검증 통과. 결재자 로그인 후 승인·반려 릴레이는 미검증.",
+          "actor": "COMPANY_MANAGER",
+          "description": "과제 선택 또는 신규 등록",
+          "path": "/reduction/tasks",
+          "name": "감축 과제 목록",
+          "inputs": [
+            "프로젝트 ID"
+          ],
+          "outputs": [
+            "동일 프로젝트의 과제 ID·상태·수정일"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "REDUCTION_PROJECT_REGISTRATION",
+      "flow": "감축 과제 등록 → 담당자·예산·일정 → 예상 감축량 → 감축 과제 관리 (공유 화면)",
+      "legacy": [
+        {
+          "stepCode": "REDUCTION_PROJECT_REGISTRATION_S1",
+          "path": "/generated/reduction-project-registration/reduction-project-registration-s1",
+          "adminPath": "/admin/generated/reduction-project-registration/reduction-project-registration-s1",
+          "name": "감축 과제 등록 - 요청·범위·필수정보 확인"
+        },
+        {
+          "stepCode": "REDUCTION_PROJECT_REGISTRATION_S2",
+          "path": "/generated/reduction-project-registration/reduction-project-registration-s2",
+          "adminPath": "/admin/generated/reduction-project-registration/reduction-project-registration-s2",
+          "name": "감축 과제 등록 - 업무 실행·중간 결과 저장"
+        },
+        {
+          "stepCode": "REDUCTION_PROJECT_REGISTRATION_S3",
+          "path": "/generated/reduction-project-registration/reduction-project-registration-s3",
+          "adminPath": "/admin/generated/reduction-project-registration/reduction-project-registration-s3",
+          "name": "감축 과제 등록 - 독립 검토·보완·권한 검증"
+        },
+        {
+          "stepCode": "REDUCTION_PROJECT_REGISTRATION_S4",
+          "path": "/generated/reduction-project-registration/reduction-project-registration-s4",
+          "adminPath": "/admin/generated/reduction-project-registration/reduction-project-registration-s4",
+          "name": "감축 과제 등록 - 승인·확정·통지·후속업무 연결"
+        }
+      ],
+      "name": "감축 과제·자원·예상량 등록",
+      "pages": [
+        {
+          "status": "등록·저장·재조회·계산·승인 요청 9개 검증 통과. 결재자 로그인 후 승인·반려 릴레이는 미검증.",
+          "actor": "SITE_DATA_OWNER",
+          "description": "프로젝트 연결 사업장 선택 후 저장",
+          "path": "/reduction/task/new",
+          "name": "과제 등록",
+          "inputs": [
+            "과제명·사업장·감축 수단·설비·착수일·종료일"
+          ],
+          "outputs": [
+            "과제 ID·기본정보·버전·변경 이력"
+          ]
+        },
+        {
+          "status": "등록·저장·재조회·계산·승인 요청 9개 검증 통과. 결재자 로그인 후 승인·반려 릴레이는 미검증.",
+          "actor": "COMPANY_MANAGER",
+          "description": "기존 권한 계정 선택 후 자원 계획 저장",
+          "path": "/reduction/task/resources",
+          "name": "담당자·예산·일정",
+          "inputs": [
+            "과제 ID·기존 담당 권한 계정·예산·자원 근거"
+          ],
+          "outputs": [
+            "담당 계정·자원 계획·버전·변경 이력"
+          ]
+        },
+        {
+          "status": "등록·저장·재조회·계산·승인 요청 9개 검증 통과. 결재자 로그인 후 승인·반려 릴레이는 미검증.",
+          "actor": "CALCULATOR",
+          "description": "계획 예상량 계산·저장 후 재조회",
+          "path": "/reduction/task/estimate",
+          "name": "예상 감축량",
+          "inputs": [
+            "동일 조건 기준량·도입 후 예상량·기준 출처·산정 가정"
+          ],
+          "outputs": [
+            "기준량−예상량 (tCO2e/년)·산정 근거·버전"
+          ]
+        },
+        {
+          "actor": "관리자 · 기능 일치 확인 필요",
+          "path": "/admin/emission/management",
+          "description": "관리자 메뉴의 현재 연결 경로. 감축 전용 기능 여부 미검증",
+          "name": "감축 과제 관리 (공유 화면)",
+          "status": "메뉴 별칭 · 탄소배출 공통 화면"
+        }
+      ]
+    },
+    {
+      "id": "REDUCTION_PROJECT_APPROVAL",
+      "flow": "투자 계획 → 과제 승인 → 과제 검토·승인 (공유 화면) → 비용·투자 관리 (공유 화면)",
+      "legacy": [
+        {
+          "stepCode": "REDUCTION_PROJECT_APPROVAL_S1",
+          "path": "/generated/reduction-project-approval/reduction-project-approval-s1",
+          "adminPath": "/admin/generated/reduction-project-approval/reduction-project-approval-s1",
+          "name": "감축 과제 검토·승인 - 요청·범위·필수정보 확인"
+        },
+        {
+          "stepCode": "REDUCTION_PROJECT_APPROVAL_S2",
+          "path": "/generated/reduction-project-approval/reduction-project-approval-s2",
+          "adminPath": "/admin/generated/reduction-project-approval/reduction-project-approval-s2",
+          "name": "감축 과제 검토·승인 - 업무 실행·중간 결과 저장"
+        },
+        {
+          "stepCode": "REDUCTION_PROJECT_APPROVAL_S3",
+          "path": "/generated/reduction-project-approval/reduction-project-approval-s3",
+          "adminPath": "/admin/generated/reduction-project-approval/reduction-project-approval-s3",
+          "name": "감축 과제 검토·승인 - 독립 검토·보완·권한 검증"
+        },
+        {
+          "stepCode": "REDUCTION_PROJECT_APPROVAL_S4",
+          "path": "/generated/reduction-project-approval/reduction-project-approval-s4",
+          "adminPath": "/admin/generated/reduction-project-approval/reduction-project-approval-s4",
+          "name": "감축 과제 검토·승인 - 승인·확정·통지·후속업무 연결"
+        }
+      ],
+      "name": "투자 계획·과제 승인",
+      "pages": [
+        {
+          "status": "페이지 존재 · 저장/인계 미검증",
+          "actor": "APPROVER",
+          "description": "투자안 검토 · 재원 배분 · 승인·반려",
+          "path": "/reduction/investment-plan",
+          "name": "투자 계획",
+          "inputs": [
+            "우선순위",
+            "재원",
+            "승인 조건"
+          ],
+          "outputs": [
+            "확정 투자계획"
+          ]
+        },
+        {
+          "status": "등록·저장·재조회·계산·승인 요청 9개 검증 통과. 결재자 로그인 후 승인·반려 릴레이는 미검증.",
+          "actor": "APPROVER",
+          "description": "작성자·담당자와 다른 결재자 지정 후 요청. 지정 결재자만 승인·반려 가능",
+          "path": "/reduction/task/approval",
+          "name": "과제 검토·승인",
+          "inputs": [
+            "과제 ID·기존 승인 권한 결재자·검토 의견"
+          ],
+          "outputs": [
+            "승인 요청/승인/반려 상태·버전·변경 이력"
+          ]
+        },
+        {
+          "actor": "관리자 · 기능 일치 확인 필요",
+          "path": "/admin/emission/approval-workflow",
+          "description": "관리자 메뉴의 현재 연결 경로. 감축 전용 기능 여부 미검증",
+          "name": "과제 검토·승인 (공유 화면)",
+          "status": "메뉴 별칭 · 탄소배출 공통 화면"
+        },
+        {
+          "actor": "관리자 · 기능 일치 확인 필요",
+          "path": "/admin/emission/data_history",
+          "description": "관리자 메뉴의 현재 연결 경로. 감축 전용 기능 여부 미검증",
+          "name": "비용·투자 관리 (공유 화면)",
+          "status": "메뉴 별칭 · 탄소배출 공통 화면"
+        }
+      ]
+    },
+    {
+      "id": "REDUCTION_EXECUTION",
+      "flow": "관리자 프로세스 업무 처리",
+      "legacy": [
+        {
+          "stepCode": "REDUCTION_EXECUTION_01_PLAN",
+          "path": "/emission/reduction",
+          "adminPath": "/admin/system/process-workspace",
+          "name": "계획·범위 확정"
+        },
+        {
+          "stepCode": "REDUCTION_EXECUTION_02_WORK",
+          "path": "/emission/simulate",
+          "adminPath": "/admin/system/process-workspace",
+          "name": "자료 입력·업무 수행"
+        },
+        {
+          "stepCode": "REDUCTION_EXECUTION_03_VERIFY",
+          "path": "/emission/reduction?tab=verification",
+          "adminPath": "/admin/system/process-workspace",
+          "name": "검증·보완"
+        },
+        {
+          "stepCode": "REDUCTION_EXECUTION_04_APPROVE",
+          "path": "/emission/reduction?tab=approval",
+          "adminPath": "/admin/system/process-workspace",
+          "name": "승인·확정"
+        }
+      ],
+      "name": "감축 과제 수행·관리자 처리",
+      "pages": [
+        {
+          "actor": "배정된 관리자",
+          "path": "/admin/system/process-workspace",
+          "description": "프로젝트와 실행 건 선택 후 기존 업무 원장 처리",
+          "name": "관리자 프로세스 업무 처리",
+          "status": "공통 실행 화면 · 권한/프로젝트 필요"
+        }
+      ]
+    },
+    {
+      "id": "REDUCTION_PERFORMANCE",
+      "flow": "감축 실적 → 목표 대비 실적 → 감축 실적 관리 (공유 화면)",
+      "legacy": [
+        {
+          "stepCode": "REDUCTION_PERFORMANCE_S1",
+          "path": "/generated/reduction-performance/reduction-performance-s1",
+          "adminPath": "/admin/generated/reduction-performance/reduction-performance-s1",
+          "name": "감축 실적·효과 관리 - 요청·범위·필수정보 확인"
+        },
+        {
+          "stepCode": "REDUCTION_PERFORMANCE_S2",
+          "path": "/generated/reduction-performance/reduction-performance-s2",
+          "adminPath": "/admin/generated/reduction-performance/reduction-performance-s2",
+          "name": "감축 실적·효과 관리 - 업무 실행·중간 결과 저장"
+        },
+        {
+          "stepCode": "REDUCTION_PERFORMANCE_S3",
+          "path": "/generated/reduction-performance/reduction-performance-s3",
+          "adminPath": "/admin/generated/reduction-performance/reduction-performance-s3",
+          "name": "감축 실적·효과 관리 - 독립 검토·보완·권한 검증"
+        },
+        {
+          "stepCode": "REDUCTION_PERFORMANCE_S4",
+          "path": "/generated/reduction-performance/reduction-performance-s4",
+          "adminPath": "/admin/generated/reduction-performance/reduction-performance-s4",
+          "name": "감축 실적·효과 관리 - 승인·확정·통지·후속업무 연결"
+        }
+      ],
+      "name": "감축 실적·목표 차이 검토",
+      "pages": [
+        {
+          "status": "페이지 존재 · 저장/인계 미검증",
+          "actor": "SITE_DATA_OWNER",
+          "description": "실적 입력 · 누계 계산 · 증빙 연결",
+          "path": "/reduction/performance",
+          "name": "감축 실적",
+          "inputs": [
+            "월별 실적",
+            "활동자료",
+            "증빙"
+          ],
+          "outputs": [
+            "감축 실적"
+          ]
+        },
+        {
+          "status": "페이지 존재 · 저장/인계 미검증",
+          "actor": "VERIFIER",
+          "description": "차이 분석 · 원인 분류 · 보완 요청",
+          "path": "/reduction/target-gap",
+          "name": "목표 대비 실적",
+          "inputs": [
+            "목표",
+            "실적",
+            "기준선"
+          ],
+          "outputs": [
+            "목표 차이 검증결과"
+          ]
+        },
+        {
+          "actor": "관리자 · 기능 일치 확인 필요",
+          "path": "/admin/emission/result_list",
+          "description": "관리자 메뉴의 현재 연결 경로. 감축 전용 기능 여부 미검증",
+          "name": "감축 실적 관리 (공유 화면)",
+          "status": "메뉴 별칭 · 탄소배출 공통 화면"
+        }
+      ]
+    },
+    {
+      "id": "REDUCTION_REPORTING",
+      "flow": "성과 보고서 → 감축 보고서 (공유 화면)",
+      "legacy": [
+        {
+          "stepCode": "REDUCTION_REPORTING_S1",
+          "path": "/generated/reduction-reporting/reduction-reporting-s1",
+          "adminPath": "/admin/generated/reduction-reporting/reduction-reporting-s1",
+          "name": "감축 성과 보고 - 요청·범위·필수정보 확인"
+        },
+        {
+          "stepCode": "REDUCTION_REPORTING_S2",
+          "path": "/generated/reduction-reporting/reduction-reporting-s2",
+          "adminPath": "/admin/generated/reduction-reporting/reduction-reporting-s2",
+          "name": "감축 성과 보고 - 업무 실행·중간 결과 저장"
+        },
+        {
+          "stepCode": "REDUCTION_REPORTING_S3",
+          "path": "/generated/reduction-reporting/reduction-reporting-s3",
+          "adminPath": "/admin/generated/reduction-reporting/reduction-reporting-s3",
+          "name": "감축 성과 보고 - 독립 검토·보완·권한 검증"
+        },
+        {
+          "stepCode": "REDUCTION_REPORTING_S4",
+          "path": "/generated/reduction-reporting/reduction-reporting-s4",
+          "adminPath": "/admin/generated/reduction-reporting/reduction-reporting-s4",
+          "name": "감축 성과 보고 - 승인·확정·통지·후속업무 연결"
+        }
+      ],
+      "name": "감축 성과 보고",
+      "pages": [
+        {
+          "status": "페이지 존재 · 저장/인계 미검증",
+          "actor": "COMPANY_MANAGER",
+          "description": "기간 집계 · 보고서 생성 · PDF·공유·제출",
+          "path": "/reduction/performance-report",
+          "name": "성과 보고서",
+          "inputs": [
+            "목표",
+            "실적",
+            "검증결과",
+            "투자계획"
+          ],
+          "outputs": [
+            "감축 성과보고서"
+          ]
+        },
+        {
+          "actor": "관리자 · 기능 일치 확인 필요",
+          "path": "/admin/emission/survey-report",
+          "description": "관리자 메뉴의 현재 연결 경로. 감축 전용 기능 여부 미검증",
+          "name": "감축 보고서 (공유 화면)",
+          "status": "메뉴 별칭 · 탄소배출 공통 화면"
+        }
+      ]
+    }
+  ],
+  "scope": "메뉴 페이지와 기존 실행 경로를 구분한 탐색 설계. DB 실행 정의는 변경하지 않음",
+  "related": {
+    "path": "/monitoring/reduction_trend",
+    "name": "성과 추이 분석",
+    "owner": "모니터링·분석"
+  },
+  "version": 1
+}

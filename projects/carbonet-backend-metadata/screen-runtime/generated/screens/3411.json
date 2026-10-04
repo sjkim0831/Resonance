@@ -1,0 +1,796 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 3411,
+  "blueprintCode": "BP_AUTO_10BB07CA6AA3B77941AA8B8E",
+  "identity": {
+    "processCode": "IDENTITY_VERIFICATION",
+    "stepCode": "IDENTITY_VERIFICATION_S3",
+    "actorCode": "VERIFIER",
+    "audience": "USER",
+    "pageId": "AUTO_10BB07CA6AA3B77941AA"
+  },
+  "route": "/signin/findid",
+  "pageName": "이메일·휴대전화·본인 확인 - 독립 검토·보완·권한 검증 사용자 업무 화면",
+  "screenType": "WORKFLOW",
+  "templateCode": "KRDS_WORKFLOW",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "kpis": [
+      {
+        "code": "COMPLETION_RATE",
+        "unit": "PERCENT",
+        "label": "이메일·휴대전화·본인 확인 - 독립 검토·보완·권한 검증 완료율"
+      },
+      {
+        "code": "SLA_REMAINING",
+        "unit": "MINUTE",
+        "label": "처리 기한 잔여시간"
+      },
+      {
+        "code": "BLOCKING_ERROR",
+        "unit": "COUNT",
+        "label": "차단 오류 수"
+      },
+      {
+        "code": "RECOVERY_RATE",
+        "unit": "PERCENT",
+        "label": "오류 복구 성공률"
+      }
+    ],
+    "errors": [
+      {
+        "code": "FORBIDDEN",
+        "recovery": "권한·업무분리 확인"
+      },
+      {
+        "code": "CONFLICT",
+        "recovery": "최신 버전 재조회"
+      },
+      {
+        "code": "DEPENDENCY_FAILURE",
+        "recovery": "멱등키로 안전 재시도"
+      }
+    ],
+    "fields": [
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": true,
+        "fieldCode": "tenantId",
+        "fieldName": "테넌트",
+        "fieldGroup": "공통",
+        "fieldOrder": 10,
+        "validation": {
+          "minLength": 1
+        },
+        "apiProperty": "tenantId",
+        "controlType": "HIDDEN",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "CONTEXT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": true,
+        "fieldCode": "projectId",
+        "fieldName": "프로젝트",
+        "fieldGroup": "공통",
+        "fieldOrder": 20,
+        "validation": {
+          "minLength": 1
+        },
+        "apiProperty": "projectId",
+        "controlType": "PROJECT_SELECT",
+        "sourceTable": "comtnentrprsmber",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "project_id",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": false,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": true,
+        "fieldCode": "processCode",
+        "fieldName": "프로세스 코드",
+        "fieldGroup": "공통",
+        "fieldOrder": 30,
+        "validation": {
+          "source": "SERVER_CONTEXT",
+          "required": true,
+          "immutable": true
+        },
+        "apiProperty": "processCode",
+        "controlType": "HIDDEN",
+        "sourceTable": "framework_process_definition",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "process_code",
+        "mappingStatus": "CONTEXT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": false,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": true,
+        "fieldCode": "stepCode",
+        "fieldName": "단계 코드",
+        "fieldGroup": "공통",
+        "fieldOrder": 40,
+        "validation": {
+          "source": "SERVER_CONTEXT",
+          "required": true,
+          "immutable": true
+        },
+        "apiProperty": "stepCode",
+        "controlType": "HIDDEN",
+        "sourceTable": "framework_process_step",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "step_code",
+        "mappingStatus": "CONTEXT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "UUID",
+        "editable": false,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": false,
+        "fieldCode": "recordId",
+        "fieldName": "업무 레코드 ID",
+        "fieldGroup": "공통",
+        "fieldOrder": 50,
+        "validation": {
+          "source": "SERVER_CONTEXT",
+          "required": false,
+          "immutable": true
+        },
+        "apiProperty": "recordId",
+        "controlType": "HIDDEN",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": false,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": true,
+        "fieldCode": "statusCode",
+        "fieldName": "처리 상태",
+        "fieldGroup": "공통",
+        "fieldOrder": 60,
+        "validation": {
+          "codeGroup": "WORK_STATUS"
+        },
+        "apiProperty": "statusCode",
+        "controlType": "STATUS_BADGE",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": true,
+        "fieldCode": "ownerActorCode",
+        "fieldName": "담당 액터",
+        "fieldGroup": "공통",
+        "fieldOrder": 70,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "ownerActorCode",
+        "controlType": "ACTOR_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "INTEGER",
+        "editable": false,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": true,
+        "fieldCode": "rowVersion",
+        "fieldName": "데이터 버전",
+        "fieldGroup": "공통",
+        "fieldOrder": 80,
+        "validation": {
+          "min": 0
+        },
+        "apiProperty": "rowVersion",
+        "controlType": "HIDDEN",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "DATETIME",
+        "editable": false,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": false,
+        "fieldCode": "createdAt",
+        "fieldName": "등록 일시",
+        "fieldGroup": "공통",
+        "fieldOrder": 90,
+        "validation": {
+          "type": "date-time",
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "createdAt",
+        "controlType": "DATETIME",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "DATETIME",
+        "editable": false,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": false,
+        "fieldCode": "updatedAt",
+        "fieldName": "최종 수정 일시",
+        "fieldGroup": "공통",
+        "fieldOrder": 100,
+        "validation": {
+          "type": "date-time",
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "updatedAt",
+        "controlType": "DATETIME",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "INTEGER",
+        "editable": false,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": false,
+        "fieldCode": "evidenceCount",
+        "fieldName": "증빙 수",
+        "fieldGroup": "공통",
+        "fieldOrder": 110,
+        "validation": {
+          "min": 0
+        },
+        "apiProperty": "evidenceCount",
+        "controlType": "EVIDENCE_LINK",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": true,
+        "fieldCode": "companyId",
+        "fieldName": "기업",
+        "fieldGroup": "MEMBER",
+        "fieldOrder": 200,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "companyId",
+        "controlType": "COMPANY_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": true,
+        "fieldCode": "accountId",
+        "fieldName": "사용자 계정",
+        "fieldGroup": "MEMBER",
+        "fieldOrder": 210,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "accountId",
+        "controlType": "USER_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "ARRAY",
+        "editable": true,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": true,
+        "fieldCode": "actorCodes",
+        "fieldName": "업무 액터",
+        "fieldGroup": "MEMBER",
+        "fieldOrder": 220,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "actorCodes",
+        "controlType": "ACTOR_MULTI_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": true,
+        "fieldCode": "authorityCode",
+        "fieldName": "권한 그룹",
+        "fieldGroup": "MEMBER",
+        "fieldOrder": 230,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "authorityCode",
+        "controlType": "AUTHORITY_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": true,
+        "fieldCode": "accountStatus",
+        "fieldName": "계정 상태",
+        "fieldGroup": "MEMBER",
+        "fieldOrder": 240,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "accountStatus",
+        "controlType": "STATUS_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": false,
+        "fieldCode": "consentVersion",
+        "fieldName": "동의서 버전",
+        "fieldGroup": "MEMBER",
+        "fieldOrder": 250,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "consentVersion",
+        "controlType": "CONSENT_VIEW",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": true,
+        "fieldCode": "decisionCode",
+        "fieldName": "판정",
+        "fieldGroup": "업무 처리",
+        "fieldOrder": 400,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "decisionCode",
+        "controlType": "DECISION_RADIO",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "TEXT",
+        "editable": true,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": true,
+        "fieldCode": "reviewComment",
+        "fieldName": "검토 의견",
+        "fieldGroup": "업무 처리",
+        "fieldOrder": 410,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "reviewComment",
+        "controlType": "TEXTAREA",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": false,
+        "fieldCode": "rejectionReasonCode",
+        "fieldName": "반려 사유",
+        "fieldGroup": "업무 처리",
+        "fieldOrder": 420,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "rejectionReasonCode",
+        "controlType": "REASON_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/planned/member/identity-verification/identity-verification-s3",
+        "audience": "USER",
+        "dataType": "DATETIME",
+        "editable": true,
+        "pageCode": "IDENTITY_VERIFICATION_IDENTITY_VERIFICATION_S3_USER",
+        "required": false,
+        "fieldCode": "decidedAt",
+        "fieldName": "판정 일시",
+        "fieldGroup": "업무 처리",
+        "fieldOrder": 430,
+        "validation": {
+          "type": "date-time",
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "decidedAt",
+        "controlType": "DATETIME",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "VERIFIER:USER",
+        "evidenceRequired": false
+      }
+    ],
+    "states": [
+      "STEP_2_COMPLETED",
+      "LOADING",
+      "EMPTY",
+      "READY",
+      "SAVING",
+      "ERROR",
+      "FORBIDDEN",
+      "CONFLICT",
+      "RECOVERY",
+      "STEP_3_COMPLETED"
+    ],
+    "actions": [
+      {
+        "code": "IDENTITY_VERIFICATION_REVIEW",
+        "label": "이메일·휴대전화·본인 확인 - 독립 검토·보완·권한 검증 실행",
+        "transactional": true,
+        "idempotencyRequired": true
+      },
+      {
+        "code": "SAVE_DRAFT",
+        "label": "임시저장",
+        "transactional": true
+      },
+      {
+        "code": "ATTACH_EVIDENCE",
+        "label": "증적 연결",
+        "auditRequired": true
+      },
+      {
+        "code": "MOVE_NEXT_TASK",
+        "label": "다음 업무 이동",
+        "completionRequired": true
+      }
+    ],
+    "sections": [
+      {
+        "code": "TASK_CONTEXT",
+        "label": "업무 문맥·진행 상태"
+      },
+      {
+        "code": "SEARCH_FILTER",
+        "label": "검색·필터"
+      },
+      {
+        "code": "WORKSPACE",
+        "label": "핵심 데이터 작업공간"
+      },
+      {
+        "code": "EVIDENCE_HISTORY",
+        "label": "증적·변경 이력"
+      },
+      {
+        "code": "NEXT_TASK",
+        "label": "다음 업무"
+      }
+    ],
+    "extensions": {
+      "contractId": 2984,
+      "sharedRuntime": true
+    },
+    "responsive": {
+      "mobile": "single-column-actions-bottom",
+      "tablet": "adaptive-grid",
+      "desktop": "list-detail-workspace"
+    },
+    "permissions": [
+      {
+        "code": "VERIFIER",
+        "scope": "TENANT_PROJECT",
+        "segregationOfDuties": true,
+        "serverAuthorization": true
+      }
+    ],
+    "validations": [
+      {
+        "code": "ENTRY_AND_REQUIRED_FIELDS",
+        "type": "CONTRACT"
+      },
+      {
+        "code": "STATE_AND_VERSION",
+        "type": "CONCURRENCY"
+      }
+    ],
+    "apiContracts": [
+      {
+        "code": "SCREEN_CONTRACT",
+        "path": "/home/api/process-executions/screen-contract",
+        "method": "GET",
+        "purpose": "라우트별 실행 계약 조회"
+      },
+      {
+        "code": "LOAD_EXECUTION",
+        "path": "/home/api/process-executions",
+        "method": "GET",
+        "purpose": "프로세스 실행 문맥 조회"
+      },
+      {
+        "code": "IDENTITY_VERIFICATION_REVIEW",
+        "path": "/home/api/process-executions/{executionId}/commands",
+        "method": "POST",
+        "purpose": "이메일·휴대전화·본인 확인 - 독립 검토·보완·권한 검증 상태 명령 실행"
+      },
+      {
+        "code": "LOAD_DRAFT",
+        "path": "/home/api/process-executions/draft",
+        "method": "GET",
+        "purpose": "업무 임시저장 조회"
+      },
+      {
+        "code": "SAVE_DRAFT",
+        "path": "/home/api/process-executions/draft",
+        "method": "PUT",
+        "purpose": "업무 임시저장"
+      }
+    ],
+    "designSystem": "KRDS_GOV",
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG_2_1_AA",
+      "nonColorStatus": true,
+      "focusManagement": true
+    },
+    "dataContracts": [
+      {
+        "keys": [
+          "tenantId",
+          "projectId",
+          "processCode"
+        ],
+        "entity": "PROCESS_EXECUTION",
+        "versioned": true,
+        "tenantScoped": true
+      },
+      {
+        "keys": [
+          "processCode",
+          "stepCode"
+        ],
+        "entity": "PROCESS_STEP",
+        "stateTransition": {
+          "to": "STEP_3_COMPLETED",
+          "from": "STEP_2_COMPLETED"
+        }
+      },
+      {
+        "keys": [
+          "tenantId",
+          "projectId",
+          "processCode",
+          "stepCode",
+          "actorCode"
+        ],
+        "entity": "WORK_DRAFT",
+        "versioned": true
+      },
+      {
+        "entity": "AUDIT_EVENT",
+        "appendOnly": true,
+        "beforeAfterRequired": true
+      }
+    ],
+    "schemaVersion": "2.0.0",
+    "completionRule": "다음 완료 기준을 검증한다: 필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다. 결과·버전·감사 증적을 저장한 뒤 STEP_3_COMPLETED 상태로 원자적으로 전이한다.",
+    "exitConditions": [
+      "다음 완료 기준을 검증한다: 필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다. 결과·버전·감사 증적을 저장한 뒤 STEP_3_COMPLETED 상태로 원자적으로 전이한다."
+    ],
+    "businessPurpose": "이메일·휴대전화·본인 확인 프로세스의 이메일·휴대전화·본인 확인 - 독립 검토·보완·권한 검증 단계에서 VERIFIER 액터가 IDENTITY_VERIFICATION_REVIEW 명령을 안전하게 수행하여 다음 완료 기준을 달성한다: 필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+    "entryConditions": [
+      "다음 프로세스 시작 조건을 충족한다: 요청자 계정, 담당 액터, 테넌트·프로젝트 범위, 필수 기준정보와 선행 업무가 준비되어 있다. 현재 상태는 STEP_2_COMPLETED이며 서버가 테넌트·프로젝트·액터 권한을 확인한 경우에만 진입한다."
+    ],
+    "actorResponsibilities": [
+      "VERIFIER 액터가 권한·업무분리 정책에 따라 이메일·휴대전화·본인 확인 - 독립 검토·보완·권한 검증 사용자 업무 화면 업무를 수행한다."
+    ]
+  },
+  "traceability": {
+    "contractId": 2984,
+    "requirementIds": [
+      "IDENTITY_VERIFICATION:IDENTITY_VERIFICATION_S3:USER"
+    ],
+    "generationBatchId": 183,
+    "designReadinessScore": 100,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "934e42c191a5c914075ac566c83c122f3ab155d7908724a49ad391f2d5c404ad",
+  "artifactHash": "a51ab8ea3ba8d92748cd000986df156f873e51182178ff7132c152058b6dc8c2"
+}

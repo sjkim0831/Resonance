@@ -1,0 +1,315 @@
+[
+  {
+    "assetId": "A260",
+    "assetName": "로봇 교정 스테이션",
+    "representationType": "VISUAL_ARTICULATED_ROBOT",
+    "motionSource": "VISUAL_FUNCTIONAL_SIMULATION",
+    "manufacturerVerified": false,
+    "kinematicsVerified": false,
+    "sourceGLB": "/projects/P006/assets/functional-simulation/derived-mechanical-53/A260.glb",
+    "derivedGLB": "/projects/P006/assets/functional-simulation/robot-articulated-9/A260.glb",
+    "tool": "inspectionHead",
+    "jointHierarchy": [
+      "robotRoot",
+      "base",
+      "shoulder",
+      "elbow",
+      "wrist",
+      "inspectionHead"
+    ],
+    "jointCount": 5,
+    "animatedJointCount": 4,
+    "sequenceType": "PICK_AND_PLACE",
+    "sequencePoses": [
+      "HOME",
+      "APPROACH",
+      "PICK",
+      "LIFT",
+      "TRANSFER",
+      "PLACE",
+      "RETRACT",
+      "HOME"
+    ]
+  },
+  {
+    "assetId": "E002",
+    "assetName": "주탕 로봇",
+    "representationType": "VISUAL_ARTICULATED_ROBOT",
+    "motionSource": "VISUAL_FUNCTIONAL_SIMULATION",
+    "manufacturerVerified": false,
+    "kinematicsVerified": false,
+    "sourceGLB": "/projects/P006/assets/functional-simulation/derived-mechanical-53/E002.glb",
+    "derivedGLB": "/projects/P006/assets/functional-simulation/robot-articulated-9/E002.glb",
+    "tool": "weldingTool",
+    "jointHierarchy": [
+      "robotRoot",
+      "base",
+      "shoulder",
+      "elbow",
+      "wrist",
+      "weldingTool"
+    ],
+    "jointCount": 5,
+    "animatedJointCount": 4,
+    "sequenceType": "HANDLING",
+    "sequencePoses": [
+      "HOME",
+      "REACH",
+      "GRIP",
+      "TRANSFER",
+      "RELEASE",
+      "HOME"
+    ]
+  },
+  {
+    "assetId": "E003",
+    "assetName": "세척/스프레이 로봇",
+    "representationType": "VISUAL_ARTICULATED_ROBOT",
+    "motionSource": "VISUAL_FUNCTIONAL_SIMULATION",
+    "manufacturerVerified": false,
+    "kinematicsVerified": false,
+    "sourceGLB": "/projects/P006/assets/functional-simulation/derived-mechanical-53/E003.glb",
+    "derivedGLB": "/projects/P006/assets/functional-simulation/robot-articulated-9/E003.glb",
+    "tool": "suctionTool",
+    "jointHierarchy": [
+      "robotRoot",
+      "base",
+      "shoulder",
+      "elbow",
+      "wrist",
+      "suctionTool"
+    ],
+    "jointCount": 5,
+    "animatedJointCount": 4,
+    "sequenceType": "PICK_AND_PLACE",
+    "sequencePoses": [
+      "HOME",
+      "APPROACH",
+      "PICK",
+      "LIFT",
+      "TRANSFER",
+      "PLACE",
+      "RETRACT",
+      "HOME"
+    ]
+  },
+  {
+    "assetId": "E004",
+    "assetName": "취출 로봇",
+    "representationType": "VISUAL_ARTICULATED_ROBOT",
+    "motionSource": "VISUAL_FUNCTIONAL_SIMULATION",
+    "manufacturerVerified": false,
+    "kinematicsVerified": false,
+    "sourceGLB": "/projects/P006/assets/functional-simulation/derived-mechanical-53/E004.glb",
+    "derivedGLB": "/projects/P006/assets/functional-simulation/robot-articulated-9/E004.glb",
+    "tool": "transferTool",
+    "jointHierarchy": [
+      "robotRoot",
+      "base",
+      "shoulder",
+      "elbow",
+      "wrist",
+      "transferTool"
+    ],
+    "jointCount": 5,
+    "animatedJointCount": 4,
+    "sequenceType": "HANDLING",
+    "sequencePoses": [
+      "HOME",
+      "REACH",
+      "GRIP",
+      "TRANSFER",
+      "RELEASE",
+      "HOME"
+    ]
+  },
+  {
+    "assetId": "E125",
+    "assetName": "자율이동 운반 로봇 AMR",
+    "representationType": "VISUAL_ARTICULATED_ROBOT",
+    "motionSource": "VISUAL_FUNCTIONAL_SIMULATION",
+    "manufacturerVerified": false,
+    "kinematicsVerified": false,
+    "sourceGLB": "/projects/P006/assets/3d-derived/E125.glb",
+    "derivedGLB": "/projects/P006/assets/functional-simulation/robot-articulated-9/E125.glb",
+    "tool": "gripperTool",
+    "jointHierarchy": [
+      "robotRoot",
+      "base",
+      "shoulder",
+      "elbow",
+      "wrist",
+      "gripperTool"
+    ],
+    "jointCount": 5,
+    "animatedJointCount": 4,
+    "sequenceType": "HANDLING",
+    "sequencePoses": [
+      "HOME",
+      "REACH",
+      "GRIP",
+      "TRANSFER",
+      "RELEASE",
+      "HOME"
+    ]
+  },
+  {
+    "assetId": "A259",
+    "assetName": "로봇 툴 자동 검사 스테이션",
+    "representationClass": "VISUAL_ARTICULATED_ROBOT",
+    "motionSource": "VISUAL_FUNCTIONAL_SIMULATION",
+    "manufacturerVerified": false,
+    "kinematicsVerified": false,
+    "sourceGLB": "/projects/P006/assets/functional-simulation/derived-mechanical-53/A259.glb",
+    "derivedGLB": "/projects/P006/assets/functional-simulation/robot-articulated-a259/A259.glb",
+    "jointHierarchy": [
+      "robotRoot",
+      "base",
+      "shoulder",
+      "elbow",
+      "wrist",
+      "tool",
+      "gripperLeft",
+      "gripperRight"
+    ],
+    "sequencePoses": [
+      "HOME",
+      "APPROACH",
+      "REACH",
+      "GRIP",
+      "LIFT",
+      "TRANSFER",
+      "PLACE",
+      "RETRACT"
+    ],
+    "visualNote": "Functional visual representation; not manufacturer kinematics."
+  },
+  {
+    "assetId": "N141",
+    "assetName": "스카라 로봇",
+    "representationType": "VISUAL_ARTICULATED_ROBOT",
+    "motionSource": "VISUAL_FUNCTIONAL_SIMULATION",
+    "manufacturerVerified": false,
+    "kinematicsVerified": false,
+    "sourceGLB": "/projects/P006/assets/functional-simulation/derived-mechanical-53/N141.glb",
+    "derivedGLB": "/projects/P006/assets/functional-simulation/robot-articulated-9/N141.glb",
+    "tool": "inspectionHead",
+    "jointHierarchy": [
+      "robotRoot",
+      "base",
+      "shoulder",
+      "elbow",
+      "wrist",
+      "inspectionHead"
+    ],
+    "jointCount": 5,
+    "animatedJointCount": 4,
+    "sequenceType": "PICK_AND_PLACE",
+    "sequencePoses": [
+      "HOME",
+      "APPROACH",
+      "PICK",
+      "LIFT",
+      "TRANSFER",
+      "PLACE",
+      "RETRACT",
+      "HOME"
+    ]
+  },
+  {
+    "assetId": "N142",
+    "assetName": "델타 로봇",
+    "representationType": "VISUAL_ARTICULATED_ROBOT",
+    "motionSource": "VISUAL_FUNCTIONAL_SIMULATION",
+    "manufacturerVerified": false,
+    "kinematicsVerified": false,
+    "sourceGLB": "/projects/P006/assets/functional-simulation/derived-mechanical-53/N142.glb",
+    "derivedGLB": "/projects/P006/assets/functional-simulation/robot-articulated-9/N142.glb",
+    "tool": "weldingTool",
+    "jointHierarchy": [
+      "robotRoot",
+      "base",
+      "shoulder",
+      "elbow",
+      "wrist",
+      "weldingTool"
+    ],
+    "jointCount": 5,
+    "animatedJointCount": 4,
+    "sequenceType": "PICK_AND_PLACE",
+    "sequencePoses": [
+      "HOME",
+      "APPROACH",
+      "PICK",
+      "LIFT",
+      "TRANSFER",
+      "PLACE",
+      "RETRACT",
+      "HOME"
+    ]
+  },
+  {
+    "assetId": "N143",
+    "assetName": "직교 좌표 로봇",
+    "representationType": "VISUAL_ARTICULATED_ROBOT",
+    "motionSource": "VISUAL_FUNCTIONAL_SIMULATION",
+    "manufacturerVerified": false,
+    "kinematicsVerified": false,
+    "sourceGLB": "/projects/P006/assets/3d-derived/N143.glb",
+    "derivedGLB": "/projects/P006/assets/functional-simulation/robot-articulated-9/N143.glb",
+    "tool": "suctionTool",
+    "jointHierarchy": [
+      "robotRoot",
+      "base",
+      "shoulder",
+      "elbow",
+      "wrist",
+      "suctionTool"
+    ],
+    "jointCount": 5,
+    "animatedJointCount": 4,
+    "sequenceType": "PICK_AND_PLACE",
+    "sequencePoses": [
+      "HOME",
+      "APPROACH",
+      "PICK",
+      "LIFT",
+      "TRANSFER",
+      "PLACE",
+      "RETRACT",
+      "HOME"
+    ]
+  },
+  {
+    "assetId": "N145",
+    "assetName": "로봇 주행 레일",
+    "representationType": "VISUAL_ARTICULATED_ROBOT",
+    "motionSource": "VISUAL_FUNCTIONAL_SIMULATION",
+    "manufacturerVerified": false,
+    "kinematicsVerified": false,
+    "sourceGLB": "/projects/P006/assets/functional-simulation/derived-mechanical-53/N145.glb",
+    "derivedGLB": "/projects/P006/assets/functional-simulation/robot-articulated-9/N145.glb",
+    "tool": "transferTool",
+    "jointHierarchy": [
+      "robotRoot",
+      "base",
+      "shoulder",
+      "elbow",
+      "wrist",
+      "transferTool"
+    ],
+    "jointCount": 5,
+    "animatedJointCount": 4,
+    "sequenceType": "PICK_AND_PLACE",
+    "sequencePoses": [
+      "HOME",
+      "APPROACH",
+      "PICK",
+      "LIFT",
+      "TRANSFER",
+      "PLACE",
+      "RETRACT",
+      "HOME"
+    ]
+  }
+]

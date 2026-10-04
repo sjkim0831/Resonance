@@ -28,7 +28,7 @@ public class CarbonetSecurityOverrideConfig {
     @Order(0)
     public SecurityFilterChain carbonetSecurityFilterChain(HttpSecurity http) throws Exception {
         return http
-            .securityMatcher("/admin/api/**", "/en/admin/api/**", "/api/platform/**", "/en/api/platform/**", "/admin/ai/**", "/en/admin/ai/**", "/admin/emission/**", "/en/admin/emission/**")
+            .securityMatcher("/admin/api/**", "/en/admin/api/**", "/api/platform/**", "/en/api/platform/**", "/admin/ai/**", "/en/admin/ai/**", "/admin/emission/**", "/en/admin/emission/**", "/api/public/process-catalog", "/api/en/public/process-catalog")
             .authorizeHttpRequests(authorize -> authorize
                 .anyRequest().permitAll()
             )
@@ -63,6 +63,8 @@ public class CarbonetSecurityOverrideConfig {
                 "/api/en/home/certificate-verify/screen-design",
                 "/api/public/report-certificates/**",
                 "/en/api/public/report-certificates/**",
+                "/api/public/process-catalog",
+                "/api/en/public/process-catalog",
                 
                 
                 "/emission/**",

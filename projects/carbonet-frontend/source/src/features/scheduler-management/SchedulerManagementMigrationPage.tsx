@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -72,8 +73,7 @@ export function SchedulerManagementMigrationPage() {
           icon="schedule"
           title={en ? "Scheduler Scope Filter" : "스케줄러 조회 조건"}
         >
-          <form className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:w-[44rem]" onSubmit={(event) => { event.preventDefault(); logGovernanceScope("ACTION", "scheduler-management-search", { jobStatus: draft.jobStatus, executionType: draft.executionType }); setFilters(draft); }}>
-            <div>
+          <form className="ccus-search-host" onSubmit={(event) => { event.preventDefault(); logGovernanceScope("ACTION", "scheduler-management-search", { jobStatus: draft.jobStatus, executionType: draft.executionType }); setFilters(draft); }}><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="jobStatus">{en ? "Job Status" : "잡 상태"}</label>
               <AdminSelect id="jobStatus" value={draft.jobStatus} onChange={(event) => setDraft((current) => ({ ...current, jobStatus: event.target.value }))}>
                 <option value="">{en ? "All" : "전체"}</option>
@@ -81,20 +81,16 @@ export function SchedulerManagementMigrationPage() {
                 <option value="PAUSED">PAUSED</option>
                 <option value="REVIEW">REVIEW</option>
               </AdminSelect>
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="executionType">{en ? "Execution Type" : "실행 유형"}</label>
               <AdminSelect id="executionType" value={draft.executionType} onChange={(event) => setDraft((current) => ({ ...current, executionType: event.target.value }))}>
                 <option value="">{en ? "All" : "전체"}</option>
                 <option value="CRON">{en ? "Scheduled" : "정기"}</option>
                 <option value="MANUAL">{en ? "Manual" : "수동"}</option>
               </AdminSelect>
-            </div>
-            <div className="flex items-end gap-2">
-              <button className="gov-btn gov-btn-primary w-full" type="submit">{en ? "Search" : "조회"}</button>
-              <button className="gov-btn gov-btn-outline w-full" onClick={() => { const reset = { jobStatus: "", executionType: "" }; logGovernanceScope("ACTION", "scheduler-management-reset", reset); setDraft(reset); setFilters(reset); }} type="button">{en ? "Reset" : "초기화"}</button>
-            </div>
-          </form>
+            </div></div></>} actions={<><button className="gov-btn gov-btn-primary w-full" type="submit">{en ? "Search" : "조회"}</button>
+<button className="gov-btn gov-btn-outline w-full" onClick={() => { const reset = { jobStatus: "", executionType: "" }; logGovernanceScope("ACTION", "scheduler-management-reset", reset); setDraft(reset); setFilters(reset); }} type="button">{en ? "Reset" : "초기화"}</button></>}></CommonSearchSection></form>
         </CollectionResultPanel>
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           {summary.map((card, idx) => <SummaryMetricCard description={card.description} key={idx} title={card.title} value={card.value} />)}

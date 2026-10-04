@@ -1,6 +1,9 @@
 package egovframework.com.common.trace;
 
 public class TraceContext {
+    private boolean technicalRequestAggregated;
+    public boolean isTechnicalRequestAggregated() { return technicalRequestAggregated; }
+    public void markTechnicalRequestAggregated() { technicalRequestAggregated = true; }
 
     private final String traceId;
     private final String requestId;

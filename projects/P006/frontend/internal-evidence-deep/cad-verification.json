@@ -1,0 +1,1345 @@
+[
+  {
+    "id": "F0130",
+    "dimensionCount": 8,
+    "dimensionMeasurementMatches": 0,
+    "dimensionMeasurementMismatches": [],
+    "dimensionsNotCrossConverted": 8,
+    "crosscheckPerformed": false,
+    "nonfinite": [],
+    "extremeValueObjectTypes": {},
+    "abnormalDimensions": 0,
+    "koreanTexts": 0,
+    "koreanIdenticalInDxf": 0,
+    "koreanSamples": [],
+    "replacementCharacters": 0,
+    "layers": 9,
+    "blocks": 68,
+    "insertAttributeRelations": 55,
+    "equipmentLabelTrace": [
+      {
+        "index": 32183,
+        "handle": [
+          0,
+          2,
+          32188
+        ],
+        "kind": "MTEXT",
+        "layer": [
+          5,
+          1,
+          91,
+          91
+        ],
+        "owner": null,
+        "field": "text",
+        "text": "\\W01.066;1 DIE CASTING MACHINE ECOLINE 84\\P\\P2 FURANCE ALUMETER BU500\\P\\P3 LADLER JSLB4\\P\\P4 SPRAY DEVICE JSSR4\\P\\P5 EXTRACTION DEVICE JSEE4\\P\\P6 SAFETY FENCE\\P\\P7 ENTRANCE BOX\\P\\P8 CHUTE\\P\\P9 FUNNEL TUBE ",
+        "resolvedLayer": "1",
+        "resolvedOwnerBlock": null
+      }
+    ]
+  },
+  {
+    "id": "F0139",
+    "dimensionCount": 7936,
+    "dimensionMeasurementMatches": 7936,
+    "dimensionMeasurementMismatches": [],
+    "dimensionsNotCrossConverted": 0,
+    "crosscheckPerformed": true,
+    "nonfinite": [
+      {
+        "index": 325851,
+        "kind": "ASSOCARRAYACTIONBODY",
+        "handle": [
+          0,
+          3,
+          4711425
+        ],
+        "anomalies": [
+          {
+            "field": ".transmatrix[2]",
+            "value": "1.5193316104370858e+247"
+          },
+          {
+            "field": ".transmatrix[4]",
+            "value": "nan"
+          },
+          {
+            "field": ".transmatrix[5]",
+            "value": "6.086467731634495e+88"
+          },
+          {
+            "field": ".transmatrix[8]",
+            "value": "nan"
+          },
+          {
+            "field": ".transmatrix[14]",
+            "value": "nan"
+          }
+        ]
+      }
+    ],
+    "extremeValueObjectTypes": {
+      "LAYOUT": 1,
+      "DIMASSOC": 4275,
+      "ASSOCARRAYACTIONBODY": 1
+    },
+    "abnormalDimensions": 0,
+    "koreanTexts": 3895,
+    "koreanIdenticalInDxf": 3855,
+    "koreanSamples": [
+      {
+        "handle": "17A",
+        "dwg": "(주) 두 성 로 보 텍",
+        "dxf": "(주) 두 성 로 보 텍",
+        "identical": true
+      },
+      {
+        "handle": "200",
+        "dwg": "일반  가공치수  허용차",
+        "dxf": "일반  가공치수  허용차",
+        "identical": true
+      },
+      {
+        "handle": "20A",
+        "dwg": "범          위",
+        "dxf": "범          위",
+        "identical": true
+      },
+      {
+        "handle": "20F",
+        "dwg": "공  차",
+        "dxf": "공  차",
+        "identical": true
+      },
+      {
+        "handle": "240780",
+        "dwg": "(주)세기비즈 SG-AL-10P (128*70*52)",
+        "dxf": "(주)세기비즈 SG-AL-10P (128*70*52)",
+        "identical": true
+      },
+      {
+        "handle": "30AF03",
+        "dwg": "미터탭",
+        "dxf": "미터탭",
+        "identical": true
+      },
+      {
+        "handle": "30AF1D",
+        "dwg": "미터탭",
+        "dxf": "미터탭",
+        "identical": true
+      },
+      {
+        "handle": "30AF37",
+        "dwg": "미터탭",
+        "dxf": "미터탭",
+        "identical": true
+      },
+      {
+        "handle": "30AF51",
+        "dwg": "미터탭",
+        "dxf": "미터탭",
+        "identical": true
+      },
+      {
+        "handle": "30AF6B",
+        "dwg": "미터탭",
+        "dxf": "미터탭",
+        "identical": true
+      },
+      {
+        "handle": "30AF85",
+        "dwg": "미터탭",
+        "dxf": "미터탭",
+        "identical": true
+      },
+      {
+        "handle": "30AF9F",
+        "dwg": "미터탭",
+        "dxf": "미터탭",
+        "identical": true
+      }
+    ],
+    "replacementCharacters": 0,
+    "layers": 86,
+    "blocks": 8434,
+    "insertAttributeRelations": 19357,
+    "equipmentLabelTrace": []
+  },
+  {
+    "id": "F0141",
+    "dimensionCount": 269,
+    "dimensionMeasurementMatches": 269,
+    "dimensionMeasurementMismatches": [],
+    "dimensionsNotCrossConverted": 0,
+    "crosscheckPerformed": true,
+    "nonfinite": [
+      {
+        "index": 138024,
+        "kind": "ASSOCARRAYACTIONBODY",
+        "handle": [
+          0,
+          3,
+          1436112
+        ],
+        "anomalies": [
+          {
+            "field": ".transmatrix[8]",
+            "value": "nan"
+          },
+          {
+            "field": ".transmatrix[11]",
+            "value": "-8.105446246612186e+78"
+          },
+          {
+            "field": ".transmatrix[12]",
+            "value": "nan"
+          },
+          {
+            "field": ".transmatrix[13]",
+            "value": "4.106651009008678e+204"
+          },
+          {
+            "field": ".transmatrix[14]",
+            "value": "-4.3516889400496125e+84"
+          }
+        ]
+      },
+      {
+        "index": 138032,
+        "kind": "ASSOCARRAYACTIONBODY",
+        "handle": [
+          0,
+          3,
+          1436120
+        ],
+        "anomalies": [
+          {
+            "field": ".transmatrix[6]",
+            "value": "nan"
+          },
+          {
+            "field": ".transmatrix[7]",
+            "value": "-1.049451022959286e+241"
+          },
+          {
+            "field": ".transmatrix[8]",
+            "value": "nan"
+          },
+          {
+            "field": ".transmatrix[9]",
+            "value": "nan"
+          }
+        ]
+      },
+      {
+        "index": 138040,
+        "kind": "ASSOCARRAYACTIONBODY",
+        "handle": [
+          0,
+          3,
+          1436128
+        ],
+        "anomalies": [
+          {
+            "field": ".transmatrix[6]",
+            "value": "nan"
+          }
+        ]
+      },
+      {
+        "index": 138048,
+        "kind": "ASSOCARRAYACTIONBODY",
+        "handle": [
+          0,
+          3,
+          1436136
+        ],
+        "anomalies": [
+          {
+            "field": ".transmatrix[6]",
+            "value": "nan"
+          },
+          {
+            "field": ".transmatrix[13]",
+            "value": "nan"
+          }
+        ]
+      }
+    ],
+    "extremeValueObjectTypes": {
+      "ASSOCARRAYACTIONBODY": 7,
+      "3DSOLID": 1,
+      "DIMASSOC": 8
+    },
+    "abnormalDimensions": 0,
+    "koreanTexts": 376,
+    "koreanIdenticalInDxf": 376,
+    "koreanSamples": [
+      {
+        "handle": "86B6A",
+        "dwg": "강관",
+        "dxf": "강관",
+        "identical": true
+      },
+      {
+        "handle": "86B6B",
+        "dwg": "외경406.4x12t",
+        "dxf": "외경406.4x12t",
+        "identical": true
+      },
+      {
+        "handle": "D9289",
+        "dwg": "지상 2층 평면도",
+        "dxf": "지상 2층 평면도",
+        "identical": true
+      },
+      {
+        "handle": "D928E",
+        "dwg": "축척 A3 :  1/500",
+        "dxf": "축척 A3 :  1/500",
+        "identical": true
+      },
+      {
+        "handle": "D928F",
+        "dwg": "개발/생기/영업",
+        "dxf": "개발/생기/영업",
+        "identical": true
+      },
+      {
+        "handle": "D9290",
+        "dwg": "대표이사실",
+        "dxf": "대표이사실",
+        "identical": true
+      },
+      {
+        "handle": "D9291",
+        "dwg": "대회의실",
+        "dxf": "대회의실",
+        "identical": true
+      },
+      {
+        "handle": "D9292",
+        "dwg": "기술연구소/",
+        "dxf": "기술연구소/",
+        "identical": true
+      },
+      {
+        "handle": "D9293",
+        "dwg": "전산실",
+        "dxf": "전산실",
+        "identical": true
+      },
+      {
+        "handle": "D9294",
+        "dwg": "/샘플실",
+        "dxf": "/샘플실",
+        "identical": true
+      },
+      {
+        "handle": "D9295",
+        "dwg": "도면실",
+        "dxf": "도면실",
+        "identical": true
+      },
+      {
+        "handle": "D9296",
+        "dwg": "문서고",
+        "dxf": "문서고",
+        "identical": true
+      }
+    ],
+    "replacementCharacters": 0,
+    "layers": 257,
+    "blocks": 534,
+    "insertAttributeRelations": 2306,
+    "equipmentLabelTrace": [
+      {
+        "index": 129335,
+        "handle": [
+          0,
+          3,
+          1427112
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          3,
+          1260486,
+          1260486
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "유량조정조 TANK",
+        "resolvedLayer": "FONT",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 172426,
+        "handle": [
+          0,
+          3,
+          1529412
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          108,
+          108
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "진공장치",
+        "resolvedLayer": "TEXT",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 204814,
+        "handle": [
+          0,
+          3,
+          1562120
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          108,
+          108
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "진공장치",
+        "resolvedLayer": "TEXT",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 204833,
+        "handle": [
+          0,
+          3,
+          1562140
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          108,
+          108
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "진공장치",
+        "resolvedLayer": "TEXT",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 204845,
+        "handle": [
+          0,
+          3,
+          1562152
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          108,
+          108
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "진공장치",
+        "resolvedLayer": "TEXT",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 208394,
+        "handle": [
+          0,
+          3,
+          1576563
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          108,
+          108
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "진공장치",
+        "resolvedLayer": "TEXT",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 222064,
+        "handle": [
+          0,
+          3,
+          1593332
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          108,
+          108
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "진공장치",
+        "resolvedLayer": "TEXT",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 266279,
+        "handle": [
+          0,
+          3,
+          1803238
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          108,
+          108
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "진공장치",
+        "resolvedLayer": "TEXT",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 270256,
+        "handle": [
+          0,
+          3,
+          1818800
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          108,
+          108
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "유량",
+        "resolvedLayer": "TEXT",
+        "resolvedOwnerBlock": null
+      }
+    ]
+  },
+  {
+    "id": "F0142",
+    "dimensionCount": 269,
+    "dimensionMeasurementMatches": 269,
+    "dimensionMeasurementMismatches": [],
+    "dimensionsNotCrossConverted": 0,
+    "crosscheckPerformed": true,
+    "nonfinite": [
+      {
+        "index": 138024,
+        "kind": "ASSOCARRAYACTIONBODY",
+        "handle": [
+          0,
+          3,
+          1436112
+        ],
+        "anomalies": [
+          {
+            "field": ".transmatrix[8]",
+            "value": "nan"
+          },
+          {
+            "field": ".transmatrix[11]",
+            "value": "-8.105446246612186e+78"
+          },
+          {
+            "field": ".transmatrix[12]",
+            "value": "nan"
+          },
+          {
+            "field": ".transmatrix[13]",
+            "value": "4.106651009008678e+204"
+          },
+          {
+            "field": ".transmatrix[14]",
+            "value": "-4.3516889400496125e+84"
+          }
+        ]
+      },
+      {
+        "index": 138032,
+        "kind": "ASSOCARRAYACTIONBODY",
+        "handle": [
+          0,
+          3,
+          1436120
+        ],
+        "anomalies": [
+          {
+            "field": ".transmatrix[6]",
+            "value": "nan"
+          },
+          {
+            "field": ".transmatrix[7]",
+            "value": "-1.049451022959286e+241"
+          },
+          {
+            "field": ".transmatrix[8]",
+            "value": "nan"
+          },
+          {
+            "field": ".transmatrix[9]",
+            "value": "nan"
+          }
+        ]
+      },
+      {
+        "index": 138040,
+        "kind": "ASSOCARRAYACTIONBODY",
+        "handle": [
+          0,
+          3,
+          1436128
+        ],
+        "anomalies": [
+          {
+            "field": ".transmatrix[6]",
+            "value": "nan"
+          }
+        ]
+      },
+      {
+        "index": 138048,
+        "kind": "ASSOCARRAYACTIONBODY",
+        "handle": [
+          0,
+          3,
+          1436136
+        ],
+        "anomalies": [
+          {
+            "field": ".transmatrix[6]",
+            "value": "nan"
+          },
+          {
+            "field": ".transmatrix[13]",
+            "value": "nan"
+          }
+        ]
+      }
+    ],
+    "extremeValueObjectTypes": {
+      "ASSOCARRAYACTIONBODY": 7,
+      "3DSOLID": 1,
+      "DIMASSOC": 8
+    },
+    "abnormalDimensions": 0,
+    "koreanTexts": 378,
+    "koreanIdenticalInDxf": 378,
+    "koreanSamples": [
+      {
+        "handle": "86B6A",
+        "dwg": "강관",
+        "dxf": "강관",
+        "identical": true
+      },
+      {
+        "handle": "86B6B",
+        "dwg": "외경406.4x12t",
+        "dxf": "외경406.4x12t",
+        "identical": true
+      },
+      {
+        "handle": "D9289",
+        "dwg": "지상 2층 평면도",
+        "dxf": "지상 2층 평면도",
+        "identical": true
+      },
+      {
+        "handle": "D928E",
+        "dwg": "축척 A3 :  1/500",
+        "dxf": "축척 A3 :  1/500",
+        "identical": true
+      },
+      {
+        "handle": "D928F",
+        "dwg": "개발/생기/영업",
+        "dxf": "개발/생기/영업",
+        "identical": true
+      },
+      {
+        "handle": "D9290",
+        "dwg": "대표이사실",
+        "dxf": "대표이사실",
+        "identical": true
+      },
+      {
+        "handle": "D9291",
+        "dwg": "대회의실",
+        "dxf": "대회의실",
+        "identical": true
+      },
+      {
+        "handle": "D9292",
+        "dwg": "기술연구소/",
+        "dxf": "기술연구소/",
+        "identical": true
+      },
+      {
+        "handle": "D9293",
+        "dwg": "전산실",
+        "dxf": "전산실",
+        "identical": true
+      },
+      {
+        "handle": "D9294",
+        "dwg": "/샘플실",
+        "dxf": "/샘플실",
+        "identical": true
+      },
+      {
+        "handle": "D9295",
+        "dwg": "도면실",
+        "dxf": "도면실",
+        "identical": true
+      },
+      {
+        "handle": "D9296",
+        "dwg": "문서고",
+        "dxf": "문서고",
+        "identical": true
+      }
+    ],
+    "replacementCharacters": 0,
+    "layers": 257,
+    "blocks": 534,
+    "insertAttributeRelations": 2306,
+    "equipmentLabelTrace": [
+      {
+        "index": 129335,
+        "handle": [
+          0,
+          3,
+          1427112
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          3,
+          1260486,
+          1260486
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "유량조정조 TANK",
+        "resolvedLayer": "FONT",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 172426,
+        "handle": [
+          0,
+          3,
+          1529412
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          108,
+          108
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "진공장치",
+        "resolvedLayer": "TEXT",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 204814,
+        "handle": [
+          0,
+          3,
+          1562120
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          108,
+          108
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "진공장치",
+        "resolvedLayer": "TEXT",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 204833,
+        "handle": [
+          0,
+          3,
+          1562140
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          108,
+          108
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "진공장치",
+        "resolvedLayer": "TEXT",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 204845,
+        "handle": [
+          0,
+          3,
+          1562152
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          108,
+          108
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "진공장치",
+        "resolvedLayer": "TEXT",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 208394,
+        "handle": [
+          0,
+          3,
+          1576563
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          108,
+          108
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "진공장치",
+        "resolvedLayer": "TEXT",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 222064,
+        "handle": [
+          0,
+          3,
+          1593332
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          108,
+          108
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "진공장치",
+        "resolvedLayer": "TEXT",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 266279,
+        "handle": [
+          0,
+          3,
+          1803238
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          108,
+          108
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "진공장치",
+        "resolvedLayer": "TEXT",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 270256,
+        "handle": [
+          0,
+          3,
+          1818800
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          108,
+          108
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "유량",
+        "resolvedLayer": "TEXT",
+        "resolvedOwnerBlock": null
+      }
+    ]
+  },
+  {
+    "id": "F0252",
+    "dimensionCount": 19,
+    "dimensionMeasurementMatches": 19,
+    "dimensionMeasurementMismatches": [],
+    "dimensionsNotCrossConverted": 0,
+    "crosscheckPerformed": true,
+    "nonfinite": [],
+    "extremeValueObjectTypes": {
+      "LAYOUT": 1
+    },
+    "abnormalDimensions": 0,
+    "koreanTexts": 60,
+    "koreanIdenticalInDxf": 60,
+    "koreanSamples": [
+      {
+        "handle": "7FCAD",
+        "dwg": "유량제어",
+        "dxf": "유량제어",
+        "identical": true
+      },
+      {
+        "handle": "11C6DE",
+        "dwg": "탱크 진공압력 게이지",
+        "dxf": "탱크 진공압력 게이지",
+        "identical": true
+      },
+      {
+        "handle": "11C708",
+        "dwg": "F밸브",
+        "dxf": "F밸브",
+        "identical": true
+      },
+      {
+        "handle": "11C709",
+        "dwg": "저속 1",
+        "dxf": "저속 1",
+        "identical": true
+      },
+      {
+        "handle": "11C70A",
+        "dwg": "F밸브",
+        "dxf": "F밸브",
+        "identical": true
+      },
+      {
+        "handle": "11C70B",
+        "dwg": "분사 1",
+        "dxf": "분사 1",
+        "identical": true
+      },
+      {
+        "handle": "11C714",
+        "dwg": "F밸브",
+        "dxf": "F밸브",
+        "identical": true
+      },
+      {
+        "handle": "11C715",
+        "dwg": "저속 2",
+        "dxf": "저속 2",
+        "identical": true
+      },
+      {
+        "handle": "11C716",
+        "dwg": "F밸브",
+        "dxf": "F밸브",
+        "identical": true
+      },
+      {
+        "handle": "11C717",
+        "dwg": "분사 2",
+        "dxf": "분사 2",
+        "identical": true
+      },
+      {
+        "handle": "11C907",
+        "dwg": "주소: 서울시 구로구 구로동 614-33",
+        "dxf": "주소: 서울시 구로구 구로동 614-33",
+        "identical": true
+      },
+      {
+        "handle": "11C908",
+        "dwg": "대 기 산 업",
+        "dxf": "대 기 산 업",
+        "identical": true
+      }
+    ],
+    "replacementCharacters": 0,
+    "layers": 6,
+    "blocks": 131,
+    "insertAttributeRelations": 261,
+    "equipmentLabelTrace": [
+      {
+        "index": 866,
+        "handle": [
+          0,
+          3,
+          523437
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          2,
+          47343,
+          47343
+        ],
+        "owner": [
+          12,
+          1,
+          2,
+          523435
+        ],
+        "field": "text_value",
+        "text": "유량제어",
+        "resolvedLayer": "Layer2",
+        "resolvedOwnerBlock": "A$C1FA97E8D"
+      },
+      {
+        "index": 1374,
+        "handle": [
+          0,
+          3,
+          1165022
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          2,
+          47343,
+          47343
+        ],
+        "owner": [
+          12,
+          1,
+          7,
+          1165015
+        ],
+        "field": "text_value",
+        "text": "탱크 진공압력 게이지",
+        "resolvedLayer": "Layer2",
+        "resolvedOwnerBlock": "A$C19076AFE"
+      },
+      {
+        "index": 1407,
+        "handle": [
+          0,
+          3,
+          1165576
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          2,
+          47343,
+          47343
+        ],
+        "owner": [
+          12,
+          1,
+          7,
+          1165569
+        ],
+        "field": "text_value",
+        "text": "대 기 산 업",
+        "resolvedLayer": "Layer2",
+        "resolvedOwnerBlock": "A$C6C5550B9"
+      },
+      {
+        "index": 1830,
+        "handle": [
+          0,
+          3,
+          1277145
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          2,
+          47343,
+          47343
+        ],
+        "owner": [
+          12,
+          1,
+          4,
+          1277141
+        ],
+        "field": "text_value",
+        "text": "진공펌프",
+        "resolvedLayer": "Layer2",
+        "resolvedOwnerBlock": "A$C10FA197B"
+      },
+      {
+        "index": 3054,
+        "handle": [
+          0,
+          3,
+          1314051
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          16,
+          16
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "고진공장비",
+        "resolvedLayer": "0",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 3062,
+        "handle": [
+          0,
+          3,
+          1317639
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          2,
+          47343,
+          47343
+        ],
+        "owner": [
+          12,
+          1,
+          7,
+          1317632
+        ],
+        "field": "text_value",
+        "text": "탱크 진공압력 게이지",
+        "resolvedLayer": "Layer2",
+        "resolvedOwnerBlock": "A$C12677349"
+      },
+      {
+        "index": 3530,
+        "handle": [
+          0,
+          3,
+          1327468
+        ],
+        "kind": "MTEXT",
+        "layer": [
+          5,
+          1,
+          16,
+          16
+        ],
+        "owner": null,
+        "field": "text",
+        "text": "{\\fGulim|b0|i0|c129|p50;진공흡입구\\P금형까지 호스연결}",
+        "resolvedLayer": "0",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 3603,
+        "handle": [
+          0,
+          3,
+          1329052
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          16,
+          16
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "진공장비",
+        "resolvedLayer": "0",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 3644,
+        "handle": [
+          0,
+          3,
+          1329892
+        ],
+        "kind": "MTEXT",
+        "layer": [
+          5,
+          1,
+          16,
+          16
+        ],
+        "owner": null,
+        "field": "text",
+        "text": "{\\fGulim|b0|i0|c129|p50;진공흡입구\\P금형까지 호스연결}",
+        "resolvedLayer": "0",
+        "resolvedOwnerBlock": null
+      }
+    ]
+  },
+  {
+    "id": "F0256",
+    "dimensionCount": 2,
+    "dimensionMeasurementMatches": 0,
+    "dimensionMeasurementMismatches": [],
+    "dimensionsNotCrossConverted": 2,
+    "crosscheckPerformed": false,
+    "nonfinite": [],
+    "extremeValueObjectTypes": {
+      "LAYOUT": 1
+    },
+    "abnormalDimensions": 0,
+    "koreanTexts": 172,
+    "koreanIdenticalInDxf": 0,
+    "koreanSamples": [
+      {
+        "handle": "3417",
+        "dwg": "\\f굴림체|b0|i0|c129|p49;MAX-ENG",
+        "dxf": null,
+        "identical": false
+      },
+      {
+        "handle": "3809",
+        "dwg": "\\f굴림체|b0|i0|c129|p49;MAX-ENG",
+        "dxf": null,
+        "identical": false
+      },
+      {
+        "handle": "4D3C",
+        "dwg": "대창METAL주식회사",
+        "dxf": null,
+        "identical": false
+      },
+      {
+        "handle": "4D3D",
+        "dwg": "30TON/CH 열처리로",
+        "dxf": null,
+        "identical": false
+      },
+      {
+        "handle": "A371",
+        "dwg": "앵글러 볼 베어링",
+        "dxf": null,
+        "identical": false
+      },
+      {
+        "handle": "A399",
+        "dwg": "깊은 홈 볼 베어링",
+        "dxf": null,
+        "identical": false
+      },
+      {
+        "handle": "A3C1",
+        "dwg": "세폭 V 벨트",
+        "dxf": null,
+        "identical": false
+      },
+      {
+        "handle": "A415",
+        "dwg": "세폭 V 벨트",
+        "dxf": null,
+        "identical": false
+      },
+      {
+        "handle": "A4C1",
+        "dwg": "로울링 베어링 유닛",
+        "dxf": null,
+        "identical": false
+      },
+      {
+        "handle": "A4D0",
+        "dwg": "효성중공업 모터",
+        "dxf": null,
+        "identical": false
+      },
+      {
+        "handle": "A513",
+        "dwg": "효성중공업 모터",
+        "dxf": null,
+        "identical": false
+      },
+      {
+        "handle": "A553",
+        "dwg": "육각 머리 너트",
+        "dxf": null,
+        "identical": false
+      }
+    ],
+    "replacementCharacters": 0,
+    "layers": 39,
+    "blocks": 58,
+    "insertAttributeRelations": 2013,
+    "equipmentLabelTrace": [
+      {
+        "index": 9126,
+        "handle": [
+          0,
+          3,
+          78963
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          81,
+          81
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "TT-1800 SYSTEM ASSEMBLY",
+        "resolvedLayer": "A",
+        "resolvedOwnerBlock": null
+      },
+      {
+        "index": 16308,
+        "handle": [
+          0,
+          3,
+          163400
+        ],
+        "kind": "TEXT",
+        "layer": [
+          5,
+          1,
+          81,
+          81
+        ],
+        "owner": null,
+        "field": "text_value",
+        "text": "TT-1800 WORK TABLE",
+        "resolvedLayer": "A",
+        "resolvedOwnerBlock": null
+      }
+    ]
+  }
+]

@@ -1,6 +1,13 @@
 import { HomeWorkGuide } from "./HomeWorkGuide";
+import { EmissionScreenCanvas, emissionScreenGroups } from './EmissionScreenCanvas';
+import { MemberScreenCanvas, memberScreenGroups } from './MemberScreenCanvas';
+import { ReductionScreenCanvas, reductionScreenGroups } from './ReductionScreenCanvas';
+import { TradeScreenCanvas, tradeScreenGroups } from './TradeScreenCanvas';
+import { MonitoringScreenCanvas, monitoringScreenGroups } from './MonitoringScreenCanvas';
+import { LcaScreenCanvas, lcaScreenGroups } from './LcaScreenCanvas';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ScreenDesignSummary } from "./ScreenDesignSummary";
+import { EmissionContractCard, emissionContractPage } from '../emission-common/currentEmissionContract';
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import {
   EMISSION_END_TO_END_PROCESS_CODE,
@@ -132,6 +139,7 @@ type ProcessPreviewStep = {
 };
 
 type ProcessPreviewRegistryEntry = {
+  scopeLabel?: string;
   processCode: string;
   workTypeCode: string;
   status: "PASS" | "UNREGISTERED";
@@ -322,12 +330,15 @@ function ProcessPreviewPlayer({
           ) : null}
         </div>
       </div>
+      {entry.scopeLabel && <p className="mt-3 text-sm text-slate-700">{entry.scopeLabel}</p>}
       <video
+        aria-label={entry.scopeLabel || (en ? "Recorded process preview" : "프로세스 미리보기 영상")}
         className="mt-3 w-full rounded-lg bg-[#071a35]"
         controls
         preload="metadata"
         ref={videoRef}
         autoPlay={entry.playbackMode === "FULL"}
+        muted
         src={entry.videoUrl}
         onLoadedMetadata={(event) => {
           const duration = Number(event.currentTarget.duration || 0);
@@ -376,6 +387,9 @@ import {
 } from "./taskQuestSessionGate";
 
 type QuestTask = {
+  inputRevision?: number;
+  approvalRequestId?: number;
+  approvalRequestStatus?: string;
   id: number;
   taskCode?: string;
   stepOrder?: number;
@@ -1015,7 +1029,7 @@ function workTypeLabel(code: string, en: boolean) {
 function workflowPhaseLabel(code: string | undefined, en: boolean) {
   const labels: Record<string, [string, string]> = {
     REGISTRATION_AUTH: ["가입·인증", "Registration & auth"],
-    COMPANY_ONBOARDING: ["기업·조직 온보딩", "Company onboarding"],
+    COMPANY_ONBOARDING: ["회원사 가입", "Company registration"],
     ACCOUNT_OPERATION: ["계정 운영", "Account operation"],
     PROJECT_DATA_CALCULATION: [
       "프로젝트·자료·산정",
@@ -1076,10 +1090,12 @@ function PublicWorkflowAssist({
   onOverview: () => void;
 }) {
   const certificateVerificationPage = /^\/(en\/)?home\/certificate-verify\/?$/.test(window.location.pathname);
+  const emissionProjectListPage = /^\/(en\/)?emission\/project_list\/?$/.test(window.location.pathname);
+  const emissionProjectCreatePage = /^\/(en\/)?emission\/project\/create\/?$/.test(window.location.pathname);
   const approvedProcessNames: Record<string, string> = {
     MEMBER_REGISTRATION: "회원가입",
     MEMBER_APPROVAL: "회원가입 검토·승인·반려",
-    COMPANY_ONBOARDING: "기업·사업장 온보딩",
+    COMPANY_ONBOARDING: "회원사 가입",
     CONTACT_REVERIFICATION: "이메일·휴대전화 변경·재인증",
     ACCOUNT_WITHDRAWAL: "회원 탈퇴·보유정보 처리",
     ORGANIZATION_DEPARTMENT: "조직·부서 관리",
@@ -1102,6 +1118,7 @@ function PublicWorkflowAssist({
   const [open, setOpen] = useState(
     () => {
       const query = new URLSearchParams(window.location.search);
+      if (/\/system\/(work-implementation|work-design-studio)$/.test(window.location.pathname)) return query.get("guide") === "1";
       return Boolean(
         query.get("guide") === "1" ||
         query.get("processCode") ||
@@ -1319,7 +1336,11 @@ function PublicWorkflowAssist({
             </header>
             <div className="p-4">
               <p className="text-sm font-bold text-slate-700">
-                {en ? "Home workflow QA scenarios" : "홈 업무 연결 QA 시나리오"}
+                {emissionProjectListPage
+                  ? (en ? "Emission project list QA" : "배출량 프로젝트 목록 QA")
+                  : emissionProjectCreatePage
+                    ? (en ? "Emission project creation QA" : "배출량 프로젝트 등록 QA")
+                    : (en ? "Current screen QA scenarios" : "현재 화면 QA 시나리오")}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {qaScenarios.map((scenario) => (
@@ -1331,6 +1352,20 @@ function PublicWorkflowAssist({
                   </span>
                 ))}
               </div>
+              {emissionProjectListPage && <div className="mt-3 space-y-2 text-xs leading-5 text-slate-700" data-emission-list-qa="">
+                <p>{en ? "Contract: EMISSION_PROJECT_PORTFOLIO_LIST · v2.0.1" : "계약: EMISSION_PROJECT_PORTFOLIO_LIST · v2.0.1"}</p>
+                <p>{en ? "Verified: sign-in → 15 live projects → select a row → matching site, period and statuses in summary → detail opens with the selected projectId → return to list." : "확인: 로그인 → 실제 프로젝트 15건 → 행 선택 → 같은 사업장·기간·진행/산정 상태 요약 → 선택한 projectId로 상세 이동 → 목록 복귀."}</p>
+                <p>{en ? "Verified: period/status/sort responses, reversed dates 400, mobile guide controls." : "확인: 기간·상태·정렬 응답, 날짜 역전 400, 모바일 길잡이 열기·접기."}</p>
+                <p>{en ? "Pending: cross-company/user role tests, full keyboard accessibility, project creation persistence, mobile layout." : "미검증: 회사 간 격리·일반회원 역할 테스트, 전체 키보드 접근성, 프로젝트 등록 저장, 모바일 레이아웃."}</p>
+                <p>{en ? "Evidence summary, not a live test result. No automatic business completion." : "이 카드는 검증 증거 요약이며 실시간 테스트 결과가 아닙니다. 업무를 자동 완료하지 않습니다."}</p>
+              </div>}
+              {emissionProjectCreatePage && <div className="mt-3 space-y-2 text-xs leading-5 text-slate-700" data-emission-project-create-qa="">
+                <p>{en ? "Contract: EMISSION_PROJECT_DRAFT_CREATE · v2; server site options loaded." : "계약: EMISSION_PROJECT_DRAFT_CREATE · v2; 서버 사업장 선택지 조회 확인."}</p>
+                <p>{en ? "Verified: project name and site selection update the live summary; fields were cleared and no create request was submitted." : "확인: 프로젝트명·사업장 선택이 요약에 즉시 반영됨; 입력을 비웠고 등록 요청은 보내지 않음."}</p>
+                <p>{en ? "QA/test sites returned by the server are visibly tagged. Legacy-site cleanup is not included." : "서버가 반환한 QA·테스트 사업장은 배지로 구분함. 레거시 사업장 정리는 이번 범위가 아님."}</p>
+                <p>{en ? "Pending: create persistence and detail navigation, keyboard/mobile accessibility, and cross-account authorization." : "미검증: 실제 등록 저장·상세 이동, 키보드·모바일 접근성, 계정 간 권한."}</p>
+                <p>{en ? "Evidence summary, not a live test result. No project was created." : "이 카드는 검증 증거 요약이며 실시간 테스트 전체 결과가 아닙니다. 프로젝트는 생성하지 않았습니다."}</p>
+              </div>}
             </div>
           </section>
         )}
@@ -1404,8 +1439,9 @@ export function TaskQuestPanel({
     }
   }, [routePath]);
   const [open, setOpen] = useState(
-    () =>
-      Boolean(
+    () => /\/system\/(work-implementation|work-design-studio)$/.test(window.location.pathname)
+      ? new URLSearchParams(window.location.search).get("guide") === "1"
+      : Boolean(
         new URLSearchParams(window.location.search).get("guide") === "1" ||
         new URLSearchParams(window.location.search).get("processCode") ||
         new URLSearchParams(window.location.search).get("process") ||
@@ -1416,6 +1452,16 @@ export function TaskQuestPanel({
   );
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  // A desktop's remembered open panel must not obscure a phone's work screen.
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 639px)");
+    const collapseOnMobile = () => {
+      if (media.matches && new URLSearchParams(window.location.search).get("guide") !== "1") setOpen(false);
+    };
+    collapseOnMobile();
+    media.addEventListener("change", collapseOnMobile);
+    return () => media.removeEventListener("change", collapseOnMobile);
+  }, [routePath]);
   const [applicabilityReason, setApplicabilityReason] = useState("");
   const [applicabilityEvidence, setApplicabilityEvidence] = useState("");
   const [applicabilitySaving, setApplicabilitySaving] = useState(false);
@@ -1499,6 +1545,7 @@ export function TaskQuestPanel({
 
   useEffect(() => {
     if (!guideRequested) return;
+    if (/\/system\/(work-implementation|work-design-studio)$/.test(window.location.pathname) && new URLSearchParams(window.location.search).get("guide") !== "1") return;
     setOpen(true);
     setQaOpen(false);
     localStorage.setItem("task-quest-open", "1");
@@ -1507,6 +1554,7 @@ export function TaskQuestPanel({
 
   useEffect(() => {
     if (!canLoadPrivateTasks) return;
+    if (/\/system\/(work-implementation|work-design-studio)$/.test(window.location.pathname)) return;
     setOpen(true);
     setQaOpen(false);
     localStorage.setItem("task-quest-open", "1");
@@ -1520,12 +1568,16 @@ export function TaskQuestPanel({
       setLoading(false);
       return;
     }
+    setLoading(true);
+    setMessage("");
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
     try {
-      const response = await fetch(api, { credentials: "include" });
+      const response = await fetch(api, { credentials: "include", signal: controller.signal });
       if (response.status === 401 || response.status === 403) {
         if (isCurrentTaskQuestPrivateLoad(privateLoadSequence, sequence))
           setData(null);
-        return;
+        throw new Error(response.status === 401 ? "로그인 상태를 확인한 뒤 다시 조회해 주세요. (401)" : "업무 목록 조회 권한을 확인해 주세요. (403)");
       }
       const body = await response.json();
       if (!response.ok)
@@ -1537,8 +1589,9 @@ export function TaskQuestPanel({
       setData(body);
     } catch (error) {
       if (isCurrentTaskQuestPrivateLoad(privateLoadSequence, sequence))
-        setMessage(error instanceof Error ? error.message : String(error));
+        setMessage(controller.signal.aborted ? "업무 목록 응답이 지연되고 있습니다. 다시 조회해 주세요." : error instanceof Error ? error.message : String(error));
     } finally {
+      window.clearTimeout(timeout);
       if (isCurrentTaskQuestPrivateLoad(privateLoadSequence, sequence))
         setLoading(false);
     }
@@ -1547,9 +1600,24 @@ export function TaskQuestPanel({
   useEffect(() => {
     if (!canLoadPrivateTasks) {
       invalidateTaskQuestPrivateLoad(privateLoadSequence);
-      setData(null);
-      setLoading(false);
-      return;
+      const controller = new AbortController();
+      setLoading(true);
+      fetch("/api/home", { credentials: "omit", signal: controller.signal })
+        .then(async (response) => {
+          const body = await response.json().catch(() => ({}));
+          const catalog = body.publicProcessCatalog;
+          if (!response.ok || !catalog || catalog.available === false) throw new Error("공개 업무 카탈로그를 불러오지 못했습니다.");
+          setData(catalog);
+          setMessage("로그인하면 개인 업무와 진행 상태를 확인할 수 있습니다.");
+        })
+        .catch((error) => {
+          if (!controller.signal.aborted) {
+            setData(null);
+            setMessage(error instanceof Error ? error.message : String(error));
+          }
+        })
+        .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+      return () => controller.abort();
     }
     void load();
     const timer = window.setInterval(() => void load(), 60_000);
@@ -1800,6 +1868,21 @@ export function TaskQuestPanel({
       liveRoute?.searchParams.get("stepCode") ||
       liveRoute?.searchParams.get("step") ||
       "";
+    // A project screen must display its persisted workflow, including DONE.
+    // Pending work in another process is not evidence for this screen.
+    const routeTaskCodes: Record<string, string[]> = {
+      "/emission/project/detail": ["BASIC_INFO"],
+      "/emission/activity-data": ["ACTIVITY_DATA"],
+      "/emission/calculation": ["CALCULATION"],
+      "/emission/validate": ["APPROVAL", "VERIFICATION"],
+      "/emission/report_submit": ["REPORT"],
+    };
+    const screenCodes = routeTaskCodes[(liveRoute?.pathname || "").replace(/^\/en\//, "/")];
+    if (contextProjectId && screenCodes && !routeProcessCode) {
+      const current = rawWorkflowItems.filter(item => item.projectId === contextProjectId && item.processCode === "EMISSION_PROJECT" && screenCodes.includes(String(item.taskCode)));
+      const mine = new Set((data?.items || []).map(item => item.id));
+      return current.find(item => mine.has(item.id) && item.status !== "DONE") || current.find(item => mine.has(item.id)) || current[0];
+    }
     // A process/step deep link describes the screen currently being viewed.
     // Prefer that explicit coordinate over an unrelated pending task retained
     // from a previous page, while leaving ordinary dashboard task selection intact.
@@ -1880,6 +1963,9 @@ export function TaskQuestPanel({
     })[0];
   }, [
     data,
+    contextProjectId,
+    routePath,
+    rawWorkflowItems,
     effectiveProjectId,
     en,
     focusedStepCode,
@@ -1947,8 +2033,7 @@ export function TaskQuestPanel({
           code,
           count: counts.get(code) || 0,
           definedCount:
-            visibleCatalogCounts.get(code) ??
-            Number(item.definedProcessCount || 0),
+            code==='TRADE'?tradeScreenGroups.length:code==='MONITORING'?monitoringScreenGroups.length:code==='LCA'?lcaScreenGroups.length:code==='MEMBER'?memberScreenGroups.length:code==='EMISSION'?emissionScreenGroups.length:(visibleCatalogCounts.get(code) ?? Number(item.definedProcessCount || 0)),
           verifiedCount: Number(quality?.verifiedProcessCount || 0),
           blockedCount: Number(quality?.blockedProcessCount || 0),
           pendingCount: Number(quality?.pendingProcessCount || 0),
@@ -2157,7 +2242,7 @@ export function TaskQuestPanel({
               const screenPath =
                 step.userPath || step.adminPath || step.stepCode;
               const identity = selectedCatalogProcess.domainCode === "MEMBER"
-                ? `${step.processCode || selectedCatalogProcess.processCode}:${step.stepCode || step.stepOrder}`
+                ? screenPath.split("?")[0]
                 : screenPath;
               if (!screens.has(identity)) screens.set(identity, step);
               return screens;
@@ -2173,14 +2258,58 @@ export function TaskQuestPanel({
             EMISSION_END_TO_END_PROCESS_CODE
               ? `${emissionPhaseLabel(step.stepCode, en)} · ${step.stepName}`
               : step.stepName,
-          screenPath: step.userPath || step.adminPath || "",
-          screenDescription: step.workPurpose || "",
+          screenPath: selectedCatalogProcess.processCode === "COMPANY_ONBOARDING" && step.stepCode === "COMPANY_ONBOARDING_APPROVE"
+            ? (en ? "/en/admin/member/company-approve" : "/admin/member/company-approve")
+            : step.userPath || step.adminPath || "",
+          screenDescription: selectedCatalogProcess.processCode === "COMPANY_ONBOARDING" && step.stepCode === "COMPANY_ONBOARDING_APPROVE"
+            ? (en ? "An authorized administrator reviews company applications and approves or rejects them on the company approval page. Applicant status lookup is a separate task."
+              : "권한 있는 관리자가 기업 승인 관리 화면에서 신청 내용과 제출 자료를 검토하고 승인·반려합니다. 신청자의 가입 상태 조회와 구분되는 관리자 업무입니다.")
+            : step.workPurpose || "",
           isOptionalBranch: [
             "MEMBER_REGISTRATION_COMPANY_REGISTER",
             "COMPANY_JOIN_STATUS_GUIDE",
           ].includes(step.stepCode),
           branchRejoins: step.stepCode !== "COMPANY_JOIN_STATUS_GUIDE",
         }));
+        // Page canvas is distinct from executable workflow steps: preserve task IDs
+        // and persistence, but show each approval page once rather than per action.
+        if (selectedCatalogProcess.processCode === "PROFILE_MANAGEMENT") {
+          return [
+            { ...mappedScreenSteps[0], wave: 1, stepCode: "PROFILE_ALERTS", stepName: en ? "Notifications" : "알림 조회·관련 업무 이동", screenPath: "/home/alerts", screenDescription: en ? "Review notifications and open the related work. Notification preferences are a separate action." : "수신한 알림을 확인하고 해당 업무로 이동합니다. 알림 수신 설정과는 별도 화면입니다.", isOptionalBranch: false },
+            ...mappedScreenSteps.map((step, index) => ({ ...step, wave: index + 2, isOptionalBranch: false, screenDescription: `${step.screenDescription} ${en ? "Choose when needed; these settings are not mandatory sequential tasks." : "필요할 때 선택하는 설정 업무이며 앞 화면 완료가 필수인 순차 업무가 아닙니다."}` })),
+          ];
+        }
+        if (selectedCatalogProcess.processCode === "LOGIN_AUTHENTICATION") {
+          return mappedScreenSteps.map((step, index) => ({ ...step, wave: index + 1, isOptionalBranch: false, screenDescription: `${step.screenDescription} ${en ? "Account recovery is an optional branch. Return to login after recovery." : "아이디·비밀번호를 잊은 경우에만 복구 화면을 사용하고 완료 후 로그인으로 돌아갑니다."}` }));
+        }
+        if (selectedCatalogProcess.processCode === "MEMBER_APPROVAL") {
+          return [
+            {
+              wave: 1,
+              processes: [selectedCatalogProcess],
+              stepCode: "MEMBER_APPROVAL_S1",
+              stepName: en ? "Review and approve or reject membership" : "회원가입 심사·승인·반려",
+              screenPath: "/admin/member/approve",
+              screenDescription: en
+                ? "On this page: search applications, select an applicant, review details, then approve or reject with a reason. These are actions within one page."
+                : "이 화면에서 신청 조회 → 대상 선택 → 상세 검토 → 승인 또는 사유 입력 후 반려를 처리합니다. 세부 업무는 같은 페이지에서 수행합니다.",
+              isOptionalBranch: false,
+              branchRejoins: true,
+            },
+            {
+              wave: 2,
+              processes: [selectedCatalogProcess],
+              stepCode: "MEMBER_APPROVAL_STATUS",
+              stepName: en ? "Application status and result" : "신청 상태·처리 결과 확인",
+              screenPath: "/join/memberStatusSearch",
+              screenDescription: en
+                ? "The applicant checks the application status and result on this page, before, during and after review. Supplementation and resubmission require separate implementation verification."
+                : "신청자가 심사 전·중·후에 같은 화면에서 신청 상태와 처리 결과를 확인합니다. 보완 요청·재제출은 별도 구현 확인 대상입니다.",
+              isOptionalBranch: false,
+              branchRejoins: true,
+            },
+          ];
+        }
         if (selectedCatalogProcess.processCode === "ACCOUNT_WITHDRAWAL") {
           const base = en ? "/en" : "";
           return [
@@ -2233,6 +2362,19 @@ export function TaskQuestPanel({
               branchRejoins: true,
             },
           ];
+        }
+        if (selectedCatalogProcess.processCode === "COMPANY_ONBOARDING") {
+          // Staff invitation and permission changes are independent workflows,
+          // not mandatory repeated pages in company onboarding.
+          return mappedScreenSteps
+            .filter((step) => !["COMPANY_ONBOARDING_ACTORS", "COMPANY_ONBOARDING_READY"].includes(step.stepCode) && !/사업장/.test(step.stepName) && !step.screenPath.startsWith("/mypage/staff"))
+            .map((step, index) => ({
+              ...step,
+              wave: index + 1,
+              screenDescription: step.stepCode === "COMPANY_ONBOARDING_APPROVE"
+                ? `${step.screenDescription} ${en ? "Onboarding readiness: company approval and initial company administrator affiliation/access must be verified. Staff invitation and detailed permissions are separate workflows, not prerequisites." : "온보딩 완료 조건은 기업 승인과 최초 기업관리자의 소속·접근 가능 여부 확인입니다. 직원 초대와 세부 권한 배정은 별도 업무이며 필수 선행 단계가 아닙니다."}`
+                : step.screenDescription,
+            }));
         }
         return mappedScreenSteps;
       }
@@ -2855,6 +2997,7 @@ export function TaskQuestPanel({
   useEffect(() => {
     if (
       selectedCatalogProcessCode &&
+      !selectedCatalogProcessCode.startsWith('TRADE_MAP_') && !selectedCatalogProcessCode.startsWith('MONITOR_MAP_') && !selectedCatalogProcessCode.startsWith('LCA_MAP_') && !selectedCatalogProcessCode.startsWith('MEMBER_MAP_') && !selectedCatalogProcessCode.startsWith('SCREEN_') &&
       !selectedDefinedProcesses.some(
         (item) => item.processCode === selectedCatalogProcessCode,
       )
@@ -2927,7 +3070,7 @@ export function TaskQuestPanel({
     },
     candidates: [],
   };
-  const publicAssistContext = homeRoute ? homeLoadingContext : screenContext || {linked:false,routePath:normalizedRoute,pageId,classification:"REVIEW_REQUIRED" as const,reasonText:"현재 화면의 업무 연결 정보가 없습니다."};
+  const publicAssistContext = homeRoute ? homeLoadingContext : screenContext || {linked:false,routePath:normalizedRoute,pageId,source:"unlinked" as const,classification:"REVIEW_REQUIRED" as const,reasonText:"현재 화면의 업무 연결 정보가 없습니다."};
   const usePublicAssist = !canLoadPrivateTasks || !data;
 
   function toggle() {
@@ -2972,6 +3115,12 @@ export function TaskQuestPanel({
     localStorage.setItem("task-quest-work-type", code);
     localStorage.setItem("task-quest-catalog-step", "0");
     clearWorkflowFocus();
+    if(code==='EMISSION'){setSelectedCatalogProcessCode('SCREEN_0');return;}
+    if(code==='MEMBER'){setSelectedCatalogProcessCode('MEMBER_MAP_1');return;}
+    if(code==='REDUCTION'){setSelectedCatalogProcessCode(reductionScreenGroups[0].id);return;}
+    if(code==='TRADE'){setSelectedCatalogProcessCode(tradeScreenGroups[0].id);return;}
+    if(code==='MONITORING'){setSelectedCatalogProcessCode(monitoringScreenGroups[0].id);return;}
+    if(code==='LCA'){setSelectedCatalogProcessCode(lcaScreenGroups[0].id);return;}
     const processes = (data?.processCatalog || [])
       .filter(
         (process) =>
@@ -3030,9 +3179,13 @@ export function TaskQuestPanel({
     userSelectedCatalogStepRef.current = true;
     setSelectedCatalogStep(index);
     localStorage.setItem("task-quest-catalog-step", String(index));
+    if (selectedCatalogSteps[index]?.stepCode === "EMISSION_PROJECT_PORTFOLIO_LIST") {
+      setPreviewProcessCode("EMISSION_PROJECT_PORTFOLIO");
+    }
   }
 
   function openFullWorkflow() {
+    if (canLoadPrivateTasks && !data && !loading) void load();
     // routePath is normalized to a pathname by the shell, so it cannot carry
     // the process/step coordinate selected by a deep link. Read the live URL
     // first and only fall back to routePath when no browser query is present.
@@ -3383,13 +3536,13 @@ export function TaskQuestPanel({
     }
   }
 
-  const blocked = Boolean(task && task.actionable === false);
+  const blocked = Boolean(task && (task.actionable === false || task.status === "DONE"));
   const focusedProcessCode =
     focusedWorkflow?.processCode || task?.processCode || "";
   const focusedProjectId =
     focusedWorkflow?.projectId || task?.projectId || effectiveProjectId;
   const focusedTasks = focusedProcessCode
-    ? (data?.items || []).filter(
+    ? rawWorkflowItems.filter(
         (item) =>
           (!focusedProjectId || item.projectId === focusedProjectId) &&
           item.processCode === focusedProcessCode,
@@ -3411,6 +3564,9 @@ export function TaskQuestPanel({
       )
     : focusedTasks;
   const total =
+    focusedProcessCode === "EMISSION_PROJECT" && focusedContractSteps.length
+      ? focusedContractSteps.filter(step => step.stepCode !== "EMISSION_PROJECT_CORRECT").length
+      :
     focusedContractSteps.length ||
     focusedTasks.length ||
     Number(data?.summary?.total || 0);
@@ -3429,7 +3585,10 @@ export function TaskQuestPanel({
     : -1;
   const displayedNextStep =
     focusedContractStepIndex >= 0
-      ? focusedContractSteps[focusedContractStepIndex + 1]
+      ? focusedContractSteps.slice(focusedContractStepIndex + 1).find(step => {
+          const runtime = contractBackedTasks.find(item => item.processStepCode === step.stepCode);
+          return runtime ? runtime.status !== "DONE" : focusedProcessCode !== "EMISSION_PROJECT";
+        })
       : undefined;
   const linkedScreenWorkflow = screenContext?.workflow;
   const screenWorkflowMatchesTask =
@@ -4413,7 +4572,7 @@ export function TaskQuestPanel({
       {usePublicAssist ? <PublicWorkflowAssist context={publicAssistContext} en={en} onOverview={openFullWorkflow} /> : <>
       {homeRoute ? <HomeWorkGuide en={en} onOverview={openFullWorkflow} /> : (
       <aside
-        className="fixed right-3 top-[10.25rem] z-[950] w-[calc(100vw-1.5rem)] max-w-[23rem] sm:right-5 lg:right-8"
+        className={`fixed right-3 top-[10.25rem] ${open ? "z-[1300] sm:z-[950]" : "z-[950]"} w-[calc(100vw-1.5rem)] max-w-[23rem] sm:right-5 lg:right-8`}
         data-task-quest-panel=""
         data-utility-panel-state={open ? "open" : "closed"}
       >
@@ -4438,7 +4597,7 @@ export function TaskQuestPanel({
             ) : null}
           </button>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_55px_rgba(15,43,87,.22)]">
+          <div className="max-h-[calc(100dvh-11rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-[0_18px_55px_rgba(15,43,87,.22)]">
             <div className="flex items-center justify-between bg-[#052b57] px-4 py-3 text-white">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[21px]">
@@ -4480,8 +4639,9 @@ export function TaskQuestPanel({
               ) : task ? (
                 <>
                   <h3 className="mb-2 text-sm font-black text-slate-700" data-my-work-heading="">
-                    {en ? "Continue my work" : "내 업무 이어하기"}
+                    {task.status === "DONE" ? (en ? "Current task completed" : "현재 업무 완료") : (en ? "Continue my work" : "내 업무 이어하기")}
                   </h3>
+                  {task.processCode === "EMISSION_PROJECT" ? <p className="mb-2 text-xs text-slate-600" data-current-contract-evidence="">{task.projectId} · 입력 버전 {task.inputRevision ?? "—"} · 승인 요청 {task.approvalRequestId ?? "—"} · {task.approvalRequestStatus || "승인 전"}</p> : null}
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-[#246beb]">
@@ -4584,7 +4744,7 @@ export function TaskQuestPanel({
                       </div>
                     ) : null}
                   </dl>
-                  {blocked ? (
+                  {blocked && task.status !== "DONE" ? (
                     <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-900">
                       <span className="material-symbols-outlined mr-1 align-middle text-[18px]">
                         lock_clock
@@ -4620,7 +4780,7 @@ export function TaskQuestPanel({
                     onClick={() => void startTask()}
                     type="button"
                   >
-                    {task.status === "IN_PROGRESS"
+                    {task.status === "DONE" ? (en ? "Completed" : "완료된 업무") : task.status === "IN_PROGRESS"
                       ? en
                         ? "Continue task"
                         : "업무 계속하기"
@@ -4700,14 +4860,26 @@ export function TaskQuestPanel({
                 </div>
               ) : (
                 <div className="py-4 text-center">
-                  <span className="material-symbols-outlined text-4xl text-emerald-600">
-                    task_alt
+                  <span className="material-symbols-outlined text-4xl text-blue-700">
+                    info
                   </span>
                   <p className="mt-2 font-black text-slate-900">
                     {en
-                      ? "All assigned tasks are complete."
-                      : "배정된 업무를 모두 완료했습니다."}
+                      ? "No assigned task is available on this screen."
+                      : "이 화면에서 표시할 배정 업무가 없습니다."}
                   </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {en
+                      ? "Open the full workflow to review available steps."
+                      : "전체 업무 보기에서 진행 가능한 절차를 확인하세요."}
+                  </p>
+                  <button
+                    className="mt-3 min-h-10 rounded border border-blue-700 px-4 font-bold text-blue-900"
+                    onClick={openFullWorkflow}
+                    type="button"
+                  >
+                    {en ? "View all work" : "전체 업무 보기"}
+                  </button>
                 </div>
               )}
               {selectedWorkType === "MEMBER" ? (
@@ -4790,6 +4962,8 @@ export function TaskQuestPanel({
               </button>
             </header>
             <div className="max-h-[70vh] overflow-y-auto p-4">
+              {emissionContractPage(routePath) ? <EmissionContractCard route={routePath} mode="QA"/> : null}
+              <div hidden={Boolean(emissionContractPage(routePath))}>
               <MemberDomainClosureQaCard
                 enabled={selectedWorkType === "MEMBER"}
                 en={en}
@@ -5542,7 +5716,8 @@ export function TaskQuestPanel({
                     </li>
                   ) : null}
                 </ul>
-              </div>
+                </div>
+            </div>
             </div>
           </section>
         )}
@@ -5578,7 +5753,7 @@ export function TaskQuestPanel({
                     >
                       {en ? "My full task workflow" : "전체 업무 프로세스"}
                     </h2>
-                    {usePublicAssist && <p role="status" className="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">{canLoadPrivateTasks ? "전체 업무 원장을 불러오는 중입니다. 조회에 실패하면 잠시 후 다시 열어 주세요." : "계정별 업무 목록은 로그인 후 확인할 수 있습니다. 현재 표시된 0건은 실제 업무 수가 아닙니다."}</p>}
+                    {usePublicAssist && <div role="status" className="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"><p>{!canLoadPrivateTasks ? (data ? "로그인 없이 정의 카탈로그를 조회 중입니다. 개인별 실행 업무는 로그인 후 제공됩니다." : loading ? "공개 업무 카탈로그를 불러오는 중입니다." : message || "공개 업무 카탈로그를 확인하지 못했습니다.") : loading ? "전체 업무 원장을 불러오는 중입니다." : message || "업무 목록을 확인하지 못했습니다."}</p>{canLoadPrivateTasks && !loading && <button type="button" onClick={() => void load()} className="mt-2 rounded border border-amber-700 bg-white px-3 py-2 font-bold">업무 목록 다시 조회</button>}</div>}
                     <p className="mt-1 text-sm text-slate-600">
                       {en
                         ? "Follow the flow from left to right. Select a task to open its working screen."
@@ -5615,10 +5790,10 @@ export function TaskQuestPanel({
                             selectWorkType(event.target.value)
                           }
                           value={selectedWorkType}
+                          disabled={loading || availableWorkTypes.length === 0}
                         >
                           <option value="ALL">
-                            {en ? "All work" : "전체 업무"} (
-                            {definedProcessTotal})
+                            {usePublicAssist ? (loading ? "업무 목록 조회 중" : data ? `${en ? "Definition catalog" : "정의 카탈로그"} (${definedProcessTotal})` : "업무 목록 조회 필요") : `${en ? "All work" : "전체 업무"} (${definedProcessTotal})`}
                           </option>
                           {availableWorkTypes.map((item) => (
                             <option key={item.code} value={item.code}>
@@ -5668,6 +5843,16 @@ export function TaskQuestPanel({
                             className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-semibold text-[#052b57]"
                             onChange={(event) => {
                               const processCode = event.target.value;
+                              if (
+                                selectedWorkType === "REDUCTION" ||
+                                selectedWorkType === "LCA" || selectedWorkType === "MONITORING" || selectedWorkType === "TRADE" ||
+                                processCode.startsWith("SCREEN_") ||
+                                processCode.startsWith("MEMBER_MAP_")
+                              ) {
+                                // Explicit choices must win over route-driven defaults.
+                                selectCatalogProcess(processCode);
+                                return;
+                              }
                               if (processCode)
                                 selectCatalogProcessFromMap(processCode);
                               else selectCatalogProcess(processCode);
@@ -5679,7 +5864,13 @@ export function TaskQuestPanel({
                                 ? "Select a process"
                                 : "프로세스를 선택하세요"}
                             </option>
-                            {selectedDefinedProcesses.map((process, index) => (
+                            {selectedWorkType==='EMISSION'&&emissionScreenGroups.map((name,index)=><option key={name} value={`SCREEN_${index}`}>{name}</option>)}
+                            {selectedWorkType==='REDUCTION'&&reductionScreenGroups.map((g,index)=><option key={g.id} value={g.id}>{index+1}. {g.name}</option>)}
+                            {selectedWorkType==='TRADE'&&tradeScreenGroups.map((g,index)=><option key={g.id} value={g.id}>{index+1}. {g.name}</option>)}
+                            {selectedWorkType==='MONITORING'&&monitoringScreenGroups.map((g,index)=><option key={g.id} value={g.id}>{index+1}. {g.name}</option>)}
+                            {selectedWorkType==='LCA'&&lcaScreenGroups.map((g,index)=><option key={g.id} value={g.id}>{index+1}. {g.name}</option>)}
+                            {selectedWorkType==='MEMBER'&&memberScreenGroups.map((group,index)=><option key={group.id} value={group.id}>{index+1}. {group.name}</option>)}
+                            {(selectedWorkType==='EMISSION'||selectedWorkType==='MEMBER'||selectedWorkType==='REDUCTION'||selectedWorkType==='LCA'||selectedWorkType==='MONITORING'||selectedWorkType==='TRADE'?[]:selectedDefinedProcesses).map((process, index) => (
                               <option
                                 key={`process-select-${process.processCode}`}
                                 value={process.processCode}
@@ -5769,6 +5960,12 @@ export function TaskQuestPanel({
                             }
                             ref={processCanvasRef}
                           >
+                            {selectedCatalogProcessCode.startsWith('SCREEN_')&&<EmissionScreenCanvas group={Number(selectedCatalogProcessCode.slice(7))}/>}
+                            {selectedWorkType==='REDUCTION'&&<ReductionScreenCanvas code={selectedCatalogProcessCode}/>}
+                            {selectedWorkType==='TRADE'&&<TradeScreenCanvas code={selectedCatalogProcessCode}/>}
+                            {selectedWorkType==='MONITORING'&&<MonitoringScreenCanvas code={selectedCatalogProcessCode}/>}
+                            {selectedWorkType==='LCA'&&<LcaScreenCanvas code={selectedCatalogProcessCode}/>}
+                            {selectedCatalogProcessCode.startsWith('MEMBER_MAP_')&&<MemberScreenCanvas group={Number(selectedCatalogProcessCode.slice(11))-1}/>}
                             {processMapMode === "CANVAS" ? (
                               <div className="sticky left-full top-0 z-30 w-40 -translate-x-full rounded-xl border border-slate-300 bg-white/95 p-2 shadow-lg backdrop-blur">
                                 <div className="flex items-center justify-between text-[10px] font-black text-slate-600">
@@ -6353,7 +6550,7 @@ export function TaskQuestPanel({
                             )}
                           </div>
                         </div>
-                        <aside className="flex min-h-0 flex-col bg-white p-5">
+                        <aside style={selectedWorkType==='REDUCTION'||selectedCatalogProcessCode.startsWith('SCREEN_')||selectedCatalogProcessCode.startsWith('MEMBER_MAP_')?{display:'none'}:undefined} className="flex min-h-0 flex-col bg-white p-5">
                           {selectedCatalogProcess ? (
                             <>
                               <p className="text-xs font-black uppercase tracking-wide text-[#246beb]">

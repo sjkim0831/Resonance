@@ -1,0 +1,59 @@
+{
+  "deleted": [
+    {
+      "path": "/home/sjkim/screen-management-build",
+      "bytes": 256479872,
+      "files": 833,
+      "reason": "unreferenced extracted build/cache"
+    },
+    {
+      "path": "/home/sjkim/application",
+      "bytes": 225902071,
+      "files": 7412,
+      "reason": "unreferenced extracted build/cache"
+    },
+    {
+      "path": "/home/sjkim/spring-boot-loader",
+      "bytes": 400672,
+      "files": 98,
+      "reason": "unreferenced extracted build/cache"
+    },
+    {
+      "path": "/home/sjkim/__pycache__",
+      "bytes": 58828,
+      "files": 3,
+      "reason": "unreferenced extracted build/cache"
+    }
+  ],
+  "emptyDirectories": [
+    "/home/sjkim/%s\\n",
+    "/home/sjkim/printf",
+    "/home/sjkim/%s",
+    "/home/sjkim/\\\\",
+    "/home/sjkim/\\opt\\resonance-data\\dev-worktrees\\certificate-verification\\projects\\carbonet-frontend\\source\\src\\features\\company-member-invite",
+    "/home/sjkim/\\opt\\resonance-data\\dev-worktrees\\certificate-verification\\projects\\carbonet-frontend\\source\\src\\features\\mypage-staff",
+    "/home/sjkim/ \\",
+    "/home/sjkim/cd",
+    "/home/sjkim/cp",
+    "/home/sjkim/\\opt\\resonance-data\\dev-worktrees\\certificate-verification\\modules\\resonance-common\\carbonet-common-core\\src\\main\\java\\egovframework\\com\\feature\\member\\web",
+    "/home/sjkim/\\opt\\resonance-data\\dev-worktrees\\certificate-verification\\apps\\carbonet-api\\src\\main\\resources\\db\\migration\\postgresql",
+    "/home/sjkim/chmod",
+    "/home/sjkim/snapshot-dependencies",
+    "/home/sjkim/lob",
+    "/home/sjkim/700",
+    "/home/sjkim/\\opt\\resonance-data\\dev-worktrees\\certificate-verification\\modules\\resonance-common\\carbonet-common-core\\src\\main\\java\\egovframework\\com\\feature\\member\\service",
+    "/home/sjkim/install",
+    "/home/sjkim/;",
+    "/home/sjkim/\\opt\\resonance-data\\dev-worktrees\\certificate-verification\\projects\\carbonet-frontend\\source\\src\\app\\routes\\families"
+  ],
+  "skipped": [],
+  "logicalBytes": 482841443,
+  "services": {
+    "carbonet-production-direct": "active",
+    "ccus-postgresql-native": "active",
+    "carbonet-dev-proxy": "active",
+    "resonance-p006-web": "active",
+    "resonance-shadow-gemma4-e4b": "active"
+  },
+  "seconds": 0.72
+}

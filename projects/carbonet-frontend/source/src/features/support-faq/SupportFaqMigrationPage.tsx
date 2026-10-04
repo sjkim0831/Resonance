@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useMemo, useState } from "react";
 import {
   UserGovernmentBar,
@@ -196,19 +197,15 @@ export function SupportFaqMigrationPage() {
             <p className="mb-10 text-sm text-slate-400 md:text-base">{copy.heroBody}</p>
             <div className="group relative mx-auto max-w-[700px]">
               <div className="absolute inset-0 rounded-full bg-indigo-500/20 opacity-0 blur-xl transition-opacity group-focus-within:opacity-100" />
-              <div className="relative flex items-center">
-                <span className="material-symbols-outlined absolute left-6 text-[28px] text-indigo-400">search</span>
-                <input
+              <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><input
                   className="h-16 w-full rounded-2xl border border-white/20 bg-white/10 pl-16 pr-24 text-lg font-medium text-white placeholder-slate-400 backdrop-blur-md transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder={copy.placeholder}
                   type="text"
                   value={query}
-                />
-                <button className="absolute right-3 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-indigo-500" type="button">
+                /></div></>} actions={<><button className="absolute right-3 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-indigo-500" type="button">
                   {copy.search}
-                </button>
-              </div>
+                </button></>}></CommonSearchSection></div>
             </div>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <span className="text-xs font-bold uppercase tracking-widest text-slate-500">{copy.recommended}:</span>

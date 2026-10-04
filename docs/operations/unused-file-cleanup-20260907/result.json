@@ -1,0 +1,14 @@
+{
+  "deletedFiles": 411,
+  "logicalBytes": 237695328,
+  "skippedFiles": 233,
+  "services": {
+    "carbonet-production-direct": "active",
+    "ccus-postgresql-native": "active",
+    "carbonet-dev-proxy": "active",
+    "resonance-p006-web": "active",
+    "resonance-shadow-gemma4-e4b": "active"
+  },
+  "seconds": 0.99,
+  "noRecoveryOrRestart": true
+}

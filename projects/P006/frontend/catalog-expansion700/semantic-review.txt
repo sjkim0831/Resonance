@@ -1,0 +1,116 @@
+# second-pass semantic review: English name|decision|target ID or English name|reason
+Machine foundation block|PART|E023|장비 기초는 바닥 시공 하위 구조이며 별도 설비 수에서 제외
+Floating isolation slab|MERGE|E023|바닥의 방진 시공 사양으로 관리
+Liquid containment bund|MERGE|E091|누출 포집 기능은 동일; 대형 시공형 옵션으로 관리
+Equipment service pit|PART|E023|바닥 시공 개구 및 피트 구조
+Modular clean booth|MERGE|N006|칸막이와 필터의 조합 레시피; 새 독립 제품 수에서 제외
+Truck weighbridge|MERGE|E081|정적 하중 계량의 크기 및 설치형 파생형
+Container tipping unloader|MERGE|E175|틸팅 배출의 용기 규격 파생형
+Empty container inspection station|MERGE|N038|빈 운반체 검사 치구와 검사 레시피로 통합
+Dock check-in kiosk|MERGE|Industrial panel PC|접수 업무 화면은 같은 단말을 재사용
+Vertical lift module|MERGE|E185|트레이 자동 보관의 인출 기구 차이로 관리
+Horizontal carousel|MERGE|E185|자동 보관고의 순환 방향 파생형
+Cube storage system|MERGE|E184|자동창고 토폴로지 대안으로 묶고 독립 수 중복 제외
+FIFO accumulation tower|MERGE|Spiral accumulator|생산 흐름 완충 기능의 타워형 옵션
+Wafer nitrogen stocker|MERGE|Nitrogen storage cabinet|저산소 보관의 캐리어 전용 구성
+Frozen storage chamber|MERGE|N050|온도 제어 보관의 설정 범위 및 규모 파생형
+Ultra low temperature freezer|MERGE|N050|초저온 보관 사양으로 통합
+Battery quarantine cabinet|MERGE|N200|방화 캐비닛에 온도 감시를 붙인 배터리 격리 구성
+Air flotation transfer table|MERGE|E034|수평 이송 방식의 비접촉 옵션
+Power and free conveyor|MERGE|E180|오버헤드 레일의 축적 제어 옵션
+Rotary drum cooler|MERGE|E006|벌크 냉각의 드럼형 파생형
+Tray destacker|MERGE|E086|팔레트 매거진의 트레이용 분리 구성
+Tray stacker|MERGE|E086|동일 매거진의 트레이 적층 구성
+Mobile manipulator|COMPOSE|E125,E004|AMR와 취출 로봇의 통합 셀 레시피; 새 유형 수에서는 제외
+AMR precision docking station|PART|E125|위치 결정 핀과 감지는 AMR 도킹 인프라 하위 구성
+AGV crossing interlock controller|MERGE|N164|안전 PLC의 물류 교차 제어 프로그램 구성
+Deep hole drilling machine|MERGE|E095|드릴링의 심공 가공 사양 및 급유 옵션
+Thread grinding machine|MERGE|E138|나사 프로파일 연삭의 축 제어 옵션
+Gear grinding machine|KEEP||치형 마감 공정; 기어 생성 절삭과 입출력 표면 요구가 다름
+Gear skiving machine|KEEP||내외 치형 동기 절삭; 기존 호빙과 가공 접근 및 기구가 다른 독립 가공 유형
+Diamond turning machine|MERGE|E120|선반의 초정밀 주축 및 공구 사양
+Laser micro drilling system|MERGE|E132|레이저 제거 가공의 미세 홀 레시피와 광학 옵션
+Roll superfinishing machine|MERGE|N063|표면 마감의 롤 전용 지그 구성
+Bar measuring feeder|MERGE|E080|기존 자재 공급기에 길이 계측을 붙인 구성
+Automatic tool magazine|PART|E121|공작기계 공구 교환 하위 모듈
+Panel bending machine|MERGE|E135|판재 절곡의 자동 패널 취급 옵션
+Stretch straightening machine|MERGE|N079|소재 교정의 인장 방식 파생형
+Superplastic forming press|MERGE|N076|판재 성형 프레스의 고온 기체압 공정 프로파일
+Plate edge beveling machine|MERGE|E099|면취 작업대에 가공 헤드를 구성하는 용도 파생형
+Gate cutoff machine|MERGE|E001|주조 후 트리밍 중 탕구 절단 공정 구성
+Molten metal transfer ladle|PART|E002|주탕 로봇 또는 크레인이 취급하는 래들 툴; 본체 추가 아님
+Low pressure casting machine|KEEP||기존 주조기 기반 후보는 H 상태이며 저압 충전 구조가 입증되지 않았음; 승인 대상 설계만 신규 지정
+Centrifugal casting machine|KEEP||회전 금형의 원심 충전이 핵심이며 기존 고정 금형 후보와 공정 원리가 다름
+Welding turning rolls|MERGE|Welding positioner|용접 자세 제어의 원통 지지 형상 옵션
+Weld seam tracking unit|PART|N081|용접 공정 보정용 하위 센서 제어 모듈
+Spin plastic welder|MERGE|Rotary friction welding machine|회전 마찰 접합의 수지용 공정 파생형
+Metal infiltration furnace|MERGE|Sintering furnace|소결로의 금속 함침 공정 레시피
+Vacuum bag curing table|COMPOSE|Composite curing autoclave,E194|진공 라인과 가열 작업대의 복합재 경화 구성
+Heat treatment straightening press|MERGE|N076|가압기와 변위 측정의 교정 지그 구성
+Black oxide treatment line|MERGE|Phosphating line|화성 피막 처리의 약액 레시피 차이
+Dip coater|MERGE|E146|액상 도포의 침지 방식 옵션
+Curtain coater|MERGE|E146|액상 도포의 커튼 방식 옵션
+Paint tinting station|MERGE|E192|액상 정량 공급과 혼합의 도료 배합 레시피
+Coating viscosity control unit|PART|E146|도포 계통 하위 점도 조절 루프
+Rubber mixing mill|MERGE|Rubber internal mixer|고무 혼련의 개방 롤형 대안으로 통합
+Blown film line|MERGE|N103|수지 압출 성형의 환상 다이와 버블 냉각 구성
+Polymer devolatilization system|PART|N103|압출기 진공 벤트 하위 기능
+Rubber batch off cooler|MERGE|E006|시트 냉각의 행거 및 이형액 옵션
+Bearing shrink fit cell|COMPOSE|Bearing induction heater,N112|베어링 가열과 삽입의 조합 셀; 신규 기능 유형 아님
+Seal insertion cell|MERGE|N115|씰 조립의 재질 및 지그 파생형
+Spring preload assembly cell|COMPOSE|N111,N174|압입 축과 하중계로 구현하는 조립 레시피
+Motor end shield assembly machine|COMPOSE|E122,N111|체결과 압입의 모터 전용 조합
+Synchronous transfer assembly line|COMPOSE|E034,E079|이송과 인덱싱을 조합한 라인 레시피
+Colorimeter|KEEP||재료 색차 정량 평가용 계측기; N177 단순 색 구분 센서와 결과 데이터가 다름
+Optical flatness tester|MERGE|White light interferometer|광학 표면 높이 계측의 평면도 분석 옵션
+Torque test bench|COMPOSE|Regenerative dynamometer,N175|부하 발생기와 토크 센서 조합 시험 레시피
+Tube filling sealing machine|KEEP||기존 파우치 충전기와 달리 성형 튜브 공급 및 꼬리 실링을 수행
+Water activated tape dispenser|PART|E083|봉함 작업의 테이프 공급 하위 기구
+Robot force compliance module|PART|E004|로봇 끝단 하위 순응 제어 모듈
+Robot screwdriving spindle|PART|E122|나사체결기의 로봇 장착 헤드
+Robot deburring end tool|PART|E004|로봇 장착 가공 툴
+Robot sanding end tool|PART|E004|로봇 장착 연마 툴
+Robot magnetic gripper|PART|E004|기존 E216 그리퍼와 같은 하위 툴 계층
+Robot needle gripper|PART|E004|그리퍼의 섬유용 파지 방식
+Robot soft gripper|PART|E004|그리퍼의 유연 핑거 방식
+Robot rotary bell atomizer|PART|E003|도포 로봇의 분무 엔드툴
+Motor spindle cartridge|PART|E121|공작기계 주축 하위 모듈
+Ionizing air knife|KEEP||기존 목록에 정전기 중화 장치가 없음; 공기 세척과 별도로 대전 제거 기능 제공
+Multi axis motion controller|MERGE|N161|PLC의 모션 제어 전용 구성으로 묶음
+Accumulator charging kit|PART|N184|축압기 정비 부속 재확인
+Clean steam generator|MERGE|Steam boiler|증기 발생기의 청정 접액 사양
+PSA oxygen generator|MERGE|PSA nitrogen generator|가스 분리 발생기의 흡착재 및 생성 가스 프로파일
+Compressor condensate separator|MERGE|N194|오일 물 분리의 압축기 응축수 적용
+Waste heat recovery boiler|MERGE|Steam boiler|보일러 열원 폐열 회수 옵션
+Oil sampling station|PART|N055|오일 회수 정비 계통의 시료 포트
+Portable balancing analyzer|MERGE|E161|밸런싱 검사기의 현장 측정 사양
+Steam cleaner|MERGE|Industrial pressure washer|세정기의 공급 매체 옵션
+Portable maintenance gantry|MERGE|E171|크레인의 이동식 정비 프레임 사양
+Hand tool torque controller|PART|E122|체결 장치의 제어 하위 구성
+Workwear drying cabinet|MERGE|N050|온습도 캐비닛의 작업복 거치 옵션
+Cell aging rack|MERGE|N050|온도 제어 보관과 계측을 묶은 배터리 에이징 레시피
+Cell insulation wrapper|MERGE|E166|필름 부착기의 셀 외피 레시피
+Battery module compression assembly|COMPOSE|N111,N174|압입기와 하중계 기반 셀 압축 조립 레시피
+Electrode vacuum dryer|MERGE|E098|오븐의 진공 분위기와 전극용 선반 사양
+Food dewatering centrifuge|MERGE|N194|원심분리기의 식품 바스켓 및 위생 사양
+UHT sterilizer|MERGE|HTST pasteurizer|가열 유지 냉각의 온도와 무균 인터페이스 프로파일
+Bioreactor|MERGE|Food fermentation vessel|배양 반응조의 세포와 청정 등급 프로파일
+Food evaporator|MERGE|Wastewater evaporator|증발 농축기의 위생 접액 사양
+Reagent preparation skid|MERGE|E192|정량 액상 공급과 혼합의 시약 레시피
+Contained powder transfer valve|PART|E191|벌크 분말 이송의 봉쇄 밸브 하위 구성
+Electrostatic precipitator|MERGE|E056|집진 기능의 전기 포집 방식으로 통합; 별도 기능 유형 수 제외
+RFID printer encoder|MERGE|E082|기존 라벨 프린터에 RFID 인코더를 붙이는 구성
+Rubber strainer|PART|N103|압출·혼련 계통에 장착되는 고무 여과 하위 모듈
+Sterile filtration skid|MERGE|E197|여과 스키드의 제균 등급 필터와 무균 접액 사양
+Ultrafiltration skid|KEEP||E197의 수처리와 달리 제품 분획·농축이 목적; 투과액과 농축액을 각각 제품 흐름으로 관리
+Reaction injection molding machine|KEEP||N101 열가소성 용융 사출과 달리 두 반응액의 계량 혼합 및 화학 경화가 핵심
+Cold isostatic press|KEEP||분말을 그린 성형체로 만드는 초기 압축 공정; 열간 등방압은 기성 부품의 고온 기공 치밀화
+Stator wedge inserter|KEEP||코일 삽입 이후 슬롯을 별도 절연 웨지로 봉쇄하며 투입 부품과 조립 결과가 다름
+Process oxygen analyzer|KEEP||가스상 산소 측정 계통; 용존산소 분석기는 액상 프로브와 용해 농도를 측정
+Impact tester|KEEP||기계 충격 파괴 에너지를 측정; 열충격 시험기는 온도 급변 내구 공정
+Liquid chromatograph|KEEP||액상 고압 분리와 시료 전달 계통; 기체 크로마토그래프는 기화 시료 운반 및 컬럼 오븐 계통
+Metallographic polishing machine|KEEP||시편 절단 후 관찰면 평탄화 단계; 절단기는 시료 분리 전처리
+Density meter|KEEP||밀도는 질량 대비 부피 물성; 진원도는 기하 공차라 기능 중복 없음
+Automatic palletizer|KEEP||N040은 적층 해체·낱개 배출; 본 장비는 층 패턴 구성·적층 완성이 출력
+Photoelectric sensor|KEEP||E215는 센서 지지 브래킷뿐이며 검출 기능이 없음
+Water vapor transmission tester|KEEP||포장막의 수분 투과율 측정으로 경도 및 기계 시험과 무관

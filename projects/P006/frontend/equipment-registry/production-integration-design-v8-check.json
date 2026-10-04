@@ -1,0 +1,14 @@
+{
+  "scope": "STATIC_SOURCE_AND_TRACE_MAP_DIFF_ONLY",
+  "status": "PASS",
+  "requirements": 115,
+  "sourceControls": 212,
+  "sourceMappedRequirements": 66,
+  "requirementsWithoutDirectControl": 49,
+  "behaviorVerified": 0,
+  "anonymousControlIds": 81,
+  "runtimeE2E": 0,
+  "releaseStatus": "BLOCKED",
+  "elapsedMs": 0,
+  "paidApiCalls": 0
+}

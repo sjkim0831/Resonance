@@ -1,0 +1,139 @@
+#usda 1.0
+(
+    defaultPrim = "root"
+    doc = "Blender v4.5.0"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "root" (
+    customData = {
+        dictionary Blender = {
+            bool generated = 1
+        }
+    }
+)
+{
+    def Xform "Asset"
+    {
+        custom string userProperties:blender:object_name = "Asset"
+        float3 xformOp:rotateXYZ = (90.000015, -0, 0)
+        float3 xformOp:scale = (0.009999999, 0.010000001, 0.010000001)
+        double3 xformOp:translate = (0, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Xform "Equipment"
+        {
+            custom string userProperties:blender:object_name = "Equipment"
+            float3 xformOp:rotateXYZ = (0, -0, 0)
+            float3 xformOp:scale = (1, 1.0000001, 1.0000001)
+            double3 xformOp:translate = (0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+            def Xform "Body"
+            {
+                custom string userProperties:blender:object_name = "Body"
+                float3 xformOp:rotateXYZ = (6.415082e-13, -0, 0)
+                float3 xformOp:scale = (1.2, 1.5, 1.1)
+                double3 xformOp:translate = (0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                def Mesh "Body" (
+                    active = true
+                )
+                {
+                    float3[] extent = [(-1, -1, -1), (1, 1, 1)]
+                    int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+                    int[] faceVertexIndices = [1, 4, 7, 1, 7, 10, 13, 16, 19, 13, 19, 22, 0, 18, 15, 0, 15, 3, 12, 21, 9, 12, 9, 6, 2, 11, 23, 2, 23, 20, 14, 8, 5, 14, 5, 17]
+                    normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0)] (
+                        interpolation = "faceVarying"
+                    )
+                    point3f[] points = [(1, 1, 1), (1, 1, 1), (1, 1, 1), (-1, 1, 1), (-1, 1, 1), (-1, 1, 1), (-1, -1, 1), (-1, -1, 1), (-1, -1, 1), (1, -1, 1), (1, -1, 1), (1, -1, 1), (-1, -1, -1), (-1, -1, -1), (-1, -1, -1), (-1, 1, -1), (-1, 1, -1), (-1, 1, -1), (1, 1, -1), (1, 1, -1), (1, 1, -1), (1, -1, -1), (1, -1, -1), (1, -1, -1)]
+                    uniform token subdivisionScheme = "none"
+                    custom string userProperties:blender:data_name = "Body"
+                }
+            }
+
+            def Xform "Module_02"
+            {
+                custom string userProperties:blender:object_name = "Module_02"
+                float3 xformOp:rotateXYZ = (-2.544444e-13, 0, 0)
+                float3 xformOp:scale = (0.20000002, 0.3, 0.2)
+                double3 xformOp:translate = (0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                def Mesh "Module_02" (
+                    active = true
+                )
+                {
+                    float3[] extent = [(-1, -1, -1), (1, 1, 1)]
+                    int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+                    int[] faceVertexIndices = [1, 4, 7, 1, 7, 10, 13, 16, 19, 13, 19, 22, 0, 18, 15, 0, 15, 3, 12, 21, 9, 12, 9, 6, 2, 11, 23, 2, 23, 20, 14, 8, 5, 14, 5, 17]
+                    normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0)] (
+                        interpolation = "faceVarying"
+                    )
+                    point3f[] points = [(1, 1, 1), (1, 1, 1), (1, 1, 1), (-1, 1, 1), (-1, 1, 1), (-1, 1, 1), (-1, -1, 1), (-1, -1, 1), (-1, -1, 1), (1, -1, 1), (1, -1, 1), (1, -1, 1), (-1, -1, -1), (-1, -1, -1), (-1, -1, -1), (-1, 1, -1), (-1, 1, -1), (-1, 1, -1), (1, 1, -1), (1, 1, -1), (1, 1, -1), (1, -1, -1), (1, -1, -1), (1, -1, -1)]
+                    uniform token subdivisionScheme = "none"
+                    custom string userProperties:blender:data_name = "Module_02"
+                }
+            }
+
+            def Xform "Module_03"
+            {
+                custom string userProperties:blender:object_name = "Module_03"
+                float3 xformOp:rotateXYZ = (-2.544444e-13, 0, 0)
+                float3 xformOp:scale = (0.20000002, 0.3, 0.2)
+                double3 xformOp:translate = (0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                def Mesh "Module_03" (
+                    active = true
+                )
+                {
+                    float3[] extent = [(-1, -1, -1), (1, 1, 1)]
+                    int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+                    int[] faceVertexIndices = [1, 4, 7, 1, 7, 10, 13, 16, 19, 13, 19, 22, 0, 18, 15, 0, 15, 3, 12, 21, 9, 12, 9, 6, 2, 11, 23, 2, 23, 20, 14, 8, 5, 14, 5, 17]
+                    normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0)] (
+                        interpolation = "faceVarying"
+                    )
+                    point3f[] points = [(1, 1, 1), (1, 1, 1), (1, 1, 1), (-1, 1, 1), (-1, 1, 1), (-1, 1, 1), (-1, -1, 1), (-1, -1, 1), (-1, -1, 1), (1, -1, 1), (1, -1, 1), (1, -1, 1), (-1, -1, -1), (-1, -1, -1), (-1, -1, -1), (-1, 1, -1), (-1, 1, -1), (-1, 1, -1), (1, 1, -1), (1, 1, -1), (1, 1, -1), (1, -1, -1), (1, -1, -1), (1, -1, -1)]
+                    uniform token subdivisionScheme = "none"
+                    custom string userProperties:blender:data_name = "Module_03"
+                }
+            }
+
+            def Xform "Module_01"
+            {
+                custom string userProperties:blender:object_name = "Module_01"
+                float3 xformOp:rotateXYZ = (-2.544444e-13, 0, 0)
+                float3 xformOp:scale = (0.20000002, 0.3, 0.2)
+                double3 xformOp:translate = (0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                def Mesh "Module_01" (
+                    active = true
+                )
+                {
+                    float3[] extent = [(-1, -1, -1), (1, 1, 1)]
+                    int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+                    int[] faceVertexIndices = [1, 4, 7, 1, 7, 10, 13, 16, 19, 13, 19, 22, 0, 18, 15, 0, 15, 3, 12, 21, 9, 12, 9, 6, 2, 11, 23, 2, 23, 20, 14, 8, 5, 14, 5, 17]
+                    normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0)] (
+                        interpolation = "faceVarying"
+                    )
+                    point3f[] points = [(1, 1, 1), (1, 1, 1), (1, 1, 1), (-1, 1, 1), (-1, 1, 1), (-1, 1, 1), (-1, -1, 1), (-1, -1, 1), (-1, -1, 1), (1, -1, 1), (1, -1, 1), (1, -1, 1), (-1, -1, -1), (-1, -1, -1), (-1, -1, -1), (-1, 1, -1), (-1, 1, -1), (-1, 1, -1), (1, 1, -1), (1, 1, -1), (1, 1, -1), (1, -1, -1), (1, -1, -1), (1, -1, -1)]
+                    uniform token subdivisionScheme = "none"
+                    custom string userProperties:blender:data_name = "Module_01"
+                }
+            }
+        }
+    }
+
+    def DomeLight "env_light"
+    {
+        float inputs:intensity = 1
+        asset inputs:texture:file = @./textures/color_121212.hdr@
+        float3 xformOp:rotateXYZ = (90, -0, 90)
+        uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+    }
+}
+

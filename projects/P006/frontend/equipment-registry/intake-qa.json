@@ -1,0 +1,318 @@
+{
+  "tests": [
+    {
+      "name": "EXISTING_ADMIN_LOGIN",
+      "pass": true
+    },
+    {
+      "name": "ANONYMOUS_DENIED",
+      "pass": true
+    },
+    {
+      "name": "PUBLIC_AUTHENTICATED_API",
+      "pass": true
+    },
+    {
+      "name": "62_PERSISTED",
+      "pass": true
+    },
+    {
+      "name": "36_REFERENCE_26_BLOCKED",
+      "pass": true
+    },
+    {
+      "name": "62_UNKNOWN_OWNERS",
+      "pass": true
+    },
+    {
+      "name": "VERBATIM_SOURCE_62",
+      "pass": true
+    },
+    {
+      "name": "SOURCE_CELL_CONTINUITY",
+      "pass": true
+    },
+    {
+      "name": "724_666_PRESERVED",
+      "pass": true
+    },
+    {
+      "name": "ZERO_READY_REAL",
+      "pass": true
+    },
+    {
+      "name": "NO_FAKE_ACCEPTANCE",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B003",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B004",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B007",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B008",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B010",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B012",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B015",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B016",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B018",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B020",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B023",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B024",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B026",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B028",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B031",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B032",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B034",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B036",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B039",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B040",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B042",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B044",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B047",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B048",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B050",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B052",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B053",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B054",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B055",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B056",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B057",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B059",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B060",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B061",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B062",
+      "pass": true
+    },
+    {
+      "name": "ENTRY_FILE_CHECKLIST-Sheet1-B064",
+      "pass": true
+    },
+    {
+      "name": "IMAGES_DEFINED",
+      "pass": true
+    },
+    {
+      "name": "IMAGE_E005.png",
+      "pass": true
+    },
+    {
+      "name": "IMAGE_E144.png",
+      "pass": true
+    },
+    {
+      "name": "IMAGE_N097.png",
+      "pass": true
+    },
+    {
+      "name": "IMAGE_E003.png",
+      "pass": true
+    },
+    {
+      "name": "IMAGE_E194.png",
+      "pass": true
+    },
+    {
+      "name": "IMAGE_E226.png",
+      "pass": true
+    },
+    {
+      "name": "IMAGE_E054.png",
+      "pass": true
+    },
+    {
+      "name": "IMAGE_E004.png",
+      "pass": true
+    },
+    {
+      "name": "IMAGE_E121.png",
+      "pass": true
+    },
+    {
+      "name": "IMAGE_E001.png",
+      "pass": true
+    },
+    {
+      "name": "PENDING_FILTER_62",
+      "pass": true
+    },
+    {
+      "name": "NONADMIN_DENIED",
+      "pass": true
+    },
+    {
+      "name": "STALE_BATCH_ATOMIC",
+      "pass": true
+    },
+    {
+      "name": "STALE_FIRST_NOT_CHANGED",
+      "pass": true
+    },
+    {
+      "name": "MISSING_PROCESS",
+      "pass": true
+    },
+    {
+      "name": "EVIDENCE_REQUIRED",
+      "pass": true
+    },
+    {
+      "name": "BULK_ATTRIBUTION_2",
+      "pass": true
+    },
+    {
+      "name": "MAPPING_AND_SOURCE_UNCHANGED",
+      "pass": true
+    },
+    {
+      "name": "FILTER_RECOMPUTES_60",
+      "pass": true
+    },
+    {
+      "name": "TWO_AUDIT_RECORDS",
+      "pass": true
+    },
+    {
+      "name": "QA_ROLLBACK_UNKNOWN_62",
+      "pass": true
+    },
+    {
+      "name": "NO_QA_CUSTOMERS",
+      "pass": true
+    },
+    {
+      "name": "NO_INSTALLATION_ASSERTION",
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "seconds": 0.26,
+  "actor": "existing P006 PROJECT_ADMIN",
+  "mocked": false,
+  "actualCandidateRows": 62,
+  "businessImports": 62,
+  "testMutations": "transaction rolled back",
+  "stats": {
+    "total": 62,
+    "recommended": 36,
+    "acceptedConnections": 0,
+    "ownershipPending": 62,
+    "grades": {
+      "EXACT_MATCH": 0,
+      "CLOSE_MATCH": 0,
+      "REFERENCE_MATCH": 36,
+      "NO_MATCH": 0,
+      "BLOCKED": 26
+    },
+    "recommendationCoverage": 58.06,
+    "blockedReview": {
+      "REFERENCE_MATCH_POSSIBLE": 0,
+      "EXISTING_ASSET_MODIFICATION": 6,
+      "EXISTING_ASSET_COMBINATION": 0,
+      "NEW_ASSET_REQUIRED": 0,
+      "EQUIPMENT_INFO_REQUIRED": 20
+    }
+  },
+  "uniqueEntryFiles": 10,
+  "uniqueImages": 10
+}

@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "project": "P006",
+  "name": "업체 설비 등록·3D 자산 연결",
+  "database": "woosu_digital_twin",
+  "schema": "p006_registry",
+  "hierarchy": [
+    "Customer",
+    "Plant",
+    "Line",
+    "Process",
+    "Equipment Instance"
+  ],
+  "shared": [
+    "Equipment Type",
+    "Manufacturer",
+    "Model",
+    "Variant / Option",
+    "3D Asset",
+    "Entry USD"
+  ],
+  "principles": [
+    "16개 종류 코드 보존; 실제 인스턴스로 복제하지 않음",
+    "724개 공통 자산; 666개 Entry 재사용; 업체별 USD 복제 금지",
+    "추천과 연결 수용 분리; 증거 없이 READY/REAL 승격 금지",
+    "NO_MATCH만 신규 자산 후보 생성; 실제 USD 제작은 하지 않음",
+    "업체 권한은 서버에서 검사; P006 PROJECT_ADMIN만 전체 관리"
+  ],
+  "equipmentForm": [
+    {
+      "key": "processId",
+      "label": "공정",
+      "type": "process",
+      "required": true
+    },
+    {
+      "key": "equipmentTypeCode",
+      "label": "설비 종류",
+      "type": "equipmentType",
+      "required": true
+    },
+    {
+      "key": "code",
+      "label": "설비 코드",
+      "type": "text",
+      "required": true
+    },
+    {
+      "key": "name",
+      "label": "설비명",
+      "type": "text",
+      "required": true
+    },
+    {
+      "key": "modelId",
+      "label": "제조사 / 모델",
+      "type": "model"
+    },
+    {
+      "key": "optionId",
+      "label": "Variant / Option",
+      "type": "option"
+    },
+    {
+      "key": "serialNumber",
+      "label": "일련번호",
+      "type": "text"
+    },
+    {
+      "key": "managementNumber",
+      "label": "관리번호",
+      "type": "text"
+    },
+    {
+      "key": "purpose",
+      "label": "실제 용도 / 공정 역할",
+      "type": "text"
+    },
+    {
+      "key": "shapeFamily",
+      "label": "형상 계열 (확인된 경우)",
+      "type": "text"
+    },
+    {
+      "key": "dimensionsMm",
+      "label": "실제 주요 치수 mm — width/depth/height",
+      "type": "json",
+      "default": {}
+    },
+    {
+      "key": "installation",
+      "label": "설치 위치 — 좌표계·단위·위치·회전",
+      "type": "json",
+      "default": {}
+    },
+    {
+      "key": "workpiece",
+      "label": "작업물 — 재질·규격·인계",
+      "type": "json",
+      "default": {}
+    },
+    {
+      "key": "io",
+      "label": "입출력 / 포트 / I/O — 실제 값만",
+      "type": "json",
+      "default": {}
+    }
+  ],
+  "matchGrades": [
+    "EXACT_MATCH",
+    "CLOSE_MATCH",
+    "REFERENCE_MATCH",
+    "NO_MATCH",
+    "BLOCKED"
+  ],
+  "help": "실제 귀속이 미확정인 원장은 원장 후보 화면에서 UNKNOWN으로 관리합니다. 원문 증거와 3D 기준 추천을 구분하세요.",
+  "qa": "인증·업체 범위·중복·원자적 가져오기·낙관적 잠금·추천/수용 분리·공통 자산 무복제·자료 다운로드 권한 검증",
+  "next": "원장 62개 보존 → 26개 전수 판정 → 이형제 6개 기준 수정 설계 확인 / 20개 장비 방식·구조 확인 → 기존 USD 재사용 우선 → NEW_ASSET_REQUIRED만 향후 제작 검토",
+  "apiPrefix": "/projects/P006/registry-api",
+  "maxImportRows": 500,
+  "pageSize": 50,
+  "intake": {
+    "route": "intake.html",
+    "table": "equipment_intake",
+    "unknownOwnershipAllowed": true,
+    "ownershipNotMatchingGate": true,
+    "roles": [
+      "PROJECT_ADMIN"
+    ],
+    "sourceImmutable": true,
+    "batchAttribution": "POST /intake/attribution",
+    "exactRequiresApprovedIdentity": true,
+    "blockedReview": {
+      "schema": "intake_matching_review",
+      "rowCount": 26,
+      "decisions": [
+        "REFERENCE_MATCH_POSSIBLE",
+        "EXISTING_ASSET_MODIFICATION",
+        "EXISTING_ASSET_COMBINATION",
+        "NEW_ASSET_REQUIRED",
+        "EQUIPMENT_INFO_REQUIRED"
+      ],
+      "originalMatchingImmutable": true,
+      "gate": "NEW_ASSET_REQUIRED only permits considering future new model work, not automatic creation"
+    }
+  }
+}

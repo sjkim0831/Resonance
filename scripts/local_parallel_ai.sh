@@ -24,20 +24,19 @@ echo "Max Parallel Instances: $MAX_INSTANCES"
 
 # Model paths (priority order)
 MODELS=(
-    "/opt/util/ai/vLLM/models/qwen2.5-coder-7b-q4_k_m/Qwen2.5-Coder-7B-Q4_K_M.gguf"
-    "/opt/util/ai/vLLM/models/qwen3.5-9b-q4_k_m/Qwen3.5-9B-Q4_K_M.gguf"
-    "/opt/util/ai/vLLM/models/gemma4-e4b-q4_k_m/Gemma4-E4B-q4_k_m.gguf"
+    "/opt/Resonance/runtime/tools/ai/vLLM/models/qwen2.5-coder-7b-q4_k_m/Qwen2.5-Coder-7B-Q4_K_M.gguf"
+    "/opt/Resonance/runtime/tools/ai/vLLM/models/qwen3.5-9b-q4_k_m/Qwen3.5-9B-Q4_K_M.gguf"
+    "/opt/Resonance/runtime/tools/ai/vLLM/models/gemma4-e4b-q4_k_m/Gemma4-E4B-q4_k_m.gguf"
 )
 
 # Ports for each model server
 PORTS=(24941 24942 24943 24944 24945 24946)
 
 # API fallback keys
-API_KEYS=(
-    "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"
-    "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"
-    "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"
-)
+API_KEYS=()
+while IFS= read -r __nvidia_key; do
+    [ -n "$__nvidia_key" ] && API_KEYS+=("$__nvidia_key")
+done < "${NVIDIA_API_KEYS_FILE:-/etc/resonance/secrets/nvidia-api-keys}"
 NVIDIA_API="https://integrate.api.nvidia.com/v1/chat/completions"
 NVIDIA_MODEL="qwen/qwen3-next-80b-a3b-instruct"
 
@@ -57,7 +56,7 @@ start_model_server() {
     pkill -f "llama-server.*port $port" 2>/dev/null
     sleep 1
 
-    nohup /opt/util/ai/vLLM/llama.cpp-tq3/build/bin/llama-server \
+    nohup /opt/Resonance/runtime/tools/ai/vLLM/llama.cpp-tq3/build/bin/llama-server \
         -m "$model_path" \
         -a model_$idx \
         --host 127.0.0.1 --port $port \

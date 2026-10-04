@@ -29,6 +29,8 @@
   --kr-gov-border-light: #d9d9d9;
   --kr-gov-focus: #005fde;
   --kr-gov-bg-gray: #f2f2f2;
+  /* Default page canvas for newly created screens. Keep --kr-gov-bg-gray for section-level surfaces only. */
+  --ccus-page-canvas: #fff;
   --kr-gov-radius: 5px;
   --kr-gov-error: #d32f2f;
   --kr-gov-success: #039855;
@@ -60,7 +62,7 @@
    * full-screen shells tied to the stable small viewport instead so reaching
    * the document end cannot resize the page and push the scroll position. */
   --krds-stable-viewport-block: 100vh;
-  background: #f2f2f2;
+  background: var(--ccus-page-canvas);
 }
 
 @supports (height: 100svh) {
@@ -155,7 +157,7 @@ body {
   margin: 0;
   min-width: 320px;
   -webkit-font-smoothing: antialiased;
-  background: var(--kr-gov-bg-gray);
+  background: var(--ccus-page-canvas);
   color: var(--kr-gov-text-primary);
   font-size: var(--krds-type-body);
   line-height: var(--krds-line-body);
@@ -297,7 +299,7 @@ body {
 }
 
 #root {
-  background: var(--kr-gov-bg-gray);
+  background: var(--ccus-page-canvas);
 }
 
 .help-fab {
@@ -1960,7 +1962,7 @@ dd {
 .gov-page {
   min-height: var(--krds-stable-viewport-block);
   color: #1a1a1a;
-  background: #f2f2f2;
+  background: var(--ccus-page-canvas, #fff);
   font-family: "Noto Sans KR", "Public Sans", sans-serif;
 }
 

@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -178,29 +179,12 @@ export function RefundListMigrationPage() {
           title={en ? "Refund Search Conditions" : "환불 조회 조건"}
         >
           <form
-            className="grid grid-cols-1 gap-6 md:grid-cols-4"
+            className="ccus-search-host"
             onSubmit={(event) => {
               event.preventDefault();
               setFilters({ ...draft, pageIndex: 1 });
             }}
-          >
-            <div>
-              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="refundStatus">{en ? "Status" : "처리 상태"}</label>
-              <AdminSelect id="refundStatus" value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))}>
-                {statusOptions.map((option, index) => (
-                  <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>
-                ))}
-              </AdminSelect>
-            </div>
-            <div>
-              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="refundRiskLevel">{en ? "Risk" : "리스크"}</label>
-              <AdminSelect id="refundRiskLevel" value={draft.riskLevel} onChange={(event) => setDraft((current) => ({ ...current, riskLevel: event.target.value }))}>
-                {riskLevelOptions.map((option, index) => (
-                  <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>
-                ))}
-              </AdminSelect>
-            </div>
-            <div className="md:col-span-2">
+          ><CommonSearchSection basic={<><div className="ccus-search-field"><div className="md:col-span-2">
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="refundSearchKeyword">{en ? "Keyword" : "검색어"}</label>
               <div className="flex gap-2">
                 <AdminInput
@@ -210,10 +194,24 @@ export function RefundListMigrationPage() {
                   value={draft.searchKeyword}
                   onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))}
                 />
-                <button className="gov-btn gov-btn-primary" type="submit">{en ? "Search" : "검색"}</button>
+                
               </div>
-            </div>
-          </form>
+            </div></div>
+<div className="ccus-search-field"><div>
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="refundStatus">{en ? "Status" : "처리 상태"}</label>
+              <AdminSelect id="refundStatus" value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))}>
+                {statusOptions.map((option, index) => (
+                  <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>
+                ))}
+              </AdminSelect>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="refundRiskLevel">{en ? "Risk" : "리스크"}</label>
+              <AdminSelect id="refundRiskLevel" value={draft.riskLevel} onChange={(event) => setDraft((current) => ({ ...current, riskLevel: event.target.value }))}>
+                {riskLevelOptions.map((option, index) => (
+                  <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>
+                ))}
+              </AdminSelect>
+            </div></div></>} actions={<><button className="gov-btn gov-btn-primary" type="submit">{en ? "Search" : "검색"}</button></>}></CommonSearchSection></form>
         </CollectionResultPanel>
 
         <section className="gov-card overflow-hidden p-0" data-help-id="refund-list-table">

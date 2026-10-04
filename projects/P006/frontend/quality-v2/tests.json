@@ -1,0 +1,66 @@
+[
+  {
+    "test": "reject_missing_composition",
+    "pass": true
+  },
+  {
+    "test": "reject_missing_kind",
+    "pass": true
+  },
+  {
+    "test": "reject_missing_identity",
+    "pass": true
+  },
+  {
+    "test": "reject_missing_coreParts",
+    "pass": true
+  },
+  {
+    "test": "reject_missing_scale",
+    "pass": true
+  },
+  {
+    "test": "reject_missing_unit",
+    "pass": true
+  },
+  {
+    "test": "reject_missing_upAxis",
+    "pass": true
+  },
+  {
+    "test": "reject_missing_floor",
+    "pass": true
+  },
+  {
+    "test": "reject_missing_orientation",
+    "pass": true
+  },
+  {
+    "test": "reject_missing_designVersion",
+    "pass": true
+  },
+  {
+    "test": "reject_missing_variant",
+    "pass": true
+  },
+  {
+    "test": "reject_missing_baseDependency",
+    "pass": true
+  },
+  {
+    "test": "reject_missing_visualSourceUnchanged",
+    "pass": true
+  },
+  {
+    "test": "reject_missing_visualReviewed",
+    "pass": true
+  },
+  {
+    "test": "reject_missing_hierarchy",
+    "pass": true
+  },
+  {
+    "test": "no_cross_stage_inheritance",
+    "pass": true
+  }
+]

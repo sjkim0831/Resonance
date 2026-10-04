@@ -1,0 +1,232 @@
+{
+  "generatedAt": "2026-09-10T02:21:54.854324+00:00",
+  "deviceWriteEnabled": false,
+  "productionControlEnabled": false,
+  "scope": "read-only signal qualification, not physical E2E",
+  "signals": [
+    {
+      "signal": "input.present",
+      "state": "UNBOUND",
+      "sourceMode": "SIMULATED",
+      "writeEnabled": false,
+      "physicalE2E": false,
+      "missing": [
+        "missing deviceId",
+        "missing manufacturer",
+        "missing model",
+        "missing plcModel",
+        "missing identityDocumentHash",
+        "protocol UNBOUND"
+      ],
+      "evidenceIds": []
+    },
+    {
+      "signal": "command.start",
+      "state": "UNBOUND",
+      "sourceMode": "SIMULATED",
+      "writeEnabled": false,
+      "physicalE2E": false,
+      "missing": [
+        "missing deviceId",
+        "missing manufacturer",
+        "missing model",
+        "missing plcModel",
+        "missing identityDocumentHash",
+        "protocol UNBOUND"
+      ],
+      "evidenceIds": []
+    },
+    {
+      "signal": "command.ack",
+      "state": "UNBOUND",
+      "sourceMode": "SIMULATED",
+      "writeEnabled": false,
+      "physicalE2E": false,
+      "missing": [
+        "missing deviceId",
+        "missing manufacturer",
+        "missing model",
+        "missing plcModel",
+        "missing identityDocumentHash",
+        "protocol UNBOUND"
+      ],
+      "evidenceIds": []
+    },
+    {
+      "signal": "cycle.running",
+      "state": "UNBOUND",
+      "sourceMode": "SIMULATED",
+      "writeEnabled": false,
+      "physicalE2E": false,
+      "missing": [
+        "missing deviceId",
+        "missing manufacturer",
+        "missing model",
+        "missing plcModel",
+        "missing identityDocumentHash",
+        "protocol UNBOUND"
+      ],
+      "evidenceIds": []
+    },
+    {
+      "signal": "cycle.done",
+      "state": "UNBOUND",
+      "sourceMode": "SIMULATED",
+      "writeEnabled": false,
+      "physicalE2E": false,
+      "missing": [
+        "missing deviceId",
+        "missing manufacturer",
+        "missing model",
+        "missing plcModel",
+        "missing identityDocumentHash",
+        "protocol UNBOUND"
+      ],
+      "evidenceIds": []
+    },
+    {
+      "signal": "output.present",
+      "state": "UNBOUND",
+      "sourceMode": "SIMULATED",
+      "writeEnabled": false,
+      "physicalE2E": false,
+      "missing": [
+        "missing deviceId",
+        "missing manufacturer",
+        "missing model",
+        "missing plcModel",
+        "missing identityDocumentHash",
+        "protocol UNBOUND"
+      ],
+      "evidenceIds": []
+    },
+    {
+      "signal": "handoff.request",
+      "state": "UNBOUND",
+      "sourceMode": "SIMULATED",
+      "writeEnabled": false,
+      "physicalE2E": false,
+      "missing": [
+        "missing deviceId",
+        "missing manufacturer",
+        "missing model",
+        "missing plcModel",
+        "missing identityDocumentHash",
+        "protocol UNBOUND"
+      ],
+      "evidenceIds": []
+    },
+    {
+      "signal": "handoff.ack",
+      "state": "UNBOUND",
+      "sourceMode": "SIMULATED",
+      "writeEnabled": false,
+      "physicalE2E": false,
+      "missing": [
+        "missing deviceId",
+        "missing manufacturer",
+        "missing model",
+        "missing plcModel",
+        "missing identityDocumentHash",
+        "protocol UNBOUND"
+      ],
+      "evidenceIds": []
+    },
+    {
+      "signal": "inspection.value",
+      "state": "UNBOUND",
+      "sourceMode": "SIMULATED",
+      "writeEnabled": false,
+      "physicalE2E": false,
+      "missing": [
+        "missing deviceId",
+        "missing manufacturer",
+        "missing model",
+        "missing plcModel",
+        "missing identityDocumentHash",
+        "protocol UNBOUND"
+      ],
+      "evidenceIds": []
+    },
+    {
+      "signal": "safety.guardClosed",
+      "state": "UNBOUND",
+      "sourceMode": "SIMULATED",
+      "writeEnabled": false,
+      "physicalE2E": false,
+      "missing": [
+        "missing deviceId",
+        "missing manufacturer",
+        "missing model",
+        "missing plcModel",
+        "missing identityDocumentHash",
+        "protocol UNBOUND"
+      ],
+      "evidenceIds": []
+    },
+    {
+      "signal": "safety.estopReleased",
+      "state": "UNBOUND",
+      "sourceMode": "SIMULATED",
+      "writeEnabled": false,
+      "physicalE2E": false,
+      "missing": [
+        "missing deviceId",
+        "missing manufacturer",
+        "missing model",
+        "missing plcModel",
+        "missing identityDocumentHash",
+        "protocol UNBOUND"
+      ],
+      "evidenceIds": []
+    },
+    {
+      "signal": "safety.ready",
+      "state": "UNBOUND",
+      "sourceMode": "SIMULATED",
+      "writeEnabled": false,
+      "physicalE2E": false,
+      "missing": [
+        "missing deviceId",
+        "missing manufacturer",
+        "missing model",
+        "missing plcModel",
+        "missing identityDocumentHash",
+        "protocol UNBOUND"
+      ],
+      "evidenceIds": []
+    },
+    {
+      "signal": "equipment.fault",
+      "state": "UNBOUND",
+      "sourceMode": "SIMULATED",
+      "writeEnabled": false,
+      "physicalE2E": false,
+      "missing": [
+        "missing deviceId",
+        "missing manufacturer",
+        "missing model",
+        "missing plcModel",
+        "missing identityDocumentHash",
+        "protocol UNBOUND"
+      ],
+      "evidenceIds": []
+    },
+    {
+      "signal": "heartbeat.sequence",
+      "state": "UNBOUND",
+      "sourceMode": "SIMULATED",
+      "writeEnabled": false,
+      "physicalE2E": false,
+      "missing": [
+        "missing deviceId",
+        "missing manufacturer",
+        "missing model",
+        "missing plcModel",
+        "missing identityDocumentHash",
+        "protocol UNBOUND"
+      ],
+      "evidenceIds": []
+    }
+  ]
+}

@@ -1,1 +1,0 @@
-const e=`OUTPUT_PRODUCTS`;function t(e){window.sessionStorage.setItem(`carbonet:emission-survey-report`,JSON.stringify(e))}function n(){let e=window.sessionStorage.getItem(`carbonet:emission-survey-report`)||``;if(!e)return null;try{return JSON.parse(e)}catch{return null}}export{n,t as r,e as t};

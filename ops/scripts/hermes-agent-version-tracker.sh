@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"
-TRAINING_ROOT="${TRAINING_ROOT:-/opt/util/ai/fine-tuning/hermes-agent-7b}"
+TRAINING_ROOT="${TRAINING_ROOT:-/opt/Resonance/runtime/tools/ai/fine-tuning/hermes-agent-7b}"
 DOC_DIR="$TRAINING_ROOT/data/version-docs"
 VERSION_FILE="$TRAINING_ROOT/data/tool_versions.json"
 EVENT_LOG="$ROOT_DIR/var/ai-runtime/self-evolving-events.jsonl"

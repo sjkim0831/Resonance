@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { readBootstrappedCertificateRecCheckPageData } from "../../lib/api/bootstrap";
@@ -250,12 +251,11 @@ export function CertificateRecCheckMigrationPage() {
         </section>
 
         <CollectionResultPanel data-help-id="certificate-rec-check-filters" title={en ? "Detection Filters" : "탐지 조건"} description={en ? "Search duplicate groups by REC number, company, or review owner, then narrow by basis and status." : "REC 번호, 회사명, 담당자 기준으로 그룹을 찾고 탐지 근거와 상태로 범위를 좁힙니다."} icon="rule_folder">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4 xl:w-[68rem]">
-            <div>
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="recCheckKeyword">{en ? "Keyword" : "검색어"}</label>
               <AdminInput id="recCheckKeyword" placeholder={en ? "REC no, project, company, owner" : "REC 번호, 사업명, 회사명, 담당자"} value={keyword} onChange={(event) => setKeyword(event.target.value)} />
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="recCheckStatus">{en ? "Status" : "상태"}</label>
               <AdminSelect id="recCheckStatus" value={status} onChange={(event) => setStatus(event.target.value as DuplicateStatus | "ALL")}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -263,8 +263,7 @@ export function CertificateRecCheckMigrationPage() {
                 <option value="BLOCKED">{en ? "Issuance Blocked" : "발급 차단"}</option>
                 <option value="CLEARED">{en ? "Cleared" : "해소"}</option>
               </AdminSelect>
-            </div>
-            <div>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="recCheckBasis">{en ? "Basis" : "탐지 근거"}</label>
               <AdminSelect id="recCheckBasis" value={basis} onChange={(event) => setBasis(event.target.value as MatchBasis | "ALL")}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -272,11 +271,7 @@ export function CertificateRecCheckMigrationPage() {
                 <option value="REGISTRY">{en ? "Registry collision" : "등록원장 충돌"}</option>
                 <option value="PERIOD">{en ? "Period overlap" : "발급기간 중첩"}</option>
               </AdminSelect>
-            </div>
-            <div className="flex items-end">
-              <button className="gov-btn gov-btn-outline w-full" onClick={() => { setKeyword(""); setStatus("ALL"); setBasis("ALL"); }} type="button">{en ? "Reset Filters" : "조건 초기화"}</button>
-            </div>
-          </div>
+            </div></div></>} actions={<><button className="gov-btn gov-btn-outline w-full" onClick={() => { setKeyword(""); setStatus("ALL"); setBasis("ALL"); }} type="button">{en ? "Reset Filters" : "조건 초기화"}</button></>}></CommonSearchSection></div>
         </CollectionResultPanel>
 
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.55fr,1fr]">

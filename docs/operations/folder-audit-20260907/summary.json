@@ -1,0 +1,262 @@
+{
+  "directories": 795980,
+  "files": 1505108,
+  "symlinks_not_followed": 4577,
+  "unique_allocated_file_bytes": 398303408128,
+  "errors": [],
+  "seconds": 24.0,
+  "top_level": [
+    {
+      "path": "/opt/Resonance/runtime",
+      "direct_files": 0,
+      "recursive_bytes": 327988201816,
+      "children": 8,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/backups",
+      "direct_files": 0,
+      "recursive_bytes": 50573897543,
+      "children": 9,
+      "classification": "PROTECTED_DATA"
+    },
+    {
+      "path": "/opt/Resonance/var",
+      "direct_files": 3,
+      "recursive_bytes": 7136022937,
+      "children": 40,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/projects",
+      "direct_files": 2,
+      "recursive_bytes": 2199987308,
+      "children": 7,
+      "classification": "SOURCE_OR_TOOLING_REVIEW"
+    },
+    {
+      "path": "/opt/Resonance/apps",
+      "direct_files": 1,
+      "recursive_bytes": 1710651459,
+      "children": 2,
+      "classification": "SOURCE_OR_TOOLING_REVIEW"
+    },
+    {
+      "path": "/opt/Resonance/.git",
+      "direct_files": 10,
+      "recursive_bytes": 1402919516,
+      "children": 6,
+      "classification": "PROTECTED_DATA"
+    },
+    {
+      "path": "/opt/Resonance/.codex-worktrees",
+      "direct_files": 0,
+      "recursive_bytes": 1228169132,
+      "children": 1,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/origin",
+      "direct_files": 0,
+      "recursive_bytes": 1126712751,
+      "children": 1,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/docs",
+      "direct_files": 60,
+      "recursive_bytes": 721941837,
+      "children": 6,
+      "classification": "SOURCE_OR_TOOLING_REVIEW"
+    },
+    {
+      "path": "/opt/Resonance/ops",
+      "direct_files": 1,
+      "recursive_bytes": 651677140,
+      "children": 26,
+      "classification": "SOURCE_OR_TOOLING_REVIEW"
+    },
+    {
+      "path": "/opt/Resonance/modules",
+      "direct_files": 1,
+      "recursive_bytes": 273637701,
+      "children": 6,
+      "classification": "SOURCE_OR_TOOLING_REVIEW"
+    },
+    {
+      "path": "/opt/Resonance/release",
+      "direct_files": 1,
+      "recursive_bytes": 153127348,
+      "children": 3,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/data",
+      "direct_files": 0,
+      "recursive_bytes": 83035416,
+      "children": 15,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/build",
+      "direct_files": 0,
+      "recursive_bytes": 28530136,
+      "children": 1,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/.gradle",
+      "direct_files": 1,
+      "recursive_bytes": 25334910,
+      "children": 4,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/ai-builder",
+      "direct_files": 4,
+      "recursive_bytes": 16933410,
+      "children": 9,
+      "classification": "SOURCE_OR_TOOLING_REVIEW"
+    },
+    {
+      "path": "/opt/Resonance/node_modules",
+      "direct_files": 1,
+      "recursive_bytes": 11192320,
+      "children": 3,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/.codex-backups",
+      "direct_files": 0,
+      "recursive_bytes": 430075,
+      "children": 1,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/db",
+      "direct_files": 0,
+      "recursive_bytes": 391389,
+      "children": 5,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/scripts",
+      "direct_files": 14,
+      "recursive_bytes": 292209,
+      "children": 2,
+      "classification": "SOURCE_OR_TOOLING_REVIEW"
+    },
+    {
+      "path": "/opt/Resonance/frontend",
+      "direct_files": 0,
+      "recursive_bytes": 194953,
+      "children": 1,
+      "classification": "SOURCE_OR_TOOLING_REVIEW"
+    },
+    {
+      "path": "/opt/Resonance/deploy",
+      "direct_files": 1,
+      "recursive_bytes": 58383,
+      "children": 1,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/common",
+      "direct_files": 1,
+      "recursive_bytes": 47570,
+      "children": 2,
+      "classification": "SOURCE_OR_TOOLING_REVIEW"
+    },
+    {
+      "path": "/opt/Resonance/gradle",
+      "direct_files": 1,
+      "recursive_bytes": 45945,
+      "children": 1,
+      "classification": "SOURCE_OR_TOOLING_REVIEW"
+    },
+    {
+      "path": "/opt/Resonance/third_party",
+      "direct_files": 0,
+      "recursive_bytes": 45126,
+      "children": 1,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/templates",
+      "direct_files": 0,
+      "recursive_bytes": 28830,
+      "children": 2,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/tests",
+      "direct_files": 3,
+      "recursive_bytes": 24527,
+      "children": 1,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/manifests",
+      "direct_files": 10,
+      "recursive_bytes": 20918,
+      "children": 1,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/plans",
+      "direct_files": 6,
+      "recursive_bytes": 9913,
+      "children": 0,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/skills",
+      "direct_files": 0,
+      "recursive_bytes": 8819,
+      "children": 1,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/.github",
+      "direct_files": 0,
+      "recursive_bytes": 6765,
+      "children": 1,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/config",
+      "direct_files": 0,
+      "recursive_bytes": 3560,
+      "children": 1,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/catalog",
+      "direct_files": 2,
+      "recursive_bytes": 2230,
+      "children": 0,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/package-sets",
+      "direct_files": 0,
+      "recursive_bytes": 943,
+      "children": 2,
+      "classification": "REVIEW_REQUIRED"
+    },
+    {
+      "path": "/opt/Resonance/.secrets",
+      "direct_files": 1,
+      "recursive_bytes": 236,
+      "children": 0,
+      "classification": "PROTECTED_DATA"
+    },
+    {
+      "path": "/opt/Resonance/.githooks",
+      "direct_files": 1,
+      "recursive_bytes": 134,
+      "children": 0,
+      "classification": "REVIEW_REQUIRED"
+    }
+  ]
+}

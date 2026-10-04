@@ -1,0 +1,30 @@
+{
+  "assetId": "E002",
+  "assetName": "주탕 로봇",
+  "representationType": "VISUAL_ARTICULATED_ROBOT",
+  "motionSource": "VISUAL_FUNCTIONAL_SIMULATION",
+  "manufacturerVerified": false,
+  "kinematicsVerified": false,
+  "sourceGLB": "/projects/P006/assets/functional-simulation/derived-mechanical-53/E002.glb",
+  "derivedGLB": "/projects/P006/assets/functional-simulation/robot-articulated-9/E002.glb",
+  "tool": "weldingTool",
+  "jointHierarchy": [
+    "robotRoot",
+    "base",
+    "shoulder",
+    "elbow",
+    "wrist",
+    "weldingTool"
+  ],
+  "jointCount": 5,
+  "animatedJointCount": 4,
+  "sequenceType": "HANDLING",
+  "sequencePoses": [
+    "HOME",
+    "REACH",
+    "GRIP",
+    "TRANSFER",
+    "RELEASE",
+    "HOME"
+  ]
+}

@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -240,8 +241,7 @@ export function EmissionLciClassificationMigrationPage() {
         </section>
 
         <section className="gov-card" data-help-id="emission-lci-classification-detail">
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[2fr,1fr,1fr,auto]">
-            <div>
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="lciSearchKeyword">{en ? "Keyword" : "검색어"}</label>
               <AdminInput
                 id="lciSearchKeyword"
@@ -249,27 +249,22 @@ export function EmissionLciClassificationMigrationPage() {
                 placeholder={en ? "Code, label, path, alias" : "코드, 분류명, 경로, 별칭"}
                 onChange={(event) => setFilters((current) => ({ ...current, searchKeyword: event.target.value }))}
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-bold" htmlFor="lciLevel">{en ? "Level" : "단계"}</label>
-              <AdminSelect id="lciLevel" value={filters.level} onChange={(event) => setFilters((current) => ({ ...current, level: event.target.value }))}>
-                {levelOptions.map((option) => (
-                  <option key={stringOf(option.value)} value={stringOf(option.value)}>{stringOf(option.label)}</option>
-                ))}
-              </AdminSelect>
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="lciUseAt">{en ? "Exposure" : "노출 상태"}</label>
               <AdminSelect id="lciUseAt" value={filters.useAt} onChange={(event) => setFilters((current) => ({ ...current, useAt: event.target.value }))}>
                 <option value="">{en ? "All" : "전체"}</option>
                 <option value="Y">{en ? "Active" : "운영중"}</option>
                 <option value="N">{en ? "Hidden" : "숨김"}</option>
               </AdminSelect>
-            </div>
-            <div className="flex items-end">
-              <MemberButton type="button" onClick={startCreate}>{en ? "New Row" : "신규 등록"}</MemberButton>
-            </div>
-          </div>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
+              <label className="mb-1 block text-sm font-bold" htmlFor="lciLevel">{en ? "Level" : "단계"}</label>
+              <AdminSelect id="lciLevel" value={filters.level} onChange={(event) => setFilters((current) => ({ ...current, level: event.target.value }))}>
+                {levelOptions.map((option) => (
+                  <option key={stringOf(option.value)} value={stringOf(option.value)}>{stringOf(option.label)}</option>
+                ))}
+              </AdminSelect>
+            </div></div></>} actions={<><MemberButton type="button" onClick={startCreate}>{en ? "New Row" : "신규 등록"}</MemberButton></>}></CommonSearchSection></div>
         </section>
 
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.3fr,1fr]" data-help-id="emission-lci-classification-table">

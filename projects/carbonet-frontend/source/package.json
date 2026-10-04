@@ -12,12 +12,15 @@
     "generate:process-preview-readiness": "node scripts/generate-process-preview-readiness.mjs",
     "register:emission-process-preview": "node scripts/register-emission-process-preview.mjs",
     "qa:emission-live-preview": "node ../../../ops/scripts/resonance-emission-live-preview-pipeline.mjs",
+    "pregenerate:screens": "node scripts/verify-portfolio-layout.mjs",
+    "postgenerate:screens": "node scripts/verify-portfolio-layout.mjs",
+    "verify:portfolio-layout": "node scripts/verify-portfolio-layout.mjs",
     "generate:screens": "node scripts/generate-screen-blueprints.mjs",
     "verify:screen-generator": "node scripts/verify-generated-screen-type-contract.mjs && node scripts/generate-screen-blueprints.mjs --input scripts/fixtures/screen-blueprint-export-v2.example.json --outDir .cache/screen-generator-verification --strict true",
     "verify:screen-generator-scale": "node scripts/verify-screen-generator-scale.mjs",
-    "predev": "node ../../../ops/scripts/ccus-canonical-source-gate.cjs",
+    "predev": "node scripts/verify-portfolio-layout.mjs && node ../../../ops/scripts/ccus-canonical-source-gate.cjs",
     "dev": "NODE_OPTIONS=\"--max-old-space-size=${CARBONET_NODE_HEAP_MB:-8192} ${NODE_OPTIONS:-}\" vite",
-    "prebuild": "node ../../../ops/scripts/ccus-canonical-source-gate.cjs",
+    "prebuild": "node scripts/verify-portfolio-layout.mjs && node ../../../ops/scripts/ccus-canonical-source-gate.cjs",
     "build": "bash ../../../ops/scripts/ccus-build-current.sh",
     "pretypecheck:full": "node scripts/ensure-shared-generated-screen-assets.mjs",
     "typecheck:full": "tsc -p tsconfig.app.json --pretty false",
@@ -66,15 +69,18 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "@testing-library/react": "^16.3.0",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.27",
+    "jsdom": "^26.1.0",
     "postcss": "^8.5.8",
     "rolldown-vite": "7.3.1",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.2",
-    "vite": "^5.4.10"
+    "vite": "^5.4.10",
+    "vitest": "^3.2.4"
   }
 }

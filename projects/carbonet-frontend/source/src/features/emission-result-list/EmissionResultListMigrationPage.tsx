@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -296,7 +297,7 @@ export function EmissionResultListMigrationPage() {
           icon="filter_alt"
           title={en ? "Emission Result Filter" : "산정 결과 조회 조건"}
         >
-        <form className="grid grid-cols-1 gap-6 md:grid-cols-4" onSubmit={(event) => {
+        <form className="ccus-search-host" onSubmit={(event) => {
           event.preventDefault();
           logGovernanceScope("ACTION", "emission-result-search", {
             searchKeyword: draft.searchKeyword,
@@ -304,8 +305,15 @@ export function EmissionResultListMigrationPage() {
             verificationStatus: draft.verificationStatus
           });
           syncFilters({ ...draft, pageIndex: 1 });
-        }}>
-          <div>
+        }}><CommonSearchSection basic={<><div className="ccus-search-field"><div className="md:col-span-2">
+            <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="searchKeyword">{en ? "Keyword" : "검색어"}</label>
+            <div className="flex gap-2">
+              <AdminInput className="flex-1" id="searchKeyword" placeholder={en ? "Search by project, company, or result ID" : "프로젝트명, 기관명, 결과 ID 검색"} value={draft.searchKeyword} onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))} />
+              
+              
+            </div>
+          </div></div>
+<div className="ccus-search-field"><div>
             <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="resultStatus">{en ? "Calculation Status" : "산정 상태"}</label>
             <AdminSelect id="resultStatus" value={draft.resultStatus} onChange={(event) => setDraft((current) => ({ ...current, resultStatus: event.target.value }))}>
               <option value="">{en ? "All" : "전체"}</option>
@@ -313,8 +321,7 @@ export function EmissionResultListMigrationPage() {
               <option value="REVIEW">{en ? "Under Review" : "검토 중"}</option>
               <option value="DRAFT">{en ? "Draft" : "임시 저장"}</option>
             </AdminSelect>
-          </div>
-          <div>
+          </div></div></>} advanced={<><div className="ccus-search-field"><div>
             <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="verificationStatus">{en ? "Verification Status" : "검증 상태"}</label>
             <AdminSelect id="verificationStatus" value={draft.verificationStatus} onChange={(event) => setDraft((current) => ({ ...current, verificationStatus: event.target.value }))}>
               <option value="">{en ? "All" : "전체"}</option>
@@ -324,13 +331,7 @@ export function EmissionResultListMigrationPage() {
               <option value="FAILED">{en ? "Recheck Needed" : "재검토 필요"}</option>
               <option value="NOT_REQUIRED">{en ? "Not Required" : "검증 제외"}</option>
             </AdminSelect>
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="searchKeyword">{en ? "Keyword" : "검색어"}</label>
-            <div className="flex gap-2">
-              <AdminInput className="flex-1" id="searchKeyword" placeholder={en ? "Search by project, company, or result ID" : "프로젝트명, 기관명, 결과 ID 검색"} value={draft.searchKeyword} onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))} />
-              <button className="gov-btn gov-btn-primary" type="submit">{en ? "Search" : "검색"}</button>
-              <button
+          </div></div></>} actions={<><button
                 className="gov-btn gov-btn-secondary"
                 onClick={() => {
                   syncFilters({ ...DEFAULT_FILTERS });
@@ -339,9 +340,7 @@ export function EmissionResultListMigrationPage() {
               >
                 {en ? "Reset" : "초기화"}
               </button>
-            </div>
-          </div>
-        </form>
+<button className="gov-btn gov-btn-primary" type="submit">{en ? "Search" : "검색"}</button></>}></CommonSearchSection></form>
         </CollectionResultPanel>
 
         <section className="gov-card overflow-hidden p-0" data-help-id="emission-result-table">

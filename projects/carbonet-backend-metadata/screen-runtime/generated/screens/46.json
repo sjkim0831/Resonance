@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 46,
+  "blueprintCode": "BP_ADOPT_44892F0417473E9787C8",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_44892F0417473E9787C8"
+  },
+  "route": "/admin/external/keys",
+  "pageName": "외부 인증키 관리",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1120131",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "b0a402f56b6d16dd6648e13fad2bb92f9d139e16d8b033a0c0846b6d8b58518a",
+  "artifactHash": "05e4419a7bd1d1cdf6da4bda0e7db256dfb2bc7134822fa0bbe394561fbf7b44"
+}

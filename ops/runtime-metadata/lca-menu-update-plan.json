@@ -1,0 +1,19 @@
+{
+  "version": "2026-10-01",
+  "status": "pending-authenticated-admin-apply",
+  "scope": "제품 LCA 메뉴 정리",
+  "preserve": ["기존 메뉴 코드", "기존 URL", "기존 권한", "프로젝트 및 결과 버전"],
+  "changes": [
+    {"menus": ["H1030101", "H1030102"], "action": "keep-separate", "labels": ["LCA 현황", "LCA 프로젝트"]},
+    {"label": "적용 기준·평가 목적", "action": "add-after-screen-contract", "publish": false, "inputs": ["평가 목적", "적용 제도", "표준 및 제품군 기준", "기준 버전", "적용 근거"]},
+    {"label": "자료 품질검사·보완", "action": "inventory-tab", "publish": false},
+    {"menus": ["H1030303", "H1030304"], "label": "기여도 분석", "action": "merge-after-tabs-implemented", "tabs": ["공정별", "원료별"], "publish": false},
+    {"menus": ["H1030305", "H1030306"], "label": "대안·민감도 분석", "action": "merge-after-tabs-implemented", "tabs": ["민감도 분석", "시나리오 비교"], "publish": false},
+    {"menus": ["H1030402", "H1030403"], "label": "보고서 관리", "action": "merge-after-template-selection-implemented", "templates": ["요약 보고서", "상세 보고서"], "publish": false},
+    {"menu": "H1030404", "label": "제품 탄소발자국", "action": "retain-until-purpose-confirmed"},
+    {"label": "인증·대외 제출", "action": "conditional", "publish": false, "condition": "대상 제품과 인증 및 수출 제도 확정"}
+  ],
+  "acceptance": ["메뉴와 본문 업무 일치", "직접 URL 접근 및 새로고침", "프로젝트와 버전 유지", "기존 권한 유지", "미입력·미산정·통신오류 구분", "도움말·길잡이·전체 업무 보기 동기화", "기존 메뉴 복구 검증"],
+  "blocker": "현재 세션 authenticated=false, canEnterAdminConsole=false. 서버 AGENTS.md는 인증된 업무 검증 전 backend/DB 변경 금지. 미구현 탭으로 기존 메뉴를 합치거나 잘못된 화면으로 연결하지 않음.",
+  "runtimeChanged": false
+}

@@ -2,6 +2,14 @@
 
 ## Scope
 
+### Work classification and precedence
+
+- Ordinary page work means changes fully expressible through an already-supported SDUI definition, allow-listed components, existing APIs, and menu metadata. Prefer the runtime metadata path so supported pages do not require a source edit or frontend build.
+- Platform/foundation work means changing route resolution or static-to-dynamic precedence, the Page Registry/SDUI renderer or component allow-list, authentication/authorization enforcement, shared API contracts, publication/version/rollback validation, or the build/runtime path that enables metadata-only pages.
+- When a user explicitly requests platform/foundation work, the `Page Work vs Platform/Foundation Work` exception in the repository `AGENTS.md` takes precedence over the ordinary page-only path restrictions below. Make only the minimal compatible source changes, run the relevant frontend/backend builds and tests, and apply them only to the authorized development runtime. This is not permission to migrate every static page or touch production.
+- A frontend router, route loader, shared React component, or Vite configuration edit is a source change and requires a frontend build. A new REST endpoint, server authorization rule, transaction behavior, or schema change requires the relevant backend build; schema rollout also requires an approved migration path. Do not describe these foundation changes as no-build work.
+- After the foundation supports a page's component and API contracts, ordinary additions/edits should return to metadata-only publication. A static route remains higher priority than a dynamic registry entry; an unregistered dynamic URL and a failed definition must produce an explicit error view.
+
 This system has two screen delivery modes.
 
 1. Existing React/TSX screens

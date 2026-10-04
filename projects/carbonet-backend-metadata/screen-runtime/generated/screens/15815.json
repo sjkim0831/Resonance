@@ -1,0 +1,594 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 15815,
+  "blueprintCode": "BP_AUTO_3E126963AA3A72A5B06E5484",
+  "identity": {
+    "processCode": "CCUS_LIFECYCLE_MRV",
+    "stepCode": "CCUS_LIFECYCLE_MRV_S1",
+    "actorCode": "CALCULATOR",
+    "audience": "ADMIN",
+    "pageId": "AUTO_3E126963AA3A72A5B06E"
+  },
+  "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s1",
+  "pageName": "시설경계·기준선 확정 관리",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "kpis": [
+      {
+        "code": "COMPLETION_RATE",
+        "unit": "PERCENT"
+      },
+      {
+        "code": "BLOCKING_ERROR",
+        "unit": "COUNT"
+      },
+      {
+        "code": "SLA_REMAINING",
+        "unit": "MINUTE"
+      }
+    ],
+    "errors": [
+      {
+        "code": "FORBIDDEN",
+        "recovery": "권한·업무분리 확인"
+      },
+      {
+        "code": "CONFLICT",
+        "recovery": "최신 버전 재조회"
+      },
+      {
+        "code": "DEPENDENCY_FAILURE",
+        "recovery": "멱등키로 안전 재시도"
+      }
+    ],
+    "fields": [
+      {
+        "code": "tenantId",
+        "name": "테넌트",
+        "dataType": "STRING",
+        "editable": false,
+        "required": true,
+        "validation": {
+          "minLength": 1
+        },
+        "apiProperty": "tenantId",
+        "controlType": "HIDDEN",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "projectId",
+        "name": "프로젝트",
+        "dataType": "STRING",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "minLength": 1
+        },
+        "apiProperty": "projectId",
+        "controlType": "PROJECT_SELECT",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "processCode",
+        "name": "프로세스 코드",
+        "dataType": "CODE",
+        "editable": false,
+        "required": true,
+        "validation": {
+          "source": "SERVER_CONTEXT",
+          "required": true,
+          "immutable": true
+        },
+        "apiProperty": "processCode",
+        "controlType": "HIDDEN",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "stepCode",
+        "name": "단계 코드",
+        "dataType": "CODE",
+        "editable": false,
+        "required": true,
+        "validation": {
+          "source": "SERVER_CONTEXT",
+          "required": true,
+          "immutable": true
+        },
+        "apiProperty": "stepCode",
+        "controlType": "HIDDEN",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "recordId",
+        "name": "업무 레코드 ID",
+        "dataType": "UUID",
+        "editable": false,
+        "required": false,
+        "validation": {
+          "source": "SERVER_CONTEXT",
+          "required": false,
+          "immutable": true
+        },
+        "apiProperty": "recordId",
+        "controlType": "HIDDEN",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "statusCode",
+        "name": "처리 상태",
+        "dataType": "CODE",
+        "editable": false,
+        "required": true,
+        "validation": {
+          "codeGroup": "WORK_STATUS"
+        },
+        "apiProperty": "statusCode",
+        "controlType": "STATUS_BADGE",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "ownerActorCode",
+        "name": "담당 액터",
+        "dataType": "CODE",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "ownerActorCode",
+        "controlType": "ACTOR_SELECT",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "rowVersion",
+        "name": "데이터 버전",
+        "dataType": "INTEGER",
+        "editable": false,
+        "required": true,
+        "validation": {
+          "min": 0
+        },
+        "apiProperty": "rowVersion",
+        "controlType": "HIDDEN",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "createdAt",
+        "name": "등록 일시",
+        "dataType": "DATETIME",
+        "editable": false,
+        "required": false,
+        "validation": {
+          "type": "date-time",
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "createdAt",
+        "controlType": "DATETIME",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "updatedAt",
+        "name": "최종 수정 일시",
+        "dataType": "DATETIME",
+        "editable": false,
+        "required": false,
+        "validation": {
+          "type": "date-time",
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "updatedAt",
+        "controlType": "DATETIME",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "evidenceCount",
+        "name": "증빙 수",
+        "dataType": "INTEGER",
+        "editable": false,
+        "required": false,
+        "validation": {
+          "min": 0
+        },
+        "apiProperty": "evidenceCount",
+        "controlType": "EVIDENCE_LINK",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "reportingYear",
+        "name": "보고연도",
+        "dataType": "YEAR",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "reportingYear",
+        "controlType": "YEAR",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "organizationId",
+        "name": "조직",
+        "dataType": "STRING",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "organizationId",
+        "controlType": "ORGANIZATION_SELECT",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "siteId",
+        "name": "사업장",
+        "dataType": "STRING",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "siteId",
+        "controlType": "SITE_SELECT",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "facilityId",
+        "name": "배출시설",
+        "dataType": "STRING",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "facilityId",
+        "controlType": "FACILITY_SELECT",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "scopeCode",
+        "name": "Scope",
+        "dataType": "CODE",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "scopeCode",
+        "controlType": "SCOPE_SELECT",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "activityValue",
+        "name": "활동량",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "activityValue",
+        "controlType": "NUMBER",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "unitCode",
+        "name": "단위",
+        "dataType": "CODE",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "unitCode",
+        "controlType": "UNIT_SELECT",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "factorId",
+        "name": "배출계수",
+        "dataType": "STRING",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "factorId",
+        "controlType": "FACTOR_SEARCH",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "emissionValue",
+        "name": "배출량",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "emissionValue",
+        "controlType": "CALCULATED_NUMBER",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "qualityStatus",
+        "name": "데이터 품질",
+        "dataType": "CODE",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "qualityStatus",
+        "controlType": "QUALITY_BADGE",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "taskComment",
+        "name": "업무 메모",
+        "dataType": "TEXT",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "taskComment",
+        "controlType": "TEXTAREA",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "dueAt",
+        "name": "마감 일시",
+        "dataType": "DATETIME",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "type": "date-time",
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "dueAt",
+        "controlType": "DATETIME",
+        "permissionCode": "CALCULATOR:ADMIN"
+      },
+      {
+        "code": "nextActorCode",
+        "name": "다음 담당 액터",
+        "dataType": "CODE",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "nextActorCode",
+        "controlType": "ACTOR_VIEW",
+        "permissionCode": "CALCULATOR:ADMIN"
+      }
+    ],
+    "states": [
+      "READY",
+      "LOADING",
+      "EMPTY",
+      "READY",
+      "SAVING",
+      "ERROR",
+      "FORBIDDEN",
+      "CONFLICT",
+      "RECOVERY",
+      "STEP_1_COMPLETED"
+    ],
+    "actions": [
+      {
+        "code": "CCUS_LIFECYCLE_MRV_EXECUTE_1",
+        "transactional": true,
+        "idempotencyRequired": true
+      },
+      {
+        "code": "SAVE_DRAFT",
+        "transactional": true
+      },
+      {
+        "code": "ATTACH_EVIDENCE",
+        "auditRequired": true
+      },
+      {
+        "code": "CCUS_LIFECYCLE_MRV_ROLLBACK_1",
+        "recovery": true
+      }
+    ],
+    "sections": [
+      {
+        "code": "TASK_CONTEXT"
+      },
+      {
+        "code": "SEARCH_FILTER"
+      },
+      {
+        "code": "WORKSPACE"
+      },
+      {
+        "code": "EVIDENCE_HISTORY"
+      },
+      {
+        "code": "NEXT_TASK"
+      }
+    ],
+    "extensions": {
+      "contractId": 37810,
+      "sharedRuntime": true
+    },
+    "responsive": {
+      "mobile": "single-column-actions-bottom",
+      "tablet": "adaptive-grid",
+      "desktop": "list-detail-workspace"
+    },
+    "permissions": [
+      {
+        "code": "CALCULATOR",
+        "scope": "TENANT_PROJECT",
+        "segregationOfDuties": true,
+        "serverAuthorization": true
+      }
+    ],
+    "validations": [
+      {
+        "code": "ENTRY_AND_REQUIRED_FIELDS",
+        "type": "CONTRACT"
+      },
+      {
+        "code": "STATE_AND_VERSION",
+        "type": "CONCURRENCY"
+      }
+    ],
+    "apiContracts": [
+      {
+        "path": "/home/api/process-executions",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/screen-contract",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/{executionId}/commands",
+        "method": "POST"
+      },
+      {
+        "path": "/home/api/process-executions/draft",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/draft",
+        "method": "PUT"
+      }
+    ],
+    "designSystem": "KRDS_GOV",
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG_2_1_AA",
+      "nonColorStatus": true,
+      "focusManagement": true
+    },
+    "dataContracts": [
+      {
+        "keys": [
+          "tenantId",
+          "projectId",
+          "processCode"
+        ],
+        "entity": "PROCESS_EXECUTION",
+        "versioned": true,
+        "tenantScoped": true
+      },
+      {
+        "keys": [
+          "tenantId",
+          "projectId"
+        ],
+        "entity": "emission_project_registry",
+        "versioned": true
+      },
+      {
+        "entity": "AUDIT_EVENT",
+        "appendOnly": true
+      }
+    ],
+    "schemaVersion": "2.0.0",
+    "completionRule": "시설경계·기준선 확정의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+    "exitConditions": [
+      "시설경계·기준선 확정의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다."
+    ],
+    "businessPurpose": "시설경계·기준선 확정 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+    "entryConditions": [
+      "READY 상태이고 입력 계약과 액터 권한 검증을 통과해야 한다."
+    ],
+    "actorResponsibilities": [
+      "CALCULATOR 액터가 권한·업무분리 정책에 따라 시설경계·기준선 확정 관리 업무를 수행한다."
+    ]
+  },
+  "traceability": {
+    "contractId": 37810,
+    "requirementIds": [
+      "CCUS_LIFECYCLE_MRV:CCUS_LIFECYCLE_MRV_S1:ADMIN"
+    ],
+    "generationBatchId": 183,
+    "designReadinessScore": 100,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "f8326c71f4faa8dd5ac90cbe1a12842de41cfb6af83a7b4c590c43e67678f35e",
+  "artifactHash": "089fe2d7abbe5dfea97009a59dde84ae071dddd1ad51dc0ae4fae9d96d2fc407"
+}

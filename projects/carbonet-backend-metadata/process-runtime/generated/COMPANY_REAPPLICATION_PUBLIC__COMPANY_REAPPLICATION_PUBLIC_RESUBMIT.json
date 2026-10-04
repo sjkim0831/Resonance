@@ -1,0 +1,1188 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "COMPANY_REAPPLICATION_PUBLIC",
+    "name": "반려 기업 신청 보완·재신청",
+    "domain": "MEMBER",
+    "workType": "MEMBER",
+    "goal": "반려 사유를 확인한 신청자가 허용된 기업 정보와 신규 증빙을 보완하여 원자적으로 재접수하고 독립 승인자가 재심사한다."
+  },
+  "step": {
+    "code": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT",
+    "version": 4,
+    "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "PUBLIC_APPLICANT",
+      "ownerActorCode": "PUBLIC_APPLICANT",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [
+        {
+          "guard": {
+            "relay": "MEMBER_LIFECYCLE_V3",
+            "actorCode": "PUBLIC_APPLICANT",
+            "leastPrivilege": true
+          },
+          "scope": "RECORD",
+          "resource": {
+            "stepCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT",
+            "domainCode": "MEMBER",
+            "processCode": "COMPANY_REAPPLICATION_PUBLIC"
+          },
+          "permissionCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_EXECUTE"
+        },
+        {
+          "guard": {
+            "source": "PROFESSIONAL_SCREEN_CONTRACT",
+            "actorCode": "PUBLIC_APPLICANT"
+          },
+          "scope": "PROJECT",
+          "resource": {
+            "audience": "USER",
+            "routePath": "/join/companyreapply",
+            "contractId": 653937
+          },
+          "permissionCode": "PUBLIC_COMPANY_REAPPLICATION_LOOKUP"
+        },
+        {
+          "guard": {
+            "source": "PROFESSIONAL_SCREEN_CONTRACT",
+            "actorCode": "PUBLIC_APPLICANT"
+          },
+          "scope": "PROJECT",
+          "resource": {
+            "audience": "USER",
+            "routePath": "/join/companyreapply",
+            "contractId": 653937
+          },
+          "permissionCode": "PUBLIC_COMPANY_REAPPLICATION_SUBMIT"
+        }
+      ],
+      "delegation": {},
+      "extensions": {
+        "useAt": "Y",
+        "purpose": "반려된 기업 신청을 본인 식별정보로 조회하고 보완 정보와 증빙을 다시 제출한다.",
+        "actorName": "가입 신청자",
+        "actorType": "BUSINESS",
+        "competency": "",
+        "relatedActors": [
+          {
+            "useAt": "Y",
+            "purpose": "검증 완료 결과의 중요 오류와 책임 범위를 확인하고 승인·반려·재개방한다.",
+            "actorCode": "APPROVER",
+            "actorName": "승인권자",
+            "actorType": "APPROVAL",
+            "competency": "조직 권한과 산정·검증 결과 판단 역량",
+            "actorNameEn": "Approver",
+            "accountability": "최종 의사결정과 승인 근거의 적정성",
+            "responsibility": "검증 결과의 최종 승인·반려 및 확정 책임",
+            "capabilityCodes": [
+              "APPROVE",
+              "LOCK_RESULT",
+              "REJECT",
+              "REOPEN"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": true,
+            "conflictActorCodes": [
+              "CALCULATOR",
+              "VERIFIER"
+            ],
+            "maxConcurrentAssignments": 50
+          },
+          {
+            "useAt": "Y",
+            "purpose": "반려된 기업 신청을 본인 식별정보로 조회하고 보완 정보와 증빙을 다시 제출한다.",
+            "actorCode": "PUBLIC_APPLICANT",
+            "actorName": "가입 신청자",
+            "actorType": "BUSINESS",
+            "competency": "",
+            "actorNameEn": "Public Applicant",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "COMPANY_APPLICATION_LOOKUP",
+              "COMPANY_APPLICATION_RESUBMIT",
+              "CONSENT",
+              "EVIDENCE_UPLOAD",
+              "REGISTER",
+              "VERIFY_IDENTITY"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": false,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          }
+        ],
+        "accountability": "",
+        "responsibility": "",
+        "capabilityCodes": [
+          "COMPANY_APPLICATION_LOOKUP",
+          "COMPANY_APPLICATION_RESUBMIT",
+          "CONSENT",
+          "EVIDENCE_UPLOAD",
+          "REGISTER",
+          "VERIFY_IDENTITY"
+        ],
+        "reviewCycleDays": 365,
+        "delegationAllowed": false,
+        "conflictActorCodes": [],
+        "escalationActorCode": "APPROVER",
+        "segregationActorCodes": [],
+        "maxConcurrentAssignments": 0
+      }
+    },
+    "business": {
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
+      "domainCode": "MEMBER",
+      "processName": "반려 기업 신청 보완·재신청",
+      "stepName": "반려 사유 확인·정보 보완·재신청",
+      "goal": "반려 사유를 확인한 신청자가 허용된 기업 정보와 신규 증빙을 보완하여 원자적으로 재접수하고 독립 승인자가 재심사한다.",
+      "requirement": "사업자등록번호·대표자명·등록 담당자 이메일 또는 연락처로 본인의 반려 신청만 조회하고 반려 사유에 대응한 변경 정보와 증빙을 재제출한다.",
+      "completionRule": "필수 기업·담당자 정보와 신규 증빙 1~10개가 검증되고 상태 R→A, 감사 버전 증가 및 파일 원장이 하나의 트랜잭션으로 저장된다.",
+      "riskLevel": "HIGH",
+      "slaHours": 48,
+      "regulationRefs": "",
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {},
+      "extensions": {}
+    },
+    "transition": {
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
+      "commandCode": "RESUBMIT_COMPANY_APPLICATION",
+      "fromState": "REJECTED",
+      "toState": "APPLIED",
+      "stepOrder": 1,
+      "stepType": "FORM",
+      "parentStepCode": null,
+      "completionRule": "필수 기업·담당자 정보와 신규 증빙 1~10개가 검증되고 상태 R→A, 감사 버전 증가 및 파일 원장이 하나의 트랜잭션으로 저장된다.",
+      "policy": {
+        "auditRequired": true,
+        "optimisticLock": true,
+        "idempotencyRequired": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
+    },
+    "input": {
+      "required": [
+        "bizNo",
+        "repName",
+        "registeredContact",
+        "insttId",
+        "agencyName",
+        "representativeName",
+        "zipCode",
+        "companyAddress",
+        "chargerName",
+        "chargerEmail",
+        "chargerTel",
+        "fileUploads"
+      ],
+      "filePolicy": {
+        "maxCount": 10,
+        "minCount": 1,
+        "maxSizeMb": 10,
+        "extensions": [
+          "pdf",
+          "jpg",
+          "jpeg",
+          "png"
+        ]
+      }
+    },
+    "output": {
+      "state": "APPLIED",
+      "receipt": {
+        "required": [
+          "applicationVersion",
+          "evidenceFileCount",
+          "changeHash",
+          "fileIds",
+          "fileSha256s"
+        ]
+      },
+      "required": [
+        "success",
+        "insttId",
+        "insttNm",
+        "bizrno",
+        "status",
+        "regDate",
+        "receipt"
+      ]
+    },
+    "guide": {
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
+      "processCode": "COMPANY_REAPPLICATION_PUBLIC",
+      "stepCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT",
+      "stepOrder": 1,
+      "workTypeCode": "MEMBER",
+      "actorCode": "PUBLIC_APPLICANT",
+      "title": "반려 사유 확인·정보 보완·재신청",
+      "purpose": "사업자등록번호·대표자명·등록 담당자 이메일 또는 연락처로 본인의 반려 신청만 조회하고 반려 사유에 대응한 변경 정보와 증빙을 재제출한다.",
+      "entryCondition": "REJECTED",
+      "completionCondition": "필수 기업·담당자 정보와 신규 증빙 1~10개가 검증되고 상태 R→A, 감사 버전 증가 및 파일 원장이 하나의 트랜잭션으로 저장된다.",
+      "userPath": "/join/companyReapply",
+      "adminPath": null,
+      "relatedBusinessRoute": null,
+      "nextStepCode": "COMPANY_REAPPLICATION_APPROVER_REVIEW",
+      "nextAction": "APPLIED",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "COMPANY_REAPPLICATION_PUBLIC_COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+        "route": "/join/companyreapply",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "USER",
+        "screenType": "WORKSPACE",
+        "title": "반려 사유 확인·정보 보완·재신청 사용자 업무 화면",
+        "purpose": "사업자등록번호·대표자명·등록 담당자 이메일 또는 연락처로 본인의 반려 신청만 조회하고 반려 사유에 대응한 변경 정보와 증빙을 재제출한다.",
+        "layout": "RESPONSIVE_WORKSPACE",
+        "theme": "KRDS_GOV_DEFAULT",
+        "designAuthority": {
+          "source": "LEGACY_REGISTERED_DEFAULT",
+          "layout": "RESPONSIVE_WORKSPACE",
+          "theme": "KRDS_GOV_DEFAULT",
+          "defaulted": [
+            "layout",
+            "theme"
+          ]
+        },
+        "sections": [
+          "업무 문맥·관리자 반려 사유",
+          "식별 조회",
+          "보완·재신청 답변",
+          "기업·담당자 정보",
+          "증빙",
+          "검증 요약",
+          "주요 명령",
+          "결과·다음 업무",
+          "감사 이력"
+        ],
+        "fields": [
+          {
+            "route": "/join/companyReapply",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+            "required": true,
+            "fieldCode": "bizNo",
+            "fieldName": "사업자등록번호",
+            "fieldGroup": "조회",
+            "fieldOrder": 10,
+            "validation": {
+              "pattern": "^[0-9]{10}$"
+            },
+            "apiProperty": "bizNo",
+            "controlType": "TEXT",
+            "sourceTable": "comtninsttinfo",
+            "privacyClass": "PERSONAL",
+            "sourceColumn": "bizrno",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PUBLIC_LOOKUP",
+            "evidenceRequired": false,
+            "code": "bizNo"
+          },
+          {
+            "route": "/join/companyReapply",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+            "required": true,
+            "fieldCode": "repName",
+            "fieldName": "대표자명",
+            "fieldGroup": "조회",
+            "fieldOrder": 20,
+            "validation": {
+              "required": true,
+              "maxLength": 500
+            },
+            "apiProperty": "repName",
+            "controlType": "TEXT",
+            "sourceTable": "comtninsttinfo",
+            "privacyClass": "PERSONAL",
+            "sourceColumn": "reprsnt_nm",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PUBLIC_LOOKUP",
+            "evidenceRequired": false,
+            "code": "repName"
+          },
+          {
+            "route": "/join/companyReapply",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+            "required": true,
+            "fieldCode": "registeredContact",
+            "fieldName": "등록 담당자 이메일·연락처",
+            "fieldGroup": "조회",
+            "fieldOrder": 25,
+            "validation": {
+              "maxLength": 254,
+              "minLength": 1,
+              "identityMatch": "registered-email-or-phone"
+            },
+            "apiProperty": "registeredContact",
+            "controlType": "TEXT",
+            "sourceTable": null,
+            "privacyClass": "PERSONAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_LOOKUP",
+            "evidenceRequired": false,
+            "code": "registeredContact"
+          },
+          {
+            "route": "/join/companyReapply",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+            "required": true,
+            "fieldCode": "insttId",
+            "fieldName": "기업 신청 ID",
+            "fieldGroup": "문맥",
+            "fieldOrder": 30,
+            "validation": {
+              "required": true,
+              "maxLength": 500
+            },
+            "apiProperty": "insttId",
+            "controlType": "HIDDEN",
+            "sourceTable": "comtninsttinfo",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "instt_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PUBLIC_RESUBMIT",
+            "evidenceRequired": false,
+            "code": "insttId"
+          },
+          {
+            "route": "/join/companyReapply",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+            "required": true,
+            "fieldCode": "rejectionReason",
+            "fieldName": "반려 사유",
+            "fieldGroup": "반려",
+            "fieldOrder": 40,
+            "validation": {
+              "required": true,
+              "maxLength": 500
+            },
+            "apiProperty": "rejectionReason",
+            "controlType": "READ_ONLY_TEXTAREA",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_RESUBMIT",
+            "evidenceRequired": false,
+            "code": "rejectionReason"
+          },
+          {
+            "route": "/join/companyReapply",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+            "required": true,
+            "fieldCode": "applicantResponse",
+            "fieldName": "보완·재신청 내용",
+            "fieldGroup": "반려",
+            "fieldOrder": 45,
+            "validation": {
+              "maxLength": 2000,
+              "minLength": 10
+            },
+            "apiProperty": "applicantResponse",
+            "controlType": "TEXTAREA",
+            "sourceTable": "framework_company_reapplication_audit",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "applicant_response",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PUBLIC_RESUBMIT",
+            "evidenceRequired": true,
+            "code": "applicantResponse"
+          },
+          {
+            "route": "/join/companyReapply",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+            "required": true,
+            "fieldCode": "agencyName",
+            "fieldName": "기업명",
+            "fieldGroup": "기업",
+            "fieldOrder": 50,
+            "validation": {
+              "required": true,
+              "maxLength": 500
+            },
+            "apiProperty": "agencyName",
+            "controlType": "TEXT",
+            "sourceTable": "comtninsttinfo",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "instt_nm",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PUBLIC_RESUBMIT",
+            "evidenceRequired": false,
+            "code": "agencyName"
+          },
+          {
+            "route": "/join/companyReapply",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+            "required": true,
+            "fieldCode": "representativeName",
+            "fieldName": "대표자명",
+            "fieldGroup": "기업",
+            "fieldOrder": 60,
+            "validation": {
+              "required": true,
+              "maxLength": 500
+            },
+            "apiProperty": "representativeName",
+            "controlType": "TEXT",
+            "sourceTable": "comtninsttinfo",
+            "privacyClass": "PERSONAL",
+            "sourceColumn": "reprsnt_nm",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PUBLIC_RESUBMIT",
+            "evidenceRequired": false,
+            "code": "representativeName"
+          },
+          {
+            "route": "/join/companyReapply",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+            "required": true,
+            "fieldCode": "bizRegistrationNumber",
+            "fieldName": "사업자등록번호",
+            "fieldGroup": "기업",
+            "fieldOrder": 70,
+            "validation": {
+              "required": true,
+              "maxLength": 500
+            },
+            "apiProperty": "bizRegistrationNumber",
+            "controlType": "TEXT",
+            "sourceTable": "comtninsttinfo",
+            "privacyClass": "PERSONAL",
+            "sourceColumn": "bizrno",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PUBLIC_RESUBMIT",
+            "evidenceRequired": false,
+            "code": "bizRegistrationNumber"
+          },
+          {
+            "route": "/join/companyReapply",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+            "required": true,
+            "fieldCode": "zipCode",
+            "fieldName": "우편번호",
+            "fieldGroup": "주소",
+            "fieldOrder": 80,
+            "validation": {
+              "required": true,
+              "maxLength": 500
+            },
+            "apiProperty": "zipCode",
+            "controlType": "POSTCODE",
+            "sourceTable": "comtninsttinfo",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "zip",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PUBLIC_RESUBMIT",
+            "evidenceRequired": false,
+            "code": "zipCode"
+          },
+          {
+            "route": "/join/companyReapply",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+            "required": true,
+            "fieldCode": "companyAddress",
+            "fieldName": "기업 주소",
+            "fieldGroup": "주소",
+            "fieldOrder": 90,
+            "validation": {
+              "required": true,
+              "maxLength": 500
+            },
+            "apiProperty": "companyAddress",
+            "controlType": "ADDRESS",
+            "sourceTable": "comtninsttinfo",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "adres",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PUBLIC_RESUBMIT",
+            "evidenceRequired": false,
+            "code": "companyAddress"
+          },
+          {
+            "route": "/join/companyReapply",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+            "required": false,
+            "fieldCode": "companyAddressDetail",
+            "fieldName": "상세 주소",
+            "fieldGroup": "주소",
+            "fieldOrder": 100,
+            "validation": {
+              "required": false,
+              "maxLength": 500
+            },
+            "apiProperty": "companyAddressDetail",
+            "controlType": "TEXT",
+            "sourceTable": "comtninsttinfo",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "detail_adres",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PUBLIC_RESUBMIT",
+            "evidenceRequired": false,
+            "code": "companyAddressDetail"
+          },
+          {
+            "route": "/join/companyReapply",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+            "required": true,
+            "fieldCode": "chargerName",
+            "fieldName": "담당자명",
+            "fieldGroup": "담당자",
+            "fieldOrder": 110,
+            "validation": {
+              "required": true,
+              "maxLength": 500
+            },
+            "apiProperty": "chargerName",
+            "controlType": "TEXT",
+            "sourceTable": "comtninsttinfo",
+            "privacyClass": "PERSONAL",
+            "sourceColumn": "charger_nm",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PUBLIC_RESUBMIT",
+            "evidenceRequired": false,
+            "code": "chargerName"
+          },
+          {
+            "route": "/join/companyReapply",
+            "audience": "USER",
+            "dataType": "EMAIL",
+            "editable": true,
+            "pageCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+            "required": true,
+            "fieldCode": "chargerEmail",
+            "fieldName": "담당자 이메일",
+            "fieldGroup": "담당자",
+            "fieldOrder": 120,
+            "validation": {
+              "format": "email",
+              "maxLength": 100
+            },
+            "apiProperty": "chargerEmail",
+            "controlType": "EMAIL",
+            "sourceTable": "comtninsttinfo",
+            "privacyClass": "PERSONAL",
+            "sourceColumn": "charger_email",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PUBLIC_RESUBMIT",
+            "evidenceRequired": false,
+            "code": "chargerEmail"
+          },
+          {
+            "route": "/join/companyReapply",
+            "audience": "USER",
+            "dataType": "PHONE",
+            "editable": true,
+            "pageCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+            "required": true,
+            "fieldCode": "chargerTel",
+            "fieldName": "담당자 연락처",
+            "fieldGroup": "담당자",
+            "fieldOrder": 130,
+            "validation": {
+              "pattern": "^[0-9-]{8,20}$"
+            },
+            "apiProperty": "chargerTel",
+            "controlType": "TEL",
+            "sourceTable": "comtninsttinfo",
+            "privacyClass": "PERSONAL",
+            "sourceColumn": "charger_tel",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PUBLIC_RESUBMIT",
+            "evidenceRequired": false,
+            "code": "chargerTel"
+          },
+          {
+            "route": "/join/companyReapply",
+            "audience": "USER",
+            "dataType": "FILE_LIST",
+            "editable": true,
+            "pageCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_USER",
+            "required": true,
+            "fieldCode": "fileUploads",
+            "fieldName": "신규 증빙",
+            "fieldGroup": "증빙",
+            "fieldOrder": 140,
+            "validation": {
+              "maxItems": 10,
+              "minItems": 1,
+              "extensions": [
+                "pdf",
+                "jpg",
+                "jpeg",
+                "png"
+              ],
+              "maxFileSizeMb": 10
+            },
+            "apiProperty": "fileUploads",
+            "controlType": "FILE_UPLOAD",
+            "sourceTable": "comtninsttfile",
+            "privacyClass": "CONFIDENTIAL",
+            "sourceColumn": "stre_file_nm",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PUBLIC_RESUBMIT",
+            "evidenceRequired": true,
+            "code": "fileUploads"
+          }
+        ],
+        "commands": [
+          {
+            "primary": true,
+            "actorCode": "PUBLIC_APPLICANT",
+            "entryState": "REJECTED",
+            "markerType": "PRIMARY_STEP_COMMAND",
+            "commandCode": "RESUBMIT_COMPANY_APPLICATION",
+            "resultState": "APPLIED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": [
+          "LOADING",
+          "LOOKUP_REQUIRED",
+          "REJECTED",
+          "EDITING",
+          "VALIDATION_ERROR",
+          "UPLOADING",
+          "SUBMITTING",
+          "APPLIED",
+          "CONFLICT",
+          "ERROR"
+        ],
+        "responsive": {
+          "mobile": "single-column",
+          "tablet": "adaptive-two-column",
+          "desktop": "task-optimized",
+          "noTextOverflow": true
+        },
+        "accessibility": {
+          "standard": "WCAG 2.1 AA",
+          "keyboard": true,
+          "focus": true,
+          "errorSummary": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "path": "/join/api/company-reapply/page",
+        "query": [
+          "bizNo",
+          "repName",
+          "registeredContact"
+        ],
+        "method": "POST"
+      },
+      {
+        "path": "/join/api/company-reapply",
+        "method": "POST",
+        "contentType": "multipart/form-data",
+        "maxFileCount": 10
+      },
+      {
+        "primary": true,
+        "actorCode": "PUBLIC_APPLICANT",
+        "actorGuard": true,
+        "markerType": "PRIMARY_STEP_API",
+        "rowVersion": true,
+        "commandCode": "RESUBMIT_COMPANY_APPLICATION",
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": [
+          "GET /join/api/company-reapply/page; POST /join/api/company-reapply multipart"
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "primary": true,
+        "actorCode": "PUBLIC_APPLICANT",
+        "entryState": "REJECTED",
+        "markerType": "PRIMARY_STEP_COMMAND",
+        "commandCode": "RESUBMIT_COMPANY_APPLICATION",
+        "resultState": "APPLIED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "idempotencyRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "PUBLIC_APPLICANT",
+      "ownerActorCode": "PUBLIC_APPLICANT",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [
+        {
+          "guard": {
+            "relay": "MEMBER_LIFECYCLE_V3",
+            "actorCode": "PUBLIC_APPLICANT",
+            "leastPrivilege": true
+          },
+          "scope": "RECORD",
+          "resource": {
+            "stepCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT",
+            "domainCode": "MEMBER",
+            "processCode": "COMPANY_REAPPLICATION_PUBLIC"
+          },
+          "permissionCode": "COMPANY_REAPPLICATION_PUBLIC_RESUBMIT_EXECUTE"
+        },
+        {
+          "guard": {
+            "source": "PROFESSIONAL_SCREEN_CONTRACT",
+            "actorCode": "PUBLIC_APPLICANT"
+          },
+          "scope": "PROJECT",
+          "resource": {
+            "audience": "USER",
+            "routePath": "/join/companyreapply",
+            "contractId": 653937
+          },
+          "permissionCode": "PUBLIC_COMPANY_REAPPLICATION_LOOKUP"
+        },
+        {
+          "guard": {
+            "source": "PROFESSIONAL_SCREEN_CONTRACT",
+            "actorCode": "PUBLIC_APPLICANT"
+          },
+          "scope": "PROJECT",
+          "resource": {
+            "audience": "USER",
+            "routePath": "/join/companyreapply",
+            "contractId": 653937
+          },
+          "permissionCode": "PUBLIC_COMPANY_REAPPLICATION_SUBMIT"
+        }
+      ],
+      "delegation": {},
+      "extensions": {
+        "useAt": "Y",
+        "purpose": "반려된 기업 신청을 본인 식별정보로 조회하고 보완 정보와 증빙을 다시 제출한다.",
+        "actorName": "가입 신청자",
+        "actorType": "BUSINESS",
+        "competency": "",
+        "relatedActors": [
+          {
+            "useAt": "Y",
+            "purpose": "검증 완료 결과의 중요 오류와 책임 범위를 확인하고 승인·반려·재개방한다.",
+            "actorCode": "APPROVER",
+            "actorName": "승인권자",
+            "actorType": "APPROVAL",
+            "competency": "조직 권한과 산정·검증 결과 판단 역량",
+            "actorNameEn": "Approver",
+            "accountability": "최종 의사결정과 승인 근거의 적정성",
+            "responsibility": "검증 결과의 최종 승인·반려 및 확정 책임",
+            "capabilityCodes": [
+              "APPROVE",
+              "LOCK_RESULT",
+              "REJECT",
+              "REOPEN"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": true,
+            "conflictActorCodes": [
+              "CALCULATOR",
+              "VERIFIER"
+            ],
+            "maxConcurrentAssignments": 50
+          },
+          {
+            "useAt": "Y",
+            "purpose": "반려된 기업 신청을 본인 식별정보로 조회하고 보완 정보와 증빙을 다시 제출한다.",
+            "actorCode": "PUBLIC_APPLICANT",
+            "actorName": "가입 신청자",
+            "actorType": "BUSINESS",
+            "competency": "",
+            "actorNameEn": "Public Applicant",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "COMPANY_APPLICATION_LOOKUP",
+              "COMPANY_APPLICATION_RESUBMIT",
+              "CONSENT",
+              "EVIDENCE_UPLOAD",
+              "REGISTER",
+              "VERIFY_IDENTITY"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": false,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          }
+        ],
+        "accountability": "",
+        "responsibility": "",
+        "capabilityCodes": [
+          "COMPANY_APPLICATION_LOOKUP",
+          "COMPANY_APPLICATION_RESUBMIT",
+          "CONSENT",
+          "EVIDENCE_UPLOAD",
+          "REGISTER",
+          "VERIFY_IDENTITY"
+        ],
+        "reviewCycleDays": 365,
+        "delegationAllowed": false,
+        "conflictActorCodes": [],
+        "escalationActorCode": "APPROVER",
+        "segregationActorCodes": [],
+        "maxConcurrentAssignments": 0
+      }
+    },
+    "handoffPolicy": {},
+    "handoffs": [
+      {
+        "failure": {
+          "forbidden": "HTTP_403",
+          "loadFailure": "RETRY",
+          "missingApprovalRow": "BLOCK"
+        },
+        "payload": {
+          "required": [
+            "insttId",
+            "companyName",
+            "businessNumber",
+            "representativeName",
+            "statusLabel",
+            "evidenceFiles"
+          ]
+        },
+        "integrity": {
+          "sourceState": "A",
+          "institutionStateReread": true
+        },
+        "toStepCode": "COMPANY_REAPPLICATION_APPROVER_REVIEW",
+        "contextKeys": [
+          "projectId",
+          "insttId"
+        ],
+        "handoffType": "STEP",
+        "authorization": {
+          "targetActor": "APPROVER",
+          "masterAdministratorRequired": true
+        },
+        "toProcessCode": "COMPANY_REAPPLICATION_PUBLIC"
+      }
+    ]
+  },
+  "database": {
+    "mappings": [],
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "공개 조회 최소노출·관리 명령 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        "lookup rejected application",
+        "inspect response",
+        "call admin decision without approver"
+      ],
+      "status": "APPROVED",
+      "caseCode": "COMPANY_REAPPLICATION_PUBLIC_AUTHORITY",
+      "assertions": [
+        "sensitive fields masked",
+        "admin commands hidden",
+        "HTTP 401 or 403",
+        "DB changes 0"
+      ],
+      "preconditions": "비로그인 사용자와 비승인 일반 계정이 존재한다."
+    },
+    {
+      "name": "동시 재신청·중복 제출 충돌",
+      "type": "EXCEPTION",
+      "steps": [
+        "send concurrent multipart requests",
+        "reread institution",
+        "count audit and file rows"
+      ],
+      "status": "APPROVED",
+      "caseCode": "COMPANY_REAPPLICATION_PUBLIC_CONFLICT",
+      "assertions": [
+        "one success",
+        "one HTTP 409",
+        "single R->A transition",
+        "single audit version",
+        "no duplicate files"
+      ],
+      "preconditions": "같은 R 상태 신청과 두 개의 동시 요청이 준비된다."
+    },
+    {
+      "name": "반려 기업 재신청·승인 정상 릴레이",
+      "type": "HAPPY_PATH",
+      "steps": [
+        "GET rejected application",
+        "edit allowed fields",
+        "attach evidence",
+        "POST resubmit",
+        "DB reread A",
+        "login master approver",
+        "GET company approval page",
+        "POST action approve",
+        "DB reread P"
+      ],
+      "status": "APPROVED",
+      "caseCode": "COMPANY_REAPPLICATION_PUBLIC_HAPPY",
+      "assertions": [
+        "public HTTP 200",
+        "state R->A",
+        "audit version +1",
+        "evidence count >=1",
+        "change hash 64",
+        "admin success true",
+        "result approved",
+        "selectedIds contains insttId",
+        "state A->P"
+      ],
+      "preconditions": "전용 테스트 기업 신청 상태 R, 신규 증빙 파일, 신청자와 승인자 계정이 존재한다."
+    },
+    {
+      "name": "다른 프로젝트·기업 신청 변조 차단",
+      "type": "ISOLATION",
+      "steps": [
+        "lookup company A",
+        "forge company B insttId",
+        "submit"
+      ],
+      "status": "APPROVED",
+      "caseCode": "COMPANY_REAPPLICATION_PUBLIC_ISOLATION",
+      "assertions": [
+        "HTTP 404 or 409",
+        "project scope retained",
+        "company B unchanged",
+        "audit rows 0"
+      ],
+      "preconditions": "두 프로젝트의 서로 다른 기업 신청이 존재한다."
+    },
+    {
+      "name": "DB 실패 시 파일·상태 원자 복구",
+      "type": "RECOVERY",
+      "steps": [
+        "submit with induced DB failure",
+        "inspect file store",
+        "reread institution and audit",
+        "retry valid request"
+      ],
+      "status": "APPROVED",
+      "caseCode": "COMPANY_REAPPLICATION_PUBLIC_RECOVERY",
+      "assertions": [
+        "first request fails",
+        "state remains R",
+        "orphan files 0",
+        "audit rows 0",
+        "retry succeeds once"
+      ],
+      "preconditions": "파일 저장 뒤 DB 트랜잭션 실패를 재현할 수 있다."
+    },
+    {
+      "name": "증빙 crash-window 자동 대사 안전성",
+      "type": "RECOVERY",
+      "steps": [
+        "acquire local and shared lock",
+        "scan at most configured limit",
+        "query all candidate object keys before delete",
+        "preserve referenced, legacy and symlink files",
+        "delete only rechecked unreferenced UUID candidates",
+        "record metrics"
+      ],
+      "status": "APPROVED",
+      "caseCode": "TC_COMPANY_REAPPLICATION_EVIDENCE_CRASH_WINDOW",
+      "assertions": [
+        "actor SYSTEM_RECOVERY",
+        "support step COMPANY_REAPPLICATION_EVIDENCE_RECONCILIATION",
+        "DB failure deletes 0",
+        "minimum age 60 minutes",
+        "scan bounded",
+        "multi-pod lock held",
+        "legacy preserved",
+        "symlink preserved"
+      ],
+      "preconditions": "60분 이상 경과한 신규 UUID 계약 파일, 참조 파일, 레거시 파일, 심볼릭 링크 및 DB 장애 조건이 준비된다."
+    },
+    {
+      "name": "필수값·증빙 정책 위반 차단",
+      "type": "VALIDATION",
+      "steps": [
+        "clear required field",
+        "submit",
+        "attach forbidden type",
+        "submit oversized file",
+        "admin POST without insttId and selectedIds",
+        "admin POST invalid action"
+      ],
+      "status": "APPROVED",
+      "caseCode": "COMPANY_REAPPLICATION_PUBLIC_VALIDATION",
+      "assertions": [
+        "public HTTP 400",
+        "field error code",
+        "DB changes 0",
+        "new files 0",
+        "audit rows 0",
+        "admin empty selection HTTP 400",
+        "admin invalid action HTTP 400"
+      ],
+      "preconditions": "반려 신청 조회 성공 후 필수값 또는 증빙이 누락된다."
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
+    "security": {
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true,
+      "segregationOfDuties": true,
+      "rateLimitRequired": false,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "standard": "WCAG 2.1 AA",
+      "keyboard": true,
+      "focus": true,
+      "errorSummary": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": true,
+      "targetHours": 48,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
+  },
+  "sourceHash": "6f2f8bd2712b0e5739758c17b61c664ffec5e68993eac0491b5aaaf50ae74263",
+  "approvalStatus": "APPROVED",
+  "packageHash": "de46927482c8ee4732c41abbd1ac5ad2f9c85a7ff1888ff130d33027518c5379"
+}

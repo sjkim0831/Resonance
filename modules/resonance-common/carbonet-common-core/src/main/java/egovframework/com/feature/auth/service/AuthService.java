@@ -26,6 +26,12 @@ public interface AuthService {
 
     LoginResponseDTO findLoginUserByExternalIdentity(String authCi, String authDi);
 
+    LoginResponseDTO resolveAuthenticatedLoginUser(String principalName);
+
+    long countExternalIdentityMatches(String authCi);
+
+    void linkExternalIdentity(String userId, String userSe, String authTy, String authDn, String authCi, String authDi);
+
     boolean resetPassword(String userId, String newPassword);
 
     boolean resetPassword(String userId, String newPassword, String resetByUserId, String resetIp, String resetSource);

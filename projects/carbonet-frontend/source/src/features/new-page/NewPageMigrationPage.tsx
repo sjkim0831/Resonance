@@ -8,7 +8,8 @@ import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { CollectionResultPanel, DiagnosticCard, PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
 import { numberOf, stringOf } from "../admin-system/adminSystemShared";
-import { renderScreenBuilderNodePreview } from "../screen-builder/shared/screenBuilderPreview";
+import { SduiRuntimeRenderer } from "../screen-builder/shared/SduiRuntimeRenderer";
+import { isPublishedScreenFor } from "../screen-builder/shared/publishedScreen";
 import { sortScreenBuilderNodes } from "../screen-builder/shared/screenBuilderUtils";
 
 type StarterTrack = {
@@ -116,8 +117,8 @@ export function NewPageMigrationPage() {
     [runtimeMenuCode, runtimePageId, runtimeMenuTitle, runtimeMenuUrl],
     { enabled: Boolean(runtimeMenuCode && runtimePageId) }
   );
-  const publishedNodes = useMemo(() => sortScreenBuilderNodes(previewState.value?.nodes || []), [previewState.value?.nodes]);
-  const rootNodes = useMemo(() => publishedNodes.filter((node) => !node.parentNodeId), [publishedNodes]);
+  const publishedNodes = useMemo(() => isPublishedScreenFor(previewState.value, { menuCode: runtimeMenuCode, pageId: runtimePageId, menuUrl: runtimeMenuUrl })
+    ? sortScreenBuilderNodes(previewState.value?.nodes || []) : [], [previewState.value, runtimeMenuCode, runtimePageId, runtimeMenuUrl]);
 
   useEffect(() => {
     const handleRuntimeRefresh = (event: StorageEvent) => {
@@ -127,7 +128,12 @@ export function NewPageMigrationPage() {
       }
     };
     window.addEventListener("storage", handleRuntimeRefresh);
-    return () => window.removeEventListener("storage", handleRuntimeRefresh);
+    const refresh = () => { void previewState.reload(); };
+    window.addEventListener("carbonet:runtime-page:refresh", refresh);
+    return () => {
+      window.removeEventListener("storage", handleRuntimeRefresh);
+      window.removeEventListener("carbonet:runtime-page:refresh", refresh);
+    };
   }, [pageState, previewState]);
   const featureCodes = ((page?.featureCodes || []) as string[]).filter(Boolean);
   const featureCount = numberOf(page || null, "featureCount") || featureCodes.length;
@@ -142,6 +148,17 @@ export function NewPageMigrationPage() {
   const grantedRoleCount = roleAssignments.filter((item) => Boolean(item.assigned)).length;
   const localizedUrl = stringOf(page || null, "localizedMenuUrl") || buildLocalizedPath("/admin/system/new-page", "/en/admin/system/new-page");
   const menuLabel = en ? stringOf(page || null, "menuNameEn", "menuName") : stringOf(page || null, "menuName", "menuNameEn");
+
+  if (publishedNodes.length > 0) {
+    const publishedVersion = previewState.value?.artifactEvidence?.publishedVersionId || previewState.value?.releaseUnitId || "";
+    return <AdminPageShell title={menuLabel || runtimeMenuTitle} breadcrumbs={[{ label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") }, { label: menuLabel || runtimeMenuTitle }]}>
+      <div className="w-full space-y-4" data-published-menu-code={runtimeMenuCode} data-published-version={publishedVersion}>
+        <div className="flex items-center justify-between gap-3 text-sm text-slate-500"><span>{en ? "Published version" : "게시 버전"} {publishedVersion || "—"}</span><button type="button" className="rounded border px-3 py-2" disabled={previewState.loading} onClick={() => void previewState.reload()}>{en ? "Refresh" : "최신 화면 새로고침"}</button></div>
+        {previewState.error && <div role="alert" className="text-red-700">{previewState.error}</div>}
+        <SduiRuntimeRenderer key={publishedVersion || JSON.stringify(publishedNodes)} en={en} nodes={publishedNodes} events={previewState.value?.events || []} />
+      </div>
+    </AdminPageShell>;
+  }
 
   return (
     <AdminPageShell
@@ -171,11 +188,7 @@ export function NewPageMigrationPage() {
           </PageStatusNotice>
         )}
 
-        {publishedNodes.length > 0 ? (
-          <section className="space-y-4" data-help-id="runtime-managed-page-content">
-            {rootNodes.map((node) => renderScreenBuilderNodePreview(node, publishedNodes, en))}
-          </section>
-        ) : null}
+        {previewState.error && <PageStatusNotice tone="error">{previewState.error}</PageStatusNotice>}
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-4" data-help-id="new-page-summary">
           <SummaryMetricCard

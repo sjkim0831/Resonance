@@ -1,0 +1,84 @@
+{
+  "runDate": "2026-09-29T00:52:12.464Z",
+  "route": "http://172.16.1.232/projects/P006/assets/equipment-registry/equipment-studio.html",
+  "tests": [
+    {
+      "name": "QA_HIERARCHY_CREATED",
+      "pass": true,
+      "details": "독립 QA 고객/부지/라인/공정"
+    },
+    {
+      "name": "AUTHENTICATED_STUDIO_LOADED",
+      "pass": true,
+      "details": "현재 화면에서 API 조회 완료"
+    },
+    {
+      "name": "STUDIO_EQUIPMENT_CREATE",
+      "pass": true,
+      "details": "HTTP 200"
+    },
+    {
+      "name": "STUDIO_EVIDENCE_REFERENCE_CREATE",
+      "pass": true,
+      "details": "HTTP 200"
+    },
+    {
+      "name": "STUDIO_EVIDENCE_VISIBLE",
+      "pass": true
+    },
+    {
+      "name": "STUDIO_EVIDENCE_BINARY_UPLOAD",
+      "pass": true,
+      "details": "HTTP 200"
+    },
+    {
+      "name": "STUDIO_EVIDENCE_FILE_HASH",
+      "pass": true
+    },
+    {
+      "name": "STUDIO_EQUIPMENT_UPDATE",
+      "pass": true,
+      "details": "HTTP 200"
+    },
+    {
+      "name": "STUDIO_ACCEPTED_REFERENCE_BIND",
+      "pass": true,
+      "details": "HTTP 200 · {\"status\":\"CONNECTED\",\"grade\":\"REFERENCE_MATCH\",\"assetId\":\"E005\",\"sourceType\":\"GLB\"}"
+    },
+    {
+      "name": "STUDIO_RELOAD_RESTORE",
+      "pass": true,
+      "details": "새로고침 후 관리번호와 경로/업로드 자료 2건 복원"
+    },
+    {
+      "name": "PRODUCT_PLANNER_PROCESS_LINK",
+      "pass": true,
+      "details": "E005 · /projects/P006/assets/functional-simulation/derived-mechanical-53/E005.glb"
+    },
+    {
+      "name": "NO_BROWSER_JS_ERRORS",
+      "pass": true
+    },
+    {
+      "name": "API_RELOAD_STATE",
+      "pass": true
+    }
+  ],
+  "fixtureCustomerId": "f1157545-daf6-40a7-8dac-d68279520cd4",
+  "fixtureCustomerCode": "QA_STUDIO_C_1790643133039",
+  "fixtureEquipmentId": "58a8eee0-19f5-451b-b4ca-ff38205606d4",
+  "mocked": false,
+  "persistedTestRows": 1,
+  "screenshot": "equipment-studio-browser-qa.png",
+  "elapsedSeconds": 2.93,
+  "passed": 13,
+  "total": 13,
+  "cleanupRequired": false,
+  "cleanup": {
+    "status": "PASS",
+    "removedQaCustomer": 1,
+    "removedQaEquipment": 1,
+    "removedUploadedSyntheticFiles": 1,
+    "databaseRowsRemaining": 0
+  }
+}

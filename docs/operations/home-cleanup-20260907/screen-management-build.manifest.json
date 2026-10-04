@@ -1,0 +1,3334 @@
+[
+  {
+    "path": "/home/sjkim/screen-management-build/favicon.svg",
+    "size": 466
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/index.html",
+    "size": 1082
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/process-preview-registry.json",
+    "size": 160273
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/process-preview-recorder-audit.json",
+    "size": 19417
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/process-preview-readiness.json",
+    "size": 320925
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/process-preview-coverage.json",
+    "size": 2399
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/process-preview-recorder-status.json",
+    "size": 216
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/process-design-fingerprints.json",
+    "size": 38954
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/preventive-maintenance-preview/preventive-maintenance-relay.mp4",
+    "size": 655674
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/preventive-maintenance-preview/preventive-maintenance-relay.sha256",
+    "size": 233
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/preventive-maintenance-preview/manifest.json",
+    "size": 620
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-reporting-preview/reduction-reporting-relay.mp4",
+    "size": 907646
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-reporting-preview/manifest.json",
+    "size": 926
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-reporting-preview/reduction-reporting-relay.sha256",
+    "size": 227
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certificate-fee-tax-refund-preview/certificate-fee-tax-refund-relay.mp4",
+    "size": 681772
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certificate-fee-tax-refund-preview/certificate-fee-tax-refund-relay.sha256",
+    "size": 241
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certificate-fee-tax-refund-preview/manifest.json",
+    "size": 603
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/external-service-status-preview/external-service-status-relay.sha256",
+    "size": 235
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/external-service-status-preview/manifest.json",
+    "size": 994
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/external-service-status-preview/external-service-status-relay.mp4",
+    "size": 1101493
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/profile-settings-preview/profile-settings-four-step-preview.mp4",
+    "size": 711770
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/profile-settings-preview/manifest.json",
+    "size": 910
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/mrv-traceability-preview/mrv-traceability-relay.mp4",
+    "size": 934293
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/mrv-traceability-preview/manifest.json",
+    "size": 875
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/mrv-traceability-preview/mrv-traceability-relay.sha256",
+    "size": 221
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/education-schedule-preview/education-schedule-relay.mp4",
+    "size": 949467
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/education-schedule-preview/education-schedule-relay.sha256",
+    "size": 225
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/education-schedule-preview/manifest.json",
+    "size": 909
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-roadmap-preview/reduction-roadmap-relay.mp4",
+    "size": 866378
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-roadmap-preview/reduction-roadmap-relay.sha256",
+    "size": 223
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-roadmap-preview/manifest.json",
+    "size": 892
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/governance-change-preview/governance-change-relay.sha256",
+    "size": 223
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/governance-change-preview/manifest.json",
+    "size": 1756
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/governance-change-preview/governance-change-relay.mp4",
+    "size": 1081389
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/sync-execution-preview/sync-execution-relay.mp4",
+    "size": 907837
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/sync-execution-preview/sync-execution-relay.sha256",
+    "size": 217
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/sync-execution-preview/manifest.json",
+    "size": 841
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/co2-lot-tag-management-preview/co2-lot-tag-management-relay.mp4",
+    "size": 697466
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/co2-lot-tag-management-preview/manifest.json",
+    "size": 571
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/co2-lot-tag-management-preview/co2-lot-tag-management-relay.sha256",
+    "size": 233
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/report-template-management-preview/manifest.json",
+    "size": 1049
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/report-template-management-preview/report-template-management-relay.mp4",
+    "size": 1037451
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/report-template-management-preview/report-template-management-relay.sha256",
+    "size": 241
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/appeal-dispute-audit-preview/appeal-dispute-audit-relay.mp4",
+    "size": 938255
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/appeal-dispute-audit-preview/manifest.json",
+    "size": 923
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/appeal-dispute-audit-preview/appeal-dispute-audit-relay.sha256",
+    "size": 229
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/quality-scoring-policy-preview/manifest.json",
+    "size": 959
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/quality-scoring-policy-preview/quality-scoring-policy-relay.mp4",
+    "size": 883706
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/quality-scoring-policy-preview/quality-scoring-policy-relay.sha256",
+    "size": 233
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/user-authority-assignment-preview/user-authority-assignment-relay.sha256",
+    "size": 239
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/user-authority-assignment-preview/manifest.json",
+    "size": 1366
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/user-authority-assignment-preview/user-authority-assignment-relay.mp4",
+    "size": 750007
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/menu-screen-governance-preview/menu-screen-governance-relay.sha256",
+    "size": 233
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/menu-screen-governance-preview/manifest.json",
+    "size": 977
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/menu-screen-governance-preview/menu-screen-governance-relay.mp4",
+    "size": 1043552
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/facility-operation-monitoring-preview/manifest.json",
+    "size": 630
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/facility-operation-monitoring-preview/facility-operation-monitoring-relay.sha256",
+    "size": 247
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/facility-operation-monitoring-preview/facility-operation-monitoring-relay.mp4",
+    "size": 604545
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/education-application-preview/education-application-relay.sha256",
+    "size": 231
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/education-application-preview/education-application-relay.mp4",
+    "size": 898082
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/education-application-preview/manifest.json",
+    "size": 948
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/validation-rule-management-preview/validation-rule-management-relay.sha256",
+    "size": 241
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/validation-rule-management-preview/validation-rule-management-relay.mp4",
+    "size": 970157
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/validation-rule-management-preview/manifest.json",
+    "size": 1027
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/trade-execution-preview/trade-execution-relay.sha256",
+    "size": 219
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/trade-execution-preview/manifest.json",
+    "size": 1505
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/trade-execution-preview/trade-execution-relay.mp4",
+    "size": 750074
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/notification-center-operation-preview/notification-center-operation-relay.sha256",
+    "size": 247
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/notification-center-operation-preview/notification-center-operation-relay.mp4",
+    "size": 962135
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/notification-center-operation-preview/manifest.json",
+    "size": 1096
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/process-completion-policy-preview/process-completion-policy-relay.mp4",
+    "size": 1062722
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/process-completion-policy-preview/manifest.json",
+    "size": 1028
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/process-completion-policy-preview/process-completion-policy-relay.sha256",
+    "size": 239
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/analysis-export-preview/manifest.json",
+    "size": 848
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/analysis-export-preview/analysis-export-relay.sha256",
+    "size": 219
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/analysis-export-preview/analysis-export-relay.mp4",
+    "size": 888966
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/work-assignment-preview/work-assignment-relay.mp4",
+    "size": 55853
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/organizational-boundary-current-design/organizational-boundary-current-design.mp4",
+    "size": 180721
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/organizational-boundary-current-design/manifest.json",
+    "size": 140
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/organizational-boundary-current-design/index.html",
+    "size": 3481
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/organizational-boundary-current-design/coverage-result.json",
+    "size": 1624
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/organizational-boundary-current-design/readiness-result.json",
+    "size": 217
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/facility-asset-registry-preview/facility-asset-registry-relay.sha256",
+    "size": 235
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/facility-asset-registry-preview/facility-asset-registry-relay.mp4",
+    "size": 630975
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/facility-asset-registry-preview/manifest.json",
+    "size": 613
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/disclosure-correction-preview/disclosure-correction-relay.sha256",
+    "size": 231
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/disclosure-correction-preview/disclosure-correction-relay.mp4",
+    "size": 889763
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/disclosure-correction-preview/manifest.json",
+    "size": 946
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/background-db-version-impact-preview/background-db-version-impact-relay.mp4",
+    "size": 923163
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/background-db-version-impact-preview/background-db-version-impact-relay.sha256",
+    "size": 245
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/background-db-version-impact-preview/manifest.json",
+    "size": 1077
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/co2-injection-storage-operation-preview/co2-injection-storage-operation-relay.mp4",
+    "size": 633421
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/co2-injection-storage-operation-preview/manifest.json",
+    "size": 646
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/co2-injection-storage-operation-preview/co2-injection-storage-operation-relay.sha256",
+    "size": 251
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/co2-quality-analysis-preview/co2-quality-analysis-relay.mp4",
+    "size": 594952
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/co2-quality-analysis-preview/manifest.json",
+    "size": 553
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/co2-quality-analysis-preview/co2-quality-analysis-relay.sha256",
+    "size": 229
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certification-eligibility-check-preview/certification-eligibility-check-relay.mp4",
+    "size": 622931
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certification-eligibility-check-preview/manifest.json",
+    "size": 657
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certification-eligibility-check-preview/certification-eligibility-check-relay.sha256",
+    "size": 251
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/webhook-management-preview/webhook-management-relay.mp4",
+    "size": 896273
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/webhook-management-preview/manifest.json",
+    "size": 909
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/webhook-management-preview/webhook-management-relay.sha256",
+    "size": 225
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/company-manager-delegation-approval-preview/company-manager-delegation-approval-relay.mp4",
+    "size": 407667
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/company-manager-delegation-approval-preview/company-manager-delegation-approval-relay.webm",
+    "size": 445402
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/legal-notification-delivery-preview/legal-notification-delivery-relay.mp4",
+    "size": 678996
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/legal-notification-delivery-preview/legal-notification-delivery-relay.sha256",
+    "size": 243
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/legal-notification-delivery-preview/manifest.json",
+    "size": 595
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/builder-generator-operation-preview/builder-generator-operation-relay.mp4",
+    "size": 1008281
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/builder-generator-operation-preview/builder-generator-operation-relay.sha256",
+    "size": 243
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/builder-generator-operation-preview/manifest.json",
+    "size": 1062
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/batch-schedule-operation-preview/batch-schedule-operation-relay.sha256",
+    "size": 237
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/batch-schedule-operation-preview/batch-schedule-operation-relay.mp4",
+    "size": 1005426
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/batch-schedule-operation-preview/manifest.json",
+    "size": 1011
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/lca-data-quality-uncertainty-preview/lca-data-quality-uncertainty-relay.sha256",
+    "size": 186
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/lca-data-quality-uncertainty-preview/lca-data-quality-uncertainty-relay.mp4",
+    "size": 885639
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/lca-data-quality-uncertainty-preview/manifest.json",
+    "size": 1077
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/leakage-incident-response-preview/leakage-incident-response-relay.mp4",
+    "size": 921225
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/leakage-incident-response-preview/manifest.json",
+    "size": 1031
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/leakage-incident-response-preview/leakage-incident-response-relay.sha256",
+    "size": 239
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/deadline-notification-policy-preview/deadline-notification-policy-relay.sha256",
+    "size": 245
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/deadline-notification-policy-preview/manifest.json",
+    "size": 1079
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/deadline-notification-policy-preview/deadline-notification-policy-relay.mp4",
+    "size": 967070
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/api-key-lifecycle-preview/api-key-lifecycle-relay.mp4",
+    "size": 813098
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/api-key-lifecycle-preview/manifest.json",
+    "size": 892
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/api-key-lifecycle-preview/api-key-lifecycle-relay.sha256",
+    "size": 223
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/calculation-engine-parity-preview/calculation-engine-parity-relay.sha256",
+    "size": 239
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/calculation-engine-parity-preview/calculation-engine-parity-relay.mp4",
+    "size": 653124
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/calculation-engine-parity-preview/manifest.json",
+    "size": 617
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/external-system-registry-preview/external-system-registry-relay.sha256",
+    "size": 237
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/external-system-registry-preview/external-system-registry-relay.mp4",
+    "size": 967241
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/external-system-registry-preview/manifest.json",
+    "size": 1011
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/faq-management-preview/manifest.json",
+    "size": 837
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/faq-management-preview/faq-management-relay.mp4",
+    "size": 908333
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/faq-management-preview/faq-management-relay.sha256",
+    "size": 217
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/scheduled-statistics-reporting-preview/scheduled-statistics-reporting-relay.sha256",
+    "size": 249
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/scheduled-statistics-reporting-preview/scheduled-statistics-reporting-relay.mp4",
+    "size": 475585
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/scheduled-statistics-reporting-preview/manifest.json",
+    "size": 1105
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/member-current-design-recording/member-current-design-relay.mp4",
+    "size": 6947730
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/member-current-design-recording/manifest.json",
+    "size": 239
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/member-current-design-recording/record-result.json",
+    "size": 186
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/member-current-design-recording/coverage-result.json",
+    "size": 1651
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/member-current-design-recording/readiness-result.json",
+    "size": 217
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/approval-line-management-preview/approval-line-management-relay.sha256",
+    "size": 237
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/approval-line-management-preview/manifest.json",
+    "size": 1014
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/approval-line-management-preview/approval-line-management-relay.mp4",
+    "size": 938518
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/data-quality-monitoring-preview/data-quality-monitoring-relay.sha256",
+    "size": 235
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/data-quality-monitoring-preview/data-quality-monitoring-relay.mp4",
+    "size": 937942
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/data-quality-monitoring-preview/manifest.json",
+    "size": 976
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/api-usage-monitoring-preview/api-usage-monitoring-relay.mp4",
+    "size": 1004275
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/api-usage-monitoring-preview/api-usage-monitoring-relay.sha256",
+    "size": 229
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/api-usage-monitoring-preview/manifest.json",
+    "size": 943
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/req-922b221066f1-preview/req-922b221066f1-relay.mp4",
+    "size": 1627468
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/req-922b221066f1-preview/manifest.json",
+    "size": 1517
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/req-922b221066f1-preview/req-922b221066f1-relay.sha256",
+    "size": 221
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/supply-demand-matching-preview/supply-demand-matching-relay.sha256",
+    "size": 233
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/supply-demand-matching-preview/supply-demand-matching-relay.mp4",
+    "size": 917671
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/supply-demand-matching-preview/manifest.json",
+    "size": 971
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/customer-work-coordination-preview/customer-work-coordination-relay.mp4",
+    "size": 966113
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/customer-work-coordination-preview/customer-work-coordination-relay.sha256",
+    "size": 65
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/customer-work-coordination-preview/manifest.json",
+    "size": 1347
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/pcr-epd-verification-preview/pcr-epd-verification-relay.sha256",
+    "size": 229
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/pcr-epd-verification-preview/manifest.json",
+    "size": 941
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/pcr-epd-verification-preview/pcr-epd-verification-relay.mp4",
+    "size": 923961
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/task-template-management-preview/task-template-management-relay.sha256",
+    "size": 237
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/task-template-management-preview/manifest.json",
+    "size": 1011
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/task-template-management-preview/task-template-management-relay.mp4",
+    "size": 898086
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/refund-management-preview/refund-management-relay.mp4",
+    "size": 1001201
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/refund-management-preview/refund-management-relay.sha256",
+    "size": 223
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/refund-management-preview/manifest.json",
+    "size": 896
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/data-scope-authority-preview/data-scope-authority-relay.sha256",
+    "size": 229
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/data-scope-authority-preview/data-scope-authority-relay.mp4",
+    "size": 849073
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/data-scope-authority-preview/manifest.json",
+    "size": 946
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-project-approval-preview/reduction-project-approval-relay.mp4",
+    "size": 1004681
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-project-approval-preview/reduction-project-approval-relay.sha256",
+    "size": 241
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-project-approval-preview/manifest.json",
+    "size": 1026
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/payment-settlement-preview/payment-settlement-relay.sha256",
+    "size": 225
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/payment-settlement-preview/manifest.json",
+    "size": 1586
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/payment-settlement-preview/payment-settlement-relay.mp4",
+    "size": 733925
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/attendance-progress-preview/attendance-progress-relay.sha256",
+    "size": 227
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/attendance-progress-preview/attendance-progress-relay.mp4",
+    "size": 986011
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/attendance-progress-preview/manifest.json",
+    "size": 926
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/data-schema-contract-preview/data-schema-contract-relay.mp4",
+    "size": 954251
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/data-schema-contract-preview/data-schema-contract-relay.sha256",
+    "size": 229
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/data-schema-contract-preview/manifest.json",
+    "size": 943
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/measurement-data-quality-preview/measurement-data-quality-relay.mp4",
+    "size": 910978
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/measurement-data-quality-preview/manifest.json",
+    "size": 1007
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/measurement-data-quality-preview/measurement-data-quality-relay.sha256",
+    "size": 237
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/design-asset-governance-preview/design-asset-governance-relay.sha256",
+    "size": 235
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/design-asset-governance-preview/design-asset-governance-relay.mp4",
+    "size": 965911
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/design-asset-governance-preview/manifest.json",
+    "size": 994
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/macc-portfolio-preview/manifest.json",
+    "size": 831
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/macc-portfolio-preview/macc-portfolio-relay.sha256",
+    "size": 217
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/macc-portfolio-preview/macc-portfolio-relay.mp4",
+    "size": 941621
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/anomaly-alert-management-preview/anomaly-alert-management-relay.sha256",
+    "size": 237
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/anomaly-alert-management-preview/manifest.json",
+    "size": 1001
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/anomaly-alert-management-preview/anomaly-alert-management-relay.mp4",
+    "size": 973394
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/git-build-deployment-preview/git-build-deployment-relay.mp4",
+    "size": 1007919
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/git-build-deployment-preview/manifest.json",
+    "size": 943
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/git-build-deployment-preview/git-build-deployment-relay.sha256",
+    "size": 229
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/outlier-rule-management-preview/outlier-rule-management-relay.sha256",
+    "size": 235
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/outlier-rule-management-preview/manifest.json",
+    "size": 984
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/outlier-rule-management-preview/outlier-rule-management-relay.mp4",
+    "size": 1023295
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/stakeholder-sharing-preview/stakeholder-sharing-relay.mp4",
+    "size": 956720
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/stakeholder-sharing-preview/manifest.json",
+    "size": 907
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/stakeholder-sharing-preview/stakeholder-sharing-relay.sha256",
+    "size": 227
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/feature-api-governance-preview/feature-api-governance-relay.sha256",
+    "size": 233
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/feature-api-governance-preview/manifest.json",
+    "size": 977
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/feature-api-governance-preview/feature-api-governance-relay.mp4",
+    "size": 1006943
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/evidence.json",
+    "size": 13867
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/twenty-step-evidence.json",
+    "size": 44543
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/frame-05.png",
+    "size": 267862
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/emission-live-preview-pipeline-latest.json",
+    "size": 962
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/emission-live-22-step-manifest.json",
+    "size": 496
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/frame-02.png",
+    "size": 267862
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/frame-04.png",
+    "size": 176371
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/emission-live-22-step-timeline.json",
+    "size": 12036
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/emission-22-step-account-relay.mp4",
+    "size": 1096355
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/emission-seven-step-relay.mp4",
+    "size": 479088
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/frame-03.png",
+    "size": 265308
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/emission-live-22-step-ui-relay.mp4",
+    "size": 29013255
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/frame-06.png",
+    "size": 176371
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/process-preview-popup-pass.png",
+    "size": 221893
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/frame-07.png",
+    "size": 172667
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/frame-01.png",
+    "size": 238469
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/emission-live-22-step-ui-relay-evidence.json",
+    "size": 11417
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-relay-proof/08-EMISSION_PROJECT_REPORT.pdf",
+    "size": 700681
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/process-preview-recorder-audit/index.html",
+    "size": 5761
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/trade-settlement-preview/trade-settlement-relay.sha256",
+    "size": 221
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/trade-settlement-preview/trade-settlement-relay.mp4",
+    "size": 922493
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/trade-settlement-preview/manifest.json",
+    "size": 879
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/integration-failure-retry-preview/integration-failure-retry-relay.sha256",
+    "size": 239
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/integration-failure-retry-preview/manifest.json",
+    "size": 1028
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/integration-failure-retry-preview/integration-failure-retry-relay.mp4",
+    "size": 1006222
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/resource-publication-preview/resource-publication-relay.mp4",
+    "size": 1011942
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/resource-publication-preview/resource-publication-relay.sha256",
+    "size": 229
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/resource-publication-preview/manifest.json",
+    "size": 939
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/role-authority-management-preview/role-authority-management-relay.sha256",
+    "size": 239
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/role-authority-management-preview/manifest.json",
+    "size": 1031
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/role-authority-management-preview/role-authority-management-relay.mp4",
+    "size": 1049151
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/audit-log-operation-preview/audit-log-operation-relay.sha256",
+    "size": 227
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/audit-log-operation-preview/manifest.json",
+    "size": 905
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/audit-log-operation-preview/audit-log-operation-relay.mp4",
+    "size": 919903
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/approval-authority-preview/approval-authority-relay.mp4",
+    "size": 989425
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/approval-authority-preview/approval-authority-relay.sha256",
+    "size": 225
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/approval-authority-preview/manifest.json",
+    "size": 912
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/notice-publication-preview/notice-publication-relay.mp4",
+    "size": 977772
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/notice-publication-preview/manifest.json",
+    "size": 905
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/notice-publication-preview/notice-publication-relay.sha256",
+    "size": 225
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-project-registration-preview/reduction-project-registration-relay.sha256",
+    "size": 249
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-project-registration-preview/manifest.json",
+    "size": 1113
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-project-registration-preview/reduction-project-registration-relay.mp4",
+    "size": 861674
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/trade-contract-preview/trade-contract-relay.mp4",
+    "size": 897171
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/trade-contract-preview/manifest.json",
+    "size": 822
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/trade-contract-preview/trade-contract-relay.sha256",
+    "size": 217
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certificate-issuance-preview/manifest.json",
+    "size": 855
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certificate-issuance-preview/certificate-issuance-relay.sha256",
+    "size": 170
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certificate-issuance-preview/certificate-issuance-relay.mp4",
+    "size": 471699
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certificate-issuance-preview/certificate-issuance-relay.mp4.sha256",
+    "size": 170
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-target-planning-preview/reduction-target-planning-relay.sha256",
+    "size": 239
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-target-planning-preview/reduction-target-planning-relay.mp4",
+    "size": 890682
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-target-planning-preview/manifest.json",
+    "size": 1028
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/incident-improvement-request-preview/manifest.json",
+    "size": 1071
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/incident-improvement-request-preview/incident-improvement-request-relay.mp4",
+    "size": 879540
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/incident-improvement-request-preview/incident-improvement-request-relay.sha256",
+    "size": 245
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certificate-objection-preview/manifest.json",
+    "size": 939
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certificate-objection-preview/certificate-objection-relay.sha256",
+    "size": 231
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certificate-objection-preview/certificate-objection-relay.mp4",
+    "size": 1055824
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-scenario-preview/reduction-scenario-relay.sha256",
+    "size": 225
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-scenario-preview/reduction-scenario-relay.mp4",
+    "size": 903984
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-scenario-preview/manifest.json",
+    "size": 899
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/security-policy-operation-preview/security-policy-operation-relay.sha256",
+    "size": 239
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/security-policy-operation-preview/manifest.json",
+    "size": 1024
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/security-policy-operation-preview/security-policy-operation-relay.mp4",
+    "size": 991908
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/training-certificate-preview/training-certificate-relay.sha256",
+    "size": 229
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/training-certificate-preview/manifest.json",
+    "size": 947
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/training-certificate-preview/training-certificate-relay.mp4",
+    "size": 994689
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/report-generation-preview/report-generation-relay.sha256",
+    "size": 223
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/report-generation-preview/manifest.json",
+    "size": 878
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/report-generation-preview/report-generation-relay.mp4",
+    "size": 950994
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-process-preview/emission-project-portfolio-preview.mp4",
+    "size": 52341
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-process-preview/emission-project-preview.mp4",
+    "size": 68770
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/emission-process-preview/manifest.json",
+    "size": 287
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/customer-inquiry-preview/customer-inquiry-relay.sha256",
+    "size": 221
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/customer-inquiry-preview/customer-inquiry-relay.mp4",
+    "size": 998911
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/customer-inquiry-preview/manifest.json",
+    "size": 867
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/newsletter-operation-preview/newsletter-operation-relay.mp4",
+    "size": 907215
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/newsletter-operation-preview/manifest.json",
+    "size": 939
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/newsletter-operation-preview/newsletter-operation-relay.sha256",
+    "size": 229
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/company-manager-delegation-relay-preview/04-successor-notification.webm",
+    "size": 458470
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/company-manager-delegation-relay-preview/05-predecessor-notification.webm",
+    "size": 434131
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/company-manager-delegation-relay-preview/03-handover.webm",
+    "size": 504866
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/company-manager-delegation-relay-preview/relay-files.txt",
+    "size": 173
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/company-manager-delegation-relay-preview/company-manager-delegation-full-relay.mp4",
+    "size": 1861254
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/company-manager-delegation-relay-preview/02-approval.webm",
+    "size": 445402
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/company-manager-delegation-relay-preview/company-manager-delegation-full-relay-contact-sheet.png",
+    "size": 322955
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/company-manager-delegation-relay-preview/01-request.webm",
+    "size": 408088
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/data-integration-preview/data-integration-relay.sha256",
+    "size": 221
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/data-integration-preview/data-integration-relay.mp4",
+    "size": 700871
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/data-integration-preview/manifest.json",
+    "size": 1733
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/auto-current-design/ACCOUNT_WITHDRAWAL/index.html",
+    "size": 2352
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/auto-current-design/ACCOUNT_WITHDRAWAL/current-design.mp4",
+    "size": 60242
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/auto-current-design/ACCOUNT_LOCK_RECOVERY/index.html",
+    "size": 2228
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/auto-current-design/ACCOUNT_LOCK_RECOVERY/current-design.mp4",
+    "size": 53339
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/auto-current-design/COMPANY_MANAGER_DELEGATION/index.html",
+    "size": 2119
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/auto-current-design/COMPANY_MANAGER_DELEGATION/current-design.mp4",
+    "size": 50039
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/meter-calibration-management-preview/manifest.json",
+    "size": 640
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/meter-calibration-management-preview/meter-calibration-management-relay.mp4",
+    "size": 697882
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/meter-calibration-management-preview/meter-calibration-management-relay.sha256",
+    "size": 245
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/chain-of-custody-preview/chain-of-custody-relay.mp4",
+    "size": 911493
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/chain-of-custody-preview/chain-of-custody-relay.sha256",
+    "size": 221
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/chain-of-custody-preview/manifest.json",
+    "size": 875
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/system-monitoring-recovery-preview/system-monitoring-recovery-relay.sha256",
+    "size": 241
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/system-monitoring-recovery-preview/system-monitoring-recovery-relay.mp4",
+    "size": 1073508
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/system-monitoring-recovery-preview/manifest.json",
+    "size": 1045
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certificate-verification-preview/certificate-verification-relay.sha256",
+    "size": 237
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certificate-verification-preview/certificate-verification-relay.mp4",
+    "size": 919190
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certificate-verification-preview/manifest.json",
+    "size": 990
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-execution-preview/reduction-execution-relay.mp4",
+    "size": 753672
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-execution-preview/manifest.json",
+    "size": 1678
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-execution-preview/reduction-execution-relay.sha256",
+    "size": 227
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/company-manager-delegation-preview/predecessor-notification.png",
+    "size": 1279689
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/company-manager-delegation-preview/handover-completed.png",
+    "size": 190502
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/company-manager-delegation-preview/successor-notification.png",
+    "size": 587325
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/platform-operation-preview/platform-operation-relay.sha256",
+    "size": 225
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/platform-operation-preview/platform-operation-relay.mp4",
+    "size": 630015
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/platform-operation-preview/manifest.json",
+    "size": 1365
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/automation-rule-management-preview/automation-rule-management-relay.mp4",
+    "size": 1116017
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/automation-rule-management-preview/manifest.json",
+    "size": 1045
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/automation-rule-management-preview/automation-rule-management-relay.sha256",
+    "size": 241
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/carbon-credit-management-preview/carbon-credit-management-relay.mp4",
+    "size": 1052686
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/carbon-credit-management-preview/carbon-credit-management-relay.sha256",
+    "size": 237
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/carbon-credit-management-preview/manifest.json",
+    "size": 1015
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/comparative-assertion-review-preview/comparative-assertion-review-relay.mp4",
+    "size": 935442
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/comparative-assertion-review-preview/comparative-assertion-review-relay.sha256",
+    "size": 245
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/comparative-assertion-review-preview/manifest.json",
+    "size": 1077
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/co2-supply-registration-preview/manifest.json",
+    "size": 988
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/co2-supply-registration-preview/co2-supply-registration-relay.sha256",
+    "size": 235
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/co2-supply-registration-preview/co2-supply-registration-relay.mp4",
+    "size": 996993
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/monitoring-analysis-preview/monitoring-analysis-relay.mp4",
+    "size": 507443
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/monitoring-analysis-preview/monitoring-analysis-relay.sha256",
+    "size": 227
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/monitoring-analysis-preview/manifest.json",
+    "size": 1526
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/business-e2e-dashboard/latest.json",
+    "size": 22289
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/business-e2e-dashboard/index.html",
+    "size": 8071
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/course-management-preview/course-management-relay.sha256",
+    "size": 223
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/course-management-preview/manifest.json",
+    "size": 892
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/course-management-preview/course-management-relay.mp4",
+    "size": 958514
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/lca-execution-preview/manifest.json",
+    "size": 816
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/lca-execution-preview/lca-execution-relay.mp4",
+    "size": 734529
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/lca-execution-preview/lca-execution-relay.sha256",
+    "size": 156
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/approval-workflow-management-preview/approval-workflow-management-relay.mp4",
+    "size": 1004543
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/approval-workflow-management-preview/manifest.json",
+    "size": 1082
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/approval-workflow-management-preview/approval-workflow-management-relay.sha256",
+    "size": 245
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/menu-access-control-preview/menu-access-control-relay.mp4",
+    "size": 930136
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/menu-access-control-preview/manifest.json",
+    "size": 929
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/menu-access-control-preview/menu-access-control-relay.sha256",
+    "size": 227
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/external-verification-engagement-preview/external-verification-engagement-relay.sha256",
+    "size": 253
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/external-verification-engagement-preview/manifest.json",
+    "size": 1142
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/external-verification-engagement-preview/external-verification-engagement-relay.mp4",
+    "size": 951069
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/integrated-monitoring-preview/integrated-monitoring-relay.sha256",
+    "size": 231
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/integrated-monitoring-preview/integrated-monitoring-relay.mp4",
+    "size": 923106
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/integrated-monitoring-preview/manifest.json",
+    "size": 950
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/integration-log-audit-preview/manifest.json",
+    "size": 939
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/integration-log-audit-preview/integration-log-audit-relay.mp4",
+    "size": 904492
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/integration-log-audit-preview/integration-log-audit-relay.sha256",
+    "size": 231
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/report-submission-preview/report-submission-relay.sha256",
+    "size": 223
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/report-submission-preview/manifest.json",
+    "size": 888
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/report-submission-preview/report-submission-relay.mp4",
+    "size": 910439
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/lca-allocation-sensitivity-preview/lca-allocation-sensitivity-relay.mp4",
+    "size": 931981
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/lca-allocation-sensitivity-preview/manifest.json",
+    "size": 1043
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/lca-allocation-sensitivity-preview/lca-allocation-sensitivity-relay.sha256",
+    "size": 241
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/api-connection-management-preview/api-connection-management-relay.sha256",
+    "size": 239
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/api-connection-management-preview/api-connection-management-relay.mp4",
+    "size": 865559
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/api-connection-management-preview/manifest.json",
+    "size": 1028
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/education-assessment-preview/education-assessment-relay.mp4",
+    "size": 823886
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/education-assessment-preview/manifest.json",
+    "size": 943
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/education-assessment-preview/education-assessment-relay.sha256",
+    "size": 229
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/content-operation-preview/content-operation-relay.mp4",
+    "size": 542478
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/content-operation-preview/content-operation-relay.sha256",
+    "size": 223
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/content-operation-preview/manifest.json",
+    "size": 1559
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/double-use-prevention-preview/double-use-prevention-relay.sha256",
+    "size": 231
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/double-use-prevention-preview/double-use-prevention-relay.mp4",
+    "size": 1061937
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/double-use-prevention-preview/manifest.json",
+    "size": 939
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-performance-preview/reduction-performance-relay.mp4",
+    "size": 903967
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-performance-preview/manifest.json",
+    "size": 960
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/reduction-performance-preview/reduction-performance-relay.sha256",
+    "size": 231
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/version-backup-recovery-preview/version-backup-recovery-relay.mp4",
+    "size": 923126
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/version-backup-recovery-preview/version-backup-recovery-relay.sha256",
+    "size": 235
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/version-backup-recovery-preview/manifest.json",
+    "size": 994
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/req-43bdb0ec53f8-preview/req-43bdb0ec53f8-relay.mp4",
+    "size": 1633411
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/req-43bdb0ec53f8-preview/manifest.json",
+    "size": 1504
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/req-43bdb0ec53f8-preview/req-43bdb0ec53f8-relay.sha256",
+    "size": 221
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/ccus-lifecycle-mrv-preview/ccus-lifecycle-mrv-relay.sha256",
+    "size": 225
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/ccus-lifecycle-mrv-preview/manifest.json",
+    "size": 895
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/ccus-lifecycle-mrv-preview/ccus-lifecycle-mrv-relay.mp4",
+    "size": 887414
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/member-84-step-recording/qa-receipt.json",
+    "size": 1726
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/member-84-step-recording/member-84-step-live-walkthrough.mp4",
+    "size": 7175680
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/member-84-step-recording/member-84-step-ordered-actual-evidence-replay.mp4",
+    "size": 4794763
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/member-84-step-recording/execution-board.html",
+    "size": 6453
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/member-84-step-recording/manifest.json",
+    "size": 586
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/member-84-step-recording/index.html",
+    "size": 2685
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/member-84-step-recording/live-manifest.json",
+    "size": 39109
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/facility-emergency-response-preview/facility-emergency-response-relay.sha256",
+    "size": 243
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/facility-emergency-response-preview/manifest.json",
+    "size": 620
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/facility-emergency-response-preview/facility-emergency-response-relay.mp4",
+    "size": 697055
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/regulatory-status-monitoring-preview/regulatory-status-monitoring-relay.sha256",
+    "size": 245
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/regulatory-status-monitoring-preview/regulatory-status-monitoring-relay.mp4",
+    "size": 998621
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/regulatory-status-monitoring-preview/manifest.json",
+    "size": 1063
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/trade-execution-tracking-preview/trade-execution-tracking-relay.mp4",
+    "size": 934619
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/trade-execution-tracking-preview/manifest.json",
+    "size": 1005
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/trade-execution-tracking-preview/trade-execution-tracking-relay.sha256",
+    "size": 237
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/project-lifecycle-control-preview/manifest.json",
+    "size": 1023
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/project-lifecycle-control-preview/project-lifecycle-control-relay.mp4",
+    "size": 911092
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/project-lifecycle-control-preview/project-lifecycle-control-relay.sha256",
+    "size": 239
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/co2-demand-registration-preview/co2-demand-registration-relay.mp4",
+    "size": 1016037
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/co2-demand-registration-preview/manifest.json",
+    "size": 988
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/co2-demand-registration-preview/co2-demand-registration-relay.sha256",
+    "size": 235
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/trade-proposal-preview/trade-proposal-relay.mp4",
+    "size": 984139
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/trade-proposal-preview/manifest.json",
+    "size": 835
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/trade-proposal-preview/trade-proposal-relay.sha256",
+    "size": 217
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certificate-review-issuance-preview/certificate-review-issuance-relay.sha256",
+    "size": 243
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certificate-review-issuance-preview/manifest.json",
+    "size": 1066
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/certificate-review-issuance-preview/certificate-review-issuance-relay.mp4",
+    "size": 864492
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/process-preview-registry/index.html",
+    "size": 9139
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/member-eight-scenario/timeline.vtt",
+    "size": 9377
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/member-eight-scenario/timeline.html",
+    "size": 63342
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/member-eight-scenario/member-eight-scenario-continuous-qa.mp4",
+    "size": 1370943
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/qa/member-eight-scenario/timeline.json",
+    "size": 62496
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/img/egovframework/kr_gov_symbol.png",
+    "size": 32239
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/img/brand/ccus-symbol-concept-02.png",
+    "size": 29403
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/img/brand/ccus-symbol-concept-04.png",
+    "size": 27583
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/img/home/ccus-industrial-facility.png",
+    "size": 411608
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/ocr/eng.traineddata.gz",
+    "size": 10923060
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/ocr/kor.traineddata.gz",
+    "size": 6951378
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/ocr/tesseract-core-lstm.wasm.js",
+    "size": 3896484
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/ocr/tesseract-core-lstm.wasm",
+    "size": 2855361
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/ocr/worker.min.js",
+    "size": 111307
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/.vite/manifest.json",
+    "size": 256346
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionDashboardPage-CsrL4JO9.js",
+    "size": 38468
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/SupportFaqMigrationPage-M7rCVgi5.js",
+    "size": 15204
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MonitoringDashboardMigrationPage-BmsrBLNu.js",
+    "size": 29996
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/FaqManagementMigrationPage-ehqwPTUv.js",
+    "size": 13947
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MypageNotificationMigrationPage-B_rFfjZm.js",
+    "size": 17656
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EduCertificateMigrationPage-CSKv4gqX.js",
+    "size": 20796
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/browser-BuuFW_mi.js",
+    "size": 23478
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CertificateReportListMigrationPage-CTWUFDRk.js",
+    "size": 23535
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CodexProvisionMigrationPage-ClGegBue.js",
+    "size": 47736
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/TradeSellMigrationPage-BBdmPiMt.js",
+    "size": 24729
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/events-D9Mwr0NX.js",
+    "size": 1061
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CertificateApplyMigrationPage-C1DxJHi8.js",
+    "size": 19412
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CompanyApproveMigrationPage-D0SbnZBk.js",
+    "size": 18539
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ScreenRuntimeMigrationPage-BTHMMBa4.js",
+    "size": 30250
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AiAgentsPage-DFoYz4az.js",
+    "size": 3657
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/FunctionManagementMigrationPage-BswHHWAl.js",
+    "size": 11720
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PaymentNotifyMigrationPage-BRiI861k.js",
+    "size": 31258
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CompanyAccountMigrationPage-nGgaGmIv.js",
+    "size": 17935
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionEcoinventAdminMigrationPage-BG514Jii.js",
+    "size": 12635
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ProcessArchetypeCatalog-DpQDsrEn.js",
+    "size": 9392
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/menuUrlDisplay-D3HLl0-X.js",
+    "size": 681
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/JoinCompanyReapplyEntry-D8ZQhV8H.js",
+    "size": 2652
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PaymentHistoryMigrationPage-UV7RfFKr.js",
+    "size": 19510
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ExternalLogsMigrationPage-BsmJJHS8.js",
+    "size": 13288
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AssetImpactMigrationPage-DJnoJhkO.js",
+    "size": 10879
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/Co2IntegrityMigrationPage-DUD_cHCz.js",
+    "size": 27717
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CertificatePendingMigrationPage-DrLstL_t.js",
+    "size": 12504
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/TradeListMigrationPage-BmL3VnJk.js",
+    "size": 24282
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/SupportInquiryMigrationPage-BAPlPwn3.js",
+    "size": 24021
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionProjectResultPage-OdSuI_HO.js",
+    "size": 20624
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PopupListMigrationPage--m68yo-h.js",
+    "size": 13524
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/BannerListMigrationPage-BSOUYsmk.js",
+    "size": 12701
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/Co2AnalysisMigrationPage-j9HbruTJ.js",
+    "size": 30316
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionProjectReviewPage-jDdsPtsW.js",
+    "size": 8303
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionSiteManagementMigrationPage-QER6ZVM_.js",
+    "size": 8218
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ScreenMenuAssignmentManagementMigrationPage-CWd_YKQZ.js",
+    "size": 18999
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CertificateReportEditMigrationPage-BRvPS-fe.js",
+    "size": 30318
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/Modal-CgtM0a84.js",
+    "size": 1416
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/Co2SearchMigrationPage-DB1Ma7th.js",
+    "size": 29582
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/runtime-Gj3CCb1y.js",
+    "size": 5265
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/menuTreeShared-z4QEm7uT.js",
+    "size": 1287
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ContractFieldControl-UEZoX5tS.js",
+    "size": 2505
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/reportRequiredFields-BrmbJWLw.js",
+    "size": 532
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/HelpOverlay-Bf9AiIqU.js",
+    "size": 8928
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AiObservabilityPage-daadNSfB.js",
+    "size": 10698
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/debug-CVYrfIJA.js",
+    "size": 973
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/RepairWorkbenchMigrationPage-Bm5nDqsJ.js",
+    "size": 53822
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ScreenManagementMigrationPage-BXaJTikQ.js",
+    "size": 13745
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/BlocklistMigrationPage-f_E2jAQu.js",
+    "size": 35270
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AdminReportCertificatePage-C17TgnFK.js",
+    "size": 3350
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/useExternalScript-6cSwtlWc.js",
+    "size": 426
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CurrentRuntimeCompareMigrationPage-CSO5GmNO.js",
+    "size": 48290
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/TradeApproveMigrationPage-B7lj9m2G.js",
+    "size": 16791
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/screenWorkContext-C88Q5ioY.js",
+    "size": 839
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AdminEmissionProjectPrerequisitesPage-C44g8JOj.js",
+    "size": 9504
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/framework-Bb3vOygl.js",
+    "size": 2125
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EduApplyMigrationPage-iv6SWGVt.js",
+    "size": 20469
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/NotificationCenterMigrationPage-C2A5AQvI.js",
+    "size": 36023
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/BannerEditMigrationPage-JVWRBIZB.js",
+    "size": 6352
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/sections-CerAKOhp.js",
+    "size": 3987
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MypageCompanyMigrationPage-sZQycCjy.js",
+    "size": 11503
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PageManagementMigrationPage-BZ6DYEBm.js",
+    "size": 31915
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AiQualityPage-NRP_-Ibq.js",
+    "size": 4238
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/TradeMarketMigrationPage-B2RYb0Nb.js",
+    "size": 25037
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CertificateApproveMigrationPage-Sz5SWcAq.js",
+    "size": 19252
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionDataHistoryMigrationPage-CnvCQ2EB.js",
+    "size": 13379
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/aiManagement-DThuKHN6.js",
+    "size": 1845
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ScreenBuilderEditorPanels-BYe4nOyb.js",
+    "size": 24435
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionValidateMigrationPage-Dx4jlxaY.js",
+    "size": 15793
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/status-yK6Cz_f1.js",
+    "size": 555
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/routeCatalog-BXptoWer.js",
+    "size": 822571
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MemberSecurityHistoryMigrationPage-CRG9UoH1.js",
+    "size": 1238
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ProjectVersionManagementMigrationPage-Dqey3KPX.js",
+    "size": 149578
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/qna-list-CU4p_moi.js",
+    "size": 163
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/DynamicPageRuntime-rO1g35aM.js",
+    "size": 6649
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/TradeDuplicateMigrationPage-EN3Q6Ake.js",
+    "size": 13355
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/BuilderStudioPage-DRemHzFl.js",
+    "size": 259015
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/FileManagementMigrationPage-DU718sTL.js",
+    "size": 22516
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MonitoringTrackMigrationPage-CJd7Z7HY.js",
+    "size": 30963
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/pageManifests-DL4BD7m4.js",
+    "size": 99
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/contextKeyPresets-DY7hk0_1.js",
+    "size": 3002
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/vendor-react-DAit2GPX.js",
+    "size": 139874
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/LoginHistorySharedPage-D524cyp6.js",
+    "size": 33026
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/definitions-gYIX8wCn.js",
+    "size": 877
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/IntegratedWorkOperationsMap-xbibFqGT.js",
+    "size": 24797
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/BoardAddMigrationPage-CIRp55Qv.js",
+    "size": 17668
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/SensorEditMigrationPage-BwQXzTSE.js",
+    "size": 19260
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionSurveyAdminDataMigrationPage-DvIYEIYl.js",
+    "size": 51146
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionResultListMigrationPage-CmwBOH-A.js",
+    "size": 14964
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/screenBuilderUtils-hgG5oqcN.js",
+    "size": 228
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/VerificationCenterMigrationPage-Djx5Nka0.js",
+    "size": 106626
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/runtime-HgCBbgsq.js",
+    "size": 267
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CertificateReportFormMigrationPage-CVbjqAgg.js",
+    "size": 26751
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionMyTasksPage-G0yvIBT5.js",
+    "size": 63041
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/HomeEntrySections-bb_oA6sh.js",
+    "size": 51345
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/UserPortalChrome-z_4FdVNi.js",
+    "size": 5463
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/JoinWizardMigrationPage-BabuFmFX.js",
+    "size": 7592
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/SettlementCalendarMigrationPage-CkDbO3CN.js",
+    "size": 13324
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MenuManagementMigrationPage-U2yN8q2C.js",
+    "size": 41632
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MonitoringRealtimeMigrationPage-BZ_J9-9l.js",
+    "size": 29623
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ExternalUsageMigrationPage-CFWPgQ5Z.js",
+    "size": 11391
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/integrated-search-B7obzOLR.js",
+    "size": 12941
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/authorityScope-35E9vrdr.js",
+    "size": 2878
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/useAsyncValue-fdtN9n_v.js",
+    "size": 1091
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ObservabilityMigrationPage-DxIWGFpX.js",
+    "size": 56300
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MajorMenuIndexPage-DufTGr8l.js",
+    "size": 28925
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/FullStackManagementMigrationPage-DRp-rvuS.js",
+    "size": 50740
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CustomerWorkDevelopmentDashboard-DvOFzsgz.js",
+    "size": 25523
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionLciMigrationPage-CoE72Q8F.js",
+    "size": 31149
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ProjectDeliveryBlueprintPanel-D2-zVMgC.js",
+    "size": 7178
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/core-CS2ZwvWP.js",
+    "size": 12001
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AdminAccountCreateMigrationPage-C5Ufr2Ri.js",
+    "size": 23427
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/shared-BOkZnvKC.js",
+    "size": 876
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/common-BYrMilSY.js",
+    "size": 0
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AdminPageShell-BrwfUpf1.js",
+    "size": 36488
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ExternalMonitoringMigrationPage-DgiJg8V0.js",
+    "size": 14456
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/TradeReportMigrationPage-BkLEWkgA.js",
+    "size": 29144
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ControllerManagementMigrationPage-Bjw6WY0w.js",
+    "size": 585
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/trade-mtMxejL4.js",
+    "size": 1588
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/platform-hWNN8wL2.js",
+    "size": 23218
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ProcessClosingPanel-T4I3KhT5.js",
+    "size": 4398
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/HelpOverlay-Bfcek0CQ.js",
+    "size": 106
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MypageStaffMigrationPage-YFPN0LJ-.js",
+    "size": 41752
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/BuilderGovernancePages-Y6DrcFHr.js",
+    "size": 42392
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ScreenBuilderOverviewPanels-BDalgfFE.js",
+    "size": 16137
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/UnitCategorySelectPair-DbdGr2lL.js",
+    "size": 3432
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionLciClassificationMigrationPage-BpqbprtQ.js",
+    "size": 12368
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PasswordResetMigrationPage-Crk2wmX5.js",
+    "size": 17497
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionReductionMigrationPage-DipfD8QC.js",
+    "size": 32607
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/pageManifestIndex-B_UkMMKK.js",
+    "size": 647
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionProjectCreatePage-BcsZsIwS.js",
+    "size": 24234
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AccessHistoryMigrationPage-ClcLntbR.js",
+    "size": 22777
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MemberEditMigrationPage-KC289yvi.js",
+    "size": 26106
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AdminMonitoringOperationsPages-CyqNS_zA.js",
+    "size": 53114
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ExternalMaintenanceMigrationPage-DbjjmugP.js",
+    "size": 17716
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionProjectProgressPage-BWmkx1ey.js",
+    "size": 9443
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ProcessDesignMap-BZRCGavj.js",
+    "size": 8772
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AdminSitemapMigrationPage-DSPFmDe5.js",
+    "size": 4365
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/DeptRoleMappingMigrationPage-BOicbR7s.js",
+    "size": 15558
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AiDashboardPage-D_qLLSHA.js",
+    "size": 5964
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ProfessionalDesignCanvas-CXbqQyC2.js",
+    "size": 20222
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AiRagPage-C1GMiawV.js",
+    "size": 13707
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ProcessOrchestrationPage-DlWnnDCB.js",
+    "size": 11516
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/screenBuilderPreview-CoRP9U-2.js",
+    "size": 4231
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/SrWorkbenchMigrationPage-gE1b5-nT.js",
+    "size": 33497
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CommonCenteredSystemCanvas-Cd7WtOiZ.js",
+    "size": 21622
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/version-management-CYZelk-s.js",
+    "size": 19506
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/TradeRejectMigrationPage-pfFtwsjT.js",
+    "size": 13574
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/HomeCertificateVerifyPage-BXbHXpGO.js",
+    "size": 3647
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EnvironmentManagementHubPage-DmHnnOmq.js",
+    "size": 183608
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionSurveyAdminMigrationPage-DLdF6g8y.js",
+    "size": 71950
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/reportSession-B9GmsxlA.js",
+    "size": 297
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/emission-BukaBZ7t.js",
+    "size": 10454
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/emission-definition-studio-D9iNvNao.js",
+    "size": 75494
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/Co2ProductionListMigrationPage-DkaVdDfJ.js",
+    "size": 30771
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PackageGovernanceScreen-BiXisYvx.js",
+    "size": 7726
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PublicEntryPages-B-O3fMZr.js",
+    "size": 61723
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/src-ByokrWkW.js",
+    "size": 17250
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/new-page-BlrQgrQW.js",
+    "size": 18210
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionDataInputMigrationPage-CZV_Uj8B.js",
+    "size": 31109
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/adminSystemShared-B4yhsGBo.js",
+    "size": 741
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/JoinCompleteMigrationPage-lyKthYFs.js",
+    "size": 10473
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/join-3nrrj91t.js",
+    "size": 2117
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/SecurityAuditMigrationPage-CMdeBKH-.js",
+    "size": 31772
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/GovernanceCompressionNav-BnEjlJg4.js",
+    "size": 6699
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MypagePasswordMigrationPage-UjZwvx5m.js",
+    "size": 20000
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/DbSyncDeployMigrationPage-D-s3tiuF.js",
+    "size": 21826
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/NoticeListMigrationPage-CQj54y-e.js",
+    "size": 19297
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/pageFrames-89_-q2tx.js",
+    "size": 501
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionProjectDetailPage-bJ8OyRlT.js",
+    "size": 23364
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/html2pdf-iP2Y9ekf.js",
+    "size": 936224
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/DbPromotionPolicyMigrationPage-DwH_d0K7.js",
+    "size": 12924
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/SystemCodeSimplePage-Dapcz-Pc.js",
+    "size": 10527
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/common-CgqLD_BR.js",
+    "size": 0
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/FunctionConsoleMigrationPage-DksZL8jL.js",
+    "size": 580
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/WbsManagementMigrationPage-BwURZlQA.js",
+    "size": 26501
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/SystemProcessTestReportPanel-iLODZDYz.js",
+    "size": 88349
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ExternalKeysMigrationPage-DXveSPxG.js",
+    "size": 21500
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/BatchManagementMigrationPage-B0wJQoxW.js",
+    "size": 19964
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/screenBuilderPaths-XA7WpJcV.js",
+    "size": 1493
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/SensorAddMigrationPage-ECyxCkPc.js",
+    "size": 14094
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/HermesWorkflowMigrationPage-Efx0Vt4I.js",
+    "size": 12601
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/routeSourceInventory-DgTy3Vdz.js",
+    "size": 137378
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/screenBuilderShared-DqAE_Ab0.js",
+    "size": 12336
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/HomePageWorkbenchMigrationPage-CniCRHLX.js",
+    "size": 8225
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/joinSession-KzSiiEw0.js",
+    "size": 2772
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/adminShell-CiXhf_sf.js",
+    "size": 2608
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/SensorListMigrationPage-C6Qk-eNj.js",
+    "size": 24715
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/rolldown-runtime-B6ubh40S.js",
+    "size": 1148
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/HelpManagementMigrationPage-DanSBa9x.js",
+    "size": 34013
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PageDevelopmentMasterPage-DQGUeD0D.js",
+    "size": 18963
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/jsQR-BDeegSlC.js",
+    "size": 129996
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/JoinGovernmentBar-DdEqfTQM.js",
+    "size": 730
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/BusinessCapsuleDesignLedger-Bsucp_ih.js",
+    "size": 34384
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/TagManagementMigrationPage-CFlKGnuC.js",
+    "size": 12263
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/helpContent-XLbrJm7j.js",
+    "size": 7581658
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MemberStatsMigrationPage-B1kkJj-y.js",
+    "size": 7771
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/screenCommand-DdAh8EVG.js",
+    "size": 228
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AdminPermissionMigrationPage-Ca7JEexs.js",
+    "size": 12340
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PrivacyPolicyPage-D6WTfO_a.js",
+    "size": 9736
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ScreenBuilderGovernancePanels-BhzskWD7.js",
+    "size": 47618
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/pdf.worker.min-B8NKM_1h.js",
+    "size": 1299464
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EduMyCourseMigrationPage-gpKGt7ZY.js",
+    "size": 22705
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/RegulatorySubmissionPage-n7WsoODi.js",
+    "size": 16560
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CommonJoinProcessShell-B3-2pESc.js",
+    "size": 398
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MonitoringStatisticsMigrationPage-CEBeeT12.js",
+    "size": 29745
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/TradeStatisticsMigrationPage-DJmbzSfR.js",
+    "size": 14558
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ErrorLogMigrationPage-BqUax3ye.js",
+    "size": 10086
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ExternalConnectionListMigrationPage-BtAshxC-.js",
+    "size": 20313
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AdminEmissionProjectOperationsPage-Ca5bPzOU.js",
+    "size": 7368
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/QnaListMigrationPage-Ch-HblmP.js",
+    "size": 21443
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/VerificationAssetManagementMigrationPage-BoRLd4XA.js",
+    "size": 15249
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EduContentMigrationPage-CNNt0-2X.js",
+    "size": 25528
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CertificateObjectionListMigrationPage-CWMnPGVN.js",
+    "size": 17186
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MemberAuthorityNav-CtoX67pS.js",
+    "size": 1995
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AuthGroupMigrationPage-BLspINdo.js",
+    "size": 63113
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionDeadlineStatusPage-Ctj_sWrC.js",
+    "size": 6312
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/JoinCompanyReapplyMigrationPage-UwoDz0LY.js",
+    "size": 33321
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/SecurityPolicyMigrationPage-_KeWT6dw.js",
+    "size": 96045
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/index-C56klW44.js",
+    "size": 9554
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/portal-Bvr8XlJ1.js",
+    "size": 2162
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/organizational-boundary-Ca_FLGWg.js",
+    "size": 17864
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CompanyListMigrationPage-B16Fy7Dm.js",
+    "size": 8247
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ApiManagementMigrationPage-IWCoLMaZ.js",
+    "size": 578
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ProcessStepWorkspacePage-CTmozrZI.js",
+    "size": 16957
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CanView-Dr-QB6lm.js",
+    "size": 248
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/index-BdYJIx-b.css",
+    "size": 273140
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/DesignAssetRegistryPage-bUTnPt_I.js",
+    "size": 6792
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AiModelsPage-Dt8Od5Yw.js",
+    "size": 4306
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/installableBuilderContract-D4CkNlAK.js",
+    "size": 3527
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ExternalRetryMigrationPage-C8HQmW0W.js",
+    "size": 13009
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AssetInventoryMigrationPage-22iQmwAC.js",
+    "size": 17205
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/buttonCatalogCore-Ddr1UvwB.js",
+    "size": 113
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/runtime-id-BAwJX9eq.js",
+    "size": 485
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MyInquiryMigrationPage-egVq4oiH.js",
+    "size": 21097
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/common-DEpU-OjV.js",
+    "size": 15463
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/FaqMenuManagementMigrationPage-Be0hCoju.js",
+    "size": 17247
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ActorProcessGovernancePage-DPNNE0Wf.js",
+    "size": 95810
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ScreenDevelopmentNotePanel-C8y2gikM.js",
+    "size": 11846
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ModuleManagementMigrationPage-D6HyweF3.js",
+    "size": 9407
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/WorkExecutionPage-DCQUH7fl.js",
+    "size": 36101
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/membershipCards-D5BRuFmV.js",
+    "size": 2111
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PostListMigrationPage-CdZf4GTC.js",
+    "size": 12459
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/adminActions-DtNTxLym.js",
+    "size": 3656
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AiLogsPage-D48z6ulM.js",
+    "size": 4087
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/download-list-BRgDkQVC.js",
+    "size": 173
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ExternalConnectionAddMigrationPage-hgJ8B5X9.js",
+    "size": 657
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionReportDownloadPage-BXWae6IP.js",
+    "size": 3948
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PageDesignStudioPage-yZC5zbIk.js",
+    "size": 15110
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/FlutterAppPage-B5IIAO3r.js",
+    "size": 2336
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/App-Den-Joij.js",
+    "size": 40217
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AssetGapMigrationPage-x6gPKfqm.js",
+    "size": 7345
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MemberRegisterMigrationPage-C3Humful.js",
+    "size": 30188
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/StandardUserFooter-CZHdIWNc.js",
+    "size": 1009
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ColumnManagementMigrationPage-6ad8Fonp.js",
+    "size": 581
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/aiShared-BNrGqubt.js",
+    "size": 3187
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/BoardListMigrationPage-4QAtrTuh.js",
+    "size": 11223
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/JoinCompanyRegisterMigrationPage-B3x3valy.js",
+    "size": 29197
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/security-BZW-5CKr.js",
+    "size": 4117
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MemberDetailMigrationPage-BPVLkb-U.js",
+    "size": 12449
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AssetLifecycleMigrationPage-B8qzxrXu.js",
+    "size": 7477
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ReportAccessHistoryPages-Dw5oigY8.js",
+    "size": 3878
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionCarbonWorkflowPages-BgHx0MeG.js",
+    "size": 17075
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ScreenWorkflowTestPanel-B4Dbmvyq.js",
+    "size": 16188
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/platformPaths-VpVZEpDu.js",
+    "size": 2697
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/WorkAssignmentPage-C-3ZMMqU.js",
+    "size": 22587
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/SchedulerManagementMigrationPage-BFeDglj8.js",
+    "size": 10524
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionClassificationCatalogPanel-NFYKjsaW.js",
+    "size": 3231
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/shared-COsl4ZQ6.js",
+    "size": 3770
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/toolbar-B6q6Yrp3.js",
+    "size": 820
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AdminMenuPlaceholderPage-RJ4OeNIZ.js",
+    "size": 3887
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PaymentPayMigrationPage-Bxq7AMOO.js",
+    "size": 31105
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionProjectPortfolioPage-uAhsL2At.js",
+    "size": 26891
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AdminEntryPages-DMmqWfrV.js",
+    "size": 26640
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/SecurityHistoryMigrationPage-DJviL8Pc.js",
+    "size": 1416
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/LoginHistoryMigrationPage-B3F85nf6.js",
+    "size": 1106
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CertificateStatisticsMigrationPage-C_HIReiG.js",
+    "size": 16874
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/emissionProcessHierarchy-CfJl1Y7S.js",
+    "size": 982
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/OperationsInventoryPages-CjyQ3uff.js",
+    "size": 11121
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ScreenHtmlMockupManager-Dwa7zrtO.js",
+    "size": 5762
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/HomeMenuPlaceholderPage-Dh55ktRN.js",
+    "size": 10070
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/TaskQuestPanel-C9gcUXOl.js",
+    "size": 149044
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/useRuntimeNavigation--C3GqrlJ.js",
+    "size": 2408
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/InfraManagementMigrationPage-vUEm5o2M.js",
+    "size": 16590
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/Co2CreditMigrationPage-QQrMTV5Y.js",
+    "size": 32319
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MypageMigrationPage-Ce1yA3uT.js",
+    "size": 33323
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/JoinCompanyStatusMigrationPage-Bff73Tc9.js",
+    "size": 34690
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionResultDetailMigrationPage-COC-UqFn.js",
+    "size": 13375
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MemberListMigrationPage-Cl65KBRn.js",
+    "size": 12477
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ConsentHistoryMigrationPage-B_2DEVQP.js",
+    "size": 16571
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AssetDeficiencyQueueMigrationPage-f5wfyRaH.js",
+    "size": 545
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/menuNormalization-D8c6Nu6r.js",
+    "size": 23922
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EventManagementMigrationPage-C2-TJRA0.js",
+    "size": 580
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CertificateRecCheckMigrationPage-CRs9sPLq.js",
+    "size": 19686
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EduSurveyMigrationPage-URhB8sk1.js",
+    "size": 17241
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/JoinTermsMigrationPage-BycMd_6P.js",
+    "size": 19114
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/RefundProcessMigrationPage-B5lALzwE.js",
+    "size": 17472
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MonitoringShareMigrationPage-BydaSbJP.js",
+    "size": 31361
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/TradePriceAlertMigrationPage-ClgcjTqx.js",
+    "size": 25043
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/VerticalScreenProcessMap-Cxc4-jaS.js",
+    "size": 9294
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PaymentRefundMigrationPage-CB2dx3cB.js",
+    "size": 31819
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PaymentRefundAccountMigrationPage-2u4GdIbK.js",
+    "size": 31740
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/operatorFlow-8PmLWpMh.js",
+    "size": 1233
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/Co2DemandListMigrationPage-DSaIUwxj.js",
+    "size": 31358
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AiTrainingPage-5goB7KjL.js",
+    "size": 9755
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/JoinCompanyRegisterCompleteMigrationPage-BqNMD6df.js",
+    "size": 9219
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/useJoinSession-B-Bgv7Zt.js",
+    "size": 280
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/DownloadListMigrationPage-Dak96p1l.js",
+    "size": 20276
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EduCourseListMigrationPage-BeCXVydx.js",
+    "size": 28691
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/IpWhitelistMigrationPage-YU367yTd.js",
+    "size": 26860
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/JoinInfoMigrationPage-B5n1X60c.js",
+    "size": 29507
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CertificateListMigrationPage-D0qNqXoY.js",
+    "size": 24471
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/DeliveryControlPanel-CNlSl96p.js",
+    "size": 3588
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ScreenFlowManagementMigrationPage-DrI6lesd.js",
+    "size": 16527
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/HomeEntryPages-BBLUR5Zf.js",
+    "size": 4813
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ops-BAqpWkqe.js",
+    "size": 10301
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/pageManifests-C4MGE8Nn.js",
+    "size": 193284
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PlatformStudioMigrationPage-Dvj76GkP.js",
+    "size": 68348
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CertificateReviewMigrationPage-Dm9-zcKt.js",
+    "size": 13423
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AuthChangeMigrationPage-DUF9nTh6.js",
+    "size": 18227
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MypageMarketingMigrationPage-ZgVfyNZh.js",
+    "size": 14170
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/runtime-CJKixi1T.js",
+    "size": 1511
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ExternalSyncMigrationPage-CE-3QP3V.js",
+    "size": 15150
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CustomerTracePage-C6V-QBmU.js",
+    "size": 12048
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/QnaCategoryMigrationPage-DLRz3WCf.js",
+    "size": 18294
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/TradeBuyRequestMigrationPage-CZjAKCrd.js",
+    "size": 21444
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ExternalConnectionEditMigrationPage-oop1RugZ.js",
+    "size": 19196
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/adminMember-BhHix80t.js",
+    "size": 3765
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CertificateAuditLogMigrationPage-BEcQTK_h.js",
+    "size": 13829
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/RefundListMigrationPage-Cvho97tH.js",
+    "size": 10342
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/OpsCapabilityBridgePage-BfQmLTac.js",
+    "size": 9647
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionReportSubmitMigrationPage-B_MTHKT2.js",
+    "size": 32448
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PerformanceMigrationPage-DLcIqppX.js",
+    "size": 17637
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CommonDesignPrimitives-B72iakRe.js",
+    "size": 2575
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionSimulateMigrationPage-BOtIZaBs.js",
+    "size": 30243
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/SitemapMigrationPage-CHkTs9pJ.js",
+    "size": 5680
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ScreenFlowCanvas-CfD4CFHD.js",
+    "size": 19612
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MypageEmailMigrationPage-n7DuWUKW.js",
+    "size": 12220
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionManagementMigrationPage-CQTFpw0E.js",
+    "size": 78989
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/TradeAutoOrderMigrationPage-CNp-fIWQ.js",
+    "size": 32176
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ExternalSchemaMigrationPage-gffWdnVm.js",
+    "size": 26087
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/resonanceControlPlane-Cjpt5fAl.js",
+    "size": 1236
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/SecurityMonitoringMigrationPage-B45rl_ft.js",
+    "size": 66898
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/primitives-3x-yvt6h.js",
+    "size": 4571
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MonitoringDashboardPage-DYW7Hmqp.js",
+    "size": 24699
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MonitoringAlertsMigrationPage-jz3JKHZb.js",
+    "size": 30124
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MtnStatusMigrationPage-CXGi12VG.js",
+    "size": 27688
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionGwpValuesMigrationPage-D-C_vo_D.js",
+    "size": 56505
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ReductionWorkflowPage-CEkB7t6Y.js",
+    "size": 14293
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AdminListMigrationPage-B0c0rxq5.js",
+    "size": 9819
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/AssetDetailMigrationPage-CULAR3Gb.js",
+    "size": 15520
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/BackupConfigMigrationPage-XTNBrSxp.js",
+    "size": 65833
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ScreenBuilderDashboardPage-CxpzttTv.js",
+    "size": 7484
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/JoinAuthMigrationPage-BBFtEFoG.js",
+    "size": 18819
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/observability-DX2lht3q.js",
+    "size": 1434
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/HomeAlertsPage-BC7TSpDW.js",
+    "size": 5732
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionProjectReportPage-BDQbrPbE.js",
+    "size": 8965
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/bootstrap-BXT_xiJo.js",
+    "size": 2744
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionProjectListFocusedPage-DiTlyQok.js",
+    "size": 17138
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ProjectCompletionPages-BJBOb-Rr.js",
+    "size": 7007
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/DbMonitoringPage-DumO0stG.js",
+    "size": 19150
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionLcaMigrationPage-C1yACCnD.js",
+    "size": 26403
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PopupEditMigrationPage-CX4dbKWl.js",
+    "size": 15525
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ScreenBuilderMigrationPage-B3HQaqHC.js",
+    "size": 47696
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/appBootstrap-BuPVUZf2.js",
+    "size": 5065
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/member-DPPpU3I1.js",
+    "size": 1772
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/OperationsCenterMigrationPage-BHgdyZgl.js",
+    "size": 37629
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/pdf-wFaU9Hf5.js",
+    "size": 329998
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EmissionSurveyReportMigrationPage-CVve-SN1.js",
+    "size": 189236
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/TradeCompleteMigrationPage-NTv3EPDN.js",
+    "size": 29187
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/notice-list-B-hPHRDT.js",
+    "size": 169
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/GeneratedScreenPage-zvOVkbIj.js",
+    "size": 33432863
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PaymentVirtualAccountMigrationPage-D8npyCIc.js",
+    "size": 38473
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/ExternalWebhooksMigrationPage-BRKDWD58.js",
+    "size": 16669
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EduProgressMigrationPage-BUPHup7V.js",
+    "size": 28753
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/useFrontendSession-C-oFUUxq.js",
+    "size": 2133
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/content-BPgNMlU-.js",
+    "size": 2503
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/VirtualIssueMigrationPage-DOJ2ci8n.js",
+    "size": 14286
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MonitoringReductionTrendMigrationPage-1vbeGrfn.js",
+    "size": 32408
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/SystemDesignGovernancePage-C7Bm7EPF.js",
+    "size": 10959
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/EduCourseDetailMigrationPage-BQybGvLu.js",
+    "size": 22670
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/PaymentReceiptMigrationPage-C34E1vmm.js",
+    "size": 29935
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/adminMenuWorkspaceContracts-D6iJLFmf.js",
+    "size": 26445
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/CompanyDetailMigrationPage-CaLHKNC8.js",
+    "size": 8238
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/buttonCatalogCore-xKYCFCOo.js",
+    "size": 125
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/VerificationAssetManagementMigrationPage-BR4oM3kJ.js",
+    "size": 531
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MonitoringExportMigrationPage-De08boYu.js",
+    "size": 29502
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/MemberApproveMigrationPage-BnKI1QDS.js",
+    "size": 16957
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/fonts/MaterialSymbolsOutlined-PROVENANCE.txt",
+    "size": 465
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/fonts/MaterialSymbolsOutlined-0.46.0.woff2",
+    "size": 3960036
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/fonts/PretendardGOVVariable.woff2",
+    "size": 5405612
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/fonts/MaterialSymbolsOutlined-LICENSE.txt",
+    "size": 11358
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/assets/fonts/PretendardGOV-LICENSE.txt",
+    "size": 4418
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/runtime/screen-system-assets.js",
+    "size": 5407
+  },
+  {
+    "path": "/home/sjkim/screen-management-build/runtime/certificate-verification-policy.json",
+    "size": 465
+  }
+]

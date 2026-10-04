@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 49,
+  "blueprintCode": "BP_ADOPT_AD6E48946511375A9F5C",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_AD6E48946511375A9F5C"
+  },
+  "route": "/admin/external/monitoring",
+  "pageName": "연계 모니터링",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1100107",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "089a0da03cc0e88c3ac9b692cfc6b4d725643585f71a4aab5f386efdfa00bdcb",
+  "artifactHash": "7d304f16fd20dcd48003ded1b99f8afcbdd6c5e72fa54c91684c94375dce7326"
+}

@@ -14,6 +14,7 @@ import org.egovframe.boot.security.userdetails.util.EgovUserDetailsHelper;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -40,6 +41,7 @@ public class AuthTokenLoginServiceImpl implements AuthTokenLoginService {
     private final AuthTokenStoreService authTokenStoreService;
     private final CredentialMutationLockService credentialMutationLockService;
     private final AuthenticationExposureRollbackGuard authenticationExposureRollbackGuard;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     public Map<String, Object> issueLogin(LoginResponseDTO loginResult, boolean autoLogin, HttpServletRequest request,
@@ -54,6 +56,16 @@ public class AuthTokenLoginServiceImpl implements AuthTokenLoginService {
         if (credentialUserId.isEmpty()) {
             message.put("status", "loginFailure");
             message.put("errors", "No canonical login identity.");
+            return message;
+        }
+        // External identity verification does not replace an account's configured MFA.
+        // No session, token, or cookie may be issued until that separate challenge succeeds.
+        Integer mfaCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM member_mfa_setting WHERE user_id=? AND enabled=TRUE",
+                Integer.class, credentialUserId);
+        if (mfaCount != null && mfaCount > 0) {
+            message.put("status", "mfaRequired");
+            message.put("errors", "추가 인증이 필요한 계정입니다. 기존 로그인에서 MFA를 완료해 주세요.");
             return message;
         }
         return credentialMutationLockService.executeLocked(credentialUserId,

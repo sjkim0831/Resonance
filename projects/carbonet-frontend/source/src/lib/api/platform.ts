@@ -784,6 +784,7 @@ export async function fetchScreenBuilderPreview(params?: {
     `${buildAdminApiPath("/api/platform/screen-builder/preview")}${query}`,
     {
       fallbackMessage: "Failed to load screen builder preview",
+      init: { cache: "no-store" },
       resolveError: (body, status) => String(body.message || `Failed to load screen builder preview: ${status}`)
     }
   ) as Promise<ScreenBuilderPreviewPayload>;
@@ -868,7 +869,8 @@ export async function publishScreenBuilderDraft(payload: {
     }
   );
   if (typeof window !== "undefined") {
-    window.localStorage.setItem("carbonet:runtime-page:refresh", `${Date.now()}:${payload.menuCode}`);
+    try { window.localStorage.setItem("carbonet:runtime-page:refresh", `${Date.now()}:${payload.menuCode}`); } catch { /* Publishing succeeds even when browser storage is unavailable. */ }
+    window.dispatchEvent(new CustomEvent("carbonet:runtime-page:refresh", { detail: { menuCode: payload.menuCode } }));
   }
   return response;
 }

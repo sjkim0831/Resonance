@@ -1,0 +1,1085 @@
+{
+  "connected": 666,
+  "blocked": 58,
+  "uniqueFiles": 179,
+  "unchanged": 179,
+  "mismatches": 0,
+  "durationSeconds": 0.012,
+  "scope": "Existing connected root USD SHA256 preservation; no edits or device writes",
+  "files": [
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/cuter_low/asset.usda",
+      "expected": "c57b3bd570df8ed3d2d1cc37e4c57ea6eb6d932de999a35144c22b3b404984c4",
+      "actual": "c57b3bd570df8ed3d2d1cc37e4c57ea6eb6d932de999a35144c22b3b404984c4",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/pourrobot/asset.usda",
+      "expected": "1e7dd93043172cf143cf26687ea1a229bd335e199bf1879532b75c8539146ea4",
+      "actual": "1e7dd93043172cf143cf26687ea1a229bd335e199bf1879532b75c8539146ea4",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/clearRobot/asset.usda",
+      "expected": "fa99c5c89090c3b2d0329e89ca5cec6f12a29986bbd82d766ab4a8eff84755ff",
+      "actual": "fa99c5c89090c3b2d0329e89ca5cec6f12a29986bbd82d766ab4a8eff84755ff",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-outerRobot-normalmap-v3/asset.usda",
+      "expected": "3fcc17a54414b0564bc97ee36bdbc74f9b1c3a519d32a512151a09a0826f409a",
+      "actual": "3fcc17a54414b0564bc97ee36bdbc74f9b1c3a519d32a512151a09a0826f409a",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/furnace/asset.usda",
+      "expected": "f814b5d8d3dec139222e9f9f42f7f84e096a4536d62c223ed6da7c0086dd48f6",
+      "actual": "f814b5d8d3dec139222e9f9f42f7f84e096a4536d62c223ed6da7c0086dd48f6",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-watercooler-pbr-v2/asset.usda",
+      "expected": "b90a48a15047479d79871ec25a7481ee2601f8ede6b89dc87b1ee31aa702916b",
+      "actual": "b90a48a15047479d79871ec25a7481ee2601f8ede6b89dc87b1ee31aa702916b",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E023.usda",
+      "expected": "29c6b0d705a7d284e5f215b08cda8823a960151ec87a1458408e4f2e8806abdc",
+      "actual": "29c6b0d705a7d284e5f215b08cda8823a960151ec87a1458408e4f2e8806abdc",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E024.usda",
+      "expected": "fbae75250409205378c14c47b4886f4f6ca2aa705b595954dd62095a5996ef26",
+      "actual": "fbae75250409205378c14c47b4886f4f6ca2aa705b595954dd62095a5996ef26",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E025.usda",
+      "expected": "3d265128fcafbb1042bb57f31d4871fc27dae56741cf7a36ef323698d3504b10",
+      "actual": "3d265128fcafbb1042bb57f31d4871fc27dae56741cf7a36ef323698d3504b10",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-basic-modules-20260909-v1/column/asset.usda",
+      "expected": "d33f50c477d974e68fd915196f1d3cbac1502bc5ed4aed5e390ac7f7cdb8d4fc",
+      "actual": "d33f50c477d974e68fd915196f1d3cbac1502bc5ed4aed5e390ac7f7cdb8d4fc",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-basic-modules-20260909-v1/window/asset.usda",
+      "expected": "744c1252115a605b54cb0fcc97871189a7723ee5a939acf0c6b8d358d7a91674",
+      "actual": "744c1252115a605b54cb0fcc97871189a7723ee5a939acf0c6b8d358d7a91674",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-basic-modules-20260909-v1/zone/asset.usda",
+      "expected": "0eec1b72656f804fb8073061c1a47bad9b86afe8be9e07352883559aa7731ba5",
+      "actual": "0eec1b72656f804fb8073061c1a47bad9b86afe8be9e07352883559aa7731ba5",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E030.usda",
+      "expected": "0dae17538dd1c8190223ae78267af9bc4e4c562c6cba91012b6c97d62df84bd6",
+      "actual": "0dae17538dd1c8190223ae78267af9bc4e4c562c6cba91012b6c97d62df84bd6",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E031.usda",
+      "expected": "affc271cc688667745bccadd912a399b7fb62f35021db4ae5878211a52e3a281",
+      "actual": "affc271cc688667745bccadd912a399b7fb62f35021db4ae5878211a52e3a281",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E032.usda",
+      "expected": "3fa662f7a32334c7f5aaae463f0684a962c42b854815a167b13e26e90f2c2706",
+      "actual": "3fa662f7a32334c7f5aaae463f0684a962c42b854815a167b13e26e90f2c2706",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E033.usda",
+      "expected": "6e51ca69c58b0dfef6400e8b7f8f2af49a0c46470e822a2001f992297e0fb1e6",
+      "actual": "6e51ca69c58b0dfef6400e8b7f8f2af49a0c46470e822a2001f992297e0fb1e6",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E034.usda",
+      "expected": "a87d88598fafc25ab11c1a4287aa2e7bb97347e3d2f0e2c1f863be9888c727b4",
+      "actual": "a87d88598fafc25ab11c1a4287aa2e7bb97347e3d2f0e2c1f863be9888c727b4",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-extra-modules-20260909-v1/shutter/asset.usda",
+      "expected": "f60127fe92332a9070b8561865fc5dea5dbef7dcdd33da4d7f7f31420ec9a164",
+      "actual": "f60127fe92332a9070b8561865fc5dea5dbef7dcdd33da4d7f7f31420ec9a164",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/stairs/asset.usda",
+      "expected": "d2d3df38d8551e7ca648ac4bfe548d7955f03a1345909b386be576c6a52deba5",
+      "actual": "d2d3df38d8551e7ca648ac4bfe548d7955f03a1345909b386be576c6a52deba5",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/ramp/asset.usda",
+      "expected": "560e2e8178c61369771f6a3cae726138b482c4715fff00774bbad38cac7a5fd6",
+      "actual": "560e2e8178c61369771f6a3cae726138b482c4715fff00774bbad38cac7a5fd6",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/platform/asset.usda",
+      "expected": "cc3cc5a6e2ed47667ea719037d0c2d7b7adad1fb764632fc8db5cf30e1978e51",
+      "actual": "cc3cc5a6e2ed47667ea719037d0c2d7b7adad1fb764632fc8db5cf30e1978e51",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/railing/asset.usda",
+      "expected": "0a6f492c70dfbe75b8073000ceb7deff3f26f0354cc82c923c727c192a364bf0",
+      "actual": "0a6f492c70dfbe75b8073000ceb7deff3f26f0354cc82c923c727c192a364bf0",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/mezzanine/asset.usda",
+      "expected": "f82a8ff9b9e19fdb5bd4bef387f0c5689b68efe3c8101b6dac89de0fc560c1d5",
+      "actual": "f82a8ff9b9e19fdb5bd4bef387f0c5689b68efe3c8101b6dac89de0fc560c1d5",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/beam/asset.usda",
+      "expected": "df5f15faff048d0e757584869b73fc7b37e70661db895742b0718713e4b7f291",
+      "actual": "df5f15faff048d0e757584869b73fc7b37e70661db895742b0718713e4b7f291",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/drain/asset.usda",
+      "expected": "dd15fdbd4cc3a049e320e809f1858deb01b8fb66ede3a8aef71db71d56d562bd",
+      "actual": "dd15fdbd4cc3a049e320e809f1858deb01b8fb66ede3a8aef71db71d56d562bd",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/bollard/asset.usda",
+      "expected": "9caf13b9b335f1f22b6086f21800016d2b9b56693ab6324b2b4a638b87f54386",
+      "actual": "9caf13b9b335f1f22b6086f21800016d2b9b56693ab6324b2b4a638b87f54386",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-logistics-modules-20260909-v1/cart/asset.usda",
+      "expected": "c24b790ebd6432d8aad23434a93b84f2c49f8a213ac7562a01ee41d001769267",
+      "actual": "c24b790ebd6432d8aad23434a93b84f2c49f8a213ac7562a01ee41d001769267",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-logistics-modules-20260909-v1/rollcage/asset.usda",
+      "expected": "6f6ed89d8c0c5ba83e66dd7e189009c4a53767c514a72d3006c800ff6bcc24a8",
+      "actual": "6f6ed89d8c0c5ba83e66dd7e189009c4a53767c514a72d3006c800ff6bcc24a8",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-logistics-modules-20260909-v1/pallettruck/asset.usda",
+      "expected": "f52c2c441b1bb0ce835a60c67d5e724db1bcd18004d06f76fae520ecd9da36c2",
+      "actual": "f52c2c441b1bb0ce835a60c67d5e724db1bcd18004d06f76fae520ecd9da36c2",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-logistics-modules-20260909-v1/forklift/asset.usda",
+      "expected": "118d13811672d6969184032fe879c22138e4de93e2ea2b613871d51aeea4dfaa",
+      "actual": "118d13811672d6969184032fe879c22138e4de93e2ea2b613871d51aeea4dfaa",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-workshop-modules-20260909-v1/toolcabinet/asset.usda",
+      "expected": "e7c18466146666a763b8eee4db56cd3cdfb28c620f35456f93a443598c997a00",
+      "actual": "e7c18466146666a763b8eee4db56cd3cdfb28c620f35456f93a443598c997a00",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-workshop-modules-20260909-v1/partsstorage/asset.usda",
+      "expected": "0fb594bd806ec0a29870ca934aae5ef31addaaa7b678bb13d95d44693d86a88b",
+      "actual": "0fb594bd806ec0a29870ca934aae5ef31addaaa7b678bb13d95d44693d86a88b",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E053.usda",
+      "expected": "edb44dafc5e144ca18ca4bf8df9d03d814f31da20eda998caaa469a111e55111",
+      "actual": "edb44dafc5e144ca18ca4bf8df9d03d814f31da20eda998caaa469a111e55111",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-utility-modules-20260909-v1/compressor/asset.usda",
+      "expected": "2347fdc9358162544cd08af2c52770ce0867742f8028157e9fbef6442f4b7f0c",
+      "actual": "2347fdc9358162544cd08af2c52770ce0867742f8028157e9fbef6442f4b7f0c",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-utility-modules-20260909-v1/airreceiver/asset.usda",
+      "expected": "1e67869bde4ba4144b2510d8d6d18fbea5f6ed3bb5111c1ffb9a54e93f2c6d3e",
+      "actual": "1e67869bde4ba4144b2510d8d6d18fbea5f6ed3bb5111c1ffb9a54e93f2c6d3e",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-utility-modules-20260909-v1/dustcollector/asset.usda",
+      "expected": "7e7619462ea63b96fd84fd22d2c93b2163650e29d0f1e9885c8ccea609727ec0",
+      "actual": "7e7619462ea63b96fd84fd22d2c93b2163650e29d0f1e9885c8ccea609727ec0",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-safety-modules-20260909-v1/extinguisher/asset.usda",
+      "expected": "3239018e6f44d06d2de46d68ea522e64b65bdf978018ff94c7df3e61f1fc4457",
+      "actual": "3239018e6f44d06d2de46d68ea522e64b65bdf978018ff94c7df3e61f1fc4457",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-safety-modules-20260909-v1/eyewash/asset.usda",
+      "expected": "ad9dbab0148b5aac2e430f2f67518c76dd220ba392770832220218ec2ec66e68",
+      "actual": "ad9dbab0148b5aac2e430f2f67518c76dd220ba392770832220218ec2ec66e68",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-process-modules-20260909-v1/coolantpump/asset.usda",
+      "expected": "4d675d087e1aba3cdc74977ef54e3a12d91427ab0b1878332fe0e71a2d172d1a",
+      "actual": "4d675d087e1aba3cdc74977ef54e3a12d91427ab0b1878332fe0e71a2d172d1a",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-process-modules-20260909-v1/feedhopper/asset.usda",
+      "expected": "9bfa1ceed05ce3ad0c6e9a041aaab05052bf2553d9c4263fb4698f90993e6ab6",
+      "actual": "9bfa1ceed05ce3ad0c6e9a041aaab05052bf2553d9c4263fb4698f90993e6ab6",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E075.usda",
+      "expected": "a4a0425fb253ff766c7d1e70a5d2d010f815378f23ed329fad63866579a42081",
+      "actual": "a4a0425fb253ff766c7d1e70a5d2d010f815378f23ed329fad63866579a42081",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-transfer-modules-20260909-v1/junction/asset.usda",
+      "expected": "00585f249546db7275e7c8cd38397b28510caccc25b2bedc751b47e2a219eb8f",
+      "actual": "00585f249546db7275e7c8cd38397b28510caccc25b2bedc751b47e2a219eb8f",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-transfer-modules-20260909-v1/conveyorlift/asset.usda",
+      "expected": "9a45668210c2cdfb5f5b219d398cb0fb15bbb7175a39905d44f402cdd16d0f72",
+      "actual": "9a45668210c2cdfb5f5b219d398cb0fb15bbb7175a39905d44f402cdd16d0f72",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-transfer-modules-20260909-v1/rotarytransfer/asset.usda",
+      "expected": "beacaf321f72f96835be3168214e7655eb0b9781cf6bc68822b56c45418fbdc8",
+      "actual": "beacaf321f72f96835be3168214e7655eb0b9781cf6bc68822b56c45418fbdc8",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-transfer-modules-20260909-v1/materialfeeder/asset.usda",
+      "expected": "c8ed898cfcab921ea621f129873c003186ba43ff73e35e0677785a946fef2823",
+      "actual": "c8ed898cfcab921ea621f129873c003186ba43ff73e35e0677785a946fef2823",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-shipping-modules-20260909-v1/palletscale/asset.usda",
+      "expected": "5ebee4bb0876e828b34c64f8328c9d320aa2a34ae068afd118be2a41db286dd7",
+      "actual": "5ebee4bb0876e828b34c64f8328c9d320aa2a34ae068afd118be2a41db286dd7",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-shipping-modules-20260909-v1/labelprinter/asset.usda",
+      "expected": "289896d979b33ca851c53fa31b88545ffeafca1b0954881a77897d3ed6661890",
+      "actual": "289896d979b33ca851c53fa31b88545ffeafca1b0954881a77897d3ed6661890",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-shipping-modules-20260909-v1/cartonsealer/asset.usda",
+      "expected": "4df0167ceafa0ba9ae765dde2b5f586befcfd9e8e9d5c4e6ab893ccc835e9a05",
+      "actual": "4df0167ceafa0ba9ae765dde2b5f586befcfd9e8e9d5c4e6ab893ccc835e9a05",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-shipping-modules-20260909-v1/palletwrapper/asset.usda",
+      "expected": "41152e2666d90a95fc12da8f3554297269f947a91bdd41d69f64ac0867769f44",
+      "actual": "41152e2666d90a95fc12da8f3554297269f947a91bdd41d69f64ac0867769f44",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-shipping-modules-20260909-v1/dockleveler/asset.usda",
+      "expected": "5a11fe84da91bca960c558940538d348b89dd5b3ddf808ad1f872aa6c353f866",
+      "actual": "5a11fe84da91bca960c558940538d348b89dd5b3ddf808ad1f872aa6c353f866",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/palletmagazine/asset.usda",
+      "expected": "a92040a442ab5994c54e2ac544812d12cbd135b9c3b30a2e1a949fa6cf71732a",
+      "actual": "a92040a442ab5994c54e2ac544812d12cbd135b9c3b30a2e1a949fa6cf71732a",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/lightcurtain/asset.usda",
+      "expected": "167a95d62a7dcee8a354047b420c5746f4e50d1711e8826229d1a9e9d5f30d83",
+      "actual": "167a95d62a7dcee8a354047b420c5746f4e50d1711e8826229d1a9e9d5f30d83",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/estopstand/asset.usda",
+      "expected": "d06cd9cf2e39bd601ab92830980667f019d4078ea2d4fc19507d422f4b25ceaa",
+      "actual": "d06cd9cf2e39bd601ab92830980667f019d4078ea2d4fc19507d422f4b25ceaa",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/spilltray/asset.usda",
+      "expected": "296921b18885032377e6cb35c42605eb003dff1b5f5a10e0396a94c5c2219d68",
+      "actual": "296921b18885032377e6cb35c42605eb003dff1b5f5a10e0396a94c5c2219d68",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/junctionbox/asset.usda",
+      "expected": "59bad592e8cb7bcb817662c80d4c462d3e42eb17449b6f3cb0456f1b64984389",
+      "actual": "59bad592e8cb7bcb817662c80d4c462d3e42eb17449b6f3cb0456f1b64984389",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/drillpress/asset.usda",
+      "expected": "ca9b9132276439cc4c65a5fae385b7a8f9ffa208bc83d6bdc7b19b741357552a",
+      "actual": "ca9b9132276439cc4c65a5fae385b7a8f9ffa208bc83d6bdc7b19b741357552a",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/smallpress/asset.usda",
+      "expected": "5c66ae7f0fa0f75e624bce036cb4ccffccb9d57a4958b174096fdb261cae5b29",
+      "actual": "5c66ae7f0fa0f75e624bce036cb4ccffccb9d57a4958b174096fdb261cae5b29",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/washbooth/asset.usda",
+      "expected": "84b2f851e7b3c9e5e1215744f1486490332cc264904735138f565025a0907be5",
+      "actual": "84b2f851e7b3c9e5e1215744f1486490332cc264904735138f565025a0907be5",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-finishing-modules-20260909-v1/dryingoven/asset.usda",
+      "expected": "2d9c8d8676fe6cd4b44d339eee4de604e9146ae2f03954ba75351bd490060a0c",
+      "actual": "2d9c8d8676fe6cd4b44d339eee4de604e9146ae2f03954ba75351bd490060a0c",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-finishing-modules-20260909-v1/deburrbench/asset.usda",
+      "expected": "71be5d281096b8bc43794bc1cc5859ab38629f04373a489f736a2ef677bfc3e9",
+      "actual": "71be5d281096b8bc43794bc1cc5859ab38629f04373a489f736a2ef677bfc3e9",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-support-modules-20260909-v1/silo/asset.usda",
+      "expected": "baeb3361320ea5288e8d742a9dba3fc556edc127e1dfba56f608a757f42b8d81",
+      "actual": "baeb3361320ea5288e8d742a9dba3fc556edc127e1dfba56f608a757f42b8d81",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-support-modules-20260909-v1/beltgrinder/asset.usda",
+      "expected": "7e4c25c68e2c310dc71ef7a5a58add2508c81f7b82339a0d910f223f34c264d8",
+      "actual": "7e4c25c68e2c310dc71ef7a5a58add2508c81f7b82339a0d910f223f34c264d8",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-service-modules-20260909-v1/portablefan/asset.usda",
+      "expected": "5f19633cc9be144755f630dc3368e02b64fab5bbdee43b582644a605e6545f20",
+      "actual": "5f19633cc9be144755f630dc3368e02b64fab5bbdee43b582644a605e6545f20",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-service-modules-20260909-v1/hosereel/asset.usda",
+      "expected": "54992840fb8b5751125c7b8d12f6dc0f1b381c3d9a8a387116be2800e0626ae0",
+      "actual": "54992840fb8b5751125c7b8d12f6dc0f1b381c3d9a8a387116be2800e0626ae0",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-service-modules-20260909-v1/worklight/asset.usda",
+      "expected": "e0fb4500a648a3a130b10b98941315fc266ba8dc157d6d3f0f380693269d77a8",
+      "actual": "e0fb4500a648a3a130b10b98941315fc266ba8dc157d6d3f0f380693269d77a8",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-container-modules-20260909-v1/closeddrum/asset.usda",
+      "expected": "516eabe76a1c26eecc00c4bfb32dc08ad938c733b55ca0031be6ba349a167f57",
+      "actual": "516eabe76a1c26eecc00c4bfb32dc08ad938c733b55ca0031be6ba349a167f57",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-container-modules-20260909-v1/ibccontainer/asset.usda",
+      "expected": "76a0244b494c3eb5d3df87518937eed7ec655c1174ed72bf7bcf599aff2f63d5",
+      "actual": "76a0244b494c3eb5d3df87518937eed7ec655c1174ed72bf7bcf599aff2f63d5",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-air-options-20260909-v1/airdryer/asset.usda",
+      "expected": "126b868b71f8b0a897c2754980b33173f65b45fc9adaaf9ca293b68ef319c119",
+      "actual": "126b868b71f8b0a897c2754980b33173f65b45fc9adaaf9ca293b68ef319c119",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-air-options-20260909-v1/condensatecan/asset.usda",
+      "expected": "1ae755726c8fdde7cdef9fd34efc331b2a74864ee0f5c0dbd341c82b7adc812e",
+      "actual": "1ae755726c8fdde7cdef9fd34efc331b2a74864ee0f5c0dbd341c82b7adc812e",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-mobile-screen-20260909-v1/mobilescreen/asset.usda",
+      "expected": "b7b66a12b9c83043285968d8f4218be8bd3e25ca0f7431c6f4c02085ee2dca33",
+      "actual": "b7b66a12b9c83043285968d8f4218be8bd3e25ca0f7431c6f4c02085ee2dca33",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-operator-console-20260909-v1/operatorconsole/asset.usda",
+      "expected": "28be5ac86722f61c2e537cd0657b10bd8c38a7e4024e7e83d6b51ac9183c977d",
+      "actual": "28be5ac86722f61c2e537cd0657b10bd8c38a7e4024e7e83d6b51ac9183c977d",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-cnclathe-20260909-v2/cnclathe/asset.usda",
+      "expected": "b540b5f1ccde9f93304a455232cc9ca1ed717860c1ec06cb578b56fd8cbf0188",
+      "actual": "b540b5f1ccde9f93304a455232cc9ca1ed717860c1ec06cb578b56fd8cbf0188",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-machiningcenter-20260909-v2/machiningcenter/asset.usda",
+      "expected": "b703b427cd851f417817d3ac552f25f9effa6b67996f437c7e5334bf3b3c435d",
+      "actual": "b703b427cd851f417817d3ac552f25f9effa6b67996f437c7e5334bf3b3c435d",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-screwdriver-20260909-v2/screwdriver/asset.usda",
+      "expected": "ee1f7ea14f1bf0fc35f041324ba84ac645fd55489758478c3bb6958beccb12a2",
+      "actual": "ee1f7ea14f1bf0fc35f041324ba84ac645fd55489758478c3bb6958beccb12a2",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-cmm-20260909-v2/cmm/asset.usda",
+      "expected": "6d204d3d04e5c4b9741794ff0d07a96a4cf5b8d53e4bc7c9ac5feef8090e8181",
+      "actual": "6d204d3d04e5c4b9741794ff0d07a96a4cf5b8d53e4bc7c9ac5feef8090e8181",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-caseerector-20260909-v2/asset.usda",
+      "expected": "f06226ab1cbbe13eea106b214c3da74b92d162e84de12afb9a2e2cdcbcc0ae17",
+      "actual": "f06226ab1cbbe13eea106b214c3da74b92d162e84de12afb9a2e2cdcbcc0ae17",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-priority10-20260909-v1/amr/asset.usda",
+      "expected": "a949018655e64b5a7c358b21f537784a76d6a85b352d92e96be88b83f849400b",
+      "actual": "a949018655e64b5a7c358b21f537784a76d6a85b352d92e96be88b83f849400b",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-priority10-20260909-v1/locker/asset.usda",
+      "expected": "b6e2a572a875497765e80104bcd36041c517c55cb9abe3066bc566f2383079b5",
+      "actual": "b6e2a572a875497765e80104bcd36041c517c55cb9abe3066bc566f2383079b5",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-priority10-20260909-v1/workchair/asset.usda",
+      "expected": "6393bcd03ee9413ef8a50867ba685927bfa63c661aa55f0df1541d297c232a61",
+      "actual": "6393bcd03ee9413ef8a50867ba685927bfa63c661aa55f0df1541d297c232a61",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-strapper-20260910-v1/strapper/asset.usda",
+      "expected": "7f237fa0379a49a263a9c800ad326f3b5146f3dfb0aad223038e0080760715f5",
+      "actual": "7f237fa0379a49a263a9c800ad326f3b5146f3dfb0aad223038e0080760715f5",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-shrink-20260910-v1/shrink/asset.usda",
+      "expected": "f6c4f548c321ce1a05018f2d57787e288511566f8c44d6561b2861b4ab20de7f",
+      "actual": "f6c4f548c321ce1a05018f2d57787e288511566f8c44d6561b2861b4ab20de7f",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C003/asset.usda",
+      "expected": "2d883ed247d380b35ea7ce3671685708c1a732564c2ffd1b644ea9f9e5c8e37b",
+      "actual": "2d883ed247d380b35ea7ce3671685708c1a732564c2ffd1b644ea9f9e5c8e37b",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C004/asset.usda",
+      "expected": "1a8bf2d25b632eac5a7401266aadb95f3bf8937b5a70519d5d5573339186d65f",
+      "actual": "1a8bf2d25b632eac5a7401266aadb95f3bf8937b5a70519d5d5573339186d65f",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C005/asset.usda",
+      "expected": "58552fb8400eb09c2ddee2d2c1fa15d4d69dc6bffb510490f997b8e3de546e7d",
+      "actual": "58552fb8400eb09c2ddee2d2c1fa15d4d69dc6bffb510490f997b8e3de546e7d",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C006/asset.usda",
+      "expected": "9045e5f717b04502f781040bf667f6ff0c1e32b9682eac6b3942a27f8a514805",
+      "actual": "9045e5f717b04502f781040bf667f6ff0c1e32b9682eac6b3942a27f8a514805",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C007/asset.usda",
+      "expected": "d4badb3e9ba5a9c6a6512acaef781243199b3bcfc26f8415e7f2fc2ee473e9c2",
+      "actual": "d4badb3e9ba5a9c6a6512acaef781243199b3bcfc26f8415e7f2fc2ee473e9c2",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C008/asset.usda",
+      "expected": "e7e943dbd1e174c79f42fca017f784b579a7b618669e8eda22d3fa34d92b98c5",
+      "actual": "e7e943dbd1e174c79f42fca017f784b579a7b618669e8eda22d3fa34d92b98c5",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C009/asset.usda",
+      "expected": "f6ca1215d44d42129cd61c4869f7f1609f55cde0f7868a45c656b33c53a51ba1",
+      "actual": "f6ca1215d44d42129cd61c4869f7f1609f55cde0f7868a45c656b33c53a51ba1",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C010/asset.usda",
+      "expected": "6ac3ee1c7b9536b576f5929a13ed9158f61ae85eb55003538dfc562ea2140540",
+      "actual": "6ac3ee1c7b9536b576f5929a13ed9158f61ae85eb55003538dfc562ea2140540",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C011/asset.usda",
+      "expected": "d46d97b2d115c4e1c5e3200263b97a16449c8b70b448b08a04b0f102b63dcdfa",
+      "actual": "d46d97b2d115c4e1c5e3200263b97a16449c8b70b448b08a04b0f102b63dcdfa",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C012/asset.usda",
+      "expected": "1e04fc5f286ae8b1a8cbc520147db41f1e3a0fa182ccef904f46299c82b5150f",
+      "actual": "1e04fc5f286ae8b1a8cbc520147db41f1e3a0fa182ccef904f46299c82b5150f",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C013/asset.usda",
+      "expected": "d0fc85110f12949dbad5042ce95d1b75cb5a39f9484ef8ad2e982e3d2ed0edf9",
+      "actual": "d0fc85110f12949dbad5042ce95d1b75cb5a39f9484ef8ad2e982e3d2ed0edf9",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C014/asset.usda",
+      "expected": "1d439250d04f16135070db287d3fe21bfe8c3b5a09a55735188cb19e41dd6cdc",
+      "actual": "1d439250d04f16135070db287d3fe21bfe8c3b5a09a55735188cb19e41dd6cdc",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C015/asset.usda",
+      "expected": "699900297741e19c5f46a5bc4605274a97f2f9ece53c9e2fea55cee351284b5d",
+      "actual": "699900297741e19c5f46a5bc4605274a97f2f9ece53c9e2fea55cee351284b5d",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C017/asset.usda",
+      "expected": "b4d851136eb7ad831295e3258ba8e3d9a4c8efeffa059b87ac9ff59a7dd42a81",
+      "actual": "b4d851136eb7ad831295e3258ba8e3d9a4c8efeffa059b87ac9ff59a7dd42a81",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C018/asset.usda",
+      "expected": "6b9e44dc678e7f356929e3b303ee1f60032cda7333e699a9b300ade2aa27b3a1",
+      "actual": "6b9e44dc678e7f356929e3b303ee1f60032cda7333e699a9b300ade2aa27b3a1",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C019/asset.usda",
+      "expected": "765d5e26e83692b36b328af40350753c90586cd355de2650dcc981879df8a25f",
+      "actual": "765d5e26e83692b36b328af40350753c90586cd355de2650dcc981879df8a25f",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C020/asset.usda",
+      "expected": "0ba89cb0b37442cd6adc379b5481bdb5fce6b8ff147b13fa65673f7f6ccf0b44",
+      "actual": "0ba89cb0b37442cd6adc379b5481bdb5fce6b8ff147b13fa65673f7f6ccf0b44",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C021/asset.usda",
+      "expected": "0cb7ff0bc43c4ab9d57ae53484b99ead157fdb81c26465a446d896d0386a5128",
+      "actual": "0cb7ff0bc43c4ab9d57ae53484b99ead157fdb81c26465a446d896d0386a5128",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C022/asset.usda",
+      "expected": "9d7a33807083a4cb84d511c5b612c9901bf3f35ba7aeaaf17fa6099238d00bb7",
+      "actual": "9d7a33807083a4cb84d511c5b612c9901bf3f35ba7aeaaf17fa6099238d00bb7",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C023/asset.usda",
+      "expected": "09f85b268334c1f01ad4bae8d6d928c1c0576f0c834e80983f22ce5a69316512",
+      "actual": "09f85b268334c1f01ad4bae8d6d928c1c0576f0c834e80983f22ce5a69316512",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C027/asset.usda",
+      "expected": "d94c951772614cc8823ee01194dd5b3b5fe11c91555261b2f4bf9bdcb34d7694",
+      "actual": "d94c951772614cc8823ee01194dd5b3b5fe11c91555261b2f4bf9bdcb34d7694",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C028/asset.usda",
+      "expected": "481169843becad47cf594d5e6c24c7c045c6fb883658c1ba337947caa26e8743",
+      "actual": "481169843becad47cf594d5e6c24c7c045c6fb883658c1ba337947caa26e8743",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C029/asset.usda",
+      "expected": "7e9e8b2cf520f2aa15ec75ce4982f18857c021bafef5c03c8434015d3d03fe6b",
+      "actual": "7e9e8b2cf520f2aa15ec75ce4982f18857c021bafef5c03c8434015d3d03fe6b",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C030/asset.usda",
+      "expected": "6550a89cc1b20bcc4932ba74e1496326d1376e91d25031824c4fd9ef17cc1654",
+      "actual": "6550a89cc1b20bcc4932ba74e1496326d1376e91d25031824c4fd9ef17cc1654",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C031/asset.usda",
+      "expected": "0b80b101a621ca884f74e35f79e64d6c3d086c0ffa229b6c9e9e2e9c695c1cc3",
+      "actual": "0b80b101a621ca884f74e35f79e64d6c3d086c0ffa229b6c9e9e2e9c695c1cc3",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C032/asset.usda",
+      "expected": "ad82c174b5e2a2dc483103faae2f22bde67e929bca69811cfddc72b216c74ded",
+      "actual": "ad82c174b5e2a2dc483103faae2f22bde67e929bca69811cfddc72b216c74ded",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C033/asset.usda",
+      "expected": "591720a3afbdbf815b065fea403b433e6954588866351dadb61813de84f54fcb",
+      "actual": "591720a3afbdbf815b065fea403b433e6954588866351dadb61813de84f54fcb",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C034/asset.usda",
+      "expected": "5e91f77ce1d5702f4f7d96e38bea523f8efb9ef8dcee3a1e447e223c930fa0e3",
+      "actual": "5e91f77ce1d5702f4f7d96e38bea523f8efb9ef8dcee3a1e447e223c930fa0e3",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C035/asset.usda",
+      "expected": "e510e9b0b9b0a25d603329cb72842cfe3f71aafec82195a476c64879729fdf60",
+      "actual": "e510e9b0b9b0a25d603329cb72842cfe3f71aafec82195a476c64879729fdf60",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C039/asset.usda",
+      "expected": "6e285fbb5415d0d8478d26c67d4e9e787ae04a30b7d639f5940b55a734906bdf",
+      "actual": "6e285fbb5415d0d8478d26c67d4e9e787ae04a30b7d639f5940b55a734906bdf",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C040/asset.usda",
+      "expected": "7233e651b324696edbfe1e6ba479e324fc31f6fa3ae7f4056fa027261aeb6dc3",
+      "actual": "7233e651b324696edbfe1e6ba479e324fc31f6fa3ae7f4056fa027261aeb6dc3",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C041/asset.usda",
+      "expected": "43041c661d274170c617a38dbffd4582f008e4cb32457025114fd716124297af",
+      "actual": "43041c661d274170c617a38dbffd4582f008e4cb32457025114fd716124297af",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C042/asset.usda",
+      "expected": "8b9e10ffc95cc4c7a76391f413e5c56ee8e6c83b4bcf51c4b99bd6f15b29ff22",
+      "actual": "8b9e10ffc95cc4c7a76391f413e5c56ee8e6c83b4bcf51c4b99bd6f15b29ff22",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C043/asset.usda",
+      "expected": "89a599db7510f46d13378d97e7348a474e49d9f4c43ba6cd2b145a3d268c9e78",
+      "actual": "89a599db7510f46d13378d97e7348a474e49d9f4c43ba6cd2b145a3d268c9e78",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C044/asset.usda",
+      "expected": "0522cf07dd9d0d5014b83e8dd1eb369a66bd2c78de8332c0750ec49c1b6fac19",
+      "actual": "0522cf07dd9d0d5014b83e8dd1eb369a66bd2c78de8332c0750ec49c1b6fac19",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C045/asset.usda",
+      "expected": "61560151f2b53c8207ca840b8eaab616005d4c00945234666ed9537257042f3a",
+      "actual": "61560151f2b53c8207ca840b8eaab616005d4c00945234666ed9537257042f3a",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C047/asset.usda",
+      "expected": "9976dfff074d9ef3b0ca4162661eca665f16a94b81e4c63cab6b387f0dbf52e3",
+      "actual": "9976dfff074d9ef3b0ca4162661eca665f16a94b81e4c63cab6b387f0dbf52e3",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C048/asset.usda",
+      "expected": "813b4d6d424f901c7f151b496e4c46a917f02c8cf66f2643bcb3b8154cf5c758",
+      "actual": "813b4d6d424f901c7f151b496e4c46a917f02c8cf66f2643bcb3b8154cf5c758",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C049/asset.usda",
+      "expected": "0e02cef207374e577f189e963df8193a86c2462912d5ba2a9f1629827765b3b3",
+      "actual": "0e02cef207374e577f189e963df8193a86c2462912d5ba2a9f1629827765b3b3",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C050/asset.usda",
+      "expected": "218f9e41a6917db42c62b96a504e3b607eb6ea118a97787f3d9e5c96caeae263",
+      "actual": "218f9e41a6917db42c62b96a504e3b607eb6ea118a97787f3d9e5c96caeae263",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C051/asset.usda",
+      "expected": "4c48434bc0e3456b4748cd2f36aafef19f7a996159d5008be734b3cb15e56cd8",
+      "actual": "4c48434bc0e3456b4748cd2f36aafef19f7a996159d5008be734b3cb15e56cd8",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C052/asset.usda",
+      "expected": "7f71348ff75b7282f7a0023a91f531b0511351ca6fa36071567cdec4b1b7c59d",
+      "actual": "7f71348ff75b7282f7a0023a91f531b0511351ca6fa36071567cdec4b1b7c59d",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C053/asset.usda",
+      "expected": "3ee1fd9d18f5753921877d8aba8dcce01e496966f19e0b741d18028e8ff1245f",
+      "actual": "3ee1fd9d18f5753921877d8aba8dcce01e496966f19e0b741d18028e8ff1245f",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C054/asset.usda",
+      "expected": "bd4142cd7cba9f05f3113536a11f5564e57fb8f61d16f6b0b686a8a8c5f6c753",
+      "actual": "bd4142cd7cba9f05f3113536a11f5564e57fb8f61d16f6b0b686a8a8c5f6c753",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C055/asset.usda",
+      "expected": "ec0f8cc6921c6e18284f03f9fde5d483099d64b11a41c04b878c6bc841a408fa",
+      "actual": "ec0f8cc6921c6e18284f03f9fde5d483099d64b11a41c04b878c6bc841a408fa",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C056/asset.usda",
+      "expected": "5379a4785bc93f8edde8221a430e35c743bb5f3dcecaeb8c8c5533551a423f3d",
+      "actual": "5379a4785bc93f8edde8221a430e35c743bb5f3dcecaeb8c8c5533551a423f3d",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C057/asset.usda",
+      "expected": "aa61ae35a86c930ce64e4d16b2791e23b2209ff7adc4251310b3a0b5380f8b06",
+      "actual": "aa61ae35a86c930ce64e4d16b2791e23b2209ff7adc4251310b3a0b5380f8b06",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C058/asset.usda",
+      "expected": "354edddd9bdf41072360b067a15e02ea0e27d9f4695874fa5d13063f2a941474",
+      "actual": "354edddd9bdf41072360b067a15e02ea0e27d9f4695874fa5d13063f2a941474",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C059/asset.usda",
+      "expected": "0408a69a16fba9706dbde4001bb365d715b3a1b18621791d42a6366198dd7479",
+      "actual": "0408a69a16fba9706dbde4001bb365d715b3a1b18621791d42a6366198dd7479",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C060/asset.usda",
+      "expected": "bb93538e3b48852ff99f651638ed7a4293b167d05a3cb6d2696fa1c1aa57e745",
+      "actual": "bb93538e3b48852ff99f651638ed7a4293b167d05a3cb6d2696fa1c1aa57e745",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C061/asset.usda",
+      "expected": "89935734df7a4004b93fb2822c80beda8878aee05969b825c34df48b90e98279",
+      "actual": "89935734df7a4004b93fb2822c80beda8878aee05969b825c34df48b90e98279",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C062/asset.usda",
+      "expected": "3178131d57724371c655b6f8562631b83eecc61c979344234a1b71f09e518fd9",
+      "actual": "3178131d57724371c655b6f8562631b83eecc61c979344234a1b71f09e518fd9",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C065/asset.usda",
+      "expected": "84ffd4604b971c9608bd44410fc3e024fd578089bbd65c63eb9e6c7d8a30e6f5",
+      "actual": "84ffd4604b971c9608bd44410fc3e024fd578089bbd65c63eb9e6c7d8a30e6f5",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C066/asset.usda",
+      "expected": "69257658f5d284efcf5b5ac18705318d4cede5871f256ea2e0092239d4d867ae",
+      "actual": "69257658f5d284efcf5b5ac18705318d4cede5871f256ea2e0092239d4d867ae",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C067/asset.usda",
+      "expected": "7203ba4514e84c1d415d9b31d419678dd287e114728bad13fd33484629d7a91c",
+      "actual": "7203ba4514e84c1d415d9b31d419678dd287e114728bad13fd33484629d7a91c",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C068/asset.usda",
+      "expected": "8513a4fcf3be3d5b0c8e586123f4dc50421f3b766f3c9b550db8bd763b3b0ca7",
+      "actual": "8513a4fcf3be3d5b0c8e586123f4dc50421f3b766f3c9b550db8bd763b3b0ca7",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C069/asset.usda",
+      "expected": "9934eea118dbb9c04b48b95bc1f156f6793b375d07ec8472c5ddb13edcf3b96d",
+      "actual": "9934eea118dbb9c04b48b95bc1f156f6793b375d07ec8472c5ddb13edcf3b96d",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C070/asset.usda",
+      "expected": "216a3f4454fef76809bb91b266012527b8ab0779730b37dabaff81581af3d439",
+      "actual": "216a3f4454fef76809bb91b266012527b8ab0779730b37dabaff81581af3d439",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C071/asset.usda",
+      "expected": "081ee39fc1522a390b341965b936a474658ebee206f973ac9caf5c13a3730da6",
+      "actual": "081ee39fc1522a390b341965b936a474658ebee206f973ac9caf5c13a3730da6",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C072/asset.usda",
+      "expected": "bffba82c8c0b05fe8a3698221c6ed60fe98d49d56d6d9c8b60af4205d492f8c4",
+      "actual": "bffba82c8c0b05fe8a3698221c6ed60fe98d49d56d6d9c8b60af4205d492f8c4",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C073/asset.usda",
+      "expected": "68b2f612981a7d459862861e6cff613125816fb206aa307152ec734d3704b995",
+      "actual": "68b2f612981a7d459862861e6cff613125816fb206aa307152ec734d3704b995",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C075/asset.usda",
+      "expected": "b363a6693dc2361406bd001b5a659ff3e1bca5883de11e538907678a45b84f31",
+      "actual": "b363a6693dc2361406bd001b5a659ff3e1bca5883de11e538907678a45b84f31",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C076/asset.usda",
+      "expected": "83c8a1025eba21f231c42e057452ca116a04961763286ed2a4507e2276cd76f1",
+      "actual": "83c8a1025eba21f231c42e057452ca116a04961763286ed2a4507e2276cd76f1",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C077/asset.usda",
+      "expected": "a842f767eeace55e482a0588cfa0395e2183a8d0b5f8e8842da8d6c3ee4f3a6d",
+      "actual": "a842f767eeace55e482a0588cfa0395e2183a8d0b5f8e8842da8d6c3ee4f3a6d",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C078/asset.usda",
+      "expected": "5f94a3d37c6004c664980bb99c2332984cb8463f61038c485ef0239849982611",
+      "actual": "5f94a3d37c6004c664980bb99c2332984cb8463f61038c485ef0239849982611",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C079/asset.usda",
+      "expected": "6d4c0f5a08e148ebe2095439564bba28edfa8f2665b1aed51b7d0ad57476514d",
+      "actual": "6d4c0f5a08e148ebe2095439564bba28edfa8f2665b1aed51b7d0ad57476514d",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C080/asset.usda",
+      "expected": "1681e320c1164c90490423a6b06d3e94dbf778d1b41e3472a4860afa4485a19a",
+      "actual": "1681e320c1164c90490423a6b06d3e94dbf778d1b41e3472a4860afa4485a19a",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C083/asset.usda",
+      "expected": "fea2ff06ce0b0d247b6ce9fc897460f5ffd4172e909090b32db04f41e3cd6a72",
+      "actual": "fea2ff06ce0b0d247b6ce9fc897460f5ffd4172e909090b32db04f41e3cd6a72",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C085/asset.usda",
+      "expected": "86be7530f12f6c688c3ef5538a79f43b8340aba1f94ff61100ab669249113b93",
+      "actual": "86be7530f12f6c688c3ef5538a79f43b8340aba1f94ff61100ab669249113b93",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C086/asset.usda",
+      "expected": "89d82d114983d03cbd2a25a9b911274a6ddf4be5b1fa050cc664599ce2c97232",
+      "actual": "89d82d114983d03cbd2a25a9b911274a6ddf4be5b1fa050cc664599ce2c97232",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C087/asset.usda",
+      "expected": "a7416f5d1104d636f6ee32dcee41610cd0108a8d9bda1fb2be96d22ac4bcfe1e",
+      "actual": "a7416f5d1104d636f6ee32dcee41610cd0108a8d9bda1fb2be96d22ac4bcfe1e",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C088/asset.usda",
+      "expected": "34f87f1f6f1da9da63aacc52d633cc1a66101e521ced40bb589e5ecf3ce3346b",
+      "actual": "34f87f1f6f1da9da63aacc52d633cc1a66101e521ced40bb589e5ecf3ce3346b",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C089/asset.usda",
+      "expected": "c410a33030c1497c13f5b31dfe67499de7c480dd555da6fef5dc9008d2383fdf",
+      "actual": "c410a33030c1497c13f5b31dfe67499de7c480dd555da6fef5dc9008d2383fdf",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C090/asset.usda",
+      "expected": "7629a9ce42119d8d31b837d8d9e98758464eb208e25efffaf25c33e98d0a93e8",
+      "actual": "7629a9ce42119d8d31b837d8d9e98758464eb208e25efffaf25c33e98d0a93e8",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-safety-extra-20260910-v1/emergencyshower/asset.usda",
+      "expected": "162fc5100e3c7ff700fa956f340a42777c491148658d9c949fa9054ce0377af2",
+      "actual": "162fc5100e3c7ff700fa956f340a42777c491148658d9c949fa9054ce0377af2",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-safety-extra-20260910-v1/spillkit/asset.usda",
+      "expected": "7bdb37e131c4a030b18766e7bb85ca9a3cace30009d9618a2c38853f0b527478",
+      "actual": "7bdb37e131c4a030b18766e7bb85ca9a3cace30009d9618a2c38853f0b527478",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-peripheral10-20260910-v1/airfr/asset.usda",
+      "expected": "22b19f0b98d0b709adc2b852415fc276eccdb544b28b8c50459a7a81d52ae839",
+      "actual": "22b19f0b98d0b709adc2b852415fc276eccdb544b28b8c50459a7a81d52ae839",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-peripheral10-20260910-v1/watertank/asset.usda",
+      "expected": "ea3ac309f0826781132caf52077d69331576de2a911d038b19782297dd510ef0",
+      "actual": "ea3ac309f0826781132caf52077d69331576de2a911d038b19782297dd510ef0",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-peripheral10-20260910-v1/coolingtower/asset.usda",
+      "expected": "821c17ed6ef2d5c140247f70cba7ff524fd0a11d78d069a77655032222d98c70",
+      "actual": "821c17ed6ef2d5c140247f70cba7ff524fd0a11d78d069a77655032222d98c70",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-peripheral10-20260910-v1/stacklight/asset.usda",
+      "expected": "f038deaa6f538114c98936ab61be4d3a3b75e1717ac9a049b590838686ee418a",
+      "actual": "f038deaa6f538114c98936ab61be4d3a3b75e1717ac9a049b590838686ee418a",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-peripheral10-20260910-v1/interlock/asset.usda",
+      "expected": "cfdd3d6f93896523fb42dac8f66048bbc9e072f6e29f0050eb80967aa9f664ec",
+      "actual": "cfdd3d6f93896523fb42dac8f66048bbc9e072f6e29f0050eb80967aa9f664ec",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-instrument4-20260910-v1/pressuregauge/asset.usda",
+      "expected": "2c680dac8cf2172d115af366cdc4791382e063627024beddb3ac3b3deabd5d6f",
+      "actual": "2c680dac8cf2172d115af366cdc4791382e063627024beddb3ac3b3deabd5d6f",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-instrument4-20260910-v1/flowmeter/asset.usda",
+      "expected": "804c7ca91c28cb48f81f2585cdba34094991c408fd19f97309ab37388e1c80ae",
+      "actual": "804c7ca91c28cb48f81f2585cdba34094991c408fd19f97309ab37388e1c80ae",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-instrument4-20260910-v1/netswitch/asset.usda",
+      "expected": "195ded552e6b22f0569da6f3a9af07875ce0696014295438d6235537429c36fe",
+      "actual": "195ded552e6b22f0569da6f3a9af07875ce0696014295438d6235537429c36fe",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-instrument4-20260910-v1/gateway/asset.usda",
+      "expected": "17551bcdf38107b351a238817f35533c7d18bcfb94440ae45f942b53de13c4e7",
+      "actual": "17551bcdf38107b351a238817f35533c7d18bcfb94440ae45f942b53de13c4e7",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-sensor4-20260910-v1/temperature/asset.usda",
+      "expected": "186c439803fb751fc88087e818f0da0ae95da435d05889b5e8fe0c1110f1045a",
+      "actual": "186c439803fb751fc88087e818f0da0ae95da435d05889b5e8fe0c1110f1045a",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-sensor4-20260910-v1/ultrasonic/asset.usda",
+      "expected": "cbb832fccdc2a414e8eb7d25452554dd8b0e68a6ae00221527489d5dbc6a26e3",
+      "actual": "cbb832fccdc2a414e8eb7d25452554dd8b0e68a6ae00221527489d5dbc6a26e3",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-sensor4-20260910-v1/encoder/asset.usda",
+      "expected": "0ec5b3e0cf4f9aac36aee791225879c4d5ae3647c990843a8bb2d5f3811823a7",
+      "actual": "0ec5b3e0cf4f9aac36aee791225879c4d5ae3647c990843a8bb2d5f3811823a7",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-sensor4-20260910-v1/proximity/asset.usda",
+      "expected": "20dd24e6a043626b0d4670d1a9ef74ee6c1d46e333bda3447a755ddcfa241328",
+      "actual": "20dd24e6a043626b0d4670d1a9ef74ee6c1d46e333bda3447a755ddcfa241328",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-drive4-20260910-v1/servomotor/asset.usda",
+      "expected": "5e4431c13b98f6df38efbb3c69d5419c85d89127b8088c72e3d4779751b41171",
+      "actual": "5e4431c13b98f6df38efbb3c69d5419c85d89127b8088c72e3d4779751b41171",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-drive4-20260910-v1/inverter/asset.usda",
+      "expected": "103cd682fbbf54634e4a500022908a460ed7e8a3af6440649cde0671bfe44fd4",
+      "actual": "103cd682fbbf54634e4a500022908a460ed7e8a3af6440649cde0671bfe44fd4",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-drive4-20260910-v1/solenoidbank/asset.usda",
+      "expected": "169387e797efea1fc386fad110423dfc01814b484e17d765ef06b5c03f9553fc",
+      "actual": "169387e797efea1fc386fad110423dfc01814b484e17d765ef06b5c03f9553fc",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-drive4-20260910-v1/footswitch/asset.usda",
+      "expected": "e9853f9338621a086683eb055cb28eecdc0d7c74e54013642e6aa3e46cef5778",
+      "actual": "e9853f9338621a086683eb055cb28eecdc0d7c74e54013642e6aa3e46cef5778",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-actuator2-20260910-v1/aircylinder/asset.usda",
+      "expected": "97f7df06f43a6ca77ee9973cef6544e6b25d5d2dfffab084586e97fa8553267d",
+      "actual": "97f7df06f43a6ca77ee9973cef6544e6b25d5d2dfffab084586e97fa8553267d",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-actuator2-20260910-v1/gearbox/asset.usda",
+      "expected": "494652271b7a7a54a80a5082d4e424d82f6b1b60132722451cbe16da05c7bbf9",
+      "actual": "494652271b7a7a54a80a5082d4e424d82f6b1b60132722451cbe16da05c7bbf9",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-bulk-coverage-v1/catalog-configurations.usda",
+      "expected": "0e23886aa8351a5ece46e8058d37a0921bffa78afddf90b0cfd0ba0d52a67dc9",
+      "actual": "0e23886aa8351a5ece46e8058d37a0921bffa78afddf90b0cfd0ba0d52a67dc9",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-coverage666-v1/catalog-configurations.usda",
+      "expected": "c3d3a7f56351a6f1e4a22b064cc33fe4ce9655b74afe8d5e1e2219903bf04c2c",
+      "actual": "c3d3a7f56351a6f1e4a22b064cc33fe4ce9655b74afe8d5e1e2219903bf04c2c",
+      "unchanged": true
+    },
+    {
+      "path": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "expected": "f95048f0d061a75e13ef546634a8f5aa12c9b537b81becc50f858d42320ddf7a",
+      "actual": "f95048f0d061a75e13ef546634a8f5aa12c9b537b81becc50f858d42320ddf7a",
+      "unchanged": true
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -296,8 +297,7 @@ export function QnaCategoryMigrationPage() {
             : "상태, 채널, 검색어를 먼저 좁힌 뒤 분류 상세를 확인합니다."}
           icon="quiz"
         >
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[2fr,1fr,1fr,auto]">
-            <div>
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="qnaCategoryKeyword">{en ? "Keyword" : "검색어"}</label>
               <AdminInput
                 id="qnaCategoryKeyword"
@@ -305,16 +305,15 @@ export function QnaCategoryMigrationPage() {
                 value={filters.searchKeyword}
                 onChange={(event) => setFilters((current) => ({ ...current, searchKeyword: event.target.value }))}
               />
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="qnaCategoryUseAt">{en ? "Exposure" : "노출 상태"}</label>
               <AdminSelect id="qnaCategoryUseAt" value={filters.useAt} onChange={(event) => setFilters((current) => ({ ...current, useAt: event.target.value }))}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
                 <option value="Y">{en ? "Active" : "운영중"}</option>
                 <option value="N">{en ? "Hidden" : "숨김"}</option>
               </AdminSelect>
-            </div>
-            <div>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="qnaCategoryChannel">{en ? "Channel" : "노출 채널"}</label>
               <AdminSelect id="qnaCategoryChannel" value={filters.channel} onChange={(event) => setFilters((current) => ({ ...current, channel: event.target.value }))}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -322,17 +321,13 @@ export function QnaCategoryMigrationPage() {
                 <option value="PARTNER">{en ? "Partner Center" : "파트너 센터"}</option>
                 <option value="BOTH">{en ? "Portal + Partner" : "포털 + 파트너"}</option>
               </AdminSelect>
-            </div>
-            <div className="flex items-end gap-2">
-              <MemberButton
+            </div></div></>} actions={<><MemberButton
                 onClick={() => setFilters({ searchKeyword: "", useAt: "ALL", channel: "ALL", selectedId: "" })}
                 type="button"
                 variant="secondary"
               >
                 {en ? "Reset" : "초기화"}
-              </MemberButton>
-            </div>
-          </div>
+              </MemberButton></>}></CommonSearchSection></div>
         </CollectionResultPanel>
 
         {selectedRow ? (

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 87,
+  "blueprintCode": "BP_ADOPT_402AEBFD8A8D374AB9F4",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_402AEBFD8A8D374AB9F4"
+  },
+  "route": "/admin/system/builder-studio",
+  "pageName": "빌더 스튜디오",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1120137",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "8edf4a893824217ecd04b0932b5c0d2a25c948c2cc470d351a03872baec2ad15",
+  "artifactHash": "317165151fcbba5c4218a1a373d57d2e4bd2fd825a9477b9d76ba7217ca42178"
+}

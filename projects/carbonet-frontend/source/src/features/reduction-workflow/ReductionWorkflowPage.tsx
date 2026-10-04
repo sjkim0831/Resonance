@@ -1,4 +1,5 @@
 import contract from "./reductionWorkflow.contract.json";
+import { ReductionTaskEditor } from "./ReductionTaskEditor";
 import { isEnglish } from "../../lib/navigation/runtime";
 
 type Step = (typeof contract.steps)[number];
@@ -9,6 +10,7 @@ function currentStep(): Step {
 }
 
 export function ReductionWorkflowPage() {
+  if (["/reduction/tasks", "/reduction/task/new", "/reduction/task/resources", "/reduction/task/estimate", "/reduction/task/approval"].includes(window.location.pathname.replace(/^\/en(?=\/)/, ""))) return <ReductionTaskEditor key={window.location.pathname} />;
   const en = isEnglish();
   const step = currentStep();
   const previous = contract.steps[step.order - 2];

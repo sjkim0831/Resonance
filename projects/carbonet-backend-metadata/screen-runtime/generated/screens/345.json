@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 345,
+  "blueprintCode": "BP_ADOPT_4D3DC6E7900F3CFE9B34",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_4D3DC6E7900F3CFE9B34"
+  },
+  "route": "/admin/content/board_list",
+  "pageName": "수료증",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1080206",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "5715ea7143f44387df58976990e5e01f1831c1098ff54b69078e5500e84f9f1f",
+  "artifactHash": "be1c70df5ca016a4810d52edd319206fdc3485dcfbd016c1f4b847bfd9cb50ac"
+}

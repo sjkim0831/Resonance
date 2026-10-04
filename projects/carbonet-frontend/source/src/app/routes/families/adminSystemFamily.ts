@@ -2,6 +2,7 @@ import { createRouteFamily, type PageUnitsOf, type RouteDefinitionsOf } from "..
 import { buildManifestBackedRoutePageContracts } from "./manifestBackedPageContracts";
 
 const ADMIN_SYSTEM_ROUTE_DEFINITIONS = [
+  { id: "work-design-studio", label: "업무 설계·개발 작업실", group: "admin", koPath: "/admin/system/work-design-studio", enPath: "/en/admin/system/work-design-studio" },
   { id: "system-code-inquiry", label: "코드 조회", group: "admin", koPath: "/admin/system/code", enPath: "/en/admin/system/code" },
   { id: "system-code-inquiry-class", label: "대분류", group: "admin", koPath: "/admin/system/code/class", enPath: "/en/admin/system/code/class" },
   { id: "system-code-inquiry-group", label: "중분류", group: "admin", koPath: "/admin/system/code/group", enPath: "/en/admin/system/code/group" },
@@ -19,6 +20,8 @@ const ADMIN_SYSTEM_ROUTE_DEFINITIONS = [
   { id: "screen-flow-management", label: "화면 흐름 관리", group: "admin", koPath: "/admin/system/screen-flow-management", enPath: "/en/admin/system/screen-flow-management" },
   { id: "system-design-governance", label: "설계 완성도", group: "admin", koPath: "/admin/system/design-governance", enPath: "/en/admin/system/design-governance" },
   { id: "actor-process-governance", label: "액터·프로세스 관리", group: "admin", koPath: "/admin/system/actor-process", enPath: "/en/admin/system/actor-process" },
+  { id: "process-catalog", label: "전체 업무 보기", group: "admin", koPath: "/admin/system/process-catalog", enPath: "/en/admin/system/process-catalog" },
+  { id: "work-implementation", label: "업무 구현 관리", group: "admin", koPath: "/admin/system/work-implementation", enPath: "/en/admin/system/work-implementation" },
   { id: "page-development-master", label: "페이지 개발 마스터", group: "admin", koPath: "/admin/system/page-development-master", enPath: "/en/admin/system/page-development-master" },
   { id: "page-design-studio", label: "전문 설계 스튜디오", group: "admin", koPath: "/admin/system/page-design-studio", enPath: "/en/admin/system/page-design-studio" },
   { id: "process-orchestration", label: "전문 업무 프로세스 작업공간", group: "admin", koPath: "/admin/system/process-workspace", enPath: "/en/admin/system/process-workspace" },
@@ -112,6 +115,9 @@ const ADMIN_SYSTEM_PAGE_UNITS = [
   { id: "screen-flow-management", exportName: "ScreenFlowManagementMigrationPage", loader: () => import("../../../features/screen-management/ScreenFlowManagementMigrationPage") },
   { id: "system-design-governance", exportName: "SystemDesignGovernancePage", loader: () => import("../../../features/system-design-governance/SystemDesignGovernancePage") },
   { id: "actor-process-governance", exportName: "ActorProcessGovernancePage", loader: () => import("../../../features/actor-process-governance/ActorProcessGovernancePage") },
+  { id: "process-catalog", exportName: "ProcessCatalogPage", loader: () => import("../../../features/actor-process-governance/ProcessCatalogPage") },
+  { id: "work-implementation", exportName: "WorkImplementationPage", loader: () => import("../../../features/work-implementation/WorkImplementationPage") },
+  { id: "work-design-studio", exportName: "WorkDesignStudioPage", loader: () => import("../../../features/work-implementation/WorkImplementationPage") },
   { id: "page-development-master", exportName: "PageDevelopmentMasterPage", loader: () => import("../../../features/page-development-master/PageDevelopmentMasterPage") },
   { id: "page-design-studio", exportName: "PageDesignStudioPage", loader: () => import("../../../features/page-development-master/PageDesignStudioPage") },
   { id: "process-orchestration", exportName: "ProcessOrchestrationPage", loader: () => import("../../../features/process-orchestration/ProcessOrchestrationPage") },

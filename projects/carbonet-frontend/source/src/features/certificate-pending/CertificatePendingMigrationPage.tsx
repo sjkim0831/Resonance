@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { fetchCertificatePendingPage } from "../../lib/api/member";
 import type { CertificatePendingPagePayload } from "../../lib/api/memberTypes";
@@ -134,35 +135,15 @@ export function CertificatePendingMigrationPage() {
           ))}
         </AdminSummaryStrip>
 
-        <section className="gov-card overflow-hidden" data-help-id="certificate-pending-search">
-          <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="text-sm font-bold">{en ? "Search Conditions" : "검색 조건"}</h3>
-                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">
-                  {en
-                    ? "Filter the issuance queue by certificate type, processing state, and applicant."
-                    : "인증 유형, 처리 상태, 신청 회사 또는 신청번호로 대기열을 좁힙니다."}
-                </p>
-              </div>
-              <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
-                {en
-                  ? `Page ${Number(result?.pageIndex || 1)} / ${Number(result?.totalPages || 1)}`
-                  : `현재 페이지 ${Number(result?.pageIndex || 1)} / ${Number(result?.totalPages || 1)}`}
-              </span>
-            </div>
-          </div>
-          <div className="grid gap-4 px-6 py-6 lg:grid-cols-[220px_220px_minmax(0,1fr)_220px]">
-            <label>
-              <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Certificate Type" : "인증 유형"}</span>
-              <AdminSelect value={draft.certificateType} onChange={(event) => setDraft((current) => ({ ...current, certificateType: event.target.value }))}>
-                <option value="">{en ? "All" : "전체"}</option>
-                <option value="CCUS">{en ? "CCUS Certificate" : "CCUS 인증서"}</option>
-                <option value="REPORT">{en ? "Emission Report" : "배출량 보고서"}</option>
-                <option value="REC">{en ? "REC Duplicate Check" : "REC 중복 확인"}</option>
-              </AdminSelect>
-            </label>
-            <label>
+        <section className="ccus-search-host" data-help-id="certificate-pending-search"><CommonSearchSection basic={<><div className="ccus-search-field"><label>
+              <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Keyword" : "검색어"}</span>
+              <AdminInput
+                placeholder={en ? "Application no., company, site, reviewer" : "신청번호, 회원사명, 배출지, 검토자 검색"}
+                value={draft.searchKeyword}
+                onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))}
+              />
+            </label></div>
+<div className="ccus-search-field"><label>
               <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Process Status" : "처리 상태"}</span>
               <AdminSelect value={draft.processStatus} onChange={(event) => setDraft((current) => ({ ...current, processStatus: event.target.value }))}>
                 <option value="">{en ? "All" : "전체"}</option>
@@ -171,39 +152,23 @@ export function CertificatePendingMigrationPage() {
                 <option value="IN_REVIEW">{en ? "In Review" : "심사중"}</option>
                 <option value="OBJECTION">{en ? "Objection" : "이의신청"}</option>
               </AdminSelect>
-            </label>
-            <label>
-              <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Keyword" : "검색어"}</span>
-              <AdminInput
-                placeholder={en ? "Application no., company, site, reviewer" : "신청번호, 회원사명, 배출지, 검토자 검색"}
-                value={draft.searchKeyword}
-                onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))}
-              />
-            </label>
-            <label>
+            </label></div></>} advanced={<><div className="ccus-search-field"><label>
+              <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Certificate Type" : "인증 유형"}</span>
+              <AdminSelect value={draft.certificateType} onChange={(event) => setDraft((current) => ({ ...current, certificateType: event.target.value }))}>
+                <option value="">{en ? "All" : "전체"}</option>
+                <option value="CCUS">{en ? "CCUS Certificate" : "CCUS 인증서"}</option>
+                <option value="REPORT">{en ? "Emission Report" : "배출량 보고서"}</option>
+                <option value="REC">{en ? "REC Duplicate Check" : "REC 중복 확인"}</option>
+              </AdminSelect>
+            </label></div>
+<div className="ccus-search-field"><label>
               <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Focused Application" : "집중 신청번호"}</span>
               <AdminInput
                 placeholder={en ? "Application no." : "신청번호"}
                 value={draft.applicationId}
                 onChange={(event) => setDraft((current) => ({ ...current, applicationId: event.target.value }))}
               />
-            </label>
-          </div>
-          <div className="border-t border-[var(--kr-gov-border-light)] px-6 py-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-[var(--kr-gov-text-secondary)]">
-                {focusedApplicationId
-                  ? (en ? `Current focus request: ${focusedApplicationId}` : `현재 집중 신청번호: ${focusedApplicationId}`)
-                  : focusedInsttId
-                    ? (en
-                      ? `Focused institution: ${focusedInsttName || focusedInsttId} (${focusedInsttId})`
-                      : `현재 집중 기관: ${focusedInsttName || focusedInsttId} (${focusedInsttId})`)
-                    : (en
-                      ? "Use the same card density and table structure as other admin list pages."
-                      : "다른 관리자 목록형 화면과 동일한 검색 카드 밀도와 표 구조를 유지합니다.")}
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <MemberButton
+            </label></div></>} actions={<><MemberButton
                   type="button"
                   variant="secondary"
                   onClick={() => {
@@ -213,17 +178,13 @@ export function CertificatePendingMigrationPage() {
                 >
                   {en ? "Reset" : "초기화"}
                 </MemberButton>
-                <MemberButton
+<MemberButton
                   type="button"
                   variant="primary"
                   onClick={() => setFilters({ ...draft, pageIndex: 1 })}
                 >
                   {en ? "Search" : "조회"}
-                </MemberButton>
-              </div>
-            </div>
-          </div>
-        </section>
+                </MemberButton></>}></CommonSearchSection></section>
 
         <section className="gov-card overflow-hidden" data-help-id="certificate-pending-table">
           <div className="border-b border-[var(--kr-gov-border-light)] bg-gray-50 px-6 py-4">

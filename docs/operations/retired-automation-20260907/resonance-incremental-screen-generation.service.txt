@@ -1,0 +1,18 @@
+# /etc/systemd/system/resonance-incremental-screen-generation.service -> /opt/Resonance/ops/host-config/systemd/resonance-incremental-screen-generation.service
+[Unit]
+Description=Regenerate changed Resonance DB-first framework resources without an application build
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+WorkingDirectory=/opt/Resonance/var/deploy-worktrees/runtime-build
+Environment=RESONANCE_ROOT=/opt/Resonance/var/deploy-worktrees/runtime-build
+ExecStart=/usr/bin/bash /opt/Resonance/var/deploy-worktrees/runtime-build/ops/scripts/generate-db-first-framework.sh /opt/Resonance/var/deploy-worktrees/runtime-build
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+# /run/systemd/system/resonance-incremental-screen-generation.service.d/override.conf
+[Unit]
+ConditionPathExists=!/run/resonance-release-maintenance.hold

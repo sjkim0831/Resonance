@@ -3,6 +3,7 @@ package egovframework.com.feature.home.service.impl;
 import egovframework.com.common.context.ProjectRuntimeContext;
 import egovframework.com.feature.auth.domain.entity.EntrprsMber;
 import egovframework.com.feature.auth.domain.repository.EnterpriseMemberRepository;
+import egovframework.com.feature.auth.domain.repository.EmployeeMemberRepository;
 import egovframework.com.feature.auth.service.AuthService;
 import egovframework.com.feature.auth.service.MfaOtpDeliveryService;
 import egovframework.com.feature.auth.util.JwtTokenProvider;
@@ -67,6 +68,7 @@ class HomeMypageServiceImplPasswordResetTest {
         HomeMypageServiceImpl service = new HomeMypageServiceImpl(
                 jwt,
                 members,
+                mock(EmployeeMemberRepository.class),
                 mock(EnterpriseMemberService.class),
                 authService,
                 project,

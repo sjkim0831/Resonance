@@ -1,0 +1,29 @@
+{
+  "USDUnchanged": {
+    "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E032.usda": "3fa662f7a32334c7f5aaae463f0684a962c42b854815a167b13e26e90f2c2706",
+    "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E025.usda": "3d265128fcafbb1042bb57f31d4871fc27dae56741cf7a36ef323698d3504b10",
+    "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E034.usda": "a87d88598fafc25ab11c1a4287aa2e7bb97347e3d2f0e2c1f863be9888c727b4",
+    "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E030.usda": "0dae17538dd1c8190223ae78267af9bc4e4c562c6cba91012b6c97d62df84bd6",
+    "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E053.usda": "edb44dafc5e144ca18ca4bf8df9d03d814f31da20eda998caaa469a111e55111",
+    "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/base-container.usda": "982397814d9a976a353dd235f61ae1e4936c267b9d90265a20bdaf450821e970",
+    "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E075.usda": "a4a0425fb253ff766c7d1e70a5d2d010f815378f23ed329fad63866579a42081",
+    "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E033.usda": "6e51ca69c58b0dfef6400e8b7f8f2af49a0c46470e822a2001f992297e0fb1e6",
+    "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/base-roller.usda": "c987c5a7e72d166a69efca90e1bec19e2b561543e2264d62a555a600a3259674",
+    "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/base-panel.usda": "3c99005446b49624411d0441de15addb83dc738b9c29e4acbb54f545ec27183b",
+    "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E031.usda": "affc271cc688667745bccadd912a399b7fb62f35021db4ae5878211a52e3a281",
+    "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/base-slab.usda": "951d71bff05c31af7b5f8a417cca86573ebd9ec75ea585d966830522e252a17b",
+    "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E023.usda": "29c6b0d705a7d284e5f215b08cda8823a960151ec87a1458408e4f2e8806abdc",
+    "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/base-frame.usda": "967d96d2b2db9d92d5532c6aaeacf49f80b6f3a2f61574f4a60eb7175f5e293f",
+    "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E024.usda": "fbae75250409205378c14c47b4886f4f6ca2aa705b595954dd62095a5996ef26",
+    "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/factory.usda": "233715e50b4d44207bdd452420e328877718779ae4ad328cf269bdb595746fd9",
+    "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda": "f95048f0d061a75e13ef546634a8f5aa12c9b537b81becc50f858d42320ddf7a"
+  },
+  "trackAUnchanged": true,
+  "baseline": [
+    724,
+    666,
+    58
+  ],
+  "deviceWrites": 0,
+  "externalRequestsSent": 0
+}

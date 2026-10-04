@@ -1,10 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Explicit development mode: validate the live Vite PID, source root and port.
+# Do not route Vite changes through the Kubernetes production overlay branch.
+if [[ "${1:-}" == "--vite-dev" ]]; then
+  shift
+  exec python3 "$(dirname "${BASH_SOURCE[0]}")/resonance-vite-dev-apply.py" "$@"
+fi
+
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" || $# -lt 2 ]]; then
   cat <<'USAGE'
 Usage:
   bash ops/scripts/resonance-no-build-apply.sh <repo-root> <diff-file>
+  bash ops/scripts/resonance-no-build-apply.sh --vite-dev <repo-root> <diff-file> --pid <vite-pid> --port <vite-port> [--apply]
 
 Purpose:
   Apply server-driven / metadata-driven runtime changes without npm build,

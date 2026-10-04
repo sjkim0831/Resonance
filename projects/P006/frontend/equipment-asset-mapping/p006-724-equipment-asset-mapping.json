@@ -1,0 +1,1771 @@
+{
+  "summary": {
+    "equipment_types": 16,
+    "equipment_instances": 0,
+    "available_assets": 724,
+    "connected": 5,
+    "candidates": 0,
+    "unassigned": 11,
+    "exact_match": 0,
+    "close_match": 3,
+    "reference_match": 2,
+    "no_match": 6,
+    "blocked": 5,
+    "generated_assets_used": 0,
+    "mapping_rate": 31.25,
+    "files_modified": 1,
+    "blockers": [
+      "실제 Equipment Instance/제조사/모델 원장이 없음",
+      "16개는 Equipment Type 원장이고 설치 대수는 미확정",
+      "58개 GENERATED/CONCEPTUAL은 실제 설비 동일성 근거가 없어 자동 연결하지 않음"
+    ]
+  },
+  "rows": [
+    {
+      "Equipment ID": "casting_machine",
+      "Equipment Name": "Die Casting Machine",
+      "Asset ID": null,
+      "Asset Name": null,
+      "USD Path": null,
+      "Match": "NO_MATCH",
+      "Connection": "UNASSIGNED",
+      "Accuracy": "UNKNOWN",
+      "Evidence": "기존 근거에서 직접 연결 불가로 판정",
+      "Generated Conceptual": false,
+      "Alternatives": [
+        {
+          "assetId": "A114",
+          "name": "저압 주조기",
+          "englishName": "Low pressure casting machine",
+          "purpose": "저압 용탕 상승으로 금형 충전",
+          "kind": "완제품 설비/장비",
+          "processConnections": {
+            "process": "주조 전후처리",
+            "upstream": "금속 원료",
+            "downstream": "후처리",
+            "relatedExisting": [
+              {
+                "id": "E001",
+                "name": "트리밍 장비"
+              },
+              {
+                "id": "E002",
+                "name": "주탕 로봇"
+              },
+              {
+                "id": "E003",
+                "name": "세척/스프레이 로봇"
+              },
+              {
+                "id": "E004",
+                "name": "취출 로봇"
+              },
+              {
+                "id": "E005",
+                "name": "용해로/가열로"
+              },
+              {
+                "id": "N097",
+                "name": "용탕 탈가스 장치"
+              }
+            ],
+            "status": "설계상 연결 후보 · 포트 규격/실제 연결 미검증"
+          },
+          "entryUsd": null,
+          "sourceUsd": null,
+          "sourcePrim": null,
+          "baseUsd": null,
+          "variant": {},
+          "baseMembers": null,
+          "image": null,
+          "usdConnected": false,
+          "modelXYZMeters": null,
+          "geometryState": "BLOCKED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "저압 상승 주조이며 이미지의 사출/형체 구조와 다르다"
+        },
+        {
+          "assetId": "A112",
+          "name": "연속 주조기",
+          "englishName": "Continuous casting machine",
+          "purpose": "용탕을 연속 반제품으로 응고 인출",
+          "kind": "완제품 설비/장비",
+          "processConnections": {
+            "process": "주조 전후처리",
+            "upstream": "금속 원료",
+            "downstream": "후처리",
+            "relatedExisting": [
+              {
+                "id": "E001",
+                "name": "트리밍 장비"
+              },
+              {
+                "id": "E002",
+                "name": "주탕 로봇"
+              },
+              {
+                "id": "E003",
+                "name": "세척/스프레이 로봇"
+              },
+              {
+                "id": "E004",
+                "name": "취출 로봇"
+              },
+              {
+                "id": "E005",
+                "name": "용해로/가열로"
+              },
+              {
+                "id": "N097",
+                "name": "용탕 탈가스 장치"
+              }
+            ],
+            "status": "설계상 연결 후보 · 포트 규격/실제 연결 미검증"
+          },
+          "entryUsd": null,
+          "sourceUsd": null,
+          "sourcePrim": null,
+          "baseUsd": null,
+          "variant": {},
+          "baseMembers": null,
+          "image": null,
+          "usdConnected": false,
+          "modelXYZMeters": null,
+          "geometryState": "BLOCKED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "연속 인출 주조 공정"
+        },
+        {
+          "assetId": "N101",
+          "name": "사출 성형기",
+          "englishName": "Injection Molding Machine",
+          "purpose": "수지 사출 분기; 금속 주조기와 다른 원료·공정",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "PLASTIC",
+            "E005",
+            "E012",
+            "N076",
+            "PRE",
+            "MAC",
+            "QC"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/N101.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-coverage666-v1/catalog-configurations.usda",
+          "sourcePrim": "/Catalog/N101",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-coverage666-v1/base-polymer.usda",
+          "variant": {
+            ".": {
+              "structure": "v000"
+            },
+            "Shape/shared_cabinet_2": {
+              "structure": "v04"
+            }
+          },
+          "baseMembers": 13,
+          "image": "../visual-catalog/images/N101.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            4.000000059604645,
+            2.4000000600364957,
+            1.900000016424388
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "수지 사출기로 작업물 매체가 다르다"
+        }
+      ],
+      "reason": "대표 이미지는 수평 형체·사출 구조인데 724종 독립 목록에는 해당 다이캐스팅 본체가 없다. E012는 현재 독립 목록 밖의 불완전 기반 부품이다."
+    },
+    {
+      "Equipment ID": "holding_furnace",
+      "Equipment Name": "Holding Furnace",
+      "Asset ID": null,
+      "Asset Name": null,
+      "USD Path": null,
+      "Match": "NO_MATCH",
+      "Connection": "UNASSIGNED",
+      "Accuracy": "UNKNOWN",
+      "Evidence": "기존 근거에서 직접 연결 불가로 판정",
+      "Generated Conceptual": false,
+      "Alternatives": [
+        {
+          "assetId": "E005",
+          "name": "용해로/가열로",
+          "englishName": "Melting and Heating Furnace",
+          "purpose": "용해·보온 기능 분리가 필요; 가열로 명칭만으로 생산능력 확정 금지",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "CASTING",
+            "E012",
+            "N101",
+            "N076",
+            "PRE",
+            "MAC",
+            "QC"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E005.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/furnace/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/furnace/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E005.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            9.406997203826904,
+            8.049886643886566,
+            6.967646360397339
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "용해·가열로의 역할과 외형을 그대로 보온로에 대입 불가"
+        },
+        {
+          "assetId": "N099",
+          "name": "주조 금형 예열기",
+          "englishName": "Casting Mold Preheater",
+          "purpose": "금형 투입 전 열상태 준비; 일반 건조 오븐과 요구 기능 다름",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "CASTING",
+            "E051",
+            "E107",
+            "N058",
+            "N199",
+            "CTRL",
+            "SAFE"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/N099.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-coverage666-v1/catalog-configurations.usda",
+          "sourcePrim": "/Catalog/N099",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-coverage666-v1/base-wetline.usda",
+          "variant": {
+            ".": {
+              "structure": "v000"
+            },
+            "Shape/shared_vessel_1": {
+              "structure": "v00"
+            }
+          },
+          "baseMembers": 19,
+          "image": "../visual-catalog/images/N099.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            5.500000163912773,
+            2.7999998196784914,
+            2.000000013623917
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "용탕이 아닌 금형 예열"
+        }
+      ],
+      "reason": "독립 724종에 해당 보온로 전체 자산이 없다. 용해로를 단순 축소해서 보온로로 연결하지 않는다."
+    },
+    {
+      "Equipment ID": "turntable_furnace",
+      "Equipment Name": "Turntable Furnace",
+      "Asset ID": null,
+      "Asset Name": null,
+      "USD Path": null,
+      "Match": "NO_MATCH",
+      "Connection": "UNASSIGNED",
+      "Accuracy": "UNKNOWN",
+      "Evidence": "기존 근거에서 직접 연결 불가로 판정",
+      "Generated Conceptual": false,
+      "Alternatives": [
+        {
+          "assetId": "E079",
+          "name": "회전 이송 테이블",
+          "englishName": "Rotary Transfer Table",
+          "purpose": "분기·리프트·회전 이송 모듈; 이송 경로 그래프의 노드",
+          "kind": "모듈",
+          "processConnections": [
+            "TRANSFER",
+            "E034",
+            "E037",
+            "E047",
+            "E125",
+            "PRE",
+            "MAC",
+            "FOR",
+            "ASM",
+            "PACK"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E079.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-transfer-modules-20260909-v1/rotarytransfer/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-transfer-modules-20260909-v1/rotarytransfer/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E079.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            1.600000023841858,
+            0.910000002682209,
+            1.600000023841858
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "회전 물류 테이블은 가열/용탕 보온 설비가 아니다"
+        },
+        {
+          "assetId": "E005",
+          "name": "용해로/가열로",
+          "englishName": "Melting and Heating Furnace",
+          "purpose": "용해·보온 기능 분리가 필요; 가열로 명칭만으로 생산능력 확정 금지",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "CASTING",
+            "E012",
+            "N101",
+            "N076",
+            "PRE",
+            "MAC",
+            "QC"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E005.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/furnace/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/furnace/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E005.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            9.406997203826904,
+            8.049886643886566,
+            6.967646360397339
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "대형 단일 용해로의 구조가 다르다"
+        }
+      ],
+      "reason": "800kg 2port 도면 기록은 있으나 724종에 원형 2포트 턴테이블로의 독립 형상이 없다."
+    },
+    {
+      "Equipment ID": "trimming_machine",
+      "Equipment Name": "Trimming Machine",
+      "Asset ID": null,
+      "Asset Name": null,
+      "USD Path": null,
+      "Match": "BLOCKED",
+      "Connection": "UNASSIGNED",
+      "Accuracy": "UNKNOWN",
+      "Evidence": "기존 근거에서 직접 연결 불가로 판정",
+      "Generated Conceptual": false,
+      "Alternatives": [
+        {
+          "assetId": "E001",
+          "name": "트리밍 장비",
+          "englishName": "Trimming Machine",
+          "purpose": "주조 후 트리밍; 원본 치수·실물 완성도 미확정이므로 기능상 설비로만 분류",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "CASTING",
+            "E005",
+            "E012",
+            "N101",
+            "N076",
+            "PRE",
+            "MAC",
+            "QC"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E001.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/cuter_low/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/cuter_low/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E001.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            2.489003896713257,
+            5.937997817993164,
+            2.799843668937683
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REVIEW",
+          "reason": "원본 cuter_low의 실제 설비 식별 필요"
+        },
+        {
+          "assetId": "E096",
+          "name": "소형 프레스",
+          "englishName": "Small Press",
+          "purpose": "드릴 가공·프레스 작업; 치구·가드·공정 조건 필요",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "MACHINING",
+            "E120",
+            "E121",
+            "E099",
+            "JOIN",
+            "ASM",
+            "QC"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E096.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/smallpress/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/smallpress/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E096.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            0.8500000238418579,
+            1.540000002235174,
+            0.6499999761581421
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "단순 소형 프레스이며 안전 가드·트리밍 치구 없음"
+        }
+      ],
+      "reason": "E001의 명칭/용도는 트리밍이나 대표 이미지의 가드형 프레스와 외형 차이가 있고, E001 렌더는 별도 펀칭 프레스 이미지와 더 유사하다. 이름으로 자동 연결하지 않는다."
+    },
+    {
+      "Equipment ID": "cooling_unit",
+      "Equipment Name": "Cooling Equipment",
+      "Asset ID": null,
+      "Asset Name": null,
+      "USD Path": null,
+      "Match": "BLOCKED",
+      "Connection": "UNASSIGNED",
+      "Accuracy": "UNKNOWN",
+      "Evidence": "기존 근거에서 직접 연결 불가로 판정",
+      "Generated Conceptual": false,
+      "Alternatives": [
+        {
+          "assetId": "E006",
+          "name": "냉각장치",
+          "englishName": "Cooling Unit",
+          "purpose": "설비 냉각 공급; 순환 유량·온도 제어·환수 경로 필요",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "COOLING",
+            "E054",
+            "E073",
+            "E193",
+            "E201",
+            "E225",
+            "E226",
+            "PRE",
+            "MAC",
+            "FOR",
+            "JOIN",
+            "ASM",
+            "SAFE"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E006.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-watercooler-pbr-v2/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-watercooler-pbr-v2/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E006.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            1.788996696472168,
+            2.749622993171215,
+            3.545073986053467
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REVIEW",
+          "reason": "용도/대상 및 형상 불일치 검토"
+        },
+        {
+          "assetId": "E073",
+          "name": "냉각수 펌프 유닛",
+          "englishName": "Coolant Pump Unit",
+          "purpose": "냉각수 이송 펌프; 탱크·열교환·환수와 연결",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "COOLING",
+            "E054",
+            "E193",
+            "E201",
+            "E225",
+            "E226",
+            "PRE",
+            "MAC",
+            "FOR",
+            "JOIN",
+            "ASM",
+            "SAFE"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E073.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-process-modules-20260909-v1/coolantpump/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-process-modules-20260909-v1/coolantpump/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E073.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            1.5,
+            0.9300000067055225,
+            0.6499999761581421
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "COMPONENT_ONLY",
+          "reason": "순환 펌프만으로 냉각 설비 전체 대체 불가"
+        },
+        {
+          "assetId": "E193",
+          "name": "판형 열교환기",
+          "englishName": "Plate Heat Exchanger",
+          "purpose": "열교환·진공 생성; 냉각장치 및 진공 말단과 연결",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "UTILITYNETWORK",
+            "E054",
+            "E073",
+            "E201",
+            "E225",
+            "E226",
+            "PRE",
+            "MAC",
+            "FOR",
+            "JOIN",
+            "ASM",
+            "SAFE"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E193.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C071/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C071/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E193.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            0.8999999761581421,
+            1.4250000137090684,
+            0.9450000037252902
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "COMPONENT_ONLY",
+          "reason": "열교환기 단품"
+        }
+      ],
+      "reason": "E006 이름은 냉각장치지만 원장 이미지의 캐비닛/그릴/조작면과 렌더의 개방 탱크·상부 구조가 다르다. 동일 설비 증거가 부족하다."
+    },
+    {
+      "Equipment ID": "robot_panel",
+      "Equipment Name": "Robot Controller Cabinet",
+      "Asset ID": null,
+      "Asset Name": null,
+      "USD Path": null,
+      "Match": "NO_MATCH",
+      "Connection": "UNASSIGNED",
+      "Accuracy": "UNKNOWN",
+      "Evidence": "기존 근거에서 직접 연결 불가로 판정",
+      "Generated Conceptual": false,
+      "Alternatives": [
+        {
+          "assetId": "E094",
+          "name": "케이블 분전함",
+          "englishName": "Cable Distribution Box",
+          "purpose": "전원 배선 분배 외함; 차단·단자·접지 하위 구성 필요",
+          "kind": "모듈",
+          "processConnections": [
+            "CONTROL",
+            "E119",
+            "E234",
+            "E240",
+            "N161",
+            "N163",
+            "RCV",
+            "MOV",
+            "PRE",
+            "MAC",
+            "FOR",
+            "JOIN",
+            "ASM",
+            "QC",
+            "PACK",
+            "SHIP"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E094.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/junctionbox/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/junctionbox/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E094.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            0.44999998807907104,
+            0.550000011920929,
+            0.26249999951571223
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "전원 분배함이며 로봇 제어반 아님"
+        },
+        {
+          "assetId": "A295",
+          "name": "모터 제어센터",
+          "englishName": "Motor control center",
+          "purpose": "다수 모터의 전력 개폐 보호",
+          "kind": "완제품 설비/장비",
+          "processConnections": {
+            "process": "전력 배전",
+            "upstream": "수전",
+            "downstream": "설비 전원",
+            "relatedExisting": [
+              {
+                "id": "E094",
+                "name": "케이블 분전함"
+              },
+              {
+                "id": "E199",
+                "name": "무정전 전원장치 UPS"
+              },
+              {
+                "id": "E200",
+                "name": "비상 발전기"
+              },
+              {
+                "id": "E201",
+                "name": "변압기"
+              }
+            ],
+            "status": "설계상 연결 후보 · 포트 규격/실제 연결 미검증"
+          },
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/A295.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-bulk-coverage-v1/catalog-configurations.usda",
+          "sourcePrim": "/Catalog/A295",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-bulk-coverage-v1/base-cabinet.usda",
+          "variant": {
+            ".": {
+              "structure": "v04"
+            }
+          },
+          "baseMembers": 16,
+          "image": "../visual-catalog/images/A295.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            1.2000000476837156,
+            2.0999999046325697,
+            0.6499999946677593
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "모터 MCC이며 로봇 제어기와 다름"
+        },
+        {
+          "assetId": "E119",
+          "name": "작업자 조작 콘솔",
+          "englishName": "Operator Console",
+          "purpose": "사용자 조작 외형; HMI 화면·권한·입출력 매핑 필요",
+          "kind": "모듈",
+          "processConnections": [
+            "CONTROL",
+            "E234",
+            "E240",
+            "N161",
+            "N163",
+            "RCV",
+            "MOV",
+            "PRE",
+            "MAC",
+            "FOR",
+            "JOIN",
+            "ASM",
+            "QC",
+            "PACK",
+            "SHIP"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E119.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-operator-console-20260909-v1/operatorconsole/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-operator-console-20260909-v1/operatorconsole/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E119.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            0.6200000047683716,
+            1.4900000032782554,
+            0.5
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "COMPONENT_ONLY",
+          "reason": "작업자 조작 콘솔만 지원"
+        }
+      ],
+      "reason": "복수 로봇 제어반에 맞는 독립 조립체가 724종에 없다. 일반 분전함과 모터 제어센터는 제어 역할이 다르다."
+    },
+    {
+      "Equipment ID": "spray_ladler",
+      "Equipment Name": "Spray Robot and Ladler Group",
+      "Asset ID": null,
+      "Asset Name": null,
+      "USD Path": null,
+      "Match": "BLOCKED",
+      "Connection": "UNASSIGNED",
+      "Accuracy": "UNKNOWN",
+      "Evidence": "기존 근거에서 직접 연결 불가로 판정",
+      "Generated Conceptual": false,
+      "Alternatives": [
+        {
+          "assetId": "E003",
+          "name": "세척/스프레이 로봇",
+          "englishName": "Cleaning and Spray Robot",
+          "purpose": "금형 이형제 도포·세척 역할; 금형 개방 상태와 인터록 필요",
+          "kind": "모듈",
+          "processConnections": [
+            "CASTING",
+            "E005",
+            "E012",
+            "N101",
+            "N076",
+            "PRE",
+            "MAC",
+            "QC"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E003.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/clearRobot/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/clearRobot/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E003.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            1.140486049551056,
+            2.6982798012433347,
+            2.2384384112877105
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "PARTIAL_ROLE",
+          "reason": "분사 로봇 부분만 대응"
+        },
+        {
+          "assetId": "E002",
+          "name": "주탕 로봇",
+          "englishName": "Pouring Robot",
+          "purpose": "용탕 주입 로봇 셀; 용탕 공급·주조기와 인터페이스 필요",
+          "kind": "모듈",
+          "processConnections": [
+            "CASTING",
+            "E005",
+            "E012",
+            "N101",
+            "N076",
+            "PRE",
+            "MAC",
+            "QC"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E002.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/pourrobot/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/pourrobot/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E002.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            1.8241724533600596,
+            4.819999933242798,
+            2.3822307334244908
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "PARTIAL_ROLE",
+          "reason": "용탕 주입 부분만 대응"
+        }
+      ],
+      "reason": "원장이 스프레이/래들을 한 코드로 묶었다. E003와 E002는 각각 후보이나 전체 셀 배치·상호 간섭·두 역할 분리 근거 없이 한 USD로 확정할 수 없다."
+    },
+    {
+      "Equipment ID": "release_agent",
+      "Equipment Name": "Release Agent Supply Unit",
+      "Asset ID": null,
+      "Asset Name": null,
+      "USD Path": null,
+      "Match": "NO_MATCH",
+      "Connection": "UNASSIGNED",
+      "Accuracy": "UNKNOWN",
+      "Evidence": "기존 근거에서 직접 연결 불가로 판정",
+      "Generated Conceptual": false,
+      "Alternatives": [
+        {
+          "assetId": "E192",
+          "name": "액상 정량 공급 스키드",
+          "englishName": "Liquid Metering Skid",
+          "purpose": "분체·벌크백·액상 공급의 매체별 모듈; 용량·계량·밸브 필요",
+          "kind": "모듈",
+          "processConnections": [
+            "FEED",
+            "E074",
+            "E097",
+            "E098",
+            "E144",
+            "E188",
+            "MAC",
+            "FOR",
+            "JOIN",
+            "ASM"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E192.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C070/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C070/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E192.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            2.0400000005960464,
+            1.2350000214311954,
+            1.058500000461936
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "COMPONENT_ONLY",
+          "reason": "범용 액상 정량 공급 구조; 압송 방식·형상 추가 설계 필요"
+        },
+        {
+          "assetId": "E146",
+          "name": "접착제 도포기",
+          "englishName": "Adhesive Dispensing Machine",
+          "purpose": "리벳·접착·초음파·스폿은 접합 대안; 제품별 선택",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "JOINCELL",
+            "E145",
+            "E147",
+            "E148",
+            "N081",
+            "ASM",
+            "QC"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E146.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C018/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C018/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E146.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            1.0,
+            1.6200000002980233,
+            0.699999988079071
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "접착제 도포이며 이형제 압송과 다름"
+        }
+      ],
+      "reason": "DAMP200 압송 장치 기록과 대표 형상에 직접 대응하는 독립 조립체가 없다. 액상 공급 스키드는 구성 후보이지 그대로 대응되는 장비가 아니다."
+    },
+    {
+      "Equipment ID": "main_panel",
+      "Equipment Name": "Cell Main Control Cabinet Group",
+      "Asset ID": null,
+      "Asset Name": null,
+      "USD Path": null,
+      "Match": "NO_MATCH",
+      "Connection": "UNASSIGNED",
+      "Accuracy": "UNKNOWN",
+      "Evidence": "기존 근거에서 직접 연결 불가로 판정",
+      "Generated Conceptual": false,
+      "Alternatives": [
+        {
+          "assetId": "A295",
+          "name": "모터 제어센터",
+          "englishName": "Motor control center",
+          "purpose": "다수 모터의 전력 개폐 보호",
+          "kind": "완제품 설비/장비",
+          "processConnections": {
+            "process": "전력 배전",
+            "upstream": "수전",
+            "downstream": "설비 전원",
+            "relatedExisting": [
+              {
+                "id": "E094",
+                "name": "케이블 분전함"
+              },
+              {
+                "id": "E199",
+                "name": "무정전 전원장치 UPS"
+              },
+              {
+                "id": "E200",
+                "name": "비상 발전기"
+              },
+              {
+                "id": "E201",
+                "name": "변압기"
+              }
+            ],
+            "status": "설계상 연결 후보 · 포트 규격/실제 연결 미검증"
+          },
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/A295.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-bulk-coverage-v1/catalog-configurations.usda",
+          "sourcePrim": "/Catalog/A295",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-bulk-coverage-v1/base-cabinet.usda",
+          "variant": {
+            ".": {
+              "structure": "v04"
+            }
+          },
+          "baseMembers": 16,
+          "image": "../visual-catalog/images/A295.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            1.2000000476837156,
+            2.0999999046325697,
+            0.6499999946677593
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "모터 전력 제어로 기능 범위가 제한됨"
+        },
+        {
+          "assetId": "E094",
+          "name": "케이블 분전함",
+          "englishName": "Cable Distribution Box",
+          "purpose": "전원 배선 분배 외함; 차단·단자·접지 하위 구성 필요",
+          "kind": "모듈",
+          "processConnections": [
+            "CONTROL",
+            "E119",
+            "E234",
+            "E240",
+            "N161",
+            "N163",
+            "RCV",
+            "MOV",
+            "PRE",
+            "MAC",
+            "FOR",
+            "JOIN",
+            "ASM",
+            "QC",
+            "PACK",
+            "SHIP"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E094.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/junctionbox/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/junctionbox/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E094.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            0.44999998807907104,
+            0.550000011920929,
+            0.26249999951571223
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "COMPONENT_ONLY",
+          "reason": "하위 전원 분배함"
+        },
+        {
+          "assetId": "N161",
+          "name": "PLC 본체",
+          "englishName": "PLC Unit",
+          "purpose": "현재 제어반 외형과 달리 시퀀스 실행 주체; PLC 모델·I/O 사양 필요",
+          "kind": "모듈",
+          "processConnections": [
+            "CONTROL",
+            "E119",
+            "E234",
+            "E240",
+            "N163",
+            "RCV",
+            "MOV",
+            "PRE",
+            "MAC",
+            "FOR",
+            "JOIN",
+            "ASM",
+            "QC",
+            "PACK",
+            "SHIP"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/N161.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+          "sourcePrim": "/Catalog/N161",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-base.usda",
+          "variant": {
+            ".": {
+              "form": "din"
+            }
+          },
+          "baseMembers": 20,
+          "image": "../visual-catalog/images/N161.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            0.18000000715255732,
+            0.14000000059604645,
+            0.11999999740719794
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "COMPONENT_ONLY",
+          "reason": "PLC 본체는 함체 묶음이 아님"
+        }
+      ],
+      "reason": "원장 이미지는 셀 주변 여러 전장함의 묶음이다. 개별 분전함/MCC를 전체 제어반으로 연결하면 제어 범위가 바뀐다."
+    },
+    {
+      "Equipment ID": "vacuum_unit",
+      "Equipment Name": "Vacuum Unit",
+      "Asset ID": "E194",
+      "Asset Name": "진공 펌프 패키지",
+      "USD Path": "/home/sjkim/OmniverseProjects/assets/catalog/E194.usda",
+      "Match": "REFERENCE_MATCH",
+      "Connection": "CONNECTED",
+      "Accuracy": "EXISTING_REVIEWED",
+      "Evidence": "기존 mapping.json의 검토 결과",
+      "Generated Conceptual": false,
+      "Alternatives": [
+        {
+          "assetId": "E006",
+          "name": "냉각장치",
+          "englishName": "Cooling Unit",
+          "purpose": "설비 냉각 공급; 순환 유량·온도 제어·환수 경로 필요",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "COOLING",
+            "E054",
+            "E073",
+            "E193",
+            "E201",
+            "E225",
+            "E226",
+            "PRE",
+            "MAC",
+            "FOR",
+            "JOIN",
+            "ASM",
+            "SAFE"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E006.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-watercooler-pbr-v2/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-watercooler-pbr-v2/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E006.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            1.788996696472168,
+            2.749622993171215,
+            3.545073986053467
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "냉각 기능이며 진공 생성 여부 근거 없음"
+        },
+        {
+          "assetId": "E163",
+          "name": "진공 포장기",
+          "englishName": "Vacuum Packaging Machine",
+          "purpose": "진공·충전·캡핑은 포장 품목별 대안 경로",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "PACKAGING",
+            "E124",
+            "N134",
+            "E083",
+            "E166",
+            "E084",
+            "FG",
+            "QC"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E163.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C039/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C039/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E163.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            1.0,
+            1.4121966530379164,
+            1.069103880001284
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "포장용 진공 처리 장비"
+        }
+      ],
+      "reason": "진공 생성 패키지라는 용도는 일치한다. E194는 펌프·모터 기준 형상으로 원장 캐비닛 전체와는 다르므로 기준 표현에만 연결한다."
+    },
+    {
+      "Equipment ID": "casting_filter",
+      "Equipment Name": "Casting Machine Filter (Medium Unknown)",
+      "Asset ID": null,
+      "Asset Name": null,
+      "USD Path": null,
+      "Match": "BLOCKED",
+      "Connection": "UNASSIGNED",
+      "Accuracy": "UNKNOWN",
+      "Evidence": "기존 근거에서 직접 연결 불가로 판정",
+      "Generated Conceptual": false,
+      "Alternatives": [
+        {
+          "assetId": "N098",
+          "name": "용탕 여과 장치",
+          "englishName": "Molten Metal Filtration Unit",
+          "purpose": "용탕 내 개재물 여과; 탈가스·이송과 연결",
+          "kind": "모듈",
+          "processConnections": [
+            "CASTING",
+            "E005",
+            "E012",
+            "N101",
+            "N076",
+            "PRE",
+            "MAC",
+            "QC"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/N098.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-coverage666-v1/catalog-configurations.usda",
+          "sourcePrim": "/Catalog/N098",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-coverage666-v1/base-separator.usda",
+          "variant": {
+            ".": {
+              "structure": "v000"
+            },
+            "Shape/shared_cabinet_2": {
+              "structure": "v04"
+            }
+          },
+          "baseMembers": 18,
+          "image": "../visual-catalog/images/N098.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            1.3200000734329216,
+            1.3200000818528628,
+            0.9599999988873783
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REVIEW",
+          "reason": "용탕 여과일 경우에만 검토; 지금 연결 금지"
+        },
+        {
+          "assetId": "A280",
+          "name": "유압 오일 정화 카트",
+          "englishName": "Hydraulic oil purification cart",
+          "purpose": "오일 수분과 입자 제거",
+          "kind": "완제품 설비/장비",
+          "processConnections": {
+            "process": "유압 시스템 지원",
+            "upstream": "유압 공급",
+            "downstream": "유압 작동",
+            "relatedExisting": [
+              {
+                "id": "E182",
+                "name": "유압 파워 유닛"
+              },
+              {
+                "id": "N185",
+                "name": "유압 실린더"
+              }
+            ],
+            "status": "설계상 연결 후보 · 포트 규격/실제 연결 미검증"
+          },
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/A280.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-bulk-coverage-v1/catalog-configurations.usda",
+          "sourcePrim": "/Catalog/A280",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-bulk-coverage-v1/base-fluid.usda",
+          "variant": {
+            ".": {
+              "structure": "v01"
+            }
+          },
+          "baseMembers": 36,
+          "image": "../visual-catalog/images/A280.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            3.2000000867611003,
+            2.2000001165390564,
+            1.799999952316283
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REVIEW",
+          "reason": "유압 오일 정화일 경우에만 검토"
+        },
+        {
+          "assetId": "E197",
+          "name": "수처리 여과 스키드",
+          "englishName": "Water Filtration Skid",
+          "purpose": "용수 여과; 폐수 중화와 처리 목적 구분",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "WATER",
+            "E054",
+            "E073",
+            "E193",
+            "E201",
+            "E225",
+            "E226",
+            "PRE",
+            "MAC",
+            "FOR",
+            "JOIN",
+            "ASM",
+            "SAFE"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E197.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C075/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C075/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E197.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            2.0400000005960464,
+            1.6350000214311953,
+            1.058500000461936
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REVIEW",
+          "reason": "용수 여과일 경우에만 검토"
+        }
+      ],
+      "reason": "사진에 하부 모터/배관과 보조 구조가 보이지만 유압유·냉각수·용탕 중 어느 매체인지 불명확하다. N098 용탕 여과로 추정 연결하지 않는다."
+    },
+    {
+      "Equipment ID": "melting_furnace",
+      "Equipment Name": "Melting Furnace",
+      "Asset ID": "E005",
+      "Asset Name": "용해로/가열로",
+      "USD Path": "/home/sjkim/OmniverseProjects/assets/catalog/E005.usda",
+      "Match": "CLOSE_MATCH",
+      "Connection": "CONNECTED",
+      "Accuracy": "EXISTING_REVIEWED",
+      "Evidence": "기존 mapping.json의 검토 결과",
+      "Generated Conceptual": false,
+      "Alternatives": [
+        {
+          "assetId": "A117",
+          "name": "빌릿 유도가열기",
+          "englishName": "Billet induction heater",
+          "purpose": "단조 전 빌릿 온도 상승",
+          "kind": "완제품 설비/장비",
+          "processConnections": {
+            "process": "주조 전후처리",
+            "upstream": "금속 원료",
+            "downstream": "후처리",
+            "relatedExisting": [
+              {
+                "id": "E001",
+                "name": "트리밍 장비"
+              },
+              {
+                "id": "E002",
+                "name": "주탕 로봇"
+              },
+              {
+                "id": "E003",
+                "name": "세척/스프레이 로봇"
+              },
+              {
+                "id": "E004",
+                "name": "취출 로봇"
+              },
+              {
+                "id": "E005",
+                "name": "용해로/가열로"
+              },
+              {
+                "id": "N097",
+                "name": "용탕 탈가스 장치"
+              }
+            ],
+            "status": "설계상 연결 후보 · 포트 규격/실제 연결 미검증"
+          },
+          "entryUsd": null,
+          "sourceUsd": null,
+          "sourcePrim": null,
+          "baseUsd": null,
+          "variant": {},
+          "baseMembers": null,
+          "image": null,
+          "usdConnected": false,
+          "modelXYZMeters": null,
+          "geometryState": "BLOCKED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "빌릿 유도가열로 용탕 생성 로체와 다름"
+        },
+        {
+          "assetId": "N091",
+          "name": "소둔로",
+          "englishName": "Annealing Furnace",
+          "purpose": "소둔 열처리 분기; 분위기·온도 레시피가 핵심",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "HEATTREAT",
+            "E074",
+            "E097",
+            "E098",
+            "E144",
+            "E188",
+            "MAC",
+            "FOR",
+            "JOIN",
+            "ASM"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/N091.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-bulk-coverage-v1/catalog-configurations.usda",
+          "sourcePrim": "/Catalog/N091",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-bulk-coverage-v1/base-chamber.usda",
+          "variant": {
+            ".": {
+              "structure": "v00"
+            }
+          },
+          "baseMembers": 14,
+          "image": "../visual-catalog/images/N091.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            1.7999999523162837,
+            2.0000000571662695,
+            1.5000000242460656
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "소둔 열처리로"
+        }
+      ],
+      "reason": "원장 이미지와 E005 모두 대형 로체·승강 구조·상부 덕트·작업 발판이 확인된다. 도면 기록과 모델 치수/부속 배치가 달라 직접 일치로 승격하지 않는다."
+    },
+    {
+      "Equipment ID": "takeout_robot",
+      "Equipment Name": "Casting Extraction Robot",
+      "Asset ID": "E004",
+      "Asset Name": "취출 로봇",
+      "USD Path": "/home/sjkim/OmniverseProjects/assets/catalog/E004.usda",
+      "Match": "CLOSE_MATCH",
+      "Connection": "CONNECTED",
+      "Accuracy": "EXISTING_REVIEWED",
+      "Evidence": "기존 mapping.json의 검토 결과",
+      "Generated Conceptual": false,
+      "Alternatives": [
+        {
+          "assetId": "E003",
+          "name": "세척/스프레이 로봇",
+          "englishName": "Cleaning and Spray Robot",
+          "purpose": "금형 이형제 도포·세척 역할; 금형 개방 상태와 인터록 필요",
+          "kind": "모듈",
+          "processConnections": [
+            "CASTING",
+            "E005",
+            "E012",
+            "N101",
+            "N076",
+            "PRE",
+            "MAC",
+            "QC"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E003.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/clearRobot/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/clearRobot/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E003.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            1.140486049551056,
+            2.6982798012433347,
+            2.2384384112877105
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "분사 말단과 분사 역할이며 취출용으로 자동 교환 불가"
+        },
+        {
+          "assetId": "N143",
+          "name": "직교 좌표 로봇",
+          "englishName": "Cartesian Robot",
+          "purpose": "직교 축 기반 이송 로봇; 레일·리니어축 조합으로 구성",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "ROBOT",
+            "E034",
+            "E037",
+            "E047",
+            "E125",
+            "PRE",
+            "MAC",
+            "FOR",
+            "ASM",
+            "PACK"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/N143.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-coverage666-v1/catalog-configurations.usda",
+          "sourcePrim": "/Catalog/N143",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-coverage666-v1/base-robot.usda",
+          "variant": {
+            ".": {
+              "structure": "v002"
+            }
+          },
+          "baseMembers": 7,
+          "image": "../visual-catalog/images/N143.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            2.5000000397364275,
+            2.4999999072569525,
+            2.0000000423855226
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "직교 로봇으로 관절 구조가 다름"
+        }
+      ],
+      "reason": "원장과 E004에 다관절 로봇 팔 및 취출 역할이 대응한다. 원장에는 높은 지지 프레임이 있고 E004 렌더에는 낮은 베이스/다른 말단 자세가 있어 수정이 필요하다."
+    },
+    {
+      "Equipment ID": "punching_press",
+      "Equipment Name": "Punching Press",
+      "Asset ID": "E001",
+      "Asset Name": "트리밍 장비",
+      "USD Path": "/home/sjkim/OmniverseProjects/assets/catalog/E001.usda",
+      "Match": "CLOSE_MATCH",
+      "Connection": "CONNECTED",
+      "Accuracy": "EXISTING_REVIEWED",
+      "Evidence": "기존 mapping.json의 검토 결과",
+      "Generated Conceptual": false,
+      "Alternatives": [
+        {
+          "assetId": "E096",
+          "name": "소형 프레스",
+          "englishName": "Small Press",
+          "purpose": "드릴 가공·프레스 작업; 치구·가드·공정 조건 필요",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "MACHINING",
+            "E120",
+            "E121",
+            "E099",
+            "JOIN",
+            "ASM",
+            "QC"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E096.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/smallpress/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/smallpress/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E096.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            0.8500000238418579,
+            1.540000002235174,
+            0.6499999761581421
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REFERENCE_ONLY",
+          "reason": "소형 범용 프레스이므로 규모·프레임/치구 차이가 큼"
+        },
+        {
+          "assetId": "A085",
+          "name": "터릿 펀칭기",
+          "englishName": "Turret punch press",
+          "purpose": "다공 판재를 금형 선택 타발",
+          "kind": "완제품 설비/장비",
+          "processConnections": {
+            "process": "판재 성형",
+            "upstream": "코일 준비",
+            "downstream": "접합",
+            "relatedExisting": [
+              {
+                "id": "E096",
+                "name": "소형 프레스"
+              },
+              {
+                "id": "E135",
+                "name": "판재 절곡기"
+              },
+              {
+                "id": "E136",
+                "name": "판재 전단기"
+              },
+              {
+                "id": "E141",
+                "name": "파이프 벤딩기"
+              },
+              {
+                "id": "E188",
+                "name": "코일 언코일러"
+              },
+              {
+                "id": "N071",
+                "name": "판재 롤벤딩기"
+              }
+            ],
+            "status": "설계상 연결 후보 · 포트 규격/실제 연결 미검증"
+          },
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/A085.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-coverage666-v1/catalog-configurations.usda",
+          "sourcePrim": "/Catalog/A085",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-coverage666-v1/base-press.usda",
+          "variant": {
+            ".": {
+              "structure": "v003"
+            },
+            "Shape/shared_cabinet_2": {
+              "structure": "v04"
+            }
+          },
+          "baseMembers": 14,
+          "image": "../visual-catalog/images/A085.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            2.400000133514403,
+            3.0000000004078213,
+            1.7999999523162844
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "판재 터릿 펀칭기로 기구와 작업물 흐름이 다름"
+        }
+      ],
+      "reason": "이름만 보면 트리밍 E001이나 대표 이미지와 비교하면 수직 실린더·다주 가이드·가공 테이블·하부 프레임이 펀칭 프레스와 더 유사하다. 명칭 충돌은 그대로 경고하며 수정 전 확정하지 않는다."
+    },
+    {
+      "Equipment ID": "ladler",
+      "Equipment Name": "Automatic Ladler",
+      "Asset ID": "E002",
+      "Asset Name": "주탕 로봇",
+      "USD Path": "/home/sjkim/OmniverseProjects/assets/catalog/E002.usda",
+      "Match": "REFERENCE_MATCH",
+      "Connection": "CONNECTED",
+      "Accuracy": "EXISTING_REVIEWED",
+      "Evidence": "기존 mapping.json의 검토 결과",
+      "Generated Conceptual": false,
+      "Alternatives": [
+        {
+          "assetId": "E003",
+          "name": "세척/스프레이 로봇",
+          "englishName": "Cleaning and Spray Robot",
+          "purpose": "금형 이형제 도포·세척 역할; 금형 개방 상태와 인터록 필요",
+          "kind": "모듈",
+          "processConnections": [
+            "CASTING",
+            "E005",
+            "E012",
+            "N101",
+            "N076",
+            "PRE",
+            "MAC",
+            "QC"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E003.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/clearRobot/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/clearRobot/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E003.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            1.140486049551056,
+            2.6982798012433347,
+            2.2384384112877105
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "분사 로봇으로 용탕 운반 역할이 아님"
+        },
+        {
+          "assetId": "N143",
+          "name": "직교 좌표 로봇",
+          "englishName": "Cartesian Robot",
+          "purpose": "직교 축 기반 이송 로봇; 레일·리니어축 조합으로 구성",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "ROBOT",
+            "E034",
+            "E037",
+            "E047",
+            "E125",
+            "PRE",
+            "MAC",
+            "FOR",
+            "ASM",
+            "PACK"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/N143.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-coverage666-v1/catalog-configurations.usda",
+          "sourcePrim": "/Catalog/N143",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-coverage666-v1/base-robot.usda",
+          "variant": {
+            ".": {
+              "structure": "v002"
+            }
+          },
+          "baseMembers": 7,
+          "image": "../visual-catalog/images/N143.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            2.5000000397364275,
+            2.4999999072569525,
+            2.0000000423855226
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "일반 직교 이송 로봇으로 주탕 도구 없음"
+        }
+      ],
+      "reason": "고정 기둥·주입 구동부의 구조와 주탕 역할은 대응한다. 대표 이미지의 노란/주황 기구와 E002 흰 외함·말단 형상 및 치수는 달라 기준 표현으로 한정한다."
+    },
+    {
+      "Equipment ID": "mold_cooling",
+      "Equipment Name": "High Pressure Mold Cooling Unit",
+      "Asset ID": null,
+      "Asset Name": null,
+      "USD Path": null,
+      "Match": "BLOCKED",
+      "Connection": "UNASSIGNED",
+      "Accuracy": "UNKNOWN",
+      "Evidence": "기존 근거에서 직접 연결 불가로 판정",
+      "Generated Conceptual": false,
+      "Alternatives": [
+        {
+          "assetId": "N109",
+          "name": "금형 온도 조절기",
+          "englishName": "Mold Temperature Controller",
+          "purpose": "금형 순환 온도 제어; 전체 냉각장치와 제어 목적 다름",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "MOLD",
+            "E054",
+            "E073",
+            "E193",
+            "E201",
+            "E225",
+            "E226",
+            "PRE",
+            "MAC",
+            "FOR",
+            "JOIN",
+            "ASM",
+            "SAFE"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/N109.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-coverage666-v1/catalog-configurations.usda",
+          "sourcePrim": "/Catalog/N109",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-coverage666-v1/base-fluidmodule.usda",
+          "variant": {
+            ".": {
+              "structure": "v000"
+            },
+            "Shape/shared_fluid_1": {
+              "structure": "v00"
+            },
+            "Shape/shared_cabinet_2": {
+              "structure": "v04"
+            }
+          },
+          "baseMembers": 14,
+          "image": "../visual-catalog/images/N109.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            1.6000000492731716,
+            1.6000000710236397,
+            1.100000056624412
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REVIEW",
+          "reason": "순환 온도제어와 고압 냉각의 기구/압력 차이"
+        },
+        {
+          "assetId": "E006",
+          "name": "냉각장치",
+          "englishName": "Cooling Unit",
+          "purpose": "설비 냉각 공급; 순환 유량·온도 제어·환수 경로 필요",
+          "kind": "완제품 설비",
+          "processConnections": [
+            "COOLING",
+            "E054",
+            "E073",
+            "E193",
+            "E201",
+            "E225",
+            "E226",
+            "PRE",
+            "MAC",
+            "FOR",
+            "JOIN",
+            "ASM",
+            "SAFE"
+          ],
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E006.usda",
+          "sourceUsd": "/home/sjkim/OmniverseProjects/p006-watercooler-pbr-v2/asset.usda",
+          "sourcePrim": "/Product",
+          "baseUsd": "/home/sjkim/OmniverseProjects/p006-watercooler-pbr-v2/asset.usda",
+          "variant": {},
+          "baseMembers": 1,
+          "image": "../visual-catalog/images/E006.png",
+          "usdConnected": true,
+          "modelXYZMeters": [
+            1.788996696472168,
+            2.749622993171215,
+            3.545073986053467
+          ],
+          "geometryState": "USD_CONNECTED",
+          "qualificationInherited": false,
+          "candidateState": "REJECTED",
+          "reason": "일반 냉각장치이며 고압 회로 증거 없음"
+        }
+      ],
+      "reason": "N109는 순환 금형 온도조절 기준 형상이며 고압 냉각 방식/압력/포트를 입증하지 않는다. 이름의 금형·냉각만으로 같은 장비로 연결하지 않는다."
+    }
+  ],
+  "sources": {
+    "mapping": "/opt/Resonance/projects/P006/frontend/equipment-asset-mapping/mapping.json",
+    "equipmentLedger": "/opt/Resonance/projects/P006/frontend/equipment-master.json",
+    "entries": "/opt/Resonance/projects/P006/frontend/entry-catalog/entries.json",
+    "canonical": "/opt/Resonance/projects/P006/frontend/catalog-expansion700/independent-catalog.json"
+  }
+}

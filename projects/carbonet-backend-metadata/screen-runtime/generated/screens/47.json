@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 47,
+  "blueprintCode": "BP_ADOPT_9B7CDE24ABC43B0BAB99",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_9B7CDE24ABC43B0BAB99"
+  },
+  "route": "/admin/external/logs",
+  "pageName": "외부 연계 로그",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1120133",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "15c29df1b818143da6b6f1ec68fb700713371c2e79411ce403b49d97d6087b24",
+  "artifactHash": "df473fbac02a2b8a1edd99becb04843b42c657f91c3ecf2aa3b0bd0a0e320927"
+}

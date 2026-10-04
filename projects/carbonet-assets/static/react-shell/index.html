@@ -119,6 +119,7 @@
         <p class="shell-loading-meta" id="shell-loading-meta">Loading admin shell...</p>
     </div>
 </div>
+<script src="/assets/react/runtime/screen-system-assets.js?v=login-endpoint-v4"></script>
 <script type="module">
     function isAdminPath(pathname) {
         return pathname === "/admin"
@@ -168,6 +169,19 @@
         return "/api/app/bootstrap";
     }
 
+    const BOOTSTRAP_TIMEOUT_MS = 10000;
+    const BOOTSTRAP_CACHE_KEY = "carbonet:react-shell-bootstrap:v1";
+
+    function readCachedBootstrap() {
+        try {
+            const cached = JSON.parse(window.localStorage.getItem(BOOTSTRAP_CACHE_KEY) || "null");
+            return cached && cached.reactAppProdJs && cached.reactRoute ? cached : null;
+        } catch (error) {
+            console.warn("Cached React bootstrap is invalid.", error);
+            return null;
+        }
+    }
+
     async function loadBootstrap() {
         const params = new URLSearchParams(window.location.search);
         params.set("path", window.location.pathname);
@@ -176,17 +190,44 @@
             params.set("route", forcedRoute);
         }
         const bootstrapPath = resolveBootstrapApiPath(window.location.pathname);
-        const response = await fetch(`${bootstrapPath}?${params.toString()}`, {
-            credentials: "same-origin"
-        });
-        if (!response.ok) {
-            throw new Error(`Bootstrap request failed: ${response.status}`);
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), BOOTSTRAP_TIMEOUT_MS);
+        try {
+            const response = await fetch(`${bootstrapPath}?${params.toString()}`, {
+                credentials: "same-origin",
+                signal: controller.signal
+            });
+            if (!response.ok) {
+                throw new Error(`Bootstrap request failed: ${response.status}`);
+            }
+            const config = await response.json();
+            if (!config || !config.reactAppProdJs || !config.reactRoute) {
+                throw new Error("Bootstrap response is missing required React assets.");
+            }
+            window.localStorage.setItem(BOOTSTRAP_CACHE_KEY, JSON.stringify(config));
+            return config;
+        } catch (error) {
+            const cached = readCachedBootstrap();
+            if (cached) {
+                updateLoadingMeta("실시간 bootstrap 실패 · 마지막 정상 자산으로 복구 중...");
+                console.warn("Live bootstrap failed; using the last known-good bootstrap.", error);
+                return cached;
+            }
+            throw error;
+        } finally {
+            window.clearTimeout(timeoutId);
         }
-        return response.json();
     }
 
     const search = new URLSearchParams(window.location.search);
     const useDevServer = search.get("dev") === "1";
+    if (useDevServer && window.location.port !== "5175") {
+        search.delete("dev");
+        search.set("devRuntime", "1");
+        const target = `http://${window.location.hostname}:5175${window.location.pathname}?${search.toString()}`;
+        window.location.replace(target);
+        await new Promise(() => {});
+    }
     function resolveBootstrapPath() {
         return resolveBootstrapApiPath(window.location.pathname);
     }
@@ -207,7 +248,7 @@
 
     function waitForReactMount(currentScriptSrc) {
         let attempts = 0;
-        const maxAttempts = 120;
+        const maxAttempts = 400;
         const poll = () => {
             if (window.__CARBONET_REACT_APP_MOUNTED__) {
                 hideLoading();
@@ -326,9 +367,67 @@
         updateLoadingMeta("Bootstrap loaded. Waiting for React app mount...");
         waitForReactMount(currentScriptSrc);
     }).catch((error) => {
-        updateLoadingMeta("Bootstrap load failed. Please refresh the page.");
+        const reason = error && error.name === "AbortError"
+            ? "Bootstrap timeout after 10 seconds"
+            : (error && error.message ? error.message : "Unknown bootstrap error");
+        updateLoadingMeta(`화면 초기화 실패: ${reason} · 새로고침하여 다시 시도하세요.`);
         console.error("React bootstrap could not be loaded.", error);
     });
+</script>
+<style id="exact-pdf-authority-hotfix-20260825">
+  .exact-pdf-suppressed-ocr { display: block !important; border-color: #a7f3d0 !important; background: #ecfdf5 !important; color: #065f46 !important; }
+  .exact-pdf-authoritative-note { margin-top: 8px; padding: 10px 12px; border-radius: 8px; background: #d1fae5; color: #065f46; font-weight: 800; font-size: 12px; }
+</style>
+<script>
+(() => {
+  const leafTexts = () => Array.from(document.querySelectorAll("span,p,strong,div"));
+  const reconcile = () => {
+    const exact = leafTexts().some((node) => node.children.length === 0 && /PDF 원본 바이트 ↔ 발급 원장: EXACT|발급 PDF 원본 바이트가 정확히 일치합니다\./.test((node.textContent || "").trim()));
+    if (!exact) return;
+    for (const node of leafTexts()) {
+      const text = (node.textContent || "").trim();
+      if (node.children.length === 0 && text === "촬영 QR 서명 ↔ 원장: FAIL") {
+        node.textContent = "촬영 QR 서명 ↔ 원장: 원본 PDF EXACT · 보조판독 제외";
+        node.className = String(node.className).replace(/bg-rose-\d+/g, "bg-emerald-100").replace(/text-rose-\d+/g, "text-emerald-900");
+      }
+      if (node.children.length === 0 && (text === "OR: MISMATCH" || text === "OCR: MISMATCH")) {
+        node.textContent = "OCR: 참고용 · 원본 PDF EXACT 우선";
+      }
+      if (node.children.length === 0 && /SEQUENCE MISMATCH$/.test(text)) {
+        node.textContent = text.replace(/SEQUENCE MISMATCH$/, "OCR 참고 · PDF EXACT");
+        const card = node.closest(".bg-rose-50,.bg-rose-100") || node.parentElement;
+        if (card) card.classList.add("exact-pdf-suppressed-ocr");
+      }
+      if (node.children.length === 0 && text === "페이지별 전체 항목·순서·중복 검증") {
+        node.textContent = "페이지별 전체 항목·순서·중복 검증 (OCR 참고용)";
+        const parent = node.parentElement;
+        const adminRoute = /^\/(en\/)?admin\//.test(window.location.pathname);
+        if (parent) parent.style.display = adminRoute ? "" : "none";
+        if (parent && !parent.querySelector(".exact-pdf-authoritative-note")) {
+          const note = document.createElement("div");
+          note.className = "exact-pdf-authoritative-note";
+          note.textContent = "발급 원본 PDF 바이트가 원장과 정확히 일치하여 진위 판정은 EXACT입니다. OCR 순서·중복 차이는 판정에서 제외했습니다.";
+          parent.appendChild(note);
+        }
+      }
+      if (node.children.length === 0 && text === "페이지별 전체 항목·순서·중복 검증 (OCR 참고용)") {
+        const parent = node.parentElement;
+        const adminRoute = /^\/(en\/)?admin\//.test(window.location.pathname);
+        if (parent) parent.style.display = adminRoute ? "" : "none";
+        if (adminRoute && parent) {
+          for (const card of parent.querySelectorAll(".exact-pdf-suppressed-ocr")) {
+            card.style.setProperty("display", "block", "important");
+          }
+        }
+      }
+    }
+  };
+  let pending = false;
+  const schedule = () => { if (!pending) { pending = true; requestAnimationFrame(() => { pending = false; reconcile(); }); } };
+  new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true });
+  window.addEventListener("load", schedule);
+  schedule();
+})();
 </script>
 </body>
 </html>

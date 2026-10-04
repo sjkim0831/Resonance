@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -466,7 +467,7 @@ export function IpWhitelistMigrationPage() {
             title={en ? "Allowlist Search" : "허용 정책 조회"}
             meta={en ? "Filter by IP, scope, and workflow status." : "IP, 접근 범위, 상태 기준으로 허용 정책을 조회합니다."}
           />
-          <form className="grid grid-cols-1 gap-4 px-6 py-6 md:grid-cols-4" onSubmit={(event) => {
+          <form className="ccus-search-host" onSubmit={(event) => {
             event.preventDefault();
             logGovernanceScope("ACTION", "ip-whitelist-search", {
               searchIp: draft.searchIp,
@@ -474,12 +475,19 @@ export function IpWhitelistMigrationPage() {
               status: draft.status
             });
             setFilters(draft);
-          }}>
-            <div>
+          }}><CommonSearchSection basic={<><div className="ccus-search-field"><div>
+              <label className="gov-label" htmlFor="status">{en ? "Status" : "상태"}</label>
+              <AdminSelect id="status" value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))}>
+                <option value="">{en ? "All" : "전체"}</option>
+                <option value="ACTIVE">{en ? "Active" : "활성"}</option>
+                <option value="PENDING">{en ? "Pending" : "검토중"}</option>
+                <option value="INACTIVE">{en ? "Inactive" : "비활성"}</option>
+              </AdminSelect>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="gov-label" htmlFor="searchIp">{en ? "IP or Description" : "IP 또는 설명"}</label>
               <AdminInput id="searchIp" placeholder={en ? "e.g., 203.248 or operations center" : "예: 203.248 또는 운영센터"} value={draft.searchIp} onChange={(event) => setDraft((current) => ({ ...current, searchIp: event.target.value }))} />
-            </div>
-            <div>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <label className="gov-label" htmlFor="accessScope">{en ? "Access Scope" : "접근 범위"}</label>
               <AdminSelect id="accessScope" value={draft.accessScope} onChange={(event) => setDraft((current) => ({ ...current, accessScope: event.target.value }))}>
                 <option value="">{en ? "All" : "전체"}</option>
@@ -488,28 +496,13 @@ export function IpWhitelistMigrationPage() {
                 <option value="INTERNAL">INTERNAL</option>
                 <option value="API">API</option>
               </AdminSelect>
-            </div>
-            <div>
-              <label className="gov-label" htmlFor="status">{en ? "Status" : "상태"}</label>
-              <AdminSelect id="status" value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))}>
-                <option value="">{en ? "All" : "전체"}</option>
-                <option value="ACTIVE">{en ? "Active" : "활성"}</option>
-                <option value="PENDING">{en ? "Pending" : "검토중"}</option>
-                <option value="INACTIVE">{en ? "Inactive" : "비활성"}</option>
-              </AdminSelect>
-            </div>
-            <div className="flex items-end">
-              <MemberButtonGroup className="w-full justify-end">
-                <MemberButton className="min-w-[120px] justify-center" type="submit" variant="primary">{en ? "Search" : "조회"}</MemberButton>
-                <MemberButton className="min-w-[120px] justify-center" onClick={() => {
+            </div></div></>} actions={<><MemberButton className="min-w-[120px] justify-center" type="submit" variant="primary">{en ? "Search" : "조회"}</MemberButton>
+<MemberButton className="min-w-[120px] justify-center" onClick={() => {
                   const reset = { searchIp: "", accessScope: "", status: "" };
                   logGovernanceScope("ACTION", "ip-whitelist-reset", reset);
                   setDraft(reset);
                   setFilters(reset);
-                }} type="button" variant="secondary">{en ? "Reset" : "초기화"}</MemberButton>
-              </MemberButtonGroup>
-            </div>
-          </form>
+                }} type="button" variant="secondary">{en ? "Reset" : "초기화"}</MemberButton></>}></CommonSearchSection></form>
         </section>
 
         <section className="gov-card" data-help-id="ip-whitelist-table">

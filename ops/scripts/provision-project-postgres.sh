@@ -125,6 +125,11 @@ kubectl -n "$NAMESPACE" create secret generic "$SECRET_NAME" \
 kubectl -n "$NAMESPACE" create configmap "$CONFIGMAP_NAME" \
   --from-file=manifest.json="$MANIFEST" --dry-run=client -o yaml | kubectl apply -f -
 
+# Every project runtime depends on the canonical framework security and common
+# tables. Bootstrap them before any project-specific Flyway migrations so a new
+# database cannot enter a crash loop with missing framework relations.
+bash "$ROOT/ops/scripts/bootstrap-project-schema.sh" "$PROJECT_ID" --apply
+
 bash "$ROOT/ops/scripts/patroni-health-check.sh"
 kubectl -n "$NAMESPACE" exec "$LEADER" -- \
   psql -h 127.0.0.1 -U postgres -d postgres -Atc \

@@ -1,0 +1,17 @@
+{
+  "total": 724,
+  "connected": 666,
+  "blocked": 58,
+  "GEOMETRY_VERIFIED": 10,
+  "geometryPercentOf666": 1.5,
+  "PHYSICAL_VERIFIED": 0,
+  "FUNCTION_VERIFIED": 0,
+  "PORT_VERIFIED": 0,
+  "ASSET_READY": 0,
+  "REAL_VERIFIED": 0,
+  "referenceCorrections": 20,
+  "floorDeferred": 6,
+  "basesVerified": 5,
+  "configurationsVerified": 10,
+  "seconds": 0.311
+}

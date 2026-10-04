@@ -1,0 +1,21 @@
+{
+  "baseCount": 204,
+  "assetCount": 666,
+  "classCounts": [
+    5,
+    1,
+    32,
+    160,
+    6
+  ],
+  "geometryAssets": 10,
+  "comparedControls": 20,
+  "search": true,
+  "detail": true,
+  "jsonLinks": true,
+  "mobileOverflow": false,
+  "errors": [],
+  "businessWrites": 0,
+  "deviceWrites": 0,
+  "seconds": 1.936
+}

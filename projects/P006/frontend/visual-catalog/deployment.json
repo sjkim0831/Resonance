@@ -1,0 +1,14 @@
+{
+  "total": 666,
+  "previewAvailable": 666,
+  "actualUsdRenders": 666,
+  "individualUsdRenders": 166,
+  "baseVariantRenders": 500,
+  "noPreview": 0,
+  "referenceRender": 660,
+  "uniqueImageHashes": 666,
+  "note": "actualUsdRenders = individualUsdRenders + baseVariantRenders. Counts are asset coverage, not distinct verified equipment.",
+  "renderSeconds": 1085.19,
+  "publishValidationSeconds": 4.66,
+  "bytes": 48961989
+}

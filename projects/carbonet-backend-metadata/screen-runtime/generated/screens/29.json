@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 29,
+  "blueprintCode": "BP_ADOPT_BD5FACAAF22F3FBD883D",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_BD5FACAAF22F3FBD883D"
+  },
+  "route": "/admin/emission/evidence-management",
+  "pageName": "증빙 관리",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1030308",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "86a0a8bae4159900db8238d95fb8eb46c8126670ff0c715cb0ca274fb408ab42",
+  "artifactHash": "06384a93f2dda6fff61fc17686d936511fbf8a2727aa6f93b467a7afead1ef83"
+}

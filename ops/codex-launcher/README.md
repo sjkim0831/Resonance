@@ -1,6 +1,6 @@
 # Carbonet Codex Launcher
 
-`/opt/util/codex`에 설치해서 쓰는 프로젝트 공용 Codex 실행 콘솔 소스다.
+`/opt/Resonance/runtime/tools/codex`에 설치해서 쓰는 프로젝트 공용 Codex 실행 콘솔 소스다.
 
 구성:
 
@@ -24,7 +24,7 @@
 ## 실행
 
 ```bash
-/opt/util/codex/bin/carbonet-codex
+/opt/Resonance/runtime/tools/codex/bin/carbonet-codex
 ```
 
 기본 주소:
@@ -60,4 +60,4 @@ http://127.0.0.1:43110
 
 ## 설치 반영
 
-저장소 소스를 `/opt/util/codex`로 복사하면 된다.
+저장소 소스를 `/opt/Resonance/runtime/tools/codex`로 복사하면 된다.

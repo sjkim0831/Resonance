@@ -1,0 +1,25 @@
+{
+  "url": "http://172.16.1.232/projects/P006/assets/two-track-quality/",
+  "trackA": 58,
+  "trackB": 666,
+  "baseFilter": 68,
+  "facets": 10,
+  "minimumRequestFields": 3,
+  "classes": [
+    4,
+    0,
+    11,
+    43
+  ],
+  "reviewFilters": [
+    6,
+    2,
+    20
+  ],
+  "errors": [],
+  "mobileOverflow": false,
+  "businessWrites": 0,
+  "deviceWrites": 0,
+  "externalRequestsSent": 0,
+  "seconds": 2.308
+}

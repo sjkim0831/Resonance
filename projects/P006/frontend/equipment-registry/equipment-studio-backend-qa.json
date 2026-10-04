@@ -1,0 +1,136 @@
+{
+  "tests": [
+    {
+      "test": "EXISTING_ACCOUNT_LOGIN",
+      "pass": true
+    },
+    {
+      "test": "SEED_724_666",
+      "pass": true
+    },
+    {
+      "test": "TYPE_16_NOT_INSTANCES",
+      "pass": true
+    },
+    {
+      "test": "SHARED_ASSET_ACROSS_CUSTOMERS",
+      "pass": true
+    },
+    {
+      "test": "REFERENCE_REQUIRES_ACCEPTANCE",
+      "pass": true
+    },
+    {
+      "test": "CUSTOMER_CONNECTION_STATS",
+      "pass": true
+    },
+    {
+      "test": "NO_MATCH_ONLY_CANDIDATE",
+      "pass": true
+    },
+    {
+      "test": "ASSET_REGISTER_NEEDS_CANDIDATE",
+      "pass": true
+    },
+    {
+      "test": "ASSET_PATH_OUTSIDE_PROJECT_REJECTED",
+      "pass": true
+    },
+    {
+      "test": "NO_MATCH_ASSET_REGISTER_NO_READY",
+      "pass": true
+    },
+    {
+      "test": "NEW_ASSET_FORCES_REVIEW_NOT_DUPLICATE",
+      "pass": true
+    },
+    {
+      "test": "MISSING_EVIDENCE_BLOCKED",
+      "pass": true
+    },
+    {
+      "test": "DUPLICATE_CODE_REJECTED",
+      "pass": true
+    },
+    {
+      "test": "INVALID_DIMENSION",
+      "pass": true
+    },
+    {
+      "test": "GRADE_INPUT_FORBIDDEN",
+      "pass": true
+    },
+    {
+      "test": "IMPORT_DRYRUN_NO_WRITE",
+      "pass": true
+    },
+    {
+      "test": "IMPORT_DUPLICATE_ATOMIC",
+      "pass": true
+    },
+    {
+      "test": "IMPORT_FAILURE_NO_PARTIAL",
+      "pass": true
+    },
+    {
+      "test": "ACL_FILTER_SERVER_SIDE",
+      "pass": true
+    },
+    {
+      "test": "CROSS_CUSTOMER_DETAIL_DENIED",
+      "pass": true
+    },
+    {
+      "test": "VIEWER_WRITE_DENIED",
+      "pass": true
+    },
+    {
+      "test": "MODEL_NAME_NOT_EXACT",
+      "pass": true
+    },
+    {
+      "test": "MODEL_BIND_WITHOUT_EVIDENCE",
+      "pass": true
+    },
+    {
+      "test": "EVIDENCE_GATED_EXACT",
+      "pass": true
+    },
+    {
+      "test": "NO_CROSS_CUSTOMER_PROOF_INHERIT",
+      "pass": true
+    },
+    {
+      "test": "SHARED_BASE_WITH_INDEPENDENT_PROOF",
+      "pass": true
+    },
+    {
+      "test": "REVOKE_INVALIDATES_SHARED_CONSUMERS",
+      "pass": true
+    },
+    {
+      "test": "NO_READY_REAL_PROMOTION",
+      "pass": true
+    },
+    {
+      "test": "OPTIMISTIC_VERSION_CONFLICT",
+      "pass": true
+    },
+    {
+      "test": "10000_ASSET_PAGINATION",
+      "pass": true
+    }
+  ],
+  "passed": 30,
+  "total": 30,
+  "elapsedSeconds": 0.31,
+  "databaseBusinessWritesPersisted": 0,
+  "fixtures": "transaction rollback; synthetic proof not operational evidence",
+  "permissionTest": "existing admin login + transaction-scoped role-reduced principal, not a second real account login",
+  "performance": {
+    "syntheticAssets": 10000,
+    "pageRows": 50,
+    "queryMilliseconds": 6.4,
+    "rolledBack": true
+  }
+}

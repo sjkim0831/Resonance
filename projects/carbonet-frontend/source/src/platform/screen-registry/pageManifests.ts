@@ -17,6 +17,34 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "COMMON_PAGE_FOOTER", instanceKey: "home-footer", layoutZone: "footer", propsSummary: ["orgName", "addressLine", "footerLinks", "lastModifiedLabel"] }
     ]
   },
+  "emission-source-register": {
+    pageId: "emission-source-register",
+    routePath: "/home/emission/source-register",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "EmissionSourceProjectSelector", instanceKey: "emission-source-project", layoutZone: "actions", propsSummary: ["projectId", "accessibleProjects"] },
+      { componentId: "EmissionSourceSummary", instanceKey: "emission-source-summary", layoutZone: "content", propsSummary: ["projectName", "siteScope", "activityCount", "unmappedCount"] },
+      { componentId: "EmissionActivitySourceLedger", instanceKey: "emission-activity-source-ledger", layoutZone: "content", propsSummary: ["activities", "evidenceHealth", "factorMapping"] },
+      { componentId: "EmissionSourceNextWork", instanceKey: "emission-source-next-work", layoutZone: "actions", propsSummary: ["activityDataUrl", "orgBoundaryUrl"] },
+      { componentId: "EmissionSourceHelpQa", instanceKey: "emission-source-help-qa", layoutZone: "content", propsSummary: ["screenScope", "qaChecks"] }
+    ]
+  },
+  "emission-factor-reference": {
+    pageId: "emission-factor-reference",
+    routePath: "/home/emission/factor-reference",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "EmissionFactorProjectSelector", instanceKey: "emission-factor-project", layoutZone: "actions", propsSummary: ["projectId", "accessibleProjects"] },
+      { componentId: "EmissionFactorProjectContext", instanceKey: "emission-factor-context", layoutZone: "content", propsSummary: ["period", "acceptedSubmissionCount", "unmappedCount", "incompatibleUnitCount"] },
+      { componentId: "EmissionFactorActivityFilters", instanceKey: "emission-factor-filters", layoutZone: "actions", propsSummary: ["query", "category"] },
+      { componentId: "EmissionFactorMappingTable", instanceKey: "emission-factor-mapping", layoutZone: "content", propsSummary: ["sourceItems", "factors", "decisionReason", "unitMatch"] },
+      { componentId: "EmissionFactorHelpQa", instanceKey: "emission-factor-help-qa", layoutZone: "content", propsSummary: ["screenScope", "qaChecks", "calculationUrl"] }
+    ]
+  },
   "admin-home": {
     pageId: "admin-home",
     routePath: "/admin/",
@@ -1122,6 +1150,207 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "COMMON_STEP_FLOW", instanceKey: "emission-lca-milestones", layoutZone: "actions", propsSummary: ["milestones", "progress"] },
       { componentId: "COMMON_CONTENT_CARD", instanceKey: "emission-lca-watch", layoutZone: "actions", propsSummary: ["watchHeadline", "watchButton"] },
       { componentId: "COMMON_CONTENT_CARD", instanceKey: "emission-lca-site-hub", layoutZone: "content", propsSummary: ["siteCards", "gwpTotal", "dataQuality"] }
+    ]
+  },
+  "lca-product-process": {
+    pageId: "lca-product-process",
+    routePath: "/lca/product-process",
+    menuCode: "H1030103",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "COMMON_PAGE_HEADER", instanceKey: "lca-product-process-header", layoutZone: "header", propsSummary: ["projectName", "projectId", "processStatus"] },
+      { componentId: "COMMON_STEP_FLOW", instanceKey: "lca-product-process-steps", layoutZone: "header", propsSummary: ["projectSelection", "productDefinition", "processFlows", "saveValidation"] },
+      { componentId: "COMMON_FORM_SECTION", instanceKey: "lca-product-form", layoutZone: "content", propsSummary: ["productName", "productCode", "family", "specification", "referenceFlow"] },
+      { componentId: "COMMON_FORM_SECTION", instanceKey: "lca-process-flows", layoutZone: "content", propsSummary: ["sequence", "site", "inputFlow", "outputFlow"] },
+      { componentId: "COMMON_ACTION_BAR", instanceKey: "lca-product-process-actions", layoutZone: "actions", propsSummary: ["saveAction", "nextScopeRoute"] }
+    ]
+  },
+  "lca-system-boundary": {
+    pageId: "lca-system-boundary",
+    routePath: "/lca/system-boundary",
+    menuCode: "H1030104",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "COMMON_PAGE_HEADER", instanceKey: "lca-system-boundary-header", layoutZone: "header", propsSummary: ["projectName", "boundaryType", "studyPeriod"] },
+      { componentId: "COMMON_STEP_FLOW", instanceKey: "lca-system-boundary-steps", layoutZone: "header", propsSummary: ["projectSelection", "productProcess", "boundaryDefinition", "validation"] },
+      { componentId: "COMMON_FORM_SECTION", instanceKey: "lca-system-boundary-form", layoutZone: "content", propsSummary: ["lifeCycleStages", "geography", "timeBoundary", "cutoffRule"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "lca-system-boundary-stage-table", layoutZone: "content", propsSummary: ["stage", "inclusion", "justification", "evidence"] },
+      { componentId: "COMMON_ACTION_BAR", instanceKey: "lca-system-boundary-actions", layoutZone: "actions", propsSummary: ["saveDraft", "nextFunctionalUnit"] }
+    ]
+  },
+  "lca-functional-unit": {
+    pageId: "lca-functional-unit",
+    routePath: "/lca/functional-unit",
+    menuCode: "H1030105",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "COMMON_PAGE_HEADER", instanceKey: "lca-functional-unit-header", layoutZone: "header", propsSummary: ["projectName", "functionalUnit"] },
+      { componentId: "COMMON_STEP_FLOW", instanceKey: "lca-functional-unit-steps", layoutZone: "header", propsSummary: ["productProcess", "boundary", "functionalUnit", "inventory"] },
+      { componentId: "COMMON_FORM_SECTION", instanceKey: "lca-functional-unit-form", layoutZone: "content", propsSummary: ["function", "quantity", "unit", "performance", "lifetime", "referenceFlow", "evidence"] },
+      { componentId: "COMMON_ACTION_BAR", instanceKey: "lca-functional-unit-actions", layoutZone: "actions", propsSummary: ["validate", "saveDraft", "nextInventory"] }
+    ]
+  },
+  "lca-materials": {
+    pageId: "lca-materials",
+    routePath: "/lca/materials",
+    menuCode: "H1030201",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "COMMON_PAGE_HEADER", instanceKey: "lca-materials-header", layoutZone: "header", propsSummary: ["projectName", "productName"] },
+      { componentId: "COMMON_FILTER_BAR", instanceKey: "lca-materials-filters", layoutZone: "content", propsSummary: ["project", "process", "materialType", "status"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "lca-materials-table", layoutZone: "content", propsSummary: ["material", "process", "quantity", "unit", "supplier", "origin", "evidence"] },
+      { componentId: "COMMON_ACTION_BAR", instanceKey: "lca-materials-actions", layoutZone: "actions", propsSummary: ["addRow", "validate", "saveDraft", "submitReview"] }
+    ]
+  },
+  "lca-energy-steam": {
+    pageId: "lca-energy-steam",
+    routePath: "/lca/energy-steam",
+    menuCode: "H1030202",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "COMMON_PAGE_HEADER", instanceKey: "lca-energy-steam-header", layoutZone: "header", propsSummary: ["projectName", "studyPeriod"] },
+      { componentId: "COMMON_FILTER_BAR", instanceKey: "lca-energy-steam-filters", layoutZone: "content", propsSummary: ["project", "process", "energyType", "period"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "lca-energy-steam-table", layoutZone: "content", propsSummary: ["energyType", "process", "production", "quantity", "unit", "meter", "supplier", "evidence"] },
+      { componentId: "COMMON_ACTION_BAR", instanceKey: "lca-energy-steam-actions", layoutZone: "actions", propsSummary: ["addEntry", "validate", "saveDraft", "submitReview"] }
+    ]
+  },
+  "lca-transport": {
+    pageId: "lca-transport",
+    routePath: "/lca/transport",
+    menuCode: "H1030203",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "COMMON_PAGE_HEADER", instanceKey: "lca-transport-header", layoutZone: "header", propsSummary: ["projectName", "studyPeriod"] },
+      { componentId: "COMMON_FILTER_BAR", instanceKey: "lca-transport-filters", layoutZone: "content", propsSummary: ["project", "process", "stage", "mode", "period"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "lca-transport-table", layoutZone: "content", propsSummary: ["cargo", "origin", "destination", "mode", "vehicle", "mass", "distance", "fuel", "allocation", "evidence"] },
+      { componentId: "COMMON_ACTION_BAR", instanceKey: "lca-transport-actions", layoutZone: "actions", propsSummary: ["addEntry", "validate", "saveDraft", "submitReview"] }
+    ]
+  },
+  "lca-products-byproducts": {
+    pageId: "lca-products-byproducts",
+    routePath: "/lca/products-byproducts",
+    menuCode: "H1030204",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "COMMON_PAGE_HEADER", instanceKey: "lca-products-byproducts-header", layoutZone: "header", propsSummary: ["projectName", "productName", "studyPeriod"] },
+      { componentId: "COMMON_FILTER_BAR", instanceKey: "lca-products-byproducts-filters", layoutZone: "content", propsSummary: ["project", "process", "outputType", "period"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "lca-products-byproducts-table", layoutZone: "content", propsSummary: ["outputType", "name", "quantity", "unit", "disposition", "allocationMethod", "allocationBasis", "evidence"] },
+      { componentId: "COMMON_ACTION_BAR", instanceKey: "lca-products-byproducts-actions", layoutZone: "actions", propsSummary: ["addOutput", "validate", "saveDraft", "submitReview"] }
+    ]
+  },
+  "lca-waste-emissions": {
+    pageId: "lca-waste-emissions",
+    routePath: "/lca/waste-emissions",
+    menuCode: "H1030205",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "COMMON_PAGE_HEADER", instanceKey: "lca-waste-emissions-header", layoutZone: "header", propsSummary: ["projectName", "studyPeriod"] },
+      { componentId: "COMMON_FILTER_BAR", instanceKey: "lca-waste-emissions-filters", layoutZone: "content", propsSummary: ["project", "process", "entryKind", "period", "medium"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "lca-waste-emissions-table", layoutZone: "content", propsSummary: ["wasteType", "emissionSubstance", "quantity", "unit", "treatment", "measurement", "lciMapping", "evidence"] },
+      { componentId: "COMMON_ACTION_BAR", instanceKey: "lca-waste-emissions-actions", layoutZone: "actions", propsSummary: ["addEntry", "validate", "saveDraft", "submitReview"] }
+    ]
+  },
+  "lca-lci-data-mapping": {
+    pageId: "lca-lci-data-mapping",
+    routePath: "/lca/data-mapping",
+    menuCode: "H1030206",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "COMMON_PAGE_HEADER", instanceKey: "lca-lci-mapping-header", layoutZone: "header", propsSummary: ["projectName", "inventoryVersion", "unmappedCount"] },
+      { componentId: "COMMON_FILTER_BAR", instanceKey: "lca-lci-mapping-filters", layoutZone: "content", propsSummary: ["project", "flowCategory", "geography", "unit", "referenceYear"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "lca-lci-mapping-targets", layoutZone: "content", propsSummary: ["inventoryFlow", "process", "quantity", "unit", "mappingStatus"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "lca-lci-dataset-candidates", layoutZone: "content", propsSummary: ["datasetId", "referenceFlow", "geography", "referenceYear", "unit", "source"] },
+      { componentId: "COMMON_ACTION_BAR", instanceKey: "lca-lci-mapping-actions", layoutZone: "actions", propsSummary: ["searchCandidates", "validateMapping", "saveMapping", "submitReview"] }
+    ]
+  },
+  "lca-calculation": {
+    pageId: "lca-calculation",
+    routePath: "/lca/calculation",
+    menuCode: "H1030301",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "COMMON_PAGE_HEADER", instanceKey: "lca-calculation-header", layoutZone: "header", propsSummary: ["projectName", "projectId", "inventoryVersion", "mappingVersion"] },
+      { componentId: "COMMON_CONTENT_CARD", instanceKey: "lca-calculation-work-tabs", layoutZone: "content", propsSummary: ["activeTab", "projectName", "functionalUnit", "inventoryCount", "mappingStatus"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "lca-calculation-inventory", layoutZone: "content", propsSummary: ["category", "flow", "process", "quantity", "unit", "evidence", "mappingStatus"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "lca-calculation-results", layoutZone: "content", propsSummary: ["resultVersion", "flow", "quantity", "unit", "workflowStatus"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "lca-calculation-history", layoutZone: "content", propsSummary: ["resultVersion", "runId", "inputHash", "savedAt"] },
+      { componentId: "COMMON_ACTION_BAR", instanceKey: "lca-calculation-actions", layoutZone: "actions", propsSummary: ["runPreflight", "exportInputSnapshot", "executeCalculation"] }
+    ]
+  },
+  "lca-impact-assessment": {
+    pageId: "lca-impact-assessment",
+    routePath: "/lca/impact-assessment",
+    menuCode: "H1030302",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "COMMON_PAGE_HEADER", instanceKey: "lcia-impact-header", layoutZone: "header", propsSummary: ["projectName", "lciResultVersion", "lciaMethod", "assessmentRunId"] },
+      { componentId: "COMMON_CONTENT_CARD", instanceKey: "lcia-readiness", layoutZone: "content", propsSummary: ["lciStatus", "methodStatus", "characterizationDataStatus", "reproducibilityStatus"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "lcia-category-results", layoutZone: "content", propsSummary: ["impactCategory", "indicator", "characterizedValue", "unit", "methodVersion"] },
+      { componentId: "COMMON_ACTION_BAR", instanceKey: "lcia-actions", layoutZone: "actions", propsSummary: ["runPreflight", "exportReviewSnapshot", "executeAssessment"] }
+    ]
+  },
+  "lca-process-contribution": {
+    pageId: "lca-process-contribution",
+    routePath: "/lca/process-contribution-analysis",
+    menuCode: "H1030303",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "COMMON_PAGE_HEADER", instanceKey: "lca-process-contribution-header", layoutZone: "header", propsSummary: ["projectId", "assessmentVersion", "inputLciVersion", "impactCategory"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "lca-process-contribution-results", layoutZone: "content", propsSummary: ["processId", "processName", "impactCategory", "contributionValue", "unit", "share", "evidenceRef"] },
+      { componentId: "COMMON_CONTENT_CARD", instanceKey: "lca-process-contribution-detail", layoutZone: "content", propsSummary: ["selectedProcess", "inventoryInputs", "evidenceRef"] },
+      { componentId: "COMMON_ACTION_BAR", instanceKey: "lca-process-contribution-actions", layoutZone: "actions", propsSummary: ["refresh", "exportEvidence"] }
+    ]
+  },
+  "lca-material-contribution": {
+    pageId: "lca-material-contribution",
+    routePath: "/lca/material-contribution-analysis",
+    menuCode: "H1030304",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "COMMON_PAGE_HEADER", instanceKey: "lca-material-contribution-header", layoutZone: "header", propsSummary: ["projectId", "assessmentVersion", "inputLciVersion", "impactCategory"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "lca-material-contribution-results", layoutZone: "content", propsSummary: ["materialId", "materialName", "processName", "impactCategory", "contributionValue", "unit", "share", "evidenceRef"] },
+      { componentId: "COMMON_CONTENT_CARD", instanceKey: "lca-material-contribution-detail", layoutZone: "content", propsSummary: ["selectedMaterial", "inventoryInput", "datasetVersion", "evidenceRef"] },
+      { componentId: "COMMON_ACTION_BAR", instanceKey: "lca-material-contribution-actions", layoutZone: "actions", propsSummary: ["refresh", "exportEvidence"] }
+    ]
+  },
+  "lca-sensitivity-analysis": {
+    pageId: "lca-sensitivity-analysis",
+    routePath: "/lca/sensitivity-analysis",
+    menuCode: "H1030305",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "COMMON_PAGE_HEADER", instanceKey: "lca-sensitivity-analysis-header", layoutZone: "header", propsSummary: ["projectId", "baselineLciaWorkspaceId", "baselineLciaVersion", "inputLciVersion"] },
+      { componentId: "COMMON_CONTENT_CARD", instanceKey: "lca-sensitivity-analysis-condition", layoutZone: "content", propsSummary: ["inputVariable", "unit", "lowerPercent", "upperPercent", "rationale"] },
+      { componentId: "COMMON_DATA_TABLE", instanceKey: "lca-sensitivity-analysis-results", layoutZone: "content", propsSummary: ["scenario", "inputValue", "impactCategory", "impactValue", "changePercent", "evidenceRef"] },
+      { componentId: "COMMON_ACTION_BAR", instanceKey: "lca-sensitivity-analysis-actions", layoutZone: "actions", propsSummary: ["saveDraft", "refresh", "exportReview"] }
     ]
   },
   "emission-simulate": {
@@ -3297,6 +3526,33 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "VersionManagementControlPlane", instanceKey: "version-management-control-plane", layoutZone: "content", propsSummary: ["projectPipeline", "pipelineArtifactLineage", "pipelineRollbackPlan"] },
       { componentId: "VersionManagementReleaseDetail", instanceKey: "version-management-release-detail", layoutZone: "content", propsSummary: ["selectedReleaseUnit", "selectedReleaseCommonArtifacts", "selectedReleasePackages"] },
       { componentId: "VersionManagementUpgradePlanner", instanceKey: "version-management-upgrade-planner", layoutZone: "footer", propsSummary: ["artifactDraft", "targetArtifactSet"] }
+    ]
+  },
+  "work-implementation": {
+    pageId: "work-implementation",
+    routePath: "/admin/system/work-implementation",
+    menuCode: "AMENU_WORK_IMPLEMENTATION",
+    domainCode: "admin",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    governance: { allowedActorKinds: ["ADMIN"], requiredRoleCategories: ["ADMIN"] },
+    components: [
+      { componentId: "WorkImplementationSummary", instanceKey: "work-implementation-summary", layoutZone: "actions", propsSummary: ["workTypeCount", "processCount", "stepCount"] },
+      { componentId: "WorkImplementationFilters", instanceKey: "work-implementation-filters", layoutZone: "actions", propsSummary: ["query", "implementationStatus"] },
+      { componentId: "WorkImplementationRows", instanceKey: "work-implementation-rows", layoutZone: "content", propsSummary: ["businessProcessStepScreenStatus"] }
+    ]
+  },
+  "work-design-studio": {
+    pageId: "work-design-studio",
+    routePath: "/admin/system/work-design-studio",
+    menuCode: "A1010110",
+    domainCode: "admin",
+    layoutVersion: "studio-v1",
+    designTokenVersion: "krds-current",
+    governance: { allowedActorKinds: ["ADMIN"], requiredRoleCategories: ["ADMIN"] },
+    components: [
+      { componentId: "StudioDesignViews", instanceKey: "studio-design", layoutZone: "content", propsSummary: ["catalog", "selectedStep", "inputContract", "outputContract"] },
+      { componentId: "DevelopmentWorkbench", instanceKey: "studio-development", layoutZone: "actions", propsSummary: ["processVersion", "ticket", "executionStatus"] }
     ]
   },
   "unified-log": {

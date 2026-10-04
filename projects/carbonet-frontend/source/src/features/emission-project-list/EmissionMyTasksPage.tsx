@@ -1,4 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { EmissionPageIntro } from "../emission-common/EmissionPageIntro";
 import {
   CommonContentCard,
   CommonDataTable,
@@ -723,14 +724,7 @@ export function EmissionMyTasksPage() {
       <nav className="gov-text-label font-bold text-slate-500" aria-label={en ? "Breadcrumb" : "현재 위치"}>
         {en ? "My Work / My Work Summary" : "내 업무 / 내 업무 요약"}
       </nav>
-      <header className="mt-3 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-        <div>
-          <h1 className="gov-text-heading-lg mt-1 font-black tracking-[-0.04em] text-[#052b57]">
-            {localized(screenContract.screenName, en)}
-          </h1>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
+      <EmissionPageIntro category={en ? "Emission tasks" : "탄소배출 업무"} title={localized(screenContract.screenName, en)} description={en ? "Review assigned work and continue the next available action." : "배정된 업무와 처리 상태를 확인하고 현재 진행 가능한 업무를 실행합니다."} actions={<><button
             className="krds-button rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-blue)] bg-white font-black text-[var(--kr-gov-blue)] disabled:opacity-60"
             disabled={loading}
             onClick={() => void load()}
@@ -745,9 +739,7 @@ export function EmissionMyTasksPage() {
             type="button"
           >
             {en ? "View all work" : "전체 업무 보기"}
-          </button>
-        </div>
-      </header>
+          </button></>} />
 
       <div className="sr-only" aria-live="polite" role="status">
         {loading ? (en ? "Loading emission tasks." : "배출 업무를 불러오는 중입니다.") : (en ? "Emission tasks loaded." : "배출 업무를 불러왔습니다.")}

@@ -1,0 +1,83 @@
+{
+  "tests": [
+    {
+      "name": "ALL62_REVIEW_COLUMN",
+      "pass": true
+    },
+    {
+      "name": "PRESERVED_REFERENCE_36",
+      "pass": true
+    },
+    {
+      "name": "FIVE_REVIEW_COUNTS",
+      "pass": true
+    },
+    {
+      "name": "MODIFICATION_FILTER_6",
+      "pass": true
+    },
+    {
+      "name": "BASE_IMAGES_NOT_MATCHED",
+      "pass": true
+    },
+    {
+      "name": "ORIGINAL_GRADE_BLOCKED",
+      "pass": true
+    },
+    {
+      "name": "BASE_IMAGE_ZOOM_LABEL",
+      "pass": true
+    },
+    {
+      "name": "NINE_ASSESSMENTS",
+      "pass": true
+    },
+    {
+      "name": "INFO_FILTER_20",
+      "pass": true
+    },
+    {
+      "name": "TT_2_ROWS",
+      "pass": true
+    },
+    {
+      "name": "ADDITIONAL_INFO_VISIBLE",
+      "pass": true
+    },
+    {
+      "name": "ZERO_NOT_FABRICATED_REFERENCE_MATCH_POSSIBLE",
+      "pass": true
+    },
+    {
+      "name": "ZERO_NOT_FABRICATED_EXISTING_ASSET_COMBINATION",
+      "pass": true
+    },
+    {
+      "name": "ZERO_NOT_FABRICATED_NEW_ASSET_REQUIRED",
+      "pass": true
+    },
+    {
+      "name": "REFERENCE_FILTER_36",
+      "pass": true
+    },
+    {
+      "name": "OWNERSHIP_FILTER_62",
+      "pass": true
+    },
+    {
+      "name": "RELOAD_PERSISTED",
+      "pass": true
+    },
+    {
+      "name": "MOBILE_NO_BODY_OVERFLOW",
+      "pass": true
+    },
+    {
+      "name": "NO_JS_ERROR",
+      "pass": true
+    }
+  ],
+  "businessWrites": 0,
+  "mocked": false,
+  "seconds": 3.2
+}

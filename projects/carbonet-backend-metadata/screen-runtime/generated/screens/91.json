@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 91,
+  "blueprintCode": "BP_ADOPT_CE792C32F2AC3749A7B9",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_CE792C32F2AC3749A7B9"
+  },
+  "route": "/admin/system/component-management",
+  "pageName": "컴포넌트 관리",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1110107",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "7b843cc4bd14fa238508a101882164b16a045da2140f693bfb2b76fa5c2840dc",
+  "artifactHash": "ba505a14fac0d42a02aeb48e0ff9c15fd1e79f616a04a6a70477c1eb96921d8f"
+}

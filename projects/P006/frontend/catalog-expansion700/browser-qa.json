@@ -1,0 +1,89 @@
+{
+  "url": "http://172.16.1.232/projects/P006/assets/catalog-expansion700/index.html",
+  "checkedAt": "2026-09-10T02:52:53.315Z",
+  "realServer": true,
+  "authenticatedBusinessE2E": false,
+  "businessWrites": 0,
+  "plcAccess": 0,
+  "initialMilliseconds": 1327,
+  "totalMilliseconds": 4778,
+  "tests": [
+    {
+      "name": "실제 URL HTML 렌더링",
+      "status": "PASS"
+    },
+    {
+      "name": "독립 724종 계수",
+      "status": "PASS"
+    },
+    {
+      "name": "미완성 USD 경계 표시",
+      "status": "PASS"
+    },
+    {
+      "name": "신규 전체 600종",
+      "status": "PASS"
+    },
+    {
+      "name": "통합·제외 148종",
+      "status": "PASS"
+    },
+    {
+      "name": "원본 포함 전체 1045종",
+      "status": "PASS"
+    },
+    {
+      "name": "한글 검색",
+      "status": "PASS"
+    },
+    {
+      "name": "카드 제목은 화면 이동 없이 상세 펼침",
+      "status": "PASS"
+    },
+    {
+      "name": "영문 검색",
+      "status": "PASS"
+    },
+    {
+      "name": "빈 검색 결과",
+      "status": "PASS"
+    },
+    {
+      "name": "영역 검색 33개 옵션",
+      "status": "PASS"
+    },
+    {
+      "name": "반도체 독립 후보 영역 필터",
+      "status": "PASS"
+    },
+    {
+      "name": "33영역 매트릭스",
+      "status": "PASS"
+    },
+    {
+      "name": "목록 초기화",
+      "status": "PASS"
+    },
+    {
+      "name": "추가 100개 표시",
+      "status": "PASS"
+    },
+    {
+      "name": "실서버 다운로드 JSON 724종",
+      "status": "PASS"
+    },
+    {
+      "name": "모델 미확보 548종",
+      "status": "PASS"
+    },
+    {
+      "name": "모바일 가로 넘침 없음",
+      "status": "PASS"
+    },
+    {
+      "name": "브라우저 JS 오류 없음",
+      "status": "PASS"
+    }
+  ],
+  "errors": []
+}

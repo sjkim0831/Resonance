@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { CommonPageContainer } from "../../components/common-design/CommonDesignPrimitives";
 
@@ -95,6 +95,36 @@ type CalculationDiff = {
 type ResultLock = { lockId: number; submissionId: number; calculationId: number; version: number; totalEmission: number; resultUnit: string; snapshotHash: string; lockHash: string; status: string; lockedBy: string; lockedAt: string; integrity: string };
 type ResultLockWorkflow = { projectId: string; approvedTarget?: { submissionId: number; calculationId: number; version: number; totalEmission: number; resultUnit: string; snapshotHash: string; status: string; approvedAt: string; approvedBy: string }; lock?: ResultLock; eligible: boolean; message: string };
 
+function CalculationProjectSelector({ en }: { en: boolean }) {
+  const [rows, setRows] = useState<Array<{id:string;name:string;site?:string;period?:string;periodStart?:string;periodEnd?:string;owner?:string}>>([]);
+  const [query,setQuery] = useState(""), [keyword,setKeyword] = useState("");
+  const [page,setPage] = useState(1), [total,setTotal] = useState(0);
+  const [loading,setLoading] = useState(true), [error,setError] = useState(""), [retry,setRetry] = useState(0);
+  useEffect(()=>{
+    const controller=new AbortController();
+    setLoading(true);setError("");
+    const path=`/home/api/emission-projects?keyword=${encodeURIComponent(keyword)}&page=${page}&size=10`;
+    void fetch(buildLocalizedPath(path,`/en${path}`),{credentials:"include",headers:{Accept:"application/json"},signal:controller.signal})
+      .then(async response=>{const body=await response.json();if(!response.ok)throw Error(body.message||(en?"Could not load projects.":"프로젝트를 불러오지 못했습니다."));return body;})
+      .then(body=>{setRows(Array.isArray(body.items)?body.items:[]);setTotal(Number(body.total)||0);})
+      .catch(reason=>{if(!controller.signal.aborted){setRows([]);setError(reason instanceof Error?reason.message:String(reason));}})
+      .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
+    return ()=>controller.abort();
+  },[keyword,page,retry,en]);
+  function target(id:string){const params=new URLSearchParams(location.search);params.set("projectId",id);return `${location.pathname}?${params}`;}
+  return <CommonPageContainer>
+    <header className="py-6"><h1 className="text-3xl font-black text-[#052b57]">{en?"Emission calculation":"배출량 산정"}</h1><p className="mt-2 text-slate-600">{en?"Select a project to review accepted activity data, assign emission factors, and create a calculation version.":"프로젝트를 선택하고 접수된 활동자료와 배출계수를 확인한 뒤 산정 버전을 생성합니다."}</p></header>
+    <form className="flex flex-wrap items-end gap-3 rounded-lg border bg-white p-5" onSubmit={event=>{event.preventDefault();setPage(1);setKeyword(query.trim());setRetry(value=>value+1);}}><label className="min-w-0 flex-1 font-bold">{en?"Project search":"프로젝트 검색"}<input className="mt-2 h-11 w-full rounded border border-slate-300 px-3 font-normal" value={query} onChange={event=>setQuery(event.target.value)} placeholder={en?"Project, site, or owner":"프로젝트명·사업장·담당자"}/></label><button className="min-h-11 rounded bg-[#003675] px-5 font-bold text-white" disabled={loading}>{en?"Search":"조회"}</button></form>
+    <section className="mt-5 overflow-hidden rounded-lg border bg-white" aria-busy={loading}>
+      <h2 className="border-b p-4 text-lg font-bold">{en?"Select project":"산정할 프로젝트 선택"}</h2>
+      {error?<div role="alert" className="p-5 text-red-700">{error}<button className="ml-3 underline" onClick={()=>setRetry(value=>value+1)}>{en?"Retry":"다시 조회"}</button></div>:loading?<p role="status" className="p-8 text-center">{en?"Loading projects…":"프로젝트를 불러오는 중입니다."}</p>:<>
+        <div className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="bg-slate-100"><tr>{(en?["Project","Site","Period","Action"]:["프로젝트","사업장","산정 기간","업무"]).map(label=><th className="p-4" key={label}>{label}</th>)}</tr></thead><tbody>{rows.map(row=><tr key={row.id} className="border-t"><td className="p-4"><strong>{row.name}</strong><small className="block text-slate-500">{row.id}</small></td><td className="p-4">{row.site||"—"}</td><td className="p-4">{row.period||(row.periodStart&&row.periodEnd?`${row.periodStart} ~ ${row.periodEnd}`:"—")}</td><td className="p-4"><a className="inline-flex min-h-11 items-center rounded border border-blue-800 px-4 font-bold text-blue-900" href={target(row.id)}>{en?"Open calculation":"산정 자료 확인"}</a></td></tr>)}{!rows.length&&<tr><td colSpan={4} className="p-8 text-center">{en?"No matching accessible projects.":"조회 조건에 맞는 접근 가능한 프로젝트가 없습니다."}</td></tr>}</tbody></table></div>
+        <div className="flex items-center justify-center gap-4 border-t p-4"><button disabled={page===1} className="rounded border px-4 py-2 disabled:opacity-40" onClick={()=>setPage(value=>value-1)}>{en?"Previous":"이전"}</button><span>{page} / {Math.max(1,Math.ceil(total/10))}</span><button disabled={page*10>=total} className="rounded border px-4 py-2 disabled:opacity-40" onClick={()=>setPage(value=>value+1)}>{en?"Next":"다음"}</button></div>
+      </>}
+    </section>
+  </CommonPageContainer>;
+}
+
 export function EmissionProjectResultPage() {
   const en = isEnglish(),
     params = new URLSearchParams(location.search),
@@ -109,8 +139,8 @@ export function EmissionProjectResultPage() {
     [busy, setBusy] = useState(false),
     [mappingId, setMappingId] = useState<number | null>(null);
   const api = buildLocalizedPath(
-      `/home/api/emission-projects/${id}/calculation`,
-      `/en/home/api/emission-projects/${id}/calculation`,
+      `/home/api/emission-projects/${encodeURIComponent(id)}/calculation`,
+      `/en/home/api/emission-projects/${encodeURIComponent(id)}/calculation`,
     ),
     activityApi = buildLocalizedPath(
       `/home/api/emission-projects/${id}/activities`,
@@ -155,15 +185,6 @@ export function EmissionProjectResultPage() {
       !!data?.activityCount &&
       !data?.unmappedCount &&
       !data?.incompatibleUnitCount;
-  const preview = useMemo(
-    () =>
-      data?.sourceItems.reduce(
-        (sum, row) =>
-          sum + Number(row.quantity || 0) * Number(row.factorValue || 0),
-        0,
-      ) || 0,
-    [data?.sourceItems],
-  );
   async function map(item: SourceItem, factorId: string) {
     setMappingId(item.id);
     setMessage("");
@@ -234,51 +255,38 @@ export function EmissionProjectResultPage() {
       setMessage(en?"Approved result locked immutably.":"승인 결과를 불변 잠금했습니다.");await load();
     } catch(e) { setError(e instanceof Error?e.message:String(e)); } finally { setBusy(false); }
   }
-  if (!id)
-    return (
-      <p className="p-10 font-bold text-red-700">
-        {en ? "Select a project first." : "프로젝트를 먼저 선택해 주세요."}
-      </p>
-    );
+  if (!id) return <CalculationProjectSelector en={en}/>;
+  if (!data) return <CommonPageContainer><h1 className="mt-6 text-3xl font-black">{en?"Emission calculation":"배출량 산정"}</h1>{error?<div role="alert" className="my-6 rounded border border-red-300 p-5 text-red-800">{error}<button className="ml-3 underline" onClick={()=>void load()}>{en?"Retry":"다시 조회"}</button></div>:<p role="status" className="py-8">{en?"Loading calculation data…":"산정 자료를 불러오는 중입니다."}</p>}<a className="text-blue-800 underline" href={location.pathname}>{en?"Select another project":"다른 프로젝트 선택"}</a></CommonPageContainer>;
   return (
     <CommonPageContainer className="min-w-0 overflow-x-hidden">
-        <nav className="text-sm text-slate-500">
-          <a
-            href={buildLocalizedPath(
-              `/emission/project/detail?projectId=${id}`,
-              `/en/emission/project/detail?projectId=${id}`,
-            )}
-          >
-            {data?.project.name || id}
-          </a>
-          <span className="mx-2">/</span>
-          {en ? "Factor Mapping & Calculation" : "배출계수 매핑·산정"}
-        </nav>
+
         <div className="mt-4 flex min-w-0 flex-col justify-between gap-4 lg:flex-row lg:items-end">
           <div className="min-w-0">
-            <p className="truncate font-bold text-blue-700">{data?.project.site}</p>
+            <p className="font-bold text-blue-700">{data.project.name} · {data.project.site}</p>
+            <a className="text-sm text-blue-800 underline" href={location.pathname}>{en?"Change project":"프로젝트 변경"}</a>
+            <a className="ml-4 text-sm font-bold text-blue-800 underline" href={buildLocalizedPath(`/home/emission/factor-reference?projectId=${encodeURIComponent(id)}`, `/en/home/emission/factor-reference?projectId=${encodeURIComponent(id)}`)}>{en?"Review methodology and factors":"산정 기준·배출계수 확인"} →</a>
             <h1 className="text-3xl font-black text-[#052b57]">
               {en
-                ? "Emission Calculation Workspace"
-                : "배출량 산정 워크스페이스"}
+                ? "Emission calculation"
+                : "배출량 산정"}
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
               {en
                 ? "Only manager-accepted submission snapshots are mapped and calculated. Every factor decision and calculation version remains auditable."
-                : "관리자가 접수한 제출 스냅샷만 매핑·산정합니다. 계수 결정과 산정 버전은 변경 불가 감사 이력으로 남습니다."}
+                : "접수된 활동자료의 배출계수와 단위를 확인하고 산정을 실행하세요."}
             </p>
           </div>
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
             <button
               className="min-h-12 w-full rounded-lg border border-blue-700 bg-white px-5 font-black text-blue-800 disabled:opacity-40 sm:w-auto"
-              disabled={busy || !canCalculate || !data?.activityCount}
+              disabled={busy || mappingId !== null || !canCalculate || !data?.activityCount}
               onClick={autoMap}
             >
               {en ? "Auto-map accepted rows" : "접수 자료 자동 매핑"}
             </button>
             <button
               className="min-h-12 w-full rounded-lg bg-[#246beb] px-6 font-black text-white disabled:opacity-40 sm:w-auto"
-              disabled={busy || !canCalculate || !ready}
+              disabled={busy || mappingId !== null || !canCalculate || !ready}
               onClick={calculate}
             >
               {busy
@@ -291,6 +299,9 @@ export function EmissionProjectResultPage() {
             </button>
           </div>
         </div>
+        <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label={en?"Selected project readiness":"선택 프로젝트 준비 상태"}>
+          {[[en?"Accepted submissions":"접수 제출본",data.acceptedSubmissionCount],[en?"Activity rows":"활동자료 행",data.activityCount],[en?"Unmapped rows":"미매핑 행",data.unmappedCount],[en?"Unit mismatches":"단위 불일치",data.incompatibleUnitCount]].map(([label,value])=><div key={String(label)} className="rounded-xl border bg-white p-4"><span className="block text-sm text-slate-600">{label}</span><strong className="mt-1 block text-2xl text-[#052b57]">{value}</strong></div>)}
+        </section>
         {error && (
           <div
             className="mt-5 rounded-lg border border-red-300 bg-red-50 p-4 font-bold text-red-800"
@@ -318,43 +329,15 @@ export function EmissionProjectResultPage() {
           {lock?.lock?.lockHash&&<div className="mx-5 mb-5 rounded-lg border border-emerald-300 bg-emerald-50 p-4"><p className="text-xs font-bold text-emerald-800">SHA-256 RESULT LOCK HASH</p><code className="mt-1 block break-all font-bold text-emerald-950">{lock.lock.lockHash}</code></div>}
           <div className="border-t p-5"><h3 className="font-black text-[#052b57]">{en?"Lock audit ledger":"결과 잠금 감사 원장"}</h3>{lockAudit.length===0?<p className="mt-2 text-sm text-slate-500">{en?"No lock event yet.":"아직 잠금 이력이 없습니다."}</p>:lockAudit.map(row=><div className="mt-3 grid gap-2 rounded-lg border p-3 text-sm sm:grid-cols-4" key={row.lockId}><strong>#{row.lockId} · v{row.version}</strong><span>{row.lockedBy}</span><span>{row.lockedAt}</span><strong className={row.integrity==="VERIFIED"?"text-emerald-700":"text-red-700"}>{row.integrity}</strong></div>)}</div>
         </section>}
-        <section className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          {[
-            [
-              en ? "Accepted submissions" : "접수 제출본",
-              data?.acceptedSubmissionCount || 0,
-            ],
-            [
-              en ? "Eligible activity rows" : "산정 대상 행",
-              data?.activityCount || 0,
-            ],
-            [en ? "Unmapped rows" : "미매핑 행", data?.unmappedCount || 0],
-            [
-              en ? "Unit mismatches" : "단위 불일치",
-              data?.incompatibleUnitCount || 0,
-            ],
-            [
-              en ? "Preview total" : "예상 총배출량",
-              `${preview.toFixed(6)} tCO₂e`,
-            ],
-          ].map(([l, v]) => (
-            <div className="rounded-xl border bg-white p-5" key={String(l)}>
-              <p className="text-sm font-bold text-slate-500">{l}</p>
-              <strong className="mt-2 block text-2xl text-[#052b57]">
-                {v}
-              </strong>
-            </div>
-          ))}
-        </section>
         {!data?.acceptedSubmissionCount && (
           <div className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-5">
             <strong>
-              {en ? "No accepted submission" : "접수 완료된 제출본이 없습니다."}
+              {en ? "Calculation is waiting for accepted activity data" : "산정 준비 상태: 접수된 활동자료를 기다리고 있습니다."}
             </strong>
             <p className="mt-1 text-sm">
               {en
-                ? "A company manager must accept every active data request before calculation can start."
-                : "기업 담당자가 활성 자료 요청을 모두 접수해야 산정이 시작됩니다."}
+                ? "Enter activity data and evidence, submit it, then have the responsible manager accept it. The calculation table remains available below."
+                : "현재 선택 프로젝트의 접수 제출본과 활동자료 건수를 위에서 확인할 수 있습니다. 활동자료 입력 → 자료 제출 → 담당자 접수 후 아래 표에서 계수를 확인하고 산정하세요."}
             </p>
             <a
               className="mt-3 inline-block font-bold text-blue-700 underline"
@@ -363,44 +346,11 @@ export function EmissionProjectResultPage() {
                 `/en/emission/data-request?projectId=${id}`,
               )}
             >
-              {en ? "Open request acceptance" : "자료 요청·접수 열기"}
+              {en ? "Open request acceptance" : "자료 제출·접수 확인"}
             </a>
+            <a className="ml-5 inline-block font-bold text-blue-700 underline" href={buildLocalizedPath(`/emission/activity-data?projectId=${encodeURIComponent(id)}`,`/en/emission/activity-data?projectId=${encodeURIComponent(id)}`)}>{en?"Open activity data":"활동자료 입력"}</a>
           </div>
         )}
-        <section className="mt-5 overflow-hidden rounded-xl border bg-white" data-testid="recalculation-diff">
-          <div className="flex flex-col justify-between gap-3 border-b p-5 sm:flex-row sm:items-center">
-            <div>
-              <h2 className="text-xl font-black text-[#052b57]">{en ? "Recalculation Version Difference" : "재산정 버전 차이"}</h2>
-              <p className="mt-1 text-sm text-slate-600">{en ? "Compares the latest two immutable calculation versions by activity ID." : "최근 불변 산정 버전 2개를 활동자료 ID 기준으로 비교합니다."}</p>
-            </div>
-            <span className={`self-start rounded-full px-3 py-1 text-sm font-black ${diff?.comparable ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"}`}>
-              {diff?.comparable ? `${en ? "v" : "버전 "}${diff.previous?.version} → ${en ? "v" : "버전 "}${diff.current?.version}` : (en ? "Needs two versions" : "버전 2개 필요")}
-            </span>
-          </div>
-          {!diff?.comparable ? (
-            <p className="p-5 text-sm font-bold text-amber-800">{diff?.message || (en ? "Only calculators can view recalculation differences." : "재산정 차이는 산정 담당자만 조회할 수 있습니다.")}</p>
-          ) : (
-            <>
-              <div className="grid gap-3 border-b p-5 sm:grid-cols-3 lg:grid-cols-6">
-                {[
-                  [en ? "Previous total" : "이전 총량", Number(diff.previous?.totalEmission || 0).toFixed(6)],
-                  [en ? "Current total" : "현재 총량", Number(diff.current?.totalEmission || 0).toFixed(6)],
-                  [en ? "Total delta" : "총량 증감", Number(diff.summary.totalDelta || 0).toFixed(6)],
-                  [en ? "Changed" : "변경", diff.summary.changed || 0],
-                  [en ? "Added" : "추가", diff.summary.added || 0],
-                  [en ? "Removed" : "삭제", diff.summary.removed || 0],
-                ].map(([label, value]) => <div className="rounded-lg bg-slate-50 p-3" key={String(label)}><p className="text-xs font-bold text-slate-500">{label}</p><strong className="mt-1 block text-lg text-[#052b57]">{value}</strong></div>)}
-              </div>
-              <div className="max-h-[360px] overflow-auto">
-                <table className="w-full min-w-[980px] text-left text-sm">
-                  <thead className="sticky top-0 bg-slate-100"><tr>{(en ? ["Change","Activity","Previous qty","Current qty","Previous factor","Current factor","Previous emission","Current emission","Delta"] : ["변경","활동자료","이전 활동량","현재 활동량","이전 계수","현재 계수","이전 배출량","현재 배출량","증감"]).map(x=><th className="p-3" key={x}>{x}</th>)}</tr></thead>
-                  <tbody>{diff.items.filter(row=>row.changeType!=="UNCHANGED").map(row=><tr className="border-t" key={row.activityId}><td className="p-3 font-black text-blue-800">{row.changeType}</td><td className="p-3"><strong>{row.name}</strong><small className="block text-slate-500">{row.category}</small></td><td className="p-3">{row.previousQuantity ?? "-"}</td><td className="p-3">{row.currentQuantity ?? "-"}</td><td className="p-3">{row.previousFactorId || "-"}<small className="block">{row.previousFactorValue ?? "-"}</small></td><td className="p-3">{row.currentFactorId || "-"}<small className="block">{row.currentFactorValue ?? "-"}</small></td><td className="p-3">{row.previousEmission ?? "-"}</td><td className="p-3">{row.currentEmission ?? "-"}</td><td className="p-3 font-black">{Number(row.emissionDelta || 0).toFixed(6)}</td></tr>)}</tbody>
-                </table>
-                {!diff.items.some(row=>row.changeType!=="UNCHANGED") && <p className="p-5 text-center font-bold text-emerald-700">{en ? "No value changed between the two versions." : "두 버전 사이에 변경된 값이 없습니다."}</p>}
-              </div>
-            </>
-          )}
-        </section>
         <section className="mt-5 overflow-hidden rounded-xl border bg-white">
           <div className="flex flex-col justify-between gap-3 border-b p-5 sm:flex-row">
             <div>
@@ -472,7 +422,7 @@ export function EmissionProjectResultPage() {
                       <select
                         aria-label={`${row.name} 배출계수`}
                         className="h-11 min-w-72 rounded-lg border px-2"
-                        disabled={!canCalculate || mappingId === row.id}
+                        disabled={busy || !canCalculate || mappingId !== null}
                         value={row.factorId || ""}
                         onChange={(e) =>
                           e.target.value && map(row, e.target.value)
@@ -529,7 +479,7 @@ export function EmissionProjectResultPage() {
             </table>
           </div>
         </section>
-        <section className="mt-5 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+        {latest && <section className="mt-5 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="min-w-0 overflow-hidden rounded-xl border bg-white">
             <div className="border-b p-5">
               <h2 className="text-xl font-black text-[#052b57]">
@@ -650,8 +600,42 @@ export function EmissionProjectResultPage() {
               </a>
             )}
           </aside>
-        </section>
-        <section className="mt-5 rounded-xl border bg-white p-5">
+        </section>}
+        {diff?.comparable && <details className="mt-5 overflow-hidden rounded-xl border bg-white" data-testid="recalculation-diff"><summary className="cursor-pointer p-5 font-bold">산정 버전 비교</summary>
+          <div className="flex flex-col justify-between gap-3 border-b p-5 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-xl font-black text-[#052b57]">{en ? "Recalculation Version Difference" : "재산정 버전 차이"}</h2>
+              <p className="mt-1 text-sm text-slate-600">{en ? "Compares the latest two immutable calculation versions by activity ID." : "최근 불변 산정 버전 2개를 활동자료 ID 기준으로 비교합니다."}</p>
+            </div>
+            <span className={`self-start rounded-full px-3 py-1 text-sm font-black ${diff?.comparable ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"}`}>
+              {diff?.comparable ? `${en ? "v" : "버전 "}${diff.previous?.version} → ${en ? "v" : "버전 "}${diff.current?.version}` : (en ? "Needs two versions" : "버전 2개 필요")}
+            </span>
+          </div>
+          {!diff?.comparable ? (
+            <p className="p-5 text-sm font-bold text-amber-800">{diff?.message || (en ? "Only calculators can view recalculation differences." : "재산정 차이는 산정 담당자만 조회할 수 있습니다.")}</p>
+          ) : (
+            <>
+              <div className="grid gap-3 border-b p-5 sm:grid-cols-3 lg:grid-cols-6">
+                {[
+                  [en ? "Previous total" : "이전 총량", Number(diff.previous?.totalEmission || 0).toFixed(6)],
+                  [en ? "Current total" : "현재 총량", Number(diff.current?.totalEmission || 0).toFixed(6)],
+                  [en ? "Total delta" : "총량 증감", Number(diff.summary.totalDelta || 0).toFixed(6)],
+                  [en ? "Changed" : "변경", diff.summary.changed || 0],
+                  [en ? "Added" : "추가", diff.summary.added || 0],
+                  [en ? "Removed" : "삭제", diff.summary.removed || 0],
+                ].map(([label, value]) => <div className="rounded-lg bg-slate-50 p-3" key={String(label)}><p className="text-xs font-bold text-slate-500">{label}</p><strong className="mt-1 block text-lg text-[#052b57]">{value}</strong></div>)}
+              </div>
+              <div className="max-h-[360px] overflow-auto">
+                <table className="w-full min-w-[980px] text-left text-sm">
+                  <thead className="sticky top-0 bg-slate-100"><tr>{(en ? ["Change","Activity","Previous qty","Current qty","Previous factor","Current factor","Previous emission","Current emission","Delta"] : ["변경","활동자료","이전 활동량","현재 활동량","이전 계수","현재 계수","이전 배출량","현재 배출량","증감"]).map(x=><th className="p-3" key={x}>{x}</th>)}</tr></thead>
+                  <tbody>{diff.items.filter(row=>row.changeType!=="UNCHANGED").map(row=><tr className="border-t" key={row.activityId}><td className="p-3 font-black text-blue-800">{row.changeType}</td><td className="p-3"><strong>{row.name}</strong><small className="block text-slate-500">{row.category}</small></td><td className="p-3">{row.previousQuantity ?? "-"}</td><td className="p-3">{row.currentQuantity ?? "-"}</td><td className="p-3">{row.previousFactorId || "-"}<small className="block">{row.previousFactorValue ?? "-"}</small></td><td className="p-3">{row.currentFactorId || "-"}<small className="block">{row.currentFactorValue ?? "-"}</small></td><td className="p-3">{row.previousEmission ?? "-"}</td><td className="p-3">{row.currentEmission ?? "-"}</td><td className="p-3 font-black">{Number(row.emissionDelta || 0).toFixed(6)}</td></tr>)}</tbody>
+                </table>
+                {!diff.items.some(row=>row.changeType!=="UNCHANGED") && <p className="p-5 text-center font-bold text-emerald-700">{en ? "No value changed between the two versions." : "두 버전 사이에 변경된 값이 없습니다."}</p>}
+              </div>
+            </>
+          )}
+        </details>}
+        {!!data.runs.length && <details className="mt-5 rounded-xl border bg-white p-5"><summary className="cursor-pointer font-bold">산정 이력 보기 ({data.runs.length}건)</summary>
           <h2 className="text-xl font-black text-[#052b57]">
             {en ? "3. Version History" : "3. 산정 버전 이력"}
           </h2>
@@ -676,7 +660,7 @@ export function EmissionProjectResultPage() {
               </article>
             ))}
           </div>
-        </section>
+        </details>}
     </CommonPageContainer>
   );
 }

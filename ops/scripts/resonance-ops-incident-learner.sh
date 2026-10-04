@@ -11,7 +11,7 @@ trap 'rm -f "$TMP"' EXIT
 scan() {
   grep -RInE --exclude='incident-patterns*' --exclude='qwen40-improvement*' --exclude='*.md' \
     '\[exit [1-9]|FAIL|WARN|error during build|EACCES|sudo:|KUBE_API_DOWN|KUBECTL_UNAVAILABLE|CUBRID_SERVICE_RESTART_FAILED|RUNTIME_HEALTH_FAILED|BROKER_CLOSE_WAIT_HIGH|permission denied|timed out waiting|container not found|CrashLoop|BackOff|ImagePull|read-only|Error assembling JAR' \
-    "$ROOT_DIR/var/ai-runtime" "$ROOT_DIR/var/logs" /opt/util/k9s/web/logs 2>/dev/null || true
+    "$ROOT_DIR/var/ai-runtime" "$ROOT_DIR/var/logs" /opt/Resonance/runtime/tools/k9s/web/logs 2>/dev/null || true
 }
 classify() {
   local line="$1" code="UNKNOWN" severity="WARN" repair="manual review"

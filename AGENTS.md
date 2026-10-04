@@ -72,6 +72,14 @@ For `/admin/emission/survey-report`, product and byproduct rows live under `OUTP
 
 Vite bundles are minified. Do not decide whether a bundle is correct by grepping local variable names such as `isUnallocated` or `productOnlyMass`; verify behavior logic, manifest, and the runtime `react-app-overlay` path.
 
+## Page Work vs Platform/Foundation Work
+
+- Ordinary page work means changes expressible entirely in published SDUI/component/menu metadata and existing generic APIs. Follow the No-Build / No-Deploy Page Development Rule below.
+- Platform/foundation work includes router precedence, runtime page registry, SDUI renderer/allow-list, authentication or authorization enforcement, shared API contracts, schema/version/publish/rollback behavior, and static-to-dynamic dispatch.
+- When a user explicitly requests platform/foundation work, source changes and the relevant frontend/backend build and automated tests are allowed. Make the smallest compatible change, keep static routes higher precedence, and do not migrate all static pages as part of the exception.
+- Apply schema and runtime changes only to the authorized development environment. Keep the previous published definition available and verify rollback before claiming the registry is production-ready.
+- After foundation work, return to metadata-only changes for ordinary page additions where the supported component/API contracts suffice.
+
 ## React Bundle Integrity Guard
 
 `projects/carbonet-frontend/src/main/resources/static/react-app/index.html` is a Vite build artifact — **never edit it manually**. Every `/assets/react/assets/*.{js,css,mjs}` reference it contains must exist on disk in the same `react-app/assets/` directory.

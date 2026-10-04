@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -365,16 +366,15 @@ export function FileManagementMigrationPage() {
             meta={en ? "Search by file name, extension, category, or owner." : "파일명, 확장자, 분류, 담당 기준으로 조회합니다."}
             title={en ? "Filters" : "조회 조건"}
           />
-          <div className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)_minmax(220px,1fr)_auto]">
-            <label className="flex flex-col gap-2">
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><label className="flex flex-col gap-2">
               <span className="text-sm font-bold text-[var(--kr-gov-text-primary)]">{en ? "Keyword" : "검색어"}</span>
               <AdminInput
                 placeholder={en ? "File name, extension, category" : "파일명, 확장자, 분류"}
                 value={filters.searchKeyword}
                 onChange={(event) => setFilters((current) => ({ ...current, searchKeyword: event.target.value }))}
               />
-            </label>
-            <label className="flex flex-col gap-2">
+            </label></div>
+<div className="ccus-search-field"><label className="flex flex-col gap-2">
               <span className="text-sm font-bold text-[var(--kr-gov-text-primary)]">{en ? "Status" : "상태"}</span>
               <AdminSelect value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -382,8 +382,7 @@ export function FileManagementMigrationPage() {
                 <option value="REVIEW">{statusLabel("REVIEW", en)}</option>
                 <option value="ARCHIVE">{statusLabel("ARCHIVE", en)}</option>
               </AdminSelect>
-            </label>
-            <label className="flex flex-col gap-2">
+            </label></div></>} advanced={<><div className="ccus-search-field"><label className="flex flex-col gap-2">
               <span className="text-sm font-bold text-[var(--kr-gov-text-primary)]">{en ? "Visibility" : "공개 범위"}</span>
               <AdminSelect value={filters.visibility} onChange={(event) => setFilters((current) => ({ ...current, visibility: event.target.value }))}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -391,18 +390,14 @@ export function FileManagementMigrationPage() {
                 <option value="INTERNAL">{visibilityLabel("INTERNAL", en)}</option>
                 <option value="LIMITED">{visibilityLabel("LIMITED", en)}</option>
               </AdminSelect>
-            </label>
-            <div className="flex items-end">
-              <MemberButton
+            </label></div></>} actions={<><MemberButton
                 onClick={() => setFilters({ searchKeyword: "", status: "ALL", visibility: "ALL", selectedId: "" })}
                 type="button"
                 variant="secondary"
                 disabled={saving}
               >
                 {en ? "Reset" : "초기화"}
-              </MemberButton>
-            </div>
-          </div>
+              </MemberButton></>}></CommonSearchSection></div>
         </section>
 
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)]">

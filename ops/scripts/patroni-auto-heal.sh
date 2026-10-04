@@ -4,7 +4,7 @@ set -euo pipefail
 NAMESPACE="${CARBONET_NAMESPACE:-carbonet-prod}"
 CLUSTER_NAME="${PATRONI_CLUSTER_NAME:-postgres-patroni}"
 STATEFULSET="${PATRONI_STATEFULSET:-postgres-patroni}"
-STATE_DIR="${PATRONI_HEAL_STATE_DIR:-/opt/resonance-data/control-plane/state/patroni-auto-heal}"
+STATE_DIR="${PATRONI_HEAL_STATE_DIR:-/opt/Resonance/runtime/platform-data/control-plane/state/patroni-auto-heal}"
 LOG_FILE="${PATRONI_HEAL_LOG_FILE:-/opt/Resonance/var/log/patroni-auto-heal.log}"
 COOLDOWN_SECONDS="${PATRONI_REINIT_COOLDOWN_SECONDS:-21600}"
 WAIT_SECONDS="${PATRONI_REINIT_WAIT_SECONDS:-900}"

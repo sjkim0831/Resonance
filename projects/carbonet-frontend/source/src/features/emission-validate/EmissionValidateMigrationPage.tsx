@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -317,11 +318,17 @@ export function EmissionValidateMigrationPage() {
           icon="rule"
           title={en ? "Verification Filters" : "검증 필터"}
         >
-          <form className="grid grid-cols-1 gap-6 md:grid-cols-4" onSubmit={(event) => {
+          <form className="ccus-search-host" onSubmit={(event) => {
             event.preventDefault();
             setFilters({ ...draft, pageIndex: 1 });
-          }}>
-            <div>
+          }}><CommonSearchSection basic={<><div className="ccus-search-field"><div className="md:col-span-2">
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="searchKeyword">{en ? "Keyword" : "검색어"}</label>
+              <div className="flex gap-2">
+                <AdminInput className="flex-1" id="searchKeyword" placeholder={en ? "Search by result ID, project, or company" : "결과 ID, 프로젝트명, 기관명 검색"} value={draft.searchKeyword} onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))} />
+                
+              </div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="verificationStatus">{en ? "Verification Status" : "검증 상태"}</label>
               <AdminSelect id="verificationStatus" value={draft.verificationStatus} onChange={(event) => setDraft((current) => ({ ...current, verificationStatus: event.target.value }))}>
                 <option value="">{en ? "All" : "전체"}</option>
@@ -330,8 +337,7 @@ export function EmissionValidateMigrationPage() {
                 <option value="FAILED">{en ? "Failed" : "반려"}</option>
                 <option value="VERIFIED">{en ? "Verified" : "검증 완료"}</option>
               </AdminSelect>
-            </div>
-            <div>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="priorityFilter">{en ? "Priority" : "우선순위"}</label>
               <AdminSelect id="priorityFilter" value={draft.priorityFilter} onChange={(event) => setDraft((current) => ({ ...current, priorityFilter: event.target.value }))}>
                 <option value="">{en ? "All" : "전체"}</option>
@@ -339,15 +345,7 @@ export function EmissionValidateMigrationPage() {
                 <option value="MEDIUM">{en ? "Medium" : "중간"}</option>
                 <option value="NORMAL">{en ? "Normal" : "일반"}</option>
               </AdminSelect>
-            </div>
-            <div className="md:col-span-2">
-              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="searchKeyword">{en ? "Keyword" : "검색어"}</label>
-              <div className="flex gap-2">
-                <AdminInput className="flex-1" id="searchKeyword" placeholder={en ? "Search by result ID, project, or company" : "결과 ID, 프로젝트명, 기관명 검색"} value={draft.searchKeyword} onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))} />
-                <button className="gov-btn gov-btn-primary" type="submit">{en ? "Search" : "검색"}</button>
-              </div>
-            </div>
-          </form>
+            </div></div></>} actions={<><button className="gov-btn gov-btn-primary" type="submit">{en ? "Search" : "검색"}</button></>}></CommonSearchSection></form>
         </CollectionResultPanel>
 
         <section className="gov-card" data-help-id="emission-validate-links">

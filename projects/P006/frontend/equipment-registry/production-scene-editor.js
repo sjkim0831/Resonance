@@ -1,0 +1,21 @@
+export function integratedEditor(api){
+ const box=document.createElement('details');box.id='integrated-editor';
+ box.innerHTML=`<summary>제품 · 부품 · 장소 · 공정 편집 <small>기존 입력 화면 통합</small></summary><div class="integrated-tools"><button data-section="product">제품·부품</button><button data-section="site">부지·공장</button><button data-section="process">공정·운송·모델</button><button data-section="run">흐름·시간표·검증</button><button data-apply>저장·3D 적용</button><button data-discard>변경 취소</button><span role="status">편집을 열면 재생이 일시정지됩니다.</span></div><iframe title="통합 제품 생산 계획 편집" style="width:100%;height:540px;border:0" hidden></iframe>`;
+ document.querySelector('#process-focus').after(box);
+ const style=document.createElement('style');style.textContent='#integrated-editor{margin:8px 12px;background:white;border:1px solid #b8d4df;border-radius:8px}#integrated-editor summary{padding:14px;cursor:pointer;color:#153957;font-weight:bold}#integrated-editor small{font-weight:normal;color:#587187}.integrated-tools{display:flex;gap:8px;flex-wrap:wrap;padding:10px;border-top:1px solid #dae7ee}.integrated-tools [data-apply]{background:#008895;color:white}.integrated-tools span{padding:8px;color:#365870}';document.head.append(style);
+ const frame=box.querySelector('iframe'),status=box.querySelector('[role=status]');let draftBase=null,dirty=false,ready=false,section=['product','site','process'].includes(location.hash.slice(1))?location.hash.slice(1):'product';
+ function client(){return frame.contentWindow?.IntegratedPlanner;}
+ function start(){api.pause();if(!api.get()){status.textContent='먼저 저장 계획 또는 자동차 가상 예시를 불러오세요.';return;}if(!dirty){draftBase=api.get();if(ready)client().set(draftBase);}if(!frame.src){frame.src='product-planner-editor.html?v=1';frame.onload=()=>{ready=true;client().set(draftBase);client().tab(section);frame.hidden=false;status.textContent='임시 편집 · 저장·3D 적용 전에는 원본이 바뀌지 않습니다.';};}else if(ready){frame.hidden=false;client().tab(section);}}
+ box.addEventListener('toggle',()=>{const places=document.getElementById('places-editor');if(box.open&&places?.dataset.dirty==='true'){box.open=false;status.textContent='작업 장소 변경을 먼저 저장하거나 취소하세요.';alert('작업 장소 변경을 먼저 저장·3D 적용하거나 변경 취소하세요.');return;}if(box.open&&document.querySelector('[data-start]')?.disabled){box.open=false;status.textContent='녹화 종료 후 편집하세요.';return;}if(places)places.hidden=box.open;const record=document.querySelector('.record-panel');if(record)record.hidden=box.open;if(box.open)start();});
+ box.querySelectorAll('[data-section]').forEach(b=>b.onclick=()=>{section=b.dataset.section;history.replaceState(null,'','#'+section);if(ready){client().tab(section);if(section==='run'&&!dirty)client().time(api.time());}});
+ box.querySelector('[data-apply]').onclick=async()=>{if(!ready||!draftBase)return;const button=box.querySelector('[data-apply]');button.disabled=true;try{const p=client().get();status.textContent='검증·저장·3D 적용 중…';await api.apply(p,draftBase);draftBase=api.get();client().set(draftBase);dirty=false;status.textContent='저장·3D 적용 완료 · 0분부터 재생하세요.';}catch(e){status.textContent='적용하지 않음: '+e.message;}finally{button.disabled=false;}};
+ box.querySelector('[data-discard]').onclick=()=>{draftBase=api.get();if(ready&&draftBase)client().set(draftBase);dirty=false;status.textContent='현재 3D 계획으로 되돌렸습니다.';};
+ window.addEventListener('message',e=>{if(e.origin!==location.origin||e.source!==frame.contentWindow)return;if(e.data?.type==='P006_EDITOR_DIRTY'){dirty=true;status.textContent='미적용 변경 있음 · 저장·3D 적용을 누르세요.';}if(e.data?.type==='P006_EDITOR_SELECT')api.focus(e.data.id);});
+ document.querySelector('header a').onclick=e=>{e.preventDefault();box.open=true;box.scrollIntoView({block:'start'});};
+ window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
+ if(location.pathname.endsWith('/product-planner.html')){
+   const openRoute=()=>{const tab=location.hash.slice(1);if(['product','site','process'].includes(tab)&&api.get()){section=tab;box.open=true;start();}else if(tab==='run')box.open=false;};
+   window.addEventListener('hashchange',openRoute);setTimeout(openRoute,100);
+ }
+ return {busy:()=>box.open,dirty:()=>dirty,changed(){if(!dirty){draftBase=null;}},select(id){box.open=true;section='process';start();if(ready)client().select(id);},time(t){if(box.open&&ready&&section==='run'&&!dirty)client().time(t);}};
+}

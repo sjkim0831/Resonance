@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useDeferredValue, useEffect, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -559,12 +560,11 @@ export function SystemCodeMigrationPage() {
             title={en ? "Class Codes" : "분류 코드"}
           />
 
-          <div className="mb-4 grid grid-cols-1 gap-4 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-surface-subtle)] p-4 lg:grid-cols-3">
-            <div className="lg:col-span-2">
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div className="lg:col-span-2">
               <label className="gov-label" htmlFor="classSearchKeyword">{en ? "Search class codes" : "분류 코드 검색"}</label>
               <AdminInput id="classSearchKeyword" onChange={(event) => setClassSearchKeyword(event.target.value)} placeholder={en ? "Class code, name, description" : "분류 코드, 분류명, 설명"} value={classSearchKeyword} />
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="gov-label" htmlFor="selectedClassCode">{en ? "Edit target" : "수정 대상"}</label>
               <AdminSelect id="selectedClassCode" onChange={(event) => setSelectedClassCode(event.target.value)} value={selectedClassCode}>
                 {filteredClassList.length === 0 ? <option value="">{en ? "No results" : "검색 결과 없음"}</option> : filteredClassList.map((row) => {
@@ -572,8 +572,7 @@ export function SystemCodeMigrationPage() {
                   return <option key={clCode} value={clCode}>{`${clCode} - ${stringOf(row, "clCodeNm", "CL_CODE_NM")}`}</option>;
                 })}
               </AdminSelect>
-            </div>
-          </div>
+            </div></div></>} actions={<></>}></CommonSearchSection></div>
 
           <form action={buildLocalizedPath("/admin/system/code/class/create", "/en/admin/system/code/class/create")} className={`${showCodeRegister ? "grid" : "hidden"} grid-cols-1 gap-4 mb-4 md:grid-cols-5`} data-reset-on-success="true" method="post" onSubmit={handleSubmit}>
             <input name="currentDetailCodeId" type="hidden" value={detailCodeId} className="krds-control-field" />
@@ -664,12 +663,11 @@ export function SystemCodeMigrationPage() {
             title={en ? "Code IDs" : "코드 ID"}
           />
 
-          <div className="mb-4 grid grid-cols-1 gap-4 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-surface-subtle)] p-4 lg:grid-cols-3">
-            <div className="lg:col-span-2">
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div className="lg:col-span-2">
               <label className="gov-label" htmlFor="codeSearchKeyword">{en ? "Search code IDs" : "코드 ID 검색"}</label>
               <AdminInput id="codeSearchKeyword" onChange={(event) => setCodeSearchKeyword(event.target.value)} placeholder={en ? "Code ID, name, class code" : "코드 ID, 코드명, 분류 코드"} value={codeSearchKeyword} />
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="gov-label" htmlFor="codeFilterClassCode">{en ? "Class filter" : "분류 필터"}</label>
               <AdminSelect id="codeFilterClassCode" onChange={(event) => setCodeFilterClassCode(event.target.value)} value={codeFilterClassCode}>
                 <option value="">{en ? "All classes" : "전체 분류"}</option>
@@ -678,8 +676,7 @@ export function SystemCodeMigrationPage() {
                   return <option key={clCode} value={clCode}>{`${clCode} - ${stringOf(row, "clCodeNm", "CL_CODE_NM")}`}</option>;
                 })}
               </AdminSelect>
-            </div>
-            <div>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <label className="gov-label" htmlFor="selectedGroupCodeId">{en ? "Detail target code ID" : "상세 대상 코드 ID"}</label>
               <AdminSelect id="selectedGroupCodeId" onChange={(event) => setSelectedGroupCodeId(event.target.value)} value={selectedGroupCodeId}>
                 {filteredCodeList.length === 0 ? <option value="">{en ? "No results" : "검색 결과 없음"}</option> : filteredCodeList.map((row) => {
@@ -687,8 +684,7 @@ export function SystemCodeMigrationPage() {
                   return <option key={codeId} value={codeId}>{`${codeId} - ${stringOf(row, "codeIdNm", "CODE_ID_NM")}`}</option>;
                 })}
               </AdminSelect>
-            </div>
-          </div>
+            </div></div></>} actions={<></>}></CommonSearchSection></div>
 
           <form action={buildLocalizedPath("/admin/system/code/group/create", "/en/admin/system/code/group/create")} className={`${showCodeRegister ? "grid" : "hidden"} grid-cols-1 gap-4 mb-4 md:grid-cols-6`} data-reset-on-success="true" method="post" onSubmit={handleSubmit}>
             <input name="currentDetailCodeId" type="hidden" value={detailCodeId} className="krds-control-field" />
@@ -817,8 +813,19 @@ export function SystemCodeMigrationPage() {
             </div>
           </div>
 
-          <div className="mb-4 grid grid-cols-1 gap-4 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-surface-subtle)] p-4 lg:grid-cols-3">
-            <div>
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div className="lg:col-span-2">
+              <label className="gov-label" htmlFor="detailSearchKeyword">{en ? "Search detail codes" : "상세 코드 검색"}</label>
+              <AdminInput id="detailSearchKeyword" onChange={(event) => setDetailSearchKeyword(event.target.value)} placeholder={en ? "Code value, name, description" : "코드값, 코드명, 설명"} value={detailSearchKeyword} />
+            </div></div>
+<div className="ccus-search-field"><div>
+              <label className="gov-label" htmlFor="detailSortOption">{en ? "Sort" : "정렬"}</label>
+              <AdminSelect id="detailSortOption" onChange={(event) => setDetailSortOption(event.target.value as DetailSortOption)} value={detailSortOption}>
+                <option value="code-asc">{en ? "Code ascending" : "코드값 오름차순"}</option>
+                <option value="code-desc">{en ? "Code descending" : "코드값 내림차순"}</option>
+                <option value="name-asc">{en ? "Name ascending" : "코드명 오름차순"}</option>
+                <option value="useAt">{en ? "Use status first" : "사용여부 우선"}</option>
+              </AdminSelect>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <label className="gov-label" htmlFor="detailCodeId">{en ? "Selected Code ID" : "선택 코드 ID"}</label>
               <AdminSelect id="detailCodeId" onChange={(event) => {
                 setSelectedGroupCodeId(event.target.value);
@@ -830,21 +837,7 @@ export function SystemCodeMigrationPage() {
                   </option>
                 ))}
               </AdminSelect>
-            </div>
-            <div className="lg:col-span-2">
-              <label className="gov-label" htmlFor="detailSearchKeyword">{en ? "Search detail codes" : "상세 코드 검색"}</label>
-              <AdminInput id="detailSearchKeyword" onChange={(event) => setDetailSearchKeyword(event.target.value)} placeholder={en ? "Code value, name, description" : "코드값, 코드명, 설명"} value={detailSearchKeyword} />
-            </div>
-            <div>
-              <label className="gov-label" htmlFor="detailSortOption">{en ? "Sort" : "정렬"}</label>
-              <AdminSelect id="detailSortOption" onChange={(event) => setDetailSortOption(event.target.value as DetailSortOption)} value={detailSortOption}>
-                <option value="code-asc">{en ? "Code ascending" : "코드값 오름차순"}</option>
-                <option value="code-desc">{en ? "Code descending" : "코드값 내림차순"}</option>
-                <option value="name-asc">{en ? "Name ascending" : "코드명 오름차순"}</option>
-                <option value="useAt">{en ? "Use status first" : "사용여부 우선"}</option>
-              </AdminSelect>
-            </div>
-          </div>
+            </div></div></>} actions={<></>}></CommonSearchSection></div>
 
           <form action={buildLocalizedPath("/admin/system/code/detail/create", "/en/admin/system/code/detail/create")} className={`${showCodeRegister ? "grid" : "hidden"} grid-cols-1 gap-4 mb-4 md:grid-cols-6`} data-reset-on-success="true" method="post" onSubmit={handleSubmit}>
             <div>

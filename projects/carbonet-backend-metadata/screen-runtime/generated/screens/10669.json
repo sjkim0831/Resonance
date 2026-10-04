@@ -1,0 +1,1173 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 10669,
+  "blueprintCode": "BP_AUTO_C36A1BB21DD4BA6FDCA5E60A",
+  "identity": {
+    "processCode": "EMISSION_PROJECT",
+    "stepCode": "EMISSION_PROJECT_COLLECT",
+    "actorCode": "SITE_DATA_OWNER",
+    "audience": "ADMIN",
+    "pageId": "AUTO_C36A1BB21DD4BA6FDCA5"
+  },
+  "route": "/admin/system/process-step-workspace",
+  "pageName": "프로세스 단계 실행 작업공간",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "kpis": [
+      "권한 없는 실행 0건",
+      "중복 상태 전이 0건",
+      "완료 이벤트 저장률 100%",
+      "다음 액터 인계율 100%",
+      "감사 스냅샷 누락 0건"
+    ],
+    "errors": [
+      {
+        "code": "FORBIDDEN",
+        "recovery": "권한·업무분리 확인"
+      },
+      {
+        "code": "CONFLICT",
+        "recovery": "최신 버전 재조회"
+      },
+      {
+        "code": "DEPENDENCY_FAILURE",
+        "recovery": "멱등키로 안전 재시도"
+      }
+    ],
+    "fields": [
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "tenantId",
+        "fieldName": "테넌트",
+        "fieldGroup": "공통",
+        "fieldOrder": 10,
+        "validation": {
+          "minLength": 1
+        },
+        "apiProperty": "tenantId",
+        "controlType": "HIDDEN",
+        "sourceTable": "emission_project_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "tenant_id",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "projectId",
+        "fieldName": "프로젝트",
+        "fieldGroup": "공통",
+        "fieldOrder": 20,
+        "validation": {
+          "minLength": 1
+        },
+        "apiProperty": "projectId",
+        "controlType": "PROJECT_SELECT",
+        "sourceTable": "emission_project_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "project_id",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "CODE",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "processCode",
+        "fieldName": "프로세스 코드",
+        "fieldGroup": "공통",
+        "fieldOrder": 30,
+        "validation": {
+          "source": "SERVER_CONTEXT",
+          "required": true,
+          "immutable": true
+        },
+        "apiProperty": "processCode",
+        "controlType": "HIDDEN",
+        "sourceTable": "framework_process_definition",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "process_code",
+        "mappingStatus": "CONTEXT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "CODE",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "stepCode",
+        "fieldName": "단계 코드",
+        "fieldGroup": "공통",
+        "fieldOrder": 40,
+        "validation": {
+          "source": "SERVER_CONTEXT",
+          "required": true,
+          "immutable": true
+        },
+        "apiProperty": "stepCode",
+        "controlType": "HIDDEN",
+        "sourceTable": "framework_process_step",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "step_code",
+        "mappingStatus": "CONTEXT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "UUID",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": false,
+        "fieldCode": "recordId",
+        "fieldName": "업무 레코드 ID",
+        "fieldGroup": "공통",
+        "fieldOrder": 50,
+        "validation": {
+          "source": "SERVER_CONTEXT",
+          "required": false,
+          "immutable": true
+        },
+        "apiProperty": "recordId",
+        "controlType": "HIDDEN",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "CODE",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "statusCode",
+        "fieldName": "처리 상태",
+        "fieldGroup": "공통",
+        "fieldOrder": 60,
+        "validation": {
+          "codeGroup": "WORK_STATUS"
+        },
+        "apiProperty": "statusCode",
+        "controlType": "STATUS_BADGE",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "ownerActorCode",
+        "fieldName": "담당 액터",
+        "fieldGroup": "공통",
+        "fieldOrder": 70,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "ownerActorCode",
+        "controlType": "ACTOR_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "INTEGER",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "rowVersion",
+        "fieldName": "데이터 버전",
+        "fieldGroup": "공통",
+        "fieldOrder": 80,
+        "validation": {
+          "min": 0
+        },
+        "apiProperty": "rowVersion",
+        "controlType": "HIDDEN",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "DATETIME",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": false,
+        "fieldCode": "createdAt",
+        "fieldName": "등록 일시",
+        "fieldGroup": "공통",
+        "fieldOrder": 90,
+        "validation": {
+          "type": "date-time",
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "createdAt",
+        "controlType": "DATETIME",
+        "sourceTable": "emission_project_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "created_at",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "DATETIME",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": false,
+        "fieldCode": "updatedAt",
+        "fieldName": "최종 수정 일시",
+        "fieldGroup": "공통",
+        "fieldOrder": 100,
+        "validation": {
+          "type": "date-time",
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "updatedAt",
+        "controlType": "DATETIME",
+        "sourceTable": "emission_project_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "updated_at",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "INTEGER",
+        "editable": false,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": false,
+        "fieldCode": "evidenceCount",
+        "fieldName": "증빙 수",
+        "fieldGroup": "공통",
+        "fieldOrder": 110,
+        "validation": {
+          "min": 0
+        },
+        "apiProperty": "evidenceCount",
+        "controlType": "EVIDENCE_LINK",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "YEAR",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "reportingYear",
+        "fieldName": "보고연도",
+        "fieldGroup": "EMISSION",
+        "fieldOrder": 200,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "reportingYear",
+        "controlType": "YEAR",
+        "sourceTable": "emission_project_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "reporting_year",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "organizationId",
+        "fieldName": "조직",
+        "fieldGroup": "EMISSION",
+        "fieldOrder": 210,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "organizationId",
+        "controlType": "ORGANIZATION_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "siteId",
+        "fieldName": "사업장",
+        "fieldGroup": "EMISSION",
+        "fieldOrder": 220,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "siteId",
+        "controlType": "SITE_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": false,
+        "fieldCode": "facilityId",
+        "fieldName": "배출시설",
+        "fieldGroup": "EMISSION",
+        "fieldOrder": 230,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "facilityId",
+        "controlType": "FACILITY_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "scopeCode",
+        "fieldName": "Scope",
+        "fieldGroup": "EMISSION",
+        "fieldOrder": 240,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "scopeCode",
+        "controlType": "SCOPE_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": false,
+        "fieldCode": "activityValue",
+        "fieldName": "활동량",
+        "fieldGroup": "EMISSION",
+        "fieldOrder": 250,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "activityValue",
+        "controlType": "NUMBER",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": false,
+        "fieldCode": "unitCode",
+        "fieldName": "단위",
+        "fieldGroup": "EMISSION",
+        "fieldOrder": 260,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "unitCode",
+        "controlType": "UNIT_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": false,
+        "fieldCode": "factorId",
+        "fieldName": "배출계수",
+        "fieldGroup": "EMISSION",
+        "fieldOrder": 270,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "factorId",
+        "controlType": "FACTOR_SEARCH",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": false,
+        "fieldCode": "emissionValue",
+        "fieldName": "배출량",
+        "fieldGroup": "EMISSION",
+        "fieldOrder": 280,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "emissionValue",
+        "controlType": "CALCULATED_NUMBER",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "qualityStatus",
+        "fieldName": "데이터 품질",
+        "fieldGroup": "EMISSION",
+        "fieldOrder": 290,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "qualityStatus",
+        "controlType": "QUALITY_BADGE",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "sourceType",
+        "fieldName": "자료 출처",
+        "fieldGroup": "업무 처리",
+        "fieldOrder": 400,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "sourceType",
+        "controlType": "SOURCE_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "sourceReference",
+        "fieldName": "원본 참조",
+        "fieldGroup": "업무 처리",
+        "fieldOrder": 410,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "sourceReference",
+        "controlType": "SOURCE_LINK",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "ARRAY",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": false,
+        "fieldCode": "attachmentIds",
+        "fieldName": "첨부 증빙",
+        "fieldGroup": "업무 처리",
+        "fieldOrder": 420,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "attachmentIds",
+        "controlType": "FILE_UPLOAD",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "DATETIME",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": false,
+        "fieldCode": "submittedAt",
+        "fieldName": "제출 일시",
+        "fieldGroup": "업무 처리",
+        "fieldOrder": 430,
+        "validation": {
+          "type": "date-time",
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "submittedAt",
+        "controlType": "DATETIME",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "contract_72711358232b",
+        "fieldName": "사업장",
+        "fieldGroup": "기존 전문 설계",
+        "fieldOrder": 601,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "contract_72711358232b",
+        "controlType": "DOMAIN_CONTROL",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "contract_d26c7c7e25bc",
+        "fieldName": "배출원",
+        "fieldGroup": "기존 전문 설계",
+        "fieldOrder": 602,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "contract_d26c7c7e25bc",
+        "controlType": "DOMAIN_CONTROL",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "contract_32c75e57a82d",
+        "fieldName": "활동자료",
+        "fieldGroup": "기존 전문 설계",
+        "fieldOrder": 603,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "contract_32c75e57a82d",
+        "controlType": "DOMAIN_CONTROL",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "contract_4ea5456fb1e6",
+        "fieldName": "값",
+        "fieldGroup": "기존 전문 설계",
+        "fieldOrder": 604,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "contract_4ea5456fb1e6",
+        "controlType": "DOMAIN_CONTROL",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "contract_fe887252f138",
+        "fieldName": "단위",
+        "fieldGroup": "기존 전문 설계",
+        "fieldOrder": 605,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "contract_fe887252f138",
+        "controlType": "DOMAIN_CONTROL",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "contract_7bc7c5c4241a",
+        "fieldName": "기간",
+        "fieldGroup": "기존 전문 설계",
+        "fieldOrder": 606,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "contract_7bc7c5c4241a",
+        "controlType": "DOMAIN_CONTROL",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "contract_20e87f548266",
+        "fieldName": "출처",
+        "fieldGroup": "기존 전문 설계",
+        "fieldOrder": 607,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "contract_20e87f548266",
+        "controlType": "DOMAIN_CONTROL",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "contract_c219ccfeeb53",
+        "fieldName": "증빙",
+        "fieldGroup": "기존 전문 설계",
+        "fieldOrder": 608,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "contract_c219ccfeeb53",
+        "controlType": "DOMAIN_CONTROL",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "contract_9ff7e209dc62",
+        "fieldName": "담당자",
+        "fieldGroup": "기존 전문 설계",
+        "fieldOrder": 609,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "contract_9ff7e209dc62",
+        "controlType": "DOMAIN_CONTROL",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "contract_df23376316ee",
+        "fieldName": "마감",
+        "fieldGroup": "기존 전문 설계",
+        "fieldOrder": 610,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "contract_df23376316ee",
+        "controlType": "DOMAIN_CONTROL",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-admin-data",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_COLLECT_ADMIN",
+        "required": true,
+        "fieldCode": "contract_87a1e1d51628",
+        "fieldName": "품질상태",
+        "fieldGroup": "기존 전문 설계",
+        "fieldOrder": 611,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "contract_87a1e1d51628",
+        "controlType": "DOMAIN_CONTROL",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "SITE_DATA_OWNER:ADMIN",
+        "evidenceRequired": false
+      }
+    ],
+    "states": [
+      "LOADING",
+      "READY",
+      "NOT_STARTED",
+      "RUNNING",
+      "COMPLETING",
+      "COMPLETED",
+      "VALIDATION_ERROR",
+      "ERROR",
+      "AUTHORITY_DENIED",
+      "FORBIDDEN",
+      "DEPENDENCY_BLOCKED",
+      "CONFLICT",
+      "SERVER_ERROR",
+      "SESSION_EXPIRED",
+      "EMPTY"
+    ],
+    "actions": [
+      {
+        "code": "LOAD_EXECUTION",
+        "method": "GET"
+      },
+      {
+        "code": "START_EXECUTION",
+        "guard": "first step actor",
+        "method": "POST"
+      },
+      {
+        "code": "SELECT_STEP",
+        "guard": "process step"
+      },
+      {
+        "code": "COMPLETE_STEP",
+        "guard": "current step + actor + state + evidence",
+        "method": "POST",
+        "idempotent": true
+      },
+      {
+        "code": "CONTINUE_NEXT",
+        "effect": "next step and actor handoff"
+      }
+    ],
+    "sections": [
+      {
+        "id": "process-context"
+      },
+      {
+        "id": "execution-step-rail"
+      },
+      {
+        "id": "step-contract"
+      },
+      {
+        "id": "work-evidence-form"
+      },
+      {
+        "id": "transition-actions"
+      },
+      {
+        "id": "audit-history"
+      }
+    ],
+    "extensions": {
+      "contractId": 742,
+      "sharedRuntime": true
+    },
+    "responsive": {
+      "mobile": "single-column-actions-bottom",
+      "tablet": "adaptive-grid",
+      "desktop": "list-detail-workspace"
+    },
+    "permissions": [
+      {
+        "code": "SITE_DATA_OWNER",
+        "scope": "TENANT_PROJECT",
+        "segregationOfDuties": true,
+        "serverAuthorization": true
+      }
+    ],
+    "validations": [
+      {
+        "code": "ENTRY_AND_REQUIRED_FIELDS",
+        "type": "CONTRACT"
+      },
+      {
+        "code": "STATE_AND_VERSION",
+        "type": "CONCURRENCY"
+      }
+    ],
+    "apiContracts": [
+      {
+        "path": "/admin/api/system/actor-process",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions",
+        "scope": "account actor + tenant + project + process",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/start",
+        "method": "POST"
+      },
+      {
+        "path": "/home/api/process-executions/{executionId}/commands",
+        "method": "POST",
+        "idempotency": "required"
+      }
+    ],
+    "designSystem": "KRDS_GOV",
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG_2_1_AA",
+      "nonColorStatus": true,
+      "focusManagement": true
+    },
+    "dataContracts": [
+      {
+        "entity": "framework_process_definition",
+        "version": "2.0.0"
+      },
+      {
+        "entity": "framework_process_step",
+        "relation": "state transition contract"
+      },
+      {
+        "scope": "active account actor",
+        "entity": "framework_account_actor_assignment"
+      },
+      {
+        "lock": "running execution",
+        "entity": "framework_process_execution"
+      },
+      {
+        "entity": "framework_process_execution_event",
+        "unique": "execution + idempotency key"
+      }
+    ],
+    "schemaVersion": "2.0.0",
+    "completionRule": "서버 명령·현재 상태·멱등키·필수 처리 내용이 검증되고 실행 이벤트와 결과 스냅샷이 저장되며 다음 단계와 액터가 결정되어야 한다.",
+    "exitConditions": [
+      "서버 명령·현재 상태·멱등키·필수 처리 내용이 검증되고 실행 이벤트와 결과 스냅샷이 저장되며 다음 단계와 액터가 결정되어야 한다."
+    ],
+    "businessPurpose": "프로젝트 액터가 선택한 프로세스의 현재 단계를 실제 상태 전이 계약에 따라 처리하고 입력·증적·결과·감사 이력을 저장한 뒤 다음 액터 업무로 인계한다.",
+    "entryConditions": [
+      "인증된 계정에 테넌트·프로젝트·단계 액터 배정이 활성이고 이전 단계의 상태와 데이터 계약이 충족되어야 한다."
+    ],
+    "actorResponsibilities": [
+      "SITE_DATA_OWNER 액터가 권한·업무분리 정책에 따라 프로세스 단계 실행 작업공간 업무를 수행한다."
+    ]
+  },
+  "traceability": {
+    "contractId": 742,
+    "requirementIds": [
+      "EMISSION_PROJECT:EMISSION_PROJECT_COLLECT:ADMIN"
+    ],
+    "generationBatchId": 183,
+    "designReadinessScore": 100,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "b266af7dd2729682467b519bd66afe04f992bb6c5a8b3153ce5d9129e4e46a6a",
+  "artifactHash": "909389e3814d68602254dd187f499f9942c82c30e5cae906fa9d25454985c4d1"
+}

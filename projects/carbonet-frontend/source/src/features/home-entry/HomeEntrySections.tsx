@@ -1,5 +1,6 @@
-import { buildLocalizedPath, navigate } from "../../lib/navigation/runtime";
-import { useMemo, useState } from "react";
+import { buildLocalizedPath, getNavigationEventName, navigate } from "../../lib/navigation/runtime";
+import { useEffect, useMemo, useState } from "react";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { HomeButton, HomeInput, HomeLinkButton } from "../home-ui/common";
 import { HOME_ENTRY_ASSETS, LOCALIZED_CONTENT, LocalizedHomeContent } from "./homeEntryContent";
 import { HomeMenuItem, HomeQuickLink } from "./homeEntryTypes";
@@ -120,11 +121,108 @@ function isNavigableMenuUrl(url?: string) {
   return Boolean(url && url !== "#" && url.startsWith("/"));
 }
 
+function isHomeMenuUrl(url?: string) {
+  const path = (url || "").replace(/^\/en(?=\/)/, "").split("?")[0].replace(/\/$/, "");
+  return path === "/home" || path === "";
+}
+
+type StoredRecentMenu = { url: string; visitedAt: number };
+
+function recentMenuStorageKey(userId: string, top: HomeMenuItem) {
+  const scope = `${userId}\u001f${top.url || top.label || "menu"}`;
+  let hash = 2166136261;
+  for (let index = 0; index < scope.length; index += 1) {
+    hash = Math.imul(hash ^ scope.charCodeAt(index), 16777619);
+  }
+  return `carbonet:recent-menu:v1:${(hash >>> 0).toString(36)}`;
+}
+
+function recentMenuRouteKey(url: string) {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    const path = parsed.pathname.replace(/^\/en(?=\/)/, "").replace(/\/+$/, "") || "/";
+    return `${path}?menu=${parsed.searchParams.get("menu") || ""}`;
+  } catch {
+    return "";
+  }
+}
+
+function sameRecentMenuRoute(left: string, right: string) {
+  const leftKey = recentMenuRouteKey(left);
+  return Boolean(leftKey && leftKey === recentMenuRouteKey(right));
+}
+
+function readRecentMenuItems(key: string, allowedItems: Array<{ label?: string; url?: string }>) {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(key) || "[]") as StoredRecentMenu[];
+    if (!Array.isArray(saved)) return [];
+    const seen = new Set<string>();
+    return saved.flatMap((entry) => {
+      if (!entry || typeof entry.url !== "string" || !isNavigableMenuUrl(entry.url)) return [];
+      const match = allowedItems.find((item) => item.url && sameRecentMenuRoute(item.url, entry.url));
+      const routeKey = match?.url ? recentMenuRouteKey(match.url) : "";
+      if (!match || !routeKey || seen.has(routeKey)) return [];
+      seen.add(routeKey);
+      return [{ item: match, routeKey }];
+    }).slice(0, 5);
+  } catch {
+    return [];
+  }
+}
+
+function recordRecentMenuVisit(key: string, item: { url?: string }) {
+  if (!item.url || !isNavigableMenuUrl(item.url)) return;
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(key) || "[]") as StoredRecentMenu[];
+    const currentKey = recentMenuRouteKey(item.url);
+    const next = [
+      { url: item.url, visitedAt: Date.now() },
+      ...(Array.isArray(saved) ? saved : []).filter((entry) => entry?.url && recentMenuRouteKey(entry.url) !== currentKey)
+    ].slice(0, 5);
+    window.localStorage.setItem(key, JSON.stringify(next));
+  } catch {
+    // Recent-menu storage is a convenience; disabled storage must not break navigation.
+  }
+}
+
 function UnavailableMenuLabel({ label, en, className }: { label: string; en: boolean; className?: string }) {
   return <span aria-disabled="true" className={className} title={en ? "This service is being prepared." : "준비 중인 서비스입니다."}>{label}<span className="sr-only"> ({en ? "Coming soon" : "준비 중"})</span></span>;
 }
 
 export function HeaderDesktopNav({ en, homeMenu }: { en: boolean; homeMenu: HomeMenuItem[] }) {
+  const session = useFrontendSession();
+  const userId = session.value?.authenticated
+    ? session.value.userId || session.value.actualUserId || "authenticated"
+    : "anonymous";
+  const [recentRevision, setRecentRevision] = useState(0);
+  const currentRouteKey = typeof window === "undefined" ? "" : recentMenuRouteKey(`${window.location.pathname}${window.location.search}`);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const refreshRecentMenu = () => {
+      const currentUrl = `${window.location.pathname}${window.location.search}`;
+      for (const top of homeMenu) {
+        if (isHomeMenuUrl(top.url)) continue;
+        const allowedItems = (top.sections || []).flatMap((section) => section.items || []).filter((item) => isNavigableMenuUrl(item.url));
+        const visitedItem = allowedItems.find((item) => item.url && sameRecentMenuRoute(item.url, currentUrl));
+        if (!visitedItem) continue;
+        recordRecentMenuVisit(recentMenuStorageKey(userId, top), visitedItem);
+        setRecentRevision((revision) => revision + 1);
+        return;
+      }
+    };
+    const handleStorage = () => setRecentRevision((revision) => revision + 1);
+    refreshRecentMenu();
+    window.addEventListener("popstate", refreshRecentMenu);
+    window.addEventListener(getNavigationEventName(), refreshRecentMenu);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("popstate", refreshRecentMenu);
+      window.removeEventListener(getNavigationEventName(), refreshRecentMenu);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [currentRouteKey, homeMenu, userId]);
+
   return (
     <nav className={getDesktopNavClass(en)} aria-label={en ? LOCALIZED_CONTENT.en.navAria : LOCALIZED_CONTENT.ko.navAria}>
       {homeMenu.map((top, index) => (
@@ -132,13 +230,23 @@ export function HeaderDesktopNav({ en, homeMenu }: { en: boolean; homeMenu: Home
           {isNavigableMenuUrl(top.url) ? <a aria-current={typeof window !== "undefined" && top.url && window.location.pathname.startsWith(top.url) ? "page" : undefined} className={getDesktopNavLinkClass(en)} href={top.url}>
             {top.label || (en ? "Menu" : "메뉴")}
           </a> : <UnavailableMenuLabel className={`${getDesktopNavLinkClass(en)} cursor-default text-slate-500`} en={en} label={top.label || (en ? "Menu" : "메뉴")} />}
-          {(top.sections || []).length ? <div className="gnb-depth2 fixed left-1/2 top-24 hidden max-h-[calc(100vh-112px)] w-[min(1400px,calc(100vw-32px))] -translate-x-1/2 grid-cols-[220px_minmax(0,1fr)] overflow-hidden rounded-b-xl border border-slate-300 bg-white shadow-[0_12px_32px_rgba(15,42,76,.18)]">
+          {(top.sections || []).length && !isHomeMenuUrl(top.url) ? <div className="gnb-depth2 fixed left-1/2 top-24 hidden max-h-[calc(100vh-112px)] w-[min(1400px,calc(100vw-32px))] -translate-x-1/2 grid-cols-[220px_minmax(0,1fr)] overflow-hidden rounded-b-xl border border-slate-300 bg-white shadow-[0_12px_32px_rgba(15,42,76,.18)]">
             <aside className="overflow-auto border-r border-[#c6d5e5] bg-[#eef5ff] p-5 text-[#052b57]">
               <strong className="gov-text-label flex items-center gap-2 font-black"><span className="material-symbols-outlined text-xl text-[#246beb]">space_dashboard</span>{en ? "Control panel" : "컨트롤 패널"}</strong>
               {isNavigableMenuUrl(top.url) ? <a className="mt-3 flex min-h-11 items-center justify-between rounded-lg border border-[#8eabd0] bg-white px-3 font-bold text-[#17375e] hover:text-[#00378b]" href={top.url}><span>{top.label}</span><span className="material-symbols-outlined text-xl">arrow_forward</span></a> : null}
               <div className="mt-4 rounded-lg border border-[#c6d5e5] bg-white p-3"><p className="gov-text-caption font-bold text-[#526b89]">{en ? "Available tasks" : "이용 가능한 업무"}</p><strong className="mt-1 block text-2xl text-[#00378b]">{(top.sections || []).reduce((sum, section) => sum + (section.items || []).length, 0)}</strong></div>
               <strong className="gov-text-label mt-5 flex items-center gap-2 border-t border-[#c6d5e5] pt-5 font-black"><span className="material-symbols-outlined text-xl text-[#246beb]">history</span>{en ? "Recent menu" : "최근 메뉴"}</strong>
-              <div className="mt-2 space-y-1">{(top.sections || []).flatMap((section) => section.items || []).filter((item) => isNavigableMenuUrl(item.url)).slice(0, 5).map((item, recentIndex) => <a className="gov-text-caption flex min-h-10 items-center justify-between rounded-lg px-2 font-bold text-[#334e6f] hover:bg-white hover:text-[#164f86]" href={item.url} key={`recent-${recentIndex}`}><span className="truncate">{item.label}</span><span className="material-symbols-outlined text-base text-[#246beb]">chevron_right</span></a>)}</div>
+              {(() => {
+                const allowedItems = (top.sections || []).flatMap((section) => section.items || []).filter((item) => isNavigableMenuUrl(item.url));
+                const recentItems = readRecentMenuItems(recentMenuStorageKey(userId, top), allowedItems);
+                void recentRevision;
+                return <>
+                  {recentItems.length ? <>
+                    <div className="mt-2 flex justify-end"><button className="gov-text-caption rounded px-2 py-1 text-[#526b89] hover:bg-white hover:text-[#00378b]" onClick={() => { try { window.localStorage.removeItem(recentMenuStorageKey(userId, top)); } catch { /* Ignore unavailable storage. */ } setRecentRevision((revision) => revision + 1); }} type="button">{en ? "Clear history" : "기록 지우기"}</button></div>
+                    <div className="space-y-1">{recentItems.map(({ item, routeKey }) => <a className="gov-text-caption flex min-h-10 items-center justify-between rounded-lg px-2 font-bold text-[#334e6f] hover:bg-white hover:text-[#164f86]" href={item.url} key={routeKey}><span className="truncate">{item.label}</span><span className="material-symbols-outlined text-base text-[#246beb]">chevron_right</span></a>)}</div>
+                  </> : <p className="gov-text-caption mt-2 rounded-lg bg-white/70 px-2 py-3 text-[#526b89]">{en ? "Menus you visit will appear here." : "방문한 메뉴가 여기에 표시됩니다."}</p>}
+                </>;
+              })()}
             </aside>
             <section className="min-w-0 overflow-auto p-6"><div className="mb-5 border-b border-slate-200 pb-4"><strong className="gov-text-heading-sm text-[#052b57]">{top.label}</strong><p className="gov-text-caption mt-1 text-slate-500">{en ? "Select a task to continue" : "중메뉴와 세부 업무를 선택하세요"}</p></div><div className="grid grid-cols-4 gap-5">{(top.sections || []).map((section, sectionIndex) => <div className="min-w-0 border-l border-slate-200 px-4" key={`hover-section-${sectionIndex}`}><strong className="gov-text-label block pb-3 font-black text-[#17375e]">{section.label}</strong><div className="space-y-0.5">{(section.items || []).filter((item) => isNavigableMenuUrl(item.url)).map((item, itemIndex) => <a className="gov-text-body-sm flex min-h-10 items-center justify-between rounded-md px-2 text-slate-700 hover:bg-blue-50 hover:text-[#00378b]" href={item.url} key={`hover-item-${itemIndex}`}><span>{item.label}</span><span className="material-symbols-outlined text-base text-slate-400">chevron_right</span></a>)}</div></div>)}</div></section>
           </div> : null}

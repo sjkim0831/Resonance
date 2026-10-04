@@ -1,0 +1,902 @@
+{
+  "schemaVersion": 2,
+  "writeEnabled": false,
+  "signals": [
+    {
+      "logicalName": "input.present",
+      "equipment": "주조 셀",
+      "location": "투입 포켓 / 정위치 센서",
+      "direction": "IN",
+      "directionReference": "P006 관점; OUT도 이번 단계에서는 PLC 미러 태그 읽기만 허용",
+      "category": "상태",
+      "dataType": "Boolean",
+      "normal": {
+        "description": "작업물 있음=true, 비어 있음=false",
+        "siteApproved": false
+      },
+      "sourceMode": "SIMULATED",
+      "bindingState": "UNBOUND",
+      "timestamp": {
+        "fields": [
+          "sourceTimestamp",
+          "serverTimestamp",
+          "observedAt",
+          "receivedAt"
+        ],
+        "timezone": "UTC",
+        "maxClockSkewSeconds": 2,
+        "modbus": "sourceTimestamp=null; COLLECTOR로 표시, PLC시각이라고 주장하지 않음"
+      },
+      "timeout": {
+        "ackOrCycleSeconds": 5,
+        "freshnessSeconds": 5,
+        "siteApproved": false,
+        "onFailure": "STALE/BAD이면 승격 차단; 자동 장비 제어 금지"
+      },
+      "source": {
+        "adapterId": null,
+        "deviceSerial": null,
+        "collectorId": null
+      },
+      "binding": {
+        "protocol": "UNBOUND",
+        "deviceId": null,
+        "manufacturer": null,
+        "model": null,
+        "plcModel": null,
+        "identityDocumentHash": null,
+        "access": "READ_ONLY",
+        "writesAllowed": false,
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "serverCertificateSha256": null,
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "addressBase": 0,
+        "encoding": null
+      },
+      "qualification": {
+        "minimumCycles": 3,
+        "evidenceMaxAgeSeconds": 86400,
+        "siteApproved": false,
+        "criterionNote": "3회는 초기 프로젝트 검증 기준; 현장 위험/사이클 조건으로 확정. 인터록은 승인된 안전 시험/정비 기록에서 관찰하며 생산 중 위험한 변화 유도 금지"
+      }
+    },
+    {
+      "logicalName": "command.start",
+      "equipment": "주조 셀",
+      "location": "PLC 시작 요구 미러 태그",
+      "direction": "OUT",
+      "directionReference": "P006 관점; OUT도 이번 단계에서는 PLC 미러 태그 읽기만 허용",
+      "category": "시작",
+      "dataType": "Boolean",
+      "normal": {
+        "description": "대기=false, 외부에서 시작 요구 시=true",
+        "siteApproved": false
+      },
+      "sourceMode": "SIMULATED",
+      "bindingState": "UNBOUND",
+      "timestamp": {
+        "fields": [
+          "sourceTimestamp",
+          "serverTimestamp",
+          "observedAt",
+          "receivedAt"
+        ],
+        "timezone": "UTC",
+        "maxClockSkewSeconds": 2,
+        "modbus": "sourceTimestamp=null; COLLECTOR로 표시, PLC시각이라고 주장하지 않음"
+      },
+      "timeout": {
+        "ackOrCycleSeconds": 5,
+        "freshnessSeconds": 5,
+        "siteApproved": false,
+        "onFailure": "STALE/BAD이면 승격 차단; 자동 장비 제어 금지"
+      },
+      "source": {
+        "adapterId": null,
+        "deviceSerial": null,
+        "collectorId": null
+      },
+      "binding": {
+        "protocol": "UNBOUND",
+        "deviceId": null,
+        "manufacturer": null,
+        "model": null,
+        "plcModel": null,
+        "identityDocumentHash": null,
+        "access": "READ_ONLY",
+        "writesAllowed": false,
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "serverCertificateSha256": null,
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "addressBase": 0,
+        "encoding": null
+      },
+      "qualification": {
+        "minimumCycles": 3,
+        "evidenceMaxAgeSeconds": 86400,
+        "siteApproved": false,
+        "criterionNote": "3회는 초기 프로젝트 검증 기준; 현장 위험/사이클 조건으로 확정. 인터록은 승인된 안전 시험/정비 기록에서 관찰하며 생산 중 위험한 변화 유도 금지"
+      }
+    },
+    {
+      "logicalName": "command.ack",
+      "equipment": "주조 셀",
+      "location": "PLC 시작 수락 태그",
+      "direction": "IN",
+      "directionReference": "P006 관점; OUT도 이번 단계에서는 PLC 미러 태그 읽기만 허용",
+      "category": "시작",
+      "dataType": "Boolean",
+      "normal": {
+        "description": "해당 명령 수락 시=true",
+        "siteApproved": false
+      },
+      "sourceMode": "SIMULATED",
+      "bindingState": "UNBOUND",
+      "timestamp": {
+        "fields": [
+          "sourceTimestamp",
+          "serverTimestamp",
+          "observedAt",
+          "receivedAt"
+        ],
+        "timezone": "UTC",
+        "maxClockSkewSeconds": 2,
+        "modbus": "sourceTimestamp=null; COLLECTOR로 표시, PLC시각이라고 주장하지 않음"
+      },
+      "timeout": {
+        "ackOrCycleSeconds": 5,
+        "freshnessSeconds": 5,
+        "siteApproved": false,
+        "onFailure": "STALE/BAD이면 승격 차단; 자동 장비 제어 금지"
+      },
+      "source": {
+        "adapterId": null,
+        "deviceSerial": null,
+        "collectorId": null
+      },
+      "binding": {
+        "protocol": "UNBOUND",
+        "deviceId": null,
+        "manufacturer": null,
+        "model": null,
+        "plcModel": null,
+        "identityDocumentHash": null,
+        "access": "READ_ONLY",
+        "writesAllowed": false,
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "serverCertificateSha256": null,
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "addressBase": 0,
+        "encoding": null
+      },
+      "qualification": {
+        "minimumCycles": 3,
+        "evidenceMaxAgeSeconds": 86400,
+        "siteApproved": false,
+        "criterionNote": "3회는 초기 프로젝트 검증 기준; 현장 위험/사이클 조건으로 확정. 인터록은 승인된 안전 시험/정비 기록에서 관찰하며 생산 중 위험한 변화 유도 금지"
+      }
+    },
+    {
+      "logicalName": "cycle.running",
+      "equipment": "주조 셀",
+      "location": "금형/주조 시퀀스 실행 상태",
+      "direction": "IN",
+      "directionReference": "P006 관점; OUT도 이번 단계에서는 PLC 미러 태그 읽기만 허용",
+      "category": "상태",
+      "dataType": "Boolean",
+      "normal": {
+        "description": "사이클 수행 중=true",
+        "siteApproved": false
+      },
+      "sourceMode": "SIMULATED",
+      "bindingState": "UNBOUND",
+      "timestamp": {
+        "fields": [
+          "sourceTimestamp",
+          "serverTimestamp",
+          "observedAt",
+          "receivedAt"
+        ],
+        "timezone": "UTC",
+        "maxClockSkewSeconds": 2,
+        "modbus": "sourceTimestamp=null; COLLECTOR로 표시, PLC시각이라고 주장하지 않음"
+      },
+      "timeout": {
+        "ackOrCycleSeconds": 120,
+        "freshnessSeconds": 5,
+        "siteApproved": false,
+        "onFailure": "STALE/BAD이면 승격 차단; 자동 장비 제어 금지"
+      },
+      "source": {
+        "adapterId": null,
+        "deviceSerial": null,
+        "collectorId": null
+      },
+      "binding": {
+        "protocol": "UNBOUND",
+        "deviceId": null,
+        "manufacturer": null,
+        "model": null,
+        "plcModel": null,
+        "identityDocumentHash": null,
+        "access": "READ_ONLY",
+        "writesAllowed": false,
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "serverCertificateSha256": null,
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "addressBase": 0,
+        "encoding": null
+      },
+      "qualification": {
+        "minimumCycles": 3,
+        "evidenceMaxAgeSeconds": 86400,
+        "siteApproved": false,
+        "criterionNote": "3회는 초기 프로젝트 검증 기준; 현장 위험/사이클 조건으로 확정. 인터록은 승인된 안전 시험/정비 기록에서 관찰하며 생산 중 위험한 변화 유도 금지"
+      }
+    },
+    {
+      "logicalName": "cycle.done",
+      "equipment": "주조 셀",
+      "location": "주조 사이클 종료 태그",
+      "direction": "IN",
+      "directionReference": "P006 관점; OUT도 이번 단계에서는 PLC 미러 태그 읽기만 허용",
+      "category": "완료",
+      "dataType": "Boolean",
+      "normal": {
+        "description": "동일 사이클 정상 종료 시=true",
+        "siteApproved": false
+      },
+      "sourceMode": "SIMULATED",
+      "bindingState": "UNBOUND",
+      "timestamp": {
+        "fields": [
+          "sourceTimestamp",
+          "serverTimestamp",
+          "observedAt",
+          "receivedAt"
+        ],
+        "timezone": "UTC",
+        "maxClockSkewSeconds": 2,
+        "modbus": "sourceTimestamp=null; COLLECTOR로 표시, PLC시각이라고 주장하지 않음"
+      },
+      "timeout": {
+        "ackOrCycleSeconds": 120,
+        "freshnessSeconds": 5,
+        "siteApproved": false,
+        "onFailure": "STALE/BAD이면 승격 차단; 자동 장비 제어 금지"
+      },
+      "source": {
+        "adapterId": null,
+        "deviceSerial": null,
+        "collectorId": null
+      },
+      "binding": {
+        "protocol": "UNBOUND",
+        "deviceId": null,
+        "manufacturer": null,
+        "model": null,
+        "plcModel": null,
+        "identityDocumentHash": null,
+        "access": "READ_ONLY",
+        "writesAllowed": false,
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "serverCertificateSha256": null,
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "addressBase": 0,
+        "encoding": null
+      },
+      "qualification": {
+        "minimumCycles": 3,
+        "evidenceMaxAgeSeconds": 86400,
+        "siteApproved": false,
+        "criterionNote": "3회는 초기 프로젝트 검증 기준; 현장 위험/사이클 조건으로 확정. 인터록은 승인된 안전 시험/정비 기록에서 관찰하며 생산 중 위험한 변화 유도 금지"
+      }
+    },
+    {
+      "logicalName": "output.present",
+      "equipment": "주조 셀",
+      "location": "취출 후 배출 포켓 센서",
+      "direction": "IN",
+      "directionReference": "P006 관점; OUT도 이번 단계에서는 PLC 미러 태그 읽기만 허용",
+      "category": "상태",
+      "dataType": "Boolean",
+      "normal": {
+        "description": "제품 배출 위치 있음=true",
+        "siteApproved": false
+      },
+      "sourceMode": "SIMULATED",
+      "bindingState": "UNBOUND",
+      "timestamp": {
+        "fields": [
+          "sourceTimestamp",
+          "serverTimestamp",
+          "observedAt",
+          "receivedAt"
+        ],
+        "timezone": "UTC",
+        "maxClockSkewSeconds": 2,
+        "modbus": "sourceTimestamp=null; COLLECTOR로 표시, PLC시각이라고 주장하지 않음"
+      },
+      "timeout": {
+        "ackOrCycleSeconds": 10,
+        "freshnessSeconds": 5,
+        "siteApproved": false,
+        "onFailure": "STALE/BAD이면 승격 차단; 자동 장비 제어 금지"
+      },
+      "source": {
+        "adapterId": null,
+        "deviceSerial": null,
+        "collectorId": null
+      },
+      "binding": {
+        "protocol": "UNBOUND",
+        "deviceId": null,
+        "manufacturer": null,
+        "model": null,
+        "plcModel": null,
+        "identityDocumentHash": null,
+        "access": "READ_ONLY",
+        "writesAllowed": false,
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "serverCertificateSha256": null,
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "addressBase": 0,
+        "encoding": null
+      },
+      "qualification": {
+        "minimumCycles": 3,
+        "evidenceMaxAgeSeconds": 86400,
+        "siteApproved": false,
+        "criterionNote": "3회는 초기 프로젝트 검증 기준; 현장 위험/사이클 조건으로 확정. 인터록은 승인된 안전 시험/정비 기록에서 관찰하며 생산 중 위험한 변화 유도 금지"
+      }
+    },
+    {
+      "logicalName": "handoff.request",
+      "equipment": "후처리 인계",
+      "location": "송신측 인계 요구 미러",
+      "direction": "OUT",
+      "directionReference": "P006 관점; OUT도 이번 단계에서는 PLC 미러 태그 읽기만 허용",
+      "category": "상태",
+      "dataType": "Boolean",
+      "normal": {
+        "description": "인계 요청 시=true",
+        "siteApproved": false
+      },
+      "sourceMode": "SIMULATED",
+      "bindingState": "UNBOUND",
+      "timestamp": {
+        "fields": [
+          "sourceTimestamp",
+          "serverTimestamp",
+          "observedAt",
+          "receivedAt"
+        ],
+        "timezone": "UTC",
+        "maxClockSkewSeconds": 2,
+        "modbus": "sourceTimestamp=null; COLLECTOR로 표시, PLC시각이라고 주장하지 않음"
+      },
+      "timeout": {
+        "ackOrCycleSeconds": 10,
+        "freshnessSeconds": 5,
+        "siteApproved": false,
+        "onFailure": "STALE/BAD이면 승격 차단; 자동 장비 제어 금지"
+      },
+      "source": {
+        "adapterId": null,
+        "deviceSerial": null,
+        "collectorId": null
+      },
+      "binding": {
+        "protocol": "UNBOUND",
+        "deviceId": null,
+        "manufacturer": null,
+        "model": null,
+        "plcModel": null,
+        "identityDocumentHash": null,
+        "access": "READ_ONLY",
+        "writesAllowed": false,
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "serverCertificateSha256": null,
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "addressBase": 0,
+        "encoding": null
+      },
+      "qualification": {
+        "minimumCycles": 3,
+        "evidenceMaxAgeSeconds": 86400,
+        "siteApproved": false,
+        "criterionNote": "3회는 초기 프로젝트 검증 기준; 현장 위험/사이클 조건으로 확정. 인터록은 승인된 안전 시험/정비 기록에서 관찰하며 생산 중 위험한 변화 유도 금지"
+      }
+    },
+    {
+      "logicalName": "handoff.ack",
+      "equipment": "후처리 설비",
+      "location": "수신측 수용/정위치 센서",
+      "direction": "IN",
+      "directionReference": "P006 관점; OUT도 이번 단계에서는 PLC 미러 태그 읽기만 허용",
+      "category": "완료",
+      "dataType": "Boolean",
+      "normal": {
+        "description": "동일 작업물 수용 시=true",
+        "siteApproved": false
+      },
+      "sourceMode": "SIMULATED",
+      "bindingState": "UNBOUND",
+      "timestamp": {
+        "fields": [
+          "sourceTimestamp",
+          "serverTimestamp",
+          "observedAt",
+          "receivedAt"
+        ],
+        "timezone": "UTC",
+        "maxClockSkewSeconds": 2,
+        "modbus": "sourceTimestamp=null; COLLECTOR로 표시, PLC시각이라고 주장하지 않음"
+      },
+      "timeout": {
+        "ackOrCycleSeconds": 10,
+        "freshnessSeconds": 5,
+        "siteApproved": false,
+        "onFailure": "STALE/BAD이면 승격 차단; 자동 장비 제어 금지"
+      },
+      "source": {
+        "adapterId": null,
+        "deviceSerial": null,
+        "collectorId": null
+      },
+      "binding": {
+        "protocol": "UNBOUND",
+        "deviceId": null,
+        "manufacturer": null,
+        "model": null,
+        "plcModel": null,
+        "identityDocumentHash": null,
+        "access": "READ_ONLY",
+        "writesAllowed": false,
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "serverCertificateSha256": null,
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "addressBase": 0,
+        "encoding": null
+      },
+      "qualification": {
+        "minimumCycles": 3,
+        "evidenceMaxAgeSeconds": 86400,
+        "siteApproved": false,
+        "criterionNote": "3회는 초기 프로젝트 검증 기준; 현장 위험/사이클 조건으로 확정. 인터록은 승인된 안전 시험/정비 기록에서 관찰하며 생산 중 위험한 변화 유도 금지"
+      }
+    },
+    {
+      "logicalName": "inspection.value",
+      "equipment": "검사 설비",
+      "location": "측정 결과 인터페이스",
+      "direction": "IN",
+      "directionReference": "P006 관점; OUT도 이번 단계에서는 PLC 미러 태그 읽기만 허용",
+      "category": "상태",
+      "dataType": "Double",
+      "normal": {
+        "description": "도면 공차 미확정; 테스트 100mm를 현장 공차로 쓰지 않음",
+        "siteApproved": false
+      },
+      "sourceMode": "SIMULATED",
+      "bindingState": "UNBOUND",
+      "timestamp": {
+        "fields": [
+          "sourceTimestamp",
+          "serverTimestamp",
+          "observedAt",
+          "receivedAt"
+        ],
+        "timezone": "UTC",
+        "maxClockSkewSeconds": 2,
+        "modbus": "sourceTimestamp=null; COLLECTOR로 표시, PLC시각이라고 주장하지 않음"
+      },
+      "timeout": {
+        "ackOrCycleSeconds": 30,
+        "freshnessSeconds": 5,
+        "siteApproved": false,
+        "onFailure": "STALE/BAD이면 승격 차단; 자동 장비 제어 금지"
+      },
+      "source": {
+        "adapterId": null,
+        "deviceSerial": null,
+        "collectorId": null
+      },
+      "binding": {
+        "protocol": "UNBOUND",
+        "deviceId": null,
+        "manufacturer": null,
+        "model": null,
+        "plcModel": null,
+        "identityDocumentHash": null,
+        "access": "READ_ONLY",
+        "writesAllowed": false,
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "serverCertificateSha256": null,
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "addressBase": 0,
+        "encoding": null
+      },
+      "qualification": {
+        "minimumCycles": 3,
+        "evidenceMaxAgeSeconds": 86400,
+        "siteApproved": false,
+        "criterionNote": "3회는 초기 프로젝트 검증 기준; 현장 위험/사이클 조건으로 확정. 인터록은 승인된 안전 시험/정비 기록에서 관찰하며 생산 중 위험한 변화 유도 금지"
+      }
+    },
+    {
+      "logicalName": "safety.guardClosed",
+      "equipment": "주조 셀",
+      "location": "가드 도어 안전 회로 진단 미러",
+      "direction": "IN",
+      "directionReference": "P006 관점; OUT도 이번 단계에서는 PLC 미러 태그 읽기만 허용",
+      "category": "인터록",
+      "dataType": "Boolean",
+      "normal": {
+        "description": "모든 관련 가드 닫힘=true",
+        "siteApproved": false
+      },
+      "sourceMode": "SIMULATED",
+      "bindingState": "UNBOUND",
+      "timestamp": {
+        "fields": [
+          "sourceTimestamp",
+          "serverTimestamp",
+          "observedAt",
+          "receivedAt"
+        ],
+        "timezone": "UTC",
+        "maxClockSkewSeconds": 2,
+        "modbus": "sourceTimestamp=null; COLLECTOR로 표시, PLC시각이라고 주장하지 않음"
+      },
+      "timeout": {
+        "ackOrCycleSeconds": 2,
+        "freshnessSeconds": 5,
+        "siteApproved": false,
+        "onFailure": "STALE/BAD이면 승격 차단; 자동 장비 제어 금지"
+      },
+      "source": {
+        "adapterId": null,
+        "deviceSerial": null,
+        "collectorId": null
+      },
+      "binding": {
+        "protocol": "UNBOUND",
+        "deviceId": null,
+        "manufacturer": null,
+        "model": null,
+        "plcModel": null,
+        "identityDocumentHash": null,
+        "access": "READ_ONLY",
+        "writesAllowed": false,
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "serverCertificateSha256": null,
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "addressBase": 0,
+        "encoding": null
+      },
+      "qualification": {
+        "minimumCycles": 3,
+        "evidenceMaxAgeSeconds": 86400,
+        "siteApproved": false,
+        "criterionNote": "3회는 초기 프로젝트 검증 기준; 현장 위험/사이클 조건으로 확정. 인터록은 승인된 안전 시험/정비 기록에서 관찰하며 생산 중 위험한 변화 유도 금지"
+      }
+    },
+    {
+      "logicalName": "safety.estopReleased",
+      "equipment": "주조 셀",
+      "location": "비상정지 안전 회로 진단 미러",
+      "direction": "IN",
+      "directionReference": "P006 관점; OUT도 이번 단계에서는 PLC 미러 태그 읽기만 허용",
+      "category": "인터록",
+      "dataType": "Boolean",
+      "normal": {
+        "description": "비상정지 해제 진단=true; 재기동 허가는 별도",
+        "siteApproved": false
+      },
+      "sourceMode": "SIMULATED",
+      "bindingState": "UNBOUND",
+      "timestamp": {
+        "fields": [
+          "sourceTimestamp",
+          "serverTimestamp",
+          "observedAt",
+          "receivedAt"
+        ],
+        "timezone": "UTC",
+        "maxClockSkewSeconds": 2,
+        "modbus": "sourceTimestamp=null; COLLECTOR로 표시, PLC시각이라고 주장하지 않음"
+      },
+      "timeout": {
+        "ackOrCycleSeconds": 2,
+        "freshnessSeconds": 5,
+        "siteApproved": false,
+        "onFailure": "STALE/BAD이면 승격 차단; 자동 장비 제어 금지"
+      },
+      "source": {
+        "adapterId": null,
+        "deviceSerial": null,
+        "collectorId": null
+      },
+      "binding": {
+        "protocol": "UNBOUND",
+        "deviceId": null,
+        "manufacturer": null,
+        "model": null,
+        "plcModel": null,
+        "identityDocumentHash": null,
+        "access": "READ_ONLY",
+        "writesAllowed": false,
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "serverCertificateSha256": null,
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "addressBase": 0,
+        "encoding": null
+      },
+      "qualification": {
+        "minimumCycles": 3,
+        "evidenceMaxAgeSeconds": 86400,
+        "siteApproved": false,
+        "criterionNote": "3회는 초기 프로젝트 검증 기준; 현장 위험/사이클 조건으로 확정. 인터록은 승인된 안전 시험/정비 기록에서 관찰하며 생산 중 위험한 변화 유도 금지"
+      }
+    },
+    {
+      "logicalName": "safety.ready",
+      "equipment": "주조 셀",
+      "location": "안전 PLC 준비 진단 미러",
+      "direction": "IN",
+      "directionReference": "P006 관점; OUT도 이번 단계에서는 PLC 미러 태그 읽기만 허용",
+      "category": "인터록",
+      "dataType": "Boolean",
+      "normal": {
+        "description": "설계된 안전 조건 충족 진단=true",
+        "siteApproved": false
+      },
+      "sourceMode": "SIMULATED",
+      "bindingState": "UNBOUND",
+      "timestamp": {
+        "fields": [
+          "sourceTimestamp",
+          "serverTimestamp",
+          "observedAt",
+          "receivedAt"
+        ],
+        "timezone": "UTC",
+        "maxClockSkewSeconds": 2,
+        "modbus": "sourceTimestamp=null; COLLECTOR로 표시, PLC시각이라고 주장하지 않음"
+      },
+      "timeout": {
+        "ackOrCycleSeconds": 2,
+        "freshnessSeconds": 5,
+        "siteApproved": false,
+        "onFailure": "STALE/BAD이면 승격 차단; 자동 장비 제어 금지"
+      },
+      "source": {
+        "adapterId": null,
+        "deviceSerial": null,
+        "collectorId": null
+      },
+      "binding": {
+        "protocol": "UNBOUND",
+        "deviceId": null,
+        "manufacturer": null,
+        "model": null,
+        "plcModel": null,
+        "identityDocumentHash": null,
+        "access": "READ_ONLY",
+        "writesAllowed": false,
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "serverCertificateSha256": null,
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "addressBase": 0,
+        "encoding": null
+      },
+      "qualification": {
+        "minimumCycles": 3,
+        "evidenceMaxAgeSeconds": 86400,
+        "siteApproved": false,
+        "criterionNote": "3회는 초기 프로젝트 검증 기준; 현장 위험/사이클 조건으로 확정. 인터록은 승인된 안전 시험/정비 기록에서 관찰하며 생산 중 위험한 변화 유도 금지"
+      }
+    },
+    {
+      "logicalName": "equipment.fault",
+      "equipment": "주조 셀",
+      "location": "PLC 장비 고장 집계 비트",
+      "direction": "IN",
+      "directionReference": "P006 관점; OUT도 이번 단계에서는 PLC 미러 태그 읽기만 허용",
+      "category": "알람",
+      "dataType": "Boolean",
+      "normal": {
+        "description": "정상=false; 고장=true; 상세 코드 추가 매핑 필요",
+        "siteApproved": false
+      },
+      "sourceMode": "SIMULATED",
+      "bindingState": "UNBOUND",
+      "timestamp": {
+        "fields": [
+          "sourceTimestamp",
+          "serverTimestamp",
+          "observedAt",
+          "receivedAt"
+        ],
+        "timezone": "UTC",
+        "maxClockSkewSeconds": 2,
+        "modbus": "sourceTimestamp=null; COLLECTOR로 표시, PLC시각이라고 주장하지 않음"
+      },
+      "timeout": {
+        "ackOrCycleSeconds": 2,
+        "freshnessSeconds": 5,
+        "siteApproved": false,
+        "onFailure": "STALE/BAD이면 승격 차단; 자동 장비 제어 금지"
+      },
+      "source": {
+        "adapterId": null,
+        "deviceSerial": null,
+        "collectorId": null
+      },
+      "binding": {
+        "protocol": "UNBOUND",
+        "deviceId": null,
+        "manufacturer": null,
+        "model": null,
+        "plcModel": null,
+        "identityDocumentHash": null,
+        "access": "READ_ONLY",
+        "writesAllowed": false,
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "serverCertificateSha256": null,
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "addressBase": 0,
+        "encoding": null
+      },
+      "qualification": {
+        "minimumCycles": 3,
+        "evidenceMaxAgeSeconds": 86400,
+        "siteApproved": false,
+        "criterionNote": "3회는 초기 프로젝트 검증 기준; 현장 위험/사이클 조건으로 확정. 인터록은 승인된 안전 시험/정비 기록에서 관찰하며 생산 중 위험한 변화 유도 금지"
+      }
+    },
+    {
+      "logicalName": "heartbeat.sequence",
+      "equipment": "주조 셀",
+      "location": "PLC/게이트웨이 생존 카운터",
+      "direction": "IN",
+      "directionReference": "P006 관점; OUT도 이번 단계에서는 PLC 미러 태그 읽기만 허용",
+      "category": "상태",
+      "dataType": "UInt32",
+      "normal": {
+        "description": "증가; wrap/reset 규칙은 현장 승인 필요",
+        "siteApproved": false
+      },
+      "sourceMode": "SIMULATED",
+      "bindingState": "UNBOUND",
+      "timestamp": {
+        "fields": [
+          "sourceTimestamp",
+          "serverTimestamp",
+          "observedAt",
+          "receivedAt"
+        ],
+        "timezone": "UTC",
+        "maxClockSkewSeconds": 2,
+        "modbus": "sourceTimestamp=null; COLLECTOR로 표시, PLC시각이라고 주장하지 않음"
+      },
+      "timeout": {
+        "ackOrCycleSeconds": 5,
+        "freshnessSeconds": 5,
+        "siteApproved": false,
+        "onFailure": "STALE/BAD이면 승격 차단; 자동 장비 제어 금지"
+      },
+      "source": {
+        "adapterId": null,
+        "deviceSerial": null,
+        "collectorId": null
+      },
+      "binding": {
+        "protocol": "UNBOUND",
+        "deviceId": null,
+        "manufacturer": null,
+        "model": null,
+        "plcModel": null,
+        "identityDocumentHash": null,
+        "access": "READ_ONLY",
+        "writesAllowed": false,
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "serverCertificateSha256": null,
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "addressBase": 0,
+        "encoding": null
+      },
+      "qualification": {
+        "minimumCycles": 3,
+        "evidenceMaxAgeSeconds": 86400,
+        "siteApproved": false,
+        "criterionNote": "3회는 초기 프로젝트 검증 기준; 현장 위험/사이클 조건으로 확정. 인터록은 승인된 안전 시험/정비 기록에서 관찰하며 생산 중 위험한 변화 유도 금지"
+      }
+    }
+  ]
+}

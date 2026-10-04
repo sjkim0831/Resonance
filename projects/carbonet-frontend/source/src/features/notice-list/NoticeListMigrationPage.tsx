@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useState } from "react";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
@@ -260,8 +261,7 @@ export function NoticeListMigrationPage() {
 
             <section className="space-y-6" data-help-id="notice-list-table">
             <article className="rounded-[24px] border border-[var(--kr-gov-border-light)] bg-white p-6 shadow-sm">
-              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_180px]">
-                <label className="block">
+              <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><label className="block">
                   <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Keyword" : "검색어"}</span>
                   <div className="relative">
                     <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
@@ -272,8 +272,8 @@ export function NoticeListMigrationPage() {
                       value={keyword}
                     />
                   </div>
-                </label>
-                <label className="block">
+                </label></div>
+<div className="ccus-search-field"><label className="block">
                   <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Category" : "카테고리"}</span>
                   <select
                     className="w-full rounded-2xl border border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-bg-gray)] px-4 py-3 text-sm outline-none transition focus:border-[var(--kr-gov-blue)] focus:bg-white"
@@ -284,8 +284,7 @@ export function NoticeListMigrationPage() {
                       <option key={option.value} value={option.value}>{labelOf(option, en)}</option>
                     ))}
                   </select>
-                </label>
-              </div>
+                </label></div></>} actions={<></>}></CommonSearchSection></div>
             </article>
 
             <article className="rounded-[24px] border border-[var(--kr-gov-border-light)] bg-white shadow-sm">

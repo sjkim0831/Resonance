@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -154,14 +155,13 @@ export function PopupListMigrationPage() {
             title={en ? "Filters" : "조회 조건"}
           />
           <form
-            className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-4"
+            className="ccus-search-host"
             onSubmit={(event) => {
               event.preventDefault();
               setFilters(draft);
               setPage(1);
             }}
-          >
-            <div className="md:col-span-2">
+          ><CommonSearchSection basic={<><div className="ccus-search-field"><div className="md:col-span-2">
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="popup-search">
                 {en ? "Keyword" : "검색어"}
               </label>
@@ -171,8 +171,8 @@ export function PopupListMigrationPage() {
                 value={draft.searchKeyword}
                 onChange={(event) => setDraft({ ...draft, searchKeyword: event.target.value })}
               />
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="popup-status">
                 {en ? "Status" : "상태"}
               </label>
@@ -185,8 +185,7 @@ export function PopupListMigrationPage() {
                   <option key={`${option.value}-${option.label}`} value={option.value}>{option.label}</option>
                 ))}
               </AdminSelect>
-            </div>
-            <div>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="popup-audience">
                 {en ? "Audience" : "대상 사용자"}
               </label>
@@ -199,16 +198,7 @@ export function PopupListMigrationPage() {
                   <option key={`${option.value}-${option.label}`} value={option.value}>{option.label}</option>
                 ))}
               </AdminSelect>
-            </div>
-            <div className="md:col-span-4">
-              <div className="flex flex-col gap-3 border-t border-[var(--kr-gov-border-light)] pt-5 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
-                  {en
-                    ? "This list page stays separate from popup editing so operators can compare live, scheduled, and paused windows before saving."
-                    : "팝업 목록과 편집을 분리해 저장 전에 노출중, 예약, 일시중지 팝업의 기간과 대상을 먼저 비교하도록 구성했습니다."}
-                </p>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <MemberButton
+            </div></div></>} actions={<><MemberButton
                     type="button"
                     variant="secondary"
                     onClick={() => {
@@ -221,13 +211,9 @@ export function PopupListMigrationPage() {
                   >
                     {en ? "Reset" : "초기화"}
                   </MemberButton>
-                  <MemberButton type="submit" variant="primary" icon="search">
+<MemberButton type="submit" variant="primary" icon="search">
                     {en ? "Search" : "검색"}
-                  </MemberButton>
-                </div>
-              </div>
-            </div>
-          </form>
+                  </MemberButton></>}></CommonSearchSection></form>
         </section>
 
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,1fr)]">

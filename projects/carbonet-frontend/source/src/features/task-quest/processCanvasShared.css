@@ -1,0 +1,16 @@
+/* Shared page-flow presentation; classification JSON and route ownership stay unchanged. */
+.member-screen-canvas,.emission-screen-canvas{padding:24px 0!important;background:#f7f9fb!important;color:#172b4d}
+.member-screen-canvas>h3,.emission-screen-canvas>h3,.member-screen-canvas>p,.emission-screen-canvas>p{margin-left:16px;margin-right:16px}
+.member-page-grid,.emission-design-grid{display:flex!important;align-items:center;gap:40px!important;width:max-content;min-width:100%;padding:36px 16px 60px;box-sizing:border-box}
+.member-page-grid:before,.emission-design-grid:before,.member-page-grid:after,.emission-design-grid:after{display:flex;flex:none;align-items:center;justify-content:center;background:white;font-size:12px;font-weight:700}
+.member-page-grid:before,.emission-design-grid:before{content:'시작';width:56px;height:34px;border:2px solid #cbd5e1;border-radius:24px}
+.member-page-grid:after,.emission-design-grid:after{content:'완료';width:48px;height:48px;border:2px solid #00bd8b;border-radius:50%;color:#008564}
+.member-page-card,.emission-design-grid>article{position:relative;flex:0 0 208px;width:208px;box-sizing:border-box;padding:24px!important;border:1px solid #dce4ef!important;border-radius:16px!important;background:#fff!important;box-shadow:0 2px 3px #0b254010}
+.member-page-card:before,.emission-design-grid>article:before{content:'';position:absolute;inset:12px;border:2px solid #2872ff;border-radius:12px;background:#eff6ff;pointer-events:none}
+.member-page-card>*,.emission-design-grid>article>*{position:relative;z-index:1}
+.member-page-card:after,.emission-design-grid>article:after{content:'→';position:absolute;right:-30px;top:50%;transform:translateY(-50%);color:#2872ff;font-size:24px}
+.member-page-card a,.emission-design-grid>article a{font-size:14px;line-height:1.4;font-weight:700;text-decoration:none!important;color:#0b315f!important}
+.member-page-card small,.emission-design-grid>article small{font-size:11px;line-height:1.4;color:#62768e;overflow-wrap:anywhere}
+.member-page-card details,.emission-design-grid>article details{font-size:12px;line-height:1.5}
+.member-page-card details[open],.emission-design-grid>article details[open]{min-width:0}
+.member-screen-canvas>details,.emission-screen-canvas>details{margin:16px;padding:16px;background:#fff;border-top:1px solid #dce4ef}

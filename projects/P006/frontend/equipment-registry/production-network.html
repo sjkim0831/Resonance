@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>P006 생산망 · Factory Composer</title>
+  <link rel="stylesheet" href="production-network.css">
+  <link rel="stylesheet" href="production-workflow.css?v=guided-flow-6">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="composer.html"><span class="brand-icon">W</span><span><strong>WOOSU</strong><small>P006 · DIGITAL TWIN</small></span></a>
+    <div class="heading"><h1>생산망 Composer</h1><p>공장별 설계와 부품 흐름을 한 화면에서 확인합니다.</p></div>
+    <nav aria-label="현재 위치"><button id="breadcrumbNetwork" type="button">전체 생산망</button><span id="breadcrumbCurrent"></span></nav>
+  </header>
+  <div class="notice" id="notice" role="status">저장된 공장 레이아웃을 조회하는 중입니다.</div>
+  <section id="productionWorkflow" class="panel" style="margin:10px" aria-label="생산 설계"></section>
+  <main>
+    <aside class="side left">
+      <details class="panel secondary-tools"><summary>제품 후보 목록</summary><div id="productCandidates"></div></details>
+      <details class="panel secondary-tools"><summary>기존 3개 공장 기능 시연 (고급)</summary><p class="hint">일반 설계와 별도인 기존 기능 시연 전용입니다.</p><label>공장 A<select id="factoryA"></select></label><label>공장 B<select id="factoryB"></select></label><label>공장 C<select id="factoryC"></select></label><button id="createPilot" class="primary" type="button">3개 공장 Pilot 구성</button></details>
+      <section class="panel"><h2>공장 찾기</h2><input id="factorySearch" type="search" placeholder="공장 이름·Layout ID"><div id="factoryList"></div></section>
+    </aside>
+    <section class="center">
+      <div class="toolbar"><label>생산망 이름 <input id="networkName" value="부품 2종 합류·조립 기능 시연"></label><select id="savedNetworks" aria-label="저장된 생산망"><option value="">저장된 생산망</option></select><button id="loadNetwork" type="button">열기</button><button id="saveNetwork" class="primary" type="button">설계 DB 저장</button><span id="saveState">저장 전</span></div>
+      <div class="toolbar"><button id="modeSelect" type="button" class="active">선택·이동</button><button id="modePan" type="button">화면 이동</button><button id="fit" type="button">전체 보기</button><button id="undo" type="button">↶ 취소</button><button id="redo" type="button">↷ 다시</button><label>확대 <input id="zoom" type="range" min="0.45" max="2" step="0.05" value="1"></label><span class="hint">드래그: 공장 이동 또는 화면 이동 · 휠: 확대</span></div>
+      <div id="mapViewport" tabindex="0" aria-label="생산망 지도"><div id="mapWorld"><svg id="routeLayer" aria-label="공장 간 운송 경로"></svg><div id="factoryLayer"></div></div><div id="miniMap" aria-label="미니맵"></div><div id="mapLegend">파란 선: 부품 이송 설계 후보 · 기계 동작 미검증</div></div>
+      <div class="toolbar sim"><strong>기능 시연</strong><button id="runStart" type="button">▶ 재생</button><button id="runStep" type="button">다음 단계</button><button id="runPause" type="button">Ⅱ 일시정지</button><button id="runResume" type="button">▶ 재개</button><button id="runStop" type="button">■ 초기화</button><span id="runState">저장된 생산망을 선택하세요.</span><span id="runGate" role="status"></span></div>
+      <section class="timeline"><h2>실행 절차·입출력</h2><ol id="eventLog"></ol></section>
+    </section>
+    <aside class="side right">
+      <section class="panel"><h2>선택 공장</h2><div id="factoryDetails">공장을 선택하세요.</div></section>
+      <section class="panel"><h2>연결·검증</h2><div id="routeDetails"></div></section>
+      <section class="panel"><h2>공정과 자료</h2><p>현재 Pilot은 <b>FUNCTIONAL_DEMO</b>입니다. 작업물의 실제 형상, 체결 동작, 제품 BOM 원본은 확인되지 않았습니다.</p><a href="composer.html" id="composerLink">Factory Composer 열기</a><button id="exportStage" type="button" disabled>생산망 USD 내보내기</button><div id="stageResult"></div></section>
+      <section class="panel"><h2>업무 길잡이 · QA</h2><p>제품 → 부지 → 공장 → 설비 세트 → 공정 순서 → 3D 작업물 경로. 실제 관계·제품 형상·설비 동작은 별도 검증 전까지 미승인입니다.</p><p id="qaStatus">QA: 설계 입력 전</p><a href="P006-PRODUCTION-WORKFLOW-DESIGN.md">설계·QA·다음 업무</a></section>
+    </aside>
+  </main>
+  <script src="production-network-core.js"></script>
+  <script src="equipment-gap.js"></script>
+  <script src="p006-production-workflow-core.js?v=guided-flow-6"></script>
+  <script src="production-workflow.js?v=guided-flow-6"></script>
+  <script src="production-network.js?v=guided-flow-6"></script>
+<script src="/projects/P006/assets/equipment-registry/p006-auth-header.js?v=1" defer></script></body>
+</html>

@@ -312,7 +312,7 @@ public class AdminAccessHistoryPageService {
     }
 
     private List<Map<String, String>> buildAccessHistoryCompanyOptions() {
-        List<RequestExecutionLogVO> logs = requestExecutionLogService.searchRecent(item -> true, 1, ACCESS_HISTORY_RECENT_LIMIT).getItems();
+        List<RequestExecutionLogVO> logs = requestExecutionLogService.readRecentMatching(item -> true, ACCESS_HISTORY_RECENT_LIMIT);
         if (logs == null || logs.isEmpty()) {
             return Collections.emptyList();
         }
@@ -328,7 +328,7 @@ public class AdminAccessHistoryPageService {
     }
 
     private Map<String, String> buildAccessHistoryCompanyNameMap() {
-        return buildCompanyNameMap(requestExecutionLogService.searchRecent(item -> true, 1, ACCESS_HISTORY_RECENT_LIMIT).getItems());
+        return buildCompanyNameMap(requestExecutionLogService.readRecentMatching(item -> true, ACCESS_HISTORY_RECENT_LIMIT));
     }
 
     private List<Map<String, String>> buildScopedAccessHistoryCompanyOptions(String currentUserInsttId) {

@@ -114,8 +114,8 @@ def iter_source_files(policy: dict):
         ROOT / "data/ai-runtime",
         ROOT / "projects/carbonet-frontend/source/src",
         ROOT / "modules/resonance-common",
-        Path("/opt/util/ai/hermes/agent"),
-        Path("/opt/util/ai/hermes/gateway"),
+        Path("/opt/Resonance/runtime/tools/ai/hermes/agent"),
+        Path("/opt/Resonance/runtime/tools/ai/hermes/gateway"),
     ]
     for raw in policy.get("trainingData", {}).get("sources", []):
         path = Path(raw)
@@ -290,7 +290,7 @@ def query(policy: dict, question: str, limit: int) -> dict:
 
 
 def prepare_dataset(policy: dict, candidate: str) -> dict:
-    dataset_dir = Path(policy.get("trainingData", {}).get("datasetDir", "/opt/util/ai/fine-tuning/resonance-rag-datasets"))
+    dataset_dir = Path(policy.get("trainingData", {}).get("datasetDir", "/opt/Resonance/runtime/tools/ai/fine-tuning/resonance-rag-datasets"))
     dataset_dir.mkdir(parents=True, exist_ok=True)
     rows = sqlite_query(policy, "Hermes RAG build deploy model routing fine tuning", 80)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")

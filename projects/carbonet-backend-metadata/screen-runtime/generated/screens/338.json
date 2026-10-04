@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 338,
+  "blueprintCode": "BP_ADOPT_EAC4414DEBD237E68FE3",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_EAC4414DEBD237E68FE3"
+  },
+  "route": "/admin/content/board_list",
+  "pageName": "뉴스레터",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1080107",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "6cc2bebecb06cca66c11a7fdf8852448116b70599759f154ed5ede8d4ef2f766",
+  "artifactHash": "0e3f9ffc5c20cdd188c198efc30540ccb9664863d74e8a88964dd491364c86fe"
+}

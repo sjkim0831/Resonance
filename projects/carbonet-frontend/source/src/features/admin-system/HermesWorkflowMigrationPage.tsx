@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
@@ -299,8 +300,15 @@ export function HermesWorkflowMigrationPage() {
         {payload?.message ? <PageStatusNotice tone="info">{payload.message}</PageStatusNotice> : null}
         <Summary en={en} payload={payload} />
         <section className="gov-card">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[0.8fr_0.8fr_1.4fr_auto]">
-            <label>
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><label>
+              <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Keyword" : "검색어"}</span>
+              <input className="gov-input" value={keywordDraft} onChange={(event) => setKeywordDraft(event.target.value)} onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  setKeyword(keywordDraft.trim());
+                }
+              }} />
+            </label></div>
+<div className="ccus-search-field"><label>
               <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">Status</span>
               <select className="gov-select" value={status} onChange={(event) => setStatus(event.target.value)}>
                 <option value="ALL">ALL</option>
@@ -310,8 +318,7 @@ export function HermesWorkflowMigrationPage() {
                 <option value="COMPLETED">COMPLETED</option>
                 <option value="FAILED">FAILED</option>
               </select>
-            </label>
-            <label>
+            </label></div></>} advanced={<><div className="ccus-search-field"><label>
               <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">Task Type</span>
               <select className="gov-select" value={taskType} onChange={(event) => setTaskType(event.target.value)}>
                 <option value="ALL">ALL</option>
@@ -324,19 +331,7 @@ export function HermesWorkflowMigrationPage() {
                 <option value="logs">logs</option>
                 <option value="hermes-native">hermes-native</option>
               </select>
-            </label>
-            <label>
-              <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Keyword" : "검색어"}</span>
-              <input className="gov-input" value={keywordDraft} onChange={(event) => setKeywordDraft(event.target.value)} onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  setKeyword(keywordDraft.trim());
-                }
-              }} />
-            </label>
-            <div className="flex items-end">
-              <button className="gov-btn gov-btn-primary w-full" onClick={() => setKeyword(keywordDraft.trim())} type="button">{en ? "Search" : "검색"}</button>
-            </div>
-          </div>
+            </label></div></>} actions={<><button className="gov-btn gov-btn-primary w-full" onClick={() => setKeyword(keywordDraft.trim())} type="button">{en ? "Search" : "검색"}</button></>}></CommonSearchSection></div>
         </section>
         <TaskList en={en} rows={tasks} />
         <DetailTabs activeTab={activeTab} en={en} payload={payload} setActiveTab={setActiveTab} />

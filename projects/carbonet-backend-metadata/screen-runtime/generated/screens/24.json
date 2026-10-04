@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 24,
+  "blueprintCode": "BP_ADOPT_5633E86DEDFA31CD816F",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_5633E86DEDFA31CD816F"
+  },
+  "route": "/admin/emission/audit-log",
+  "pageName": "감사 로그",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1110304",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "cd7797c55f3cd5a050778e5eeb126362dc5b1d32ea098294205f94842db3aac9",
+  "artifactHash": "c4d29cbc27e9d56bfdbb8c47f0980c3c1bf9caba4d6200b117fef94d4d9922ae"
+}

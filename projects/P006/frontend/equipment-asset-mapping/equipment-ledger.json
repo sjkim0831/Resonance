@@ -1,0 +1,171 @@
+{
+  "scope": {
+    "canonicalLedger": "equipment-master.json + active DB scenario code equality",
+    "frozenAt": "2026-09-10T09:23:47.834049+00:00",
+    "status": "PROJECT_EQUIPMENT_TYPE_LEDGER_CONFIRMED",
+    "countBasis": "16 unique equipment codes, not 16 installed machine serial numbers",
+    "sources": {
+      "equipment": "/opt/Resonance/projects/P006/frontend/equipment-master.json",
+      "catalog724": "/opt/Resonance/projects/P006/frontend/catalog-expansion700/independent-catalog.json",
+      "entries666": "/opt/Resonance/projects/P006/frontend/entry-catalog/entries.json",
+      "images666": "/opt/Resonance/projects/P006/frontend/visual-catalog/catalog.json",
+      "dimensions": "/home/sjkim/OmniverseProjects/equipment-dimension-profiles.json",
+      "legacy": "/opt/Resonance/projects/P006/frontend/catalog/manifest.json",
+      "stations": "/opt/Resonance/projects/P006/runtime/casting-contract.json",
+      "quality": "/opt/Resonance/projects/P006/frontend/base204-quality-v3/all666.json"
+    },
+    "database": "woosu_digital_twin at 127.0.0.1:35433, read-only transaction",
+    "dbTablesInspected": [
+      "dt_scene",
+      "dt_scene_object",
+      "dt_simulation_scenario"
+    ],
+    "physicalIdentityLedgerFound": false,
+    "boundaries": [
+      "기존 원본 자료 심층조사는 재실행하지 않음; 축적된 증거/대표 이미지/현재 연결 상태 대조",
+      "계정·PLC·이벤트·설비 상태 데이터 변경 없음",
+      "저장 객체 2개는 설비 종류 수에 더하지 않음",
+      "시뮬레이터 스테이션 6개는 설치 장비 수에 더하지 않음",
+      "724종은 자산 종류이지 실제 설비 목록이 아님",
+      "현재 DB에서 별도 설치 장비 대장 테이블을 발견하지 못함; 현장 전체 설치 대수는 미확정"
+    ]
+  },
+  "equipment": [
+    {
+      "code": "casting_machine",
+      "name": "주조기",
+      "image": "casting-machine.jpg"
+    },
+    {
+      "code": "holding_furnace",
+      "name": "보온로",
+      "image": "holding-furnace.jpg"
+    },
+    {
+      "code": "turntable_furnace",
+      "name": "턴테이블로",
+      "image": "turntable-furnace.jpg"
+    },
+    {
+      "code": "trimming_machine",
+      "name": "트리밍",
+      "image": "trimming-machine.jpg"
+    },
+    {
+      "code": "cooling_unit",
+      "name": "냉각장비",
+      "image": "cooling-unit.jpg"
+    },
+    {
+      "code": "robot_panel",
+      "name": "로봇 제어반",
+      "image": "robot-panel.jpg"
+    },
+    {
+      "code": "spray_ladler",
+      "name": "스프레이 로봇·래들",
+      "image": "spray-ladler.jpg"
+    },
+    {
+      "code": "release_agent",
+      "name": "이형제 장치",
+      "image": "release-agent.jpg"
+    },
+    {
+      "code": "main_panel",
+      "name": "전체 제어반",
+      "image": "main-panel.jpg"
+    },
+    {
+      "code": "vacuum_unit",
+      "name": "진공장치",
+      "image": "vacuum-unit.jpg"
+    },
+    {
+      "code": "casting_filter",
+      "name": "주조기 필터",
+      "image": "casting-filter.jpg"
+    },
+    {
+      "code": "melting_furnace",
+      "name": "용해로",
+      "image": "melting-furnace.jpg"
+    },
+    {
+      "code": "takeout_robot",
+      "name": "취출 로봇",
+      "image": "takeout-robot.jpg"
+    },
+    {
+      "code": "punching_press",
+      "name": "펀칭 프레스",
+      "image": "punching-press.jpg"
+    },
+    {
+      "code": "ladler",
+      "name": "래들러",
+      "image": "ladler.jpg"
+    },
+    {
+      "code": "mold_cooling",
+      "name": "금형 고압냉각장비",
+      "image": "mold-cooling.jpg"
+    }
+  ],
+  "scenarioCodes": [
+    "casting_filter",
+    "casting_machine",
+    "cooling_unit",
+    "holding_furnace",
+    "ladler",
+    "main_panel",
+    "melting_furnace",
+    "mold_cooling",
+    "punching_press",
+    "release_agent",
+    "robot_panel",
+    "spray_ladler",
+    "takeout_robot",
+    "trimming_machine",
+    "turntable_furnace",
+    "vacuum_unit"
+  ],
+  "sceneInstances": [
+    {
+      "objectId": "ebca0ae3-754a-4291-a7a0-f0237b6e5f5e",
+      "legacyAssetCode": "catalog_a0001",
+      "legacyAssetId": "A0001",
+      "legacyName": "냉각장비",
+      "equipmentCode": "cooling_unit",
+      "primPath": "/P006/Factory/ebca0ae3-754a-4291-a7a0-f0237b6e5f5e",
+      "savedTransform": {
+        "x": 48.87,
+        "y": 21.67,
+        "z": 0,
+        "rotationY": 0.0
+      },
+      "matchingGrade": "BLOCKED",
+      "recommendedAssetId": null,
+      "linkageSource": "legacy catalog assetCode; NAME_PATH_RULE provenance; installed identity NOT verified",
+      "runtimeApplied": false
+    },
+    {
+      "objectId": "80935125-ae56-4fae-b1bf-3d6636c7aecc",
+      "legacyAssetCode": "catalog_a0004",
+      "legacyAssetId": "A0004",
+      "legacyName": "보온로1",
+      "equipmentCode": "holding_furnace",
+      "primPath": "/P006/Factory/80935125-ae56-4fae-b1bf-3d6636c7aecc",
+      "savedTransform": {
+        "x": 30.68,
+        "y": 23.0,
+        "z": 0,
+        "rotationY": 0.0
+      },
+      "matchingGrade": "NO_MATCH",
+      "recommendedAssetId": null,
+      "linkageSource": "legacy catalog assetCode; NAME_PATH_RULE provenance; installed identity NOT verified",
+      "runtimeApplied": false
+    }
+  ]
+}

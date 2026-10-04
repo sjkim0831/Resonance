@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { FormEvent, useEffect, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -181,7 +182,7 @@ export function FunctionManagementMigrationPage() {
           title={en ? "Registered Features" : "등록 기능 목록"}
         />
 
-        <form className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4" onSubmit={(event) => {
+        <form className="ccus-search-host" onSubmit={(event) => {
           event.preventDefault();
           logGovernanceScope("ACTION", "function-management-search", {
             menuType: draft.menuType,
@@ -189,15 +190,17 @@ export function FunctionManagementMigrationPage() {
             searchKeyword: draft.searchKeyword
           });
           setFilters(draft);
-        }}>
-          <div>
+        }}><CommonSearchSection basic={<><div className="ccus-search-field"><div>
+            <label className="gov-label" htmlFor="searchKeyword">{en ? "Keyword" : "기능 검색"}</label>
+            <AdminInput id="searchKeyword" placeholder={en ? "Feature code or name" : "기능 코드 또는 기능명"} value={draft.searchKeyword} onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))} />
+          </div></div>
+<div className="ccus-search-field"><div>
             <label className="gov-label" htmlFor="searchMenuType">{en ? "Page Scope" : "화면 구분"}</label>
             <AdminSelect id="searchMenuType" value={draft.menuType} onChange={(event) => setDraft((current) => ({ ...current, menuType: event.target.value, searchMenuCode: "" }))}>
               <option value="USER">{en ? "Home" : "홈"}</option>
               <option value="ADMIN">{en ? "Admin" : "관리자"}</option>
             </AdminSelect>
-          </div>
-          <div>
+          </div></div></>} advanced={<><div className="ccus-search-field"><div>
             <label className="gov-label" htmlFor="searchMenuCode">{en ? "Page" : "페이지"}</label>
             <AdminSelect id="searchMenuCode" value={draft.searchMenuCode} onChange={(event) => setDraft((current) => ({ ...current, searchMenuCode: event.target.value }))}>
               <option value="">{en ? "All" : "전체"}</option>
@@ -207,21 +210,13 @@ export function FunctionManagementMigrationPage() {
                 </option>
               ))}
             </AdminSelect>
-          </div>
-          <div>
-            <label className="gov-label" htmlFor="searchKeyword">{en ? "Keyword" : "기능 검색"}</label>
-            <AdminInput id="searchKeyword" placeholder={en ? "Feature code or name" : "기능 코드 또는 기능명"} value={draft.searchKeyword} onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))} />
-          </div>
-          <div className="flex items-end gap-2">
-            <MemberButton className="w-full" type="submit">{en ? "Search" : ADMIN_BUTTON_LABELS.search}</MemberButton>
-            <MemberButton className="w-full" onClick={() => {
+          </div></div></>} actions={<><MemberButton className="w-full" type="submit">{en ? "Search" : ADMIN_BUTTON_LABELS.search}</MemberButton>
+<MemberButton className="w-full" onClick={() => {
               const reset = { menuType: draft.menuType, searchMenuCode: "", searchKeyword: "" };
               logGovernanceScope("ACTION", "function-management-reset", reset);
               setDraft(reset);
               setFilters(reset);
-            }} type="button">{en ? "Reset" : ADMIN_BUTTON_LABELS.reset}</MemberButton>
-          </div>
-        </form>
+            }} type="button">{en ? "Reset" : ADMIN_BUTTON_LABELS.reset}</MemberButton></>}></CommonSearchSection></form>
 
         <div className="overflow-x-auto">
           <AdminTable>

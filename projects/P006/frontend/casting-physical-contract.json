@@ -1,0 +1,721 @@
+{
+  "version": 1,
+  "status": "BLOCKED_NO_VERIFIED_DEVICE",
+  "realEnabled": false,
+  "adapterModes": {
+    "MOCK": "계약 테스트 fixture",
+    "SIMULATED": "작업자 명령을 받는 서버 시뮬레이터",
+    "REAL": "검증된 장비 연결 필요: 현재 비활성"
+  },
+  "physicalWritesAllowed": false,
+  "bindings": [
+    {
+      "signal": "input.present",
+      "dataType": "Boolean",
+      "direction": "OBSERVATION",
+      "opcUa": {
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "certificateFingerprint": null
+      },
+      "modbus": {
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "byteOrder": null
+      },
+      "status": "UNBOUND"
+    },
+    {
+      "signal": "command.start",
+      "dataType": "Boolean",
+      "direction": "COMMAND",
+      "opcUa": {
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "certificateFingerprint": null
+      },
+      "modbus": {
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "byteOrder": null
+      },
+      "status": "UNBOUND"
+    },
+    {
+      "signal": "command.ack",
+      "dataType": "Boolean",
+      "direction": "OBSERVATION",
+      "opcUa": {
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "certificateFingerprint": null
+      },
+      "modbus": {
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "byteOrder": null
+      },
+      "status": "UNBOUND"
+    },
+    {
+      "signal": "cycle.running",
+      "dataType": "Boolean",
+      "direction": "OBSERVATION",
+      "opcUa": {
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "certificateFingerprint": null
+      },
+      "modbus": {
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "byteOrder": null
+      },
+      "status": "UNBOUND"
+    },
+    {
+      "signal": "cycle.done",
+      "dataType": "Boolean",
+      "direction": "OBSERVATION",
+      "opcUa": {
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "certificateFingerprint": null
+      },
+      "modbus": {
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "byteOrder": null
+      },
+      "status": "UNBOUND"
+    },
+    {
+      "signal": "output.present",
+      "dataType": "Boolean",
+      "direction": "OBSERVATION",
+      "opcUa": {
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "certificateFingerprint": null
+      },
+      "modbus": {
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "byteOrder": null
+      },
+      "status": "UNBOUND"
+    },
+    {
+      "signal": "handoff.request",
+      "dataType": "Boolean",
+      "direction": "COMMAND",
+      "opcUa": {
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "certificateFingerprint": null
+      },
+      "modbus": {
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "byteOrder": null
+      },
+      "status": "UNBOUND"
+    },
+    {
+      "signal": "handoff.ack",
+      "dataType": "Boolean",
+      "direction": "OBSERVATION",
+      "opcUa": {
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "certificateFingerprint": null
+      },
+      "modbus": {
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "byteOrder": null
+      },
+      "status": "UNBOUND"
+    },
+    {
+      "signal": "inspection.value",
+      "dataType": "Double",
+      "direction": "OBSERVATION",
+      "opcUa": {
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "certificateFingerprint": null
+      },
+      "modbus": {
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "byteOrder": null
+      },
+      "status": "UNBOUND"
+    },
+    {
+      "signal": "safety.guardClosed",
+      "dataType": "Boolean",
+      "direction": "OBSERVATION",
+      "opcUa": {
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "certificateFingerprint": null
+      },
+      "modbus": {
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "byteOrder": null
+      },
+      "status": "UNBOUND"
+    },
+    {
+      "signal": "safety.estopReleased",
+      "dataType": "Boolean",
+      "direction": "OBSERVATION",
+      "opcUa": {
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "certificateFingerprint": null
+      },
+      "modbus": {
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "byteOrder": null
+      },
+      "status": "UNBOUND"
+    },
+    {
+      "signal": "safety.ready",
+      "dataType": "Boolean",
+      "direction": "OBSERVATION",
+      "opcUa": {
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "certificateFingerprint": null
+      },
+      "modbus": {
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "byteOrder": null
+      },
+      "status": "UNBOUND"
+    },
+    {
+      "signal": "equipment.fault",
+      "dataType": "Boolean",
+      "direction": "OBSERVATION",
+      "opcUa": {
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "certificateFingerprint": null
+      },
+      "modbus": {
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "byteOrder": null
+      },
+      "status": "UNBOUND"
+    },
+    {
+      "signal": "heartbeat.sequence",
+      "dataType": "UInt32",
+      "direction": "OBSERVATION",
+      "opcUa": {
+        "endpoint": null,
+        "nodeId": null,
+        "securityPolicy": null,
+        "certificateFingerprint": null
+      },
+      "modbus": {
+        "host": null,
+        "port": null,
+        "unitId": null,
+        "functionCode": null,
+        "address": null,
+        "byteOrder": null
+      },
+      "status": "UNBOUND"
+    }
+  ],
+  "envelope": [
+    "adapterId",
+    "jobId",
+    "workpieceId",
+    "equipmentId",
+    "commandId",
+    "sequence",
+    "signal",
+    "value",
+    "quality",
+    "sourceTimestamp",
+    "observedAt",
+    "rawEvidenceHash"
+  ],
+  "acceptance": [
+    "서버가 고정한 어댑터 출처와 mode 일치",
+    "작업물·설비·명령 ID 일치",
+    "수신 시각 5초 이내, 순서 증가",
+    "GOOD 품질, 값 타입 확인",
+    "RUNNING 승인 이후 DONE",
+    "인계 목적지 감지 후 ACK",
+    "물리 인터록 안전 인증은 별도이며 일반 OPC/Modbus 비트만으로 대체하지 않음"
+  ],
+  "chain": [
+    [
+      "장비 신호",
+      "SIMULATED",
+      "기존 작업자 명령 어댑터; 실제 수신 없음"
+    ],
+    [
+      "공정 상태",
+      "DB_VERIFIED",
+      "기존 DB 전이 및 재조회 E2E"
+    ],
+    [
+      "작업물 이동",
+      "DB_ONLY",
+      "location 변경; USD transform 미반영"
+    ],
+    [
+      "다음 공정 인계",
+      "DB_ONLY",
+      "DB SEND/ACK; 목적지 센서 미수신"
+    ],
+    [
+      "저장·복원",
+      "DB_VERIFIED",
+      "DB 작업물·이력 복원; USD/RTX 복원 미검증"
+    ]
+  ],
+  "components": [
+    [
+      "설비 본체",
+      "E012",
+      "형상 존재 / 완전 셀 아님"
+    ],
+    [
+      "투입부",
+      "미확정",
+      "기계적 인입 포트·좌표·허용 작업물 규격 없음"
+    ],
+    [
+      "배출부",
+      "미확정",
+      "배출 감지와 목적지 수용 ACK 없음"
+    ],
+    [
+      "고정부",
+      "E013",
+      "별도 형상 존재 / 본체 조립 관계 없음"
+    ],
+    [
+      "구동부",
+      "E014",
+      "별도 형상 존재 / 관절·스트로크·구동 제약 없음"
+    ],
+    [
+      "작업물",
+      "DB UUID",
+      "공정 중 보존할 USD prim 매핑 없음"
+    ],
+    [
+      "센서",
+      "미연결",
+      "검증된 장비 태그 없음"
+    ],
+    [
+      "제어 신호",
+      "SIMULATED",
+      "시작/완료를 작업자 명령으로 생성"
+    ],
+    [
+      "안전 조건",
+      "미검증",
+      "가드·비상정지·에너지 격리·인터록 실제 증거 없음"
+    ],
+    [
+      "입출력 포트",
+      "논리 계약",
+      "기계/전기/유체 포트 실측·체결 관계 없음"
+    ]
+  ],
+  "structure": {
+    "seconds": 0.1203012466430664,
+    "assets": [
+      {
+        "id": "E001",
+        "name": "트리밍 장비",
+        "path": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/cuter_low/asset.usda",
+        "defaultPrim": "/Product",
+        "upAxis": "Y",
+        "metersPerUnit": 1,
+        "worldMin": [
+          -1.2445019483566284,
+          0,
+          -1.3999218344688416
+        ],
+        "worldMax": [
+          1.2445019483566284,
+          5.937997817993164,
+          1.3999218344688416
+        ],
+        "prims": 46,
+        "joints": [],
+        "rigidBodies": [],
+        "colliders": [],
+        "animatedAttributes": [],
+        "connectionRelationships": [],
+        "compositionErrors": []
+      },
+      {
+        "id": "E012",
+        "name": "주조기 기반 후보",
+        "path": "/home/sjkim/OmniverseProjects/p006-candidate-library-20260909-v2/casterDan/asset.usda",
+        "defaultPrim": "/Product",
+        "upAxis": "Y",
+        "metersPerUnit": 1,
+        "worldMin": [
+          -3.838259220123291,
+          0,
+          -1.3162353038787842
+        ],
+        "worldMax": [
+          3.838259220123291,
+          2.4802796840667725,
+          1.3162353038787842
+        ],
+        "prims": 28,
+        "joints": [],
+        "rigidBodies": [],
+        "colliders": [],
+        "animatedAttributes": [],
+        "connectionRelationships": [],
+        "compositionErrors": []
+      },
+      {
+        "id": "E013",
+        "name": "주조기 고정부",
+        "path": "/home/sjkim/OmniverseProjects/p006-candidate-library-20260909-v2/casterFix/asset.usda",
+        "defaultPrim": "/Product",
+        "upAxis": "Y",
+        "metersPerUnit": 1,
+        "worldMin": [
+          -0.9231762588024139,
+          0,
+          -2.350534677505493
+        ],
+        "worldMax": [
+          0.9231762588024139,
+          4.154794812202454,
+          2.350534677505493
+        ],
+        "prims": 16,
+        "joints": [],
+        "rigidBodies": [],
+        "colliders": [],
+        "animatedAttributes": [],
+        "connectionRelationships": [],
+        "compositionErrors": []
+      },
+      {
+        "id": "E014",
+        "name": "주조기 구동부 후보",
+        "path": "/home/sjkim/OmniverseProjects/p006-candidate-library-20260909-v2/casterPush/asset.usda",
+        "defaultPrim": "/Product",
+        "upAxis": "Y",
+        "metersPerUnit": 1,
+        "worldMin": [
+          -1.8145891278982162,
+          0,
+          -1.1103743761777878
+        ],
+        "worldMax": [
+          1.8145891278982162,
+          2.042998254299164,
+          1.1103743761777878
+        ],
+        "prims": 53,
+        "joints": [],
+        "rigidBodies": [],
+        "colliders": [],
+        "animatedAttributes": [],
+        "connectionRelationships": [],
+        "compositionErrors": []
+      },
+      {
+        "id": "E015",
+        "name": "주조기 후면부",
+        "path": "/home/sjkim/OmniverseProjects/p006-candidate-library-20260909-v2/casterPushBack/asset.usda",
+        "defaultPrim": "/Product",
+        "upAxis": "Y",
+        "metersPerUnit": 1,
+        "worldMin": [
+          -3.3943694829940796,
+          0,
+          -1.0146631002426147
+        ],
+        "worldMax": [
+          3.3943694829940796,
+          2.3294241428375244,
+          1.0146631002426147
+        ],
+        "prims": 26,
+        "joints": [],
+        "rigidBodies": [],
+        "colliders": [],
+        "animatedAttributes": [],
+        "connectionRelationships": [],
+        "compositionErrors": []
+      },
+      {
+        "id": "E016",
+        "name": "용탕 관련 구동부",
+        "path": "/home/sjkim/OmniverseProjects/p006-candidate-library-20260909-v2/meltPush/asset.usda",
+        "defaultPrim": "/Product",
+        "upAxis": "Y",
+        "metersPerUnit": 1,
+        "worldMin": [
+          -1.8077294826507568,
+          0,
+          -0.5653954744338989
+        ],
+        "worldMax": [
+          1.8077294826507568,
+          4.1476311683654785,
+          0.5653954744338989
+        ],
+        "prims": 19,
+        "joints": [],
+        "rigidBodies": [],
+        "colliders": [],
+        "animatedAttributes": [],
+        "connectionRelationships": [],
+        "compositionErrors": []
+      },
+      {
+        "id": "E123",
+        "name": "3차원 측정기",
+        "path": "/home/sjkim/OmniverseProjects/p006-cmm-20260909-v2/cmm/asset.usda",
+        "defaultPrim": "/Product",
+        "upAxis": "Y",
+        "metersPerUnit": 1,
+        "worldMin": [
+          -0.7250000238418579,
+          -1.490116086078075e-10,
+          -0.5249999761581421
+        ],
+        "worldMax": [
+          1.2200000029802323,
+          1.9349999982118606,
+          0.5249999761581421
+        ],
+        "prims": 113,
+        "joints": [],
+        "rigidBodies": [],
+        "colliders": [],
+        "animatedAttributes": [],
+        "connectionRelationships": [],
+        "compositionErrors": []
+      }
+    ]
+  },
+  "qa": {
+    "tests": [
+      {
+        "name": "correlated MOCK completion",
+        "status": "PASS",
+        "result": {
+          "mode": "MOCK",
+          "signal": "cycle.done",
+          "sequence": 2,
+          "accepted": true,
+          "realEquipmentProven": false,
+          "usdApplied": false,
+          "rtxObserved": false
+        }
+      },
+      {
+        "name": "SIMULATED distinct from REAL",
+        "status": "PASS",
+        "result": {
+          "mode": "SIMULATED",
+          "signal": "cycle.done",
+          "sequence": 2,
+          "accepted": true,
+          "realEquipmentProven": false,
+          "usdApplied": false,
+          "rtxObserved": false
+        }
+      },
+      {
+        "name": "reject REAL even with asserted good flags",
+        "status": "PASS",
+        "rejection": "REAL_DISABLED_NO_VERIFIED_ENDPOINT"
+      },
+      {
+        "name": "reject spoofed REAL",
+        "status": "PASS",
+        "rejection": "SOURCE_MODE_MISMATCH"
+      },
+      {
+        "name": "reject wrong command",
+        "status": "PASS",
+        "rejection": "CORRELATION_MISMATCH:commandId"
+      },
+      {
+        "name": "reject wrong workpiece",
+        "status": "PASS",
+        "rejection": "CORRELATION_MISMATCH:workpieceId"
+      },
+      {
+        "name": "reject wrong equipment",
+        "status": "PASS",
+        "rejection": "EQUIPMENT_MISMATCH"
+      },
+      {
+        "name": "reject duplicate sequence",
+        "status": "PASS",
+        "rejection": "REPLAY_OR_OUT_OF_ORDER"
+      },
+      {
+        "name": "reject stale receive",
+        "status": "PASS",
+        "rejection": "STALE_OR_FUTURE_SAMPLE"
+      },
+      {
+        "name": "reject future receive",
+        "status": "PASS",
+        "rejection": "STALE_OR_FUTURE_SAMPLE"
+      },
+      {
+        "name": "reject bad quality",
+        "status": "PASS",
+        "rejection": "BAD_OR_UNCERTAIN_QUALITY"
+      },
+      {
+        "name": "reject uncertain quality",
+        "status": "PASS",
+        "rejection": "BAD_OR_UNCERTAIN_QUALITY"
+      },
+      {
+        "name": "reject safety unknown",
+        "status": "PASS",
+        "rejection": "INTERLOCK_NOT_PROVEN"
+      },
+      {
+        "name": "reject open guard",
+        "status": "PASS",
+        "rejection": "INTERLOCK_NOT_PROVEN"
+      },
+      {
+        "name": "reject completion before running",
+        "status": "PASS",
+        "rejection": "DONE_WITHOUT_RUNNING_ACK"
+      },
+      {
+        "name": "reject invalid value",
+        "status": "PASS",
+        "rejection": "INVALID_BOOLEAN"
+      },
+      {
+        "name": "reject unmapped signal",
+        "status": "PASS",
+        "rejection": "UNMAPPED_SIGNAL"
+      },
+      {
+        "name": "reject missing handoff presence",
+        "status": "PASS",
+        "rejection": "HANDOFF_NOT_PROVEN"
+      },
+      {
+        "name": "MOCK handoff ack",
+        "status": "PASS",
+        "result": {
+          "mode": "MOCK",
+          "signal": "handoff.ack",
+          "sequence": 2,
+          "accepted": true,
+          "realEquipmentProven": false,
+          "usdApplied": false,
+          "rtxObserved": false
+        }
+      }
+    ],
+    "seconds": 0.0007188320159912109,
+    "scope": "contract fixtures only; no PLC/DB/USD/RTX side effects"
+  },
+  "interfaceAudit": {
+    "database": "woosu_digital_twin at 127.0.0.1:35433",
+    "tables": {
+      "dt_plc_connection_profile": "MISSING",
+      "dt_plc_tag_registry": "MISSING",
+      "dt_plc_tag_reading": "MISSING"
+    },
+    "legacyTelemetry": {
+      "checkedAt": "2026-09-07T00:34:08.617102+00:00",
+      "source": "P006 MES DEMO SIMULATOR",
+      "usableAsRealEvidence": false
+    }
+  },
+  "requiredInputs": [
+    "장비 모델·실제 조립도/좌표와 I/O 표",
+    "OPC UA endpoint·NodeId·인증서 정책 또는 Modbus host·unitId·register map",
+    "읽기 전용 시험 접근과 담당자 확인",
+    "시작/실행/완료/투입·배출 센서·명령 correlation 규칙",
+    "실제 작업물 크기·질량·공정 조건·검사 규격",
+    "가드/비상정지/인터록 및 안전 승인 기록"
+  ]
+}

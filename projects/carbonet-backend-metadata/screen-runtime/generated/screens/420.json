@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 420,
+  "blueprintCode": "BP_ADOPT_CD3286CC5E3C3D9D8E1B",
+  "identity": {
+    "processCode": "LCA_EXECUTION",
+    "stepCode": "LCA_EXECUTION_01_PLAN",
+    "actorCode": "LCA_PRACTITIONER",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_CD3286CC5E3C3D9D8E1B"
+  },
+  "route": "/admin/emission/survey-admin",
+  "pageName": "LCI 분류",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "LCA",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1040203",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "1b08d2e3da99df13dd52f19f045c1eceb95e7c364fed77a78068d6bc3c33f55c",
+  "artifactHash": "361727a2e8413879f3cd17bfb5cf3ac2e1acf91ba3b76e0b465081defc2f4077"
+}

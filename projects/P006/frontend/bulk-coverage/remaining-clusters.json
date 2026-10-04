@@ -1,0 +1,2178 @@
+[
+  {
+    "method": "MODIFY",
+    "family": "packing-machine",
+    "label": "포장·충전 구성",
+    "ids": [
+      "N131",
+      "N132",
+      "N134",
+      "A015",
+      "A016",
+      "A017",
+      "A023",
+      "A231",
+      "A232",
+      "A233",
+      "A235",
+      "A236",
+      "A237",
+      "A241",
+      "A242",
+      "A243",
+      "A246",
+      "A247",
+      "A510",
+      "A523",
+      "A593"
+    ],
+    "requirements": [
+      "제품/용기 규격·금형/노즐·필름 경로·투입 배출"
+    ],
+    "priorityScore": 86,
+    "count": 21
+  },
+  {
+    "method": "MODIFY",
+    "family": "machining-frame",
+    "label": "가공기 베드·스핀들 구성",
+    "ids": [
+      "N058",
+      "N059",
+      "N062",
+      "N063",
+      "N064",
+      "N065",
+      "N068",
+      "N069",
+      "N070",
+      "A064",
+      "A065",
+      "A066",
+      "A070",
+      "A073",
+      "A077",
+      "A079",
+      "A148",
+      "A412",
+      "A421",
+      "A448",
+      "A505"
+    ],
+    "requirements": [
+      "가공 축·주축·지그·스트로크·칩/윤활 인터페이스"
+    ],
+    "priorityScore": 69,
+    "count": 21
+  },
+  {
+    "method": "MODIFY",
+    "family": "joining-head-cell",
+    "label": "접합 셀 전용 헤드",
+    "ids": [
+      "N081",
+      "N082",
+      "N083",
+      "N084",
+      "N085",
+      "A118",
+      "A119",
+      "A120",
+      "A121",
+      "A122",
+      "A123",
+      "A129",
+      "A132",
+      "A199",
+      "A200",
+      "A201",
+      "A502"
+    ],
+    "requirements": [
+      "접합 헤드·에너지/냉각·가압축·지그·차폐"
+    ],
+    "priorityScore": 92,
+    "count": 17
+  },
+  {
+    "method": "MODIFY",
+    "family": "separator-filter",
+    "label": "분리·여과 본체",
+    "ids": [
+      "N098",
+      "N100",
+      "N192",
+      "N193",
+      "N194",
+      "A104",
+      "A107",
+      "A182",
+      "A184",
+      "A369",
+      "A537",
+      "A538",
+      "A541",
+      "A543",
+      "A544",
+      "A578",
+      "A598"
+    ],
+    "requirements": [
+      "입자/매체·분리 기구·필터·배출/회수 경로"
+    ],
+    "priorityScore": 78,
+    "count": 17
+  },
+  {
+    "method": "MODIFY",
+    "family": "belt-roller-transfer",
+    "label": "이송선 구성",
+    "ids": [
+      "N021",
+      "N022",
+      "N031",
+      "N032",
+      "N039",
+      "N040",
+      "A041",
+      "A042",
+      "A045",
+      "A050",
+      "A051",
+      "A083",
+      "A248",
+      "A486"
+    ],
+    "requirements": [
+      "궤적/고저차·인계 높이·분기/뒤집기 기구·가드"
+    ],
+    "priorityScore": 92,
+    "count": 14
+  },
+  {
+    "method": "MODIFY",
+    "family": "press-frame",
+    "label": "프레스 프레임·금형 공간",
+    "ids": [
+      "N076",
+      "N077",
+      "N105",
+      "N195",
+      "A082",
+      "A085",
+      "A099",
+      "A115",
+      "A141",
+      "A447",
+      "A461",
+      "A491",
+      "A575"
+    ],
+    "requirements": [
+      "프레임 형식·가압축·금형 치수·작업 공간·안전거리"
+    ],
+    "priorityScore": 78,
+    "count": 13
+  },
+  {
+    "method": "COMPOSE",
+    "family": "safety-system",
+    "label": "안전 시스템 조합",
+    "ids": [
+      "A020",
+      "A022",
+      "A388",
+      "A391",
+      "A392",
+      "A394",
+      "A395",
+      "A398"
+    ],
+    "requirements": [
+      "위험성 평가·안전거리·작동 조건·인증 시스템 구성"
+    ],
+    "priorityScore": 96,
+    "count": 8
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "bench-instrument",
+    "label": "계측기 프레임/외함 및 전용 헤드",
+    "ids": [
+      "N123",
+      "N124",
+      "N125",
+      "N126",
+      "N127",
+      "N128",
+      "N129",
+      "N130",
+      "A206",
+      "A207",
+      "A208",
+      "A209",
+      "A210",
+      "A214",
+      "A215",
+      "A216",
+      "A217",
+      "A218",
+      "A219",
+      "A220",
+      "A221",
+      "A222",
+      "A223",
+      "A224",
+      "A225",
+      "A226",
+      "A227",
+      "A228",
+      "A269",
+      "A282",
+      "A288",
+      "A301",
+      "A302",
+      "A303",
+      "A331",
+      "A332",
+      "A333",
+      "A335",
+      "A337",
+      "A403",
+      "A404",
+      "A406",
+      "A420",
+      "A427",
+      "A428",
+      "A429",
+      "A430",
+      "A431",
+      "A432",
+      "A433",
+      "A434",
+      "A435",
+      "A436",
+      "A437",
+      "A438",
+      "A439",
+      "A440",
+      "A441",
+      "A442",
+      "A443",
+      "A444",
+      "A445",
+      "A508",
+      "A509",
+      "A530"
+    ],
+    "requirements": [
+      "시료 규격·검출/하중 메커니즘·작업 거리·표준기. 공용 박스로 완제품 커버 불가"
+    ],
+    "priorityScore": 84,
+    "count": 65
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "mix-grind-process",
+    "label": "혼합·분쇄·회전 용기",
+    "ids": [
+      "N097",
+      "N107",
+      "A103",
+      "A173",
+      "A382",
+      "A512",
+      "A545",
+      "A573",
+      "A574",
+      "A596",
+      "A597"
+    ],
+    "requirements": [
+      "로터/칼날/교반축·원료 특성·배출 경로"
+    ],
+    "priorityScore": 78,
+    "count": 11
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "robot-new-kinematics",
+    "label": "로봇 운동학별 베이스",
+    "ids": [
+      "N141",
+      "N142",
+      "N143"
+    ],
+    "requirements": [
+      "링크 길이·축 범위·홈 자세·EOAT 포트"
+    ],
+    "priorityScore": 76,
+    "count": 3
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "safety-special-N198",
+    "label": "안전 레이저 스캐너 전용 구조",
+    "ids": [
+      "N198"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 96,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "safety-special-A385",
+    "label": "안전 양수 조작 스테이션 전용 구조",
+    "ids": [
+      "A385"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 96,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "transfer-special-N030",
+    "label": "버킷 엘리베이터 전용 구조",
+    "ids": [
+      "N030"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 92,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "transfer-special-A052",
+    "label": "자재 이송 로터리 에어록 전용 구조",
+    "ids": [
+      "A052"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 92,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "assembly-special-A191",
+    "label": "스테이터 코일 삽입기 전용 구조",
+    "ids": [
+      "A191"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 92,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "assembly-special-A192",
+    "label": "스테이터 웨지 삽입기 전용 구조",
+    "ids": [
+      "A192"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 92,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "assembly-special-A193",
+    "label": "로터 자석 삽입 셀 전용 구조",
+    "ids": [
+      "A193"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 92,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "assembly-special-A195",
+    "label": "선재 하니스 자동 조립기 전용 구조",
+    "ids": [
+      "A195"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 92,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "assembly-special-A196",
+    "label": "케이블 타이 자동 결속기 전용 구조",
+    "ids": [
+      "A196"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 92,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "assembly-special-A202",
+    "label": "자기 회로 탈자기 전용 구조",
+    "ids": [
+      "A202"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 92,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "utility-special-A362",
+    "label": "열회수 환기장치 전용 구조",
+    "ids": [
+      "A362"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 92,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "electrical-special-A304",
+    "label": "판넬 냉각기 전용 구조",
+    "ids": [
+      "A304"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 91,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "electrical-special-A306",
+    "label": "전기 부하 뱅크 전용 구조",
+    "ids": [
+      "A306"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 91,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "packaging-special-A238",
+    "label": "캔 시밍기 전용 구조",
+    "ids": [
+      "A238"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 86,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "packaging-special-A239",
+    "label": "병 정렬기 전용 구조",
+    "ids": [
+      "A239"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 86,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "architectural-special-N008",
+    "label": "차량 차단기 전용 구조",
+    "ids": [
+      "N008"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 84,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "architectural-special-A008",
+    "label": "하역 트럭 고정장치 전용 구조",
+    "ids": [
+      "A008"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 84,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "receiving-special-A019",
+    "label": "트럭 벌크 언로딩 스테이션 전용 구조",
+    "ids": [
+      "A019"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 84,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "receiving-special-A021",
+    "label": "입고 자동 샘플링 프로브 전용 구조",
+    "ids": [
+      "A021"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 84,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "sensing-special-A340",
+    "label": "초음파 두께계 전용 구조",
+    "ids": [
+      "A340"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 84,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "sensing-special-A343",
+    "label": "산업용 웨더 스테이션 전용 구조",
+    "ids": [
+      "A343"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 84,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "mobile-interface-A057",
+    "label": "AMR 자동 배터리 교환소 전용 구조",
+    "ids": [
+      "A057"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 82,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "metrology-special-A212",
+    "label": "기어 측정센터 전용 구조",
+    "ids": [
+      "A212"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 82,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "operator-special-A453",
+    "label": "수동 밸런스 리프터 전용 구조",
+    "ids": [
+      "A453"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 81,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "operator-special-A454",
+    "label": "착용형 작업 보조 장치 전용 구조",
+    "ids": [
+      "A454"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 81,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "environment-special-A378",
+    "label": "유해가스 현장 저감장치 전용 구조",
+    "ids": [
+      "A378"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 78,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "environment-special-A381",
+    "label": "폐기물 압축기 전용 구조",
+    "ids": [
+      "A381"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 78,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "environment-special-A384",
+    "label": "배기가스 연속 측정 시스템 전용 구조",
+    "ids": [
+      "A384"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 78,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "pneumatic-special-A271",
+    "label": "공압 증압 스테이션 전용 구조",
+    "ids": [
+      "A271"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 71,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "pneumatic-special-A273",
+    "label": "공압 튜브 절단 가공기 전용 구조",
+    "ids": [
+      "A273"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 71,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "pneumatic-special-A275",
+    "label": "공압 유량 절약 제어 유닛 전용 구조",
+    "ids": [
+      "A275"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 71,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "pneumatic-special-A277",
+    "label": "정전기 제거 에어 나이프 전용 구조",
+    "ids": [
+      "A277"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 71,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "surface-special-N086",
+    "label": "플라즈마 표면처리기 전용 구조",
+    "ids": [
+      "N086"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 69,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "surface-special-A147",
+    "label": "산세 라인 전용 구조",
+    "ids": [
+      "A147"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 69,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "surface-special-A149",
+    "label": "양극산화 라인 전용 구조",
+    "ids": [
+      "A149"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 69,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "surface-special-A150",
+    "label": "인산염 피막 라인 전용 구조",
+    "ids": [
+      "A150"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 69,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "surface-special-A152",
+    "label": "PVD 진공 코팅기 전용 구조",
+    "ids": [
+      "A152"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 69,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "surface-special-A153",
+    "label": "열용사 스테이션 전용 구조",
+    "ids": [
+      "A153"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 69,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "surface-special-A154",
+    "label": "콜드 스프레이 적층기 전용 구조",
+    "ids": [
+      "A154"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 69,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "surface-special-A155",
+    "label": "레이저 클래딩기 전용 구조",
+    "ids": [
+      "A155"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 69,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "surface-special-A156",
+    "label": "쇼트 피닝기 전용 구조",
+    "ids": [
+      "A156"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 69,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "surface-special-A159",
+    "label": "스핀 코팅기 전용 구조",
+    "ids": [
+      "A159"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 69,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "hydraulic-special-A278",
+    "label": "유압 호스 크림핑기 전용 구조",
+    "ids": [
+      "A278"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 66,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "hydraulic-special-A284",
+    "label": "유압 진동 가진기 전용 구조",
+    "ids": [
+      "A284"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 66,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "casting-special-N099",
+    "label": "주조 금형 예열기 전용 구조",
+    "ids": [
+      "N099"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 65,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "casting-special-A100",
+    "label": "자동 조형기 전용 구조",
+    "ids": [
+      "A100"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 65,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "casting-special-A101",
+    "label": "코어 슈팅기 전용 구조",
+    "ids": [
+      "A101"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 65,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "casting-special-A109",
+    "label": "용탕 슬래그 제거기 전용 구조",
+    "ids": [
+      "A109"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 65,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "casting-special-A111",
+    "label": "용탕 스트리밍 접종기 전용 구조",
+    "ids": [
+      "A111"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 65,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "casting-special-A116",
+    "label": "단조 매니퓰레이터 전용 구조",
+    "ids": [
+      "A116"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 65,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "maintenance-special-A401",
+    "label": "베어링 유도 가열기 전용 구조",
+    "ids": [
+      "A401"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 65,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "maintenance-special-A418",
+    "label": "배관 동결 격리기 전용 구조",
+    "ids": [
+      "A418"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 65,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "thermal-special-A145",
+    "label": "열처리 분위기 발생기 전용 구조",
+    "ids": [
+      "A145"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 64,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "machining-special-A068",
+    "label": "전해 가공기 전용 구조",
+    "ids": [
+      "A068"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 63,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "machining-special-A069",
+    "label": "전해 디버링기 전용 구조",
+    "ids": [
+      "A069"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 63,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "machining-special-A071",
+    "label": "열에너지 디버링기 전용 구조",
+    "ids": [
+      "A071"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 63,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "machining-special-A072",
+    "label": "워터젯 디버링기 전용 구조",
+    "ids": [
+      "A072"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 63,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "tool-special-A462",
+    "label": "금형 반전기 전용 구조",
+    "ids": [
+      "A462"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 61,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A539",
+    "label": "곡물 탈피기 전용 구조",
+    "ids": [
+      "A539"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A546",
+    "label": "반죽 분할기 전용 구조",
+    "ids": [
+      "A546"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A547",
+    "label": "반죽 라운더 전용 구조",
+    "ids": [
+      "A547"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A551",
+    "label": "식품 증숙기 전용 구조",
+    "ids": [
+      "A551"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A552",
+    "label": "연속 프라이어 전용 구조",
+    "ids": [
+      "A552"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A553",
+    "label": "식품 블랜처 전용 구조",
+    "ids": [
+      "A553"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A555",
+    "label": "레토르트 살균기 전용 구조",
+    "ids": [
+      "A555"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A559",
+    "label": "고압 균질기 전용 구조",
+    "ids": [
+      "A559"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A560",
+    "label": "크림 분리 원심기 전용 구조",
+    "ids": [
+      "A560"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A562",
+    "label": "분무 건조기 전용 구조",
+    "ids": [
+      "A562"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A563",
+    "label": "동결 건조기 전용 구조",
+    "ids": [
+      "A563"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A564",
+    "label": "유동층 건조기 전용 구조",
+    "ids": [
+      "A564"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A576",
+    "label": "정제 코팅기 전용 구조",
+    "ids": [
+      "A576"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A577",
+    "label": "캡슐 충전기 전용 구조",
+    "ids": [
+      "A577"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A586",
+    "label": "의약품 동결건조 로더 전용 구조",
+    "ids": [
+      "A586"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A588",
+    "label": "과산화수소 증기 발생기 전용 구조",
+    "ids": [
+      "A588"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A591",
+    "label": "식품 성형 디포지터 전용 구조",
+    "ids": [
+      "A591"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A592",
+    "label": "초콜릿 템퍼링기 전용 구조",
+    "ids": [
+      "A592"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A594",
+    "label": "커피 로스터 전용 구조",
+    "ids": [
+      "A594"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A595",
+    "label": "식품 조리 압출기 전용 구조",
+    "ids": [
+      "A595"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A599",
+    "label": "치즈 커드 절단기 전용 구조",
+    "ids": [
+      "A599"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "food-special-A600",
+    "label": "유제품 버터 처닝기 전용 구조",
+    "ids": [
+      "A600"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "forming-special-N072",
+    "label": "파이프 끝단 성형기 전용 구조",
+    "ids": [
+      "N072"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "forming-special-N075",
+    "label": "스피닝 성형기 전용 구조",
+    "ids": [
+      "N075"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "polymer-special-N101",
+    "label": "사출 성형기 전용 구조",
+    "ids": [
+      "N101"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "polymer-special-N102",
+    "label": "블로 성형기 전용 구조",
+    "ids": [
+      "N102"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "polymer-special-N103",
+    "label": "압출 성형기 전용 구조",
+    "ids": [
+      "N103"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "polymer-special-N104",
+    "label": "진공 성형기 전용 구조",
+    "ids": [
+      "N104"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "polymer-special-N106",
+    "label": "수지 제습 건조기 전용 구조",
+    "ids": [
+      "N106"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "polymer-special-N109",
+    "label": "금형 온도 조절기 전용 구조",
+    "ids": [
+      "N109"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "forming-special-A088",
+    "label": "튜브 하이드로포밍기 전용 구조",
+    "ids": [
+      "A088"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "forming-special-A089",
+    "label": "판재 스트레치 포밍기 전용 구조",
+    "ids": [
+      "A089"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "forming-special-A090",
+    "label": "냉간 헤딩기 전용 구조",
+    "ids": [
+      "A090"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "forming-special-A092",
+    "label": "와이어 스트레이트닝 절단기 전용 구조",
+    "ids": [
+      "A092"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "forming-special-A094",
+    "label": "확장 메탈 제조기 전용 구조",
+    "ids": [
+      "A094"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "forming-special-A095",
+    "label": "링 롤링기 전용 구조",
+    "ids": [
+      "A095"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "polymer-special-A167",
+    "label": "회전 성형기 전용 구조",
+    "ids": [
+      "A167"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "polymer-special-A168",
+    "label": "반응 사출 성형기 전용 구조",
+    "ids": [
+      "A168"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "polymer-special-A170",
+    "label": "복합재 인발 성형기 전용 구조",
+    "ids": [
+      "A170"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "polymer-special-A171",
+    "label": "수지 이송 성형기 전용 구조",
+    "ids": [
+      "A171"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "polymer-special-A176",
+    "label": "타이어 빌딩기 전용 구조",
+    "ids": [
+      "A176"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "polymer-special-A177",
+    "label": "발포 성형 라인 전용 구조",
+    "ids": [
+      "A177"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "polymer-special-A178",
+    "label": "비드 발포 성형기 전용 구조",
+    "ids": [
+      "A178"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 59,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "test-special-A426",
+    "label": "진동 시험 시스템 전용 구조",
+    "ids": [
+      "A426"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 56,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "test-special-A446",
+    "label": "금속조직 시편 절단기 전용 구조",
+    "ids": [
+      "A446"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 56,
+    "count": 1
+  },
+  {
+    "method": "NEW_BASE",
+    "family": "test-special-A449",
+    "label": "실험실 시료 분할기 전용 구조",
+    "ids": [
+      "A449"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 56,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "thermal-pressure-special",
+    "label": "고온·압력 공정 설비",
+    "ids": [
+      "A112",
+      "A113",
+      "A114",
+      "A117",
+      "A133",
+      "A143",
+      "A344",
+      "A346",
+      "A355",
+      "A360",
+      "A365",
+      "A475",
+      "A477",
+      "A479",
+      "A480",
+      "A481",
+      "A558",
+      "A587"
+    ],
+    "requirements": [
+      "GA 도면·압력/온도/매체·방호·인입/배출·제조사 안전 범위"
+    ],
+    "priorityScore": 92,
+    "count": 18
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "packing-machine",
+    "label": "포장·충전 구성",
+    "ids": [
+      "A582",
+      "A583",
+      "A584"
+    ],
+    "requirements": [
+      "제품/용기 규격·금형/노즐·필름 경로·투입 배출"
+    ],
+    "priorityScore": 60,
+    "count": 3
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "press-frame",
+    "label": "프레스 프레임·금형 공간",
+    "ids": [
+      "A135",
+      "A136"
+    ],
+    "requirements": [
+      "프레임 형식·가압축·금형 치수·작업 공간·안전거리"
+    ],
+    "priorityScore": 64,
+    "count": 2
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "safety-special-A393",
+    "label": "폭발 격리 밸브 시스템 전용 구조",
+    "ids": [
+      "A393"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 96,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "food-special-A579",
+    "label": "제약용 무균 아이솔레이터 전용 구조",
+    "ids": [
+      "A579"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 60,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "battery-special-A517",
+    "label": "전극 노칭기 전용 구조",
+    "ids": [
+      "A517"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 55,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "battery-special-A519",
+    "label": "전지 스태킹기 전용 구조",
+    "ids": [
+      "A519"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 55,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "battery-special-A521",
+    "label": "젤리롤 삽입기 전용 구조",
+    "ids": [
+      "A521"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 55,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "battery-special-A522",
+    "label": "전해액 진공 주입기 전용 구조",
+    "ids": [
+      "A522"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 55,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "battery-special-A524",
+    "label": "셀 포메이션 충방전기 전용 구조",
+    "ids": [
+      "A524"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 55,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "battery-special-A532",
+    "label": "배터리 파우치 성형기 전용 구조",
+    "ids": [
+      "A532"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 55,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "roll-web-line",
+    "label": "롤·웹 가공 프레임",
+    "ids": [
+      "A533"
+    ],
+    "requirements": [
+      "웹/선재 규격·장력/롤 간격·가공 헤드·인계축"
+    ],
+    "priorityScore": 55,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "battery-special-A534",
+    "label": "전극 웹 비접촉 중량계 전용 구조",
+    "ids": [
+      "A534"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 55,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "battery-special-A536",
+    "label": "배터리 방전 안전 스테이션 전용 구조",
+    "ids": [
+      "A536"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 55,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A472",
+    "label": "웨이퍼 세정 웨트벤치 전용 구조",
+    "ids": [
+      "A472"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A473",
+    "label": "웨이퍼 스핀 린스 드라이어 전용 구조",
+    "ids": [
+      "A473"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A474",
+    "label": "웨이퍼 CMP 장비 전용 구조",
+    "ids": [
+      "A474"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A476",
+    "label": "레지스트 코터 디벨로퍼 전용 구조",
+    "ids": [
+      "A476"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "service-cart",
+    "label": "정비 대차·휴대 도구 조합",
+    "ids": [
+      "A478"
+    ],
+    "requirements": [
+      "전용 도구 형상·압력/유체·휴대/고정 조건"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A482",
+    "label": "급속 열처리 장비 전용 구조",
+    "ids": [
+      "A482"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A483",
+    "label": "웨이퍼 프로버 전용 구조",
+    "ids": [
+      "A483"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A484",
+    "label": "반도체 자동 테스트 장비 전용 구조",
+    "ids": [
+      "A484"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A485",
+    "label": "테스트 핸들러 전용 구조",
+    "ids": [
+      "A485"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A487",
+    "label": "다이 어태치 본더 전용 구조",
+    "ids": [
+      "A487"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A488",
+    "label": "와이어 본더 전용 구조",
+    "ids": [
+      "A488"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A489",
+    "label": "플립칩 본더 전용 구조",
+    "ids": [
+      "A489"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A490",
+    "label": "하이브리드 본더 전용 구조",
+    "ids": [
+      "A490"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A492",
+    "label": "패키지 싱귤레이션 장비 전용 구조",
+    "ids": [
+      "A492"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A493",
+    "label": "웨이퍼 백그라인더 전용 구조",
+    "ids": [
+      "A493"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A494",
+    "label": "웨이퍼 다이싱쏘 전용 구조",
+    "ids": [
+      "A494"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A495",
+    "label": "웨이퍼 테이프 마운터 전용 구조",
+    "ids": [
+      "A495"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A496",
+    "label": "웨이퍼 디본더 전용 구조",
+    "ids": [
+      "A496"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A498",
+    "label": "SMT 스텐실 프린터 전용 구조",
+    "ids": [
+      "A498"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A499",
+    "label": "솔더페이스트 검사기 전용 구조",
+    "ids": [
+      "A499"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A500",
+    "label": "SMT 마운터 전용 구조",
+    "ids": [
+      "A500"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A504",
+    "label": "PCB 인서킷 테스터 전용 구조",
+    "ids": [
+      "A504"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "semiconductor-special-A506",
+    "label": "PCB 컨포멀 코팅기 전용 구조",
+    "ids": [
+      "A506"
+    ],
+    "requirements": [
+      "공정 메커니즘·외형 치수·작업물 규격·장착/배출 위치의 기준 설계 또는 GA 자료"
+    ],
+    "priorityScore": 53,
+    "count": 1
+  },
+  {
+    "method": "WAIT_DATA",
+    "family": "test-chamber",
+    "label": "시험·열처리 챔버",
+    "ids": [
+      "A531"
+    ],
+    "requirements": [
+      "열원/냉각/시험 자극부·도어·단열·샘플 경로"
+    ],
+    "priorityScore": 52,
+    "count": 1
+  }
+]

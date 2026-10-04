@@ -1,0 +1,9 @@
+export function studioHandoff(api){
+ const crypto={randomUUID:()=>Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('')};
+ const panel=document.createElement('section');panel.id='selected-equipment-edit';panel.style.cssText='padding:12px;border:1px solid #b8d4df;background:white;margin-top:12px';document.getElementById('counts').before(panel);let selected;
+ function choose(id){const p=api.plan()?.processes.find(x=>x.id===id);if(!p)return;selected=id;api.pause();panel.replaceChildren();const title=document.createElement('b');title.textContent=(p.equipmentModel?.equipmentName||p.equipmentModel?.assetId||'미연결 설비')+' · '+p.name;const button=document.createElement('button');button.textContent='설비 수정';button.onclick=()=>{try{const plan=api.plan(),store=JSON.parse(localStorage.getItem('p006-product-plans-v1')||'{}'),saved=store.plans?.find(x=>x.id===plan.id);if(!saved)throw Error('계획을 먼저 저장·3D 적용하세요.');if(api.busy())throw Error('편집 내용을 저장하거나 취소하고 편집 영역을 접으세요.');const token=crypto.randomUUID(),context={planId:plan.id,processId:id,revision:saved.revision,state:api.state(),createdAt:Date.now()},url='equipment-studio.html?handoff='+token+'&asset='+encodeURIComponent(p.equipmentModel?.assetId||'');localStorage.setItem('p006-studio-handoff:'+token,JSON.stringify(context));window.name='p006-planner';const studio=window.open(url,'p006-equipment-studio');if(!studio)window.location.assign(url);}catch(e){document.getElementById('notice').textContent=e.message;}};panel.append(title,document.createElement('br'),button);}
+ panel.textContent='3D 설비를 클릭하거나 설비 카드에서 선택하세요.';
+ const token=new URLSearchParams(location.search).get('handoff');
+ if(token){const context=JSON.parse(localStorage.getItem('p006-studio-handoff:'+token)||'null');if(context){setTimeout(async()=>{try{await api.restore(context);choose(context.processId);}catch(e){panel.textContent=e.message;}},300);}}
+ return {choose};
+}

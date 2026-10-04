@@ -1,11 +1,14 @@
 import type { HTMLAttributes, ReactNode } from "react";
+import {CurrentEmissionContract,emissionContractPage} from '../../features/emission-common/currentEmissionContract';
+import {EmissionWorkflowNavigator} from '../../features/emission-common/EmissionWorkflowNavigator';
+import {CommonBreadcrumb} from './CommonBreadcrumb';
 
 export function CommonPortalPageShell({ children, className = "", ...attributes }: HTMLAttributes<HTMLDivElement>) {
-  return <div {...attributes} data-common-component="COMMON_PORTAL_PAGE_SHELL" className={`min-h-screen bg-[var(--kr-gov-bg-gray,#f4f7fa)] text-[var(--kr-gov-text-primary)] ${className}`}>{children}</div>;
+  return <div {...attributes} data-common-component="COMMON_PORTAL_PAGE_SHELL" className={`min-h-screen bg-[var(--ccus-page-canvas,#fff)] text-[var(--kr-gov-text-primary)] ${className}`}>{children}</div>;
 }
 
 export function CommonPageContainer({ children, className = "", contentClassName = "", ...attributes }: HTMLAttributes<HTMLElement> & { contentClassName?: string }) {
-  return <main {...attributes} data-common-component="COMMON_PAGE_CONTAINER" className={`min-h-[calc(100vh-80px)] bg-[var(--kr-gov-surface,#f5f7fa)] px-4 py-8 lg:px-8 ${className}`}><div className={`mx-auto max-w-7xl ${contentClassName}`}>{children}</div></main>;
+  return <main {...attributes} data-common-component="COMMON_PAGE_CONTAINER" className={`min-h-[calc(100vh-80px)] bg-[var(--ccus-page-canvas,#fff)] px-4 py-8 lg:px-8 ${className}`}><div className={`mx-auto max-w-7xl ${contentClassName}`}><CommonBreadcrumb/><CurrentEmissionContract route={location.pathname}/>{!emissionContractPage(location.pathname)&&<EmissionWorkflowNavigator/>}{children}</div></main>;
 }
 
 export function CommonPageHeader({ eyebrow, title, description, actions }: { eyebrow?: ReactNode; title: ReactNode; description?: ReactNode; actions?: ReactNode }) {
@@ -13,7 +16,7 @@ export function CommonPageHeader({ eyebrow, title, description, actions }: { eye
 }
 
 export function CommonEmbeddedWorkspace({ children, className = "", workspaceId, ...attributes }: HTMLAttributes<HTMLDivElement> & { workspaceId: string }) {
-  return <div {...attributes} data-common-component="COMMON_EMBEDDED_WORKSPACE" data-workspace-id={workspaceId} className={`min-h-screen bg-[var(--kr-gov-surface,#f5f7fa)] text-[var(--kr-gov-text-primary,#052b57)] ${className}`}>{children}</div>;
+  return <div {...attributes} data-common-component="COMMON_EMBEDDED_WORKSPACE" data-workspace-id={workspaceId} className={`min-h-screen bg-[var(--ccus-page-canvas,#fff)] text-[var(--kr-gov-text-primary,#052b57)] ${className}`}>{children}</div>;
 }
 
 export function CommonStatusBadge({ children, className = "" }: { children: ReactNode; className?: string }) {

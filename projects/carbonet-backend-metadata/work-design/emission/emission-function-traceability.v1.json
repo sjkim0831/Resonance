@@ -1,0 +1,916 @@
+{
+  "schema": "carbonet.function-traceability/v1",
+  "ledgerCode": "EMISSION_WORK_MASTER",
+  "ledgerVersion": "1.0.0-draft",
+  "sourceController": "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/web/EmissionProjectRegistryController.java",
+  "sourceService": "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/service/EmissionProjectRegistryService.java",
+  "entryCount": 40,
+  "statusSummary": {
+    "IMPLEMENTED": 40
+  },
+  "entries": [
+    {
+      "traceId": "EMISSION:PG_EMISSION_MY_TASKS:TASK_SEARCH",
+      "page": "PG_EMISSION_MY_TASKS",
+      "function": "TASK_SEARCH",
+      "actors": [
+        "COMPANY_MANAGER",
+        "SITE_DATA_OWNER",
+        "CALCULATOR",
+        "VERIFIER",
+        "APPROVER"
+      ],
+      "method": "GET",
+      "endpoint": "/home/api/emission-projects",
+      "permission": "EMISSION_TASK_READ",
+      "reads": [
+        "emission_project_registry",
+        "emission_project_task",
+        "framework_project_actor_assignment"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-TASK_SEARCH"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_MY_TASKS:TASK_OPEN",
+      "page": "PG_EMISSION_MY_TASKS",
+      "function": "TASK_OPEN",
+      "actors": [
+        "COMPANY_MANAGER",
+        "SITE_DATA_OWNER",
+        "CALCULATOR",
+        "VERIFIER",
+        "APPROVER"
+      ],
+      "method": "GET",
+      "endpoint": "/home/api/emission-projects/{id}",
+      "permission": "EMISSION_TASK_READ",
+      "reads": [
+        "emission_project_registry",
+        "emission_project_task",
+        "framework_project_actor_assignment",
+        "emission_project_history"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-TASK_OPEN"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_MY_TASKS:TASK_FILTER_STATUS",
+      "page": "PG_EMISSION_MY_TASKS",
+      "function": "TASK_FILTER_STATUS",
+      "actors": [
+        "COMPANY_MANAGER",
+        "SITE_DATA_OWNER",
+        "CALCULATOR",
+        "VERIFIER",
+        "APPROVER"
+      ],
+      "method": "GET",
+      "endpoint": "/home/api/emission-projects?status={status}",
+      "permission": "EMISSION_TASK_READ",
+      "reads": [
+        "emission_project_registry",
+        "emission_project_task",
+        "framework_project_actor_assignment"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-TASK_FILTER_STATUS"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_MY_TASKS:TASK_VIEW_HANDOFF",
+      "page": "PG_EMISSION_MY_TASKS",
+      "function": "TASK_VIEW_HANDOFF",
+      "actors": [
+        "COMPANY_MANAGER",
+        "SITE_DATA_OWNER",
+        "CALCULATOR",
+        "VERIFIER",
+        "APPROVER"
+      ],
+      "method": "GET",
+      "endpoint": "/home/api/emission-projects/{id}/completion",
+      "permission": "EMISSION_TASK_READ",
+      "reads": [
+        "emission_project_registry",
+        "emission_project_task",
+        "framework_project_actor_assignment",
+        "framework_process_execution_event"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-TASK_VIEW_HANDOFF"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_PORTFOLIO:PROJECT_SEARCH",
+      "page": "PG_EMISSION_PORTFOLIO",
+      "function": "PROJECT_SEARCH",
+      "actors": [
+        "COMPANY_MASTER"
+      ],
+      "method": "GET",
+      "endpoint": "/home/api/emission-projects",
+      "permission": "EMISSION_PROJECT_READ",
+      "reads": [
+        "emission_project_registry",
+        "emission_project_task",
+        "framework_project_actor_assignment"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-PROJECT_SEARCH"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_PORTFOLIO:PROJECT_CREATE",
+      "page": "PG_EMISSION_PORTFOLIO",
+      "function": "PROJECT_CREATE",
+      "actors": [
+        "COMPANY_MASTER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects",
+      "permission": "EMISSION_PROJECT_CREATE",
+      "reads": [
+        "emission_project_registry"
+      ],
+      "writes": [
+        "emission_project_registry",
+        "emission_project_task",
+        "framework_project_actor_assignment",
+        "emission_project_history"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-PROJECT_CREATE"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_PORTFOLIO:PROJECT_ASSIGN",
+      "page": "PG_EMISSION_PORTFOLIO",
+      "function": "PROJECT_ASSIGN",
+      "actors": [
+        "COMPANY_MASTER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/work-assignments",
+      "permission": "EMISSION_PROJECT_ASSIGN",
+      "reads": [
+        "emission_project_registry",
+        "framework_project_actor_assignment",
+        "framework_process_step"
+      ],
+      "writes": [
+        "framework_project_actor_assignment",
+        "framework_account_actor_assignment",
+        "framework_project_process_step_assignment",
+        "framework_work_assignment_audit",
+        "emission_project_task"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-PROJECT_ASSIGN"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_PORTFOLIO:PROJECT_OPEN",
+      "page": "PG_EMISSION_PORTFOLIO",
+      "function": "PROJECT_OPEN",
+      "actors": [
+        "COMPANY_MASTER"
+      ],
+      "method": "GET",
+      "endpoint": "/home/api/emission-projects/{id}",
+      "permission": "EMISSION_PROJECT_READ",
+      "reads": [
+        "emission_project_registry",
+        "emission_project_task",
+        "framework_project_actor_assignment",
+        "emission_project_history"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-PROJECT_OPEN"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_BOUNDARY:BOUNDARY_LOAD",
+      "page": "PG_EMISSION_BOUNDARY",
+      "function": "BOUNDARY_LOAD",
+      "actors": [
+        "COMPANY_MANAGER"
+      ],
+      "method": "GET",
+      "endpoint": "/home/api/emission-projects/{id}/organizational-boundary",
+      "permission": "EMISSION_BOUNDARY_READ",
+      "reads": [
+        "emission_organizational_boundary",
+        "emission_organizational_boundary_member"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-BOUNDARY_LOAD"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_BOUNDARY:BOUNDARY_EDIT",
+      "page": "PG_EMISSION_BOUNDARY",
+      "function": "BOUNDARY_EDIT",
+      "actors": [
+        "COMPANY_MANAGER"
+      ],
+      "method": "PUT",
+      "endpoint": "/home/api/emission-projects/{id}/organizational-boundary",
+      "permission": "EMISSION_BOUNDARY_WRITE",
+      "reads": [
+        "emission_organizational_boundary"
+      ],
+      "writes": [
+        "emission_organizational_boundary",
+        "emission_organizational_boundary_member",
+        "emission_project_history"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-BOUNDARY_EDIT"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_BOUNDARY:BOUNDARY_VALIDATE",
+      "page": "PG_EMISSION_BOUNDARY",
+      "function": "BOUNDARY_VALIDATE",
+      "actors": [
+        "COMPANY_MANAGER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/organizational-boundary/review-ready",
+      "permission": "EMISSION_BOUNDARY_WRITE",
+      "reads": [
+        "emission_organizational_boundary",
+        "emission_organizational_boundary_member"
+      ],
+      "writes": [
+        "emission_project_history"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-BOUNDARY_VALIDATE"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_BOUNDARY:BOUNDARY_LOCK",
+      "page": "PG_EMISSION_BOUNDARY",
+      "function": "BOUNDARY_LOCK",
+      "actors": [
+        "COMPANY_MANAGER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/organizational-boundary/decision",
+      "permission": "EMISSION_BOUNDARY_LOCK",
+      "reads": [
+        "emission_organizational_boundary"
+      ],
+      "writes": [
+        "emission_organizational_boundary",
+        "emission_project_task",
+        "emission_project_history"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-BOUNDARY_LOCK"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_ACTIVITY:ACTIVITY_LOAD",
+      "page": "PG_EMISSION_ACTIVITY",
+      "function": "ACTIVITY_LOAD",
+      "actors": [
+        "SITE_DATA_OWNER"
+      ],
+      "method": "GET",
+      "endpoint": "/home/api/emission-projects/{id}/activities",
+      "permission": "EMISSION_ACTIVITY_READ",
+      "reads": [
+        "emission_activity_data",
+        "emission_activity_evidence"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-ACTIVITY_LOAD"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_ACTIVITY:ACTIVITY_EDIT",
+      "page": "PG_EMISSION_ACTIVITY",
+      "function": "ACTIVITY_EDIT",
+      "actors": [
+        "SITE_DATA_OWNER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/activities/{activityId}",
+      "permission": "EMISSION_ACTIVITY_WRITE",
+      "reads": [
+        "emission_activity_data"
+      ],
+      "writes": [
+        "emission_activity_data",
+        "emission_project_history"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-ACTIVITY_EDIT"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_ACTIVITY:EVIDENCE_ATTACH",
+      "page": "PG_EMISSION_ACTIVITY",
+      "function": "EVIDENCE_ATTACH",
+      "actors": [
+        "SITE_DATA_OWNER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/activities/{activityId}/evidence",
+      "permission": "EMISSION_ACTIVITY_WRITE",
+      "reads": [
+        "emission_activity_data"
+      ],
+      "writes": [
+        "emission_activity_evidence",
+        "emission_project_history"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-EVIDENCE_ATTACH"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_ACTIVITY:QUALITY_CHECK",
+      "page": "PG_EMISSION_ACTIVITY",
+      "function": "QUALITY_CHECK",
+      "actors": [
+        "SITE_DATA_OWNER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/quality",
+      "permission": "EMISSION_ACTIVITY_WRITE",
+      "reads": [
+        "emission_activity_data",
+        "emission_activity_evidence"
+      ],
+      "writes": [
+        "emission_activity_quality_run",
+        "emission_activity_quality_issue"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-QUALITY_CHECK"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_ACTIVITY:ACTIVITY_SUBMIT",
+      "page": "PG_EMISSION_ACTIVITY",
+      "function": "ACTIVITY_SUBMIT",
+      "actors": [
+        "SITE_DATA_OWNER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/submissions/{submissionId}/submit",
+      "permission": "EMISSION_ACTIVITY_SUBMIT",
+      "reads": [
+        "emission_activity_data",
+        "emission_activity_evidence",
+        "emission_activity_quality_run",
+        "emission_activity_submission"
+      ],
+      "writes": [
+        "emission_activity_submission",
+        "emission_activity_submission_item",
+        "emission_activity_submission_evidence",
+        "emission_project_task",
+        "emission_project_history"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-ACTIVITY_SUBMIT"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_CALCULATION:FACTOR_MAP",
+      "page": "PG_EMISSION_CALCULATION",
+      "function": "FACTOR_MAP",
+      "actors": [
+        "CALCULATOR"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/activities/{activityId}/factor",
+      "permission": "EMISSION_CALC_EXECUTE",
+      "reads": [
+        "emission_activity_data",
+        "emission_factor_reference"
+      ],
+      "writes": [
+        "emission_factor_mapping_decision",
+        "emission_activity_data"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-FACTOR_MAP"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_CALCULATION:CALC_EXECUTE",
+      "page": "PG_EMISSION_CALCULATION",
+      "function": "CALC_EXECUTE",
+      "actors": [
+        "CALCULATOR"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/calculation",
+      "permission": "EMISSION_CALC_EXECUTE",
+      "reads": [
+        "emission_activity_submission",
+        "emission_activity_data",
+        "emission_factor_reference"
+      ],
+      "writes": [
+        "emission_calculation_run",
+        "emission_calculation_item",
+        "emission_project_task",
+        "emission_project_history"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-CALC_EXECUTE"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_CALCULATION:CALC_RECONCILE",
+      "page": "PG_EMISSION_CALCULATION",
+      "function": "CALC_RECONCILE",
+      "actors": [
+        "CALCULATOR"
+      ],
+      "method": "GET",
+      "endpoint": "/home/api/emission-projects/{id}/calculation",
+      "permission": "EMISSION_CALC_READ",
+      "reads": [
+        "emission_calculation_run",
+        "emission_calculation_item",
+        "emission_activity_submission"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-CALC_RECONCILE"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_CALCULATION:CALC_SUBMIT",
+      "page": "PG_EMISSION_CALCULATION",
+      "function": "CALC_SUBMIT",
+      "actors": [
+        "CALCULATOR"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/calculations/{calculationId}/submit",
+      "permission": "EMISSION_CALC_SUBMIT",
+      "reads": [
+        "emission_calculation_run",
+        "emission_activity_submission"
+      ],
+      "writes": [
+        "emission_calculation_submission",
+        "emission_calculation_run",
+        "emission_project_task",
+        "emission_project_history"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "산정 버전과 활동자료 제출본을 멱등키로 결합하여 검증 단계로 제출",
+      "testId": "T-FN-CALC_SUBMIT"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_VALIDATION:VERIFY_SAMPLE",
+      "page": "PG_EMISSION_VALIDATION",
+      "function": "VERIFY_SAMPLE",
+      "actors": [
+        "VERIFIER"
+      ],
+      "method": "GET",
+      "endpoint": "/home/api/emission-projects/{id}/review-workflow",
+      "permission": "EMISSION_VERIFY_READ",
+      "reads": [
+        "emission_activity_submission",
+        "emission_calculation_run",
+        "emission_submission_review",
+        "emission_activity_evidence"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-VERIFY_SAMPLE"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_VALIDATION:VERIFY_REPLAY",
+      "page": "PG_EMISSION_VALIDATION",
+      "function": "VERIFY_REPLAY",
+      "actors": [
+        "VERIFIER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/quality",
+      "permission": "EMISSION_VERIFY_READ",
+      "reads": [
+        "emission_activity_submission",
+        "emission_calculation_run",
+        "emission_calculation_item",
+        "emission_activity_evidence"
+      ],
+      "writes": [
+        "emission_activity_quality_run"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-VERIFY_REPLAY"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_VALIDATION:VERIFY_PASS",
+      "page": "PG_EMISSION_VALIDATION",
+      "function": "VERIFY_PASS",
+      "actors": [
+        "VERIFIER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/submissions/{submissionId}/verification/decision",
+      "permission": "EMISSION_VERIFY_DECIDE",
+      "reads": [
+        "emission_activity_submission",
+        "emission_calculation_run",
+        "emission_activity_quality_run"
+      ],
+      "writes": [
+        "emission_submission_review",
+        "emission_activity_submission",
+        "emission_project_task",
+        "emission_project_history"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-VERIFY_PASS"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_VALIDATION:VERIFY_RETURN",
+      "page": "PG_EMISSION_VALIDATION",
+      "function": "VERIFY_RETURN",
+      "actors": [
+        "VERIFIER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/submissions/{submissionId}/verification/decision",
+      "permission": "EMISSION_VERIFY_DECIDE",
+      "reads": [
+        "emission_activity_submission",
+        "emission_calculation_run",
+        "emission_activity_quality_run"
+      ],
+      "writes": [
+        "emission_submission_review",
+        "emission_activity_submission",
+        "emission_project_task",
+        "emission_project_history",
+        "emission_workflow_notification"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-VERIFY_RETURN"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_CORRECTION:FINDING_LOAD",
+      "page": "PG_EMISSION_CORRECTION",
+      "function": "FINDING_LOAD",
+      "actors": [
+        "SITE_DATA_OWNER"
+      ],
+      "method": "GET",
+      "endpoint": "/home/api/emission-projects/{id}/review-workflow",
+      "permission": "EMISSION_CORRECTION_READ",
+      "reads": [
+        "emission_submission_review",
+        "emission_activity_submission",
+        "emission_calculation_run"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-FINDING_LOAD"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_CORRECTION:FINDING_RESOLVE",
+      "page": "PG_EMISSION_CORRECTION",
+      "function": "FINDING_RESOLVE",
+      "actors": [
+        "SITE_DATA_OWNER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/submissions/{submissionId}/verification/decision",
+      "permission": "EMISSION_CORRECTION_WRITE",
+      "reads": [
+        "emission_activity_request",
+        "emission_submission_review"
+      ],
+      "writes": [
+        "emission_verification_finding",
+        "emission_activity_request",
+        "emission_activity_request_event",
+        "emission_project_history"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "reviewId·submissionId·requestId·findingCode를 명시적으로 연결",
+      "testId": "T-FN-FINDING_RESOLVE"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_CORRECTION:CORRECTION_RECALCULATE",
+      "page": "PG_EMISSION_CORRECTION",
+      "function": "CORRECTION_RECALCULATE",
+      "actors": [
+        "SITE_DATA_OWNER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/calculation",
+      "permission": "EMISSION_CORRECTION_WRITE",
+      "reads": [
+        "emission_activity_submission",
+        "emission_activity_data",
+        "emission_submission_review"
+      ],
+      "writes": [
+        "emission_calculation_run",
+        "emission_calculation_item",
+        "emission_project_history"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-CORRECTION_RECALCULATE"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_CORRECTION:CORRECTION_RESUBMIT",
+      "page": "PG_EMISSION_CORRECTION",
+      "function": "CORRECTION_RESUBMIT",
+      "actors": [
+        "SITE_DATA_OWNER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/submissions/{submissionId}/submit",
+      "permission": "EMISSION_CORRECTION_RESUBMIT",
+      "reads": [
+        "emission_activity_submission",
+        "emission_submission_review",
+        "emission_calculation_run"
+      ],
+      "writes": [
+        "emission_activity_submission",
+        "emission_project_task",
+        "emission_project_history"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-CORRECTION_RESUBMIT"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_APPROVAL:APPROVAL_REVIEW",
+      "page": "PG_EMISSION_APPROVAL",
+      "function": "APPROVAL_REVIEW",
+      "actors": [
+        "APPROVER"
+      ],
+      "method": "GET",
+      "endpoint": "/home/api/emission-projects/{id}/review-workflow",
+      "permission": "EMISSION_APPROVAL_READ",
+      "reads": [
+        "emission_activity_submission",
+        "emission_calculation_run",
+        "emission_submission_review"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-APPROVAL_REVIEW"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_APPROVAL:APPROVAL_DECIDE",
+      "page": "PG_EMISSION_APPROVAL",
+      "function": "APPROVAL_DECIDE",
+      "actors": [
+        "APPROVER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/submissions/{submissionId}/approval/decision",
+      "permission": "EMISSION_APPROVAL_DECIDE",
+      "reads": [
+        "emission_activity_submission",
+        "emission_calculation_run",
+        "emission_submission_review"
+      ],
+      "writes": [
+        "emission_submission_review",
+        "emission_activity_submission",
+        "emission_calculation_run",
+        "emission_project_task",
+        "emission_project_history"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-APPROVAL_DECIDE"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_APPROVAL:RESULT_LOCK",
+      "page": "PG_EMISSION_APPROVAL",
+      "function": "RESULT_LOCK",
+      "actors": [
+        "APPROVER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/result-lock",
+      "permission": "EMISSION_RESULT_LOCK",
+      "reads": [
+        "emission_activity_submission",
+        "emission_calculation_run",
+        "emission_submission_review"
+      ],
+      "writes": [
+        "emission_result_lock",
+        "emission_calculation_run",
+        "emission_project_task",
+        "emission_project_history"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "승인 후 SHA-256 스냅샷을 독립 멱등 잠금하고 중복 재시도 시 기존 결과 반환",
+      "testId": "T-FN-RESULT_LOCK"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_REPORT:REPORT_PREVIEW",
+      "page": "PG_EMISSION_REPORT",
+      "function": "REPORT_PREVIEW",
+      "actors": [
+        "COMPANY_MANAGER"
+      ],
+      "method": "GET",
+      "endpoint": "/home/api/emission-projects/{id}/reports",
+      "permission": "EMISSION_REPORT_READ",
+      "reads": [
+        "emission_project_report",
+        "emission_calculation_run",
+        "emission_submission_review",
+        "emission_result_lock"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "VERIFIED 결과 잠금과 연결된 보고서 버전만 조회",
+      "testId": "T-FN-REPORT_PREVIEW"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_REPORT:REPORT_ISSUE",
+      "page": "PG_EMISSION_REPORT",
+      "function": "REPORT_ISSUE",
+      "actors": [
+        "COMPANY_MANAGER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/reports/{reportId}/issue",
+      "permission": "EMISSION_REPORT_ISSUE",
+      "reads": [
+        "emission_project_report",
+        "emission_calculation_run",
+        "emission_submission_review",
+        "emission_result_lock"
+      ],
+      "writes": [
+        "emission_project_report",
+        "emission_report_certificate_audit",
+        "emission_project_task",
+        "emission_project_history"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "잠금 해시 재검증 후 인증서 발급·REPORT 완료·프로젝트 100% 전이",
+      "testId": "T-FN-REPORT_ISSUE"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_REPORT:REPORT_DOWNLOAD",
+      "page": "PG_EMISSION_REPORT",
+      "function": "REPORT_DOWNLOAD",
+      "actors": [
+        "COMPANY_MANAGER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/emission-projects/{id}/reports/{reportId}/download",
+      "permission": "EMISSION_REPORT_DOWNLOAD",
+      "reads": [
+        "emission_project_report"
+      ],
+      "writes": [
+        "emission_report_access_ledger"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-REPORT_DOWNLOAD"
+    },
+    {
+      "traceId": "EMISSION:PG_EMISSION_REPORT:ISSUE_HISTORY",
+      "page": "PG_EMISSION_REPORT",
+      "function": "ISSUE_HISTORY",
+      "actors": [
+        "COMPANY_MANAGER"
+      ],
+      "method": "GET",
+      "endpoint": "/home/api/emission-projects/{id}/reports",
+      "permission": "EMISSION_REPORT_READ",
+      "reads": [
+        "emission_project_report",
+        "emission_report_certificate_audit",
+        "emission_report_access_ledger"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-ISSUE_HISTORY"
+    },
+    {
+      "traceId": "EMISSION:PG_ACTOR_ASSIGNMENT_ADMIN:ACCOUNT_SEARCH",
+      "page": "PG_ACTOR_ASSIGNMENT_ADMIN",
+      "function": "ACCOUNT_SEARCH",
+      "actors": [
+        "COMPANY_MASTER"
+      ],
+      "method": "GET",
+      "endpoint": "/home/api/emission-projects/options",
+      "permission": "EMISSION_ACTOR_ASSIGN_ADMIN",
+      "reads": [
+        "comtnemplyrinfo",
+        "comtnentrprsmber",
+        "framework_account_actor_assignment"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-ACCOUNT_SEARCH"
+    },
+    {
+      "traceId": "EMISSION:PG_ACTOR_ASSIGNMENT_ADMIN:ACTOR_ASSIGN",
+      "page": "PG_ACTOR_ASSIGNMENT_ADMIN",
+      "function": "ACTOR_ASSIGN",
+      "actors": [
+        "COMPANY_MASTER"
+      ],
+      "method": "POST",
+      "endpoint": "/home/api/work-assignments",
+      "permission": "EMISSION_ACTOR_ASSIGN_ADMIN",
+      "reads": [
+        "framework_actor_definition",
+        "framework_project_actor_assignment",
+        "framework_process_step"
+      ],
+      "writes": [
+        "framework_project_actor_assignment",
+        "framework_account_actor_assignment",
+        "framework_project_process_step_assignment",
+        "framework_work_assignment_audit",
+        "emission_project_task"
+      ],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-ACTOR_ASSIGN"
+    },
+    {
+      "traceId": "EMISSION:PG_ACTOR_ASSIGNMENT_ADMIN:SOD_VALIDATE",
+      "page": "PG_ACTOR_ASSIGNMENT_ADMIN",
+      "function": "SOD_VALIDATE",
+      "actors": [
+        "COMPANY_MASTER"
+      ],
+      "method": "GET|POST",
+      "endpoint": "/home/api/work-assignments",
+      "permission": "EMISSION_ACTOR_ASSIGN_ADMIN",
+      "reads": [
+        "framework_actor_definition",
+        "framework_project_actor_assignment"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "조회 응답은 충돌 목록을 제공하고 저장 요청은 충돌 배정을 거부함",
+      "testId": "T-FN-SOD_VALIDATE"
+    },
+    {
+      "traceId": "EMISSION:PG_ACTOR_ASSIGNMENT_ADMIN:PERMISSION_PREVIEW",
+      "page": "PG_ACTOR_ASSIGNMENT_ADMIN",
+      "function": "PERMISSION_PREVIEW",
+      "actors": [
+        "COMPANY_MASTER"
+      ],
+      "method": "GET",
+      "endpoint": "/home/api/work-assignments",
+      "permission": "EMISSION_ACTOR_ASSIGN_ADMIN",
+      "reads": [
+        "framework_permission_requirement_v1",
+        "framework_process_step",
+        "framework_project_actor_assignment"
+      ],
+      "writes": [],
+      "implementationStatus": "IMPLEMENTED",
+      "note": "",
+      "testId": "T-FN-PERMISSION_PREVIEW"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { DevelopmentWorkbench } from "./DevelopmentWorkbench";
+import * as api from "./workbenchApi";
+import type { WorkContext } from "./workbenchApi";
+vi.mock("./workbenchApi", async importOriginal => ({...await importOriginal<typeof import("./workbenchApi")>(),fetchDevelopmentCapabilities:vi.fn(),fetchSrWorkbenchPage:vi.fn(),createSrTicket:vi.fn(),fetchCodexSrTicketDetail:vi.fn(),fetchCodexSrTicketArtifact:vi.fn(),approveSrTicket:vi.fn(),runDevelopmentAction:vi.fn()}));
+const context:WorkContext={processCode:"TEST",stepCode:"S1",stepName:"프로젝트 등록",processVersion:"3",routePath:"/fixture/project",inputContract:{},outputContract:{},completionRule:"저장 후 같은 ID 재조회"};
+let rows:any[]=[];
+const ticket=(extra={})=>({ticketId:"SR-TEST",summary:"테스트 개발",status:"APPROVED",executionStatus:"PLAN_COMPLETED",technicalContext:JSON.stringify({...context,source:"work-implementation"}),frontendVerifyExitCode:0,backendVerifyExitCode:null,...extra});
+beforeEach(()=>{
+ vi.clearAllMocks(); rows=[];
+ vi.mocked(api.fetchDevelopmentCapabilities).mockResolvedValue({developmentOnly:true,planEnabled:true,executeEnabled:true,deploymentEnabled:false,reason:""});
+ vi.mocked(api.fetchSrWorkbenchPage).mockImplementation(async()=>({tickets:rows} as any));
+ vi.mocked(api.fetchCodexSrTicketDetail).mockImplementation(async()=>({success:true,ticket:rows[0],availableArtifacts:[{artifactType:"diff",label:"변경 코드",available:true}]} as any));
+ vi.mocked(api.createSrTicket).mockResolvedValue({success:true,ticket:ticket(),message:""} as any);
+ vi.mocked(api.runDevelopmentAction).mockResolvedValue({success:true,message:""});
+});
+afterEach(cleanup);
+it("작업실 중앙에 4개 동작을 연결하고 미실행 단계를 완료로 표시하지 않음",async()=>{const onEdit=vi.fn();const {container}=render(<><div id="studio-primary-actions"/><DevelopmentWorkbench studio context={context} onEdit={onEdit}/></>);await screen.findByText("개발 실행기 연결 확인 · 배포 차단");const host=container.querySelector('#studio-primary-actions')!;expect(host.querySelectorAll('button')).toHaveLength(4);fireEvent.click(screen.getByText('① 설계 수정'));expect(onEdit).toHaveBeenCalledTimes(1);expect(container.querySelector('.studio-run-stages [aria-current="step"]')).toBeNull();fireEvent.click(screen.getByText('② 기능 추가'));expect(screen.getByLabelText('요청 제목')).toHaveValue('기능 추가');expect(api.createSrTicket).not.toHaveBeenCalled();});
+async function ready(withTicket=false, ctx=context){if(withTicket)rows=[ticket()];render(<DevelopmentWorkbench context={ctx} onEdit={vi.fn()}/>);await waitFor(()=>expect(api.fetchSrWorkbenchPage).toHaveBeenCalled());if(withTicket){await screen.findByText("테스트 개발");fireEvent.click(screen.getByText("테스트 개발"));await screen.findByText("계획 완료");}}
+function fill(){fireEvent.click(screen.getByText("개발 요청"));fireEvent.change(screen.getByLabelText("요청 제목"),{target:{value:"등록 보완"}});fireEvent.change(screen.getByLabelText("개발 내용"),{target:{value:"저장 후 조회 연결"}});fireEvent.change(screen.getByLabelText("완료·인수 기준"),{target:{value:"같은 ID로 조회된다"}});fireEvent.click(screen.getByRole("checkbox"));}
+it("선택 절차와 실제 페이지 링크 표시",async()=>{await ready();expect(screen.getByText(/저장 후 같은 ID/)).toBeInTheDocument();expect(screen.getByText(/실제 화면 열기/)).toHaveAttribute("href","/fixture/project");});
+it("필수값 없이 요청 저장 금지",async()=>{await ready();fireEvent.click(screen.getByText("개발 요청"));expect(screen.getByText("개발 요청 저장")).toBeDisabled();});
+it("공식 티켓에 설계 버전과 범위 저장 후 재조회",async()=>{await ready();fill();fireEvent.click(screen.getByText("개발 요청 저장"));await waitFor(()=>expect(api.createSrTicket).toHaveBeenCalledTimes(1));const p=vi.mocked(api.createSrTicket).mock.calls[0][0];expect(JSON.parse(p.technicalContext!)).toMatchObject({processVersion:"3",processCode:"TEST",stepCode:"S1",deploymentAllowed:false});await waitFor(()=>expect(api.fetchSrWorkbenchPage).toHaveBeenCalledTimes(2));});
+it("요청 저장 중 중복 클릭 차단",async()=>{vi.mocked(api.createSrTicket).mockReturnValue(new Promise(()=>{}));await ready();fill();fireEvent.click(screen.getByText("개발 요청 저장"));fireEvent.click(screen.getByText("저장 중…"));expect(api.createSrTicket).toHaveBeenCalledTimes(1);});
+it("저장 실패시 입력 보존",async()=>{vi.mocked(api.createSrTicket).mockRejectedValue(new Error("409 충돌"));await ready();fill();fireEvent.click(screen.getByText("개발 요청 저장"));await waitFor(()=>expect(screen.getAllByText("409 충돌").length).toBeGreaterThan(0));expect(screen.getByLabelText("개발 내용")).toHaveValue("저장 후 조회 연결");});
+it("권한 거부를 성공으로 표시하지 않음",async()=>{vi.mocked(api.createSrTicket).mockRejectedValue(new Error("403 권한 부족"));await ready();fill();fireEvent.click(screen.getByText("개발 요청 저장"));await waitFor(()=>expect(screen.getAllByText("403 권한 부족").length).toBeGreaterThan(0));expect(api.runDevelopmentAction).not.toHaveBeenCalled();});
+it("서버 success false를 거부",async()=>{vi.mocked(api.createSrTicket).mockResolvedValue({success:false,message:"거부"} as any);await ready();fill();fireEvent.click(screen.getByText("개발 요청 저장"));await waitFor(()=>expect(screen.getAllByText("거부").length).toBeGreaterThan(0));expect(screen.getByRole("dialog")).toBeInTheDocument();});
+it("개발 환경 미확인시 실행 차단",async()=>{vi.mocked(api.fetchDevelopmentCapabilities).mockRejectedValue(new Error("404"));await ready(true);expect(screen.getByText("코드·테스트 실행")).toBeDisabled();});
+it("배포 연결된 환경은 실행 차단",async()=>{vi.mocked(api.fetchDevelopmentCapabilities).mockResolvedValue({developmentOnly:true,planEnabled:true,executeEnabled:true,deploymentEnabled:true,reason:""});await ready(true);expect(screen.getByText("코드·테스트 실행")).toBeDisabled();});
+it("현재 설계의 계획 완료 작업 실행",async()=>{await ready(true);fireEvent.click(screen.getByText("코드·테스트 실행"));await waitFor(()=>expect(api.runDevelopmentAction).toHaveBeenCalledWith("SR-TEST","execute"));});
+it("이전 버전 실행 차단 및 결과 무효화",async()=>{await ready(true,{...context,processVersion:"4"});expect(screen.getByText("코드·테스트 실행")).toBeDisabled();fireEvent.click(screen.getByText("테스트·검증 결과"));expect(screen.getAllByText("재검증 필요")).toHaveLength(2);});
+it("exitCode만으로 DB 또는 업무 완료 판정하지 않음",async()=>{await ready(true);fireEvent.click(screen.getByText("테스트·검증 결과"));expect(screen.getByText("명령 통과 · 로그 확인 필요")).toBeInTheDocument();expect(screen.getAllByText("별도 증거 필요")).toHaveLength(2);expect(screen.getByText("미검증")).toBeInTheDocument();});
+it("서버에 있는 변경 코드만 읽기",async()=>{vi.mocked(api.fetchCodexSrTicketArtifact).mockResolvedValue({success:true,available:true,label:"변경 코드",content:"+ actual code",truncated:false} as any);await ready(true);fireEvent.click(screen.getByText("디버깅·변경 코드"));fireEvent.click(screen.getByText("변경 코드"));await screen.findByText("+ actual code");expect(api.fetchCodexSrTicketArtifact).toHaveBeenCalledWith("SR-TEST","diff");});
+it("다른 절차 작업은 목록에서 제외",async()=>{rows=[ticket({technicalContext:JSON.stringify({...context,source:"work-implementation",stepCode:"OTHER"})})];render(<DevelopmentWorkbench context={context} onEdit={vi.fn()}/>);await waitFor(()=>expect(api.fetchSrWorkbenchPage).toHaveBeenCalled());expect(screen.queryByText("테스트 개발")).not.toBeInTheDocument();});
+it("기능 추가는 요청 팝업이며 가짜 설계 저장 아님",async()=>{await ready();fireEvent.click(screen.getByText("기능 추가 요청"));expect(screen.getByLabelText("요청 제목")).toHaveValue("기능 추가");expect(api.createSrTicket).not.toHaveBeenCalled();});
+it("외부 실행 링크 거부",()=>{expect(api.safeRoute("//evil.test")).toBe("");expect(api.safeRoute("javascript:alert(1)")).toBe("");expect(api.safeRoute("/safe")).toBe("/safe");});
+it("버전 누락 시 개발 요청 차단",async()=>{await ready(false,{...context,processVersion:""});expect(screen.getByText("개발 요청")).toBeDisabled();});

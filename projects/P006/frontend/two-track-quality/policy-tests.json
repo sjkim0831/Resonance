@@ -1,0 +1,56 @@
+{
+  "results": [
+    {
+      "test": "출처 없는 PASS는 승격 불가",
+      "status": "PASS"
+    },
+    {
+      "test": "전체 증거를 갖춘 테스트 픽스처만 READY",
+      "status": "PASS"
+    },
+    {
+      "test": "베이스/의존파일 SHA 변경 시 재검증",
+      "status": "PASS"
+    },
+    {
+      "test": "자산 SHA 변경 시 재검증",
+      "status": "PASS"
+    },
+    {
+      "test": "collider 기술 검사만으로 물리 검증 승격 금지",
+      "status": "PASS"
+    },
+    {
+      "test": "포트 근거 누락 시 FUNCTION에서 멈춤",
+      "status": "PASS"
+    },
+    {
+      "test": "SIMULATED REAL 승격 금지",
+      "status": "PASS"
+    },
+    {
+      "test": "반복관찰 없는 REAL 승격 금지",
+      "status": "PASS"
+    },
+    {
+      "test": "A/B 별도 58/666 ID 중복 없음",
+      "status": "PASS"
+    },
+    {
+      "test": "666개 정책 재평가 결과 일치",
+      "status": "PASS"
+    },
+    {
+      "test": "트랙 A 미식별이 트랙 B 진입을 막지 않음",
+      "status": "PASS"
+    },
+    {
+      "test": "58개 최소 요청과 BLOCKED/미발송 보존",
+      "status": "PASS"
+    }
+  ],
+  "seconds": 0.13007569313049316,
+  "syntheticFixturesOnly": true,
+  "productionPromotions": 0,
+  "deviceWrites": 0
+}

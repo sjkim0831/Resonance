@@ -1,0 +1,14 @@
+{
+  "route": "/emission/project-portfolio",
+  "title": { "ko": "배출량 프로젝트 포트폴리오", "en": "Emission project portfolio" },
+  "createPath": "/emission/project/create",
+  "createLabel": { "ko": "새 프로젝트", "en": "New project" },
+  "titleCount": 1,
+  "forbiddenText": ["STEP 1 COMPLETION", "1단계 완료 기준", "Completion criteria"],
+  "createPlacement": "list-header",
+  "forbiddenComponents": ["EmissionPageIntro"],
+  "forbiddenLinks": ["/emission/project_list", "/emission/my-tasks", "/emission/deadline-status", "/emission/work-assignment", "/emission/project-completion"],
+  "forbiddenSummaryIcons": ["folder_open", "play_circle", "fact_check", "workspace_premium", "monitoring"],
+  "forbiddenSections": ["intro-hero", "category-description", "summary-cards", "duplicate-list-link", "portfolio-shortcuts"],
+  "reason": "2026-09-29 사용자 요청: 소개 영역, 요약 통계 5개, 중복 목록 버튼을 재생성하지 않는다. 제목 1개, 검색, 목록과 목록 상단 새 프로젝트 버튼을 유지한다."
+}

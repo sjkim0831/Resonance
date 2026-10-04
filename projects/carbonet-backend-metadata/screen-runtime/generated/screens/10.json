@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 10,
+  "blueprintCode": "BP_ADOPT_DD89D863662B3D889E63",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_DD89D863662B3D889E63"
+  },
+  "route": "/admin/content/banner_edit",
+  "pageName": "배너 편집",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1120125",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "633a5abb9d5b81a164fcf0c76727e632ade4ba61e771432fc00a5c8c31fde46e",
+  "artifactHash": "d4ec14d7dd9f51d61fafab11203f02088a9ef7a83ffba856ffe6fe6fcfed871a"
+}

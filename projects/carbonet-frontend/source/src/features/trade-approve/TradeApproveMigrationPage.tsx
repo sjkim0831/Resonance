@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -257,50 +258,25 @@ export function TradeApproveMigrationPage() {
           <SummaryMetricCard accentClassName="text-amber-600" surfaceClassName="bg-amber-50" title={en ? "On Hold" : "보류"} value={numberOf(page?.holdCount).toLocaleString()} />
         </section>
 
-        <section className="gov-card overflow-hidden p-0" data-help-id="trade-approve-search">
-          <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
-            <MemberSectionToolbar
-              actions={<span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">{en ? `Page ${currentPage} / ${totalPages}` : `현재 페이지 ${currentPage} / ${totalPages}`}</span>}
-              meta={en ? "Keep the same approval layout: search, queue, then detailed review." : "검색 조건, 승인 대기열, 상세 검토 모달 순서를 동일하게 유지합니다."}
-              title={en ? "Search Conditions" : "검색 조건"}
-            />
-          </div>
-          <form
-            className="grid gap-4 px-6 py-6 lg:grid-cols-[220px_220px_minmax(0,1fr)] lg:items-end"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setActionError("");
-              setFilters({ ...draft, pageIndex: 1 });
-            }}
-          >
-            <label>
-              <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Approval Status" : "승인 상태"}</span>
-              <AdminSelect value={draft.approvalStatus} onChange={(event) => setDraft((current) => ({ ...current, approvalStatus: event.target.value }))}>
-                {approvalStatusOptions.map((option, index) => <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>)}
-              </AdminSelect>
-            </label>
-            <label>
-              <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Trade Type" : "거래 유형"}</span>
-              <AdminSelect value={draft.tradeType} onChange={(event) => setDraft((current) => ({ ...current, tradeType: event.target.value }))}>
-                {tradeTypeOptions.map((option, index) => <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>)}
-              </AdminSelect>
-            </label>
-            <label>
+        <section className="ccus-search-host" data-help-id="trade-approve-search"><CommonSearchSection basic={<><div className="ccus-search-field"><label>
               <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Keyword" : "검색어"}</span>
               <AdminInput
                 placeholder={en ? "Trade ID, seller, buyer, or contract name" : "거래번호, 매도기관, 매수기관, 계약명 검색"}
                 value={draft.searchKeyword}
                 onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))}
               />
-            </label>
-          </form>
-          <div className="border-t border-[var(--kr-gov-border-light)] px-6 py-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
-                {en ? "Check counterparty, settlement state, and operator notes before the approval decision." : "상대 기관, 정산 상태, 운영 메모를 함께 확인한 뒤 승인 결정을 진행합니다."}
-              </p>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <MemberButton
+            </label></div>
+<div className="ccus-search-field"><label>
+              <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Approval Status" : "승인 상태"}</span>
+              <AdminSelect value={draft.approvalStatus} onChange={(event) => setDraft((current) => ({ ...current, approvalStatus: event.target.value }))}>
+                {approvalStatusOptions.map((option, index) => <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>)}
+              </AdminSelect>
+            </label></div></>} advanced={<><div className="ccus-search-field"><label>
+              <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Trade Type" : "거래 유형"}</span>
+              <AdminSelect value={draft.tradeType} onChange={(event) => setDraft((current) => ({ ...current, tradeType: event.target.value }))}>
+                {tradeTypeOptions.map((option, index) => <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>)}
+              </AdminSelect>
+            </label></div></>} actions={<><MemberButton
                   onClick={() => {
                     setDraft(DEFAULT_FILTERS);
                     setFilters(DEFAULT_FILTERS);
@@ -310,11 +286,7 @@ export function TradeApproveMigrationPage() {
                 >
                   {en ? "Reset" : "초기화"}
                 </MemberButton>
-                <MemberButton onClick={() => setFilters({ ...draft, pageIndex: 1 })} type="button" variant="primary">{en ? "Search" : "검색"}</MemberButton>
-              </div>
-            </div>
-          </div>
-        </section>
+<MemberButton onClick={() => setFilters({ ...draft, pageIndex: 1 })} type="button" variant="primary">{en ? "Search" : "검색"}</MemberButton></>}></CommonSearchSection></section>
 
         <section className="gov-card overflow-hidden" data-help-id="trade-approve-table">
           <MemberSectionToolbar

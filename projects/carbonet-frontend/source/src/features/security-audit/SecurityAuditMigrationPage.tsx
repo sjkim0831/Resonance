@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -401,15 +402,14 @@ export function SecurityAuditMigrationPage() {
             title={en ? "Search Filters" : "검색 조건"}
           />
         </div>
-        <form className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-4" onSubmit={(event) => {
+        <form className="ccus-search-host" onSubmit={(event) => {
           event.preventDefault();
           applyFilters(1);
-        }}>
-          <div className="md:col-span-2">
+        }}><CommonSearchSection basic={<><div className="ccus-search-field"><div className="md:col-span-2">
             <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Keyword" : "검색어"}</span>
             <AdminInput value={draft.searchKeyword} onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))} />
-          </div>
-          <div>
+          </div></div>
+<div className="ccus-search-field"><div>
             <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Action Type" : "행위 유형"}</span>
             <AdminSelect value={draft.actionType} onChange={(event) => setDraft((current) => ({ ...current, actionType: event.target.value }))}>
               <option value="ALL">{en ? "All" : "전체"}</option>
@@ -417,24 +417,23 @@ export function SecurityAuditMigrationPage() {
               <option value="ALLOWED">{en ? "Allowed" : "허용"}</option>
               <option value="REVIEWED">{en ? "Reviewed" : "기타 검토"}</option>
             </AdminSelect>
-          </div>
-          <div>
+          </div></div></>} advanced={<><div className="ccus-search-field"><div>
             <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Route Group" : "경로 그룹"}</span>
             <AdminSelect value={draft.routeGroup} onChange={(event) => setDraft((current) => ({ ...current, routeGroup: event.target.value }))}>
               <option value="ALL">{en ? "All" : "전체"}</option>
               <option value="BLOCK">{en ? "Block/Deny" : "차단/거부"}</option>
               <option value="POLICY">{en ? "Policy" : "정책"}</option>
             </AdminSelect>
-          </div>
-          <div>
+          </div></div>
+<div className="ccus-search-field"><div>
             <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Start Date" : "시작일"}</span>
             <AdminInput type="date" value={draft.startDate} onChange={(event) => setDraft((current) => ({ ...current, startDate: event.target.value }))} />
-          </div>
-          <div>
+          </div></div>
+<div className="ccus-search-field"><div>
             <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "End Date" : "종료일"}</span>
             <AdminInput type="date" value={draft.endDate} onChange={(event) => setDraft((current) => ({ ...current, endDate: event.target.value }))} />
-          </div>
-          <div>
+          </div></div>
+<div className="ccus-search-field"><div>
             <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Sort Key" : "정렬 기준"}</span>
             <AdminSelect value={draft.sortKey} onChange={(event) => setDraft((current) => ({ ...current, sortKey: event.target.value }))}>
               <option value="AUDIT_AT">{en ? "Audit Time" : "감사 시각"}</option>
@@ -442,42 +441,28 @@ export function SecurityAuditMigrationPage() {
               <option value="ACTION">{en ? "Action" : "행위"}</option>
               <option value="TARGET">{en ? "Target" : "대상"}</option>
             </AdminSelect>
-          </div>
-          <div>
+          </div></div>
+<div className="ccus-search-field"><div>
             <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Sort Direction" : "정렬 방향"}</span>
             <AdminSelect value={draft.sortDirection} onChange={(event) => setDraft((current) => ({ ...current, sortDirection: event.target.value }))}>
               <option value="DESC">{en ? "Descending" : "내림차순"}</option>
               <option value="ASC">{en ? "Ascending" : "오름차순"}</option>
             </AdminSelect>
-          </div>
-          <div className="md:col-span-4">
-            <div className="flex flex-col gap-3 border-t border-[var(--kr-gov-border-light)] pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
-                {en ? "Open row details to inspect actor scope, target scope, context mode, and operator reason together." : "행 상세를 열면 수행자 스코프, 대상 스코프, context mode, 운영 사유를 함께 확인할 수 있습니다."}
-              </p>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <MemberButton onClick={() => applyDatePreset("TODAY")} type="button" variant="secondary">
+          </div></div></>} actions={<><MemberButton onClick={() => applyDatePreset("TODAY")} type="button" variant="secondary">
                   {en ? "Today" : "오늘"}
                 </MemberButton>
-                <MemberButton onClick={() => applyDatePreset("LAST_7")} type="button" variant="secondary">
+<MemberButton onClick={() => applyDatePreset("LAST_7")} type="button" variant="secondary">
                   {en ? "Last 7 Days" : "최근 7일"}
                 </MemberButton>
-                <MemberButton onClick={() => applyDatePreset("LAST_30")} type="button" variant="secondary">
+<MemberButton onClick={() => applyDatePreset("LAST_30")} type="button" variant="secondary">
                   {en ? "Last 30 Days" : "최근 30일"}
                 </MemberButton>
-                <MemberLinkButton href={buildSecurityAuditExportUrl(filters)} icon="download" variant="secondary">
-                  {en ? "CSV Export" : "CSV 내보내기"}
-                </MemberLinkButton>
-                <MemberButton onClick={resetFilters} type="button" variant="secondary">
+<MemberButton onClick={resetFilters} type="button" variant="secondary">
                   {en ? "Reset" : "초기화"}
                 </MemberButton>
-                <MemberButton icon="search" type="submit" variant="primary">
+<MemberButton icon="search" type="submit" variant="primary">
                   {en ? "Search" : "조회"}
-                </MemberButton>
-              </div>
-            </div>
-          </div>
-        </form>
+                </MemberButton></>}></CommonSearchSection></form>
       </section>
 
       {showDeferredInsights ? (

@@ -1,0 +1,49 @@
+{
+  "tests": [
+    {
+      "name": "FINAL_PRESERVE_asset",
+      "pass": true
+    },
+    {
+      "name": "FINAL_PRESERVE_equipment_intake",
+      "pass": true
+    },
+    {
+      "name": "FINAL_PRESERVE_intake_matching_review",
+      "pass": true
+    },
+    {
+      "name": "666_ENTRY_HASHES",
+      "pass": true
+    },
+    {
+      "name": "CATALOG_IMAGE_URLS_VALID",
+      "pass": true
+    }
+  ],
+  "layouts": [
+    {
+      "id": "b327100a-6ad1-4011-9d8d-1a4c973e65eb",
+      "name": "검증용 공장 배치 · 바닥·벽·설비 2종",
+      "version": 2
+    }
+  ],
+  "rowCounts": {
+    "composer_relationship_rule": 1491,
+    "canvas_instance": 4,
+    "layout_relationship": 2,
+    "factory_layout_revision": 2
+  },
+  "images": {
+    "IMAGE_OK": 666,
+    "NO_PREVIEW": 58,
+    "INVALID_IMAGE": 0,
+    "ERROR": 0
+  },
+  "imageFailures": [],
+  "seconds": 0.2,
+  "storage": {
+    "frontendBytes": 822508,
+    "newUsdFiles": 0
+  }
+}

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { Children, isValidElement, useState } from "react";
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import type { HTMLAttributes, ReactNode } from "react";
 import {
   AppButton,
@@ -537,6 +538,10 @@ export function AdminSearchSection({
   metaLabel,
   en = false
 }: AdminSearchSectionProps) {
+  const fields=Children.toArray(children).sort((a,b)=>{
+    const score=(x:ReactNode)=>isValidElement<{label?:string}>(x)&&/검색|키워드|Search|Keyword/.test(String(x.props.label))?1:0;
+    return score(b)-score(a);
+  });
   return (
     <div className="gov-card mb-8">
       <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
@@ -552,23 +557,15 @@ export function AdminSearchSection({
           title={searchLabel || (en ? "Search" : "검색")}
         />
       </div>
-      <form className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-4" onSubmit={onSearch}>
-        {children}
-        <div className="md:col-span-4">
-          <div className="flex flex-col gap-3 border-t border-[var(--kr-gov-border-light)] pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
-              {metaLabel || (en ? "Enter search criteria" : "검색 조건을 입력하세요")}
-            </p>
-            <div className="flex flex-wrap items-center justify-end gap-2">
+      <form className="ccus-search-host" onSubmit={onSearch}>
+        <CommonSearchSection basic={<>{fields.slice(0,2).map((x,i)=><div key={i} className="ccus-search-field">{x}</div>)}</>} advanced={fields.length>2?<>{fields.slice(2).map((x,i)=><div key={i} className="ccus-search-field">{x}</div>)}</>:undefined} actions={<>
               <MemberButton onClick={onReset} type="button" variant="secondary">
                 {en ? "Reset" : "초기화"}
               </MemberButton>
               <MemberButton icon="search" type="submit" variant="primary">
                 {en ? "Search" : "검색"}
               </MemberButton>
-            </div>
-          </div>
-        </div>
+        </>}/>
       </form>
     </div>
   );

@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -177,11 +178,10 @@ export function CertificateObjectionListMigrationPage() {
           description={en ? "Narrow the objection queue before assigning, escalating, or closing a case." : "담당자 배정, 상신, 종결 전에 대상 이의신청 건을 좁혀서 확인합니다."}
           icon="rule"
         >
-          <form className="grid grid-cols-1 gap-3 xl:grid-cols-[2fr,1fr,1fr,auto]" onSubmit={(event) => {
+          <form className="ccus-search-host" onSubmit={(event) => {
             event.preventDefault();
             applyFilters(1);
-          }}>
-            <div>
+          }}><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="certificateObjectionKeyword">{en ? "Keyword" : "검색어"}</label>
               <AdminInput
                 id="certificateObjectionKeyword"
@@ -189,8 +189,8 @@ export function CertificateObjectionListMigrationPage() {
                 value={draftFilters.searchKeyword}
                 onChange={(event) => updateDraft("searchKeyword", event.target.value)}
               />
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="certificateObjectionStatus">{en ? "Status" : "처리 상태"}</label>
               <AdminSelect id="certificateObjectionStatus" value={draftFilters.status} onChange={(event) => updateDraft("status", event.target.value)}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -199,8 +199,7 @@ export function CertificateObjectionListMigrationPage() {
                 <option value="ESCALATED">{en ? "Escalated" : "상신 필요"}</option>
                 <option value="COMPLETED">{en ? "Completed" : "처리 완료"}</option>
               </AdminSelect>
-            </div>
-            <div>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="certificateObjectionPriority">{en ? "Priority" : "긴급도"}</label>
               <AdminSelect id="certificateObjectionPriority" value={draftFilters.priority} onChange={(event) => updateDraft("priority", event.target.value)}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -208,12 +207,8 @@ export function CertificateObjectionListMigrationPage() {
                 <option value="MEDIUM">{en ? "Medium" : "보통"}</option>
                 <option value="LOW">{en ? "Low" : "낮음"}</option>
               </AdminSelect>
-            </div>
-            <div className="flex items-end gap-2">
-              <MemberButton onClick={resetFilters} type="button" variant="secondary">{en ? "Reset" : "초기화"}</MemberButton>
-              <MemberButton type="submit" variant="primary">{en ? "Search" : "검색"}</MemberButton>
-            </div>
-          </form>
+            </div></div></>} actions={<><MemberButton onClick={resetFilters} type="button" variant="secondary">{en ? "Reset" : "초기화"}</MemberButton>
+<MemberButton type="submit" variant="primary">{en ? "Search" : "검색"}</MemberButton></>}></CommonSearchSection></form>
         </CollectionResultPanel>
 
         <section className="gov-card overflow-hidden p-0" data-help-id="certificate-objection-list-table">

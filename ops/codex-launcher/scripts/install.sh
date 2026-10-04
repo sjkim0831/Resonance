@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGET_DIR="${1:-/opt/util/codex}"
+TARGET_DIR="${1:-/opt/Resonance/runtime/tools/codex}"
 
 mkdir -p "$TARGET_DIR"
 cp -R "$SOURCE_DIR/." "$TARGET_DIR/"

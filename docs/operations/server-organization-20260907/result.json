@@ -1,0 +1,32 @@
+{
+  "completed": "2026-09-07T12:05:25+0900",
+  "failed_before": 65,
+  "transient_history_cleared": 30,
+  "failed_remaining": 35,
+  "archived_scripts": [
+    "move-opt-residue-20260907.sh",
+    "relocate-local-resources-20260907.sh",
+    "cleanup-outside-opt-20260907.sh",
+    "registry-tag-inventory-20260907.py",
+    "registry-selective-migration.py",
+    "registry-copy-selected.py",
+    "registry-verify-selected.py",
+    "registry-cutover-selected.py",
+    "opt-capacity-safe-cleanup.py",
+    "deduplicate-postgres-backup-mirrors.py",
+    "relocate-local-tools-20260907.py",
+    "cleanup-unused-models-20260907.py",
+    "git-model-preflight.py",
+    "prepare-source-commit-20260907.py",
+    "commit-source-safely-20260907.py",
+    "delete-approved-old-opt-backup.py"
+  ],
+  "protected": [
+    "/opt/reference",
+    "/opt/Resonance",
+    "/opt/ccus-postgresql16",
+    "/opt/registry/data",
+    "running models"
+  ],
+  "note": "Clearing historical failed state is not service repair. No start/stop/restart executed."
+}

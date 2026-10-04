@@ -1,5 +1,7 @@
 type VerificationStart = { storeId: string; channelKey: string; identityVerificationId: string; csrf: string };
 type VerificationResponse = { code?: string; identityVerificationId?: string };
+export type LiveVerificationStart = { storeId: string; channelKey: string; txId: string };
+export const LIVE_PENDING_KEY = 'ccus.portone.live.pending';
 type PortOneSdk = { requestIdentityVerification: (input: Record<string, unknown>) => Promise<VerificationResponse | undefined> };
 let sdkPromise: Promise<PortOneSdk> | undefined;
 function loadSdk(): Promise<PortOneSdk> {
@@ -14,6 +16,27 @@ function loadSdk(): Promise<PortOneSdk> {
     document.head.append(script);
   }).catch(error => { sdkPromise = undefined; throw error; });
   return sdkPromise;
+}
+export async function requestPortOneLiveVerification(start: LiveVerificationStart): Promise<boolean> {
+  if (location.protocol !== 'https:') throw new Error('통합인증은 HTTPS 화면에서만 사용할 수 있습니다.');
+  if (!start.storeId || !start.channelKey || !start.txId) throw new Error('실 연동 설정이 완전하지 않습니다.');
+  const sdk = await loadSdk();
+  sessionStorage.setItem(LIVE_PENDING_KEY, start.txId);
+  let redirecting = false;
+  try {
+    const result = await sdk.requestIdentityVerification({
+      storeId: start.storeId, channelKey: start.channelKey,
+      identityVerificationId: start.txId,
+      redirectUrl: `${location.origin}${location.pathname}`,
+      bypass: { inicisUnified: { flgFixedUser: 'N', FRGNDInfo: 'N' } }
+    });
+    if (!result) { redirecting = true; return false; }
+    if (result.code !== undefined) throw new Error('인증이 취소되었거나 완료되지 않았습니다.');
+    if (result.identityVerificationId !== start.txId) throw new Error('인증 요청 ID가 일치하지 않습니다.');
+    return true;
+  } finally {
+    if (!redirecting) sessionStorage.removeItem(LIVE_PENDING_KEY);
+  }
 }
 async function post<T>(action: string, input: unknown): Promise<T> {
   const response = await fetch(`/api/identity/portone-test/${action}`, { method: 'POST', credentials: 'same-origin',

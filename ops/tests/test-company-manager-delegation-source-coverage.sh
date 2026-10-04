@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-root="${RESONANCE_ROOT:-/opt/resonance-data/dev-worktrees/certificate-verification}"
-env_file="${CARBONET_RUNTIME_ENV_FILE:-/opt/resonance-data/dev-runtime/certificate-verification/backend/runtime.env}"
+root="${RESONANCE_ROOT:-/opt/Resonance/runtime/platform-data/dev-worktrees/certificate-verification}"
+env_file="${CARBONET_RUNTIME_ENV_FILE:-/opt/Resonance/runtime/platform-data/dev-runtime/certificate-verification/backend/runtime.env}"
 service="$root/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/service/EmissionProjectRegistryService.java"
 tmp="$(mktemp -d)"
 trap 'rm -rf -- "$tmp"' EXIT

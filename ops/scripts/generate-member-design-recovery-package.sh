@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 ROOT="${ROOT_DIR:-/opt/Resonance}"
-OUT_ROOT="${MEMBER_DESIGN_RECOVERY_OUT_ROOT:-/opt/resonance-data/backups/member-process-design-recovery-auto}"
+OUT_ROOT="${MEMBER_DESIGN_RECOVERY_OUT_ROOT:-/opt/Resonance/runtime/platform-data/backups/member-process-design-recovery-auto}"
 latest_system="$(readlink -f "$ROOT/var/ai-runtime/system-design-generator/latest")"
 test -f "$latest_system/system-design-snapshot.json"
 mkdir -p "$OUT_ROOT"

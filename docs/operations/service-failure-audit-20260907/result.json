@@ -1,0 +1,507 @@
+{
+  "checkedAt": "2026-09-07T12:12:55.158690+09:00",
+  "failedCount": 35,
+  "records": [
+    {
+      "unit": "carbonet-runtime-alert-collector.path",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/carbonet-runtime-alert-collector.path",
+        "UnitFileState": "enabled",
+        "Transient": "no",
+        "Result": "unit-start-limit-hit"
+      },
+      "classification": "要調査"
+    },
+    {
+      "unit": "carbonet-dev-design-sync.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/carbonet-dev-design-sync.service",
+        "UnitFileState": "linked",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "1"
+      },
+      "classification": "自動変更系・再有効化禁止"
+    },
+    {
+      "unit": "carbonet-final-worker-dev-f5c636ed6.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/carbonet-final-worker-dev-f5c636ed6.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "143"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "carbonet-java-fast-dev.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/carbonet-java-fast-dev.service",
+        "UnitFileState": "enabled",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "start-limit-hit",
+        "ExecMainStatus": "0"
+      },
+      "classification": "要調査"
+    },
+    {
+      "unit": "carbonet-manual-postdeploy-recovery-1787275554.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/carbonet-manual-postdeploy-recovery-1787275554.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "79"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "carbonet-postgres-restore-drill.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/carbonet-postgres-restore-drill.service",
+        "UnitFileState": "linked",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "2"
+      },
+      "classification": "要調査"
+    },
+    {
+      "unit": "carbonet-process-bundle-dev-8a6773f63.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/carbonet-process-bundle-dev-8a6773f63.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "143"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "carbonet-process-bundle-dev-a41567453.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/carbonet-process-bundle-dev-a41567453.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "143"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "carbonet-production-bootstrap-excluded-v3.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/carbonet-production-bootstrap-excluded-v3.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "1"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "carbonet-reduction-canonical-dev-0dc8e886b.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/carbonet-reduction-canonical-dev-0dc8e886b.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "143"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "carbonet-reduction-canonical-dev-9b50d35cd.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/carbonet-reduction-canonical-dev-9b50d35cd.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "143"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "carbonet-reduction-canonical-dev-bf3204297.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/carbonet-reduction-canonical-dev-bf3204297.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "143"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "carbonet-runtime-alert-collector.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/carbonet-runtime-alert-collector.service",
+        "UnitFileState": "linked",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "start-limit-hit",
+        "ExecMainStatus": "0"
+      },
+      "classification": "要調査"
+    },
+    {
+      "unit": "carbonet-runtime-alert-escalator.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/carbonet-runtime-alert-escalator.service",
+        "UnitFileState": "linked",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "1"
+      },
+      "classification": "要調査"
+    },
+    {
+      "unit": "ccus-native-db-cutover-v2.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/ccus-native-db-cutover-v2.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "1"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "ccus-native-db-cutover.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/ccus-native-db-cutover.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "1"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "ccus-native-db-postverify.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/ccus-native-db-postverify.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "1"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "hermes-agent-version-tracker.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/hermes-agent-version-tracker.service",
+        "UnitFileState": "static",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "127"
+      },
+      "classification": "要調査"
+    },
+    {
+      "unit": "p006-route-guard.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/p006-route-guard.service",
+        "UnitFileState": "static",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "1"
+      },
+      "classification": "旧Kubernetes修復ループ・タイマー停止"
+    },
+    {
+      "unit": "resonance-all-process-contract-audit.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/resonance-all-process-contract-audit.service",
+        "UnitFileState": "linked",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "2"
+      },
+      "classification": "要調査"
+    },
+    {
+      "unit": "resonance-backstage-full-e2e.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/resonance-backstage-full-e2e.service",
+        "UnitFileState": "linked",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "5"
+      },
+      "classification": "要調査"
+    },
+    {
+      "unit": "resonance-canonical-seven-worker-final.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/resonance-canonical-seven-worker-final.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "1"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "resonance-canonical-seven-worker.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/resonance-canonical-seven-worker.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "1"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "resonance-clean-root-seven-worker-2.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/resonance-clean-root-seven-worker-2.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "1"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "resonance-clean-root-seven-worker.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/resonance-clean-root-seven-worker.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "1"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "resonance-design-asset-snapshot.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/resonance-design-asset-snapshot.service",
+        "UnitFileState": "linked",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "60"
+      },
+      "classification": "要調査"
+    },
+    {
+      "unit": "resonance-full-screen-nightly.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/resonance-full-screen-nightly.service",
+        "UnitFileState": "linked",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "1"
+      },
+      "classification": "要調査"
+    },
+    {
+      "unit": "resonance-hermes-framework-qwen40-exl3.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/resonance-hermes-framework-qwen40-exl3.service",
+        "UnitFileState": "enabled",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "130"
+      },
+      "classification": "要調査"
+    },
+    {
+      "unit": "resonance-internal-ca-verify.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/resonance-internal-ca-verify.service",
+        "UnitFileState": "linked",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "5"
+      },
+      "classification": "Backstage証明書不一致・未修復"
+    },
+    {
+      "unit": "resonance-p006-equipment-master.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/resonance-p006-equipment-master.service",
+        "UnitFileState": "linked",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "0"
+      },
+      "classification": "要調査"
+    },
+    {
+      "unit": "resonance-p006-threshold-escalation.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/resonance-p006-threshold-escalation.service",
+        "UnitFileState": "linked",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "3"
+      },
+      "classification": "要調査"
+    },
+    {
+      "unit": "resonance-process-dev-final-449edd.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/resonance-process-dev-final-449edd.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "1"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "resonance-process-dev-final-a3535.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/run/systemd/transient/resonance-process-dev-final-a3535.service",
+        "UnitFileState": "transient",
+        "Transient": "yes",
+        "MainPID": "0",
+        "Result": "signal",
+        "ExecMainStatus": "15"
+      },
+      "classification": "過去の一時実行失敗・再実行しない"
+    },
+    {
+      "unit": "resonance-project-auto-completion.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/resonance-project-auto-completion.service",
+        "UnitFileState": "linked",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "75"
+      },
+      "classification": "自動変更系・再有効化禁止"
+    },
+    {
+      "unit": "resonance-safe-disk-cleanup.service",
+      "properties": {
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "FragmentPath": "/etc/systemd/system/resonance-safe-disk-cleanup.service",
+        "UnitFileState": "linked",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "exit-code",
+        "ExecMainStatus": "1"
+      },
+      "classification": "容量目標78%未達・現在81%"
+    }
+  ],
+  "timerStopExit": 0,
+  "timerState": "ActiveState=inactive\nUnitFileState=disabled\n",
+  "coreServices": {
+    "carbonet-production-direct": "active",
+    "ccus-postgresql-native": "active",
+    "carbonet-dev-proxy": "active",
+    "carbonet-frontend-fast-dev": "active",
+    "resonance-p006-web": "active",
+    "resonance-shadow-gemma4-e4b": "active"
+  },
+  "elapsedSeconds": 0.7,
+  "resetFailed": false,
+  "runtimeRestarted": false
+}

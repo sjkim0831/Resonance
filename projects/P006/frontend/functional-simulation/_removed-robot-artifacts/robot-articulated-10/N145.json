@@ -1,0 +1,32 @@
+{
+  "assetId": "N145",
+  "assetName": "로봇 주행 레일",
+  "representationType": "VISUAL_ARTICULATED_ROBOT",
+  "motionSource": "VISUAL_FUNCTIONAL_SIMULATION",
+  "manufacturerVerified": false,
+  "kinematicsVerified": false,
+  "sourceGLB": "/projects/P006/assets/functional-simulation/derived-mechanical-53/N145.glb",
+  "derivedGLB": "/projects/P006/assets/functional-simulation/robot-articulated-9/N145.glb",
+  "tool": "transferTool",
+  "jointHierarchy": [
+    "robotRoot",
+    "base",
+    "shoulder",
+    "elbow",
+    "wrist",
+    "transferTool"
+  ],
+  "jointCount": 5,
+  "animatedJointCount": 4,
+  "sequenceType": "PICK_AND_PLACE",
+  "sequencePoses": [
+    "HOME",
+    "APPROACH",
+    "PICK",
+    "LIFT",
+    "TRANSFER",
+    "PLACE",
+    "RETRACT",
+    "HOME"
+  ]
+}

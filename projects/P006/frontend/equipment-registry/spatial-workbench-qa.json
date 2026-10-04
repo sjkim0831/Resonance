@@ -1,0 +1,18 @@
+{
+  "report": [
+    "01 actor=isolated browser, load independent plan; 1 WebGL renderer / 4 cameras",
+    "02 site X=30 yaw=90 -> factory global X=30 yaw=90",
+    "03 browser save / reload / load restores coordinates",
+    "04 manual distance=400 / speed=40 => move=10 minutes",
+    "05 speed=0 rejected; last valid scene retained",
+    "06 exported JSON imported successfully",
+    "07 actual time advances / transport moves; pause drift=0",
+    "08 seek to end -> all products at destination; vehicles hidden",
+    "09 factory cameras=3 + main=1; reset restores waiting vehicles",
+    "10 fourth site added -> main + 4 site cameras",
+    "11 mobile overflow=0 / JS errors=0 / server writes=0"
+  ],
+  "errors": [],
+  "posts": 0,
+  "seconds": 5.758
+}

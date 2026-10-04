@@ -9,6 +9,9 @@ import egovframework.com.platform.request.workbench.SrTicketExecuteRequest;
 import egovframework.com.platform.request.workbench.SrWorkbenchStackItemCreateRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
+import egovframework.com.feature.auth.service.CurrentUserContextService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -33,6 +36,89 @@ public class AdminSrWorkbenchController {
 
     private final OperationsConsoleGateSupport operationsConsoleGateSupport;
     private final ObjectProvider<ReactAppViewSupport> reactAppViewSupportProvider;
+    @Autowired private CurrentUserContextService developmentUserContext;
+
+    @Value("${security.codex.runner.development-only:false}")
+    private boolean developmentOnly;
+    @Value("${security.codex.runner.enabled:false}")
+    private boolean developmentRunnerEnabled;
+    @Value("${security.codex.runner.deploy-command:}")
+    private String developmentDeployCommand;
+    @Value("${security.codex.runner.build-command:}")
+    private String developmentBuildCommand;
+    @Value("${security.codex.runner.plan-command:}")
+    private String developmentPlanCommand;
+    @Value("${security.codex.runner.scope-description:}")
+    private String developmentScopeDescription;
+
+    @GetMapping("/admin/api/platform/workbench/tickets/{ticketId}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> developmentDetail(@PathVariable String ticketId, HttpServletRequest request) {
+        ResponseEntity<Map<String,Object>> denied = developmentAccessFailure(request);
+        if (denied != null) return denied;
+        return ResponseEntity.ok(operationsConsoleGateSupport.payloadForCurrentAdmin(request, "codex-admin.tickets.detail", ticketId, Map.of("ticketId",ticketId)));
+    }
+
+    @GetMapping("/admin/api/platform/workbench/tickets/{ticketId}/artifacts/{artifactType}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> developmentArtifact(@PathVariable String ticketId, @PathVariable String artifactType, HttpServletRequest request) {
+        ResponseEntity<Map<String,Object>> denied = developmentAccessFailure(request);
+        if (denied != null) return denied;
+        return ResponseEntity.ok(operationsConsoleGateSupport.payloadForCurrentAdmin(request, "codex-admin.tickets.artifact", ticketId, Map.of("ticketId",ticketId,"artifactType",artifactType)));
+    }
+
+    @GetMapping("/admin/api/platform/workbench/development-capabilities")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> developmentCapabilities(HttpServletRequest request) {
+        ResponseEntity<Map<String,Object>> denied = developmentAccessFailure(request);
+        if (denied != null) return denied;
+        // Reuse the existing operations permission gate; never trust a browser environment flag.
+        operationsConsoleGateSupport.payloadForCurrentAdmin(request, "sr-workbench.page.get", null, Map.of("pageId", "work-implementation"));
+        boolean safeEnvironment = developmentOnly && safe(developmentDeployCommand).isEmpty();
+        return ResponseEntity.ok(Map.of(
+                "developmentOnly", safeEnvironment,
+                "planEnabled", safeEnvironment && developmentRunnerEnabled && !safe(developmentPlanCommand).isEmpty(),
+                "executeEnabled", safeEnvironment && developmentRunnerEnabled && !safe(developmentBuildCommand).isEmpty(),
+                "deploymentEnabled", false,
+                "reason", safeEnvironment ? (developmentRunnerEnabled ? safe(developmentScopeDescription) : "개발 실행기가 비활성 상태입니다.")
+                        : "개발 전용 실행과 배포 차단이 서버에서 확인되지 않았습니다."));
+    }
+
+    @PostMapping("/admin/api/platform/workbench/tickets/{ticketId}/development-plan")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> developmentPlan(@PathVariable String ticketId, HttpServletRequest request) {
+        ResponseEntity<Map<String,Object>> denied = developmentAccessFailure(request);
+        if (denied != null) return denied;
+        if (!developmentOnly || !developmentRunnerEnabled || !safe(developmentDeployCommand).isEmpty()
+                || safe(developmentPlanCommand).isEmpty()) return developmentBlocked();
+        return ResponseEntity.ok(operationsConsoleGateSupport.payloadForCurrentAdmin(request, "sr-workbench.tickets.plan", ticketId, Map.of("ticketId", ticketId)));
+    }
+
+    @PostMapping("/admin/api/platform/workbench/tickets/{ticketId}/development-execute")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> developmentExecute(@PathVariable String ticketId,
+            @RequestBody(required = false) SrTicketExecuteRequest body, HttpServletRequest request) {
+        ResponseEntity<Map<String,Object>> denied = developmentAccessFailure(request);
+        if (denied != null) return denied;
+        if (!developmentOnly || !developmentRunnerEnabled || !safe(developmentDeployCommand).isEmpty()
+                || safe(developmentBuildCommand).isEmpty()) return developmentBlocked();
+        return ResponseEntity.ok(operationsConsoleGateSupport.payloadForCurrentAdmin(request, "sr-workbench.tickets.execute", ticketId,
+                executeParams(ticketId, body == null ? null : body.getApprovalToken())));
+    }
+
+    private ResponseEntity<Map<String, Object>> developmentBlocked() {
+        return ResponseEntity.status(409).body(Map.of("success", false, "message",
+                "개발 전용 실행기 설정을 확인해야 합니다. 배포가 연결된 실행 경로는 사용할 수 없습니다."));
+    }
+
+    private ResponseEntity<Map<String, Object>> developmentAccessFailure(HttpServletRequest request) {
+        var user = developmentUserContext.resolve(request);
+        if (user == null || !user.isAuthenticated())
+            return ResponseEntity.status(401).body(Map.of("success", false, "message", "관리자 로그인이 필요합니다."));
+        if (!user.isWebmaster() && !java.util.Set.of("ROLE_SYSTEM_ADMIN", "ROLE_SYSTEM_MASTER").contains(safe(user.getAuthorCode())))
+            return ResponseEntity.status(403).body(Map.of("success", false, "message", "개발 작업 관리자 권한이 필요합니다."));
+        return null;
+    }
 
     @RequestMapping(value = {"/admin/system/sr-workbench", "/en/admin/system/sr-workbench"}, method = RequestMethod.GET)
     public String srWorkbenchPage(HttpServletRequest request, Locale locale, Model model) {

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 31,
+  "blueprintCode": "BP_ADOPT_8005F8F70D073EEC9D70",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_8005F8F70D073EEC9D70"
+  },
+  "route": "/admin/emission/gwp-values",
+  "pageName": "GWP 값 관리",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1120111",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "928c1f85bbda59261226abdc37594fc9b2338f70b8370e91411b0f946cff652e",
+  "artifactHash": "c9beb8a53cb341723a21c8900ef43e9c7fe0dfa7dfa78ddea352dc4c41f1b44d"
+}

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import {CommonBreadcrumb,BreadcrumbOwnerContext} from '../../components/common-design/CommonBreadcrumb';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
@@ -88,7 +89,8 @@ export function GlobalUserGnbShell({ children }: { children: ReactNode }) {
         <button aria-label={content.closeAllMenu} className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} type="button" />
         <HeaderMobileMenu content={content} en={en} homeMenu={payload.homeMenu || []} isLoggedIn={isLoggedIn} onClose={() => setMobileMenuOpen(false)} onLogout={session.logout} />
       </div>
-      <div data-global-user-page="">{children}</div>
+      <div className="global-user-breadcrumb-slot"><CommonBreadcrumb/></div>
+      <BreadcrumbOwnerContext.Provider value={true}><div data-global-user-page="">{children}</div></BreadcrumbOwnerContext.Provider>
       <CommonUserFooter orgName={content.footerOrg} addressLine={content.footerAddress} serviceLine={content.footerDesc} footerLinks={[...content.footerLinks]} copyright="© 2026 CCUS Carbon Management Platform. All rights reserved." lastModifiedLabel={content.lastModified} lastModifiedText={en ? "Aug 21, 2026" : "2026.08.21"} waAlt={content.waAlt} governmentMarkSrc={HOME_ENTRY_ASSETS.FOOTER_SYMBOL} waMarkSrc={HOME_ENTRY_ASSETS.WA_MARK} />
     </>
   );

@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-10T14:54:48.235335+09:00",
+  "scope": "Tracks established; structural audit complete; strict qualification pending evidence",
+  "minutesSinceAuditImplementationStart": 10.0,
+  "usdStructuralAuditSeconds": 3.7502171993255615,
+  "browserQASeconds": 2.308,
+  "policyTestsPassed": 12,
+  "publicationBytes": 11436347,
+  "localOutputBytes": 22856654,
+  "internalDocumentRescans": 0,
+  "sourceWrites": 0,
+  "externalSends": 0,
+  "visualReview": [
+    "instrument-review.jpg",
+    "desktop.png",
+    "detail-a.png",
+    "mobile.png"
+  ],
+  "next": {
+    "trackA": "식별 요청서 미발송 유지. 회신된 모델/승인 설계부터 개별 검토하며 트랙 B는 대기하지 않음.",
+    "trackB": "바닥 기준6종과 참조 외형 차이20종의 의도/설계 기준을 판정해 수정 검증 대상으로 우선 처리. 계측기68종26구성은 시각 검수 완료했으나 전용 핵심 형상 승인 근거가 필요하며 사진 반복 검수는 하지 않음."
+  }
+}

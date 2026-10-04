@@ -1,0 +1,164 @@
+{
+  "schema": "P006_RC_CAR_USD_COMPONENT_STRUCTURE_V1",
+  "status": "EXTERNAL_STATIC_STRUCTURE_CANDIDATE_NOT_IMPORTED",
+  "productCandidate": {
+    "id": "NVIDIA-OMNIVERSE-RC-CAR-CAD-1.0",
+    "name": "RC 자동차 하부 섀시 구조 검토",
+    "vehicleClass": "RC_CAR",
+    "passengerVehicle": false,
+    "sourceRepository": "https://github.com/NVIDIA-Omniverse/RC-Car-CAD",
+    "sourceRevision": "407bd553ee57668ceb58d81ffd7f4d617dee3dfa",
+    "usdPath": "https://github.com/NVIDIA-Omniverse/RC-Car-CAD/blob/main/convertedAssets/_Class1RC_094321/_Class1RC.usd",
+    "usdSha256": "b7101cc8918fc958ac1c80ef01499587c12227adbdb4f3df1aefedaac06afaf1",
+    "usdBytes": 33843828,
+    "license": "MIT; preserve notice; third-party geometry rights need separate review"
+  },
+  "stageEvidence": {
+    "parser": "OpenUSD usd-core 26.8",
+    "stageOpen": "PASS",
+    "kitViewportRender": "PASS",
+    "defaultPrim": "/World",
+    "upAxis": "Z",
+    "metersPerUnit": 0.01,
+    "sourcePrimCount": 59,
+    "sourceXformCount": 23,
+    "sourceMeshCount": 36,
+    "jointPrimCount": 0,
+    "timeSampledAttributeCount": 0,
+    "embeddedAnimation": "NONE_DETECTED",
+    "externalReferences": 0,
+    "sourceRoot": "/World/Geometry/_Class1RC",
+    "evidenceFile": "p006-rc-car-usd-structure-report.json",
+    "screenshot": "evidence/p006-rc-car-omniverse-20260926.png"
+  },
+  "bomStatus": "NOT_VERIFIED",
+  "assemblySemanticsStatus": "NOT_VERIFIED",
+  "sourceGroupsAreBomQuantities": false,
+  "components": [
+    {
+      "id": "chassis",
+      "displayName": "섀시 본체 그룹",
+      "groupCount": 1,
+      "groupCountMeaning": "USD Xform 그룹 수; 부품 BOM 수량 아님",
+      "primPaths": ["/World/Geometry/_Class1RC/Chassis__refset_Entire_Part"],
+      "meshCount": 2,
+      "pointCount": 1263666,
+      "faceCount": 421222,
+      "nameEvidence": "Prim 이름에 Chassis 포함",
+      "functionalInterpretation": "NAME_DERIVED_CANDIDATE",
+      "manufacturingProcess": "UNRESOLVED",
+      "procurement": "UNRESOLVED",
+      "independentUsdFile": false
+    },
+    {
+      "id": "front-upper-arm-pair",
+      "displayName": "전륜 상부 암 그룹 쌍 후보",
+      "groupCount": 2,
+      "groupCountMeaning": "일반/미러 Xform 2개; 차량 좌우 BOM 수량 확정 아님",
+      "primPaths": [
+        "/World/Geometry/_Class1RC/_ArmFrontUpper__refset_Entire_Part",
+        "/World/Geometry/_Class1RC/_ArmFrontUpper_mirror__refset_Entire_Part"
+      ],
+      "meshCount": 6,
+      "pointCount": 12702,
+      "faceCount": 4234,
+      "nameEvidence": "Prim 이름에 ArmFrontUpper 및 mirror 포함",
+      "functionalInterpretation": "NAME_DERIVED_CANDIDATE",
+      "manufacturingProcess": "UNRESOLVED",
+      "procurement": "UNRESOLVED",
+      "independentUsdFile": false
+    },
+    {
+      "id": "front-lower-arm-pair",
+      "displayName": "전륜 하부 암 그룹 쌍 후보",
+      "groupCount": 2,
+      "groupCountMeaning": "일반/미러 Xform 2개; 차량 좌우 BOM 수량 확정 아님",
+      "primPaths": [
+        "/World/Geometry/_Class1RC/_ArmFrontLower__refset_Entire_Part",
+        "/World/Geometry/_Class1RC/_ArmFrontLower_mirror__refset_Entire_Part"
+      ],
+      "meshCount": 6,
+      "pointCount": 9390,
+      "faceCount": 3130,
+      "nameEvidence": "Prim 이름에 ArmFrontLower 및 mirror 포함",
+      "functionalInterpretation": "NAME_DERIVED_CANDIDATE",
+      "manufacturingProcess": "UNRESOLVED",
+      "procurement": "UNRESOLVED",
+      "independentUsdFile": false
+    },
+    {
+      "id": "trailing-arm-pair",
+      "displayName": "트레일링 암 그룹 쌍 후보",
+      "groupCount": 2,
+      "groupCountMeaning": "일반/미러 Xform 2개; 차량 좌우 BOM 수량 확정 아님",
+      "primPaths": [
+        "/World/Geometry/_Class1RC/TrailingArm__refset_Entire_Part",
+        "/World/Geometry/_Class1RC/_mirrorTrailingArm__refset_Entire_Part"
+      ],
+      "meshCount": 6,
+      "pointCount": 6456,
+      "faceCount": 2152,
+      "nameEvidence": "Prim 이름에 TrailingArm 및 mirror 포함",
+      "functionalInterpretation": "NAME_DERIVED_CANDIDATE",
+      "manufacturingProcess": "UNRESOLVED",
+      "procurement": "UNRESOLVED",
+      "independentUsdFile": false
+    },
+    {
+      "id": "front-unsprung-mass",
+      "displayName": "전륜 비현가 질량 그룹 후보",
+      "groupCount": 1,
+      "groupCountMeaning": "USD Xform 그룹 수; 어셈블리 하위 수량 미확정",
+      "primPaths": ["/World/Geometry/_Class1RC/UnsprungMassFront__refset_MODEL"],
+      "childGroups": ["TatumWheelRear__refset_Entire_Part", "ToyoTire__refset_MODEL"],
+      "meshCount": 8,
+      "pointCount": 235224,
+      "faceCount": 78408,
+      "nameEvidence": "Prim 이름에 UnsprungMassFront 포함; child group 이름에 Wheel/Tire 포함",
+      "functionalInterpretation": "NAME_DERIVED_CANDIDATE",
+      "manufacturingProcess": "UNRESOLVED",
+      "procurement": "UNRESOLVED",
+      "independentUsdFile": false
+    },
+    {
+      "id": "rear-unsprung-mass",
+      "displayName": "후륜 비현가 질량 그룹 후보",
+      "groupCount": 1,
+      "groupCountMeaning": "USD Xform 그룹 수; 어셈블리 하위 수량 미확정",
+      "primPaths": ["/World/Geometry/_Class1RC/UnsprungMassRear__refset_MODEL"],
+      "childGroups": ["ToyoTire__refset_Entire_Part", "TatumWheelRear__refset_MODEL"],
+      "meshCount": 8,
+      "pointCount": 235224,
+      "faceCount": 78408,
+      "nameEvidence": "Prim 이름에 UnsprungMassRear 포함; child group 이름에 Wheel/Tire 포함",
+      "functionalInterpretation": "NAME_DERIVED_CANDIDATE",
+      "manufacturingProcess": "UNRESOLVED",
+      "procurement": "UNRESOLVED",
+      "independentUsdFile": false
+    }
+  ],
+  "assemblySequence": {
+    "status": "STRUCTURAL_REVIEW_ORDER_PROPOSAL",
+    "isManufacturingSequence": false,
+    "sequenceEvidence": "Group names and spatially grouped hierarchy only; no joint schema, time samples, or source BOM",
+    "steps": [
+      {"order": 1, "name": "섀시 그룹 기준 확인", "componentIds": ["chassis"], "durationMinutes": null, "durationStatus": "UNRESOLVED", "attachmentStatus": "NOT_VERIFIED"},
+      {"order": 2, "name": "전륜 상·하부 암 그룹 위치 검토", "componentIds": ["front-upper-arm-pair", "front-lower-arm-pair"], "durationMinutes": null, "durationStatus": "UNRESOLVED", "attachmentStatus": "NOT_VERIFIED"},
+      {"order": 3, "name": "전륜 비현가 질량 그룹 관계 검토", "componentIds": ["front-unsprung-mass", "trailing-arm-pair"], "durationMinutes": null, "durationStatus": "UNRESOLVED", "attachmentStatus": "NOT_VERIFIED"},
+      {"order": 4, "name": "후륜 그룹 배치 검토", "componentIds": ["rear-unsprung-mass"], "durationMinutes": null, "durationStatus": "UNRESOLVED", "attachmentStatus": "NOT_VERIFIED"},
+      {"order": 5, "name": "원본 USD 구조·가시 형상 확인", "componentIds": ["chassis", "front-upper-arm-pair", "front-lower-arm-pair", "trailing-arm-pair", "front-unsprung-mass", "rear-unsprung-mass"], "durationMinutes": null, "durationStatus": "UNRESOLVED", "attachmentStatus": "STATIC_SCENE_ONLY"}
+    ]
+  },
+  "gates": {
+    "sourceUsdStage": "PASS",
+    "sourceUsdStaticRender": "PASS",
+    "groupedStructureExtracted": "PASS_9_SOURCE_GROUPS",
+    "componentBOM": "NOT_VERIFIED",
+    "groupIndependentExport": "NOT_DONE",
+    "mechanicalJoints": "NONE_DETECTED",
+    "playableAnimation": "NONE_DETECTED",
+    "procurementAndProcess": "UNRESOLVED",
+    "p006CatalogImport": "NOT_IMPORTED",
+    "passengerCarFit": "NOT_APPLICABLE_RC_CAR_ONLY"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 421,
+  "blueprintCode": "BP_ADOPT_51FC83B58BDD3828A0AF",
+  "identity": {
+    "processCode": "LCA_EXECUTION",
+    "stepCode": "LCA_EXECUTION_01_PLAN",
+    "actorCode": "LCA_PRACTITIONER",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_51FC83B58BDD3828A0AF"
+  },
+  "route": "/admin/emission/survey-admin",
+  "pageName": "LCI 데이터베이스",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "LCA",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1040204",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "98560b16ba9c8f96b3c1ea2fdf6a1958a80f9236a9da2d7e6e78ca0c92aac207",
+  "artifactHash": "17c16005a7dd346866f4c83c28559fbd04f2fcb7a60d7ff1f3cc71749d73b4e9"
+}

@@ -1,0 +1,14 @@
+.plan-selection{margin:16px 0;padding:20px;border:1px solid #c7dce8;border-radius:12px;background:#fff}
+.plan-selection .plan-selection-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.plan-selection h2{margin:.2rem 0 .4rem;color:#123d5a;font-size:1.15rem}
+.plan-selection p{margin:.2rem 0;color:#526b7b;font-size:.9rem}
+.plan-selection .plan-selection-controls{display:grid;grid-template-columns:minmax(240px,1fr) minmax(240px,1fr) auto;align-items:end;gap:12px;margin-top:16px}
+.plan-selection label{display:grid;gap:6px;color:#23475e;font-size:.84rem;font-weight:650}
+.plan-selection select{width:100%;min-height:42px;padding:8px 10px;border:1px solid #b8cedd;border-radius:6px;background:#fff;color:#153c57}
+.plan-selection .plan-assignment{display:grid;gap:5px;min-height:56px;margin-top:14px;padding:12px 14px;border-left:4px solid #008b98;border-radius:6px;background:#eff7f8;color:#173d55}
+.plan-selection .plan-assignment span,.plan-selection .plan-assignment small{color:#526b7b}
+.plan-selection .plan-selection-status{min-height:20px;margin-top:10px;color:#456579;font-size:.84rem}
+.plan-selection .plan-selection-status.error{color:#9d2b20}
+#equipmentList [data-library-kind="process"].context-selected{outline:2px solid #008b98;outline-offset:1px;background:#eff9f8}
+@media(max-width:800px){.plan-selection .plan-selection-controls{grid-template-columns:1fr 1fr}.plan-selection .plan-selection-controls button{min-height:42px}}
+@media(max-width:560px){.plan-selection .plan-selection-controls{grid-template-columns:1fr}.plan-selection .plan-selection-heading{display:block}}

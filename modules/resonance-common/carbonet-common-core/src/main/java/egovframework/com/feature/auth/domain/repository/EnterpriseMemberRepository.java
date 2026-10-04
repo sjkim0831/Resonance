@@ -39,6 +39,7 @@ public interface EnterpriseMemberRepository extends JpaRepository<EntrprsMber, S
     Optional<EntrprsMber> findFirstByEntrprsMberIdIgnoreCaseAndProjectId(String entrprsMberId, String projectId);
 
     Optional<EntrprsMber> findFirstByAuthCi(String authCi);
+    long countByAuthCi(String authCi);
 
     Optional<EntrprsMber> findFirstByAuthDi(String authDi);
 }

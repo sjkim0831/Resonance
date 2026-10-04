@@ -1,0 +1,10 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+vi.mock('../../lib/api/core',()=>({fetchJson:vi.fn(),postAdminValidatedJson:vi.fn()}));
+vi.mock('../../lib/api/platform',()=>({createSrTicket:vi.fn(),fetchSrWorkbenchPage:vi.fn(),approveSrTicket:vi.fn()}));
+import {fetchJson,postAdminValidatedJson} from '../../lib/api/core';
+import {fetchCodexSrTicketDetail,fetchCodexSrTicketArtifact,runDevelopmentAction} from './workbenchApi';
+beforeEach(()=>vi.clearAllMocks());
+it('detail uses proxied admin API',()=>{fetchCodexSrTicketDetail('SR-1');expect(fetchJson).toHaveBeenCalledWith('/admin/api/platform/workbench/tickets/SR-1',{credentials:'include'});});
+it('artifact uses proxied admin API',()=>{fetchCodexSrTicketArtifact('SR-1','diff');expect(fetchJson).toHaveBeenCalledWith('/admin/api/platform/workbench/tickets/SR-1/artifacts/diff',{credentials:'include'});});
+it('plan posts official admin mapping',()=>{runDevelopmentAction('SR-1','plan');expect(postAdminValidatedJson).toHaveBeenCalledWith('/admin/api/platform/workbench/tickets/SR-1/development-plan',{},expect.any(String));});
+it('execute posts official admin mapping',()=>{runDevelopmentAction('SR-1','execute');expect(postAdminValidatedJson).toHaveBeenCalledWith('/admin/api/platform/workbench/tickets/SR-1/development-execute',{},expect.any(String));});

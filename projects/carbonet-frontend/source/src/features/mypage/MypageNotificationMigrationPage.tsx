@@ -76,10 +76,10 @@ const COPY: Record<"ko" | "en", CopySet> = {
     displayRole: "총괄 감독관",
     loginRequired: "로그인 후 이용 가능합니다.",
     loginMove: "로그인 페이지로 이동",
-    save: "알림 설정 저장",
+    save: "마케팅 수신 동의 저장",
     saving: "저장 중...",
     saveUnavailable: "현재 저장할 수 없습니다.",
-    saveSuccess: "알림 설정을 저장했습니다.",
+    saveSuccess: "마케팅 수신 동의를 저장하고 서버에서 다시 확인했습니다. 운영 알림 설정은 변경하지 않았습니다.",
     helperTitle: "Assistant's Suggestions",
     helperText: "현재 DB 구조에서는 알림 이메일과 마케팅 수신만 실제 저장됩니다. SMS와 앱 채널은 읽기 전용 안내 상태입니다.",
     recommendationTitle: "추천 설정",
@@ -123,10 +123,10 @@ const COPY: Record<"ko" | "en", CopySet> = {
     displayRole: "General Overseer",
     loginRequired: "Please sign in first.",
     loginMove: "Go to Sign In",
-    save: "Save Notification Settings",
+    save: "Save Marketing Consent",
     saving: "Saving...",
     saveUnavailable: "Saving is currently unavailable.",
-    saveSuccess: "Notification settings saved.",
+    saveSuccess: "Marketing consent saved and verified. Operational notifications were not changed.",
     helperTitle: "Assistant's Suggestions",
     helperText: "The current database persists the notification email and marketing consent only. SMS and app channels are shown as read-only guidance.",
     recommendationTitle: "Recommended Configuration",
@@ -265,7 +265,10 @@ export function MypageNotificationMigrationPage() {
     setMessage("");
     try {
       await saveMypageMarketing(session, marketingEnabled ? "Y" : "N", en, stringValue(member.insttId));
-      await sectionState.reload();
+      const verified = await sectionState.reload();
+      if (!verified || String(verified.member?.marketingYn || "N") !== (marketingEnabled ? "Y" : "N")) {
+        throw new Error(en ? "Save result could not be verified. Reload before retrying." : "저장 결과를 확인하지 못했습니다. 재조회 후 다시 확인해 주세요.");
+      }
       setMessage(copy.saveSuccess);
       logGovernanceScope("ACTION", "mypage-save-notification", {
         actorUserId: session.userId || "",

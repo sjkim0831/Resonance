@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "generatedAt": "2026-09-11",
+  "assets": [
+    {
+      "assetId": "E001",
+      "sourceUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E001.usda",
+      "glbPath": "/projects/P006/assets/3d-derived/E001.glb",
+      "status": "GLB_CREATED",
+      "image": "../visual-catalog/images/E001.png",
+      "dimensions": [
+        2.489003896713257,
+        5.937997817993164,
+        2.799843668937683
+      ]
+    },
+    {
+      "assetId": "E002",
+      "sourceUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E002.usda",
+      "glbPath": "/projects/P006/assets/3d-derived/E002.glb",
+      "status": "GLB_CREATED",
+      "image": "../visual-catalog/images/E002.png",
+      "dimensions": [
+        1.8241724533600596,
+        4.819999933242798,
+        2.3822307334244908
+      ]
+    },
+    {
+      "assetId": "E004",
+      "sourceUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E004.usda",
+      "glbPath": "/projects/P006/assets/3d-derived/E004.glb",
+      "status": "GLB_CREATED",
+      "image": "../visual-catalog/images/E004.png",
+      "dimensions": [
+        1.3442968428134918,
+        3.6280062289147152,
+        2.4255248616229945
+      ]
+    },
+    {
+      "assetId": "E005",
+      "sourceUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E005.usda",
+      "glbPath": "/projects/P006/assets/3d-derived/E005.glb",
+      "status": "GLB_CREATED",
+      "image": "../visual-catalog/images/E005.png",
+      "dimensions": [
+        9.406997203826904,
+        8.049886643886566,
+        6.967646360397339
+      ]
+    },
+    {
+      "assetId": "E194",
+      "sourceUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E194.usda",
+      "glbPath": "/projects/P006/assets/3d-derived/E194.glb",
+      "status": "GLB_CREATED",
+      "image": "../visual-catalog/images/E194.png",
+      "dimensions": [
+        1.2000000476837158,
+        0.9000000016391276,
+        0.6000000238418579
+      ]
+    }
+  ]
+}

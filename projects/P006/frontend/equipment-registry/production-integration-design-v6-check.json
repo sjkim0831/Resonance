@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-01T05:02:39.271Z",
+  "status": "PASS",
+  "scope": "STRUCTURAL_AND_SOURCE_ASSERTIONS_ONLY",
+  "requirementsPreserved": 115,
+  "businessScenariosPreserved": 98,
+  "derivedDefinitionsPreserved": 996,
+  "dbRelations": 29,
+  "dbColumns": 252,
+  "dbConstraints": 109,
+  "dbIndexes": 59,
+  "currentApiRows": 24,
+  "currentRequestSchemas": 8,
+  "sourceChecks": "PASS",
+  "browserReadOnlyObservations": 2,
+  "authenticatedE2eRuns": 0,
+  "openDecisions": 6,
+  "releaseStatus": "BLOCKED"
+}

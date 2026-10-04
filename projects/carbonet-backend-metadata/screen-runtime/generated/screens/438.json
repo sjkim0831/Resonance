@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 438,
+  "blueprintCode": "BP_ADOPT_40F4C26F97A938E9A89E",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_40F4C26F97A938E9A89E"
+  },
+  "route": "/admin/emission/validation-rule",
+  "pageName": "승인선",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1070105",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "8c82f9363df3b30b8dbd8843eb3bfe7f08afebc6d0e08fcb1a956fc98857169a",
+  "artifactHash": "20510ec456048de333d4fa28b5dff00e5de8ad40c5d7a1ba8f41df0dc4303666"
+}

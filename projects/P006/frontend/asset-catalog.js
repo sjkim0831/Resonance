@@ -22,9 +22,10 @@ async function mountCatalog(){
   const host=document.querySelector('.assets');
   if(!host||host.querySelector('.catalog')||host.dataset.catalogMounting)return;
   host.dataset.catalogMounting='true';
-  const response=await fetch(`${base}manifest.json`,{cache:'no-store'});
+  const response=await fetch('/projects/P006/assets/entry-catalog/entries.json?version=724',{cache:'no-store'});
   if(!response.ok)throw new Error(`카탈로그 HTTP ${response.status}`);
-  const manifest=await response.json();
+  const canonical=await response.json();
+  const manifest={assets:(Array.isArray(canonical)?canonical:canonical.entries||[]).map(a=>({...a,category:'equipment-module',extension:'USD',relativePath:a.entryFile||a.id+'.usda',preview:a.image,download:a.entryPath,assetCode:a.id,placeable:true,compositionStatus:'PLACEABLE',comment:a.imageStatus||'USD_CONNECTED'})),registeredAssetCount:(Array.isArray(canonical)?canonical:canonical.entries||[]).length,sourceFileCount:(Array.isArray(canonical)?canonical:canonical.entries||[]).length,categoryCount:new Set((Array.isArray(canonical)?canonical:canonical.entries||[]).map(a=>a.category)).size};
   const [meshMap,reviewQueue]=await Promise.all([
     fetch('/projects/P006/catalog-mappings',{credentials:'include',cache:'no-store'}).then(r=>r.ok?r.json():fetch(`${base}mesh-map.json`,{cache:'no-store'}).then(x=>x.json())).catch(()=>({mappings:[]})),
     fetch(`${base}equipment-review-queue.json`,{cache:'no-store'}).then(r=>r.ok?r.json():({count:0,items:[]})).catch(()=>({count:0,items:[]}))

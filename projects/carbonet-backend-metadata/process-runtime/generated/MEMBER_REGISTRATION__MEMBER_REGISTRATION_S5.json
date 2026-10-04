@@ -1,0 +1,1470 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "MEMBER_REGISTRATION",
+    "name": "회원가입",
+    "domain": "MEMBER",
+    "workType": "MEMBER",
+    "goal": "회원유형 선택, 필수 약관 동의, 본인확인, 회원정보 제출, 접수 확인을 하나의 추적 가능한 공개 가입 여정으로 완료한다."
+  },
+  "step": {
+    "code": "MEMBER_REGISTRATION_S5",
+    "version": 1,
+    "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "PUBLIC_APPLICANT",
+      "ownerActorCode": "PUBLIC_APPLICANT",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
+    },
+    "business": {
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
+      "domainCode": "MEMBER",
+      "processName": "회원가입 신청",
+      "stepName": "가입 신청 완료·접수번호 확인",
+      "goal": "가입 신청자가 소속 기관과 수행 업무에 맞는 회원 유형을 선택하고 약관·본인확인·정보입력을 거쳐 승인 가능한 가입 신청을 제출한다.",
+      "requirement": "Return the immutable receipt number, submission timestamp, review status, due date, and permitted next actions after membership application submission.",
+      "completionRule": "접수번호·신청상태·예상 처리절차가 표시되고 로그인 또는 가입상태 조회로 이동할 수 있다.",
+      "riskLevel": "HIGH",
+      "slaHours": 72,
+      "regulationRefs": "",
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {},
+      "extensions": {}
+    },
+    "transition": {
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
+      "commandCode": "CONFIRM_APPLICATION_RECEIPT",
+      "fromState": "APPLICATION_SUBMITTED",
+      "toState": "APPLICATION_PENDING_APPROVAL",
+      "stepOrder": 5,
+      "stepType": "TASK",
+      "parentStepCode": null,
+      "completionRule": "접수번호·신청상태·예상 처리절차가 표시되고 로그인 또는 가입상태 조회로 이동할 수 있다.",
+      "policy": {
+        "auditRequired": true,
+        "optimisticLock": true,
+        "idempotencyRequired": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
+    },
+    "input": {
+      "context": [
+        "tenantId",
+        "processCode",
+        "stepCode",
+        "actorCode"
+      ],
+      "required": [
+        "applicationId",
+        "receiptNo",
+        "applicantId",
+        "submittedAt"
+      ],
+      "constraints": [
+        "application state must be APPLICATION_SUBMITTED",
+        "receipt belongs to applicant"
+      ]
+    },
+    "output": {
+      "states": [
+        "APPLICATION_PENDING_APPROVAL"
+      ],
+      "required": [
+        "applicationId",
+        "receiptNo",
+        "applicationStatus",
+        "submittedAt",
+        "expectedReviewDueAt",
+        "nextActions"
+      ],
+      "nextActions": [
+        "CHECK_STATUS",
+        "GO_TO_LOGIN",
+        "CONTACT_SUPPORT"
+      ]
+    },
+    "guide": {
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
+      "processCode": "MEMBER_REGISTRATION",
+      "stepCode": "MEMBER_REGISTRATION_S5",
+      "stepOrder": 5,
+      "workTypeCode": "MEMBER",
+      "actorCode": "PUBLIC_APPLICANT",
+      "title": "가입 신청 완료·접수번호 확인",
+      "purpose": "Return the immutable receipt number, submission timestamp, review status, due date, and permitted next actions after membership application submission.",
+      "entryCondition": "APPLICATION_SUBMITTED",
+      "completionCondition": "접수번호·신청상태·예상 처리절차가 표시되고 로그인 또는 가입상태 조회로 이동할 수 있다.",
+      "userPath": "/join/step5",
+      "adminPath": "/admin/member/approve",
+      "relatedBusinessRoute": null,
+      "nextStepCode": null,
+      "nextAction": "APPLICATION_PENDING_APPROVAL",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+        "route": "/admin/member/approve",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "ADMIN",
+        "screenType": "PROCESS_STEP_WORKSPACE",
+        "title": "회원가입 신청 - 가입 신청 완료·접수번호 확인",
+        "purpose": "가입 신청 완료·접수번호 확인 업무를 수행하고 검증 가능한 증거를 남긴다.",
+        "layout": "RESPONSIVE_WORKSPACE",
+        "theme": "KRDS_GOV_DEFAULT",
+        "designAuthority": {
+          "source": "LEGACY_REGISTERED_DEFAULT",
+          "layout": "RESPONSIVE_WORKSPACE",
+          "theme": "KRDS_GOV_DEFAULT",
+          "defaulted": [
+            "layout",
+            "theme"
+          ]
+        },
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "공통",
+            "fieldOrder": 10,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "tenantId"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트",
+            "fieldGroup": "공통",
+            "fieldOrder": 20,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "projectId",
+            "controlType": "PROJECT_SELECT",
+            "sourceTable": "comtnentrprsmber",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "projectId"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 30,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "processCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "processCode"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "단계 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 40,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "stepCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "stepCode"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "UUID",
+            "editable": false,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": false,
+            "fieldCode": "recordId",
+            "fieldName": "업무 레코드 ID",
+            "fieldGroup": "공통",
+            "fieldOrder": 50,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": false,
+              "immutable": true
+            },
+            "apiProperty": "recordId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "recordId"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "statusCode",
+            "fieldName": "처리 상태",
+            "fieldGroup": "공통",
+            "fieldOrder": 60,
+            "validation": {
+              "codeGroup": "WORK_STATUS"
+            },
+            "apiProperty": "statusCode",
+            "controlType": "STATUS_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "statusCode"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "fieldName": "담당 액터",
+            "fieldGroup": "공통",
+            "fieldOrder": 70,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "ownerActorCode",
+            "controlType": "ACTOR_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "rowVersion",
+            "fieldName": "데이터 버전",
+            "fieldGroup": "공통",
+            "fieldOrder": 80,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "rowVersion",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "rowVersion"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": false,
+            "fieldCode": "createdAt",
+            "fieldName": "등록 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 90,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "createdAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "createdAt"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": false,
+            "fieldCode": "updatedAt",
+            "fieldName": "최종 수정 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 100,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "updatedAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "updatedAt"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "fieldName": "증빙 수",
+            "fieldGroup": "공통",
+            "fieldOrder": 110,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "evidenceCount",
+            "controlType": "EVIDENCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "evidenceCount"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "companyId",
+            "fieldName": "기업",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 200,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "companyId",
+            "controlType": "COMPANY_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "companyId"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "accountId",
+            "fieldName": "사용자 계정",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 210,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "accountId",
+            "controlType": "USER_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "accountId"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "ARRAY",
+            "editable": true,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "actorCodes",
+            "fieldName": "업무 액터",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 220,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "actorCodes",
+            "controlType": "ACTOR_MULTI_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "actorCodes"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "authorityCode",
+            "fieldName": "권한 그룹",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 230,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "authorityCode",
+            "controlType": "AUTHORITY_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "authorityCode"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "accountStatus",
+            "fieldName": "계정 상태",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 240,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "accountStatus",
+            "controlType": "STATUS_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "accountStatus"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": false,
+            "fieldCode": "consentVersion",
+            "fieldName": "동의서 버전",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 250,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "consentVersion",
+            "controlType": "CONSENT_VIEW",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "consentVersion"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "businessName",
+            "fieldName": "업무명",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 400,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "businessName",
+            "controlType": "TEXT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "businessName"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "TEXT",
+            "editable": true,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "businessPurpose",
+            "fieldName": "목적·근거",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 410,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "businessPurpose",
+            "controlType": "TEXTAREA",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "businessPurpose"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "DATE",
+            "editable": true,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "effectiveFrom",
+            "fieldName": "적용 시작일",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 420,
+            "validation": {
+              "type": "date-time",
+              "nullable": false,
+              "required": true
+            },
+            "apiProperty": "effectiveFrom",
+            "controlType": "DATE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "effectiveFrom"
+          },
+          {
+            "route": "/admin/member/approve",
+            "audience": "ADMIN",
+            "dataType": "DATE",
+            "editable": true,
+            "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+            "required": false,
+            "fieldCode": "effectiveTo",
+            "fieldName": "적용 종료일",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 430,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "effectiveTo",
+            "controlType": "DATE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "PUBLIC_APPLICANT:PROCESS_STEP",
+            "evidenceRequired": false,
+            "code": "effectiveTo"
+          },
+          {
+            "fieldCode": "applicationId",
+            "code": "applicationId",
+            "fieldName": "applicationId",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 22,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "ADMIN"
+          },
+          {
+            "fieldCode": "receiptNo",
+            "code": "receiptNo",
+            "fieldName": "receiptNo",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 23,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "ADMIN"
+          },
+          {
+            "fieldCode": "applicantId",
+            "code": "applicantId",
+            "fieldName": "applicantId",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 24,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "ADMIN"
+          },
+          {
+            "fieldCode": "submittedAt",
+            "code": "submittedAt",
+            "fieldName": "submittedAt",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 25,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "ADMIN"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "PUBLIC_APPLICANT",
+            "entryState": "APPLICATION_SUBMITTED",
+            "commandCode": "CONFIRM_APPLICATION_RECEIPT",
+            "resultState": "APPLICATION_PENDING_APPROVAL",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "states": [
+            "loading",
+            "empty",
+            "authority-denied",
+            "dependency-blocked",
+            "validation-error",
+            "conflict",
+            "server-error"
+          ],
+          "recovery": "last verified step state"
+        },
+        "responsive": {
+          "mobile": "single-column ordered tasks",
+          "tablet": "two-column workspace",
+          "desktop": "summary plus task detail",
+          "overflow": "local table scroll"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "focusManagement": true,
+          "statusNotColorOnly": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [],
+    "commands": [
+      {
+        "actorCode": "PUBLIC_APPLICANT",
+        "entryState": "APPLICATION_SUBMITTED",
+        "commandCode": "CONFIRM_APPLICATION_RECEIPT",
+        "resultState": "APPLICATION_PENDING_APPROVAL",
+        "auditRequired": true,
+        "validationRequired": true,
+        "idempotencyRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "PUBLIC_APPLICANT",
+      "ownerActorCode": "PUBLIC_APPLICANT",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
+    },
+    "handoffPolicy": {},
+    "handoffs": [
+      {
+        "failure": {
+          "onInvalid": "VALIDATION_ERROR",
+          "onMissing": "DEPENDENCY_BLOCKED",
+          "onConflict": "RELOAD_AND_REVIEW",
+          "onUnauthorized": "DENY_AND_AUDIT"
+        },
+        "payload": {
+          "autoStart": true,
+          "chainCode": "MEMBER_PUBLIC_ONBOARDING_V1",
+          "targetInput": "READY",
+          "sourceOutput": "COMPLETED"
+        },
+        "integrity": {
+          "evidenceHash": true,
+          "optimisticLock": true,
+          "immutableSnapshot": true,
+          "sourceTransactionCommitted": true
+        },
+        "toStepCode": "MEMBER_APPROVAL_S1",
+        "contextKeys": [
+          "tenantId",
+          "businessId",
+          "recordId",
+          "rowVersion"
+        ],
+        "handoffType": "PROCESS",
+        "authorization": {
+          "toActor": "MEMBER_ADMIN",
+          "fromActor": "PUBLIC_APPLICANT",
+          "leastPrivilege": true,
+          "tenantIsolation": true,
+          "segregationChecked": true
+        },
+        "toProcessCode": "MEMBER_APPROVAL"
+      }
+    ]
+  },
+  "database": {
+    "transactional": true,
+    "migrationRequired": true,
+    "mappings": [
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "tenantId",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "projectId",
+            "sourceTable": "comtnentrprsmber",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "stepCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": false,
+            "fieldCode": "recordId",
+            "apiProperty": "recordId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "statusCode",
+            "apiProperty": "statusCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "apiProperty": "ownerActorCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "rowVersion",
+            "apiProperty": "rowVersion",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "createdAt",
+            "apiProperty": "createdAt",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "updatedAt",
+            "apiProperty": "updatedAt",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "apiProperty": "evidenceCount",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "companyId",
+            "apiProperty": "companyId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "accountId",
+            "apiProperty": "accountId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "actorCodes",
+            "apiProperty": "actorCodes",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "authorityCode",
+            "apiProperty": "authorityCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "accountStatus",
+            "apiProperty": "accountStatus",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "consentVersion",
+            "apiProperty": "consentVersion",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "businessName",
+            "apiProperty": "businessName",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "businessPurpose",
+            "apiProperty": "businessPurpose",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "effectiveFrom",
+            "apiProperty": "effectiveFrom",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "effectiveTo",
+            "apiProperty": "effectiveTo",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          }
+        ],
+        "audience": "ADMIN",
+        "pageCode": "MEMBER_REGISTRATION_S5_WORKSPACE_ADMIN",
+        "primaryEntity": "framework_process_step"
+      }
+    ],
+    "schemaSetVersion": 5,
+    "primaryEntities": [
+      "framework_process_step"
+    ],
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "회원가입 신청 - 권한·직무분리 위반",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "order": 1,
+          "command": "MEMBER_REGISTRATION_REQUEST",
+          "stepCode": "MEMBER_REGISTRATION_S1",
+          "actorCode": "PUBLIC_APPLICANT"
+        },
+        {
+          "order": 2,
+          "command": "MEMBER_REGISTRATION_EXECUTE",
+          "stepCode": "MEMBER_REGISTRATION_S2",
+          "actorCode": "PUBLIC_APPLICANT"
+        },
+        {
+          "order": 3,
+          "command": "MEMBER_REGISTRATION_REVIEW",
+          "stepCode": "MEMBER_REGISTRATION_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "MEMBER_REGISTRATION_COMPLETE",
+          "stepCode": "MEMBER_REGISTRATION_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MEMBER_REGISTRATION_AUTH",
+      "assertions": [
+        "비인가 액션 거부",
+        "요청·검토·승인 직무분리",
+        "거부 감사 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트·프로젝트, 정상·오류 입력과 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "공개 화면 권한 및 관리자 기능 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "open": "/join/step1"
+        },
+        {
+          "inspect": "availableActions"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MEMBER_REG_S1_AUTHORITY",
+      "assertions": [
+        {
+          "pageVisible": true
+        },
+        {
+          "adminActionVisible": false
+        },
+        {
+          "writeRequiresCsrf": true
+        }
+      ],
+      "preconditions": "로그인하지 않은 브라우저"
+    },
+    {
+      "name": "회원가입 신청 - 필수값·업무예외",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "order": 1,
+          "command": "MEMBER_REGISTRATION_REQUEST",
+          "stepCode": "MEMBER_REGISTRATION_S1",
+          "actorCode": "PUBLIC_APPLICANT"
+        },
+        {
+          "order": 2,
+          "command": "MEMBER_REGISTRATION_EXECUTE",
+          "stepCode": "MEMBER_REGISTRATION_S2",
+          "actorCode": "PUBLIC_APPLICANT"
+        },
+        {
+          "order": 3,
+          "command": "MEMBER_REGISTRATION_REVIEW",
+          "stepCode": "MEMBER_REGISTRATION_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "MEMBER_REGISTRATION_COMPLETE",
+          "stepCode": "MEMBER_REGISTRATION_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MEMBER_REGISTRATION_EXCEPTION",
+      "assertions": [
+        "잘못된 입력 거부",
+        "상태 불변",
+        "보완 Task 생성",
+        "필드 오류 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트·프로젝트, 정상·오류 입력과 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "허용되지 않은 회원 유형 거부",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "post": "/join/api/step1",
+          "membership_type": "UNKNOWN"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MEMBER_REG_S1_EXCEPTION",
+      "assertions": [
+        {
+          "status": 400
+        },
+        {
+          "state": "JOIN_STARTED"
+        },
+        {
+          "message": "유효한 회원 유형을 선택해 주세요."
+        }
+      ],
+      "preconditions": "유효한 공개 세션"
+    },
+    {
+      "name": "회원가입 신청 - 정상 완료",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "order": 1,
+          "command": "MEMBER_REGISTRATION_REQUEST",
+          "stepCode": "MEMBER_REGISTRATION_S1",
+          "actorCode": "PUBLIC_APPLICANT"
+        },
+        {
+          "order": 2,
+          "command": "MEMBER_REGISTRATION_EXECUTE",
+          "stepCode": "MEMBER_REGISTRATION_S2",
+          "actorCode": "PUBLIC_APPLICANT"
+        },
+        {
+          "order": 3,
+          "command": "MEMBER_REGISTRATION_REVIEW",
+          "stepCode": "MEMBER_REGISTRATION_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "MEMBER_REGISTRATION_COMPLETE",
+          "stepCode": "MEMBER_REGISTRATION_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MEMBER_REGISTRATION_HAPPY",
+      "assertions": [
+        "최종 상태 도달",
+        "모든 증적 존재",
+        "후속 Task 연결",
+        "감사 로그 완전"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트·프로젝트, 정상·오류 입력과 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "회원 유형 선택 정상 흐름",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "open": "/join/step1"
+        },
+        {
+          "select": "EMITTER"
+        },
+        {
+          "post": "/join/api/step1"
+        },
+        {
+          "continue": "/join/step2"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MEMBER_REG_S1_HAPPY",
+      "assertions": [
+        {
+          "status": 200
+        },
+        {
+          "session.joinStep": 1
+        },
+        {
+          "session.membershipType": "EMITTER"
+        },
+        {
+          "nextRoute": "/join/step2"
+        }
+      ],
+      "preconditions": "비로그인 사용자와 유효한 CSRF 세션"
+    },
+    {
+      "name": "회원가입 신청 - 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "order": 1,
+          "command": "MEMBER_REGISTRATION_REQUEST",
+          "stepCode": "MEMBER_REGISTRATION_S1",
+          "actorCode": "PUBLIC_APPLICANT"
+        },
+        {
+          "order": 2,
+          "command": "MEMBER_REGISTRATION_EXECUTE",
+          "stepCode": "MEMBER_REGISTRATION_S2",
+          "actorCode": "PUBLIC_APPLICANT"
+        },
+        {
+          "order": 3,
+          "command": "MEMBER_REGISTRATION_REVIEW",
+          "stepCode": "MEMBER_REGISTRATION_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "MEMBER_REGISTRATION_COMPLETE",
+          "stepCode": "MEMBER_REGISTRATION_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MEMBER_REGISTRATION_ISOLATION",
+      "assertions": [
+        "타 테넌트·프로젝트 데이터 미노출",
+        "직접 식별자 접근 거부",
+        "파일·검색·내보내기 격리"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트·프로젝트, 정상·오류 입력과 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "가입 세션 간 데이터 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "sessionA.select": "EMITTER"
+        },
+        {
+          "sessionB.select": "GOV"
+        },
+        {
+          "reloadBoth": true
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MEMBER_REG_S1_ISOLATION",
+      "assertions": [
+        {
+          "sessionA.membershipType": "EMITTER"
+        },
+        {
+          "sessionB.membershipType": "GOV"
+        },
+        {
+          "crossSessionLeak": false
+        }
+      ],
+      "preconditions": "서로 다른 두 브라우저 세션"
+    },
+    {
+      "name": "회원가입 신청 - 중단·중복·롤백 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "order": 1,
+          "command": "MEMBER_REGISTRATION_REQUEST",
+          "stepCode": "MEMBER_REGISTRATION_S1",
+          "actorCode": "PUBLIC_APPLICANT"
+        },
+        {
+          "order": 2,
+          "command": "MEMBER_REGISTRATION_EXECUTE",
+          "stepCode": "MEMBER_REGISTRATION_S2",
+          "actorCode": "PUBLIC_APPLICANT"
+        },
+        {
+          "order": 3,
+          "command": "MEMBER_REGISTRATION_REVIEW",
+          "stepCode": "MEMBER_REGISTRATION_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "MEMBER_REGISTRATION_COMPLETE",
+          "stepCode": "MEMBER_REGISTRATION_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MEMBER_REGISTRATION_RECOVERY",
+      "assertions": [
+        "중복 생성 없음",
+        "중단 단계부터 재개",
+        "롤백 후 원본 보존",
+        "재시도 이력 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트·프로젝트, 정상·오류 입력과 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "만료 세션 복구와 처음부터 재시작",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "open": "/join/step2"
+        },
+        {
+          "redirect": "/join/step1?expired=1"
+        },
+        {
+          "select": "PERFORMER"
+        },
+        {
+          "continue": true
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MEMBER_REG_S1_RECOVERY",
+      "assertions": [
+        {
+          "expirationNotice": true
+        },
+        {
+          "staleQueryRemoved": true
+        },
+        {
+          "session.joinStep": 1
+        },
+        {
+          "nextRoute": "/join/step2"
+        }
+      ],
+      "preconditions": "가입 세션 만료"
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
+    "security": {
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true,
+      "segregationOfDuties": true,
+      "rateLimitRequired": false,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "standard": "WCAG 2.1 AA",
+      "keyboard": true,
+      "focus": true,
+      "errorSummary": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": true,
+      "targetHours": 72,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
+  },
+  "sourceHash": "4a32bc1502e99a3d70023ba1c321058e08e2fea29b408fcdec802da616544c70",
+  "approvalStatus": "APPROVED",
+  "packageHash": "e87b7acef19e06c5da8a9af2e8d1129353cb1d31532948c69821cddc03be94cd"
+}

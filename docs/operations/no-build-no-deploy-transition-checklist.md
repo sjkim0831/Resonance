@@ -9,6 +9,14 @@ Status captured on 2026-07-08 KST for `/opt/Resonance` on `carbonet-prod`.
 - The runtime currently runs as a JVM jar (`project-runtime.jar`) on OpenJDK 21. GraalVM Native Image is not active on the host because `native-image` is not installed and the running process is `java -jar`.
 - PostgreSQL service routing is already through `postgres-haproxy`, backed by the `postgres-patroni` 3-node cluster. The old `postgres-ha` StatefulSet still exists and should be treated as legacy until removed through a separate DB retirement plan.
 
+## Foundation Work Exception and Rule Precedence
+
+- The no-build rules above apply to ordinary page work only: a change fully supported by the existing runtime SDUI renderer, allow-listed components, APIs, and metadata publication.
+- An explicitly requested foundation task may change the static/dynamic router, Page Registry, renderer/allow-list, server-side authorization, shared API contract, or build/runtime dispatch. These changes require the relevant source build and tests, and may be applied only to the authorized development environment.
+- `AGENTS.md` → `Page Work vs Platform/Foundation Work` is the controlling exception when this checklist or `screen-no-build-no-deploy-policy.md` appears to forbid an explicitly requested foundation change. Preserve static-route precedence and all unaffected legacy pages; do not interpret the exception as approval to migrate every static page or deploy to production.
+- A later SDUI page is no-build only when its schema validates against registered components, permissions, APIs, and menu bindings. Publication must preserve the last good version on validation failure and support rollback.
+- Development runtime application is not automatically a Kubernetes production rollout: identify the actual dev service and only restart/apply that target when the task requires it.
+
 ## Project Boundary Target
 
 | Target boundary | Current source area | Build policy |

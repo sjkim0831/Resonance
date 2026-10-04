@@ -1,0 +1,17 @@
+{
+  "capturedAt": "2026-09-29T00:41:11.817Z",
+  "url": "http://172.16.1.232/projects/P006/assets/equipment-registry/equipment-studio.html?asset=N076&rev=20260929-flow-5",
+  "title": "설비 스튜디오 · P006",
+  "previewAsset": "N076",
+  "previewLabel": "N076 · 카탈로그 참고 모델 · 공정 연결 미연결",
+  "modelStats": "모델 통계 · Mesh 21 · Triangle 392 · Material 2 · Animation 0",
+  "journey": "목록에서 설비를 선택하거나 새 설비를 등록하세요.",
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Equipment registry service unavailable Error: 설비 서비스 응답 오류 (401)\n    at api (http://172.16.1.232/projects/P006/assets/equipment-registry/equipment-studio.js?v=5:8:345)\n    at async boot (http://172.16.1.232/projects/P006/assets/equipment-registry/equipment-studio.js?v=5:37:305)"
+  ],
+  "registryNotice": "N076 모델을 표시했습니다. 카탈로그 참고 형상이며 실물 동일성 승인을 의미하지 않습니다.",
+  "registrationDisabled": true,
+  "screenshot": "equipment-studio-flow-qa.png"
+}

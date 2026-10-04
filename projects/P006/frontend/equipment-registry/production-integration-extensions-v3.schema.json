@@ -1,0 +1,948 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:p006:integration:v3:extensions",
+  "title": "설계 보강 DTO — 운영 DB migration 아님",
+  "$defs": {
+    "Vector3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y",
+        "z"
+      ],
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "X"
+        },
+        "y": {
+          "type": "number",
+          "description": "Y"
+        },
+        "z": {
+          "type": "number",
+          "description": "Z"
+        }
+      }
+    },
+    "Provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "MEASURED",
+            "APPROXIMATE",
+            "UNKNOWN"
+          ]
+        },
+        "evidenceIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Evidence ID",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "Transform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "positionM",
+        "rotationDeg",
+        "scale"
+      ],
+      "properties": {
+        "positionM": {
+          "$ref": "#/$defs/Vector3"
+        },
+        "rotationDeg": {
+          "$ref": "#/$defs/Vector3"
+        },
+        "scale": {
+          "$ref": "#/$defs/Vector3"
+        }
+      }
+    },
+    "Site": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "mode",
+        "transform",
+        "provenance"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "배치 내 부지 ID",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "description": "부지명",
+          "minLength": 1
+        },
+        "mode": {
+          "enum": [
+            "REAL",
+            "VIRTUAL"
+          ]
+        },
+        "transform": {
+          "$ref": "#/$defs/Transform"
+        },
+        "widthM": {
+          "type": "number",
+          "description": "폭 m",
+          "minimum": 0.001
+        },
+        "depthM": {
+          "type": "number",
+          "description": "깊이 m",
+          "minimum": 0.001
+        },
+        "geoAnchor": {
+          "$ref": "#/$defs/GeoAnchor"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      }
+    },
+    "GeoAnchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "crs",
+        "latitude",
+        "longitude",
+        "northYawDeg"
+      ],
+      "properties": {
+        "crs": {
+          "const": "EPSG:4326"
+        },
+        "latitude": {
+          "type": "number",
+          "description": "위도",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "description": "경도",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "northYawDeg": {
+          "type": "number",
+          "description": "북쪽 기준 방향"
+        },
+        "altitudeM": {
+          "type": "number",
+          "description": "고도"
+        }
+      }
+    },
+    "Factory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "siteId",
+        "name",
+        "transform",
+        "provenance"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Factory ID",
+          "minLength": 1
+        },
+        "siteId": {
+          "type": "string",
+          "description": "동일 리비전의 부지 ID",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "description": "공장명",
+          "minLength": 1
+        },
+        "transform": {
+          "$ref": "#/$defs/Transform"
+        },
+        "widthM": {
+          "type": "number",
+          "description": "폭m",
+          "minimum": 0.001
+        },
+        "depthM": {
+          "type": "number",
+          "description": "깊이m",
+          "minimum": 0.001
+        },
+        "heightM": {
+          "type": "number",
+          "description": "높이m",
+          "minimum": 0.001
+        },
+        "level": {
+          "type": "integer",
+          "description": "층"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      }
+    },
+    "Port": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "assetVersionId",
+        "kind",
+        "positionM",
+        "direction",
+        "provenance"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Port ID",
+          "minLength": 1
+        },
+        "assetVersionId": {
+          "type": "string",
+          "description": "모델버전",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "INPUT",
+            "OUTPUT",
+            "DOCK",
+            "UTILITY",
+            "CONTROL"
+          ]
+        },
+        "positionM": {
+          "$ref": "#/$defs/Vector3"
+        },
+        "direction": {
+          "$ref": "#/$defs/Vector3"
+        },
+        "capacity": {
+          "type": "number",
+          "description": "용량",
+          "minimum": 0.001
+        },
+        "unit": {
+          "type": "string",
+          "description": "개/m/kg 등",
+          "minLength": 1
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      }
+    },
+    "TransportResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "capacity",
+        "unit",
+        "availability"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "차량/운반자원",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "TRUCK",
+            "AGV",
+            "FORKLIFT",
+            "CONVEYOR",
+            "MANUAL"
+          ]
+        },
+        "assetVersionId": {
+          "type": "string",
+          "description": "외형 모델",
+          "minLength": 1
+        },
+        "capacity": {
+          "type": "number",
+          "description": "적재량",
+          "minimum": 0.001
+        },
+        "unit": {
+          "type": "string",
+          "description": "용량단위",
+          "minLength": 1
+        },
+        "speedMPerMinute": {
+          "type": "number",
+          "description": "속도",
+          "minimum": 0.001
+        },
+        "availability": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TimeWindow"
+          }
+        },
+        "homeNodeId": {
+          "type": "string",
+          "description": "대기위치",
+          "minLength": 1
+        }
+      }
+    },
+    "TimeWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "startMin",
+        "endMin"
+      ],
+      "properties": {
+        "startMin": {
+          "type": "number",
+          "description": "시작",
+          "minimum": 0
+        },
+        "endMin": {
+          "type": "number",
+          "description": "끝",
+          "minimum": 0
+        }
+      }
+    },
+    "WorkpieceState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "productId",
+        "stage",
+        "quantity",
+        "unit",
+        "provenance"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "상태ID",
+          "minLength": 1
+        },
+        "productId": {
+          "type": "string",
+          "description": "제품/부품",
+          "minLength": 1
+        },
+        "stage": {
+          "enum": [
+            "RAW",
+            "WIP",
+            "ASSEMBLED",
+            "INSPECTED",
+            "PACKAGED",
+            "DISPATCHED",
+            "REJECTED"
+          ]
+        },
+        "quantity": {
+          "type": "number",
+          "description": "수량",
+          "minimum": 0
+        },
+        "unit": {
+          "type": "string",
+          "description": "단위",
+          "minLength": 1
+        },
+        "assetVersionId": {
+          "type": "string",
+          "description": "표현 모델",
+          "minLength": 1
+        },
+        "anchorPortId": {
+          "type": "string",
+          "description": "앵커",
+          "minLength": 1
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      }
+    },
+    "MotionSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "assetVersionId",
+        "durationSec",
+        "tracks",
+        "provenance"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "동작버전",
+          "minLength": 1
+        },
+        "assetVersionId": {
+          "type": "string",
+          "description": "정확한 모델버전",
+          "minLength": 1
+        },
+        "durationSec": {
+          "type": "number",
+          "description": "초",
+          "minimum": 0.001
+        },
+        "tracks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/MotionTrack"
+          }
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      }
+    },
+    "MotionTrack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nodePath",
+        "kind",
+        "axis",
+        "pivotM",
+        "min",
+        "max",
+        "unit",
+        "keys"
+      ],
+      "properties": {
+        "nodePath": {
+          "type": "string",
+          "description": "실제 USD/GLB node path",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "TRANSLATE",
+            "ROTATE",
+            "MORPH",
+            "VISIBILITY"
+          ]
+        },
+        "axis": {
+          "$ref": "#/$defs/Vector3"
+        },
+        "pivotM": {
+          "$ref": "#/$defs/Vector3"
+        },
+        "min": {
+          "type": "number",
+          "description": "하한"
+        },
+        "max": {
+          "type": "number",
+          "description": "상한"
+        },
+        "unit": {
+          "enum": [
+            "m",
+            "deg",
+            "ratio",
+            "boolean"
+          ]
+        },
+        "keys": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/MotionKey"
+          }
+        }
+      }
+    },
+    "MotionKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "timeSec",
+        "value"
+      ],
+      "properties": {
+        "timeSec": {
+          "type": "number",
+          "description": "키 시간",
+          "minimum": 0
+        },
+        "value": {
+          "type": "number",
+          "description": "키값"
+        },
+        "easing": {
+          "enum": [
+            "LINEAR",
+            "STEP",
+            "SMOOTH"
+          ]
+        }
+      }
+    },
+    "RunSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "planRevisionId",
+        "layoutRevisionId",
+        "assetVersionIds",
+        "totalMinutes",
+        "seed"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "실행snapshot",
+          "minLength": 1
+        },
+        "planRevisionId": {
+          "type": "string",
+          "description": "고정계획",
+          "minLength": 1
+        },
+        "layoutRevisionId": {
+          "type": "string",
+          "description": "고정배치",
+          "minLength": 1
+        },
+        "assetVersionIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "고정모델버전",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "totalMinutes": {
+          "type": "number",
+          "description": "총시간",
+          "minimum": 0
+        },
+        "seed": {
+          "type": "integer",
+          "description": "시연결정seed"
+        },
+        "motionVersionIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "동작버전",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "RecordingJob": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "runSnapshotId",
+        "mode",
+        "format",
+        "fps",
+        "width",
+        "height",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "녹화job",
+          "minLength": 1
+        },
+        "runSnapshotId": {
+          "type": "string",
+          "description": "실행snapshot",
+          "minLength": 1
+        },
+        "mode": {
+          "enum": [
+            "REALTIME",
+            "FRAME_RENDER"
+          ]
+        },
+        "format": {
+          "enum": [
+            "WEBM",
+            "MP4"
+          ]
+        },
+        "fps": {
+          "type": "integer",
+          "description": "fps",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "width": {
+          "type": "integer",
+          "description": "px",
+          "minimum": 16,
+          "maximum": 7680
+        },
+        "height": {
+          "type": "integer",
+          "description": "px",
+          "minimum": 16,
+          "maximum": 4320
+        },
+        "status": {
+          "enum": [
+            "QUEUED",
+            "RECORDING",
+            "ENCODING",
+            "DONE",
+            "FAILED",
+            "CANCELLED"
+          ]
+        },
+        "artifactId": {
+          "type": "string",
+          "description": "결과파일",
+          "minLength": 1
+        },
+        "droppedFrames": {
+          "type": "integer",
+          "description": "누락프레임",
+          "minimum": 0
+        }
+      }
+    },
+    "ProcessBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectId",
+        "planId",
+        "planProcessId",
+        "registryProcessId",
+        "status"
+      ],
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "description": "프로젝트",
+          "minLength": 1
+        },
+        "planId": {
+          "type": "string",
+          "description": "계획",
+          "minLength": 1
+        },
+        "planProcessId": {
+          "type": "string",
+          "description": "계획공정",
+          "minLength": 1
+        },
+        "registryProcessId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "enum": [
+            "UNBOUND",
+            "EXPLICIT",
+            "VERIFIED"
+          ]
+        },
+        "evidenceIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "근거",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "EvidenceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "store",
+        "recordId",
+        "scope"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "통합조회 ID",
+          "minLength": 1
+        },
+        "store": {
+          "enum": [
+            "INSTANCE_DB",
+            "ASSET_FILE"
+          ]
+        },
+        "recordId": {
+          "type": "string",
+          "description": "원 저장소 ID",
+          "minLength": 1
+        },
+        "scope": {
+          "enum": [
+            "EQUIPMENT",
+            "ASSET",
+            "ASSET_VERSION"
+          ]
+        },
+        "equipmentId": {
+          "type": "string",
+          "description": "실물설비",
+          "minLength": 1
+        },
+        "assetId": {
+          "type": "string",
+          "description": "자산",
+          "minLength": 1
+        },
+        "assetVersionId": {
+          "type": "string",
+          "description": "버전",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "description": "원자료 enum 보존",
+          "minLength": 1
+        },
+        "displayKind": {
+          "type": "string",
+          "description": "화면 분류",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "description": "동일파일 비교",
+          "minLength": 1
+        },
+        "reviewStatus": {
+          "type": "string",
+          "description": "원 검토상태 보존",
+          "minLength": 1
+        }
+      }
+    },
+    "InfrastructureNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "parentType",
+        "parentId",
+        "kind",
+        "transform"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "인프라",
+          "minLength": 1
+        },
+        "parentType": {
+          "enum": [
+            "SITE",
+            "FACTORY"
+          ]
+        },
+        "parentId": {
+          "type": "string",
+          "description": "부모",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "WALL",
+            "FLOOR",
+            "AISLE",
+            "GATE",
+            "FENCE",
+            "DOCK",
+            "WAITING_AREA"
+          ]
+        },
+        "transform": {
+          "$ref": "#/$defs/Transform"
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "sourceId": {
+          "type": "string",
+          "description": "원 composer instance",
+          "minLength": 1
+        }
+      }
+    },
+    "ResourceReservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "resourceId",
+        "taskId",
+        "startMin",
+        "endMin",
+        "amount"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "예약",
+          "minLength": 1
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "실물/셀/차량/도크",
+          "minLength": 1
+        },
+        "taskId": {
+          "type": "string",
+          "description": "공정/운송task",
+          "minLength": 1
+        },
+        "startMin": {
+          "type": "number",
+          "description": "시작",
+          "minimum": 0
+        },
+        "endMin": {
+          "type": "number",
+          "description": "끝",
+          "minimum": 0
+        },
+        "amount": {
+          "type": "number",
+          "description": "용량점유",
+          "minimum": 0.001
+        }
+      }
+    },
+    "Zone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "factoryId",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "구역",
+          "minLength": 1
+        },
+        "factoryId": {
+          "type": "string",
+          "description": "공장",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "description": "이름",
+          "minLength": 1
+        },
+        "footprint": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "$ref": "#/$defs/Vector3"
+          }
+        }
+      }
+    },
+    "Cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "factoryId",
+        "name",
+        "capacity"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "셀",
+          "minLength": 1
+        },
+        "factoryId": {
+          "type": "string",
+          "description": "공장",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "description": "이름",
+          "minLength": 1
+        },
+        "zoneId": {
+          "type": "string",
+          "description": "선택구역",
+          "minLength": 1
+        },
+        "capacity": {
+          "type": "integer",
+          "description": "동시작업용량",
+          "minimum": 1
+        },
+        "placementIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "배치ID",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

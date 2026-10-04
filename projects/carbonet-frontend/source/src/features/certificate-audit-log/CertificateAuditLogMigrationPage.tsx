@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -261,13 +262,12 @@ export function CertificateAuditLogMigrationPage() {
             />
           </div>
           <form
-            className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-4"
+            className="ccus-search-host"
             onSubmit={(event) => {
               event.preventDefault();
               applyFilters(1);
             }}
-          >
-            <div className="md:col-span-2">
+          ><CommonSearchSection basic={<><div className="ccus-search-field"><div className="md:col-span-2">
               <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Keyword" : "검색어"}</span>
               <AdminInput
                 id="searchKeyword"
@@ -275,8 +275,16 @@ export function CertificateAuditLogMigrationPage() {
                 value={draftFilters.searchKeyword}
                 onChange={(event) => updateDraft("searchKeyword", event.target.value)}
               />
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
+              <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Status" : "처리 상태"}</span>
+              <AdminSelect id="status" value={draftFilters.status} onChange={(event) => updateDraft("status", event.target.value)}>
+                <option value="ALL">{en ? "All" : "전체"}</option>
+                <option value="PENDING">{en ? "Pending" : "검토 대기"}</option>
+                <option value="APPROVED">{en ? "Approved" : "승인"}</option>
+                <option value="REJECTED">{en ? "Rejected" : "반려"}</option>
+              </AdminSelect>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Request Type" : "요청 유형"}</span>
               <AdminSelect id="auditType" value={draftFilters.auditType} onChange={(event) => updateDraft("auditType", event.target.value)}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -285,17 +293,8 @@ export function CertificateAuditLogMigrationPage() {
                 <option value="RENEW">{en ? "Renewal" : "갱신"}</option>
                 <option value="REVOKE">{en ? "Revocation" : "폐기"}</option>
               </AdminSelect>
-            </div>
-            <div>
-              <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Status" : "처리 상태"}</span>
-              <AdminSelect id="status" value={draftFilters.status} onChange={(event) => updateDraft("status", event.target.value)}>
-                <option value="ALL">{en ? "All" : "전체"}</option>
-                <option value="PENDING">{en ? "Pending" : "검토 대기"}</option>
-                <option value="APPROVED">{en ? "Approved" : "승인"}</option>
-                <option value="REJECTED">{en ? "Rejected" : "반려"}</option>
-              </AdminSelect>
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Certificate Type" : "인증서 종류"}</span>
               <AdminSelect id="certificateType" value={draftFilters.certificateType} onChange={(event) => updateDraft("certificateType", event.target.value)}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -303,33 +302,20 @@ export function CertificateAuditLogMigrationPage() {
                 <option value="JOINT">{en ? "Joint" : "공동인증서"}</option>
                 <option value="CLOUD">{en ? "Cloud" : "클라우드 인증서"}</option>
               </AdminSelect>
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Start Date" : "시작일"}</span>
               <AdminInput id="startDate" type="date" value={draftFilters.startDate} onChange={(event) => updateDraft("startDate", event.target.value)} />
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "End Date" : "종료일"}</span>
               <AdminInput id="endDate" type="date" value={draftFilters.endDate} onChange={(event) => updateDraft("endDate", event.target.value)} />
-            </div>
-            <div className="md:col-span-4">
-              <div className="flex flex-col gap-3 border-t border-[var(--kr-gov-border-light)] pt-5 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
-                  {en
-                    ? `Latest audit event: ${stringOf(page as Record<string, unknown>, "lastUpdated") || "-"}`
-                    : `최신 감사 시각: ${stringOf(page as Record<string, unknown>, "lastUpdated") || "-"}`}
-                </p>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <MemberButton onClick={resetFilters} type="button" variant="secondary">
+            </div></div></>} actions={<><MemberButton onClick={resetFilters} type="button" variant="secondary">
                     {en ? "Reset" : "초기화"}
                   </MemberButton>
-                  <MemberButton icon="search" type="submit" variant="primary">
+<MemberButton icon="search" type="submit" variant="primary">
                     {en ? "Search" : "검색"}
-                  </MemberButton>
-                </div>
-              </div>
-            </div>
-          </form>
+                  </MemberButton></>}></CommonSearchSection></form>
         </section>
 
         <section className="space-y-4" data-help-id="certificate-audit-log-summary">

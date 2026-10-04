@@ -1,0 +1,717 @@
+{
+  "result": {
+    "existing_assets": 666,
+    "generated_assets": 58,
+    "final_assets": 724,
+    "missing": 0,
+    "valid_usd": 724,
+    "invalid_usd": 0,
+    "previews": 724,
+    "catalog_registered": 724,
+    "files_created": 116,
+    "files_modified": 3,
+    "generation_method": "Existing Entry USD schema plus procedural conceptual USD; no source geometry copied",
+    "blockers": [
+      "58 conceptual/generated, not manufacturer CAD replicas",
+      "previews are reference previews, not RTX captures"
+    ]
+  },
+  "assets": [
+    {
+      "id": "A112",
+      "name": "연속 주조기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A112.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A113",
+      "name": "원심 주조기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A113.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A114",
+      "name": "저압 주조기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A114.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A117",
+      "name": "빌릿 유도가열기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A117.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A133",
+      "name": "유도 표면 경화기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A133.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A135",
+      "name": "열간 등방압 프레스",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A135.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A136",
+      "name": "냉간 등방압 프레스",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A136.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A143",
+      "name": "탄소섬유 오토클레이브",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A143.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A344",
+      "name": "증기 보일러",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A344.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A346",
+      "name": "열매체유 히터",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A346.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A355",
+      "name": "수전해 수소 발생기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A355.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A360",
+      "name": "가스 기화기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A360.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A365",
+      "name": "재생식 축열 산화장치",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A365.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A393",
+      "name": "폭발 격리 밸브 시스템",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A393.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A472",
+      "name": "웨이퍼 세정 웨트벤치",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A472.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A473",
+      "name": "웨이퍼 스핀 린스 드라이어",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A473.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A474",
+      "name": "웨이퍼 CMP 장비",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A474.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A475",
+      "name": "웨이퍼 노광 스캐너",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A475.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A476",
+      "name": "레지스트 코터 디벨로퍼",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A476.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A477",
+      "name": "플라즈마 식각기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A477.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A478",
+      "name": "이온 주입기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A478.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A479",
+      "name": "에피택시 성장 장비",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A479.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A480",
+      "name": "원자층 증착기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A480.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A481",
+      "name": "화학기상 증착기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A481.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A482",
+      "name": "급속 열처리 장비",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A482.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A483",
+      "name": "웨이퍼 프로버",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A483.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A484",
+      "name": "반도체 자동 테스트 장비",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A484.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A485",
+      "name": "테스트 핸들러",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A485.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A487",
+      "name": "다이 어태치 본더",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A487.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A488",
+      "name": "와이어 본더",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A488.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A489",
+      "name": "플립칩 본더",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A489.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A490",
+      "name": "하이브리드 본더",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A490.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A492",
+      "name": "패키지 싱귤레이션 장비",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A492.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A493",
+      "name": "웨이퍼 백그라인더",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A493.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A494",
+      "name": "웨이퍼 다이싱쏘",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A494.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A495",
+      "name": "웨이퍼 테이프 마운터",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A495.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A496",
+      "name": "웨이퍼 디본더",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A496.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A498",
+      "name": "SMT 스텐실 프린터",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A498.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A499",
+      "name": "솔더페이스트 검사기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A499.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A500",
+      "name": "SMT 마운터",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A500.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A504",
+      "name": "PCB 인서킷 테스터",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A504.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A506",
+      "name": "PCB 컨포멀 코팅기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A506.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A517",
+      "name": "전극 노칭기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A517.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A519",
+      "name": "전지 스태킹기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A519.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A521",
+      "name": "젤리롤 삽입기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A521.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A522",
+      "name": "전해액 진공 주입기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A522.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A524",
+      "name": "셀 포메이션 충방전기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A524.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A531",
+      "name": "배터리 열폭주 시험챔버",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A531.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A532",
+      "name": "배터리 파우치 성형기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A532.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A533",
+      "name": "전극 건식 코팅 라인",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A533.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A534",
+      "name": "전극 웹 비접촉 중량계",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A534.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A536",
+      "name": "배터리 방전 안전 스테이션",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A536.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A558",
+      "name": "고압 식품 처리기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A558.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A579",
+      "name": "제약용 무균 아이솔레이터",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A579.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A582",
+      "name": "무균 바이알 충전 마개기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A582.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A583",
+      "name": "앰플 충전 밀봉기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A583.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A584",
+      "name": "프리필드 시린지 충전기",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A584.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    },
+    {
+      "id": "A587",
+      "name": "증기 멸균 오토클레이브",
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/A587.usda",
+      "prim": "/Asset",
+      "method": "GENERATED_CONCEPTUAL_PROCEDURAL",
+      "validation": {
+        "fileExists": true,
+        "defaultPrim": true,
+        "equipmentPrim": true
+      }
+    }
+  ]
+}

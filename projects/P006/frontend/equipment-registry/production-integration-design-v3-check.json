@@ -1,0 +1,43 @@
+{
+  "scope": "DESIGN_ARTIFACT_CHECK_ONLY",
+  "status": "PASS",
+  "coverage": {
+    "requirements": 107,
+    "staticControls": 212,
+    "explicitStaticMappings": 212,
+    "unmappedStaticControls": 0,
+    "processScenarios": 90,
+    "requirementsWithScenario": 107,
+    "supplementalScenarios": 50,
+    "newServerScenarios": 8,
+    "extensionSchemas": 21,
+    "runtimeTestsExecuted": 0,
+    "endpointVerification": "SOURCE_DECLARATIONS_ONLY",
+    "databaseVerification": "DDL_FILES_ONLY_NOT_INSTALLED_SCHEMA",
+    "overall": "DESIGN_GAPS_REDUCED_NOT_RUNTIME_CERTIFIED"
+  },
+  "checks": [
+    "212 control mappings present and IDs valid",
+    "107 requirements have linked process scenarios",
+    "50 supplemental and 8 new scenarios",
+    "original snapshot identifiers retained"
+  ],
+  "generatedAt": "2026-10-01T04:27:41.144Z",
+  "files": [
+    {
+      "file": "production-integration-design-v3.html",
+      "bytes": 219147,
+      "sha256": "996278202f536cc525535d9e5701c93786432a659a8dab291d212a976a678ec5"
+    },
+    {
+      "file": "production-integration-design-v3.json",
+      "bytes": 489176,
+      "sha256": "528de74a89e5e437500752f48652c2ec9ea45309edd61f324139ab9f256eb8f9"
+    },
+    {
+      "file": "production-integration-extensions-v3.schema.json",
+      "bytes": 20907,
+      "sha256": "702de83c157659426c8ad8108605f781ed5eb689c084486f184c6126905c6aa4"
+    }
+  ]
+}

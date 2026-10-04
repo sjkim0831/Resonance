@@ -1,0 +1,43 @@
+<!doctype html><meta charset="utf-8"><title>P006 Animation Showcase</title>
+<style>body{margin:0;background:#101820;color:#eef;font:14px system-ui}header{padding:10px;background:#183247;display:flex;gap:8px;align-items:center;flex-wrap:wrap}select,button{padding:7px;border-radius:4px;border:1px solid #5c7890;background:#233d50;color:#fff}#status{margin-left:auto;font-family:monospace;font-size:12px}main{height:calc(100vh - 62px);position:relative}canvas{width:100%;height:100%;display:block}#hint{position:absolute;left:12px;bottom:12px;background:#000b;padding:8px;font-family:monospace;white-space:pre-line}.ok{color:#74f59a}.bad{color:#ff907b}</style>
+<header><b>P006 Static Animation Showcase</b><select id="asset"></select><select id="contract"></select><button id="play">▶ PLAY</button><button id="pause">⏸ PAUSE</button><button id="resume">▶ RESUME</button><button id="stop">■ STOP/RESET</button><span id="status">LOADING</span></header><main><canvas id="view"></canvas><div id="hint">Production GLB → Contract → runtime.mjs → Controller.bind → visible mutation</div></main>
+<script type="module">
+import * as THREE from '/projects/P006/assets/3d-derived/vendor/three.module.js?v=20260913';
+import {GLTFLoader} from '/projects/P006/assets/3d-derived/vendor/GLTFLoader.js?v=20260913';
+const runtimeSource=await (await fetch('/projects/P006/assets/functional-simulation/runtime.mjs?showcase=1')).text();
+const {MotionController}=await import(URL.createObjectURL(new Blob([runtimeSource],{type:'text/javascript'})));
+const base='/projects/P006/assets', $=id=>document.getElementById(id), assetSel=$('asset'), contractSel=$('contract'), status=$('status'); const nativeFetch=window.fetch.bind(window); window.fetch=(u,...args)=>{if(typeof u==='string'&&u.includes(base+base))u=u.slice(u.indexOf(base,base.length)); return nativeFetch(u,...args)};
+const renderer=new THREE.WebGLRenderer({canvas:$('view'),antialias:true}); renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x172532); const camera=new THREE.PerspectiveCamera(45,1,.1,5000); camera.position.set(8,6,10); const root=new THREE.Group(); scene.add(root); scene.add(new THREE.HemisphereLight(0xffffff,0x334455,2.2)); const dl=new THREE.DirectionalLight(0xffffff,3); dl.position.set(5,10,6); scene.add(dl);
+const loader=new GLTFLoader(); let master,byId,sceneObj=null,controller=null,active=null,lastSnapshot=null,playing=false,last=performance.now();
+function resize(){const r=$('view').getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix()} addEventListener('resize',resize);
+function snap(o){const a=[];o.traverse(x=>a.push({p:x.position.clone(),q:x.quaternion.clone(),s:x.scale.clone(),v:x.visible,ms:(Array.isArray(x.material)?x.material:(x.material?[x.material]:[])).map(m=>({c:m.color?.clone(),e:m.emissive?.clone(),i:m.emissiveIntensity,v:m.visible}))}));return a}
+function changed(a,b){return JSON.stringify(a.map(x=>[x.p.toArray(),x.q.toArray(),x.s.toArray(),x.v,x.ms.map(m=>[m.c?.toArray(),m.e?.toArray(),m.i,m.v])]))!==JSON.stringify(b.map(x=>[x.p.toArray(),x.q.toArray(),x.s.toArray(),x.v,x.ms.map(m=>[m.c?.toArray(),m.e?.toArray(),m.i,m.v])]))}
+function listContracts(){const a=byId.get(assetSel.value);contractSel.replaceChildren(...(a?.animationContracts||[]).map((c,i)=>new Option(`${c.animationClass||c.motionType||'STATE'} · ${c.contractId}`,String(i))));active=a?.animationContracts?.[0]||null}
+let loadSequence=0;
+async function loadAsset(){
+ const sequence=++loadSequence;playing=false;controller?.cleanup();controller=null;root.clear();sceneObj=null;
+ const a=byId.get(assetSel.value);const url=base+'/3d-derived/'+encodeURIComponent(a.assetId)+'.glb';
+ for(const id of ['play','pause','resume','stop'])$(id).disabled=true;
+ status.textContent='GLB_LOADING';
+ try {
+ const res=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(20000)});if(!res.ok)throw Error('GLB HTTP '+res.status);
+ const bytes=await res.arrayBuffer();const g=await loader.parseAsync(bytes,url.slice(0,url.lastIndexOf('/')+1));if(sequence!==loadSequence)return;
+ sceneObj=g.scene;root.add(sceneObj);lastSnapshot=snap(sceneObj);
+ const box=new THREE.Box3().setFromObject(sceneObj),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3()),d=Math.max(size.x,size.y,size.z,1)*2.2;camera.position.set(center.x+d,center.y+d*.7,center.z+d);camera.lookAt(center);
+ const derived=/VISUAL_MOTION_COMPONENT|VISUAL_ARTICULATED|DERIVED/i.test(active?.representationClass||'')||/^visual/i.test(active?.targetNode||'');
+ const exact=active?.targetNode&&sceneObj.getObjectByName(active.targetNode);
+ const mechanical=/MECHANICAL|ROTATION|LINEAR|CONVEYOR|ROBOT|VALVE/i.test((active?.animationClass||'')+' '+(active?.motionType||''));
+ const allowed=active&&!derived&&(!mechanical||exact);
+ if(allowed){controller=new MotionController();controller.bind(a.assetId,sceneObj,active);}
+ const bound=controller?.bindings.has(a.assetId)||false;
+ for(const id of ['play','pause','resume','stop'])$(id).disabled=!bound;
+ status.textContent=bound?'READY · SOURCE MODEL':'원본 표시 · 추가 가동부 애니메이션 제외';
+ $('hint').textContent=a.assetId+' · '+a.assetName+'\n'+url+'\n'+(bound?'대상: '+(active.targetNode||'visual state'):'원본에 없는 추가 가동부는 표시·재생하지 않습니다.');
+ }catch(e){if(sequence===loadSequence)status.textContent='ERROR · '+e.message;}
+}
+function play(){if(!controller||!sceneObj)return;lastSnapshot=snap(sceneObj);controller.play();playing=true;status.textContent='PLAYING';} function pause(){controller?.pause();playing=false;status.textContent='PAUSED'} function resume(){controller?.resume();playing=true;status.textContent='PLAYING'} function stop(){controller?.stop();playing=false;status.textContent='STOP_RESET'}
+assetSel.onchange=()=>{listContracts();loadAsset()}; contractSel.onchange=()=>{active=byId.get(assetSel.value)?.animationContracts?.[Number(contractSel.value)]||null;loadAsset()}; $('play').onclick=play;$('pause').onclick=pause;$('resume').onclick=resume;$('stop').onclick=stop;
+function frame(t){requestAnimationFrame(frame);const dt=Math.min(.1,(t-last)/1000);last=t;if(playing&&controller&&sceneObj){const before=snap(sceneObj);controller.tick(dt);const after=snap(sceneObj);if(changed(before,after))status.textContent='PLAYING · VISIBLE_MUTATION';}renderer.render(scene,camera)}
+master=await (await fetch(base+'/functional-simulation/master-724.json?showcase=1')).json();byId=new Map(master.assets.map(a=>[a.assetId,a]));const priority=['ROBOT_SEQUENCE','ROTATION','CONVEYOR','LINEAR','VALVE_OPEN_CLOSE'];const ordered=[...master.assets].sort((a,b)=>{const rank=x=>{const c=x.animationContracts?.[0];return priority.indexOf(String(c?.motionType||'').toUpperCase())<0?99:priority.indexOf(String(c.motionType).toUpperCase())};return rank(a)-rank(b)});assetSel.replaceChildren(...ordered.map(a=>new Option(`${a.assetId} · ${a.assetName}`,a.assetId)));assetSel.value='A092';listContracts();resize();await loadAsset();requestAnimationFrame(frame);
+</script>

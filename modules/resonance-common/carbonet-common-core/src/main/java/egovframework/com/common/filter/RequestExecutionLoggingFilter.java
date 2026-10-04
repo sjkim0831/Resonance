@@ -45,6 +45,7 @@ public class RequestExecutionLoggingFilter extends OncePerRequestFilter {
     private final EmployeeMemberRepository employeeMemberRepository;
     private final EnterpriseMemberRepository enterpriseMemberRepository;
     private final ProjectRuntimeContext projectRuntimeContext;
+    private final egovframework.com.common.trace.TraceEventService traceEventService;
 
     public RequestExecutionLoggingFilter(RequestExecutionLogService requestExecutionLogService,
                                          AccessEventService accessEventService,
@@ -54,6 +55,19 @@ public class RequestExecutionLoggingFilter extends OncePerRequestFilter {
                                          EmployeeMemberRepository employeeMemberRepository,
                                          EnterpriseMemberRepository enterpriseMemberRepository,
                                          ProjectRuntimeContext projectRuntimeContext) {
+        this(requestExecutionLogService, accessEventService, auditTrailService, jwtTokenProvider,
+                authGroupManageService, employeeMemberRepository, enterpriseMemberRepository, projectRuntimeContext, null);
+    }
+
+    public RequestExecutionLoggingFilter(RequestExecutionLogService requestExecutionLogService,
+                                         AccessEventService accessEventService,
+                                         AuditTrailService auditTrailService,
+                                         JwtTokenProvider jwtTokenProvider,
+                                         AuthGroupManageService authGroupManageService,
+                                         EmployeeMemberRepository employeeMemberRepository,
+                                         EnterpriseMemberRepository enterpriseMemberRepository,
+                                         ProjectRuntimeContext projectRuntimeContext,
+                                         egovframework.com.common.trace.TraceEventService traceEventService) {
         this.requestExecutionLogService = requestExecutionLogService;
         this.accessEventService = accessEventService;
         this.auditTrailService = auditTrailService;
@@ -62,6 +76,7 @@ public class RequestExecutionLoggingFilter extends OncePerRequestFilter {
         this.employeeMemberRepository = employeeMemberRepository;
         this.enterpriseMemberRepository = enterpriseMemberRepository;
         this.projectRuntimeContext = projectRuntimeContext;
+        this.traceEventService = traceEventService;
     }
 
     @Override
@@ -80,8 +95,20 @@ public class RequestExecutionLoggingFilter extends OncePerRequestFilter {
                 RequestExecutionLogVO item = buildLog(request, response, startedAt, failure);
                 TraceContext traceContext = TraceContextHolder.get();
                 requestExecutionLogService.append(item);
-                accessEventService.recordRequestLog(item, traceContext);
-                recordApiAuditIfNeeded(item, request, traceContext);
+                boolean aggregateStored = failure == null
+                        && (safeString(item.getCompanyScopeDecision()).isEmpty()
+                            || "NOT_REQUIRED".equals(item.getCompanyScopeDecision())
+                            || ("ANONYMOUS".equals(item.getCompanyScopeDecision())
+                                && (request.getCookies() == null || request.getCookies().length == 0)))
+                        && safeString(item.getCompanyScopeReason()).isEmpty()
+                        && traceEventService != null
+                        && traceEventService.tryAggregateTechnicalRequest(traceContext,
+                            response.getStatus() >= 200 && response.getStatus() < 300 ? "SUCCESS" : "HTTP_ERROR",
+                            (int) Math.min(Integer.MAX_VALUE, item.getDurationMs()), response.getStatus());
+                if (!aggregateStored) {
+                    accessEventService.recordRequestLog(item, traceContext);
+                    recordApiAuditIfNeeded(item, request, traceContext);
+                }
             } catch (Exception e) {
                 log.warn("Failed to append request execution log. uri={}", request.getRequestURI(), e);
             }

@@ -1,0 +1,20 @@
+{
+  "version": "2026-10-01.1",
+  "scope": "탄소배출 관리 메뉴 중복 방지 및 기능 배치",
+  "status": "design-decision-not-feature-completion",
+  "assignment": {
+    "placement": "각 업무의 담당자 데이터 필드 검색 팝업",
+    "standaloneMenu": false,
+    "requirements": ["프로젝트·기업 접근범위 내 계정 검색", "해당 업무 역할 수행 가능 계정만 선택", "저장 시 서버가 범위와 역할 재검증", "선택된 담당자와 변경 이력 보존"]
+  },
+  "placements": [
+    {"feature":"자료 수집·측정 계획","menuCode":"H1020202","path":"/emission/data-request","placement":"요청 작성의 수집 계획 영역","fields":["배출원·사업장","자료 항목","측정·수집 방법","단위","수집 주기","제출 기한","담당자 검색 팝업","증빙 요구사항"],"newMenu":false},
+    {"feature":"기준연도·재산정 관리","menuCode":"H1020304","path":"/emission/correction","placement":"기준연도 재산정 유형/탭","fields":["기준연도","기존 확정 버전","변경 사유","조직경계 변경","재산정 대상","전후 비교","검토·승인 근거"],"newMenu":false,"note":"감축 관리의 목표 설정용 기준연도와 동일한 기능으로 단정하지 않는다. 배출 인벤토리 재산정은 이 경로에서 관리하도록 설계한다."},
+    {"feature":"계측기·교정 이력","menuCode":"H1020206","path":"/home/emission/source-register","placement":"시설 상세의 계측기·교정 탭","fields":["계측기 ID","연결 배출원","측정 항목·단위","교정일","유효기간","교정 증빙"],"newMenu":false},
+    {"feature":"불확도·데이터 품질","menuCode":"H1020303","path":"/emission/data-validation","placement":"품질 검증 영역","fields":["누락·추정 여부","검증 규칙","불확도 산정 방법·근거","오류·보완 항목","검토 결과"],"newMenu":false},
+    {"feature":"변경·승인 이력","menuCode":null,"path":null,"placement":"각 프로젝트/업무 상세의 공통 이력 탭","fields":["변경자","시간","전후 버전","변경 사유","승인자","결정"],"newMenu":false}
+  ],
+  "menuAudit": {"activeLeafCount":20,"duplicateNames":0,"duplicateUrls":0,"added":0,"deactivated":0},
+  "implementationStatus": "메뉴 중복 검사와 설계 배치 결정 완료. 표기된 하위 기능의 구현·저장·권한 E2E 완료를 의미하지 않는다.",
+  "rule": "기존 업무의 입력·상세·검증·이력 기능은 하위 영역으로 배치한다. 별도의 목적·입출력·실행 가능한 페이지가 확인된 독립 업무에만 신규 메뉴를 만든다."
+}

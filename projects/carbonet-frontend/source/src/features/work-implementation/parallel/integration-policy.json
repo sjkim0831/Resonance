@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "integrator": "총괄 통합 담당",
+  "protectedPaths": [
+    "pom.xml",
+    "apps/carbonet-api/pom.xml",
+    "apps/carbonet-api/src/main/resources/db/migration",
+    "projects/carbonet-frontend/source/src/app/routes",
+    "projects/carbonet-frontend/source/src/lib/api",
+    "projects/carbonet-frontend/source/src/features/admin-entry",
+    "projects/carbonet-frontend/source/src/features/work-implementation/parallel",
+    "projects/carbonet-frontend/source/src/features/emission-carbon-workflow/EmissionCarbonWorkflowPages.tsx",
+    "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/service/EmissionProjectRegistryService.java",
+    "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/web/EmissionProjectRegistryController.java"
+  ],
+  "requiredChecks": [
+    "unit",
+    "build",
+    "businessFlow"
+  ],
+  "sharedPermissions": [],
+  "contracts": [
+    {
+      "id": "project-context",
+      "version": "1",
+      "status": "PROPOSED",
+      "fields": [
+        "projectId",
+        "siteId",
+        "tenantId(server context)"
+      ]
+    },
+    {
+      "id": "activity-snapshot",
+      "version": "1",
+      "status": "PROPOSED",
+      "fields": [
+        "projectId",
+        "siteId",
+        "submissionId",
+        "version"
+      ]
+    }
+  ]
+}

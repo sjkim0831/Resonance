@@ -1,0 +1,110 @@
+{
+  "tests": [
+    {
+      "name": "AUTHENTICATED_PAGE",
+      "pass": true
+    },
+    {
+      "name": "INITIAL_TYPES_16",
+      "pass": true
+    },
+    {
+      "name": "CUSTOMER_UI_CREATE",
+      "pass": true
+    },
+    {
+      "name": "HIERARCHY_UI_CREATE",
+      "pass": true
+    },
+    {
+      "name": "EQUIPMENT_UI_CREATE_REFERENCE",
+      "pass": true
+    },
+    {
+      "name": "REFERENCE_EXPLICIT_BIND_UI",
+      "pass": true
+    },
+    {
+      "name": "RELOAD_PERSISTENCE",
+      "pass": true
+    },
+    {
+      "name": "IMAGE_EXPAND_ACTUAL_RENDER",
+      "pass": true
+    },
+    {
+      "name": "IMAGE_CLOSE_NO_RESIDUE",
+      "pass": true
+    },
+    {
+      "name": "EVIDENCE_UNREVIEWED",
+      "pass": true
+    },
+    {
+      "name": "PROTECTED_EVIDENCE_DOWNLOAD",
+      "pass": true
+    },
+    {
+      "name": "EDIT_INVALIDATES_ACCEPTANCE",
+      "pass": true
+    },
+    {
+      "name": "EDIT_VALUE_PERSISTED",
+      "pass": true
+    },
+    {
+      "name": "IMPORT_DRYRUN_UI",
+      "pass": true
+    },
+    {
+      "name": "IMPORT_COMMIT_UI",
+      "pass": true
+    },
+    {
+      "name": "TWO_CUSTOMERS_SHARE_ONE_ASSET",
+      "pass": true
+    },
+    {
+      "name": "CUSTOMER_FILTER_UI",
+      "pass": true
+    },
+    {
+      "name": "LIBRARY_SEARCH_IMAGE",
+      "pass": true
+    },
+    {
+      "name": "HTTP_CSRF_DENIED",
+      "pass": true
+    },
+    {
+      "name": "HTTP_UNAUTHENTICATED_401",
+      "pass": true
+    },
+    {
+      "name": "EVIDENCE_UNAUTHENTICATED_401",
+      "pass": true
+    },
+    {
+      "name": "MOBILE_NO_BODY_OVERFLOW",
+      "pass": true
+    },
+    {
+      "name": "NO_BROWSER_JS_ERRORS",
+      "pass": true
+    }
+  ],
+  "fixtureCustomerIds": [
+    "ebc1be79-9c0c-44fb-8a7c-dbc025bd3b50",
+    "53a70f9e-105a-4b4c-a9ac-9aa4daccab86"
+  ],
+  "fixtureEquipmentIds": [
+    "0b6e2696-8ef7-47a0-a8f5-337a8d526a8a"
+  ],
+  "mocked": false,
+  "actor": "existing P006 project administrator",
+  "operationalEvidenceCreated": false,
+  "browserErrors": [],
+  "elapsedSeconds": 6.575,
+  "passed": 23,
+  "total": 23
+}

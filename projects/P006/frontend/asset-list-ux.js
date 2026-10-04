@@ -2,7 +2,7 @@ function mountAssetListUx(){
   const panel=document.querySelector('[data-factory-composer]');
   if(!panel||panel.dataset.factoryComposer!=='ready'||panel.dataset.listUx)return;
   panel.dataset.listUx='ready';panel.classList.add('composer-mode-recommend');
-  const tabs=document.createElement('nav');tabs.className='composer-view-tabs';tabs.innerHTML='<button type="button" class="active" data-composer-view="recommend">추천 설비</button><button type="button" data-composer-view="catalog">전체 1,070개</button>';
+  const tabs=document.createElement('nav');tabs.className='composer-view-tabs';tabs.innerHTML='<button type="button" class="active" data-composer-view="recommend">추천 설비</button><button type="button" data-composer-view="catalog">전체 724개</button>';
   panel.querySelector('header')?.after(tabs);
   const activate=mode=>{panel.classList.toggle('composer-mode-recommend',mode==='recommend');panel.classList.toggle('composer-mode-catalog',mode==='catalog');tabs.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x.dataset.composerView===mode));requestAnimationFrame(()=>{const scope=mode==='recommend'?panel.querySelector('[data-recommend-grid]'):panel.querySelector('[data-catalog-grid]');scope?.querySelectorAll('img').forEach((img,index)=>{img.loading=index<8?'eager':'lazy';img.decoding='async';img.fetchPriority=index<4?'high':'low'})})};
   tabs.onclick=event=>{const button=event.target.closest('[data-composer-view]');if(button)activate(button.dataset.composerView)};

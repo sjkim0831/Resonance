@@ -1,0 +1,37 @@
+{
+  "status": "MVP_LAYOUT_E2E_PASS",
+  "scope": "2D thumbnail editor with 3D coordinates; not USD/RTX scene rendering",
+  "url": "http://172.16.1.232/projects/P006/assets/equipment-registry/composer.html?layout=b327100a-6ad1-4011-9d8d-1a4c973e65eb",
+  "catalog": 724,
+  "usdConnected": 666,
+  "imageAvailable": 666,
+  "noPreview": 58,
+  "registry": 62,
+  "preservedMatching": {
+    "REFERENCE_MATCH": 36,
+    "EXISTING_ASSET_MODIFICATION": 6,
+    "EQUIPMENT_INFO_REQUIRED": 20
+  },
+  "tests": {
+    "API": 51,
+    "browserMVP": 36,
+    "browserFinal": 16,
+    "preservationAndImages": 5,
+    "intakeRegression": 71
+  },
+  "relationshipTypes": 8,
+  "relationshipRules": 1491,
+  "parametricTemplates": 12,
+  "newAssets": 0,
+  "sourceUsdWrites": 0,
+  "removedFailedQaLayouts": [
+    "81324524-2285-4cc2-bbba-cf1366fcf56a",
+    "908615cf-4c71-4ce6-b5c0-dd503aa5e33e"
+  ],
+  "recoveryBackup": "/opt/Resonance/projects/P006/runtime/equipment-registry/backups/composer-20260910-194637",
+  "deploymentSeconds": 0.24,
+  "browserE2ESeconds": 6.283,
+  "finalBrowserSeconds": 15.33,
+  "totalTests": 179,
+  "artifactBytes": 818221
+}

@@ -1,0 +1,519 @@
+{
+  "seconds": 0.0780339241027832,
+  "baseFiles": 1,
+  "baseMode": "DERIVED_FROM_E234_CASE",
+  "newGeometryBaseCount": 0,
+  "configurationLibraries": 1,
+  "assets": [
+    {
+      "id": "N161",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/N161",
+      "size": [
+        0.18000000715255732,
+        0.14000000059604645,
+        0.11999999740719794
+      ],
+      "form": "din",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "N163",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/N163",
+      "size": [
+        0.10000000149011612,
+        0.25,
+        0.18000000728666782
+      ],
+      "form": "drive",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "N164",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/N164",
+      "size": [
+        0.14000000059604645,
+        0.14000000059604645,
+        0.11999999740719794
+      ],
+      "form": "din",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A060",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A060",
+      "size": [
+        0.43999999794364,
+        0.08799999952316284,
+        0.34999999443069096
+      ],
+      "form": "rack",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A298",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A298",
+      "size": [
+        0.07199999690055847,
+        0.10000000149011612,
+        0.07500000303611157
+      ],
+      "form": "din",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A309",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A309",
+      "size": [
+        0.3199999928474426,
+        0.23999999463558197,
+        0.07000000044927002
+      ],
+      "form": "panel",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A310",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A310",
+      "size": [
+        0.10000000149011617,
+        0.14000000059604645,
+        0.10000000156462198
+      ],
+      "form": "din",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A311",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A311",
+      "size": [
+        0.09000000357627866,
+        0.1400000005960464,
+        0.10000000156462192
+      ],
+      "form": "din",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A312",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A312",
+      "size": [
+        0.43999999794363975,
+        0.04399999976158142,
+        0.25999999075382946
+      ],
+      "form": "rack",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A313",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A313",
+      "size": [
+        0.10000000149011617,
+        0.14000000059604645,
+        0.10000000156462198
+      ],
+      "form": "din",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A314",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A314",
+      "size": [
+        0.09000000357627866,
+        0.1400000005960464,
+        0.10000000156462192
+      ],
+      "form": "din",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A315",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A315",
+      "size": [
+        0.1599999964237213,
+        0.10000000149011612,
+        0.05999999878853559
+      ],
+      "form": "panel",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A316",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A316",
+      "size": [
+        0.12999999523162842,
+        0.054999999701976804,
+        0.045000001821666955
+      ],
+      "form": "din",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A318",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A318",
+      "size": [
+        0.07999999821186063,
+        0.12999999523162842,
+        0.09000000364333391
+      ],
+      "form": "din",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A320",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A320",
+      "size": [
+        0.10000000149011617,
+        0.14000000059604645,
+        0.10000000156462198
+      ],
+      "form": "din",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A321",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A321",
+      "size": [
+        0.14000000059604645,
+        0.11999999731779099,
+        0.09000000364333388
+      ],
+      "form": "din",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A326",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A326",
+      "size": [
+        0.15999999642372126,
+        0.10999999940395355,
+        0.11999999740719794
+      ],
+      "form": "drive",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A339",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A339",
+      "size": [
+        0.096000000834465,
+        0.096000000834465,
+        0.0799999983847141
+      ],
+      "form": "panel",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A400",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A400",
+      "size": [
+        0.04500000178813934,
+        0.10000000149011612,
+        0.0750000030361116
+      ],
+      "form": "din",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    },
+    {
+      "id": "A464",
+      "usdPath": "/home/sjkim/OmniverseProjects/p006-usd-coverage-v1/control-configurations.usda",
+      "primPath": "/Catalog/A464",
+      "size": [
+        0.3499999940395355,
+        0.4000000059604645,
+        0.3000000121444464
+      ],
+      "form": "drive",
+      "checks": {
+        "composition": true,
+        "id": true,
+        "units": true,
+        "bottom": true,
+        "referenceEnvelope": true,
+        "mountAnchor": true,
+        "signalAnchors": true,
+        "realUnbound": true
+      },
+      "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+      "functionVerified": false,
+      "assetReady": false,
+      "layoutPlacementVerified": true
+    }
+  ],
+  "collisionPairs": [],
+  "fileHashes": {
+    "control-configurations.usda": "f95048f0d061a75e13ef546634a8f5aa12c9b537b81becc50f858d42320ddf7a",
+    "control-base.usda": "914d3a84fc07b49f4230373314eda62c619bd4af92a417333dd28ab5c2fc63aa",
+    "coverage-layout.usda": "a78f5399e2ff7936ac666af780c539ee47a88383046ba3b906c85f138263b493"
+  },
+  "scope": "REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+  "realConnections": 0,
+  "liveStageChanged": false,
+  "readyPromotions": 0
+}

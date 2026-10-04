@@ -18,7 +18,7 @@ const rtxLeaseClientId = rtxUuid();
 sessionStorage.setItem("p006-rtx-client-id", rtxLeaseClientId);
 async function rtxLeaseAction(action, keepalive = false) {
   const response = await fetch(
-      `${location.protocol}//${location.hostname}:5174/projects/P006/digital-twin/api/rtx-session/${action}`,
+      `/projects/P006/digital-twin/api/rtx-session/${action}`,
       {
         method: "POST",
         credentials: "include",
@@ -402,7 +402,7 @@ function prepareRtxButton() {
   }
 }
 async function requestRtxStage(payload) {
-  const url = `${location.protocol}//${location.hostname}:5174/r/P006/actuator/p006/stage-focus`,
+  const url = `/r/P006/actuator/p006/stage-focus`,
     response = await fetch(url, {
       method: "POST",
       credentials: "include",
@@ -786,7 +786,7 @@ function startRtxReverseSync(indicator) {
         `/projects/P006/stage-assembly-layout?slot=${rtxLeaseSlot}`,
         { credentials: "include", cache: "no-store" },
       );
-      if (!response.ok) return;
+      if (!response.ok) throw new Error(`편집 상태 조회 HTTP ${response.status} · slot=${rtxLeaseSlot}`);
       const state = await response.json(),
         signature = JSON.stringify(state.objects || []);
       if (!initialized) {
@@ -801,7 +801,7 @@ function startRtxReverseSync(indicator) {
     } catch (error) {
       document.documentElement.dataset.rtxReverseSync = "ERROR";
       document.documentElement.dataset.rtxReverseSyncError = error.message;
-      if (indicator) indicator.textContent = `자동 역반영 실패 · ${error.message}`;
+      if (indicator) indicator.textContent = `자동 역반영 실패 · /projects/P006/stage-assembly-layout?slot=${rtxLeaseSlot} · ${error.message}`;
     } finally {
       rtxReverseSyncBusy = false;
     }
@@ -945,7 +945,7 @@ window.addEventListener("pagehide", () => {
   if (document.documentElement.dataset.rtxLease === "ACQUIRED") {
     const body = JSON.stringify({ clientId: rtxLeaseClientId });
     navigator.sendBeacon(
-      `${location.protocol}//${location.hostname}:5174/projects/P006/digital-twin/api/rtx-session/release`,
+      `/projects/P006/digital-twin/api/rtx-session/release`,
       new Blob([body], { type: "text/plain;charset=UTF-8" }),
     );
   }

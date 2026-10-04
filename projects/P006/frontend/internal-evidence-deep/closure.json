@@ -1,0 +1,34 @@
+{
+  "completedAt": "2026-09-10T14:34:53.935828+09:00",
+  "secondsSinceDeepScriptCreated": 893.3,
+  "localAuditBytes": 395136281,
+  "publicationBytes": 4437486,
+  "visualReview": [
+    "desktop.png",
+    "detail.png",
+    "mobile.png",
+    "ocr-review.jpg",
+    "ocr/F0246-title.png",
+    "ocr/F0246-rotated.png"
+  ],
+  "browserQA": {
+    "url": "http://172.16.1.232/projects/P006/assets/internal-evidence-deep/",
+    "assetRows": 58,
+    "p1": 14,
+    "partial": 4,
+    "externalClassification": 54,
+    "sufficient": 0,
+    "detailSections": 8,
+    "filters": "PASS",
+    "mobileOverflow": false,
+    "errors": [],
+    "businessWrites": 0,
+    "deviceWrites": 0,
+    "externalRequestsSent": 0,
+    "seconds": 1.333
+  },
+  "internalInvestigation": "CLOSED_PENDING_NEW_EQUIPMENT_IDENTITY",
+  "externalRequest": "FINALIZED_NOT_SENT",
+  "assetStateChanges": 0,
+  "sourceFileChanges": 0
+}

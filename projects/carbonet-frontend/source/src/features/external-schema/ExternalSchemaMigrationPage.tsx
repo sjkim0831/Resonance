@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -289,12 +290,20 @@ export function ExternalSchemaMigrationPage() {
           description={en ? "Narrow by schema, integration, domain, or validation state before opening the review queue." : "검토 대기열을 보기 전에 스키마, 연계, 도메인, 검증 상태 기준으로 범위를 좁힙니다."}
           icon="schema"
         >
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4 xl:w-[68rem]">
-            <div>
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalSchemaKeyword">{en ? "Keyword" : "검색어"}</label>
               <AdminInput id="externalSchemaKeyword" placeholder={en ? "Schema, table, field, connection" : "스키마, 테이블, 필드, 연계"} value={keyword} onChange={(event) => setKeyword(event.target.value)} />
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
+              <label className="mb-1 block text-sm font-bold" htmlFor="externalSchemaStatus">{en ? "Validation" : "검증 상태"}</label>
+              <AdminSelect id="externalSchemaStatus" value={status} onChange={(event) => setStatus(event.target.value)}>
+                <option value="ALL">{en ? "All" : "전체"}</option>
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="WATCH">WATCH</option>
+                <option value="REVIEW">REVIEW</option>
+                <option value="DISABLED">DISABLED</option>
+              </AdminSelect>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalSchemaDomain">{en ? "Domain" : "도메인"}</label>
               <AdminSelect id="externalSchemaDomain" value={domain} onChange={(event) => setDomain(event.target.value)}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -304,23 +313,9 @@ export function ExternalSchemaMigrationPage() {
                 <option value="SECURITY">SECURITY</option>
                 <option value="OPERATIONS">OPERATIONS</option>
               </AdminSelect>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-bold" htmlFor="externalSchemaStatus">{en ? "Validation" : "검증 상태"}</label>
-              <AdminSelect id="externalSchemaStatus" value={status} onChange={(event) => setStatus(event.target.value)}>
-                <option value="ALL">{en ? "All" : "전체"}</option>
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="WATCH">WATCH</option>
-                <option value="REVIEW">REVIEW</option>
-                <option value="DISABLED">DISABLED</option>
-              </AdminSelect>
-            </div>
-            <div className="flex items-end">
-              <button className="gov-btn gov-btn-outline w-full" type="button" onClick={() => { setKeyword(""); setDomain("ALL"); setStatus("ALL"); }}>
+            </div></div></>} actions={<><button className="gov-btn gov-btn-outline w-full" type="button" onClick={() => { setKeyword(""); setDomain("ALL"); setStatus("ALL"); }}>
                 {en ? "Reset Filters" : "검색 조건 초기화"}
-              </button>
-            </div>
-          </div>
+              </button></>}></CommonSearchSection></div>
         </CollectionResultPanel>
 
         <section className="gov-card overflow-hidden p-0" data-help-id="external-schema-registry">

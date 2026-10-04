@@ -591,21 +591,15 @@ export function AdminPageShell({
 }: AdminPageShellProps) {
   const en = isEnglish();
   const [showDeferredChrome, setShowDeferredChrome] = useState(false);
-  const [initialMenuTree] = useState(() => readAdminMenuTreeSnapshot());
   const [bootstrappedSession] = useState<FrontendSession | null>(() => readFrontendSessionSnapshot());
   const currentPath = `${window.location.pathname}${window.location.search}`;
-  const hasInitialMenuTree = Boolean(initialMenuTree && Object.keys(initialMenuTree).length);
-  const menuState = useAsyncValue(fetchAdminMenuTree, [], {
-    initialValue: initialMenuTree,
-    skipInitialLoad: hasInitialMenuTree
-  });
-  const fallbackMenuTree = useMemo(
-    () => (initialMenuTree && Object.keys(initialMenuTree).length ? initialMenuTree : {}),
-    [initialMenuTree]
-  );
+  // Keep server-provided navigation usable while revalidating the API.
+  // Never substitute the historical hardcoded menu catalog.
+  const [initialMenuTree] = useState(() => readAdminMenuTreeSnapshot());
+  const menuState = useAsyncValue(fetchAdminMenuTree, [], { initialValue: initialMenuTree });
   const menuTree = useMemo<Record<string, AdminMenuDomain>>(
-    () => Object.keys(menuState.value || {}).length ? (menuState.value || {}) : fallbackMenuTree,
-    [fallbackMenuTree, menuState.value]
+    () => Object.keys(menuState.value || {}).length ? menuState.value! : initialMenuTree || {},
+    [menuState.value, initialMenuTree]
   );
   const hasResolvedMenuTree = Object.keys(menuTree).length > 0;
   const menuIndex = useMemo(() => buildMenuIndex(menuTree), [menuTree]);
@@ -1311,7 +1305,16 @@ export function AdminPageShell({
             }}
             ref={sidebarBodyRef}
           >
-            {!showDeferredChrome ? (
+            {!hasResolvedMenuTree && !menuState.loading ? (
+              <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm">
+                <p>{en ? "Unable to load the admin menu." : "관리자 메뉴를 불러오지 못했습니다."}</p>
+                <p className="mt-2 break-all">{menuState.error.startsWith("메뉴 ") ? menuState.error : "메뉴 요청 연결 또는 응답 처리 실패"}</p>
+                <p className="mt-2 break-all text-xs">{window.location.origin}</p>
+                <button type="button" className="mt-3 rounded border bg-white px-3 py-2 font-bold" onClick={() => void menuState.reload()}>
+                  {en ? "Retry menu" : "메뉴 다시 불러오기"}
+                </button>
+              </div>
+            ) : !showDeferredChrome ? (
               <div className="space-y-3">
                 {Array.from({ length: 6 }).map((_, index) => (
                   <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-slate-50 px-4 py-4" key={`sidebar-skeleton-${index}`}>

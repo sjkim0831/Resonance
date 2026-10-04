@@ -1,0 +1,208 @@
+{
+  "status": "PASS",
+  "url": "http://172.16.1.232/projects/P006/assets/equipment-asset-mapping/index.html",
+  "reviewedEquipment": 16,
+  "gradeFilters": 5,
+  "search": true,
+  "processFilter": true,
+  "details": 16,
+  "imageDecode": 43,
+  "entryDownloads": [
+    {
+      "assetId": "E194",
+      "status": 200,
+      "isUsd": true
+    },
+    {
+      "assetId": "E005",
+      "status": 200,
+      "isUsd": true
+    },
+    {
+      "assetId": "E004",
+      "status": 200,
+      "isUsd": true
+    },
+    {
+      "assetId": "E001",
+      "status": 200,
+      "isUsd": true
+    },
+    {
+      "assetId": "E002",
+      "status": 200,
+      "isUsd": true
+    }
+  ],
+  "zoom": true,
+  "escapeClose": true,
+  "mobilePageOverflow": false,
+  "jsErrors": [],
+  "actor": "READ_ONLY_PUBLIC_STATIC_REVIEW",
+  "businessWrites": 0,
+  "deviceWrites": 0,
+  "authenticatedApprovalTest": "NOT_PERFORMED_NO_APPROVAL_FEATURE",
+  "steps": [
+    {
+      "equipmentCode": "casting_machine",
+      "actor": "READ_ONLY_PROJECT_REVIEWER_NO_LOGIN",
+      "process": "주조 성형",
+      "input": "casting_machine",
+      "action": "open mapping evidence",
+      "output": "NO_MATCH",
+      "entry": null,
+      "result": "PASS"
+    },
+    {
+      "equipmentCode": "holding_furnace",
+      "actor": "READ_ONLY_PROJECT_REVIEWER_NO_LOGIN",
+      "process": "용탕 보온",
+      "input": "holding_furnace",
+      "action": "open mapping evidence",
+      "output": "NO_MATCH",
+      "entry": null,
+      "result": "PASS"
+    },
+    {
+      "equipmentCode": "turntable_furnace",
+      "actor": "READ_ONLY_PROJECT_REVIEWER_NO_LOGIN",
+      "process": "용탕 보온·분배",
+      "input": "turntable_furnace",
+      "action": "open mapping evidence",
+      "output": "NO_MATCH",
+      "entry": null,
+      "result": "PASS"
+    },
+    {
+      "equipmentCode": "trimming_machine",
+      "actor": "READ_ONLY_PROJECT_REVIEWER_NO_LOGIN",
+      "process": "후처리·트리밍",
+      "input": "trimming_machine",
+      "action": "open mapping evidence",
+      "output": "BLOCKED",
+      "entry": null,
+      "result": "PASS"
+    },
+    {
+      "equipmentCode": "cooling_unit",
+      "actor": "READ_ONLY_PROJECT_REVIEWER_NO_LOGIN",
+      "process": "냉각 유틸리티",
+      "input": "cooling_unit",
+      "action": "open mapping evidence",
+      "output": "BLOCKED",
+      "entry": null,
+      "result": "PASS"
+    },
+    {
+      "equipmentCode": "robot_panel",
+      "actor": "READ_ONLY_PROJECT_REVIEWER_NO_LOGIN",
+      "process": "제어·자동화",
+      "input": "robot_panel",
+      "action": "open mapping evidence",
+      "output": "NO_MATCH",
+      "entry": null,
+      "result": "PASS"
+    },
+    {
+      "equipmentCode": "spray_ladler",
+      "actor": "READ_ONLY_PROJECT_REVIEWER_NO_LOGIN",
+      "process": "금형 준비·용탕 주입",
+      "input": "spray_ladler",
+      "action": "open mapping evidence",
+      "output": "BLOCKED",
+      "entry": null,
+      "result": "PASS"
+    },
+    {
+      "equipmentCode": "release_agent",
+      "actor": "READ_ONLY_PROJECT_REVIEWER_NO_LOGIN",
+      "process": "이형제 공급",
+      "input": "release_agent",
+      "action": "open mapping evidence",
+      "output": "NO_MATCH",
+      "entry": null,
+      "result": "PASS"
+    },
+    {
+      "equipmentCode": "main_panel",
+      "actor": "READ_ONLY_PROJECT_REVIEWER_NO_LOGIN",
+      "process": "제어·자동화",
+      "input": "main_panel",
+      "action": "open mapping evidence",
+      "output": "NO_MATCH",
+      "entry": null,
+      "result": "PASS"
+    },
+    {
+      "equipmentCode": "vacuum_unit",
+      "actor": "READ_ONLY_PROJECT_REVIEWER_NO_LOGIN",
+      "process": "주조 보조·진공",
+      "input": "vacuum_unit",
+      "action": "open mapping evidence",
+      "output": "REFERENCE_MATCH",
+      "entry": "/home/sjkim/OmniverseProjects/assets/catalog/E194.usda",
+      "result": "PASS"
+    },
+    {
+      "equipmentCode": "casting_filter",
+      "actor": "READ_ONLY_PROJECT_REVIEWER_NO_LOGIN",
+      "process": "주조 보조·여과",
+      "input": "casting_filter",
+      "action": "open mapping evidence",
+      "output": "BLOCKED",
+      "entry": null,
+      "result": "PASS"
+    },
+    {
+      "equipmentCode": "melting_furnace",
+      "actor": "READ_ONLY_PROJECT_REVIEWER_NO_LOGIN",
+      "process": "용해",
+      "input": "melting_furnace",
+      "action": "open mapping evidence",
+      "output": "CLOSE_MATCH",
+      "entry": "/home/sjkim/OmniverseProjects/assets/catalog/E005.usda",
+      "result": "PASS"
+    },
+    {
+      "equipmentCode": "takeout_robot",
+      "actor": "READ_ONLY_PROJECT_REVIEWER_NO_LOGIN",
+      "process": "주조품 취출",
+      "input": "takeout_robot",
+      "action": "open mapping evidence",
+      "output": "CLOSE_MATCH",
+      "entry": "/home/sjkim/OmniverseProjects/assets/catalog/E004.usda",
+      "result": "PASS"
+    },
+    {
+      "equipmentCode": "punching_press",
+      "actor": "READ_ONLY_PROJECT_REVIEWER_NO_LOGIN",
+      "process": "후처리·펀칭",
+      "input": "punching_press",
+      "action": "open mapping evidence",
+      "output": "CLOSE_MATCH",
+      "entry": "/home/sjkim/OmniverseProjects/assets/catalog/E001.usda",
+      "result": "PASS"
+    },
+    {
+      "equipmentCode": "ladler",
+      "actor": "READ_ONLY_PROJECT_REVIEWER_NO_LOGIN",
+      "process": "용탕 주입",
+      "input": "ladler",
+      "action": "open mapping evidence",
+      "output": "REFERENCE_MATCH",
+      "entry": "/home/sjkim/OmniverseProjects/assets/catalog/E002.usda",
+      "result": "PASS"
+    },
+    {
+      "equipmentCode": "mold_cooling",
+      "actor": "READ_ONLY_PROJECT_REVIEWER_NO_LOGIN",
+      "process": "금형 냉각",
+      "input": "mold_cooling",
+      "action": "open mapping evidence",
+      "output": "BLOCKED",
+      "entry": null,
+      "result": "PASS"
+    }
+  ],
+  "seconds": 3.521
+}

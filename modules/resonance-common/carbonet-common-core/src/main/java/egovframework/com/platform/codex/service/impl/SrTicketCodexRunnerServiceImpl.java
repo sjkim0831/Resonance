@@ -203,11 +203,7 @@ public class SrTicketCodexRunnerServiceImpl implements SrTicketCodexRunnerServic
             }
 
             if ("BUILD".equals(mode) && !safe(frontendVerifyCommand).isEmpty()) {
-                Path frontendDir = resolveFrontendVerifyDirectory();
-                Path repositoryRootPath = resolveRepositoryRoot();
-                if (!frontendDir.startsWith(repositoryRootPath)) {
-                    throw new IllegalArgumentException("Frontend verify workdir escaped the repository root.");
-                }
+                Path frontendDir = resolveFrontendVerifyDirectory(worktreePath);
                 Path frontendStdout = artifactsRoot.resolve("frontend-verify.stdout.log");
                 Path frontendStderr = artifactsRoot.resolve("frontend-verify.stderr.log");
                 execution.setFrontendVerifyCommand(safe(frontendVerifyCommand));
@@ -281,13 +277,18 @@ public class SrTicketCodexRunnerServiceImpl implements SrTicketCodexRunnerServic
         }
     }
 
-    private Path resolveFrontendVerifyDirectory() {
+    private Path resolveFrontendVerifyDirectory(Path worktreePath) throws IOException {
         String configured = safe(frontendVerifyWorkdir).isEmpty() ? "frontend" : safe(frontendVerifyWorkdir);
         Path configuredPath = Paths.get(configured);
         if (configuredPath.isAbsolute()) {
-            return configuredPath.normalize();
+            throw new IllegalArgumentException("Frontend verify workdir must be relative to the execution worktree.");
         }
-        return resolveRepositoryRoot().resolve(configuredPath).normalize();
+        Path root = worktreePath.toRealPath();
+        Path directory = root.resolve(configuredPath).normalize().toRealPath();
+        if (!directory.startsWith(root)) {
+            throw new IllegalArgumentException("Frontend verify workdir escaped the execution worktree.");
+        }
+        return directory;
     }
 
     private void validateRunnerConfiguration(SrTicketRecordVO ticket, String executionMode) {
@@ -477,8 +478,15 @@ public class SrTicketCodexRunnerServiceImpl implements SrTicketCodexRunnerServic
             execution.setChangedFilesSummary("");
             return;
         }
-        writeCommandOutput(listCommand("git", "diff", "--binary"), worktreePath, diffFile);
-        List<String> changedFiles = readCommandOutput(listCommand("git", "diff", "--name-only"), worktreePath);
+        // Include staged edits and new files; a newly generated page must not disappear from review.
+        for (String file : readCommandOutput(listCommand("git", "ls-files", "--others", "--exclude-standard"), worktreePath)) {
+            if (!safe(file).isEmpty()) {
+                runCommand(listCommand("git", "add", "--intent-to-add", "--", file), worktreePath,
+                        commandTimeoutSeconds, null, null);
+            }
+        }
+        writeCommandOutput(listCommand("git", "diff", "HEAD", "--binary"), worktreePath, diffFile);
+        List<String> changedFiles = readCommandOutput(listCommand("git", "diff", "HEAD", "--name-only"), worktreePath);
         execution.setChangedFiles(changedFiles);
         execution.setChangedFilesSummary(joinLines(changedFiles));
         writeLines(changedFilesFile, changedFiles);

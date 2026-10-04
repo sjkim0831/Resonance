@@ -1,0 +1,1109 @@
+{
+  "createdAt": "2026-09-10T05:43:15.825Z",
+  "homeMenuCount": 12,
+  "groups": [
+    {
+      "id": "MONITOR_MAP_1",
+      "name": "분석 범위·지표·추이 확인",
+      "code": "MONITORING_ANALYSIS",
+      "flow": "조직·사업장·기간 선택 → Scope·기간·목표 비교 → 품질·추이 확인",
+      "input": "조직·사업장, 기준 기간, 집계 버전",
+      "output": "선택 범위의 지표·추이·품질 확인 결과",
+      "pages": [
+        {
+          "path": "/monitoring/index",
+          "name": "조직·사업장 분석 · Scope별 분석 · 기간별 추이 · 목표 대비 분석",
+          "actor": "홈 · 조회 권한 사용자",
+          "description": "메뉴·라우트 연결 확인. 집계·저장·버전·권한 릴레이는 별도 검증 필요.",
+          "status": "PARTIAL",
+          "menuCodes": [
+            "H1050103",
+            "H1050104",
+            "H1050105",
+            "H1050106"
+          ]
+        },
+        {
+          "path": "/monitoring/statistics",
+          "name": "데이터 품질",
+          "actor": "홈 · 조회 권한 사용자",
+          "description": "메뉴·라우트 연결 확인. 집계·저장·버전·권한 릴레이는 별도 검증 필요.",
+          "status": "PARTIAL",
+          "menuCodes": [
+            "H1050201"
+          ]
+        },
+        {
+          "path": "/monitoring/reduction_trend",
+          "name": "성과 추이 분석",
+          "actor": "홈 · 조회 권한 사용자",
+          "description": "메뉴·라우트 연결 확인. 집계·저장·버전·권한 릴레이는 별도 검증 필요.",
+          "status": "PARTIAL",
+          "menuCodes": []
+        }
+      ],
+      "steps": [
+        {
+          "processCode": "MONITORING_ANALYSIS",
+          "stepOrder": 1,
+          "stepCode": "MONITORING_SCOPE",
+          "stepName": "분석 범위 선택",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "READY",
+          "commandCode": "SELECT_SCOPE",
+          "toState": "SCOPED",
+          "workPurpose": "배출·LCA·감축 데이터를 품질과 목표 관점에서 분석하고 공유한다. 목표를 위해 분석 범위 선택 단계에서 SELECT_SCOPE 명령의 선행 상태, 담당 액터, 필수 입력, 권한, 증적을 확인한다.",
+          "completionRule": "조직·사업장·Scope·기간과 데이터 권한이 적용된다.",
+          "inputContract": "{\"processCode\" : \"MONITORING_ANALYSIS\", \"stepCode\" : \"MONITORING_SCOPE\", \"fromState\" : \"READY\", \"actorCode\" : \"COMPANY_MANAGER\"}",
+          "outputContract": "{\"toState\" : \"SCOPED\", \"completionRule\" : \"조직·사업장·Scope·기간과 데이터 권한이 적용된다.\", \"evidenceRequired\" : true}",
+          "userPath": "/monitoring/index",
+          "adminPath": "/admin/system/monitoring-dashboard",
+          "automationStatus": "NOT_ANALYZED"
+        },
+        {
+          "processCode": "MONITORING_ANALYSIS",
+          "stepOrder": 2,
+          "stepCode": "MONITORING_REVIEW",
+          "stepName": "지표·품질·이상치 분석",
+          "actorCode": "VERIFIER",
+          "fromState": "SCOPED",
+          "commandCode": "ANALYZE",
+          "toState": "ANALYZED",
+          "workPurpose": "배출·LCA·감축 데이터를 품질과 목표 관점에서 분석하고 공유한다. 목표를 위해 지표·품질·이상치 분석 단계에서 ANALYZE 명령의 선행 상태, 담당 액터, 필수 입력, 권한, 증적을 확인한다.",
+          "completionRule": "지표 근거와 품질·이상치가 원본 데이터까지 추적된다.",
+          "inputContract": "{\"processCode\" : \"MONITORING_ANALYSIS\", \"stepCode\" : \"MONITORING_REVIEW\", \"fromState\" : \"SCOPED\", \"actorCode\" : \"VERIFIER\"}",
+          "outputContract": "{\"toState\" : \"ANALYZED\", \"completionRule\" : \"지표 근거와 품질·이상치가 원본 데이터까지 추적된다.\", \"evidenceRequired\" : true}",
+          "userPath": "/monitoring/statistics",
+          "adminPath": "/admin/emission/validation-rule",
+          "automationStatus": "NOT_ANALYZED"
+        },
+        {
+          "processCode": "MONITORING_ANALYSIS",
+          "stepOrder": 3,
+          "stepCode": "MONITORING_EXPORT",
+          "stepName": "분석 결과 내보내기",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "ANALYZED",
+          "commandCode": "EXPORT",
+          "toState": "EXPORTED",
+          "workPurpose": "배출·LCA·감축 데이터를 품질과 목표 관점에서 분석하고 공유한다. 목표를 위해 분석 결과 내보내기 단계에서 EXPORT 명령의 선행 상태, 담당 액터, 필수 입력, 권한, 증적을 확인한다.",
+          "completionRule": "내보낸 데이터의 범위·버전·행위자가 기록된다.",
+          "inputContract": "{\"processCode\" : \"MONITORING_ANALYSIS\", \"stepCode\" : \"MONITORING_EXPORT\", \"fromState\" : \"ANALYZED\", \"actorCode\" : \"COMPANY_MANAGER\"}",
+          "outputContract": "{\"toState\" : \"EXPORTED\", \"completionRule\" : \"내보낸 데이터의 범위·버전·행위자가 기록된다.\", \"evidenceRequired\" : true}",
+          "userPath": "/monitoring/export",
+          "adminPath": "/admin/system/process-workspace",
+          "automationStatus": "NOT_ANALYZED"
+        },
+        {
+          "processCode": "MONITORING_ANALYSIS",
+          "stepOrder": 4,
+          "stepCode": "MONITORING_SHARE",
+          "stepName": "이해관계자 공유",
+          "actorCode": "APPROVER",
+          "fromState": "EXPORTED",
+          "commandCode": "SHARE",
+          "toState": "COMPLETED",
+          "workPurpose": "배출·LCA·감축 데이터를 품질과 목표 관점에서 분석하고 공유한다. 목표를 위해 이해관계자 공유 단계에서 SHARE 명령의 선행 상태, 담당 액터, 필수 입력, 권한, 증적을 확인한다.",
+          "completionRule": "승인된 대상과 기간에만 분석 결과가 공유된다.",
+          "inputContract": "{\"processCode\" : \"MONITORING_ANALYSIS\", \"stepCode\" : \"MONITORING_SHARE\", \"fromState\" : \"EXPORTED\", \"actorCode\" : \"APPROVER\"}",
+          "outputContract": "{\"toState\" : \"COMPLETED\", \"completionRule\" : \"승인된 대상과 기간에만 분석 결과가 공유된다.\", \"evidenceRequired\" : true}",
+          "userPath": "/monitoring/share",
+          "adminPath": "/admin/system/process-workspace",
+          "automationStatus": "NOT_ANALYZED"
+        }
+      ],
+      "condition": "조회 업무. 조회만으로 승인 완료를 판단하지 않음"
+    },
+    {
+      "id": "MONITOR_MAP_2",
+      "name": "통합 현황·실시간 모니터링",
+      "code": "INTEGRATED_MONITORING",
+      "flow": "통합 현황 → 실시간 자료 시각 확인 → 이상 항목 선택",
+      "input": "조회 범위, 자료 갱신시각",
+      "output": "현황·실시간 관측값·이상 항목",
+      "pages": [
+        {
+          "path": "/monitoring/dashboard",
+          "name": "통합 모니터링",
+          "actor": "홈 · 조회 권한 사용자",
+          "description": "메뉴·라우트 연결 확인. 집계·저장·버전·권한 릴레이는 별도 검증 필요.",
+          "status": "PARTIAL",
+          "menuCodes": [
+            "H1050101"
+          ]
+        },
+        {
+          "path": "/monitoring/realtime",
+          "name": "실시간 배출 현황",
+          "actor": "홈 · 조회 권한 사용자",
+          "description": "메뉴·라우트 연결 확인. 집계·저장·버전·권한 릴레이는 별도 검증 필요.",
+          "status": "PARTIAL",
+          "menuCodes": [
+            "H1050102"
+          ]
+        },
+        {
+          "path": "/generated/integrated-monitoring/integrated-monitoring-s1",
+          "name": "통합 탄소 현황 모니터링 - 요청·범위·필수정보 확인",
+          "actor": "DATA_ANALYST",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/integrated-monitoring/integrated-monitoring-s1",
+          "name": "통합 탄소 현황 모니터링 - 요청·범위·필수정보 확인",
+          "actor": "관리자 · DATA_ANALYST",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/generated/integrated-monitoring/integrated-monitoring-s2",
+          "name": "통합 탄소 현황 모니터링 - 업무 실행·중간 결과 저장",
+          "actor": "DATA_ANALYST",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/integrated-monitoring/integrated-monitoring-s2",
+          "name": "통합 탄소 현황 모니터링 - 업무 실행·중간 결과 저장",
+          "actor": "관리자 · DATA_ANALYST",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/generated/integrated-monitoring/integrated-monitoring-s3",
+          "name": "통합 탄소 현황 모니터링 - 독립 검토·보완·권한 검증",
+          "actor": "VERIFIER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/integrated-monitoring/integrated-monitoring-s3",
+          "name": "통합 탄소 현황 모니터링 - 독립 검토·보완·권한 검증",
+          "actor": "관리자 · VERIFIER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/generated/integrated-monitoring/integrated-monitoring-s4",
+          "name": "통합 탄소 현황 모니터링 - 승인·확정·통지·후속업무 연결",
+          "actor": "APPROVER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/integrated-monitoring/integrated-monitoring-s4",
+          "name": "통합 탄소 현황 모니터링 - 승인·확정·통지·후속업무 연결",
+          "actor": "관리자 · APPROVER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        }
+      ],
+      "steps": [
+        {
+          "processCode": "INTEGRATED_MONITORING",
+          "stepOrder": 1,
+          "stepCode": "INTEGRATED_MONITORING_S1",
+          "stepName": "통합 탄소 현황 모니터링 - 요청·범위·필수정보 확인",
+          "actorCode": "DATA_ANALYST",
+          "fromState": "READY",
+          "commandCode": "INTEGRATED_MONITORING_REQUEST",
+          "toState": "STEP_1_COMPLETED",
+          "workPurpose": "통합 탄소 현황 모니터링의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_1_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": true}",
+          "userPath": "/generated/integrated-monitoring/integrated-monitoring-s1",
+          "adminPath": "/admin/generated/integrated-monitoring/integrated-monitoring-s1",
+          "automationStatus": "PLANNED"
+        },
+        {
+          "processCode": "INTEGRATED_MONITORING",
+          "stepOrder": 2,
+          "stepCode": "INTEGRATED_MONITORING_S2",
+          "stepName": "통합 탄소 현황 모니터링 - 업무 실행·중간 결과 저장",
+          "actorCode": "DATA_ANALYST",
+          "fromState": "STEP_1_COMPLETED",
+          "commandCode": "INTEGRATED_MONITORING_EXECUTE",
+          "toState": "STEP_2_COMPLETED",
+          "workPurpose": "통합 탄소 현황 모니터링의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_2_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": true}",
+          "userPath": "/generated/integrated-monitoring/integrated-monitoring-s2",
+          "adminPath": "/admin/generated/integrated-monitoring/integrated-monitoring-s2",
+          "automationStatus": "PLANNED"
+        },
+        {
+          "processCode": "INTEGRATED_MONITORING",
+          "stepOrder": 3,
+          "stepCode": "INTEGRATED_MONITORING_S3",
+          "stepName": "통합 탄소 현황 모니터링 - 독립 검토·보완·권한 검증",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_2_COMPLETED",
+          "commandCode": "INTEGRATED_MONITORING_REVIEW",
+          "toState": "STEP_3_COMPLETED",
+          "workPurpose": "통합 탄소 현황 모니터링의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_3_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": true}",
+          "userPath": "/generated/integrated-monitoring/integrated-monitoring-s3",
+          "adminPath": "/admin/generated/integrated-monitoring/integrated-monitoring-s3",
+          "automationStatus": "PLANNED"
+        },
+        {
+          "processCode": "INTEGRATED_MONITORING",
+          "stepOrder": 4,
+          "stepCode": "INTEGRATED_MONITORING_S4",
+          "stepName": "통합 탄소 현황 모니터링 - 승인·확정·통지·후속업무 연결",
+          "actorCode": "APPROVER",
+          "fromState": "STEP_3_COMPLETED",
+          "commandCode": "INTEGRATED_MONITORING_COMPLETE",
+          "toState": "STEP_4_COMPLETED",
+          "workPurpose": "통합 탄소 현황 모니터링의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_4_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": false}",
+          "userPath": "/generated/integrated-monitoring/integrated-monitoring-s4",
+          "adminPath": "/admin/generated/integrated-monitoring/integrated-monitoring-s4",
+          "automationStatus": "PLANNED"
+        }
+      ],
+      "condition": "조회 업무. 조회만으로 승인 완료를 판단하지 않음"
+    },
+    {
+      "id": "MONITOR_MAP_3",
+      "name": "이상치·경보 확인·조치",
+      "code": "ANOMALY_ALERT_MANAGEMENT",
+      "flow": "경보 확인 → 규칙·원본 확인 → 담당자 조치 → 재검증. 조치 완료 저장은 미검증",
+      "input": "경보 ID, 원본 자료, 규칙 버전",
+      "output": "원인·조치 기록·재검증 결과",
+      "pages": [
+        {
+          "path": "/monitoring/alerts",
+          "name": "이상치·경보",
+          "actor": "홈 · 조회 권한 사용자",
+          "description": "메뉴·라우트 연결 확인. 집계·저장·버전·권한 릴레이는 별도 검증 필요.",
+          "status": "PARTIAL",
+          "menuCodes": [
+            "H1050202"
+          ]
+        },
+        {
+          "path": "/admin/emission/validation-rule?menuCode=A1070102",
+          "name": "이상치 규칙",
+          "actor": "관리자 · 규칙 관리 권한",
+          "description": "메뉴·라우트 연결 확인. 집계·저장·버전·권한 릴레이는 별도 검증 필요.",
+          "status": "PARTIAL",
+          "menuCodes": []
+        },
+        {
+          "path": "/generated/anomaly-alert-management/anomaly-alert-management-s1",
+          "name": "이상치·경보 관리 - 요청·범위·필수정보 확인",
+          "actor": "DATA_ANALYST",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/anomaly-alert-management/anomaly-alert-management-s1",
+          "name": "이상치·경보 관리 - 요청·범위·필수정보 확인",
+          "actor": "관리자 · DATA_ANALYST",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/generated/anomaly-alert-management/anomaly-alert-management-s2",
+          "name": "이상치·경보 관리 - 업무 실행·중간 결과 저장",
+          "actor": "DATA_ANALYST",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/anomaly-alert-management/anomaly-alert-management-s2",
+          "name": "이상치·경보 관리 - 업무 실행·중간 결과 저장",
+          "actor": "관리자 · DATA_ANALYST",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/generated/anomaly-alert-management/anomaly-alert-management-s3",
+          "name": "이상치·경보 관리 - 독립 검토·보완·권한 검증",
+          "actor": "VERIFIER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/anomaly-alert-management/anomaly-alert-management-s3",
+          "name": "이상치·경보 관리 - 독립 검토·보완·권한 검증",
+          "actor": "관리자 · VERIFIER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/generated/anomaly-alert-management/anomaly-alert-management-s4",
+          "name": "이상치·경보 관리 - 승인·확정·통지·후속업무 연결",
+          "actor": "APPROVER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/anomaly-alert-management/anomaly-alert-management-s4",
+          "name": "이상치·경보 관리 - 승인·확정·통지·후속업무 연결",
+          "actor": "관리자 · APPROVER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        }
+      ],
+      "steps": [
+        {
+          "processCode": "ANOMALY_ALERT_MANAGEMENT",
+          "stepOrder": 1,
+          "stepCode": "ANOMALY_ALERT_MANAGEMENT_S1",
+          "stepName": "이상치·경보 관리 - 요청·범위·필수정보 확인",
+          "actorCode": "DATA_ANALYST",
+          "fromState": "READY",
+          "commandCode": "ANOMALY_ALERT_MANAGEMENT_REQUEST",
+          "toState": "STEP_1_COMPLETED",
+          "workPurpose": "이상치·경보 관리의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_1_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": true}",
+          "userPath": "/generated/anomaly-alert-management/anomaly-alert-management-s1",
+          "adminPath": "/admin/generated/anomaly-alert-management/anomaly-alert-management-s1",
+          "automationStatus": "PLANNED"
+        },
+        {
+          "processCode": "ANOMALY_ALERT_MANAGEMENT",
+          "stepOrder": 2,
+          "stepCode": "ANOMALY_ALERT_MANAGEMENT_S2",
+          "stepName": "이상치·경보 관리 - 업무 실행·중간 결과 저장",
+          "actorCode": "DATA_ANALYST",
+          "fromState": "STEP_1_COMPLETED",
+          "commandCode": "ANOMALY_ALERT_MANAGEMENT_EXECUTE",
+          "toState": "STEP_2_COMPLETED",
+          "workPurpose": "이상치·경보 관리의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_2_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": true}",
+          "userPath": "/generated/anomaly-alert-management/anomaly-alert-management-s2",
+          "adminPath": "/admin/generated/anomaly-alert-management/anomaly-alert-management-s2",
+          "automationStatus": "PLANNED"
+        },
+        {
+          "processCode": "ANOMALY_ALERT_MANAGEMENT",
+          "stepOrder": 3,
+          "stepCode": "ANOMALY_ALERT_MANAGEMENT_S3",
+          "stepName": "이상치·경보 관리 - 독립 검토·보완·권한 검증",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_2_COMPLETED",
+          "commandCode": "ANOMALY_ALERT_MANAGEMENT_REVIEW",
+          "toState": "STEP_3_COMPLETED",
+          "workPurpose": "이상치·경보 관리의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_3_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": true}",
+          "userPath": "/generated/anomaly-alert-management/anomaly-alert-management-s3",
+          "adminPath": "/admin/generated/anomaly-alert-management/anomaly-alert-management-s3",
+          "automationStatus": "PLANNED"
+        },
+        {
+          "processCode": "ANOMALY_ALERT_MANAGEMENT",
+          "stepOrder": 4,
+          "stepCode": "ANOMALY_ALERT_MANAGEMENT_S4",
+          "stepName": "이상치·경보 관리 - 승인·확정·통지·후속업무 연결",
+          "actorCode": "APPROVER",
+          "fromState": "STEP_3_COMPLETED",
+          "commandCode": "ANOMALY_ALERT_MANAGEMENT_COMPLETE",
+          "toState": "STEP_4_COMPLETED",
+          "workPurpose": "이상치·경보 관리의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_4_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": false}",
+          "userPath": "/generated/anomaly-alert-management/anomaly-alert-management-s4",
+          "adminPath": "/admin/generated/anomaly-alert-management/anomaly-alert-management-s4",
+          "automationStatus": "PLANNED"
+        }
+      ],
+      "condition": "경보 발생 시 수행"
+    },
+    {
+      "id": "MONITOR_MAP_4",
+      "name": "규제 대응 현황 확인",
+      "code": "REGULATORY_STATUS_MONITORING",
+      "flow": "적용 제도·기한 확인 → 누락·보완 대상 확인 → 해당 보고 업무로 이동",
+      "input": "적용 제도, 보고 대상, 기간·기한",
+      "output": "대응 현황·후속 보고 대상",
+      "pages": [
+        {
+          "path": "/monitoring/track",
+          "name": "규제 대응 현황",
+          "actor": "홈 · 조회 권한 사용자",
+          "description": "메뉴·라우트 연결 확인. 집계·저장·버전·권한 릴레이는 별도 검증 필요.",
+          "status": "PARTIAL",
+          "menuCodes": [
+            "H1050203"
+          ]
+        },
+        {
+          "path": "/generated/regulatory-status-monitoring/regulatory-status-monitoring-s1",
+          "name": "규제 대응 현황 관리 - 요청·범위·필수정보 확인",
+          "actor": "REGULATOR",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/regulatory-status-monitoring/regulatory-status-monitoring-s1",
+          "name": "규제 대응 현황 관리 - 요청·범위·필수정보 확인",
+          "actor": "관리자 · REGULATOR",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/generated/regulatory-status-monitoring/regulatory-status-monitoring-s2",
+          "name": "규제 대응 현황 관리 - 업무 실행·중간 결과 저장",
+          "actor": "REGULATOR",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/regulatory-status-monitoring/regulatory-status-monitoring-s2",
+          "name": "규제 대응 현황 관리 - 업무 실행·중간 결과 저장",
+          "actor": "관리자 · REGULATOR",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/generated/regulatory-status-monitoring/regulatory-status-monitoring-s3",
+          "name": "규제 대응 현황 관리 - 독립 검토·보완·권한 검증",
+          "actor": "VERIFIER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/regulatory-status-monitoring/regulatory-status-monitoring-s3",
+          "name": "규제 대응 현황 관리 - 독립 검토·보완·권한 검증",
+          "actor": "관리자 · VERIFIER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/generated/regulatory-status-monitoring/regulatory-status-monitoring-s4",
+          "name": "규제 대응 현황 관리 - 승인·확정·통지·후속업무 연결",
+          "actor": "APPROVER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/regulatory-status-monitoring/regulatory-status-monitoring-s4",
+          "name": "규제 대응 현황 관리 - 승인·확정·통지·후속업무 연결",
+          "actor": "관리자 · APPROVER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        }
+      ],
+      "steps": [
+        {
+          "processCode": "REGULATORY_STATUS_MONITORING",
+          "stepOrder": 1,
+          "stepCode": "REGULATORY_STATUS_MONITORING_S1",
+          "stepName": "규제 대응 현황 관리 - 요청·범위·필수정보 확인",
+          "actorCode": "REGULATOR",
+          "fromState": "READY",
+          "commandCode": "REGULATORY_STATUS_MONITORING_REQUEST",
+          "toState": "STEP_1_COMPLETED",
+          "workPurpose": "규제 대응 현황 관리의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_1_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": true}",
+          "userPath": "/generated/regulatory-status-monitoring/regulatory-status-monitoring-s1",
+          "adminPath": "/admin/generated/regulatory-status-monitoring/regulatory-status-monitoring-s1",
+          "automationStatus": "PLANNED"
+        },
+        {
+          "processCode": "REGULATORY_STATUS_MONITORING",
+          "stepOrder": 2,
+          "stepCode": "REGULATORY_STATUS_MONITORING_S2",
+          "stepName": "규제 대응 현황 관리 - 업무 실행·중간 결과 저장",
+          "actorCode": "REGULATOR",
+          "fromState": "STEP_1_COMPLETED",
+          "commandCode": "REGULATORY_STATUS_MONITORING_EXECUTE",
+          "toState": "STEP_2_COMPLETED",
+          "workPurpose": "규제 대응 현황 관리의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_2_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": true}",
+          "userPath": "/generated/regulatory-status-monitoring/regulatory-status-monitoring-s2",
+          "adminPath": "/admin/generated/regulatory-status-monitoring/regulatory-status-monitoring-s2",
+          "automationStatus": "PLANNED"
+        },
+        {
+          "processCode": "REGULATORY_STATUS_MONITORING",
+          "stepOrder": 3,
+          "stepCode": "REGULATORY_STATUS_MONITORING_S3",
+          "stepName": "규제 대응 현황 관리 - 독립 검토·보완·권한 검증",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_2_COMPLETED",
+          "commandCode": "REGULATORY_STATUS_MONITORING_REVIEW",
+          "toState": "STEP_3_COMPLETED",
+          "workPurpose": "규제 대응 현황 관리의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_3_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": true}",
+          "userPath": "/generated/regulatory-status-monitoring/regulatory-status-monitoring-s3",
+          "adminPath": "/admin/generated/regulatory-status-monitoring/regulatory-status-monitoring-s3",
+          "automationStatus": "PLANNED"
+        },
+        {
+          "processCode": "REGULATORY_STATUS_MONITORING",
+          "stepOrder": 4,
+          "stepCode": "REGULATORY_STATUS_MONITORING_S4",
+          "stepName": "규제 대응 현황 관리 - 승인·확정·통지·후속업무 연결",
+          "actorCode": "APPROVER",
+          "fromState": "STEP_3_COMPLETED",
+          "commandCode": "REGULATORY_STATUS_MONITORING_COMPLETE",
+          "toState": "STEP_4_COMPLETED",
+          "workPurpose": "규제 대응 현황 관리의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_4_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": false}",
+          "userPath": "/generated/regulatory-status-monitoring/regulatory-status-monitoring-s4",
+          "adminPath": "/admin/generated/regulatory-status-monitoring/regulatory-status-monitoring-s4",
+          "automationStatus": "PLANNED"
+        }
+      ],
+      "condition": "적용 제도·대상에 따라 수행"
+    },
+    {
+      "id": "MONITOR_MAP_5",
+      "name": "분석 보고서·데이터 내보내기",
+      "code": "ANALYSIS_EXPORT",
+      "flow": "분석 범위·기준시각 확인 → 보고서·형식 선택 → 생성·다운로드 확인",
+      "input": "집계 버전, 필터, 출력 형식",
+      "output": "파일·생성 이력. 실제 생성·다운로드는 미검증",
+      "pages": [
+        {
+          "path": "/monitoring/export",
+          "name": "분석 보고서 · 데이터 내보내기",
+          "actor": "홈 · 조회 권한 사용자",
+          "description": "메뉴·라우트 연결 확인. 집계·저장·버전·권한 릴레이는 별도 검증 필요.",
+          "status": "PARTIAL",
+          "menuCodes": [
+            "H1050301",
+            "H1050302"
+          ]
+        },
+        {
+          "path": "/generated/analysis-export/analysis-export-s1",
+          "name": "분석 데이터 내보내기 - 요청·범위·필수정보 확인",
+          "actor": "DATA_ANALYST",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/analysis-export/analysis-export-s1",
+          "name": "분석 데이터 내보내기 - 요청·범위·필수정보 확인",
+          "actor": "관리자 · DATA_ANALYST",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/generated/analysis-export/analysis-export-s2",
+          "name": "분석 데이터 내보내기 - 업무 실행·중간 결과 저장",
+          "actor": "DATA_ANALYST",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/analysis-export/analysis-export-s2",
+          "name": "분석 데이터 내보내기 - 업무 실행·중간 결과 저장",
+          "actor": "관리자 · DATA_ANALYST",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/generated/analysis-export/analysis-export-s3",
+          "name": "분석 데이터 내보내기 - 독립 검토·보완·권한 검증",
+          "actor": "VERIFIER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/analysis-export/analysis-export-s3",
+          "name": "분석 데이터 내보내기 - 독립 검토·보완·권한 검증",
+          "actor": "관리자 · VERIFIER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/generated/analysis-export/analysis-export-s4",
+          "name": "분석 데이터 내보내기 - 승인·확정·통지·후속업무 연결",
+          "actor": "APPROVER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/analysis-export/analysis-export-s4",
+          "name": "분석 데이터 내보내기 - 승인·확정·통지·후속업무 연결",
+          "actor": "관리자 · APPROVER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        }
+      ],
+      "steps": [
+        {
+          "processCode": "ANALYSIS_EXPORT",
+          "stepOrder": 1,
+          "stepCode": "ANALYSIS_EXPORT_S1",
+          "stepName": "분석 데이터 내보내기 - 요청·범위·필수정보 확인",
+          "actorCode": "DATA_ANALYST",
+          "fromState": "READY",
+          "commandCode": "ANALYSIS_EXPORT_REQUEST",
+          "toState": "STEP_1_COMPLETED",
+          "workPurpose": "분석 데이터 내보내기의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_1_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": true}",
+          "userPath": "/generated/analysis-export/analysis-export-s1",
+          "adminPath": "/admin/generated/analysis-export/analysis-export-s1",
+          "automationStatus": "PLANNED"
+        },
+        {
+          "processCode": "ANALYSIS_EXPORT",
+          "stepOrder": 2,
+          "stepCode": "ANALYSIS_EXPORT_S2",
+          "stepName": "분석 데이터 내보내기 - 업무 실행·중간 결과 저장",
+          "actorCode": "DATA_ANALYST",
+          "fromState": "STEP_1_COMPLETED",
+          "commandCode": "ANALYSIS_EXPORT_EXECUTE",
+          "toState": "STEP_2_COMPLETED",
+          "workPurpose": "분석 데이터 내보내기의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_2_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": true}",
+          "userPath": "/generated/analysis-export/analysis-export-s2",
+          "adminPath": "/admin/generated/analysis-export/analysis-export-s2",
+          "automationStatus": "PLANNED"
+        },
+        {
+          "processCode": "ANALYSIS_EXPORT",
+          "stepOrder": 3,
+          "stepCode": "ANALYSIS_EXPORT_S3",
+          "stepName": "분석 데이터 내보내기 - 독립 검토·보완·권한 검증",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_2_COMPLETED",
+          "commandCode": "ANALYSIS_EXPORT_REVIEW",
+          "toState": "STEP_3_COMPLETED",
+          "workPurpose": "분석 데이터 내보내기의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_3_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": true}",
+          "userPath": "/generated/analysis-export/analysis-export-s3",
+          "adminPath": "/admin/generated/analysis-export/analysis-export-s3",
+          "automationStatus": "PLANNED"
+        },
+        {
+          "processCode": "ANALYSIS_EXPORT",
+          "stepOrder": 4,
+          "stepCode": "ANALYSIS_EXPORT_S4",
+          "stepName": "분석 데이터 내보내기 - 승인·확정·통지·후속업무 연결",
+          "actorCode": "APPROVER",
+          "fromState": "STEP_3_COMPLETED",
+          "commandCode": "ANALYSIS_EXPORT_COMPLETE",
+          "toState": "STEP_4_COMPLETED",
+          "workPurpose": "분석 데이터 내보내기의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_4_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": false}",
+          "userPath": "/generated/analysis-export/analysis-export-s4",
+          "adminPath": "/admin/generated/analysis-export/analysis-export-s4",
+          "automationStatus": "PLANNED"
+        }
+      ],
+      "condition": "출력·공유·정기보고 필요 시 선택"
+    },
+    {
+      "id": "MONITOR_MAP_6",
+      "name": "이해관계자 공유",
+      "code": "STAKEHOLDER_SHARING",
+      "flow": "대상 자료 확인 → 수신자·공유 범위 결정 → 권한 확인 → 공유·회수 결과 확인",
+      "input": "공유 대상·자료 버전, 수신자, 유효기간",
+      "output": "공유 기록·권한·회수 상태. 실제 전송은 미검증",
+      "pages": [
+        {
+          "path": "/monitoring/share",
+          "name": "이해관계자 공유",
+          "actor": "홈 · 조회 권한 사용자",
+          "description": "메뉴·라우트 연결 확인. 집계·저장·버전·권한 릴레이는 별도 검증 필요.",
+          "status": "PARTIAL",
+          "menuCodes": [
+            "H1050303"
+          ]
+        },
+        {
+          "path": "/generated/stakeholder-sharing/stakeholder-sharing-s1",
+          "name": "이해관계자 공유 - 요청·범위·필수정보 확인",
+          "actor": "APPROVER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/stakeholder-sharing/stakeholder-sharing-s1",
+          "name": "이해관계자 공유 - 요청·범위·필수정보 확인",
+          "actor": "관리자 · APPROVER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/generated/stakeholder-sharing/stakeholder-sharing-s2",
+          "name": "이해관계자 공유 - 업무 실행·중간 결과 저장",
+          "actor": "APPROVER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/stakeholder-sharing/stakeholder-sharing-s2",
+          "name": "이해관계자 공유 - 업무 실행·중간 결과 저장",
+          "actor": "관리자 · APPROVER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/generated/stakeholder-sharing/stakeholder-sharing-s3",
+          "name": "이해관계자 공유 - 독립 검토·보완·권한 검증",
+          "actor": "APPROVER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/stakeholder-sharing/stakeholder-sharing-s3",
+          "name": "이해관계자 공유 - 독립 검토·보완·권한 검증",
+          "actor": "관리자 · APPROVER",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/generated/stakeholder-sharing/stakeholder-sharing-s4",
+          "name": "이해관계자 공유 - 승인·확정·통지·후속업무 연결",
+          "actor": "AUDITOR",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/generated/stakeholder-sharing/stakeholder-sharing-s4",
+          "name": "이해관계자 공유 - 승인·확정·통지·후속업무 연결",
+          "actor": "관리자 · AUDITOR",
+          "description": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "status": "DECLARED",
+          "menuCodes": []
+        }
+      ],
+      "steps": [
+        {
+          "processCode": "STAKEHOLDER_SHARING",
+          "stepOrder": 1,
+          "stepCode": "STAKEHOLDER_SHARING_S1",
+          "stepName": "이해관계자 공유 - 요청·범위·필수정보 확인",
+          "actorCode": "APPROVER",
+          "fromState": "READY",
+          "commandCode": "STAKEHOLDER_SHARING_REQUEST",
+          "toState": "STEP_1_COMPLETED",
+          "workPurpose": "이해관계자 공유의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_1_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": true}",
+          "userPath": "/generated/stakeholder-sharing/stakeholder-sharing-s1",
+          "adminPath": "/admin/generated/stakeholder-sharing/stakeholder-sharing-s1",
+          "automationStatus": "PLANNED"
+        },
+        {
+          "processCode": "STAKEHOLDER_SHARING",
+          "stepOrder": 2,
+          "stepCode": "STAKEHOLDER_SHARING_S2",
+          "stepName": "이해관계자 공유 - 업무 실행·중간 결과 저장",
+          "actorCode": "APPROVER",
+          "fromState": "STEP_1_COMPLETED",
+          "commandCode": "STAKEHOLDER_SHARING_EXECUTE",
+          "toState": "STEP_2_COMPLETED",
+          "workPurpose": "이해관계자 공유의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_2_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": true}",
+          "userPath": "/generated/stakeholder-sharing/stakeholder-sharing-s2",
+          "adminPath": "/admin/generated/stakeholder-sharing/stakeholder-sharing-s2",
+          "automationStatus": "PLANNED"
+        },
+        {
+          "processCode": "STAKEHOLDER_SHARING",
+          "stepOrder": 3,
+          "stepCode": "STAKEHOLDER_SHARING_S3",
+          "stepName": "이해관계자 공유 - 독립 검토·보완·권한 검증",
+          "actorCode": "APPROVER",
+          "fromState": "STEP_2_COMPLETED",
+          "commandCode": "STAKEHOLDER_SHARING_REVIEW",
+          "toState": "STEP_3_COMPLETED",
+          "workPurpose": "이해관계자 공유의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_3_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": true}",
+          "userPath": "/generated/stakeholder-sharing/stakeholder-sharing-s3",
+          "adminPath": "/admin/generated/stakeholder-sharing/stakeholder-sharing-s3",
+          "automationStatus": "PLANNED"
+        },
+        {
+          "processCode": "STAKEHOLDER_SHARING",
+          "stepOrder": 4,
+          "stepCode": "STAKEHOLDER_SHARING_S4",
+          "stepName": "이해관계자 공유 - 승인·확정·통지·후속업무 연결",
+          "actorCode": "AUDITOR",
+          "fromState": "STEP_3_COMPLETED",
+          "commandCode": "STAKEHOLDER_SHARING_COMPLETE",
+          "toState": "STEP_4_COMPLETED",
+          "workPurpose": "이해관계자 공유의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+          "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+          "inputContract": "{\"tenantId\": \"required\", \"actorCode\": \"required\", \"projectId\": \"contextual\", \"idempotencyKey\": \"required\", \"businessPayload\": \"required\"}",
+          "outputContract": "{\"state\": \"STEP_4_COMPLETED\", \"evidence\": \"required\", \"auditEvent\": \"required\", \"nextTaskCreated\": false}",
+          "userPath": "/generated/stakeholder-sharing/stakeholder-sharing-s4",
+          "adminPath": "/admin/generated/stakeholder-sharing/stakeholder-sharing-s4",
+          "automationStatus": "PLANNED"
+        }
+      ],
+      "condition": "출력·공유·정기보고 필요 시 선택"
+    },
+    {
+      "id": "MONITOR_MAP_7",
+      "name": "정기 통계 생성·확정·보고",
+      "code": "SCHEDULED_STATISTICS_REPORTING",
+      "flow": "지표·주기·기준시점 → 생성·품질검증·재생성 → 확정·파일·기관 전송",
+      "input": "지표 정의, 기준시점, 집계 데이터·버전",
+      "output": "확정 통계·파일·전송 증거. 기관 접수는 별도 증거 필요",
+      "pages": [
+        {
+          "path": "/work/scheduled-statistics-reporting?step=ssr_define",
+          "name": "지표·주기·기준시점 확정",
+          "actor": "DATA_ANALYST",
+          "description": "버전 잠긴 지표·집계·배포 계약이 승인됨",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/work/scheduled-statistics-reporting?step=ssr_define",
+          "name": "지표·주기·기준시점 확정",
+          "actor": "관리자 · DATA_ANALYST",
+          "description": "버전 잠긴 지표·집계·배포 계약이 승인됨",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/work/scheduled-statistics-reporting?step=ssr_generate",
+          "name": "통계 생성·품질검증·재생성",
+          "actor": "DATA_ANALYST",
+          "description": "재현 가능한 결과와 품질검증 이력이 생성됨",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/work/scheduled-statistics-reporting?step=ssr_generate",
+          "name": "통계 생성·품질검증·재생성",
+          "actor": "관리자 · DATA_ANALYST",
+          "description": "재현 가능한 결과와 품질검증 이력이 생성됨",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/work/scheduled-statistics-reporting?step=ssr_publish",
+          "name": "확정·시각화·파일·기관 전송",
+          "actor": "APPROVER",
+          "description": "수신·실패·재전송 증적과 공개 버전이 보존됨",
+          "status": "DECLARED",
+          "menuCodes": []
+        },
+        {
+          "path": "/admin/work/scheduled-statistics-reporting?step=ssr_publish",
+          "name": "확정·시각화·파일·기관 전송",
+          "actor": "관리자 · APPROVER",
+          "description": "수신·실패·재전송 증적과 공개 버전이 보존됨",
+          "status": "DECLARED",
+          "menuCodes": []
+        }
+      ],
+      "steps": [
+        {
+          "processCode": "SCHEDULED_STATISTICS_REPORTING",
+          "stepOrder": 1,
+          "stepCode": "SSR_DEFINE",
+          "stepName": "지표·주기·기준시점 확정",
+          "actorCode": "DATA_ANALYST",
+          "fromState": "READY",
+          "commandCode": "DEFINE_STATISTICS_JOB",
+          "toState": "IN_PROGRESS",
+          "workPurpose": "설비·시장·배출·인증·수수료 지표와 집계식·일정·수신처를 정의한다.",
+          "completionRule": "버전 잠긴 지표·집계·배포 계약이 승인됨",
+          "inputContract": "{\"tenantId\": \"string\", \"projectId\": \"string\", \"businessId\": \"string\", \"rowVersion\": \"integer\"}",
+          "outputContract": "{\"nextTask\": \"string\", \"recordId\": \"string\", \"statusCode\": \"IN_PROGRESS\", \"evidenceHash\": \"string\"}",
+          "userPath": "/work/scheduled-statistics-reporting?step=ssr_define",
+          "adminPath": "/admin/work/scheduled-statistics-reporting?step=ssr_define",
+          "automationStatus": "APPROVED"
+        },
+        {
+          "processCode": "SCHEDULED_STATISTICS_REPORTING",
+          "stepOrder": 2,
+          "stepCode": "SSR_GENERATE",
+          "stepName": "통계 생성·품질검증·재생성",
+          "actorCode": "DATA_ANALYST",
+          "fromState": "IN_PROGRESS",
+          "commandCode": "GENERATE_STATISTICS",
+          "toState": "REVIEW_READY",
+          "workPurpose": "기준시점 스냅샷으로 통계를 생성하고 완전성·차이·이상치를 검증한다.",
+          "completionRule": "재현 가능한 결과와 품질검증 이력이 생성됨",
+          "inputContract": "{\"tenantId\": \"string\", \"projectId\": \"string\", \"businessId\": \"string\", \"rowVersion\": \"integer\"}",
+          "outputContract": "{\"nextTask\": \"string\", \"recordId\": \"string\", \"statusCode\": \"IN_PROGRESS\", \"evidenceHash\": \"string\"}",
+          "userPath": "/work/scheduled-statistics-reporting?step=ssr_generate",
+          "adminPath": "/admin/work/scheduled-statistics-reporting?step=ssr_generate",
+          "automationStatus": "APPROVED"
+        },
+        {
+          "processCode": "SCHEDULED_STATISTICS_REPORTING",
+          "stepOrder": 3,
+          "stepCode": "SSR_PUBLISH",
+          "stepName": "확정·시각화·파일·기관 전송",
+          "actorCode": "APPROVER",
+          "fromState": "REVIEW_READY",
+          "commandCode": "PUBLISH_STATISTICS",
+          "toState": "COMPLETED",
+          "workPurpose": "승인된 통계를 차트·지도·PDF·엑셀 및 연계기관으로 배포한다.",
+          "completionRule": "수신·실패·재전송 증적과 공개 버전이 보존됨",
+          "inputContract": "{\"tenantId\": \"string\", \"projectId\": \"string\", \"businessId\": \"string\", \"rowVersion\": \"integer\"}",
+          "outputContract": "{\"nextTask\": \"string\", \"recordId\": \"string\", \"statusCode\": \"COMPLETED\", \"evidenceHash\": \"string\"}",
+          "userPath": "/work/scheduled-statistics-reporting?step=ssr_publish",
+          "adminPath": "/admin/work/scheduled-statistics-reporting?step=ssr_publish",
+          "automationStatus": "APPROVED"
+        }
+      ],
+      "condition": "출력·공유·정기보고 필요 시 선택"
+    }
+  ],
+  "related": [
+    {
+      "processCode": "MONITORING_ANALYSIS",
+      "stepOrder": 1,
+      "stepCode": "MONITORING_SCOPE",
+      "stepName": "분석 범위 선택",
+      "actorCode": "COMPANY_MANAGER",
+      "fromState": "READY",
+      "commandCode": "SELECT_SCOPE",
+      "toState": "SCOPED",
+      "workPurpose": "배출·LCA·감축 데이터를 품질과 목표 관점에서 분석하고 공유한다. 목표를 위해 분석 범위 선택 단계에서 SELECT_SCOPE 명령의 선행 상태, 담당 액터, 필수 입력, 권한, 증적을 확인한다.",
+      "completionRule": "조직·사업장·Scope·기간과 데이터 권한이 적용된다.",
+      "inputContract": "{\"processCode\" : \"MONITORING_ANALYSIS\", \"stepCode\" : \"MONITORING_SCOPE\", \"fromState\" : \"READY\", \"actorCode\" : \"COMPANY_MANAGER\"}",
+      "outputContract": "{\"toState\" : \"SCOPED\", \"completionRule\" : \"조직·사업장·Scope·기간과 데이터 권한이 적용된다.\", \"evidenceRequired\" : true}",
+      "userPath": "/monitoring/index",
+      "adminPath": "/admin/system/monitoring-dashboard",
+      "automationStatus": "NOT_ANALYZED"
+    },
+    {
+      "processCode": "MONITORING_ANALYSIS",
+      "stepOrder": 2,
+      "stepCode": "MONITORING_REVIEW",
+      "stepName": "지표·품질·이상치 분석",
+      "actorCode": "VERIFIER",
+      "fromState": "SCOPED",
+      "commandCode": "ANALYZE",
+      "toState": "ANALYZED",
+      "workPurpose": "배출·LCA·감축 데이터를 품질과 목표 관점에서 분석하고 공유한다. 목표를 위해 지표·품질·이상치 분석 단계에서 ANALYZE 명령의 선행 상태, 담당 액터, 필수 입력, 권한, 증적을 확인한다.",
+      "completionRule": "지표 근거와 품질·이상치가 원본 데이터까지 추적된다.",
+      "inputContract": "{\"processCode\" : \"MONITORING_ANALYSIS\", \"stepCode\" : \"MONITORING_REVIEW\", \"fromState\" : \"SCOPED\", \"actorCode\" : \"VERIFIER\"}",
+      "outputContract": "{\"toState\" : \"ANALYZED\", \"completionRule\" : \"지표 근거와 품질·이상치가 원본 데이터까지 추적된다.\", \"evidenceRequired\" : true}",
+      "userPath": "/monitoring/statistics",
+      "adminPath": "/admin/emission/validation-rule",
+      "automationStatus": "NOT_ANALYZED"
+    },
+    {
+      "processCode": "MONITORING_ANALYSIS",
+      "stepOrder": 3,
+      "stepCode": "MONITORING_EXPORT",
+      "stepName": "분석 결과 내보내기",
+      "actorCode": "COMPANY_MANAGER",
+      "fromState": "ANALYZED",
+      "commandCode": "EXPORT",
+      "toState": "EXPORTED",
+      "workPurpose": "배출·LCA·감축 데이터를 품질과 목표 관점에서 분석하고 공유한다. 목표를 위해 분석 결과 내보내기 단계에서 EXPORT 명령의 선행 상태, 담당 액터, 필수 입력, 권한, 증적을 확인한다.",
+      "completionRule": "내보낸 데이터의 범위·버전·행위자가 기록된다.",
+      "inputContract": "{\"processCode\" : \"MONITORING_ANALYSIS\", \"stepCode\" : \"MONITORING_EXPORT\", \"fromState\" : \"ANALYZED\", \"actorCode\" : \"COMPANY_MANAGER\"}",
+      "outputContract": "{\"toState\" : \"EXPORTED\", \"completionRule\" : \"내보낸 데이터의 범위·버전·행위자가 기록된다.\", \"evidenceRequired\" : true}",
+      "userPath": "/monitoring/export",
+      "adminPath": "/admin/system/process-workspace",
+      "automationStatus": "NOT_ANALYZED"
+    },
+    {
+      "processCode": "MONITORING_ANALYSIS",
+      "stepOrder": 4,
+      "stepCode": "MONITORING_SHARE",
+      "stepName": "이해관계자 공유",
+      "actorCode": "APPROVER",
+      "fromState": "EXPORTED",
+      "commandCode": "SHARE",
+      "toState": "COMPLETED",
+      "workPurpose": "배출·LCA·감축 데이터를 품질과 목표 관점에서 분석하고 공유한다. 목표를 위해 이해관계자 공유 단계에서 SHARE 명령의 선행 상태, 담당 액터, 필수 입력, 권한, 증적을 확인한다.",
+      "completionRule": "승인된 대상과 기간에만 분석 결과가 공유된다.",
+      "inputContract": "{\"processCode\" : \"MONITORING_ANALYSIS\", \"stepCode\" : \"MONITORING_SHARE\", \"fromState\" : \"EXPORTED\", \"actorCode\" : \"APPROVER\"}",
+      "outputContract": "{\"toState\" : \"COMPLETED\", \"completionRule\" : \"승인된 대상과 기간에만 분석 결과가 공유된다.\", \"evidenceRequired\" : true}",
+      "userPath": "/monitoring/share",
+      "adminPath": "/admin/system/process-workspace",
+      "automationStatus": "NOT_ANALYZED"
+    }
+  ],
+  "limitations": [
+    "기존 DB의 7개 프로세스·상태 전이는 변경하지 않음. 탐색 분류와 업무 완료는 별도.",
+    "사용자·관리자 생성 경로는 역할별 대안이며 모두 순차 실행하는 것이 아님.",
+    "경보·규제·출력·공유·정기보고는 조건부 분기다. 매번 7개를 모두 수행하지 않음.",
+    "관리자 시스템 대시보드는 기술 운영 화면. 탄소 모니터링 완료 증거로 사용하지 않음.",
+    "실제 저장·전송·승인 E2E 미검증. 화면에 표시된 예시 수치를 운영 실적으로 인정하지 않음."
+  ],
+  "sources": [
+    "GET /api/home",
+    "GET /admin/system/menu-data",
+    "GET /home/api/emission-tasks?compact=false",
+    "emissionMonitoringFamily.ts",
+    "MonitoringExportMigrationPage.tsx",
+    "MonitoringShareMigrationPage.tsx"
+  ]
+}

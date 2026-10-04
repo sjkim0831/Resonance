@@ -17,6 +17,12 @@ public class ObservabilityMapper extends BaseMapperSupport {
     public void insertTraceEvent(TraceEventRecordVO traceEventRecordVO) {
         insert("ObservabilityMapper.insertTraceEvent", traceEventRecordVO);
     }
+    public int insertFrontendTraceEvent(TraceEventRecordVO record) {
+        return insert("ObservabilityMapper.insertFrontendTraceEvent", record);
+    }
+    public int aggregateTechnicalRequest(java.util.Map<String, Object> request) {
+        return insert("ObservabilityMapper.aggregateTechnicalRequest", request);
+    }
 
     public void insertAccessEvent(AccessEventRecordVO accessEventRecordVO) {
         insert("ObservabilityMapper.insertAccessEvent", accessEventRecordVO);

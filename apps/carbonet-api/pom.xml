@@ -17,6 +17,10 @@
     <name>carbonet-api</name>
     <description>Independent runtime for Carbonet projects</description>
 
+    <properties>
+        <spring-session-jdbc.version>3.4.3</spring-session-jdbc.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -26,6 +30,7 @@
         <dependency>
             <groupId>org.springframework.session</groupId>
             <artifactId>spring-session-jdbc</artifactId>
+            <version>${spring-session-jdbc.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

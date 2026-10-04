@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "equipmentLedgerUnique": 16,
+  "scenarioSetEqualsMaster": true,
+  "reviewed": 16,
+  "catalogScreened": 724,
+  "gradeSum": 16,
+  "allRecommendationsHaveEntry": true,
+  "noBlockedForcedMapping": true,
+  "noExactWithoutIdentity": true,
+  "eachHasReasonAndSources": true,
+  "sourceImageCount": 16,
+  "candidateRenderImagesInspected": 12,
+  "promotionWrites": 0,
+  "deviceWrites": 0,
+  "businessWrites": 0
+}

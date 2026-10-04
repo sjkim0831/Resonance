@@ -84,6 +84,16 @@ export default defineConfig({
       "localhost",
     ],
     proxy: {
+      // Menu reads worked through page-data, but saves fell through to Vite (404).
+      // Keep commands on the authenticated backend; do not proxy the page route.
+      "^/(?:en/)?admin/system/runtime-command/execute(?:\\?.*)?$": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "^/(?:en/)?admin/system/menu/(?:update-page|toggle-exposure|update-dependent-screen|order|delete-page|create-page)(?:\\?.*)?$": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
       "/assets/react/full-screen-quality-report.json": {
         target: "http://localhost:18000",
         changeOrigin: true

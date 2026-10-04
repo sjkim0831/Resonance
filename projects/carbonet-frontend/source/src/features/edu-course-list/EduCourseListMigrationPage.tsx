@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useMemo, useState } from "react";
 import {
   UserGovernmentBar,
@@ -476,8 +477,7 @@ export function EduCourseListMigrationPage() {
 
         <section className="relative z-10 mx-auto -mt-8 max-w-7xl px-4 lg:px-8" data-help-id="edu-course-list-catalog">
           <div className="rounded-[24px] border border-white bg-white p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,0.55fr))_auto]">
-              <label className="relative block">
+            <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><label className="relative block">
                 <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400">search</span>
                 <input
                   className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-12 pr-4 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
@@ -485,8 +485,8 @@ export function EduCourseListMigrationPage() {
                   placeholder={copy.searchPlaceholder}
                   value={keyword}
                 />
-              </label>
-              <select
+              </label></div>
+<div className="ccus-search-field"><select
                 className="h-14 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium outline-none transition focus:border-sky-400"
                 onChange={(event) => setCategory(event.target.value as CourseCategory | "all")}
                 value={category}
@@ -494,8 +494,7 @@ export function EduCourseListMigrationPage() {
                 {CATEGORY_OPTIONS.map((option) => (
                   <option key={option.key} value={option.key}>{en ? option.labelEn : option.label}</option>
                 ))}
-              </select>
-              <select
+              </select></div></>} advanced={<><div className="ccus-search-field"><select
                 className="h-14 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium outline-none transition focus:border-sky-400"
                 onChange={(event) => setLevel(event.target.value as CourseLevel | "all")}
                 value={level}
@@ -503,8 +502,7 @@ export function EduCourseListMigrationPage() {
                 {LEVEL_OPTIONS.map((option) => (
                   <option key={option.key} value={option.key}>{en ? option.labelEn : option.label}</option>
                 ))}
-              </select>
-              <button
+              </select></div></>} actions={<><button
                 className="h-14 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-600 transition hover:border-sky-300 hover:text-[var(--kr-gov-blue)]"
                 onClick={() => {
                   setKeyword("");
@@ -515,10 +513,9 @@ export function EduCourseListMigrationPage() {
               >
                 {en ? "Reset" : "초기화"}
               </button>
-              <button className="h-14 rounded-2xl bg-[var(--kr-gov-blue)] px-8 text-sm font-bold text-white transition hover:bg-[var(--kr-gov-blue-hover)]" type="button">
+<button className="h-14 rounded-2xl bg-[var(--kr-gov-blue)] px-8 text-sm font-bold text-white transition hover:bg-[var(--kr-gov-blue-hover)]" type="button">
                 {copy.searchButton}
-              </button>
-            </div>
+              </button></>}></CommonSearchSection></div>
           </div>
         </section>
 

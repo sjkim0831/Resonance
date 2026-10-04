@@ -1,6 +1,7 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { StandardUserFooter } from "../../components/user-shell/StandardUserFooter";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { invalidateFrontendSessionCache } from "../../lib/api/adminShell";
 import { fetchJson } from "../../lib/api/core";
@@ -8,7 +9,7 @@ import { buildLocalizedPath, getNavigationEventName, getSearchParam, isEnglish, 
 import { postJsonWithSession } from "./publicEntryApi";
 import { LoginResponse, PublicFrame } from "./publicEntryShared";
 import { AppButton, AppCheckbox, AppInput, AppLinkButton } from "../app-ui/primitives";
-import { launchPortOneLogin } from "./portoneLogin";
+import { LIVE_PENDING_KEY, launchPortOneLogin, requestPortOneLiveVerification } from "./portoneLogin";
 
 type ExternalAuthMethod = {
   providerCode: string;
@@ -32,6 +33,8 @@ type ExternalAuthStartPayload = {
   providerCode?: string;
   methodCode?: string;
   txId?: string;
+  storeId?: string;
+  channelKey?: string;
   nextAction?: string;
   appScheme?: string;
   qrScheme?: string;
@@ -103,7 +106,10 @@ async function completeExternalAuth(methodCode: string, txId: string, userId?: s
 
 export function PublicLoginPage({ admin = false }: { admin?: boolean } = {}) {
   const en = isEnglish();
-  const loginDestination = admin ? buildLocalizedPath("/admin", "/en/admin") : buildLocalizedPath("/home", "/en/home");
+  const [linkRequired, setLinkRequired] = useState(false);
+  const linkPath = buildLocalizedPath("/signin/authChoice", "/en/signin/authChoice");
+  const loginDestination = linkRequired || getSearchParam("returnUrl") === linkPath
+    ? linkPath : admin ? buildLocalizedPath("/admin", "/en/admin") : buildLocalizedPath("/home", "/en/home");
   const [userId, setUserId] = useState("");
   const [userPw, setUserPw] = useState("");
   const [saveId, setSaveId] = useState(false);
@@ -111,6 +117,8 @@ export function PublicLoginPage({ admin = false }: { admin?: boolean } = {}) {
   const [tab, setTab] = useState<"domestic" | "overseas">(() => resolveLoginTabFromLocation());
   const [submitting, setSubmitting] = useState(false);
   const [externalAuthSubmitting, setExternalAuthSubmitting] = useState("");
+  const [portOneLiveReady, setPortOneLiveReady] = useState(false);
+  const liveRedirectAttemptedRef = useRef(false);
   const [mfaChallengeId, setMfaChallengeId] = useState("");
   const [mfaDestination, setMfaDestination] = useState("");
   const [mfaDevelopmentCode, setMfaDevelopmentCode] = useState("");
@@ -123,7 +131,11 @@ export function PublicLoginPage({ admin = false }: { admin?: boolean } = {}) {
 
   function buildLoginPath(nextEnglish: boolean, nextTab: "domestic" | "overseas") {
     const basePath = admin ? (nextEnglish ? "/en/admin/login/loginView" : "/admin/login/loginView") : (nextEnglish ? "/en/signin/loginView" : "/signin/loginView");
-    return nextTab === "overseas" ? `${basePath}?tab=overseas` : basePath;
+    const query = new URLSearchParams();
+    if (nextTab === "overseas") query.set("tab", "overseas");
+    if (linkRequired || getSearchParam("returnUrl") === linkPath)
+      query.set("returnUrl", nextEnglish ? "/en/signin/authChoice" : "/signin/authChoice");
+    return query.size ? `${basePath}?${query}` : basePath;
   }
 
   function changeLanguage(nextEnglish: boolean) {
@@ -142,10 +154,42 @@ export function PublicLoginPage({ admin = false }: { admin?: boolean } = {}) {
 
   useEffect(() => {
     const nextPath = tab === "overseas" ? `${loginPath}?tab=overseas` : loginPath;
+    if (getSearchParam("identityVerificationId") || getSearchParam("code")) return;
+    if (getSearchParam("returnUrl") === linkPath) return;
     if (`${window.location.pathname}${window.location.search}` !== nextPath) {
       replace(nextPath);
     }
   }, [loginPath, tab]);
+
+  useEffect(() => {
+    void fetchExternalAuthMethods().then(methods => {
+      setPortOneLiveReady(methods.some(method => method.methodCode === "PORTONE_UNIFIED" && method.available));
+    }).catch(() => setPortOneLiveReady(false));
+  }, []);
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const verificationId = query.get("identityVerificationId");
+    const errorCode = query.get("code");
+    if ((!verificationId && !errorCode) || liveRedirectAttemptedRef.current) return;
+    const pending = sessionStorage.getItem(LIVE_PENDING_KEY);
+    if (!pending) return;
+    liveRedirectAttemptedRef.current = true;
+    query.delete("identityVerificationId");
+    query.delete("code");
+    query.delete("message");
+    const remainingQuery = query.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${remainingQuery ? `?${remainingQuery}` : ""}`);
+    if (errorCode || verificationId !== pending) {
+      sessionStorage.removeItem(LIVE_PENDING_KEY);
+      window.alert("인증 요청이 일치하지 않거나 완료되지 않았습니다. 다시 시도해 주세요.");
+      return;
+    }
+    void completeExternalAuth("PORTONE_UNIFIED", pending)
+      .then(finishPortOneLiveLogin)
+      .catch(error => window.alert(error instanceof Error ? error.message : "인증 확인에 실패했습니다."))
+      .finally(() => sessionStorage.removeItem(LIVE_PENDING_KEY));
+  }, []);
 
   useEffect(() => {
     const savedId = getCookie("userInputId");
@@ -329,6 +373,16 @@ export function PublicLoginPage({ admin = false }: { admin?: boolean } = {}) {
     setExternalAuthSubmitting(methodCode);
     try {
       if (methodCode === "PORTONE_UNIFIED") {
+        if (portOneLiveReady) {
+          const started = await startExternalAuth(methodCode);
+          if (started.nextAction !== "PORTONE_SDK" || !started.txId || !started.storeId || !started.channelKey)
+            throw new Error("실 연동 설정이 완전하지 않습니다.");
+          const completedInPopup = await requestPortOneLiveVerification({
+            txId: started.txId, storeId: started.storeId, channelKey: started.channelKey
+          });
+          if (completedInPopup) finishPortOneLiveLogin(await completeExternalAuth(methodCode, started.txId));
+          return;
+        }
         if (window.location.protocol === "https:" && (!userId.trim() || !userPw)) {
           window.alert(en ? "Enter your ID and password first. The test channel cannot replace account authentication." : "아이디와 비밀번호를 먼저 입력해 주세요. 현재 테스트 채널에서는 본인인증 후에도 기존 계정의 비밀번호를 확인합니다.");
           return;
@@ -380,6 +434,23 @@ export function PublicLoginPage({ admin = false }: { admin?: boolean } = {}) {
     } finally {
       setExternalAuthSubmitting("");
     }
+  }
+
+  function finishPortOneLiveLogin(completed: ExternalAuthCompletePayload) {
+    if (completed.linkRequired) {
+      setLinkRequired(true);
+      return;
+    }
+    if (completed.status !== "loginSuccess") {
+      window.alert(completed.errors || (completed.linkRequired
+        ? "연결된 계정이 없습니다. 기존 계정으로 로그인해 본인인증을 연결해 주세요."
+        : "본인인증 결과로 로그인하지 못했습니다."));
+      return;
+    }
+    invalidateFrontendSessionCache();
+    window.sessionStorage.setItem("loginUserId", completed.userId || "");
+    window.sessionStorage.setItem("loginUserSe", completed.userSe || "ENT");
+    navigate(loginDestination);
   }
 
   return (
@@ -602,16 +673,23 @@ export function PublicLoginPage({ admin = false }: { admin?: boolean } = {}) {
                       {externalAuthSubmitting === "PORTONE_UNIFIED" ? (en ? "Processing…" : "인증 진행 중…") : (en ? "Unified identity login" : "통합인증 로그인")}
                     </AppButton>
                     <p id="portone-login-description" className="mt-3 text-xs leading-relaxed text-[var(--kr-gov-text-secondary)]">
-                      {en
-                        ? "Enter your ID and password, then complete unified verification. Your password and existing login policies are checked before login. The test channel does not support certificate-only login."
-                        : "아이디·비밀번호 입력 후 통합인증을 진행하면, 인증 성공 뒤 기존 비밀번호와 로그인 정책을 확인해 로그인합니다. 현재 테스트 채널에서는 인증서만으로 로그인할 수 없습니다."}
+                      {portOneLiveReady
+                        ? (en ? "Your verified identity must match an existing account. Accounts with MFA must use the existing login flow."
+                          : "인증된 CI가 기존 계정과 일치할 때 로그인합니다. 추가 인증(MFA) 계정은 기존 로그인에서 진행해 주세요.")
+                        : (en ? "Test channel only. Enter ID and password first; certificate verification alone cannot log you in."
+                          : "현재는 테스트 채널입니다. 아이디·비밀번호를 먼저 입력해 주세요. 인증서만으로 로그인할 수 없습니다.")}
                     </p>
                   </section>
+                  {linkRequired && <section role="status" className="rounded-lg border border-blue-300 bg-blue-50 p-4 text-sm">
+                    <h2 className="font-bold">본인인증 완료 · 계정 연결 필요</h2>
+                    <p className="mt-2">위 아이디·비밀번호로 로그인해 주세요. MFA가 설정되어 있으면 추가 인증 후 계정 연결 화면으로 이동합니다. 계정 연결 화면에서 다시 본인인증을 완료하면 다음부터 통합인증으로 로그인할 수 있습니다.</p>
+                  </section>}
+                  <AppLinkButton href={`${buildLocalizedPath("/signin/loginView", "/en/signin/loginView")}?returnUrl=${encodeURIComponent(linkPath)}`} variant="ghost">{en ? "Link identity verification to an existing account" : "기존 계정에 통합인증 연결하기"}</AppLinkButton>
                   <details className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] p-4 text-sm" data-testid="portone-login-help">
                     <summary className="cursor-pointer font-bold">{en ? "Identity verification help" : "통합인증 이용 안내"}</summary>
                     <p className="mt-3 leading-relaxed">{en
-                      ? "Login uses your ID and password. Unified verification is optional; please use the financial certificate for now. Existing account permissions and MFA still apply."
-                      : "로그인 버튼은 아이디·비밀번호로 로그인합니다. 통합인증은 별도 버튼으로 이용할 수 있으며, 당분간 금융인증서를 선택해 주세요. 기존 계정 권한과 MFA 정책은 유지합니다."}</p>
+                      ? "First link identity verification after signing into your existing account. Available providers are shown by KG Inicis. Account permissions and MFA still apply."
+                      : "최초 1회 기존 계정으로 로그인한 후 통합인증을 연결해 주세요. 이용 가능한 인증수단은 KG이니시스 인증창에서 확인할 수 있습니다. 기존 계정 권한과 MFA 정책은 유지합니다."}</p>
                   </details>
               </div>
             </form>
@@ -652,37 +730,63 @@ function deleteCookie(cookieName: string) {
 export function AuthChoicePage() {
   const en = isEnglish();
   const [saving, setSaving] = useState("");
+  const [message, setMessage] = useState("");
+  const [linked, setLinked] = useState(false);
+  const busy = useRef(false);
+  const resumed = useRef(false);
+  const session = useFrontendSession({ revalidate: true });
   const methodsState = useAsyncValue(fetchExternalAuthMethods, [en], {
     initialValue: []
   });
-  const methods = methodsState.value || [];
+  const methods = (methodsState.value || []).filter(method => method.methodCode === "PORTONE_UNIFIED");
+
+  async function finishLink(txId: string) {
+    const body = await completeExternalAuth("PORTONE_UNIFIED", txId);
+    if (body.status !== "accountLinkSuccess") throw new Error(body.errors || "인증 연결을 저장하지 못했습니다.");
+    setLinked(true);
+    setMessage("통합인증 연결을 완료했습니다. 다음 로그인부터 통합인증을 이용할 수 있습니다.");
+  }
+
+  useEffect(() => {
+    if (resumed.current || !session.value?.authenticated) return;
+    const tx = getSearchParam("identityVerificationId");
+    const pending = sessionStorage.getItem(LIVE_PENDING_KEY);
+    if (!tx || !pending || tx !== pending) return;
+    resumed.current = true;
+    sessionStorage.removeItem(LIVE_PENDING_KEY);
+    if (getSearchParam("code")) { setMessage("인증이 취소되었거나 완료되지 않았습니다."); return; }
+    busy.current = true;
+    setSaving("PORTONE_UNIFIED");
+    void finishLink(tx).catch(error => setMessage(error instanceof Error ? error.message : "인증 연결 오류"))
+      .finally(() => { busy.current = false; setSaving(""); });
+  }, [session.value?.authenticated]);
 
   async function handleAuthChoice(authTy: string) {
+    if (busy.current || linked || !session.value?.authenticated) return;
+    busy.current = true;
     setSaving(authTy);
+    setMessage("");
     try {
-      const storedUserId = window.sessionStorage.getItem("loginUserId") || "";
-      const storedUserSe = window.sessionStorage.getItem("loginUserSe") || "ENT";
-      const started = await startExternalAuth(authTy, storedUserId, storedUserSe);
-      if (!started.txId) {
+      const started = await postJsonWithSession<ExternalAuthStartPayload>(
+        buildLocalizedPath("/signin/external-auth/start", "/en/signin/external-auth/start"),
+        { methodCode: authTy, purpose: "ACCOUNT_LINK" });
+      if (!started.txId || !started.storeId || !started.channelKey || started.nextAction !== "PORTONE_SDK") {
         throw new Error(started.message || (en ? "Failed to start authentication." : "인증 시작에 실패했습니다."));
       }
-      const body = await completeExternalAuth(authTy, started.txId, storedUserId, storedUserSe);
-      if (body.status !== "loginSuccess") {
-        throw new Error(body.errors || (en ? "Failed to save authentication info." : "인증 정보 저장에 실패했습니다."));
-      }
-      invalidateFrontendSessionCache();
-      navigate(buildLocalizedPath("/home", "/en/home"));
+      if (await requestPortOneLiveVerification({ txId: started.txId, storeId: started.storeId, channelKey: started.channelKey }))
+        await finishLink(started.txId);
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : (en ? "An error occurred while processing authentication." : "인증 처리 중 오류가 발생했습니다."));
+      setMessage(error instanceof Error ? error.message : "인증 연결 처리 중 오류가 발생했습니다.");
     } finally {
+      busy.current = false;
       setSaving("");
     }
   }
 
   return (
     <PublicFrame
-      title={en ? "Select Authentication Method" : "인증 수단 선택"}
-      subtitle={en ? "Please select your preferred authentication method for convenient and secure access." : "편리하고 안전한 이용을 위해 원하시는 인증 수단을 선택해 주세요."}
+      title={en ? "Link identity verification" : "기존 계정에 통합인증 연결"}
+      subtitle={en ? "Verify your identity to link it to your signed-in account. This does not change permissions." : "현재 로그인한 계정에 본인인증을 연결합니다. 계정 권한은 변경하지 않습니다."}
       languagePathKo="/signin/authChoice"
       languagePathEn="/en/signin/authChoice"
       footerNote={
@@ -701,11 +805,18 @@ export function AuthChoicePage() {
         </>
       }
     >
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6" data-help-id="signin-auth-choice-options">
+      <section className="mb-6 rounded-lg border bg-blue-50 p-5 text-sm">
+        <p>연결 계정: <strong>{session.value?.actualUserId || session.value?.userId || "로그인 확인 중"}</strong></p>
+        <p className="mt-2">아래 버튼을 누르면 KG이니시스 본인인증을 새로 진행합니다. 인증 결과는 현재 계정의 다음 로그인에 사용됩니다. 다른 계정에 연결된 인증은 덮어쓰지 않습니다.</p>
+        <p className="mt-2">계정 연결 → 다음 로그인에서 통합인증 선택 → 설정된 MFA가 있으면 기존 로그인에서 추가 인증</p>
+      </section>
+      {message && <p role={linked ? "status" : "alert"} className="mb-5 rounded-lg border p-4">{message}</p>}
+      {linked && <AppLinkButton href={session.value?.canEnterAdminConsole ? "/admin" : "/home"}>업무 화면으로 이동</AppLinkButton>}
+      <section className="grid grid-cols-1 gap-6" data-help-id="signin-auth-choice-options">
         {methods.length > 0 ? methods.map((method) => (
           <button
             className={`flex flex-col items-center p-8 bg-white border border-[var(--kr-gov-border-light)] rounded-lg transition-all hover:border-[var(--kr-gov-blue)] hover:shadow-md focus-visible text-center w-full ${method.available ? "" : "opacity-60"}`}
-            disabled={!!saving || !method.available}
+            disabled={!!saving || linked || !session.value?.authenticated || !method.available}
             key={`${method.providerCode}-${method.methodCode}`}
             onClick={() => void handleAuthChoice(method.methodCode)}
             type="button"
@@ -713,7 +824,7 @@ export function AuthChoicePage() {
             <div className="w-12 h-12 flex items-center justify-center bg-gray-50 text-[var(--kr-gov-blue)] rounded-[5px] mb-4 border border-gray-100">
               <span className="material-symbols-outlined">{method.icon || "verified_user"}</span>
             </div>
-            <h3 className="text-lg font-bold mb-3">{method.displayName}</h3>
+            <h3 className="text-lg font-bold mb-3">{linked ? "연결 완료" : `${method.displayName} · 본인인증하고 현재 계정에 연결`}</h3>
             <p className="text-sm text-[var(--kr-gov-text-secondary)] leading-relaxed">{method.description}</p>
             <span className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
               {saving === method.methodCode ? (en ? "Processing" : "진행중") : (method.statusMessage || method.status)}

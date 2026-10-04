@@ -9,7 +9,6 @@ import {
 } from "../../components/user-shell/UserPortalChrome";
 import {
   fetchMypage,
-  saveMypageEmail,
   saveMypageStaff
 } from "../../lib/api/portal";
 import { readBootstrappedMypagePayload } from "../../lib/api/bootstrap";
@@ -105,7 +104,7 @@ const COPY: Record<"ko" | "en", CopySet> = {
     phone: "연락처",
     companyName: "기관/기업명",
     businessNo: "사업자등록번호",
-    jobTitle: "직함",
+    jobTitle: "부서명",
     readonlyId: "아이디는 변경이 불가능합니다.",
     verifyChange: "변경인증",
     phoneVerified: "휴대폰 본인인증 완료",
@@ -160,7 +159,7 @@ const COPY: Record<"ko" | "en", CopySet> = {
     phone: "Phone Number",
     companyName: "Organization / Company Name",
     businessNo: "Business Registration Number",
-    jobTitle: "Job Title",
+    jobTitle: "Department",
     readonlyId: "Username cannot be changed.",
     verifyChange: "Verify Change",
     phoneVerified: "Mobile verification complete",
@@ -265,32 +264,38 @@ export function MypageMigrationPage() {
     const session = sessionState.value;
     logGovernanceScope("ACTION", "mypage-save-profile", {
       actorInsttId: session?.insttId || "",
-      email,
-      jobTitle
+      section: "profile"
     });
     if (!session) {
       setError(copy.saveUnavailable);
+      return;
+    }
+    if (submitting) return;
+    if (!fullName.trim() || !jobTitle.trim() || jobTitle.trim().length > 100) {
+      setError(en ? "Enter a name and a department of up to 100 characters." : "성명과 100자 이내의 부서명을 확인해 주세요.");
       return;
     }
     setSubmitting(true);
     setError("");
     setMessage("");
     try {
-      await saveMypageEmail(session, email, en, stringValue(member.insttId));
       await saveMypageStaff(
         session,
         {
-          staffName: fullName,
-          deptNm: jobTitle,
-          areaNo,
-          middleTelno,
-          endTelno
+          staffName: stringValue(member.applcntNm),
+          deptNm: jobTitle.trim(),
+          areaNo: stringValue(member.areaNo),
+          middleTelno: stringValue(member.entrprsMiddleTelno),
+          endTelno: stringValue(member.entrprsEndTelno)
         },
         en,
         stringValue(member.insttId)
       );
-      await pageState.reload();
-      setMessage(copy.saveSuccess);
+      const verified = await pageState.reload();
+      if (!verified || stringValue((verified.member as MypageMember)?.deptNm) !== jobTitle.trim()) {
+        throw new Error(en ? "Save result could not be verified. Reload before retrying." : "저장 결과를 확인하지 못했습니다. 다시 저장하기 전에 재조회해 주세요.");
+      }
+      setMessage(en ? "Saved and verified against the server." : "저장 후 서버에서 같은 부서명을 다시 확인했습니다.");
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : copy.saveUnavailable);
     } finally {
@@ -299,24 +304,7 @@ export function MypageMigrationPage() {
   }
 
   async function handleEmailVerify() {
-    const session = sessionState.value;
-    logGovernanceScope("ACTION", "mypage-save-email", {
-      actorInsttId: session?.insttId || "",
-      email
-    });
-    if (!session) {
-      setError(copy.saveUnavailable);
-      return;
-    }
-    setError("");
-    setMessage("");
-    try {
-      await saveMypageEmail(session, email, en, stringValue(member.insttId));
-      await pageState.reload();
-      setMessage(copy.emailSaved);
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : copy.saveUnavailable);
-    }
+    navigate(buildLocalizedPath("/mypage/email?processCode=CONTACT_REVERIFICATION&stepCode=CONTACT_LOAD&guide=1", "/en/mypage/email?processCode=CONTACT_REVERIFICATION&stepCode=CONTACT_LOAD&guide=1"));
   }
 
   function handleCancel() {
@@ -652,7 +640,7 @@ export function MypageMigrationPage() {
                 <div className="grid gap-6 p-6 md:grid-cols-2 lg:p-8">
                   <div className="space-y-2">
                     <label className="form-label" htmlFor="user-name">{copy.fullName} <span className="text-[var(--kr-gov-error)]">*</span></label>
-                    <HomeInput className="home-field home-field--mypage" id="user-name" onChange={(event) => setFullName(event.target.value)} type="text" value={fullName} />
+                    <HomeInput className="home-field home-field--mypage" id="user-name" readOnly type="text" value={fullName} />
                   </div>
                   <div className="space-y-2">
                     <label className="form-label" htmlFor="user-title">{copy.jobTitle} <span className="text-[var(--kr-gov-error)]">*</span></label>
@@ -661,7 +649,7 @@ export function MypageMigrationPage() {
                   <div className="space-y-2">
                     <label className="form-label" htmlFor="user-email">{copy.email} <span className="text-[var(--kr-gov-error)]">*</span></label>
                     <div className="flex gap-2">
-                      <HomeInput className="home-field home-field--mypage" id="user-email" inputMode="email" onChange={(event) => setEmail(event.target.value)} type="text" value={email} />
+                      <HomeInput className="home-field home-field--mypage" id="user-email" readOnly type="text" value={email} />
                       <HomeButton className="shrink-0 px-4 text-sm" onClick={() => void handleEmailVerify()} type="button">
                         {copy.verifyChange}
                       </HomeButton>
@@ -673,6 +661,7 @@ export function MypageMigrationPage() {
                       className="home-field home-field--mypage"
                       id="user-phone"
                       inputMode="tel"
+                      readOnly
                       onChange={(event) => {
                         const next = parsePhone(event.target.value);
                         setAreaNo(next.areaNo);
@@ -685,7 +674,7 @@ export function MypageMigrationPage() {
                     {phoneNumber ? (
                       <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-[var(--kr-gov-success)]">
                         <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                        {copy.phoneVerified}
+                        {en ? "Registered contact. Change it on the verification page." : "등록된 연락처입니다. 변경은 연락처 재인증 화면에서 진행합니다."}
                       </p>
                     ) : null}
                   </div>
@@ -751,7 +740,7 @@ export function MypageMigrationPage() {
                         <p className="text-sm font-bold text-slate-800">{copy.auth1Title}</p>
                         <p className="mt-1 text-xs text-slate-500">{copy.auth1Desc}</p>
                       </div>
-                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">{copy.connected}</span>
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-700">{en ? "Connection status not verified" : "연동 상태 미확인"}</span>
                     </div>
                   </div>
                 </div>

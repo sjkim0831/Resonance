@@ -1,0 +1,1909 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "EMISSION_PROJECT_PORTFOLIO",
+    "name": "배출량 프로젝트 포트폴리오 관리",
+    "domain": "EMISSION",
+    "workType": "EMISSION",
+    "goal": "로그인 계정에 배정된 배출량 프로젝트만 검색·요약·정렬하여 다음 실제 업무로 진입시킨다."
+  },
+  "step": {
+    "code": "EMISSION_PROJECT_PORTFOLIO_LIST",
+    "version": 1,
+    "actor": {
+      "scope": "TENANT_PROJECT",
+      "actorCode": "COMPANY_MANAGER",
+      "assignmentRequired": true
+    },
+    "business": {
+      "requirement": "검색어·상태·사업장·페이지 조건을 서버에 전달하고 권한 범위 내 총계·목록·선택지를 일관되게 표시한다.",
+      "completionRule": "테넌트와 활성 액터 배정으로 제한된 목록에서 프로젝트를 선택하고 상세 또는 다음 업무 링크를 연다."
+    },
+    "transition": {
+      "toState": "PROJECT_SELECTED",
+      "fromState": "READY",
+      "commandCode": "SELECT_PROJECT"
+    },
+    "input": {
+      "page": "minimum 1",
+      "site": "optional",
+      "status": "optional",
+      "actorId": "session",
+      "keyword": "optional",
+      "tenantId": "session"
+    },
+    "output": {
+      "items": "actor scoped",
+      "sites": "actor scoped options",
+      "total": "filtered count",
+      "summary": "actor scoped status counts",
+      "nextRoute": "selected project detail"
+    },
+    "guide": {
+      "purpose": "검색어·상태·사업장·페이지 조건을 서버에 전달하고 권한 범위 내 총계·목록·선택지를 일관되게 표시한다.",
+      "nextStep": "runtime-resolved",
+      "completion": "테넌트와 활성 액터 배정으로 제한된 목록에서 프로젝트를 선택하고 상세 또는 다음 업무 링크를 연다."
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+        "route": "/emission/project-portfolio",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "USER",
+        "screenType": "LIST_DASHBOARD",
+        "title": "배출량 프로젝트 포트폴리오",
+        "purpose": "프로젝트를 검색하고 다음 실행 가능한 업무를 선택한다.",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": false,
+            "fieldCode": "keyword",
+            "fieldName": "검색어",
+            "fieldGroup": "검색",
+            "fieldOrder": 1,
+            "validation": {
+              "maxLength": 200
+            },
+            "apiProperty": "query.keyword",
+            "controlType": "SEARCH",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": false,
+            "code": "keyword"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": false,
+            "fieldCode": "statusFilter",
+            "fieldName": "상태 필터",
+            "fieldGroup": "검색",
+            "fieldOrder": 2,
+            "validation": {
+              "type": "code",
+              "nullable": true,
+              "required": false,
+              "allowUnknown": false
+            },
+            "apiProperty": "query.status",
+            "controlType": "SELECT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": false,
+            "code": "statusFilter"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": false,
+            "fieldCode": "siteFilter",
+            "fieldName": "사업장 필터",
+            "fieldGroup": "검색",
+            "fieldOrder": 3,
+            "validation": {
+              "type": "code",
+              "nullable": true,
+              "required": false,
+              "allowUnknown": false
+            },
+            "apiProperty": "query.site",
+            "controlType": "SELECT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "site_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": false,
+            "code": "siteFilter"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": true,
+            "fieldCode": "page",
+            "fieldName": "페이지",
+            "fieldGroup": "페이지",
+            "fieldOrder": 4,
+            "validation": {
+              "minimum": 1
+            },
+            "apiProperty": "page",
+            "controlType": "PAGINATION",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": false,
+            "code": "page"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": true,
+            "fieldCode": "size",
+            "fieldName": "페이지 크기",
+            "fieldGroup": "페이지",
+            "fieldOrder": 5,
+            "validation": {
+              "const": 10
+            },
+            "apiProperty": "size",
+            "controlType": "HIDDEN",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": false,
+            "code": "size"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": true,
+            "fieldCode": "total",
+            "fieldName": "검색 결과 수",
+            "fieldGroup": "요약",
+            "fieldOrder": 6,
+            "validation": {
+              "minimum": 0
+            },
+            "apiProperty": "total",
+            "controlType": "METRIC",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": false,
+            "code": "total"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": false,
+            "fieldCode": "summaryStatus",
+            "fieldName": "상태별 구분",
+            "fieldGroup": "요약",
+            "fieldOrder": 7,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "summary[].status",
+            "controlType": "METRIC",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": false,
+            "code": "summaryStatus"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": false,
+            "fieldCode": "summaryCount",
+            "fieldName": "상태별 건수",
+            "fieldGroup": "요약",
+            "fieldOrder": 8,
+            "validation": {
+              "minimum": 0
+            },
+            "apiProperty": "summary[].count",
+            "controlType": "METRIC",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": false,
+            "code": "summaryCount"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트 ID",
+            "fieldGroup": "목록",
+            "fieldOrder": 9,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].id",
+            "controlType": "LINK",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": true,
+            "code": "projectId"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": true,
+            "fieldCode": "projectName",
+            "fieldName": "프로젝트명",
+            "fieldGroup": "목록",
+            "fieldOrder": 10,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].name",
+            "controlType": "TEXT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": false,
+            "code": "projectName"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": true,
+            "fieldCode": "siteName",
+            "fieldName": "사업장",
+            "fieldGroup": "목록",
+            "fieldOrder": 11,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].site",
+            "controlType": "TEXT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "site_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": false,
+            "code": "siteName"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": true,
+            "fieldCode": "calculationPeriod",
+            "fieldName": "산정 기간",
+            "fieldGroup": "목록",
+            "fieldOrder": 12,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].period",
+            "controlType": "TEXT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "calculation_period",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": false,
+            "code": "calculationPeriod"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": true,
+            "fieldCode": "scopeName",
+            "fieldName": "Scope",
+            "fieldGroup": "목록",
+            "fieldOrder": 13,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].scope",
+            "controlType": "BADGE",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "scope_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": false,
+            "code": "scopeName"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": true,
+            "fieldCode": "ownerName",
+            "fieldName": "담당자",
+            "fieldGroup": "목록",
+            "fieldOrder": 14,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].owner",
+            "controlType": "TEXT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "PERSONAL",
+            "sourceColumn": "owner_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": false,
+            "code": "ownerName"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "DECIMAL",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": true,
+            "fieldCode": "progressPercent",
+            "fieldName": "진행률",
+            "fieldGroup": "목록",
+            "fieldOrder": 15,
+            "validation": {
+              "maximum": 100,
+              "minimum": 0
+            },
+            "apiProperty": "items[].progress",
+            "controlType": "PROGRESS",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "progress_percent",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": true,
+            "code": "progressPercent"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": true,
+            "fieldCode": "currentStep",
+            "fieldName": "현재 단계",
+            "fieldGroup": "목록",
+            "fieldOrder": 16,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].step",
+            "controlType": "STATUS",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "current_step",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": true,
+            "code": "currentStep"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "DATE",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": false,
+            "fieldCode": "dueDate",
+            "fieldName": "마감일",
+            "fieldGroup": "목록",
+            "fieldOrder": 17,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "items[].dueDate",
+            "controlType": "DATE",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "due_date",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": true,
+            "code": "dueDate"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": true,
+            "fieldCode": "projectStatus",
+            "fieldName": "상태",
+            "fieldGroup": "목록",
+            "fieldOrder": 18,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].status",
+            "controlType": "STATUS",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": false,
+            "code": "projectStatus"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "권한",
+            "fieldOrder": 19,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "session.tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": true,
+            "code": "tenantId"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": true,
+            "fieldCode": "actorUserId",
+            "fieldName": "로그인 계정",
+            "fieldGroup": "권한",
+            "fieldOrder": 20,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "session.userId",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_project_actor_assignment",
+            "privacyClass": "PERSONAL",
+            "sourceColumn": "user_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": true,
+            "code": "actorUserId"
+          },
+          {
+            "route": "/emission/project-portfolio",
+            "audience": "USER",
+            "dataType": "BOOLEAN",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+            "required": true,
+            "fieldCode": "actorActiveYn",
+            "fieldName": "액터 배정 상태",
+            "fieldGroup": "권한",
+            "fieldOrder": 21,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "authorization.active",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_project_actor_assignment",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "active_yn",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_READ",
+            "evidenceRequired": false,
+            "code": "actorActiveYn"
+          }
+        ],
+        "commands": [
+          {
+            "method": "GET",
+            "commandCode": "LOAD_PORTFOLIO_PREFERENCE",
+            "idempotencyRequired": true
+          },
+          {
+            "method": "PUT",
+            "commandCode": "SAVE_PORTFOLIO_PREFERENCE",
+            "idempotencyRequired": true
+          },
+          {
+            "method": "POST",
+            "commandCode": "SELECT_PROJECT",
+            "idempotencyRequired": true
+          }
+        ],
+        "states": [
+          "LOADING",
+          "EMPTY",
+          "FORBIDDEN",
+          "ERROR"
+        ],
+        "responsive": {
+          "mobile": true,
+          "tablet": true,
+          "desktop": true
+        },
+        "accessibility": {
+          "keyboard": true,
+          "standard": "WCAG_2_1_AA_KRDS"
+        }
+      },
+      {
+        "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+        "route": "/admin/emission/project-operations",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "ADMIN",
+        "screenType": "LIST_DASHBOARD",
+        "title": "배출량 프로젝트 운영 포트폴리오",
+        "purpose": "권한 범위의 프로젝트 현황과 다음 업무를 운영한다.",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": false,
+            "fieldCode": "keyword",
+            "fieldName": "검색어",
+            "fieldGroup": "검색",
+            "fieldOrder": 1,
+            "validation": {
+              "maxLength": 200
+            },
+            "apiProperty": "query.keyword",
+            "controlType": "SEARCH",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": false,
+            "code": "keyword"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": false,
+            "fieldCode": "statusFilter",
+            "fieldName": "상태 필터",
+            "fieldGroup": "검색",
+            "fieldOrder": 2,
+            "validation": {
+              "type": "code",
+              "nullable": true,
+              "required": false,
+              "allowUnknown": false
+            },
+            "apiProperty": "query.status",
+            "controlType": "SELECT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": false,
+            "code": "statusFilter"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": false,
+            "fieldCode": "siteFilter",
+            "fieldName": "사업장 필터",
+            "fieldGroup": "검색",
+            "fieldOrder": 3,
+            "validation": {
+              "type": "code",
+              "nullable": true,
+              "required": false,
+              "allowUnknown": false
+            },
+            "apiProperty": "query.site",
+            "controlType": "SELECT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "site_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": false,
+            "code": "siteFilter"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": true,
+            "fieldCode": "page",
+            "fieldName": "페이지",
+            "fieldGroup": "페이지",
+            "fieldOrder": 4,
+            "validation": {
+              "minimum": 1
+            },
+            "apiProperty": "page",
+            "controlType": "PAGINATION",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": false,
+            "code": "page"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": true,
+            "fieldCode": "size",
+            "fieldName": "페이지 크기",
+            "fieldGroup": "페이지",
+            "fieldOrder": 5,
+            "validation": {
+              "const": 10
+            },
+            "apiProperty": "size",
+            "controlType": "HIDDEN",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": false,
+            "code": "size"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": true,
+            "fieldCode": "total",
+            "fieldName": "검색 결과 수",
+            "fieldGroup": "요약",
+            "fieldOrder": 6,
+            "validation": {
+              "minimum": 0
+            },
+            "apiProperty": "total",
+            "controlType": "METRIC",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": false,
+            "code": "total"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": false,
+            "fieldCode": "summaryStatus",
+            "fieldName": "상태별 구분",
+            "fieldGroup": "요약",
+            "fieldOrder": 7,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "summary[].status",
+            "controlType": "METRIC",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": false,
+            "code": "summaryStatus"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": false,
+            "fieldCode": "summaryCount",
+            "fieldName": "상태별 건수",
+            "fieldGroup": "요약",
+            "fieldOrder": 8,
+            "validation": {
+              "minimum": 0
+            },
+            "apiProperty": "summary[].count",
+            "controlType": "METRIC",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": false,
+            "code": "summaryCount"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트 ID",
+            "fieldGroup": "목록",
+            "fieldOrder": 9,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].id",
+            "controlType": "LINK",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": true,
+            "code": "projectId"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": true,
+            "fieldCode": "projectName",
+            "fieldName": "프로젝트명",
+            "fieldGroup": "목록",
+            "fieldOrder": 10,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].name",
+            "controlType": "TEXT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": false,
+            "code": "projectName"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": true,
+            "fieldCode": "siteName",
+            "fieldName": "사업장",
+            "fieldGroup": "목록",
+            "fieldOrder": 11,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].site",
+            "controlType": "TEXT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "site_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": false,
+            "code": "siteName"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": true,
+            "fieldCode": "calculationPeriod",
+            "fieldName": "산정 기간",
+            "fieldGroup": "목록",
+            "fieldOrder": 12,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].period",
+            "controlType": "TEXT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "calculation_period",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": false,
+            "code": "calculationPeriod"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": true,
+            "fieldCode": "scopeName",
+            "fieldName": "Scope",
+            "fieldGroup": "목록",
+            "fieldOrder": 13,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].scope",
+            "controlType": "BADGE",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "scope_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": false,
+            "code": "scopeName"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": true,
+            "fieldCode": "ownerName",
+            "fieldName": "담당자",
+            "fieldGroup": "목록",
+            "fieldOrder": 14,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].owner",
+            "controlType": "TEXT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "PERSONAL",
+            "sourceColumn": "owner_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": false,
+            "code": "ownerName"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "DECIMAL",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": true,
+            "fieldCode": "progressPercent",
+            "fieldName": "진행률",
+            "fieldGroup": "목록",
+            "fieldOrder": 15,
+            "validation": {
+              "maximum": 100,
+              "minimum": 0
+            },
+            "apiProperty": "items[].progress",
+            "controlType": "PROGRESS",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "progress_percent",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": true,
+            "code": "progressPercent"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": true,
+            "fieldCode": "currentStep",
+            "fieldName": "현재 단계",
+            "fieldGroup": "목록",
+            "fieldOrder": 16,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].step",
+            "controlType": "STATUS",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "current_step",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": true,
+            "code": "currentStep"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "DATE",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": false,
+            "fieldCode": "dueDate",
+            "fieldName": "마감일",
+            "fieldGroup": "목록",
+            "fieldOrder": 17,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "items[].dueDate",
+            "controlType": "DATE",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "due_date",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": true,
+            "code": "dueDate"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": true,
+            "fieldCode": "projectStatus",
+            "fieldName": "상태",
+            "fieldGroup": "목록",
+            "fieldOrder": 18,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].status",
+            "controlType": "STATUS",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": false,
+            "code": "projectStatus"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "권한",
+            "fieldOrder": 19,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "session.tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": true,
+            "code": "tenantId"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": true,
+            "fieldCode": "actorUserId",
+            "fieldName": "로그인 계정",
+            "fieldGroup": "권한",
+            "fieldOrder": 20,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "session.userId",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_project_actor_assignment",
+            "privacyClass": "PERSONAL",
+            "sourceColumn": "user_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": true,
+            "code": "actorUserId"
+          },
+          {
+            "route": "/admin/emission/project-operations",
+            "audience": "ADMIN",
+            "dataType": "BOOLEAN",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+            "required": true,
+            "fieldCode": "actorActiveYn",
+            "fieldName": "액터 배정 상태",
+            "fieldGroup": "권한",
+            "fieldOrder": 21,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "authorization.active",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_project_actor_assignment",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "active_yn",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_EMISSION_PROJECT_ADMIN_READ",
+            "evidenceRequired": false,
+            "code": "actorActiveYn"
+          }
+        ],
+        "commands": [
+          {
+            "method": "GET",
+            "commandCode": "LOAD_PORTFOLIO_PREFERENCE",
+            "idempotencyRequired": true
+          },
+          {
+            "method": "PUT",
+            "commandCode": "SAVE_PORTFOLIO_PREFERENCE",
+            "idempotencyRequired": true
+          },
+          {
+            "method": "POST",
+            "commandCode": "SELECT_PROJECT",
+            "idempotencyRequired": true
+          }
+        ],
+        "states": [
+          "LOADING",
+          "EMPTY",
+          "FORBIDDEN",
+          "ERROR"
+        ],
+        "responsive": {
+          "mobile": true,
+          "tablet": true,
+          "desktop": true
+        },
+        "accessibility": {
+          "keyboard": true,
+          "standard": "WCAG_2_1_AA_KRDS"
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "path": "/home/api/emission-projects",
+        "method": "GET",
+        "authority": "COMPANY_MANAGER"
+      },
+      {
+        "path": "/home/api/emission-project-portfolio/preference",
+        "method": "GET",
+        "authority": "COMPANY_MANAGER"
+      },
+      {
+        "path": "/home/api/emission-project-portfolio/preference",
+        "method": "PUT",
+        "authority": "COMPANY_MANAGER"
+      }
+    ],
+    "commands": [
+      {
+        "method": "GET",
+        "commandCode": "LOAD_PORTFOLIO_PREFERENCE",
+        "idempotencyRequired": true
+      },
+      {
+        "method": "PUT",
+        "commandCode": "SAVE_PORTFOLIO_PREFERENCE",
+        "idempotencyRequired": true
+      },
+      {
+        "method": "POST",
+        "commandCode": "SELECT_PROJECT",
+        "idempotencyRequired": true
+      }
+    ],
+    "authorization": {
+      "scope": "TENANT_PROJECT",
+      "actorCode": "COMPANY_MANAGER",
+      "assignmentRequired": true
+    },
+    "handoffs": [
+      {
+        "failure": {
+          "onConflict": "RELOAD_PORTFOLIO",
+          "onForbidden": "SHOW_FORBIDDEN",
+          "onMissingProject": "RETURN_TO_PORTFOLIO"
+        },
+        "payload": {
+          "required": [
+            "selectedProjectId",
+            "cycleId",
+            "reportingPeriod"
+          ],
+          "nextStepCode": "ORGANIZATIONAL_BOUNDARY_S1",
+          "nextProcessCode": "ORGANIZATIONAL_BOUNDARY"
+        },
+        "integrity": {
+          "projectExists": true,
+          "tenantMatches": true,
+          "versionRequired": true
+        },
+        "toStepCode": "ORGANIZATIONAL_BOUNDARY_S1",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "cycleId",
+          "reportingPeriod",
+          "selectedProjectId"
+        ],
+        "handoffType": "PROCESS",
+        "authorization": {
+          "projectScopeRequired": true,
+          "actorAssignmentRequired": true
+        },
+        "toProcessCode": "ORGANIZATIONAL_BOUNDARY"
+      }
+    ]
+  },
+  "database": {
+    "mappings": [
+      {
+        "fields": [
+          {
+            "required": false,
+            "fieldCode": "keyword",
+            "apiProperty": "query.keyword",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "statusFilter",
+            "apiProperty": "query.status",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "siteFilter",
+            "apiProperty": "query.site",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "site_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "page",
+            "apiProperty": "page",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "size",
+            "apiProperty": "size",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "total",
+            "apiProperty": "total",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "summaryStatus",
+            "apiProperty": "summary[].status",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "summaryCount",
+            "apiProperty": "summary[].count",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "items[].id",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectName",
+            "apiProperty": "items[].name",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "siteName",
+            "apiProperty": "items[].site",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "site_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "calculationPeriod",
+            "apiProperty": "items[].period",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "calculation_period",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "scopeName",
+            "apiProperty": "items[].scope",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "scope_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerName",
+            "apiProperty": "items[].owner",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "owner_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "progressPercent",
+            "apiProperty": "items[].progress",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "progress_percent",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "currentStep",
+            "apiProperty": "items[].step",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "current_step",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "dueDate",
+            "apiProperty": "items[].dueDate",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "due_date",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectStatus",
+            "apiProperty": "items[].status",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "session.tenantId",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "actorUserId",
+            "apiProperty": "session.userId",
+            "sourceTable": "framework_project_actor_assignment",
+            "sourceColumn": "user_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "actorActiveYn",
+            "apiProperty": "authorization.active",
+            "sourceTable": "framework_project_actor_assignment",
+            "sourceColumn": "active_yn",
+            "mappingStatus": "DB_RESOLVED"
+          }
+        ],
+        "audience": "ADMIN",
+        "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_ADMIN",
+        "primaryEntity": "emission_project_registry"
+      },
+      {
+        "fields": [
+          {
+            "required": false,
+            "fieldCode": "keyword",
+            "apiProperty": "query.keyword",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "statusFilter",
+            "apiProperty": "query.status",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "siteFilter",
+            "apiProperty": "query.site",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "site_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "page",
+            "apiProperty": "page",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "size",
+            "apiProperty": "size",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "total",
+            "apiProperty": "total",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "summaryStatus",
+            "apiProperty": "summary[].status",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "summaryCount",
+            "apiProperty": "summary[].count",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "items[].id",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectName",
+            "apiProperty": "items[].name",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "siteName",
+            "apiProperty": "items[].site",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "site_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "calculationPeriod",
+            "apiProperty": "items[].period",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "calculation_period",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "scopeName",
+            "apiProperty": "items[].scope",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "scope_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerName",
+            "apiProperty": "items[].owner",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "owner_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "progressPercent",
+            "apiProperty": "items[].progress",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "progress_percent",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "currentStep",
+            "apiProperty": "items[].step",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "current_step",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "dueDate",
+            "apiProperty": "items[].dueDate",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "due_date",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectStatus",
+            "apiProperty": "items[].status",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "session.tenantId",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "actorUserId",
+            "apiProperty": "session.userId",
+            "sourceTable": "framework_project_actor_assignment",
+            "sourceColumn": "user_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "actorActiveYn",
+            "apiProperty": "authorization.active",
+            "sourceTable": "framework_project_actor_assignment",
+            "sourceColumn": "active_yn",
+            "mappingStatus": "DB_RESOLVED"
+          }
+        ],
+        "audience": "USER",
+        "pageCode": "EMISSION_PROJECT_PORTFOLIO_LIST_USER",
+        "primaryEntity": "emission_project_registry"
+      }
+    ],
+    "fieldMappings": [
+      {
+        "column": "tenant_id",
+        "entity": "emission_project_portfolio_preference",
+        "contextKey": "tenantId"
+      },
+      {
+        "column": "account_id",
+        "entity": "emission_project_portfolio_preference",
+        "contextKey": "accountId"
+      },
+      {
+        "column": "selected_project_id",
+        "entity": "emission_project_portfolio_preference",
+        "contextKey": "projectId"
+      },
+      {
+        "column": "preference_version",
+        "entity": "emission_project_portfolio_preference",
+        "contextKey": "rowVersion"
+      }
+    ],
+    "schemaChanges": [
+      {
+        "columns": [
+          {
+            "name": "preference_id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "nullable": false,
+            "primaryKey": true
+          },
+          {
+            "name": "tenant_id",
+            "type": "varchar(64)",
+            "nullable": false
+          },
+          {
+            "name": "account_id",
+            "type": "varchar(100)",
+            "nullable": false
+          },
+          {
+            "name": "selected_project_id",
+            "type": "varchar(80)",
+            "nullable": true,
+            "references": {
+              "table": "emission_project_registry",
+              "column": "project_id",
+              "onDelete": "SET NULL"
+            }
+          },
+          {
+            "name": "keyword",
+            "type": "varchar(200)",
+            "default": "''",
+            "nullable": false
+          },
+          {
+            "name": "status_filter",
+            "type": "varchar(40)",
+            "default": "''",
+            "nullable": false
+          },
+          {
+            "name": "site_filter",
+            "type": "varchar(200)",
+            "default": "''",
+            "nullable": false
+          },
+          {
+            "name": "sort_code",
+            "type": "varchar(40)",
+            "default": "'UPDATED_DESC'",
+            "nullable": false
+          },
+          {
+            "name": "next_task_code",
+            "type": "varchar(120)",
+            "nullable": true
+          },
+          {
+            "name": "preference_version",
+            "type": "bigint",
+            "default": "1",
+            "nullable": false
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamptz",
+            "default": "CURRENT_TIMESTAMP",
+            "nullable": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_emission_portfolio_preference_project",
+            "columns": [
+              "tenant_id",
+              "selected_project_id"
+            ]
+          }
+        ],
+        "operation": "CREATE_TABLE",
+        "tableName": "emission_project_portfolio_preference",
+        "uniqueConstraints": [
+          [
+            "tenant_id",
+            "account_id"
+          ]
+        ]
+      }
+    ],
+    "transactional": true,
+    "contractSource": "DESIGN_SCHEMA_V1",
+    "primaryEntities": [
+      "emission_project_portfolio_preference"
+    ],
+    "schemaSetVersion": 4,
+    "migrationRequired": true,
+    "autoGenerateMigration": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "steps": [
+        "로그인",
+        "환경설정 조회",
+        "프로젝트와 필터 변경",
+        "환경설정 저장",
+        "재조회"
+      ],
+      "status": "APPROVED",
+      "caseCode": "TC_EMISSION_PORTFOLIO_PREFERENCE_HAPPY_PATH",
+      "caseType": "HAPPY_PATH",
+      "assertions": [
+        "tenant isolated",
+        "account isolated",
+        "version incremented",
+        "selection restored"
+      ]
+    },
+    {
+      "steps": [
+        "동일 버전 조회",
+        "첫 번째 수정",
+        "같은 구버전으로 두 번째 수정"
+      ],
+      "status": "APPROVED",
+      "caseCode": "TC_EMISSION_PORTFOLIO_PREFERENCE_STALE_VERSION",
+      "caseType": "CONFLICT",
+      "assertions": [
+        "HTTP 409",
+        "no lost update",
+        "current version returned"
+      ]
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "wcag": "2.1-AA",
+    "responsive": true,
+    "auditRequired": true
+  },
+  "sourceHash": "8abc1ac87183f189a7ae5bf94646f3b0",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "GENERATED",
+  "packageHash": "e5692d7aa1c5e5e8823f47a5e30ef86ff50c48b62cca2ab4023591c9d9ea1bd4"
+}

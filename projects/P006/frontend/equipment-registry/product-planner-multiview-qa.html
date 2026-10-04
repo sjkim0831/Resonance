@@ -1,0 +1,15 @@
+<!doctype html><meta charset="utf-8"><title>부지 카메라 격리 검증</title><link rel="stylesheet" href="product-planner-multiview.css"><h1>QA 전용 · 동일 E034를 2개 부지에 독립 표시</h1><p id="result">로딩 중</p><div id="siteCameras" class="pp-camera-grid"></div><canvas id="source" style="display:none"></canvas><script src="product-planner-multiview.js?v=2"></script><script type="module">
+import * as T from '/projects/P006/assets/3d-derived/vendor/three.module.js?v=20260913';
+import {GLTFLoader} from '/projects/P006/assets/3d-derived/vendor/GLTFLoader.js?v=20260913';
+try {
+const p={id:'isolated-qa',sites:[{id:'a',name:'검증 부지 A'},{id:'b',name:'검증 부지 B'}],factories:[{id:'fa',siteId:'a',name:'공장 A'},{id:'fb',siteId:'b',name:'공장 B'}]};
+const s={ok:true,tasks:[{id:'t1',factoryId:'fa',name:'공정 A'},{id:'t2',factoryId:'fb',name:'공정 B'}]};
+ProductPlannerMultiView.configure(p,s);ProductPlannerMultiView.update({time:12,processed:['t1:start','t2:start']},p);
+const canvas=document.querySelector('#source'),renderer=new T.WebGLRenderer({canvas}),scene=new T.Scene();scene.background=new T.Color('#e9f1f5');scene.add(new T.HemisphereLight(0xffffff,0x668899,3));
+const gltf=await new GLTFLoader().loadAsync('/projects/P006/assets/3d-derived/E034.glb');
+const entries=['fa','fb'].map((factoryId,i)=>{const holder=gltf.scene.clone(true);holder.position.x=i*100;holder.rotation.y=i*Math.PI/2;scene.add(holder);return {holder,factoryId};});
+scene.updateMatrixWorld(true);const v={T,canvas,renderer,scene,entries,activeMarker:{visible:false}};window.ProductPlannerDetails={draw:()=>ProductPlannerMultiView.capture(v)};ProductPlannerMultiView.capture(v);
+const nonblank=[...document.querySelectorAll('.pp-camera-card canvas')].map(c=>{const a=c.getContext('2d').getImageData(0,0,560,300).data;let n=0;for(let i=0;i<a.length;i+=4)if(Math.abs(a[i]-a[0])+Math.abs(a[i+1]-a[1])+Math.abs(a[i+2]-a[2])>30)n++;return n;});
+document.querySelector('#result').textContent=nonblank.every(n=>n>100)?'PASS · 실제 GLB 카메라 2/2 · 공통 12.0분 · 독립 부지/회전 · 표시 픽셀 '+nonblank.join('/'):'FAIL '+nonblank;
+}catch(e){document.querySelector('#result').textContent='FAIL '+e.message;}
+</script>

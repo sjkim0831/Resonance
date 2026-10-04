@@ -1,0 +1,461 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 3390,
+  "blueprintCode": "BP_AUTO_D1753EDF65F5F10E23119063",
+  "identity": {
+    "processCode": "METER_CALIBRATION_MANAGEMENT",
+    "stepCode": "MCM_REGISTER",
+    "actorCode": "INSTRUMENT_ENGINEER",
+    "audience": "USER",
+    "pageId": "AUTO_D1753EDF65F5F10E2311"
+  },
+  "route": "/ccus/facility/meter-calibration-management",
+  "pageName": "계측기·측정지점 등록 사용자 업무 화면",
+  "screenType": "FORM",
+  "templateCode": "KRDS_FORM",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "kpis": [
+      "진행률",
+      "기한",
+      "이상·차단",
+      "증빙 완결성"
+    ],
+    "errors": [
+      {
+        "code": "FORBIDDEN",
+        "recovery": "권한·업무분리 확인"
+      },
+      {
+        "code": "CONFLICT",
+        "recovery": "최신 버전 재조회"
+      },
+      {
+        "code": "DEPENDENCY_FAILURE",
+        "recovery": "멱등키로 안전 재시도"
+      }
+    ],
+    "fields": [
+      {
+        "route": "/ccus/facility/meter-calibration-management?step=mcm_register",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "METER_CALIBRATION_MANAGEMENT_MCM_REGISTER_USER",
+        "required": true,
+        "fieldCode": "projectId",
+        "fieldName": "프로젝트",
+        "fieldGroup": "컨텍스트",
+        "fieldOrder": 10,
+        "validation": {
+          "type": "code",
+          "nullable": false,
+          "required": true,
+          "allowUnknown": false
+        },
+        "apiProperty": "projectId",
+        "controlType": "PROJECT_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "INSTRUMENT_ENGINEER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/meter-calibration-management?step=mcm_register",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "METER_CALIBRATION_MANAGEMENT_MCM_REGISTER_USER",
+        "required": true,
+        "fieldCode": "facilityId",
+        "fieldName": "설비 ID",
+        "fieldGroup": "설비",
+        "fieldOrder": 20,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "facilityId",
+        "controlType": "FACILITY_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "INSTRUMENT_ENGINEER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/meter-calibration-management?step=mcm_register",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "METER_CALIBRATION_MANAGEMENT_MCM_REGISTER_USER",
+        "required": true,
+        "fieldCode": "assetTag",
+        "fieldName": "설비 태그",
+        "fieldGroup": "설비",
+        "fieldOrder": 30,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "assetTag",
+        "controlType": "TEXT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "INSTRUMENT_ENGINEER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/meter-calibration-management?step=mcm_register",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "METER_CALIBRATION_MANAGEMENT_MCM_REGISTER_USER",
+        "required": true,
+        "fieldCode": "siteCode",
+        "fieldName": "사업장·저장소",
+        "fieldGroup": "설비",
+        "fieldOrder": 40,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "siteCode",
+        "controlType": "SITE_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "INSTRUMENT_ENGINEER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/meter-calibration-management?step=mcm_register",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "METER_CALIBRATION_MANAGEMENT_MCM_REGISTER_USER",
+        "required": true,
+        "fieldCode": "statusCode",
+        "fieldName": "업무 상태",
+        "fieldGroup": "운영",
+        "fieldOrder": 50,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "statusCode",
+        "controlType": "STATUS_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "INSTRUMENT_ENGINEER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/meter-calibration-management?step=mcm_register",
+        "audience": "USER",
+        "dataType": "DATETIME",
+        "editable": true,
+        "pageCode": "METER_CALIBRATION_MANAGEMENT_MCM_REGISTER_USER",
+        "required": true,
+        "fieldCode": "effectiveAt",
+        "fieldName": "발생·적용 일시",
+        "fieldGroup": "운영",
+        "fieldOrder": 60,
+        "validation": {
+          "type": "date-time",
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "effectiveAt",
+        "controlType": "DATETIME",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "INSTRUMENT_ENGINEER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/meter-calibration-management?step=mcm_register",
+        "audience": "USER",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "pageCode": "METER_CALIBRATION_MANAGEMENT_MCM_REGISTER_USER",
+        "required": true,
+        "fieldCode": "measurementValue",
+        "fieldName": "측정·운영 값",
+        "fieldGroup": "전문값",
+        "fieldOrder": 70,
+        "validation": {
+          "numeric": true,
+          "unitRequired": true
+        },
+        "apiProperty": "measurementValue",
+        "controlType": "NUMBER_UNIT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "INSTRUMENT_ENGINEER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/meter-calibration-management?step=mcm_register",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "METER_CALIBRATION_MANAGEMENT_MCM_REGISTER_USER",
+        "required": true,
+        "fieldCode": "unitCode",
+        "fieldName": "단위",
+        "fieldGroup": "전문값",
+        "fieldOrder": 80,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "unitCode",
+        "controlType": "UNIT_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "INSTRUMENT_ENGINEER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/meter-calibration-management?step=mcm_register",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "METER_CALIBRATION_MANAGEMENT_MCM_REGISTER_USER",
+        "required": true,
+        "fieldCode": "riskLevel",
+        "fieldName": "위험 등급",
+        "fieldGroup": "위험·검토",
+        "fieldOrder": 90,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "riskLevel",
+        "controlType": "RISK_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "INSTRUMENT_ENGINEER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/meter-calibration-management?step=mcm_register",
+        "audience": "USER",
+        "dataType": "ARRAY",
+        "editable": true,
+        "pageCode": "METER_CALIBRATION_MANAGEMENT_MCM_REGISTER_USER",
+        "required": true,
+        "fieldCode": "evidenceIds",
+        "fieldName": "원본 증빙",
+        "fieldGroup": "증빙",
+        "fieldOrder": 100,
+        "validation": {
+          "minItems": 1,
+          "hashRequired": true
+        },
+        "apiProperty": "evidenceIds",
+        "controlType": "FILE_UPLOAD",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "INSTRUMENT_ENGINEER:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/ccus/facility/meter-calibration-management?step=mcm_register",
+        "audience": "USER",
+        "dataType": "TEXT",
+        "editable": true,
+        "pageCode": "METER_CALIBRATION_MANAGEMENT_MCM_REGISTER_USER",
+        "required": false,
+        "fieldCode": "approvalComment",
+        "fieldName": "검토·승인 의견",
+        "fieldGroup": "승인",
+        "fieldOrder": 110,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "approvalComment",
+        "controlType": "TEXTAREA",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "INSTRUMENT_ENGINEER:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/ccus/facility/meter-calibration-management?step=mcm_register",
+        "audience": "USER",
+        "dataType": "INTEGER",
+        "editable": true,
+        "pageCode": "METER_CALIBRATION_MANAGEMENT_MCM_REGISTER_USER",
+        "required": true,
+        "fieldCode": "rowVersion",
+        "fieldName": "데이터 버전",
+        "fieldGroup": "무결성",
+        "fieldOrder": 120,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "rowVersion",
+        "controlType": "VERSION",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "INSTRUMENT_ENGINEER:USER",
+        "evidenceRequired": false
+      }
+    ],
+    "states": [
+      "LOADING",
+      "EMPTY",
+      "ERROR",
+      "FORBIDDEN",
+      "READY",
+      "BLOCKED",
+      "CONFLICT"
+    ],
+    "actions": [
+      "REGISTER_METER",
+      "SAVE_DRAFT",
+      "REQUEST_CORRECTION"
+    ],
+    "sections": [
+      "업무요약",
+      "검색·필터",
+      "전문 데이터",
+      "증빙·이력",
+      "명령·다음업무"
+    ],
+    "extensions": {
+      "contractId": 316,
+      "sharedRuntime": true
+    },
+    "responsive": {
+      "mobile": "single-column-actions-bottom",
+      "tablet": "adaptive-grid",
+      "desktop": "list-detail-workspace"
+    },
+    "permissions": [
+      {
+        "code": "INSTRUMENT_ENGINEER",
+        "scope": "TENANT_PROJECT",
+        "segregationOfDuties": true,
+        "serverAuthorization": true
+      }
+    ],
+    "validations": [
+      {
+        "code": "ENTRY_AND_REQUIRED_FIELDS",
+        "type": "CONTRACT"
+      },
+      {
+        "code": "STATE_AND_VERSION",
+        "type": "CONCURRENCY"
+      }
+    ],
+    "apiContracts": [
+      "/api/ccus/facility/meter-calibration-management/mcm_register"
+    ],
+    "designSystem": "KRDS_GOV",
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG_2_1_AA",
+      "nonColorStatus": true,
+      "focusManagement": true
+    },
+    "dataContracts": [
+      "tenantId",
+      "projectId",
+      "facilityId",
+      "recordId",
+      "statusCode",
+      "rowVersion",
+      "evidenceHash"
+    ],
+    "schemaVersion": "2.0.0",
+    "completionRule": "계측기와 MRV 데이터 항목 연결이 완료됨",
+    "exitConditions": [
+      "계측기와 MRV 데이터 항목 연결이 완료됨"
+    ],
+    "businessPurpose": "계측기 사양·범위·정확도·측정지점·MRV 용도를 등록한다.",
+    "entryConditions": [
+      "다음 프로세스 시작 조건을 충족한다: 계측기와 측정 지점 및 허용오차가 등록되어 있다. 현재 상태는 READY이며 서버가 테넌트·프로젝트·액터 권한을 확인한 경우에만 진입한다."
+    ],
+    "actorResponsibilities": [
+      "INSTRUMENT_ENGINEER 액터가 권한·업무분리 정책에 따라 계측기·측정지점 등록 사용자 업무 화면 업무를 수행한다."
+    ]
+  },
+  "traceability": {
+    "contractId": 316,
+    "requirementIds": [
+      "METER_CALIBRATION_MANAGEMENT:MCM_REGISTER:USER"
+    ],
+    "generationBatchId": 183,
+    "designReadinessScore": 100,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "dc4b36d44f2b3cec62c215f4db6b5ccab4268969b65baf9c80dddf1f0ec12fb4",
+  "artifactHash": "8f264f32c263e4755156b672187a566958854b98602938501cd757b97626d0fa"
+}

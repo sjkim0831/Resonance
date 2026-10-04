@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 45,
+  "blueprintCode": "BP_ADOPT_3398CCA3947A3480A426",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_3398CCA3947A3480A426"
+  },
+  "route": "/admin/external/connection_list",
+  "pageName": "연계 시스템",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1100101",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "04b66b3371d27e7c654d652a903d6e3c4c06b2fab9e3cd6c450f6b3ed3175ace",
+  "artifactHash": "9a5dfba49d5483e7f841824984c16c3c7ec04fe9e281cd4e5dc45622621415ea"
+}

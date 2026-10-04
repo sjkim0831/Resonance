@@ -216,11 +216,13 @@ export async function fetchAdminMenuTree(): Promise<AdminMenuTreePayload> {
   removeLegacyAdminMenuTreeCaches();
   readAdminMenuTreeSnapshot();
   if (!adminMenuTreePromise) {
-    adminMenuTreePromise = fetchJson<AdminMenuTreePayload>(buildLocalizedPath("/admin/system/menu-data", "/en/admin/system/menu-data"), {
+    adminMenuTreePromise = fetchJsonWithResponse<AdminMenuTreePayload>(buildLocalizedPath("/admin/system/menu-data", "/en/admin/system/menu-data"), {
       cache: "no-store",
       headers: buildAdminShellHeaders()
-    }).then((payload) => {
+    }).then(({response, body: payload}) => {
+        if (!response.ok) throw new Error(`메뉴 조회 실패 (HTTP ${response.status})`);
         const menuTree = normalizeAdminEmissionMenuTree(payload);
+        if (!Object.keys(menuTree).length) throw new Error("메뉴 응답이 비어 있거나 형식이 올바르지 않습니다 (HTTP 200).");
         adminMenuTreeCache = menuTree;
         return menuTree;
       })

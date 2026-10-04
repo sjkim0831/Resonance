@@ -1,6 +1,6 @@
 const { chromium } = require('/opt/Resonance/projects/carbonet-frontend/source/node_modules/playwright');
 const fs = require('node:fs');
-const output=process.env.OUTPUT_DIR||'/opt/resonance-data/backups/ccus-unification-20260906';
+const output=process.env.OUTPUT_DIR||'/opt/Resonance/runtime/platform-data/backups/ccus-unification-20260906';
 (async()=>{
  const base=process.env.BASE_URL||'http://127.0.0.1:32100';
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});

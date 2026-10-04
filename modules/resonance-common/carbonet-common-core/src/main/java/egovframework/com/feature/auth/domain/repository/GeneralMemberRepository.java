@@ -33,6 +33,7 @@ public interface GeneralMemberRepository extends JpaRepository<GnrlMber, String>
     LoginResponseDTO findByIdAndPassword(String userId, String password);
 
     Optional<GnrlMber> findFirstByAuthCi(String authCi);
+    long countByAuthCi(String authCi);
 
     Optional<GnrlMber> findFirstByAuthDi(String authDi);
 

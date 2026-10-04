@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useState } from "react";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchAdminListPage } from "../../lib/api/adminMember";
@@ -138,24 +139,12 @@ export function AdminListMigrationPage() {
             />
           </div>
           <form
-            className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-4"
+            className="ccus-search-host"
             onSubmit={(e) => {
               e.preventDefault();
               load({ pageIndex: 1, searchKeyword, sbscrbSttus: status }).catch((err: Error) => setError(err.message));
             }}
-          >
-            <div>
-              <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="status">상태</label>
-              <AdminSelect id="status" value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="">전체</option>
-                <option value="P">활성</option>
-                <option value="A">승인 대기</option>
-                <option value="R">반려</option>
-                <option value="D">삭제</option>
-                <option value="X">차단</option>
-              </AdminSelect>
-            </div>
-            <div className="md:col-span-2">
+          ><CommonSearchSection basic={<><div className="ccus-search-field"><div className="md:col-span-2">
               <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="keyword">검색어</label>
               <div className="flex gap-2">
                 <AdminInput
@@ -165,16 +154,21 @@ export function AdminListMigrationPage() {
                   value={searchKeyword}
                   onChange={(e) => setSearchKeyword(e.target.value)}
                 />
-                <MemberButton icon="search" type="submit" variant="primary">검색</MemberButton>
+                
               </div>
-            </div>
-            <div className="md:col-span-4">
-              <div className="flex flex-col gap-3 border-t border-[var(--kr-gov-border-light)] pt-5 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
-                  회원 목록 화면과 같은 검색 카드, 상단 툴바, 결과 테이블 구조로 관리자 목록을 정렬합니다.
-                </p>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <MemberButton
+            </div></div>
+<div className="ccus-search-field"><div>
+              <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="status">상태</label>
+              <AdminSelect id="status" value={status} onChange={(e) => setStatus(e.target.value)}>
+                <option value="">전체</option>
+                <option value="P">활성</option>
+                <option value="A">승인 대기</option>
+                <option value="R">반려</option>
+                <option value="D">삭제</option>
+                <option value="X">차단</option>
+              </AdminSelect>
+            </div></div></>} actions={<><MemberButton icon="search" type="submit" variant="primary">검색</MemberButton>
+<MemberButton
                     onClick={() => {
                       setSearchKeyword("");
                       setStatus("");
@@ -185,13 +179,9 @@ export function AdminListMigrationPage() {
                   >
                     {MEMBER_BUTTON_LABELS.reset}
                   </MemberButton>
-                  <MemberButton icon="search" type="submit" variant="primary">
+<MemberButton icon="search" type="submit" variant="primary">
                     {MEMBER_BUTTON_LABELS.search}
-                  </MemberButton>
-                </div>
-              </div>
-            </div>
-          </form>
+                  </MemberButton></>}></CommonSearchSection></form>
         </section>
         <div className="gov-card p-0 overflow-hidden" data-help-id="admin-list-table">
           <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">

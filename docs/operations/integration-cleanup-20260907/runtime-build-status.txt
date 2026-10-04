@@ -1,0 +1,12 @@
+ M modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/web/EmissionProjectRegistryController.java
+?? apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260823021000__normalize_all_process_screen_routes.sql
+?? apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260823022000__compile_primary_screen_quality_queue.sql
+?? apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260823023000__preserve_frontend_route_case.sql
+?? current_timestamp
+?? ops/scripts/generate-actor-authority-remediation-plan.py
+?? ops/scripts/test-actor-authority-remediation-plan.py
+?? platform/control-plane/backstage/node_modules
+?? projects/carbonet-backend-metadata/framework-runtime/
+?? projects/carbonet-backend-metadata/screen-runtime/
+?? projects/carbonet-frontend/source/src/generated/screen-generation/generatedScreenSpaceIndex.ts
+?? projects/carbonet-frontend/source/src/generated/screen-generation/generation-report.json

@@ -1,0 +1,2313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "P006 v6 observed partial request and installed row schemas",
+  "description": "Not a complete business DTO or authorization validator. $defs library only.",
+  "$defs": {
+    "EquipmentWrite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "processId",
+        "equipmentTypeCode",
+        "code",
+        "name"
+      ],
+      "properties": {
+        "processId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "equipmentTypeCode": {
+          "type": "string",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 250,
+          "minLength": 1
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "optionId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "serialNumber": {
+          "type": "string",
+          "maxLength": 250
+        },
+        "managementNumber": {
+          "type": "string",
+          "maxLength": 250
+        },
+        "purpose": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "shapeFamily": {
+          "type": "string",
+          "maxLength": 250
+        },
+        "dimensionsMm": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "width": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 10000000
+            },
+            "depth": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 10000000
+            },
+            "height": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 10000000
+            },
+            "source": {},
+            "unit": {
+              "const": "mm"
+            }
+          }
+        },
+        "installation": {
+          "type": "object",
+          "description": "현 서버는 JSON 객체/직렬화 길이 20000자만 검사. 내부 필드 계약 미확정."
+        },
+        "workpiece": {
+          "type": "object",
+          "description": "현 서버는 JSON 객체/직렬화 길이 20000자만 검사. 내부 필드 계약 미확정."
+        },
+        "io": {
+          "type": "object",
+          "description": "현 서버는 JSON 객체/직렬화 길이 20000자만 검사. 내부 필드 계약 미확정."
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "ManufacturerCreate": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 250,
+          "minLength": 1
+        }
+      }
+    },
+    "ModelCreate": {
+      "type": "object",
+      "required": [
+        "name",
+        "manufacturerId",
+        "equipmentTypeCode"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 250,
+          "minLength": 1
+        },
+        "manufacturerId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "equipmentTypeCode": {
+          "type": "string",
+          "maxLength": 250,
+          "minLength": 1
+        },
+        "shapeFamily": {
+          "type": "string",
+          "maxLength": 250
+        },
+        "specification": {
+          "type": "object",
+          "description": "현 서버는 JSON 객체/직렬화 길이 20000자만 검사. 내부 필드 계약 미확정."
+        }
+      }
+    },
+    "OptionCreate": {
+      "type": "object",
+      "required": [
+        "name",
+        "modelId"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 250,
+          "minLength": 1
+        },
+        "modelId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "현 서버는 JSON 객체/직렬화 길이 20000자만 검사. 내부 필드 계약 미확정."
+        }
+      }
+    },
+    "EvidenceRegister": {
+      "type": "object",
+      "required": [
+        "kind",
+        "name"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "PHOTO",
+            "DRAWING",
+            "MANUAL",
+            "DIMENSION",
+            "GEOMETRY",
+            "PORT",
+            "FUNCTION",
+            "IDENTITY",
+            "OTHER"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 250,
+          "minLength": 1
+        },
+        "sourceUri": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "contentBase64": {
+          "type": "string",
+          "description": "유효 base64; 디코딩 후 5 MiB 이하. 파일 또는 URL 필수."
+        },
+        "mime": {
+          "type": "string"
+        }
+      }
+    },
+    "EvidenceReview": {
+      "type": "object",
+      "required": [
+        "status",
+        "note"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "APPROVED",
+            "REJECTED"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        }
+      }
+    },
+    "CustomerGrant": {
+      "type": "object",
+      "required": [
+        "customerId",
+        "accountId",
+        "role"
+      ],
+      "properties": {
+        "customerId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "accountId": {
+          "type": "string",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "VIEWER",
+            "EDITOR"
+          ]
+        }
+      }
+    },
+    "ResearchStart": {
+      "type": "object",
+      "required": [
+        "stage",
+        "requestId",
+        "asset"
+      ],
+      "properties": {
+        "stage": {
+          "enum": [
+            "references",
+            "motion"
+          ]
+        },
+        "requestId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{8,100}$"
+        },
+        "asset": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "maxLength": 250,
+              "minLength": 1
+            }
+          }
+        },
+        "referenceLinks": {
+          "type": "array"
+        },
+        "registeredEvidence": {
+          "type": "array"
+        }
+      }
+    },
+    "DbRow_asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "english_name",
+        "category",
+        "purpose",
+        "entry_usd",
+        "source_usd",
+        "base_usd",
+        "variant",
+        "image",
+        "model_xyz_m",
+        "metadata",
+        "seed_hash"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "name": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "english_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "category": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "purpose": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "entry_usd": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "source_usd": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "base_usd": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "variant": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": "'{}'::jsonb"
+        },
+        "image": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "model_xyz_m": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "metadata": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "seed_hash": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        }
+      }
+    },
+    "DbRow_audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "account_id",
+        "customer_id",
+        "action",
+        "entity_id",
+        "detail",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "x-db-type": "int8",
+          "x-db-default": null
+        },
+        "account_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "varchar",
+          "x-db-default": null
+        },
+        "customer_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "action": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "entity_id": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "detail": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "created_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        }
+      }
+    },
+    "DbRow_canvas_instance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "layout_id",
+        "id",
+        "asset_id",
+        "entry_usd",
+        "template_id",
+        "equipment_id",
+        "intake_id",
+        "label",
+        "position",
+        "rotation",
+        "scale",
+        "parameters",
+        "style"
+      ],
+      "properties": {
+        "layout_id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "asset_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "entry_usd": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "template_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "equipment_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "intake_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "label": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "position": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "rotation": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "scale": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "parameters": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "style": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        }
+      }
+    },
+    "DbRow_composer_relationship_rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "from_asset_id",
+        "target_asset_id",
+        "target_domain",
+        "type",
+        "source"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "from_asset_id": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "target_asset_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "target_domain": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "type": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "source": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        }
+      }
+    },
+    "DbRow_customer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "code",
+        "name",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "code": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "name": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "created_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        }
+      }
+    },
+    "DbRow_customer_access": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "customer_id",
+        "account_id",
+        "access_role"
+      ],
+      "properties": {
+        "customer_id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "account_id": {
+          "type": "string",
+          "x-db-type": "varchar",
+          "x-db-default": null
+        },
+        "access_role": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        }
+      }
+    },
+    "DbRow_equipment_instance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "process_id",
+        "equipment_type_code",
+        "code",
+        "name",
+        "model_id",
+        "option_id",
+        "serial_number",
+        "management_number",
+        "dimensions_mm",
+        "installation",
+        "workpiece",
+        "io",
+        "shape_family",
+        "purpose",
+        "source_identity",
+        "verification",
+        "match_grade",
+        "match_result",
+        "matched_asset_id",
+        "connected_asset_id",
+        "version",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "process_id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "equipment_type_code": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "code": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "name": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "model_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "option_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "serial_number": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "management_number": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "dimensions_mm": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": "'{}'::jsonb"
+        },
+        "installation": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": "'{}'::jsonb"
+        },
+        "workpiece": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": "'{}'::jsonb"
+        },
+        "io": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": "'{}'::jsonb"
+        },
+        "shape_family": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "purpose": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "source_identity": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": "'UNVERIFIED'::text"
+        },
+        "verification": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": "'{}'::jsonb"
+        },
+        "match_grade": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": "'BLOCKED'::text"
+        },
+        "match_result": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": "'{}'::jsonb"
+        },
+        "matched_asset_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "connected_asset_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "version": {
+          "type": "integer",
+          "x-db-type": "int4",
+          "x-db-default": "1"
+        },
+        "created_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        },
+        "updated_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        }
+      }
+    },
+    "DbRow_equipment_intake": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "batch",
+        "source_name",
+        "evidence",
+        "classification",
+        "recommendation",
+        "asset_id",
+        "grade",
+        "attribution_status",
+        "process_id",
+        "attribution_evidence",
+        "manufacturer",
+        "model",
+        "dimensions",
+        "version",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "batch": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "source_name": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "evidence": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "classification": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "recommendation": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "asset_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "grade": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "attribution_status": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": "'UNCONFIRMED'::text"
+        },
+        "process_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "attribution_evidence": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "manufacturer": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": "'UNKNOWN'::text"
+        },
+        "model": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": "'UNKNOWN'::text"
+        },
+        "dimensions": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": "'{}'::jsonb"
+        },
+        "version": {
+          "type": "integer",
+          "x-db-type": "int4",
+          "x-db-default": "1"
+        },
+        "created_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        },
+        "updated_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        }
+      }
+    },
+    "DbRow_equipment_model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "manufacturer_id",
+        "name",
+        "normalized_name",
+        "equipment_type_code",
+        "shape_family",
+        "specification"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "manufacturer_id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "name": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "normalized_name": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "equipment_type_code": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "shape_family": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "specification": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": "'{}'::jsonb"
+        }
+      }
+    },
+    "DbRow_equipment_type": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "name",
+        "english_name",
+        "role",
+        "legacy_mapping"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "name": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "english_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "role": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "legacy_mapping": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": "'{}'::jsonb"
+        }
+      }
+    },
+    "DbRow_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "instance_id",
+        "kind",
+        "name",
+        "source_uri",
+        "sha256",
+        "storage_name",
+        "mime",
+        "bytes",
+        "review_status",
+        "review_note",
+        "created_by",
+        "reviewed_by",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "instance_id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "kind": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "name": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "source_uri": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "storage_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "mime": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "bytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "x-db-type": "int8",
+          "x-db-default": null
+        },
+        "review_status": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": "'UNREVIEWED'::text"
+        },
+        "review_note": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "created_by": {
+          "type": "string",
+          "x-db-type": "varchar",
+          "x-db-default": null
+        },
+        "reviewed_by": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "varchar",
+          "x-db-default": null
+        },
+        "created_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        }
+      }
+    },
+    "DbRow_factory_layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "owner_id",
+        "version",
+        "settings",
+        "created_at",
+        "updated_at",
+        "scene_style"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "name": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "owner_id": {
+          "type": "string",
+          "x-db-type": "varchar",
+          "x-db-default": null
+        },
+        "version": {
+          "type": "integer",
+          "x-db-type": "int4",
+          "x-db-default": "1"
+        },
+        "settings": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "created_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        },
+        "updated_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        },
+        "scene_style": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        }
+      }
+    },
+    "DbRow_factory_layout_revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "layout_id",
+        "version",
+        "document",
+        "actor_id",
+        "created_at"
+      ],
+      "properties": {
+        "layout_id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "version": {
+          "type": "integer",
+          "x-db-type": "int4",
+          "x-db-default": null
+        },
+        "document": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "actor_id": {
+          "type": "string",
+          "x-db-type": "varchar",
+          "x-db-default": null
+        },
+        "created_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        }
+      }
+    },
+    "DbRow_instance_view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "process_id",
+        "equipment_type_code",
+        "code",
+        "name",
+        "model_id",
+        "option_id",
+        "serial_number",
+        "management_number",
+        "dimensions_mm",
+        "installation",
+        "workpiece",
+        "io",
+        "shape_family",
+        "purpose",
+        "source_identity",
+        "verification",
+        "match_grade",
+        "match_result",
+        "matched_asset_id",
+        "connected_asset_id",
+        "version",
+        "created_at",
+        "updated_at",
+        "process_code",
+        "process_name",
+        "line_code",
+        "line_name",
+        "plant_code",
+        "plant_name",
+        "customer_id",
+        "customer_code",
+        "customer_name",
+        "model_name",
+        "manufacturer_name",
+        "option_name",
+        "asset_name",
+        "entry_usd",
+        "image"
+      ],
+      "properties": {
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "process_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "equipment_type_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "model_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "option_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "serial_number": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "management_number": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "dimensions_mm": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "installation": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "workpiece": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "io": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "shape_family": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "purpose": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "source_identity": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "verification": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "match_grade": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "match_result": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "matched_asset_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "connected_asset_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "version": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "x-db-type": "int4",
+          "x-db-default": null
+        },
+        "created_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "timestamptz",
+          "x-db-default": null
+        },
+        "updated_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "timestamptz",
+          "x-db-default": null
+        },
+        "process_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "process_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "line_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "line_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "plant_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "plant_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "customer_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "customer_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "customer_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "model_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "manufacturer_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "option_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "asset_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "entry_usd": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "image": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        }
+      }
+    },
+    "DbRow_intake_matching_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "intake_id",
+        "decision",
+        "candidate_asset_id",
+        "review",
+        "baseline_hash",
+        "reviewed_at"
+      ],
+      "properties": {
+        "intake_id": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "decision": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "candidate_asset_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "review": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "baseline_hash": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "reviewed_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        }
+      }
+    },
+    "DbRow_layout_relationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "layout_id",
+        "id",
+        "from_id",
+        "to_id",
+        "type",
+        "source"
+      ],
+      "properties": {
+        "layout_id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "from_id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "to_id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "type": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "source": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        }
+      }
+    },
+    "DbRow_line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "plant_id",
+        "code",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "plant_id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "code": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "name": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        }
+      }
+    },
+    "DbRow_manufacturer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "normalized_name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "name": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "normalized_name": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        }
+      }
+    },
+    "DbRow_model_asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_id",
+        "asset_id",
+        "option_id",
+        "review",
+        "id"
+      ],
+      "properties": {
+        "model_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "asset_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "option_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "review": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": "'{}'::jsonb"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        }
+      }
+    },
+    "DbRow_model_option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "model_id",
+        "name",
+        "parameters"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "model_id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "name": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "parameters": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": "'{}'::jsonb"
+        }
+      }
+    },
+    "DbRow_new_asset_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "instance_id",
+        "status",
+        "reason",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "instance_id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "status": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": "'OPEN'::text"
+        },
+        "reason": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "created_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        }
+      }
+    },
+    "DbRow_p006_animation_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_id",
+        "asset_id",
+        "animation_class",
+        "animation_source",
+        "telemetry_verified",
+        "manufacturer_verified",
+        "contract",
+        "version",
+        "updated_at"
+      ],
+      "properties": {
+        "contract_id": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "asset_id": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "animation_class": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "animation_source": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "telemetry_verified": {
+          "type": "boolean",
+          "x-db-type": "bool",
+          "x-db-default": "false"
+        },
+        "manufacturer_verified": {
+          "type": "boolean",
+          "x-db-type": "bool",
+          "x-db-default": "false"
+        },
+        "contract": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "version": {
+          "type": "integer",
+          "x-db-type": "int4",
+          "x-db-default": "1"
+        },
+        "updated_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        }
+      }
+    },
+    "DbRow_p006_factory_benchmark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "layout_id",
+        "layout_version",
+        "actor_id",
+        "status",
+        "payload",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "layout_id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "layout_version": {
+          "type": "integer",
+          "x-db-type": "int4",
+          "x-db-default": null
+        },
+        "actor_id": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "status": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "payload": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": null
+        },
+        "created_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        }
+      }
+    },
+    "DbRow_p006_functional_connection_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_id",
+        "connection_status",
+        "logical_ports",
+        "related_asset_rules",
+        "contract_source",
+        "manufacturer_verified",
+        "physical_port_verified",
+        "version",
+        "updated_at"
+      ],
+      "properties": {
+        "asset_id": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "connection_status": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "logical_ports": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": "'[]'::jsonb"
+        },
+        "related_asset_rules": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": "'[]'::jsonb"
+        },
+        "contract_source": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "manufacturer_verified": {
+          "type": "boolean",
+          "x-db-type": "bool",
+          "x-db-default": "false"
+        },
+        "physical_port_verified": {
+          "type": "boolean",
+          "x-db-type": "bool",
+          "x-db-default": "false"
+        },
+        "version": {
+          "type": "integer",
+          "x-db-type": "int4",
+          "x-db-default": "1"
+        },
+        "updated_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        }
+      }
+    },
+    "DbRow_p006_functional_motion_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_id",
+        "motion_type",
+        "target_node",
+        "motion_source",
+        "motion_ready",
+        "kinematics_verified",
+        "version",
+        "updated_at",
+        "representation_class",
+        "source_asset_id"
+      ],
+      "properties": {
+        "asset_id": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "motion_type": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "target_node": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "motion_source": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "motion_ready": {
+          "type": "boolean",
+          "x-db-type": "bool",
+          "x-db-default": null
+        },
+        "kinematics_verified": {
+          "type": "boolean",
+          "x-db-type": "bool",
+          "x-db-default": "false"
+        },
+        "version": {
+          "type": "integer",
+          "x-db-type": "int4",
+          "x-db-default": "1"
+        },
+        "updated_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        },
+        "representation_class": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": "'FUNCTIONAL_SIMULATION'::text"
+        },
+        "source_asset_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-db-type": "text",
+          "x-db-default": null
+        }
+      }
+    },
+    "DbRow_p006_product_definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "bom",
+        "source_reference",
+        "process_description",
+        "evidence_status",
+        "version",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "name": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "bom": {
+          "description": "DB JSON 저장 타입만 확인. 업무 JSON 스키마가 아님.",
+          "x-db-type": "jsonb",
+          "x-db-default": "'[]'::jsonb"
+        },
+        "source_reference": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": "''::text"
+        },
+        "process_description": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": "''::text"
+        },
+        "evidence_status": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": "'DESIGN_CANDIDATE'::text"
+        },
+        "version": {
+          "type": "integer",
+          "x-db-type": "int4",
+          "x-db-default": "1"
+        },
+        "created_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        },
+        "updated_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        }
+      }
+    },
+    "DbRow_plant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "customer_id",
+        "code",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "customer_id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "code": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "name": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        }
+      }
+    },
+    "DbRow_process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "line_id",
+        "code",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "line_id": {
+          "type": "string",
+          "format": "uuid",
+          "x-db-type": "uuid",
+          "x-db-default": null
+        },
+        "code": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        },
+        "name": {
+          "type": "string",
+          "x-db-type": "text",
+          "x-db-default": null
+        }
+      }
+    },
+    "DbRow_schema_version": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "installed_at"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "x-db-type": "int4",
+          "x-db-default": null
+        },
+        "installed_at": {
+          "type": "string",
+          "x-db-type": "timestamptz",
+          "x-db-default": "now()"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "base": "/home/sjkim/OmniverseProjects/p006-coverage666-v1/base-instrument.usda",
+  "baseSha256": "34246be765120ff8e3641f11ddbd087ec79512b6278c6591aef245b3ae8d9f59",
+  "matchesPriorRenderBuildHash": true,
+  "scope": "Existing RTX captures reused only after current USD base hash match; not new live render or equipment photo.",
+  "captures": [
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v000.png",
+      "sha256": "50f026f29e38ede8fe4c3c3b11457d04f1b691bb1e74dc9ca47a058174968f20"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v001.png",
+      "sha256": "2a17e7a7731579f195eb797e174e524f9774fd27a6c53f0a51cb01dfa4198bf3"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v002.png",
+      "sha256": "0bf5ec1b916a00b948c24aab0d665168fc78de4af8e1914360527fc0ebc43b60"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v003.png",
+      "sha256": "722204491d2f4826aafc0ba35720ef126aa911362c371f7846ee06ab29aadb04"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v004.png",
+      "sha256": "e07ec7f4f9cf30e34eb4d499c44be0cdbcbfd95f132edc5709d366d646b2fb0e"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v005.png",
+      "sha256": "ac6da22a3849513c921f184eebc5d8142cf5c5aa4b6a7da8141a13c628872a69"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v006.png",
+      "sha256": "dfd9e075460731ca6302c61573955df46cc8670acd4887cdb7246c804a8ba9d2"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v007.png",
+      "sha256": "6438f2bc00a6a84b38bd029889bb430bad425a9dbb1f9750fac0dfa48f87515e"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v008.png",
+      "sha256": "962a1584522db382f7165bd34a3b7d51ff979fea8ddc700ab661eb92482e0e63"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v009.png",
+      "sha256": "aff25330151ddd82adb3c5daf224f21b515f41efb60e470a53a263b875342ef2"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v010.png",
+      "sha256": "5cabac027f5d5f8a525df61819cf88bfb5547621d19a7ccc6562f216badc7acc"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v011.png",
+      "sha256": "7d6b6a064cc13c7d6c74df8e82e90f757a7b1092d77d622d935e4d1a00fcfe74"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v012.png",
+      "sha256": "8dd781f80451e9805573ea102fde6930fcc0a2343432145685b346ac3b1ecfd8"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v013.png",
+      "sha256": "7e5e5a1e7781beb628492cb4eebb94aab99b82d270ff6b0e04a3d38a7efef7a1"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v014.png",
+      "sha256": "a07b3879a76eb61234b2b76ac8c8ed38b88170aa28332458e56134a1cc444588"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v015.png",
+      "sha256": "da9546b9ce212dd2887da28c8ba5589f305bc963ecef34fa2fc066e13afd5647"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v016.png",
+      "sha256": "e2f43857a271dc606afd6aed33ca91e70744cf3139e687ccf8e9cd07aa79d1bf"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v017.png",
+      "sha256": "bd1ba0dc5d2cfe276824f6f95a180255550312c46e2d66c75ef61f226bd346cd"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v018.png",
+      "sha256": "1448d3d21bae0dcb2269986bdf465841cab5daf515d9965db0de940a0acacf44"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v019.png",
+      "sha256": "bc2a0ff6db00fe940d183fbe1c6969f5af19f9438a63bbaf2545a281202ffbae"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v020.png",
+      "sha256": "5b97e6dc65de5b41d0ce4ee608ce5b913f470c72192ee5a7b493f6f44cdad1b3"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v021.png",
+      "sha256": "2ab603380fb3ea5455680bfc5c71935951cfa98a686bae3d9993a301f731d65f"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v022.png",
+      "sha256": "df56efc606bced4066411f862d23544681506ab715675defd86830497a04ea03"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v023.png",
+      "sha256": "afba05a57daab4f9c1d1a691c291e3ce5d9bec58602f56d8310ebaa55271d55a"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v024.png",
+      "sha256": "83ef65ecb0ffd5a04444237d828ee9c5097255f2b4a390993b29f429f333d5d6"
+    },
+    {
+      "path": "C:\\Users\\jwchoo\\Documents\\Codex\\2026-07-21\\new-chat\\work\\P006\\coverage666\\variant-instrument-v025.png",
+      "sha256": "9d947ffadc4573ddcb583e30ee2789f14764285c005f9375a15685a6f0c71454"
+    }
+  ]
+}

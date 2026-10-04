@@ -3,6 +3,9 @@ package egovframework.com.common.trace;
 import java.util.Map;
 
 public class FrontendTelemetryEvent {
+    private String eventId;
+    public String getEventId() { return eventId; }
+    public void setEventId(String eventId) { this.eventId = eventId; }
 
     private String traceId;
     private String requestId;

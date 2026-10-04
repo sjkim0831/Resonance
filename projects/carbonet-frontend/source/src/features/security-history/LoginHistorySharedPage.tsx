@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -432,7 +433,7 @@ export function LoginHistorySharedPage(props: Props) {
         <SummaryMetricCard description={blockedMode ? (en ? "Blocked row distribution on this page" : "현재 페이지의 차단 사용자 분포") : (en ? "Distribution on this page" : "현재 페이지 분포")} surfaceClassName="bg-white" title={blockedMode ? (en ? "Blocked Scope" : "차단 범위") : (en ? "User Scope" : "사용자 구분")} value={<span className="text-base font-black text-slate-800">{`${en ? "Admin" : "관리자"} ${userSeSummary.USR || 0} · ${en ? "Enterprise" : "기업"} ${userSeSummary.ENT || 0} · ${en ? "General" : "일반"} ${userSeSummary.GNR || 0}`}</span>} />
       </section>
       <section className="gov-card mb-6" data-help-id="login-history-search">
-        <form className="grid grid-cols-1 md:grid-cols-4 gap-4" onSubmit={(event) => {
+        <form className="ccus-search-host" onSubmit={(event) => {
           event.preventDefault();
           logGovernanceScope("ACTION", "login-history-search", {
             searchKeyword: draft.searchKeyword,
@@ -442,8 +443,25 @@ export function LoginHistorySharedPage(props: Props) {
             actionStatus: draft.actionStatus
           });
           setFilters({ ...draft, pageIndex: 1 });
-        }}>
-          {Boolean(page?.canManageAllCompanies) ? (
+        }}><CommonSearchSection basic={<><div className="ccus-search-field"><div className="md:col-span-2">
+            <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="searchKeyword">{en ? "Keyword" : "검색어"}</label>
+            <div className="flex gap-2">
+              <input className="gov-input flex-1" id="searchKeyword" placeholder={en ? "Search by ID, name, or IP" : "아이디, 이름, IP 검색"} value={draft.searchKeyword} onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))} />
+              
+              
+            </div>
+          </div></div>
+<div className="ccus-search-field"><div>
+            <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="actionStatus">{en ? "Action Status" : "조치 상태"}</label>
+            <select className="gov-select" id="actionStatus" value={draft.actionStatus} onChange={(event) => setDraft((current) => ({ ...current, actionStatus: event.target.value }))}>
+              <option value="">{en ? "All" : "전체"}</option>
+              <option value="NONE">{en ? "No Action" : "미조치"}</option>
+              <option value="SAVE_NOTE">{en ? "Note Saved" : "메모 저장"}</option>
+              <option value="UNBLOCK_USER">{en ? "Unblock Logged" : "해제 기록"}</option>
+              <option value="REGISTER_EXCEPTION">{en ? "Exception" : "예외 등록"}</option>
+              <option value="ESCALATE_BLOCK_IP">{en ? "IP Escalated" : "IP 차단 승격"}</option>
+            </select>
+          </div></div></>} advanced={<><div className="ccus-search-field">{Boolean(page?.canManageAllCompanies) ? (
             <div>
               <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="insttId">회원사</label>
               <select className="gov-select" id="insttId" value={draft.insttId} onChange={(event) => setDraft((current) => ({ ...current, insttId: event.target.value }))}>
@@ -455,8 +473,8 @@ export function LoginHistorySharedPage(props: Props) {
                 })}
               </select>
             </div>
-          ) : <div />}
-          <div>
+          ) : <div />}</div>
+<div className="ccus-search-field"><div>
             <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="userSe">{en ? "User Type" : "사용자 구분"}</label>
             <select className="gov-select" id="userSe" value={draft.userSe} onChange={(event) => setDraft((current) => ({ ...current, userSe: event.target.value }))}>
               <option value="">{en ? "All" : "전체"}</option>
@@ -464,8 +482,8 @@ export function LoginHistorySharedPage(props: Props) {
               <option value="ENT">{en ? "Enterprise" : "기업회원"}</option>
               <option value="GNR">{en ? "General" : "일반회원"}</option>
             </select>
-          </div>
-          {!props.fixedLoginResult ? (
+          </div></div>
+<div className="ccus-search-field">{!props.fixedLoginResult ? (
             <div>
               <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="loginResult">{en ? "Result" : "결과"}</label>
               <select className="gov-select" id="loginResult" value={draft.loginResult} onChange={(event) => setDraft((current) => ({ ...current, loginResult: event.target.value }))}>
@@ -474,31 +492,12 @@ export function LoginHistorySharedPage(props: Props) {
                 <option value="FAIL">{en ? "Fail" : "실패"}</option>
               </select>
             </div>
-          ) : <div />}
-          <div>
-            <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="actionStatus">{en ? "Action Status" : "조치 상태"}</label>
-            <select className="gov-select" id="actionStatus" value={draft.actionStatus} onChange={(event) => setDraft((current) => ({ ...current, actionStatus: event.target.value }))}>
-              <option value="">{en ? "All" : "전체"}</option>
-              <option value="NONE">{en ? "No Action" : "미조치"}</option>
-              <option value="SAVE_NOTE">{en ? "Note Saved" : "메모 저장"}</option>
-              <option value="UNBLOCK_USER">{en ? "Unblock Logged" : "해제 기록"}</option>
-              <option value="REGISTER_EXCEPTION">{en ? "Exception" : "예외 등록"}</option>
-              <option value="ESCALATE_BLOCK_IP">{en ? "IP Escalated" : "IP 차단 승격"}</option>
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="searchKeyword">{en ? "Keyword" : "검색어"}</label>
-            <div className="flex gap-2">
-              <input className="gov-input flex-1" id="searchKeyword" placeholder={en ? "Search by ID, name, or IP" : "아이디, 이름, IP 검색"} value={draft.searchKeyword} onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))} />
-              <button className="gov-btn gov-btn-primary" type="submit">{en ? "Search" : "검색"}</button>
-              <button className="gov-btn gov-btn-secondary" onClick={() => {
+          ) : <div />}</div></>} actions={<><button className="gov-btn gov-btn-secondary" onClick={() => {
                 const reset = { pageIndex: 1, searchKeyword: "", userSe: "", loginResult: props.fixedLoginResult || "", insttId: "", actionStatus: "" };
                 setDraft(reset);
                 setFilters(reset);
               }} type="button">{en ? "Reset" : "초기화"}</button>
-            </div>
-          </div>
-        </form>
+<button className="gov-btn gov-btn-primary" type="submit">{en ? "Search" : "검색"}</button></>}></CommonSearchSection></form>
       </section>
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.8fr)_380px]">
       <section className="gov-card p-0 overflow-hidden" data-help-id="login-history-table">

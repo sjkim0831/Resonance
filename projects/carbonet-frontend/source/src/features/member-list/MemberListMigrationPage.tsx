@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
@@ -300,45 +301,32 @@ function MemberListPageScreen({ variant }: { variant: MemberListPageVariant }) {
               title="검색 조건"
             />
           </div>
-          <form className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-4" data-help-id="member-list-search" onSubmit={handleSearchSubmit}>
-            <div>
-              <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="member-type">회원 유형</label>
-              <AdminSelect id="member-type" value={draftFilters.membershipType} onChange={(event) => updateDraft("membershipType", event.target.value)}>
-                {memberTypeOptions.map((option) => (
-                  <option key={option.value || "all"} value={option.value}>{option.label}</option>
-                ))}
-              </AdminSelect>
-            </div>
-            <div>
+          <form className="ccus-search-host" data-help-id="member-list-search" onSubmit={handleSearchSubmit}><CommonSearchSection basic={<><div className="ccus-search-field"><div className="md:col-span-2">
+              <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="keyword">검색어</label>
+              <div className="flex gap-2">
+                <AdminInput className="flex-1" id="keyword" placeholder="신청자명, 아이디, 회사명 검색" value={draftFilters.searchKeyword} onChange={(event) => updateDraft("searchKeyword", event.target.value)} />
+              </div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="status">상태</label>
               <AdminSelect id="status" value={draftFilters.status} onChange={(event) => updateDraft("status", event.target.value)}>
                 {memberStatusOptions.map((option) => (
                   <option key={option.value || "all"} value={option.value}>{option.label}</option>
                 ))}
               </AdminSelect>
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="keyword">검색어</label>
-              <div className="flex gap-2">
-                <AdminInput className="flex-1" id="keyword" placeholder="신청자명, 아이디, 회사명 검색" value={draftFilters.searchKeyword} onChange={(event) => updateDraft("searchKeyword", event.target.value)} />
-              </div>
-            </div>
-            <div className="md:col-span-4">
-              <div className="flex flex-col gap-3 border-t border-[var(--kr-gov-border-light)] pt-5 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
-                  동일한 목록형 화면은 검색 카드, 상단 툴바, 결과 테이블 순서를 유지합니다.
-                </p>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <MemberButton onClick={resetFilters} type="button" variant="secondary">
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
+              <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="member-type">회원 유형</label>
+              <AdminSelect id="member-type" value={draftFilters.membershipType} onChange={(event) => updateDraft("membershipType", event.target.value)}>
+                {memberTypeOptions.map((option) => (
+                  <option key={option.value || "all"} value={option.value}>{option.label}</option>
+                ))}
+              </AdminSelect>
+            </div></div></>} actions={<><MemberButton onClick={resetFilters} type="button" variant="secondary">
                     {MEMBER_BUTTON_LABELS.reset}
                   </MemberButton>
-                  <MemberButton icon="search" type="submit" variant="primary">
+<MemberButton icon="search" type="submit" variant="primary">
                     {MEMBER_BUTTON_LABELS.search}
-                  </MemberButton>
-                </div>
-              </div>
-            </div>
-          </form>
+                  </MemberButton></>}></CommonSearchSection></form>
         </div>
 
         {variant === "withdrawn" ? <div data-help-id="member-withdrawn-table" /> : null}

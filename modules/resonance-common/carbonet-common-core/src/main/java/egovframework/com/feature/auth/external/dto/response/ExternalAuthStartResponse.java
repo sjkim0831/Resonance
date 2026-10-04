@@ -11,6 +11,8 @@ public class ExternalAuthStartResponse {
     private String providerCode;
     private String methodCode;
     private String txId;
+    private String storeId;
+    private String channelKey;
     private String nextAction;
     private String appScheme;
     private String qrScheme;

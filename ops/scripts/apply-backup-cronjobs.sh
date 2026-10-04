@@ -13,7 +13,7 @@ prepare_backup_directory() {
     /opt/Resonance/var/postgres-backups-ha|\
     /opt/Resonance/var/postgres-basebackups|\
     /opt/Resonance/var/postgres-basebackups-ha|\
-    /opt/resonance-data/postgresql/wal-archive) ;;
+    /opt/Resonance/runtime/platform-data/postgresql/wal-archive) ;;
     *) echo "Refusing unexpected backup path: $resolved" >&2; return 2 ;;
   esac
   if [[ "$(id -u)" -eq 0 ]]; then
@@ -28,7 +28,7 @@ for backup_directory in \
   /opt/Resonance/var/postgres-backups-ha \
   /opt/Resonance/var/postgres-basebackups \
   /opt/Resonance/var/postgres-basebackups-ha \
-  /opt/resonance-data/postgresql/wal-archive; do
+  /opt/Resonance/runtime/platform-data/postgresql/wal-archive; do
   prepare_backup_directory "$backup_directory"
 done
 
@@ -268,14 +268,14 @@ spec:
             - {name: wal-archive, mountPath: /wal-archive}
           volumes:
           - name: wal-archive
-            hostPath: {path: /opt/resonance-data/postgresql/wal-archive, type: Directory}
+            hostPath: {path: /opt/Resonance/runtime/platform-data/postgresql/wal-archive, type: Directory}
 YAML
 
 retention_path="$(
   kubectl -n carbonet-prod get cronjob postgres-carbonet-wal-retention \
     -o jsonpath='{.spec.jobTemplate.spec.template.spec.volumes[?(@.name=="wal-archive")].hostPath.path}'
 )"
-[[ "$retention_path" == /opt/resonance-data/postgresql/wal-archive ]] || {
+[[ "$retention_path" == /opt/Resonance/runtime/platform-data/postgresql/wal-archive ]] || {
   echo "WAL retention is not connected to the active Patroni archive: $retention_path" >&2
   exit 3
 }

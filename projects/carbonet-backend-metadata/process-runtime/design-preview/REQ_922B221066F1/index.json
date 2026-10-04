@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 7,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "REQ_922B221066F1",
+      "stepCode": "REQ_922B221066F1_S001",
+      "package": "REQ_922B221066F1__REQ_922B221066F1_S001.json",
+      "packageHash": "14145dd615589debb6af0fd16cf9d661a90307175ea2227a80b77e736f46e641",
+      "pages": 1
+    },
+    {
+      "processCode": "REQ_922B221066F1",
+      "stepCode": "REQ_922B221066F1_S002",
+      "package": "REQ_922B221066F1__REQ_922B221066F1_S002.json",
+      "packageHash": "674bccbe8d1ca3af919d1eb35cc0308e9f4bcec2925dac24b74a93d7d8bb0056",
+      "pages": 1
+    },
+    {
+      "processCode": "REQ_922B221066F1",
+      "stepCode": "REQ_922B221066F1_S003",
+      "package": "REQ_922B221066F1__REQ_922B221066F1_S003.json",
+      "packageHash": "69903918a8a2ee0c847fbf9f35f80e7c2ba447ea6abe4073a1da86f7daee4c1b",
+      "pages": 1
+    },
+    {
+      "processCode": "REQ_922B221066F1",
+      "stepCode": "REQ_922B221066F1_S004",
+      "package": "REQ_922B221066F1__REQ_922B221066F1_S004.json",
+      "packageHash": "a0dd0fe6b21624428e544b6d65838c77f39f71f5ea176241e08e09cefba3796d",
+      "pages": 1
+    },
+    {
+      "processCode": "REQ_922B221066F1",
+      "stepCode": "REQ_922B221066F1_S005",
+      "package": "REQ_922B221066F1__REQ_922B221066F1_S005.json",
+      "packageHash": "7e8729cea6884531bb13396bc0f179878b5b7aa1a5e622605f62f878a5d9d6a0",
+      "pages": 1
+    },
+    {
+      "processCode": "REQ_922B221066F1",
+      "stepCode": "REQ_922B221066F1_S006",
+      "package": "REQ_922B221066F1__REQ_922B221066F1_S006.json",
+      "packageHash": "aaf96c9b1470126e5f33ed3be4069298ed194646679327ba956f77fc752e3356",
+      "pages": 1
+    },
+    {
+      "processCode": "REQ_922B221066F1",
+      "stepCode": "REQ_922B221066F1_S007",
+      "package": "REQ_922B221066F1__REQ_922B221066F1_S007.json",
+      "packageHash": "f02467d57529c06d72eeabf729a47394ed3e96b3cf8951f89e7512eb424c6ce1",
+      "pages": 1
+    }
+  ],
+  "manifestHash": "b5813b80208fa9ce6e9c40a89dc88040684af63b25a30fc4c318f3f5cd9b42bd"
+}

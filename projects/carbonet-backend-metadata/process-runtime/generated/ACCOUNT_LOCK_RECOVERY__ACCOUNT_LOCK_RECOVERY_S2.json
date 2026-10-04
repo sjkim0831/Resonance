@@ -1,0 +1,2009 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "ACCOUNT_LOCK_RECOVERY",
+    "name": "로그인 잠금·휴면 계정 복구",
+    "domain": "MEMBER",
+    "workType": "MEMBER",
+    "goal": "등록 이메일 OTP와 단일 사용 복구 증명으로 사용자가 관리자 자격증명 우회 없이 계정을 복구한다."
+  },
+  "step": {
+    "code": "ACCOUNT_LOCK_RECOVERY_S2",
+    "version": 1,
+    "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "MEMBER_USER",
+      "ownerActorCode": null,
+      "scope": "TENANT",
+      "policy": {
+        "tenantIsolation": true,
+        "segregationOfDuties": false,
+        "serverAuthorization": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
+    },
+    "business": {
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
+      "domainCode": null,
+      "processName": null,
+      "stepName": "서버 신원검증·복구 증명 발급",
+      "goal": null,
+      "requirement": "사용자가 입력한 일회용 코드는 서버의 해시와 상수시간 비교하고 만료, 사용 여부, 실패횟수, 요청 범위와 속도 제한을 검증한다. 브라우저 상태나 화면에 저장된 코드 비교는 신원증명으로 인정하지 않는다.",
+      "completionRule": "유효한 코드가 한 번만 소비되고 짧은 수명의 단일 목적 복구 증명 해시가 서버에 저장된다. 실패 시 남은 횟수 원문을 과도하게 노출하지 않고 한도 초과 요청을 잠근다.",
+      "riskLevel": null,
+      "slaHours": null,
+      "regulationRefs": null,
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {
+        "deliveryAdapterRequired": true,
+        "browserOnlyVerificationForbidden": true
+      },
+      "extensions": {}
+    },
+    "transition": {
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
+      "commandCode": null,
+      "fromState": "REQUESTED",
+      "toState": "IDENTITY_VERIFIED",
+      "stepOrder": null,
+      "stepType": null,
+      "parentStepCode": null,
+      "completionRule": null,
+      "policy": {
+        "optimisticLock": true,
+        "invalidStatesRejected": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
+    },
+    "input": {
+      "code": "requiredSixDigits",
+      "language": "optional",
+      "requestId": "requiredOpaqueId",
+      "requestIp": "serverResolved"
+    },
+    "output": {
+      "status": "successOrFail",
+      "message": "policySafe",
+      "recoveryProof": "opaqueSingleUseOnSuccess"
+    },
+    "guide": {
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
+      "processCode": "ACCOUNT_LOCK_RECOVERY",
+      "stepCode": "ACCOUNT_LOCK_RECOVERY_S2",
+      "stepOrder": 2,
+      "workTypeCode": null,
+      "actorCode": "MEMBER_USER",
+      "title": "서버 신원검증·복구 증명 발급",
+      "purpose": "사용자가 입력한 일회용 코드는 서버의 해시와 상수시간 비교하고 만료, 사용 여부, 실패횟수, 요청 범위와 속도 제한을 검증한다. 브라우저 상태나 화면에 저장된 코드 비교는 신원증명으로 인정하지 않는다.",
+      "entryCondition": "REQUESTED",
+      "completionCondition": "유효한 코드가 한 번만 소비되고 짧은 수명의 단일 목적 복구 증명 해시가 서버에 저장된다. 실패 시 남은 횟수 원문을 과도하게 노출하지 않고 한도 초과 요청을 잠근다.",
+      "userPath": "/signin/findPassword",
+      "adminPath": "/admin/member/activate",
+      "relatedBusinessRoute": null,
+      "nextStepCode": "ACCOUNT_LOCK_RECOVERY_S3",
+      "nextAction": "IDENTITY_VERIFIED",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "ACCOUNT_LOCK_RECOVERY_S2_USER_WORKSPACE",
+        "route": "/signin/findPassword",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "USER",
+        "screenType": "WORKSPACE",
+        "title": "서버 신원검증·복구 증명 발급",
+        "purpose": "사용자가 입력한 일회용 코드는 서버의 해시와 상수시간 비교하고 만료, 사용 여부, 실패횟수, 요청 범위와 속도 제한을 검증한다. 브라우저 상태나 화면에 저장된 코드 비교는 신원증명으로 인정하지 않는다.",
+        "layout": "RESPONSIVE_WORKSPACE",
+        "theme": "KRDS_GOV_DEFAULT",
+        "designAuthority": {
+          "source": "LEGACY_REGISTERED_DEFAULT",
+          "layout": "RESPONSIVE_WORKSPACE",
+          "theme": "KRDS_GOV_DEFAULT",
+          "defaulted": [
+            "layout",
+            "theme"
+          ]
+        },
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "공통",
+            "fieldOrder": 10,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "tenantId"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트",
+            "fieldGroup": "공통",
+            "fieldOrder": 20,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "projectId",
+            "controlType": "PROJECT_SELECT",
+            "sourceTable": "comtnentrprsmber",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "projectId"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 30,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "processCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "processCode"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "단계 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 40,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "stepCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "stepCode"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "UUID",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": false,
+            "fieldCode": "recordId",
+            "fieldName": "업무 레코드 ID",
+            "fieldGroup": "공통",
+            "fieldOrder": 50,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": false,
+              "immutable": true
+            },
+            "apiProperty": "recordId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "recordId"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": true,
+            "fieldCode": "statusCode",
+            "fieldName": "처리 상태",
+            "fieldGroup": "공통",
+            "fieldOrder": 60,
+            "validation": {
+              "codeGroup": "WORK_STATUS"
+            },
+            "apiProperty": "statusCode",
+            "controlType": "STATUS_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "statusCode"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "fieldName": "담당 액터",
+            "fieldGroup": "공통",
+            "fieldOrder": 70,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "ownerActorCode",
+            "controlType": "ACTOR_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": true,
+            "fieldCode": "rowVersion",
+            "fieldName": "데이터 버전",
+            "fieldGroup": "공통",
+            "fieldOrder": 80,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "rowVersion",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "rowVersion"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": false,
+            "fieldCode": "createdAt",
+            "fieldName": "등록 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 90,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "createdAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "createdAt"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": false,
+            "fieldCode": "updatedAt",
+            "fieldName": "최종 수정 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 100,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "updatedAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "updatedAt"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "fieldName": "증빙 수",
+            "fieldGroup": "공통",
+            "fieldOrder": 110,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "evidenceCount",
+            "controlType": "EVIDENCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "evidenceCount"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": true,
+            "fieldCode": "companyId",
+            "fieldName": "기업",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 200,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "companyId",
+            "controlType": "COMPANY_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "companyId"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": true,
+            "fieldCode": "accountId",
+            "fieldName": "사용자 계정",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 210,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "accountId",
+            "controlType": "USER_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "accountId"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "ARRAY",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": true,
+            "fieldCode": "actorCodes",
+            "fieldName": "업무 액터",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 220,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "actorCodes",
+            "controlType": "ACTOR_MULTI_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "actorCodes"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": true,
+            "fieldCode": "authorityCode",
+            "fieldName": "권한 그룹",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 230,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "authorityCode",
+            "controlType": "AUTHORITY_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "authorityCode"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": true,
+            "fieldCode": "accountStatus",
+            "fieldName": "계정 상태",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 240,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "accountStatus",
+            "controlType": "STATUS_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "accountStatus"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": false,
+            "fieldCode": "consentVersion",
+            "fieldName": "동의서 버전",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 250,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "consentVersion",
+            "controlType": "CONSENT_VIEW",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "consentVersion"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "TEXT",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": false,
+            "fieldCode": "taskComment",
+            "fieldName": "업무 메모",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 400,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "taskComment",
+            "controlType": "TEXTAREA",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "taskComment"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": false,
+            "fieldCode": "dueAt",
+            "fieldName": "마감 일시",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 410,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "dueAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "dueAt"
+          },
+          {
+            "route": "/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+            "required": false,
+            "fieldCode": "nextActorCode",
+            "fieldName": "다음 담당 액터",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 420,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "nextActorCode",
+            "controlType": "ACTOR_VIEW",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "nextActorCode"
+          },
+          {
+            "fieldCode": "code",
+            "code": "code",
+            "fieldName": "code",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 21,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "USER"
+          },
+          {
+            "fieldCode": "language",
+            "code": "language",
+            "fieldName": "language",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 22,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "USER"
+          },
+          {
+            "fieldCode": "requestId",
+            "code": "requestId",
+            "fieldName": "requestId",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 23,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "USER"
+          },
+          {
+            "fieldCode": "requestIp",
+            "code": "requestIp",
+            "fieldName": "requestIp",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 24,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "USER"
+          }
+        ],
+        "commands": [
+          {
+            "code": "VERIFY_RECOVERY_CHALLENGE",
+            "label": "본인 확인",
+            "singleUse": true,
+            "transactional": true,
+            "commandCode": null,
+            "actorCode": "MEMBER_USER",
+            "serverAuthorization": true,
+            "entryState": "REQUESTED",
+            "resultState": "IDENTITY_VERIFIED",
+            "idempotencyRequired": true
+          },
+          {
+            "code": "RESEND_CHALLENGE",
+            "label": "코드 재전송",
+            "rateLimited": true,
+            "invalidatesPrevious": true,
+            "commandCode": null,
+            "actorCode": "MEMBER_USER",
+            "serverAuthorization": true,
+            "entryState": "REQUESTED",
+            "resultState": "IDENTITY_VERIFIED",
+            "idempotencyRequired": true
+          }
+        ],
+        "states": [],
+        "responsive": {
+          "mobile": "single-column",
+          "tablet": "adaptive-two-column",
+          "desktop": "task-optimized",
+          "noTextOverflow": true
+        },
+        "accessibility": {
+          "standard": "WCAG_2_1_AA",
+          "keyboard": true,
+          "focus": true,
+          "errorSummary": true
+        }
+      },
+      {
+        "pageCode": "ACCOUNT_LOCK_RECOVERY_S2_ADMIN_WORKSPACE",
+        "route": "/admin/member/activate",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "ADMIN",
+        "screenType": "WORKSPACE",
+        "title": "서버 신원검증·복구 증명 발급",
+        "purpose": "사용자가 입력한 일회용 코드는 서버의 해시와 상수시간 비교하고 만료, 사용 여부, 실패횟수, 요청 범위와 속도 제한을 검증한다. 브라우저 상태나 화면에 저장된 코드 비교는 신원증명으로 인정하지 않는다.",
+        "layout": "RESPONSIVE_WORKSPACE",
+        "theme": "KRDS_GOV_DEFAULT",
+        "designAuthority": {
+          "source": "LEGACY_REGISTERED_DEFAULT",
+          "layout": "RESPONSIVE_WORKSPACE",
+          "theme": "KRDS_GOV_DEFAULT",
+          "defaulted": [
+            "layout",
+            "theme"
+          ]
+        },
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "공통",
+            "fieldOrder": 10,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "tenantId"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트",
+            "fieldGroup": "공통",
+            "fieldOrder": 20,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "projectId",
+            "controlType": "PROJECT_SELECT",
+            "sourceTable": "comtnentrprsmber",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "projectId"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 30,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "processCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "processCode"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "단계 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 40,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "stepCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "stepCode"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "UUID",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": false,
+            "fieldCode": "recordId",
+            "fieldName": "업무 레코드 ID",
+            "fieldGroup": "공통",
+            "fieldOrder": 50,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": false,
+              "immutable": true
+            },
+            "apiProperty": "recordId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "recordId"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": true,
+            "fieldCode": "statusCode",
+            "fieldName": "처리 상태",
+            "fieldGroup": "공통",
+            "fieldOrder": 60,
+            "validation": {
+              "codeGroup": "WORK_STATUS"
+            },
+            "apiProperty": "statusCode",
+            "controlType": "STATUS_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "statusCode"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "fieldName": "담당 액터",
+            "fieldGroup": "공통",
+            "fieldOrder": 70,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "ownerActorCode",
+            "controlType": "ACTOR_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": true,
+            "fieldCode": "rowVersion",
+            "fieldName": "데이터 버전",
+            "fieldGroup": "공통",
+            "fieldOrder": 80,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "rowVersion",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "rowVersion"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": false,
+            "fieldCode": "createdAt",
+            "fieldName": "등록 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 90,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "createdAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "createdAt"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": false,
+            "fieldCode": "updatedAt",
+            "fieldName": "최종 수정 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 100,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "updatedAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "updatedAt"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "fieldName": "증빙 수",
+            "fieldGroup": "공통",
+            "fieldOrder": 110,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "evidenceCount",
+            "controlType": "EVIDENCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "evidenceCount"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": true,
+            "fieldCode": "companyId",
+            "fieldName": "기업",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 200,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "companyId",
+            "controlType": "COMPANY_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "companyId"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": true,
+            "fieldCode": "accountId",
+            "fieldName": "사용자 계정",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 210,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "accountId",
+            "controlType": "USER_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "accountId"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "ARRAY",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": true,
+            "fieldCode": "actorCodes",
+            "fieldName": "업무 액터",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 220,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "actorCodes",
+            "controlType": "ACTOR_MULTI_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "actorCodes"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": true,
+            "fieldCode": "authorityCode",
+            "fieldName": "권한 그룹",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 230,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "authorityCode",
+            "controlType": "AUTHORITY_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "authorityCode"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": true,
+            "fieldCode": "accountStatus",
+            "fieldName": "계정 상태",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 240,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "accountStatus",
+            "controlType": "STATUS_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "accountStatus"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": false,
+            "fieldCode": "consentVersion",
+            "fieldName": "동의서 버전",
+            "fieldGroup": "MEMBER",
+            "fieldOrder": 250,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "consentVersion",
+            "controlType": "CONSENT_VIEW",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "consentVersion"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "TEXT",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": false,
+            "fieldCode": "taskComment",
+            "fieldName": "업무 메모",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 400,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "taskComment",
+            "controlType": "TEXTAREA",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "taskComment"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": false,
+            "fieldCode": "dueAt",
+            "fieldName": "마감 일시",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 410,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "dueAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "dueAt"
+          },
+          {
+            "route": "/admin/planned/member/account-lock-recovery/account-lock-recovery-s2",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+            "required": false,
+            "fieldCode": "nextActorCode",
+            "fieldName": "다음 담당 액터",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 420,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "nextActorCode",
+            "controlType": "ACTOR_VIEW",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_ADMIN:ADMIN",
+            "evidenceRequired": false,
+            "code": "nextActorCode"
+          },
+          {
+            "fieldCode": "code",
+            "code": "code",
+            "fieldName": "code",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 21,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "ADMIN"
+          },
+          {
+            "fieldCode": "language",
+            "code": "language",
+            "fieldName": "language",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 22,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "ADMIN"
+          },
+          {
+            "fieldCode": "requestId",
+            "code": "requestId",
+            "fieldName": "requestId",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 23,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "ADMIN"
+          },
+          {
+            "fieldCode": "requestIp",
+            "code": "requestIp",
+            "fieldName": "requestIp",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 24,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "ADMIN"
+          }
+        ],
+        "commands": [
+          {
+            "code": "VERIFY_RECOVERY_CHALLENGE",
+            "label": "본인 확인",
+            "singleUse": true,
+            "transactional": true,
+            "commandCode": null,
+            "actorCode": "MEMBER_USER",
+            "serverAuthorization": true,
+            "entryState": "REQUESTED",
+            "resultState": "IDENTITY_VERIFIED",
+            "idempotencyRequired": true
+          },
+          {
+            "code": "RESEND_CHALLENGE",
+            "label": "코드 재전송",
+            "rateLimited": true,
+            "invalidatesPrevious": true,
+            "commandCode": null,
+            "actorCode": "MEMBER_USER",
+            "serverAuthorization": true,
+            "entryState": "REQUESTED",
+            "resultState": "IDENTITY_VERIFIED",
+            "idempotencyRequired": true
+          }
+        ],
+        "states": [],
+        "responsive": {
+          "mobile": "single-column",
+          "tablet": "adaptive-two-column",
+          "desktop": "task-optimized",
+          "noTextOverflow": true
+        },
+        "accessibility": {
+          "standard": "WCAG_2_1_AA",
+          "keyboard": true,
+          "focus": true,
+          "errorSummary": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "code": "VERIFY_RECOVERY_CHALLENGE",
+        "path": "/api/public/account-recovery/requests/{requestId}/verify",
+        "method": "POST",
+        "request": "RecoveryChallengeVerification",
+        "response": "RecoveryProofIssued",
+        "singleUse": true,
+        "constantTimeCompare": true
+      }
+    ],
+    "commands": [
+      {
+        "code": "VERIFY_RECOVERY_CHALLENGE",
+        "label": "본인 확인",
+        "singleUse": true,
+        "transactional": true,
+        "commandCode": null,
+        "actorCode": "MEMBER_USER",
+        "serverAuthorization": true,
+        "entryState": "REQUESTED",
+        "resultState": "IDENTITY_VERIFIED",
+        "idempotencyRequired": true
+      },
+      {
+        "code": "RESEND_CHALLENGE",
+        "label": "코드 재전송",
+        "rateLimited": true,
+        "invalidatesPrevious": true,
+        "commandCode": null,
+        "actorCode": "MEMBER_USER",
+        "serverAuthorization": true,
+        "entryState": "REQUESTED",
+        "resultState": "IDENTITY_VERIFIED",
+        "idempotencyRequired": true
+      }
+    ],
+    "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "MEMBER_USER",
+      "ownerActorCode": null,
+      "scope": "TENANT",
+      "policy": {
+        "tenantIsolation": true,
+        "segregationOfDuties": false,
+        "serverAuthorization": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
+    },
+    "handoffPolicy": {},
+    "handoffs": [
+      {
+        "failure": {
+          "onInvalid": "VALIDATION_ERROR",
+          "onMissing": "DEPENDENCY_BLOCKED",
+          "onConflict": "RELOAD_AND_REVIEW",
+          "onUnauthorized": "DENY_AND_AUDIT"
+        },
+        "payload": {
+          "toInput": {
+            "tenantId": "required",
+            "actorCode": "required",
+            "projectId": "contextual",
+            "idempotencyKey": "required",
+            "businessPayload": "required"
+          },
+          "fromOutput": {
+            "state": "STEP_2_COMPLETED",
+            "evidence": "required",
+            "auditEvent": "required",
+            "nextTaskCreated": true
+          },
+          "requiredContext": [
+            "tenantId",
+            "projectId",
+            "recordId",
+            "statusCode",
+            "rowVersion"
+          ]
+        },
+        "integrity": {
+          "optimisticLock": true,
+          "immutableSnapshot": true,
+          "hashWhenEvidenceOrCalculation": true
+        },
+        "toStepCode": "ACCOUNT_LOCK_RECOVERY_S3",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "processCode",
+          "recordId",
+          "rowVersion"
+        ],
+        "handoffType": "STEP",
+        "authorization": {
+          "toActor": "VERIFIER",
+          "fromActor": "MEMBER_ADMIN",
+          "tenantIsolation": true,
+          "projectIsolation": true,
+          "segregationChecked": true
+        },
+        "toProcessCode": "ACCOUNT_LOCK_RECOVERY"
+      }
+    ]
+  },
+  "database": {
+    "transactional": true,
+    "migrationRequired": true,
+    "mappings": [
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "tenantId",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "projectId",
+            "sourceTable": "comtnentrprsmber",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "stepCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": false,
+            "fieldCode": "recordId",
+            "apiProperty": "recordId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "statusCode",
+            "apiProperty": "statusCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "apiProperty": "ownerActorCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "rowVersion",
+            "apiProperty": "rowVersion",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "createdAt",
+            "apiProperty": "createdAt",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "updatedAt",
+            "apiProperty": "updatedAt",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "apiProperty": "evidenceCount",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "companyId",
+            "apiProperty": "companyId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "accountId",
+            "apiProperty": "accountId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "actorCodes",
+            "apiProperty": "actorCodes",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "authorityCode",
+            "apiProperty": "authorityCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "accountStatus",
+            "apiProperty": "accountStatus",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "consentVersion",
+            "apiProperty": "consentVersion",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "taskComment",
+            "apiProperty": "taskComment",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "dueAt",
+            "apiProperty": "dueAt",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "nextActorCode",
+            "apiProperty": "nextActorCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          }
+        ],
+        "audience": "ADMIN",
+        "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ADMIN",
+        "primaryEntity": "comtnentrprsmber"
+      },
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "tenantId",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "projectId",
+            "sourceTable": "comtnentrprsmber",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "stepCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": false,
+            "fieldCode": "recordId",
+            "apiProperty": "recordId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "statusCode",
+            "apiProperty": "statusCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "apiProperty": "ownerActorCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "rowVersion",
+            "apiProperty": "rowVersion",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "createdAt",
+            "apiProperty": "createdAt",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "updatedAt",
+            "apiProperty": "updatedAt",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "apiProperty": "evidenceCount",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "companyId",
+            "apiProperty": "companyId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "accountId",
+            "apiProperty": "accountId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "actorCodes",
+            "apiProperty": "actorCodes",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "authorityCode",
+            "apiProperty": "authorityCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "accountStatus",
+            "apiProperty": "accountStatus",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "consentVersion",
+            "apiProperty": "consentVersion",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "taskComment",
+            "apiProperty": "taskComment",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "dueAt",
+            "apiProperty": "dueAt",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "nextActorCode",
+            "apiProperty": "nextActorCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          }
+        ],
+        "audience": "USER",
+        "pageCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_USER",
+        "primaryEntity": "comtnentrprsmber"
+      }
+    ],
+    "schemaSetVersion": 3,
+    "primaryEntities": [
+      "comtnentrprsmber"
+    ],
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "caseCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_HAPPY_PATH",
+      "name": "서버 신원검증·복구 증명 발급 HAPPY_PATH",
+      "type": "HAPPY_PATH",
+      "status": "APPROVED",
+      "sourceRequirement": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "ACCOUNT_LOCK_RECOVERY",
+          "stepCode": "ACCOUNT_LOCK_RECOVERY_S2",
+          "scenario": "HAPPY_PATH"
+        }
+      ],
+      "assertions": [
+        "HAPPY_PATH contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_EXCEPTION",
+      "name": "서버 신원검증·복구 증명 발급 EXCEPTION",
+      "type": "EXCEPTION",
+      "status": "APPROVED",
+      "sourceRequirement": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "ACCOUNT_LOCK_RECOVERY",
+          "stepCode": "ACCOUNT_LOCK_RECOVERY_S2",
+          "scenario": "EXCEPTION"
+        }
+      ],
+      "assertions": [
+        "EXCEPTION contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_AUTHORITY",
+      "name": "서버 신원검증·복구 증명 발급 AUTHORITY",
+      "type": "AUTHORITY",
+      "status": "APPROVED",
+      "sourceRequirement": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "ACCOUNT_LOCK_RECOVERY",
+          "stepCode": "ACCOUNT_LOCK_RECOVERY_S2",
+          "scenario": "AUTHORITY"
+        }
+      ],
+      "assertions": [
+        "AUTHORITY contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_ISOLATION",
+      "name": "서버 신원검증·복구 증명 발급 ISOLATION",
+      "type": "ISOLATION",
+      "status": "APPROVED",
+      "sourceRequirement": "ISOLATION",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "ACCOUNT_LOCK_RECOVERY",
+          "stepCode": "ACCOUNT_LOCK_RECOVERY_S2",
+          "scenario": "ISOLATION"
+        }
+      ],
+      "assertions": [
+        "ISOLATION contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "ACCOUNT_LOCK_RECOVERY_ACCOUNT_LOCK_RECOVERY_S2_RECOVERY",
+      "name": "서버 신원검증·복구 증명 발급 RECOVERY",
+      "type": "RECOVERY",
+      "status": "APPROVED",
+      "sourceRequirement": "RECOVERY",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "ACCOUNT_LOCK_RECOVERY",
+          "stepCode": "ACCOUNT_LOCK_RECOVERY_S2",
+          "scenario": "RECOVERY"
+        }
+      ],
+      "assertions": [
+        "RECOVERY contract is enforced before live promotion"
+      ]
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
+    "security": {
+      "tenantIsolation": true,
+      "projectIsolation": false,
+      "serverAuthorization": true,
+      "segregationOfDuties": false,
+      "rateLimitRequired": true,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "standard": "WCAG_2_1_AA",
+      "keyboard": true,
+      "focus": true,
+      "errorSummary": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": false,
+      "targetHours": null,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
+  },
+  "sourceHash": "b2e2f859258e2c53a144854491d4c069",
+  "approvalStatus": "APPROVED",
+  "packageHash": "c2f14e4ffa2a01562b72e9c46c26249429d33d5794ffb7adb7b8cfd963cda3f1"
+}

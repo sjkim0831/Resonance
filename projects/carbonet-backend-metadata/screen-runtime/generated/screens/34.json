@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 34,
+  "blueprintCode": "BP_ADOPT_84D4567C6E633556A85A",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "EMISSION_PROJECT_EMISSION_PROJECT_SETUP_ADMIN"
+  },
+  "route": "/admin/emission/management",
+  "pageName": "마감·지연 현황",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1010105",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "6d69cef29afdd849e5e55a5fc50fa7a9c2246d81efcd0460165e3f7e2230db22",
+  "artifactHash": "0d68052c6a848247648025697bf790198e3f70768f3cf3e8035d2f84c8fd7f6c"
+}

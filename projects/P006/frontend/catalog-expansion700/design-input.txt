@@ -1,0 +1,635 @@
+# domain|classification|parent process|upstream|downstream
+# name|english|purpose|lower components|optional decision:target:reason
+@BUILD|공장 건축/인프라|공장 기반시설|부지|생산 구역
+장비 독립 기초 블록|Machine foundation block|진동과 하중을 지반으로 전달|앵커,방진층
+방진 플로팅 슬래브|Floating isolation slab|정밀 구역의 외부 진동을 차단|탄성지지체,슬래브
+방유 방호제|Liquid containment bund|탱크 누출액의 구역 외 유출 방지|턱,배수차단장치
+방폭 배출 패널|Explosion relief panel|설계 압력에서 압력을 외부로 방출|파열패널,배출덕트
+연기 배출 해치|Smoke exhaust hatch|화재 연기를 지붕 외부로 배출|개폐기,개구부
+방연 수직 커튼|Smoke containment curtain|연기 확산 구역을 분할|내열막,권취부
+산업용 도크 실링 부스|Dock shelter|트럭과 건물 사이 외기를 차단|밀봉막,도크프레임
+하역 트럭 고정장치|Vehicle restraint|도크 작업 중 차량 이탈 방지|걸림장치,위치센서
+모듈형 장비 서비스 피트|Equipment service pit|설비 하부 정비 접근 공간 제공|피트구조,추락방호
+청정 라미나 플로 천장 유닛|Fan filter unit|청정 구역에 여과 공기 공급|팬,HEPA필터
+방진 실험실 테이블|Vibration isolation table|계측기 설치면의 진동 절연|공기스프링,정반
+이동식 클린 부스|Modular clean booth|국소 조립 영역의 청정도 유지|필터유닛,커튼
+고속 산업용 문|High speed industrial door|구역 간 개폐|모터,문막|MERGE:N003:고속 롤업도어의 명칭 차이
+@RECEIVE|입고/출하|입출고 검수|외부 운송|창고
+트럭 계근대|Truck weighbridge|차량 총중량으로 입출고 질량 확인|플랫폼,계근표시기
+입고 화물 자동 개봉기|Automatic case opener|밀봉된 외포장을 절개해 입고품 노출|칼날,이송부
+팔레트 스트레치필름 제거기|Pallet film remover|입고 적재물 필름을 회수|절개기,회수롤
+포장 밴드 제거기|Strap remover|입고 화물 결속 밴드 절단 회수|커터,흡입부
+컨테이너 틸팅 언로더|Container tipping unloader|벌크 컨테이너를 기울여 원료 배출|틸팅프레임,배출구
+트럭 벌크 언로딩 스테이션|Bulk truck unloading station|탱크로리 원료를 저장계통으로 인수|호스매니폴드,차단밸브
+탱크로리 접지 확인장치|Tank truck grounding monitor|하역 전 접지 연속성 확인|접지클램프,검증릴레이
+입고 자동 샘플링 프로브|Truck sampling probe|벌크 입고 원료의 대표 시료 채취|프로브,시료배출기
+화물 방사선 포털 모니터|Cargo radiation portal monitor|입고 금속 화물의 방사선 이상 검출|검출패널,경보기
+출하 팔레트 후드 포장기|Stretch hooder|팔레트에 신축 후드를 씌워 방수 고정|후드프레임,필름공급기
+빈 컨테이너 내부 검사 스테이션|Empty container inspection station|적재 전 컨테이너 잔류물과 손상 확인|조명,검사카메라
+도크 예약·호출 키오스크|Dock check-in kiosk|운송기사 등록과 도크 호출 처리|단말,호출표시기
+트럭 바퀴 세척기|Truck wheel wash|출입 차량의 바퀴 오염 제거|분사노즐,회수조
+@STORE|창고/보관|재고 보관|입고|피킹
+수직 리프트 모듈 창고|Vertical lift module|트레이를 지정 높이에서 인출|리프트,트레이베이
+카루셀 수평 자동창고|Horizontal carousel|순환 선반으로 피킹 위치 공급|순환체인,피킹포트
+큐브형 빈 자동창고|Cube storage system|상부 로봇으로 적층 빈 인출|빈격자,인출로봇
+공구 자동 대여 캐비닛|Tool vending cabinet|사용자별 공구 반출과 재고 추적|잠금서랍,인증단말
+질소 퍼지 보관 캐비닛|Nitrogen storage cabinet|산화 민감 제품을 저산소 보관|퍼지분배기,산소계
+위험 화학물질 냉장고|Chemical safety refrigerator|저온 보관 물질의 점화 위험 저감|냉동회로,보호제어
+원료 벌크 평저 저장 빈|Bulk storage bin|중력 배출 원료를 임시 저장|배출게이트,레벨계|MERGE:E101:사일로의 형상 파생형
+연속 FIFO 축적 타워|FIFO accumulation tower|순서를 유지하며 재공품 체류 완충|트레이리프트,순서제어
+웨이퍼 질소 스토커|Wafer nitrogen stocker|밀폐 캐리어를 저산소 환경에서 보관|캐리어베이,퍼지계통
+배터리 격리 보관함|Battery quarantine cabinet|이상 셀을 격리 감시 보관|내화함,온도감시
+냉동 자동 보관 챔버|Frozen storage chamber|제품을 동결 상태로 보관 인출|단열챔버,냉동계통
+액체 원료 교반 저장탱크|Agitated storage tank|침강성 액상 원료를 균질 보관|교반축,레벨계
+종자·균주 초저온 보관고|Ultra low temperature freezer|생물학적 원료를 초저온 보존|냉동계통,온도기록기
+금형 온장 보관 캐비닛|Heated mold cabinet|금형의 결로와 수분을 관리|히터,온도제어|MERGE:N050:온습도 제어 캐비닛 용도 파생형
+@CONVEY|컨베이어/물류|공정 간 이송|생산 공정|다음 공정
+독립 셔틀 이송시스템|Independent shuttle transport|개별 캐리어의 위치와 간격 제어|선형모터트랙,셔틀
+오버헤드 호이스트 운반시스템|Overhead hoist transport|밀폐 캐리어를 천장 레일로 인계|주행대차,호이스트
+비접촉 공기부상 이송대|Air flotation transfer table|취약 판재를 접촉 없이 이동|공기플레넘,분사면
+파워앤프리 행거 시스템|Power and free conveyor|행거를 정지 축적 분기하며 이송|구동레일,자유레일
+생산라인 크로스 트랜스퍼 카|Cross transfer car|평행 라인 사이 중량물을 횡이송|주행대차,이송테이블
+회전 드럼 냉각 이송기|Rotary drum cooler|벌크 고온품을 이동시키며 냉각|회전통,송풍기
+리턴 트레이 디스태커|Tray destacker|중첩 트레이를 낱장 공급|분리핑거,승강대
+회수 트레이 스태커|Tray stacker|빈 트레이를 적층 회수|적층리프트,가이드
+물류 빈 세척기|Returnable bin washer|반환 용기의 오염을 제거|분사터널,건조부
+물류 스파이럴 축적기|Spiral accumulator|연속 제품 흐름을 수직 완충|나선트랙,속도제어
+케이블카형 중량물 이송기|Cable propelled transfer system|장거리 공정 구간의 운반대 이동|윈치,운반대
+자재 이송 로터리 에어록|Rotary airlock feeder|압력 차를 유지하며 분체 투입|로터,케이싱
+진공 리프팅 슈트|Vacuum sack lifter|포대를 수작업 보조로 이동|진공튜브,흡착헤드|MERGE:E174:진공 흡착 리프터의 취급물 파생형
+@AGV|AGV/AMR|자율 물류|물류 요청|인계 스테이션
+AMR 상부 리프트 모듈|AMR lift top module|대차를 들어 AMR에 결합|승강기구,체결센서
+AMR 상부 롤러 모듈|AMR roller top module|고정 컨베이어와 화물을 자동 인계|롤러데크,포토센서
+AMR 대차 자동 체결 모듈|AMR cart coupling module|운반 대차를 자동 잠금 해제|커플러,잠금감지
+AMR 자동 배터리 교환소|AMR battery swap station|방전 팩을 충전 팩으로 교환|팩인출기,보관베이
+AMR 정밀 도킹 스테이션|AMR precision docking station|화물 인계 위치를 기계적으로 정렬|위치결정핀,도킹센서
+모바일 매니퓰레이터|Mobile manipulator|이동 후 로봇팔로 장비를 로딩|이동베이스,매니퓰레이터
+AMR 함대 관제 서버|AMR fleet manager appliance|교통 충돌과 임무 큐를 관리|관제컴퓨터,통신인터페이스
+AGV 교차로 인터록 장치|AGV crossing interlock controller|차량과 보행자의 교차 진입 제어|안전제어기,신호등
+전동 지게차형 AGV|Automated forklift|팔레트 자동 이송|포크,주행센서|MERGE:E125:이동 로봇 운반 플랫폼의 파생형으로 관리
+@MACHINE|가공|금속 정밀 가공|소재 준비|치수 검사
+심공 드릴링기|Deep hole drilling machine|장축 소재에 깊은 구멍 가공|건드릴,고압급유
+기어 스카이빙기|Gear skiving machine|동기 회전 절삭으로 내외 기어 가공|동기주축,스카이빙툴
+기어 연삭기|Gear grinding machine|열처리 기어의 치형 정밀 마감|드레서,연삭주축
+기어 셰이퍼|Gear shaping machine|왕복 피니언 공구로 치형 생성|커터램,회전테이블
+나사 연삭기|Thread grinding machine|나사산의 정밀 형상 연삭|프로파일숫돌,이송축
+전해 가공기|Electrochemical machining system|전해 용출로 난삭재 형상 가공|전해조,전원
+전해 디버링기|Electrochemical deburring machine|교차 구멍 내부 버 제거|전극지그,전해액순환
+연마 유동 가공기|Abrasive flow machining system|내부 유로를 연마 매체로 마감|압출실린더,매체챔버
+열에너지 디버링기|Thermal deburring system|짧은 연소 펄스로 미세 버 제거|압력챔버,가스계량
+워터젯 디버링기|High pressure water deburring machine|교차 유로의 버를 고압수로 제거|고압펌프,노즐축
+초음파 가공기|Ultrasonic machining system|취성 재료를 초음파 연마로 가공|혼,연마액공급
+다이아몬드 선삭기|Diamond turning machine|광학면을 초정밀 절삭|공기베어링주축,다이아몬드툴
+마이크로 레이저 천공기|Laser micro drilling system|미세 홀을 펄스 에너지로 형성|펄스광원,집광광학계
+롤 슈퍼피니싱기|Roll superfinishing machine|롤 표면 조도를 최종 마감|연마스톤,진동헤드
+진동 배럴 연마기|Vibratory finishing machine|벌크 부품 모서리를 매체로 마감|진동조,분리체
+원심 디스크 연마기|Centrifugal disc finishing machine|회전 매체로 벌크 표면 연마|회전디스크,처리조|MERGE:Vibratory finishing machine:벌크 매체 연마의 구동 방식 파생형
+자기 연마기|Magnetic abrasive finishing machine|자성 연마재로 복잡 표면 마감|자장발생기,연마핀
+로터리 브로칭 헤드|Rotary broaching head|다각 홀을 절삭|절삭날,홀더|PART:N065:독립 가공기 아닌 공구 헤드
+소재 절단 길이 계측 공급기|Bar measuring feeder|봉재 길이를 측정해 절단기로 공급|서보피더,길이측정축
+자동 칩 브리켓 프레스|Chip briquetting press|절삭칩을 압축해 절삭유 회수|압축실린더,유회수조
+공작기계 바 로더|Bar loading magazine|봉재를 선반 주축에 자동 투입|봉재매거진,푸셔
+공작기계 툴 매거진|Automatic tool magazine|공구를 주소별 보관 공급|공구포트,교환암
+@SHEET|판금/성형|판재 성형|코일 준비|접합
+터릿 펀칭기|Turret punch press|다공 판재를 금형 선택 타발|터릿,펀치램
+패널 벤더|Panel bending machine|판넬 가장자리를 자동 연속 절곡|상하블레이드,홀더
+롤포밍 라인|Roll forming line|연속 롤 스탠드로 일정 단면 생성|성형롤,절단장치
+튜브 하이드로포밍기|Tube hydroforming press|내압으로 튜브를 금형에 성형|압력증폭기,금형클램프
+판재 스트레치 포밍기|Stretch forming machine|인장한 판재를 곡면에 성형|인장조,곡면금형
+냉간 헤딩기|Cold heading machine|선재 끝단을 업셋해 체결부품 생성|헤딩램,절단기
+와이어 드로잉기|Wire drawing machine|다이를 통과시켜 선경 축소|캡스턴,인발다이
+와이어 스트레이트닝 절단기|Wire straightening cutter|선재를 교정해 정척 절단|교정롤,절단부
+스프링 코일링기|Spring coiling machine|선재로 스프링 형상 성형|코일링핀,와이어피더
+확장 메탈 제조기|Expanded metal machine|절개와 인장으로 망상 판재 생성|슬릿금형,인장부
+링 롤링기|Ring rolling mill|환상 소재의 직경 확장과 두께 성형|성형롤,맨드렐
+회전 인장 교정기|Stretch straightening machine|금속 프로파일의 휨 교정|클램프,인장축
+초소성 성형 프레스|Superplastic forming press|고온 기체압으로 초소성 판재 성형|가열금형,가스압제어
+판재 모서리 면취기|Plate edge beveling machine|용접 준비용 베벨면 생성|절삭헤드,가이드
+금속 압출 프레스|Metal extrusion press|빌릿을 다이로 밀어 단면 소재 생성|압출램,빌릿컨테이너
+@CAST|주조/단조|주조 전후처리|금속 원료|후처리
+자동 조형기|Sand molding machine|주물용 모래 주형을 성형|조형박스,가압헤드
+코어 슈팅기|Core shooting machine|코어박스에 모래를 사출 경화|사출장치,코어박스
+코어 코팅 스테이션|Core coating station|코어 표면에 내화 코팅 적용|침지조,배액대
+모래 혼련기|Sand mixer muller|모래와 바인더를 균일 혼련|혼련팬,계량부
+주물 탈사기|Shakeout machine|주물에서 주형 모래를 분리|진동그리드,받침조
+주물 탕구 절단기|Gate cutoff machine|주물의 탕구를 분리 회수|절단주축,고정지그
+주물 함침기|Casting impregnation system|미세 기공에 실런트를 함침|진공용기,실런트조
+주물 탈핵기|Decoring machine|주물 내부 코어를 충격으로 제거|해머,회전클램프
+용탕 운반 래들|Molten metal transfer ladle|용탕을 보온하며 주탕점으로 운반|내화용기,틸팅기구
+용탕 슬래그 제거기|Dross skimmer|용탕 표면의 산화 슬래그 회수|스키밍암,드로스수거부
+주조기 금형 진공 스키드|Die vacuum evacuation skid|사출 직전 금형 내부 기체 배출|진공탱크,고속밸브|MERGE:E194:진공 펌프 패키지의 주조 용도 파생형
+용탕 스트리밍 접종기|Stream inoculation feeder|주탕 유량에 맞춰 접종제 공급|정량피더,투입슈트
+연속 주조기|Continuous casting machine|용탕을 연속 반제품으로 응고 인출|수냉주형,인출롤
+원심 주조기|Centrifugal casting machine|회전 금형에서 관상 주물 생성|회전금형,주입부
+저압 주조기|Low pressure casting machine|저압 용탕 상승으로 금형 충전|가압로,상승관
+단조 해머|Forging hammer|충격 에너지로 가열 소재 성형|해머램,앤빌
+단조 매니퓰레이터|Forging manipulator|고온 빌릿을 잡고 회전 인계|집게,주행대
+빌릿 유도가열기|Billet induction heater|단조 전 빌릿 온도 상승|유도코일,이송롤
+@JOIN|용접/접합|영구 접합|가공품|접합 검사
+전자빔 용접기|Electron beam welding machine|진공 중 전자빔으로 깊은 용접|전자총,진공챔버
+회전 마찰 용접기|Rotary friction welding machine|회전 마찰과 업셋으로 축부품 접합|회전척,업셋축
+스터드 용접기|Stud welding system|판재에 스터드를 아크 접합|스터드건,전원
+저항 심 용접기|Resistance seam welder|롤 전극으로 연속 밀봉 접합|롤전극,전류제어
+버트 플래시 용접기|Flash butt welder|단면 가열 후 맞대기 접합|클램프,업셋구동
+용접 포지셔너|Welding positioner|용접 방향에 맞춰 부품 자세 제어|틸팅테이블,회전축
+용접 로테이터|Welding turning rolls|원통 구조물을 회전 지지|구동롤,종동롤
+용접 토치 클리닝 스테이션|Welding torch cleaning station|토치 노즐 스패터 자동 제거|리머,이형제분사
+용접 심 추적 유닛|Weld seam tracking unit|용접선을 검출해 경로 보정|레이저프로파일러,제어기
+진공 브레이징로|Vacuum brazing furnace|진공 분위기에서 브레이징 접합|진공챔버,가열부|MERGE:N084:브레이징 스테이션의 분위기 파생형
+유도가열 납땜기|Induction soldering system|비접촉 가열로 납땜 접합|유도코일,전원|MERGE:N085:솔더링 스테이션의 가열 방식 파생형
+열판 플라스틱 용접기|Hot plate plastic welder|수지 접합면을 용융 압착|가열판,클램프
+스핀 플라스틱 용접기|Spin plastic welder|수지 원형 부품을 마찰 접합|회전주축,가압부
+접착제 2액 계량 혼합기|Two component metering mixer|정해진 비율로 수지를 혼합 공급|계량펌프,믹싱헤드
+접착제 UV 경화기|UV curing system|광반응 수지를 지정량 조사 경화|UV광원,차광챔버
+@HEAT|열처리|재료 특성 변경|성형품|특성 검사
+유도 표면 경화기|Induction hardening machine|국부 표면을 가열 급랭 경화|스캔코일,분사링
+화염 표면 경화기|Flame hardening machine|화염으로 국부 표면 경화|버너,급랭노즐|MERGE:Induction hardening machine:표면 경화의 열원 파생형
+열간 등방압 프레스|Hot isostatic press|고온 고압으로 내부 기공 치밀화|압력용기,가열로
+냉간 등방압 프레스|Cold isostatic press|유체압으로 분말 성형체 압축|압력용기,가압펌프
+분말 소결로|Sintering furnace|분말 성형체의 입자 결합|가열존,분위기제어
+침투 소결 스테이션|Metal infiltration furnace|다공질 프리폼에 용융 금속 침투|가열챔버,프리폼치구
+진공 탈지로|Debinding furnace|분말 성형체의 바인더 제거|가열챔버,배기가스처리
+염욕 열처리로|Salt bath furnace|용융염 속에서 균일 열처리|염욕조,가열기|MERGE:N091:열처리로의 매체 파생형
+열처리 담금질 프레스|Quench press|형상 구속 상태로 급랭|가압금형,퀀칭회로
+심냉 처리 챔버|Cryogenic treatment chamber|영하 온도로 잔류 조직 변화|단열챔버,냉매공급
+탄소섬유 오토클레이브|Composite curing autoclave|복합재 적층품을 가압 경화|압력용기,진공라인
+진공 백 성형 경화 테이블|Vacuum bag curing table|복합재를 진공 압착해 경화|가열테이블,진공포트
+열처리 분위기 발생기|Atmosphere gas generator|열처리 보호 분위기 공급|개질기,가스분석
+열처리 변형 교정 프레스|Heat treatment straightening press|열처리 후 휨을 측정 교정|변위계,교정램
+@SURFACE|표면처리|표면 기능 부여|세정|표면 검사
+산세 라인|Pickling line|금속 산화 스케일을 화학 제거|산세조,수세조
+전해 연마기|Electropolishing system|전해 용출로 표면 평활화|전극,전해조
+양극산화 라인|Anodizing line|알루미늄 표면 산화막 형성|정류기,산화조
+인산염 피막 라인|Phosphating line|도장 전 화성 피막 형성|반응조,수세부
+화학적 패시베이션 스키드|Passivation system|금속 표면의 수동태 피막 회복|약액조,순환펌프
+PVD 진공 코팅기|Physical vapor deposition system|진공 물리 증착으로 박막 형성|타겟원,진공챔버
+열용사 스테이션|Thermal spray system|용융 분말을 표면에 분사 적층|용사건,분말공급기
+콜드 스프레이 적층기|Cold spray deposition system|고속 고상 분말 충돌로 코팅|가속노즐,가스가열기
+레이저 클래딩기|Laser cladding system|레이저 용융으로 표면 합금층 적층|레이저헤드,분말피더
+쇼트 피닝기|Shot peening machine|정량 충격으로 표면 압축응력 부여|투사기,유량제어
+블랙옥사이드 처리조|Black oxide treatment line|철강 표면 흑색 전환막 형성|반응조,세정조
+용융 아연 도금조|Hot dip galvanizing bath|강재를 용융 아연에 침지|가열포트,인양부
+스핀 코팅기|Spin coater|회전으로 균일 습식 막 형성|진공척,도포헤드
+딥 코팅기|Dip coater|인출 속도로 침지 코팅 두께 제어|승강축,코팅조
+커튼 코팅기|Curtain coater|액막 커튼으로 평판 코팅|커튼헤드,회수조
+접착 라미네이팅기|Adhesive laminator|접착제로 연속 층상 재료 결합|니프롤,도포부
+페인트 조색 스테이션|Paint tinting station|기준 배합에 따라 색재 정량 혼합|정량밸브,혼합기
+코팅 점도 조절 유닛|Coating viscosity control unit|도료 점도를 실시간 보정|점도계,용제계량
+드라이아이스 세정기|Dry ice cleaning system|승화 입자로 설비 오염 제거|펠릿피더,분사건
+레이저 세정기|Laser cleaning system|표면 오염층을 선택 제거|레이저스캐너,집진포트
+@POLY|플라스틱/고무|고분자 성형|수지 준비|제품 검사
+회전 성형기|Rotational molding machine|회전 금형 내부에 중공품 성형|이축회전암,가열챔버
+반응 사출 성형기|Reaction injection molding machine|반응성 액상을 혼합해 금형 경화|고압믹서,클램프
+필라멘트 와인딩기|Filament winding machine|연속 섬유를 맨드렐에 적층|섬유장력기,회전맨드렐
+복합재 인발 성형기|Pultrusion machine|섬유 함침 후 연속 단면 경화|함침조,가열다이
+수지 이송 성형기|Resin transfer molding system|밀폐 섬유 프리폼에 수지 주입|주입펌프,밀폐금형
+고무 믹싱 밀|Rubber mixing mill|롤 간 전단으로 고무 배합|2롤,간극제어
+고무 내부 혼련기|Rubber internal mixer|밀폐 챔버에서 고무 혼련|혼련로터,가압램
+고무 캘린더|Rubber calender|고무 시트를 지정 두께로 압연|압연롤,두께계
+고무 스트레이너|Rubber strainer|배합 고무의 이물 제거|스크루,여과망
+타이어 빌딩기|Tire building machine|타이어 구성층을 드럼에 조립|성형드럼,플라이공급
+발포 성형 라인|Foam production line|반응 발포로 폼 블록 생성|배합기,발포컨베이어
+비드 발포 성형기|Bead foam molding machine|발포 비드를 증기로 융착|증기금형,비드충전기
+플라스틱 트윈시트 성형기|Twin sheet thermoformer|두 성형 시트를 동시에 결합|이중금형,가열기|MERGE:N104:열성형기의 금형 배치 파생형
+필름 블로잉 라인|Blown film line|용융수지를 팽창시켜 필름 형성|환상다이,버블냉각
+수지 탈휘기|Polymer devolatilization system|용융수지의 휘발성 물질 제거|진공벤트,압출챔버
+수지 펠릿 탈진기|Pellet deduster|펠릿의 분진과 실가닥 제거|분리기,흡입계통
+수지 재생 세척 라인|Plastic recycling wash line|폐수지의 오염과 라벨 제거|마찰세척기,분리조
+플라스틱 광학 선별기|Plastic flake optical sorter|재생 플레이크 재질별 분리|분광카메라,에어젯
+고무 냉각 배치오프|Rubber batch off cooler|혼련 고무 시트를 냉각 적재|냉각랙,이형액조
+수지 체적식 피더|Volumetric resin feeder|수지 첨가제를 정량 공급|오거,호퍼|MERGE:E190:분체 정량 공급의 제어 방식 파생형
+@ASSEMBLY|조립 자동화|기계 전장 조립|가공 부품|조립 검사
+자동 베어링 가열 삽입 셀|Bearing shrink fit cell|가열 팽창한 베어링을 축에 조립|유도가열기,삽입축
+자동 씰 삽입 셀|Seal insertion cell|씰 방향과 압입 상태를 검사하며 조립|정렬지그,압입헤드
+자동 스프링 프리로드 셀|Spring preload assembly cell|스프링 조립 하중과 위치 설정|하중계,압축축
+권선기|Coil winding machine|도선을 지정 회수로 코일 성형|권선주축,장력기
+스테이터 코일 삽입기|Stator coil inserter|권선을 스테이터 슬롯에 삽입|삽입툴,정렬치구
+스테이터 웨지 삽입기|Stator wedge inserter|코일 슬롯을 절연 웨지로 고정|웨지피더,삽입축
+로터 자석 삽입 셀|Rotor magnet insertion cell|극성과 위치를 확인해 자석 조립|극성센서,삽입기
+전동기 엔드실드 조립기|Motor end shield assembly machine|로터 정렬을 유지해 엔드실드 조립|센터링지그,체결축
+선재 하니스 자동 조립기|Wire harness assembly machine|배선 경로와 커넥터를 조립|와이어피더,단자삽입헤드
+케이블 타이 자동 결속기|Automatic cable tie machine|하니스에 타이를 장착 절단|타이피더,장력헤드
+케이블 테이핑기|Wire harness taping machine|하니스를 테이프로 감싸 보호|회전헤드,테이프릴
+전선 트위스팅기|Wire twisting machine|두 도선을 일정 피치로 꼬기|회전클램프,장력축
+전선 자동 납땜 주석조|Wire tinning machine|도선 끝을 플럭스 처리 주석 도금|플럭스조,솔더포트
+자동 가스켓 도포 성형기|Form in place gasket system|지정 경로에 발포 가스켓 형성|믹싱헤드,XYZ축
+진공 수지 포팅기|Vacuum potting system|전자 조립체 공극 없이 봉지|진공챔버,정량헤드
+자기 회로 탈자기|Demagnetizer|잔류 자성을 낮춰 후속 공정 보호|교류코일,감쇠제어
+자동 부품 키팅 셀|Automated kitting cell|작업지시별 부품 세트 구성|피킹장치,키트트레이
+조립 동기 이송 트랜스퍼 라인|Synchronous transfer assembly line|정해진 스테이션 순서로 지그 인계|인덱스구동,워크캐리어
+플렉시블 비전 피더|Flexible vision feeder|벌크 부품을 자세 인식해 공급|진동면,카메라|MERGE:E080:자재 피더의 인식 방식 파생형
+@METROLOGY|검사/계측|제품 계측|가공 조립|품질 판정
+레이저 트래커|Laser tracker|대형 조립체의 공간 좌표 측정|레이저헤드,리플렉터
+구조광 3D 스캐너|Structured light scanner|전체 표면의 3차원 형상 취득|패턴투사기,카메라
+백색광 간섭계|White light interferometer|표면 높이를 간섭으로 계측|간섭대물렌즈,스캔축
+레이저 간섭계|Laser interferometer|이송축 길이 오차를 교정 측정|레이저원,반사경
+오토콜리메이터|Autocollimator|정밀 각도 편차 측정|광학헤드,반사타겟
+광학 평면도 측정기|Optical flatness tester|기준 평면 대비 형상 검사|기준광학판,광원
+기어 측정센터|Gear measuring center|기어 치형과 리드 오차 검사|회전축,접촉프로브
+좌표 측정 로봇 암|Portable measuring arm|대형 부품의 현장 좌표 측정|관절암,프로브|MERGE:E123:좌표 측정기의 휴대형 파생형
+산업용 내시경|Industrial borescope|내부 통로의 결함 관찰|삽입프로브,영상단말
+접촉각 측정기|Contact angle goniometer|표면 젖음성과 처리 상태 평가|액적주입기,카메라
+색차계|Colorimeter|제품 기준색과 편차 계측|광원,수광계
+광택계|Gloss meter|표면 반사 광택 계측|입사광학계,수광계
+헤이즈 측정기|Haze meter|투명 재료의 광산란 계측|적분구,광원
+굴절률 측정기|Refractometer|액체와 고체의 굴절률 확인|프리즘,온도제어
+밀도 측정기|Density meter|액상 시료 밀도 정량 측정|진동튜브,온도계
+점도계|Viscometer|유체의 흐름 저항 계측|스핀들,토크검출
+수분 분석기|Moisture analyzer|건조 질량 감소로 수분량 측정|가열기,저울
+입도 분석기|Particle size analyzer|분체 입도 분포 측정|분산기,광산란검출
+제타전위 분석기|Zeta potential analyzer|분산액 입자 안정성 평가|전기영동셀,광검출
+전기전도도 측정기|Conductivity meter|액상 이온 전도도 측정|전도도셀,표시기
+표면 저항 측정기|Surface resistance meter|재료의 표면 전기저항 평가|시험전극,전위계
+자속계|Fluxmeter|자석과 자기회로 자속 측정|적분기,검출코일
+음향 소음 측정기|Sound level meter|장비 음압 수준 측정|측정마이크,분석기
+회전 토크 시험대|Torque test bench|구동체 출력 토크 특성 평가|부하장치,토크계
+유량 교정 벤치|Flow calibration bench|유량계 표시값을 기준기와 비교|기준계,시험배관
+@PACK|포장|포장 완성|검사 합격품|출하
+수평 필로 포장기|Horizontal flow wrapper|연속 필름으로 낱개 제품 포장|필름성형기,실링죠
+수직 제대 충전 포장기|Vertical form fill seal machine|롤 필름으로 봉투 생성 후 충전 밀봉|성형튜브,실링죠
+스트립 포장기|Strip packaging machine|두 필름 사이 개별 제품 밀봉|공급디스크,실링롤
+앰플 블리스터 트레이 성형기|Thermoformed tray former|빈 포장 트레이를 성형 절단|가열판,성형금형|MERGE:N104:진공 성형기의 포장 용도 파생형
+튜브 충전 실링기|Tube filling sealing machine|튜브에 제품 충전 후 꼬리 밀봉|충전노즐,실링헤드
+에어로졸 충전기|Aerosol filling machine|압력 용기에 내용물과 추진제 주입|충전헤드,가스계량
+유도 실링기|Induction cap sealer|용기 입구 포일을 유도 가열 밀봉|유도헤드,전원
+캔 시밍기|Can seamer|캔 몸통과 뚜껑을 이중 권체결|시밍롤,척
+병 정렬기|Bottle unscrambler|벌크 병을 세워 충전라인 공급|정렬디스크,가이드
+용기 린서|Container rinser|충전 전 용기 내부 이물 제거|반전그리퍼,분사노즐
+제품 카운팅 충전기|Counting filling machine|정해진 개수의 제품을 용기에 투입|계수센서,분배슈트
+백 인 박스 충전기|Bag in box filler|연성 백의 밸브를 통해 충전 밀봉|밸브척,충전헤드
+포대 봉합기|Bag sewing machine|충전 포대 입구를 재봉 폐쇄|재봉헤드,이송벨트
+진공 스킨 포장기|Vacuum skin packer|제품 밀착 필름 포장|가열헤드,진공테이블|MERGE:N133:기존 스킨포장 후보 재사용
+포장 누기 전수 검사기|Package integrity tester|완성 포장의 밀봉 건전성 판정|챔버,압력검출|MERGE:E154:누설검사기 전용 치구 구성으로 관리
+포장지 절단 접지기|Paper folding machine|설명서와 포장지를 절단 접지|접지롤,칼날
+케이스 패커|Case packing machine|낱개 포장품을 상자에 배열 투입|그리퍼,상자정렬부
+자동 팔레타이저|Automatic palletizer|완성 상자를 팔레트 층으로 적재|층형성부,승강대
+물활성 테이프 디스펜서|Water activated tape dispenser|정해진 길이 테이프 절단 습윤|절단기,습윤부
+@ROBOT|로봇/EOAT|로봇 취급|작업물 감지|공정 장착
+로봇 힘토크 컴플라이언스 모듈|Robot force compliance module|접촉력에 따라 끝단 위치 순응|힘토크센서,탄성기구
+로봇 원격 중심 순응장치|Remote center compliance device|삽입 작업의 축 오차 흡수|탄성판,센터링기구|PART:Robot force compliance module:수동 순응 하위 기구
+로봇 나사체결 스핀들|Robot screwdriving spindle|로봇 끝단에서 토크 제어 체결|전동스핀들,나사피드
+로봇 디버링 엔드툴|Robot deburring end tool|접촉력을 조절해 버 제거|플로팅스핀들,커터
+로봇 샌딩 엔드툴|Robot sanding end tool|곡면 연마력을 제어|샌딩모터,순응축
+로봇 자력 그리퍼|Robot magnetic gripper|강자성 부품을 자기력으로 취급|자력회로,릴리스제어
+로봇 니들 그리퍼|Robot needle gripper|다공성 섬유를 침으로 파지|니들배열,구동부
+로봇 소프트 그리퍼|Robot soft gripper|취약 제품을 유연하게 파지|탄성핑거,압력제어
+로봇 진공 그리퍼|Robot vacuum gripper|흡착으로 제품 취급|흡착패드,진공회로|MERGE:E217:기존 흡착 패드 어레이 재사용
+로봇 툴 자동 검사 스테이션|Robot tool verification station|교환된 공구의 종류와 손상 확인|검사센서,인식타겟
+로봇 교정 스테이션|Robot calibration station|TCP와 기준 좌표 오차 측정|기준구,측정센서
+로봇 도장 벨 어토마이저|Robot rotary bell atomizer|회전 벨로 도료를 미립화 도포|벨컵,고전압유닛
+@POWER|모터/감속기/동력전달|동력 구동|전력 명령|기계 축
+산업용 토크 모터|Industrial torque motor|저속 직접 회전 구동|로터,스테이터|MERGE:E240:서보모터 직접구동 파생형
+리니어 모터 모듈|Linear motor module|비접촉 직선 구동력 생성|코일,자석트랙|MERGE:N147:서보 리니어 액추에이터의 구동 방식 파생형
+산업용 진동 구동기|Industrial vibration exciter|진동 공정에 주기 가진력 공급|편심축,구동기
+전동 윈치|Electric winch|로프를 감아 견인력 전달|드럼,제동기
+스크루 잭 리프팅 시스템|Screw jack lifting system|다점 플랫폼을 동기 승강|스크루잭,연결축
+유체 커플링|Hydrodynamic coupling|유체로 축 동력 전달|펌프휠,터빈휠|PART:N151:축 동력 연결 하위 부품
+주축 모터 카트리지|Motor spindle cartridge|공구 회전과 주축 지지 통합|주축모터,베어링
+재생 부하 다이나모미터|Regenerative dynamometer|구동기 부하를 회생하며 시험|부하모터,회생컨버터
+다축 동기 모션 제어기|Multi axis motion controller|복수 축의 궤적 동기 제어|실시간CPU,축인터페이스
+@AIR|공압|압축공기 사용|공기 공급|액추에이터
+공압 증압 스테이션|Pneumatic booster station|국소 공기압을 사용 압력으로 상승|부스터,압력탱크
+압축공기 누설 검사 스테이션|Compressed air leak survey station|초음파로 공기 누설 위치 조사|초음파탐지기,기록단말
+공압 튜브 절단 가공기|Pneumatic tube cutter|튜브를 지정 길이로 절단|피더,절단날
+공압 밸브 시험대|Pneumatic valve test bench|밸브 응답과 유량을 시험|공급매니폴드,계측기
+공압 유량 절약 제어 유닛|Compressed air energy controller|대기 상태 공기 차단과 사용량 감시|차단밸브,유량계
+진공 누설 시험 스키드|Vacuum leak test skid|진공 유지 성능을 검사|진공계,격리밸브|MERGE:E154:누설검사 설비 파생형
+정전기 제거 에어 나이프|Ionizing air knife|공기와 이온으로 정전기 분진 제거|이온바,에어나이프
+@HYD|유압|유압 시스템 지원|유압 공급|유압 작동
+유압 호스 크림핑기|Hydraulic hose crimper|호스 피팅을 압착 체결|다이세트,압착램
+유압 호스 내압 시험대|Hydraulic hose proof test bench|호스 조립체의 압력 내구 확인|가압펌프,방호챔버
+유압 오일 정화 카트|Hydraulic oil purification cart|오일 수분과 입자 제거|진공탈수기,필터
+유압 시스템 플러싱 스키드|Hydraulic flushing skid|설치 배관 내부 오염을 고유량 세척|대유량펌프,필터회로
+유압 서보밸브 시험대|Servo valve test bench|유압 밸브 유량과 응답 특성 측정|계측블록,신호발생기
+유압 어큐뮬레이터 충전 키트|Accumulator charging kit|가스 예압 설정|충전밸브,압력계|PART:N184:축압기 정비 부속
+유압 진동 가진기|Hydraulic shaker|중량 구조물에 시험 진동 입력|서보액추에이터,가진테이블
+@PIPE|배관|유체 분배|유체 공급|사용 설비
+피깅 스테이션|Pigging station|배관 내부 잔류액을 피그로 회수|발사기,수신기
+다유체 자동 스위칭 매니폴드|Automated fluid switching manifold|경로별 유체 연결을 전환 격리|밸브블록,제어함
+호스 세척 건조 스테이션|Hose cleaning drying station|이송 호스 내부를 세정 건조|세척포트,열풍유닛
+배관 스풀 수압 시험대|Pipe spool hydrotest bench|제작 배관 압력 건전성 확인|가압기,체결치구
+증기 감압 감온 스테이션|Steam pressure reducing desuperheating station|증기 압력과 온도를 사용 조건으로 조절|감압밸브,분사감온기
+응축수 회수 스키드|Condensate recovery skid|응축수를 모아 보일러로 환수|회수탱크,펌프
+가스 압력 조정 스키드|Gas pressure regulation skid|공급 가스를 안정 압력으로 감압|조정기,차단밸브
+자동 가스 실린더 전환반|Automatic cylinder changeover panel|빈 실린더에서 예비 실린더로 전환|전환밸브,압력스위치
+배관 관찰 사이트글라스|Sight glass|유체 시각 확인|유리관,플랜지|PART:E059:배관 삽입 부품
+@ELEC|전기/제어|전력 배전|수전|설비 전원
+중전압 수배전반|Medium voltage switchgear|공장 수전 전력을 보호 개폐|차단기,보호계전기
+모터 제어센터|Motor control center|다수 모터의 전력 개폐 보호|모터피더,버스바
+무효전력 보상반|Power factor correction cabinet|무효전력을 보상|콘덴서뱅크,제어기
+능동 고조파 필터|Active harmonic filter|부하 전류 고조파 상쇄|전력변환기,전류센서
+절연 감시 장치|Insulation monitoring device|비접지 전원 절연저항 상시 감시|측정회로,경보릴레이
+자동 절체 스위치반|Automatic transfer switch panel|상용과 비상 전원을 절체|절체개폐기,전원감시
+직류 배전반|DC distribution cabinet|직류 버스 부하를 분기 보호|DC차단기,모선
+전력 품질 분석기|Power quality analyzer|순간전압강하와 고조파 기록|전압전류입력,기록기
+접지저항 시험기|Earth resistance tester|보호 접지 회로 저항 측정|시험전원,측정프로브
+릴레이 시험기|Protection relay test set|보호 계전 동작값 검증|전압전류소스,타이머
+판넬 냉각기|Electrical cabinet cooler|전장함 내부 열 제거|냉각회로,온도조절
+배터리 충전 정류반|Battery charger rectifier|제어용 축전지 충전과 DC공급|정류기,충전제어
+전기 부하 뱅크|Electrical load bank|발전기와 전원 공급 성능 시험|저항뱅크,냉각팬
+태양광 인버터|Photovoltaic inverter|태양광 직류를 계통 전력으로 변환|전력변환부,계통보호
+양방향 ESS PCS|Energy storage power conversion system|저장장치의 충방전 전력 변환|양방향인버터,DC보호
+@NET|PLC/I/O/산업 네트워크|산업 데이터 연결|센서 제어기|상위 시스템
+산업용 패널 PC|Industrial panel PC|작업자 HMI와 현장 연산 수행|산업용컴퓨터,터치패널
+산업용 엣지 게이트웨이|Industrial edge gateway|장비 데이터를 수집 변환 중계|통신포트,연산보드
+산업용 방화벽|Industrial firewall|제어망 트래픽 정책 격리|네트워크포트,필터엔진
+산업용 시간 동기 서버|Industrial time server|설비 이벤트의 시간 기준 공급|기준시계,PTP포트
+산업용 데이터 다이오드|Industrial data diode|물리 단방향으로 데이터 전달|송신부,수신부
+산업 네트워크 TAP|Industrial network TAP|통신에 개입하지 않고 패킷 복제|복제회로,모니터포트
+필드버스 진단기|Fieldbus diagnostic analyzer|버스 품질과 통신 오류 분석|버스프로브,분석단말
+IO-Link 마스터|IO Link master|지능형 센서와 상위망 연결|센서포트,필드버스포트
+원격 I/O 스테이션|Remote IO station|분산 신호를 PLC로 전달|I/O카드,커플러|MERGE:N162:기존 원격 I/O 모듈의 구성 단위로 유지
+시리얼 디바이스 서버|Serial device server|레거시 직렬 장비를 IP망에 중계|직렬포트,이더넷포트
+산업용 OPC UA 게이트웨이|OPC UA gateway|장비 프로토콜 변환|프로토콜엔진,포트|MERGE:Industrial edge gateway:프로토콜 기능 파생형
+원격 유지보수 접속 장치|Remote service access appliance|승인된 세션으로 정비 접속 중계|VPN모듈,키스위치
+분산 데이터 수집기|Distributed data logger|여러 계측 채널을 시간순 저장|ADC,로컬저장장치
+@SENSE|센서/비전/RFID|현장 상태 계측|물리 현상|제어 판단
+광전 센서|Photoelectric sensor|광 차단이나 반사로 물체 검출|발광부,수광부
+산업용 비전 카메라|Industrial vision camera|검사 영상 취득|이미지센서,렌즈포트
+3D 비전 센서|Three dimensional vision sensor|표면 깊이와 자세 계측|투사부,카메라
+라인스캔 카메라|Line scan camera|연속 웹 영상을 선형 취득|선형센서,동기입력|MERGE:Industrial vision camera:카메라 취득 방식 파생형
+산업용 비전 조명 제어기|Vision lighting controller|검사 조명의 밝기와 트리거 제어|전류출력,트리거회로
+바코드 리더|Barcode reader|작업물 코드 판독|이미저,디코더
+RFID 안테나|RFID antenna|태그와 무선 결합|안테나소자,동축포트|PART:N178:RFID 리더 하위 구성
+산업용 RFID 프린터|RFID printer encoder|태그 인코딩과 식별 라벨 출력|인코더,프린트헤드
+레이더 레벨 센서|Radar level sensor|비접촉으로 탱크 액위 계측|레이더모듈,안테나|MERGE:E237:레벨 센서의 계측 원리 파생형
+연속 액체 pH 분석기|Online pH analyzer|공정액 산도 측정|전극,트랜스미터
+용존산소 분석기|Dissolved oxygen analyzer|액상 용존 산소 측정|광학프로브,트랜스미터
+탁도계|Turbidity analyzer|유체 입자 산란으로 탁도 측정|광학셀,수광계
+노점 트랜스미터|Dew point transmitter|공기와 가스의 수분 상태 감시|노점소자,출력회로
+공정 산소 분석기|Process oxygen analyzer|가스 산소 농도 측정|분석셀,샘플라인
+입자 계수기|Particle counter|청정 공기 중 입자 수 측정|광산란셀,샘플펌프
+전해질 농도 분석기|Electrolyte concentration analyzer|공정 액상 농도 추적|분석셀,보정회로
+열유속 센서|Heat flux sensor|표면 통과 열량 측정|열전퇴,출력회로
+전력 미터|Power meter|설비 에너지 사용량 집계|전압전류계측,통신모듈
+초음파 두께계|Ultrasonic thickness gauge|한쪽 접근으로 벽 두께 측정|초음파프로브,표시기
+적외선 온도계|Infrared pyrometer|고온 이동체 온도를 비접촉 측정|광학계,검출기|MERGE:E236:온도 센서의 비접촉 파생형
+와이어 장력 센서|Web tension sensor|연속 웹의 장력 측정|로드셀,롤러|PART:N174:로드셀 적용 부품
+산업용 웨더 스테이션|Industrial weather station|외기 조건을 시설 제어에 공급|풍향풍속계,환경센서
+@UTIL|유틸리티|공장 에너지 공급|외부 자원|사용 공정
+증기 보일러|Steam boiler|공정용 증기를 생성|버너,드럼
+온수 보일러|Hot water boiler|난방과 공정 온수 생성|열교환부,버너|MERGE:Steam boiler:보일러 출력 매체 파생형
+열매체유 히터|Thermal fluid heater|고온 열매체를 순환 가열|가열코일,순환펌프
+전극식 순수 증기 발생기|Clean steam generator|청정 공정에 고순도 증기 공급|증발기,기수분리기
+역삼투 순수 제조 스키드|Reverse osmosis water system|막 분리로 용존 염 제거|고압펌프,RO막
+전기탈이온 스키드|Electrodeionization system|전기장과 이온교환으로 잔류 이온 제거|EDI스택,DC전원
+초순수 폴리싱 루프|Ultrapure water polishing loop|사용점 순수의 미량 불순물 저감|폴리셔,순환펌프
+수지식 연수기|Water softener|경도 이온 제거로 스케일 방지|이온교환탑,재생조
+보일러 탈기기|Boiler deaerator|급수 용존 가스 제거|탈기돔,급수탱크
+PSA 질소 발생기|PSA nitrogen generator|공기에서 질소를 분리 공급|흡착탑,전환밸브
+PSA 산소 발생기|PSA oxygen generator|공기에서 산소를 농축 공급|흡착탑,버퍼탱크
+수전해 수소 발생기|Electrolyzer hydrogen generator|물 전기분해로 수소 공급|전해스택,기액분리기
+가스 정제기|Gas purifier|공급 가스의 미량 오염 제거|흡착카트리지,히터
+산업용 냉동기|Process chiller|공정 냉각 유체 공급|압축기,증발기|MERGE:E006:기존 냉각장치의 정규 기능명
+냉열 저장 탱크|Thermal energy storage tank|비피크 냉열을 저장 공급|축열매체,분배헤더
+압축공기 오일수 분리기|Compressor condensate separator|응축수에서 오일을 분리|분리조,흡착층
+가스 기화기|Cryogenic gas vaporizer|액화가스를 기화해 공급|열교환핀,가스출구
+냉매 회수 충전기|Refrigerant recovery charging machine|냉동설비 냉매 회수 정량 충전|회수컴프레서,저울
+열회수 환기장치|Heat recovery ventilator|배기 열을 급기에 회수|열회수코어,팬
+소방 펌프 스키드|Fire pump skid|소방 계통에 요구 수압 공급|주펌프,조키펌프
+폐열 회수 보일러|Waste heat recovery boiler|배기가스 폐열을 증기로 회수|전열관,드럼
+@ENV|집진/환경|배출물 처리|생산 배출|회수 방류
+재생식 축열 산화장치|Regenerative thermal oxidizer|휘발성 유기물 열산화 처리|축열베드,연소실
+촉매 산화장치|Catalytic oxidizer|촉매로 유기물 저온 산화|촉매베드,예열기|MERGE:Regenerative thermal oxidizer:배기가스 산화의 반응 방식 파생형
+바이오필터|Biofilter|미생물층으로 악취 성분 처리|충전층,습도조절
+전기 집진기|Electrostatic precipitator|전기장으로 배기 입자 포집|방전극,집진극
+사이클론 분리기|Cyclone separator|원심력으로 조대 입자 분리|사이클론본체,배출밸브
+용제 회수 증류기|Solvent recovery distiller|폐용제를 증류 재사용|재비기,응축기
+용제 응축 회수기|Solvent condensation recovery unit|배기 용제를 냉각 응축 회수|냉각코일,회수조
+습식 분진 슬러리 분리기|Wet dust slurry separator|포집액에서 고형물을 분리|침전조,스크레이퍼|MERGE:N195:고액 분리 설비 구성으로 통합
+용존공기 부상기|Dissolved air flotation unit|미세기포로 부유 오염물 분리|가압용해기,스키머
+생물학적 폐수 반응조|Biological wastewater reactor|미생물로 유기 오염물 분해|폭기기,혼합기
+막분리 생물반응기|Membrane bioreactor|생물처리수와 슬러지를 막 분리|침지막,폭기부
+폐수 증발 농축기|Wastewater evaporator|폐수 체적을 증발로 감량|증발기,응축기
+폐수 결정화기|Wastewater crystallizer|농축 염을 결정으로 회수|결정조,분리기
+유해가스 현장 저감장치|Point of use gas abatement|공정 배기 유해성분을 사용점 처리|반응실,세정단
+오존 발생 처리 스키드|Ozone treatment skid|오존 산화로 물의 오염 처리|발생기,접촉조
+UV 수처리 소독기|UV water disinfection unit|자외선으로 수계 미생물 불활성화|UV램프,유로
+폐기물 압축기|Waste compactor|일반 폐기물 체적 감량|압축램,수거함
+폐기물 파쇄기|Waste shredder|혼합 폐기물을 후속 처리 크기로 축소|커터축,호퍼
+유해 폐액 수집 스테이션|Hazardous liquid waste station|종류별 폐액을 밀폐 회수|수집탱크,누출감지
+배기가스 연속 측정 시스템|Continuous emissions monitoring system|배출 농도를 연속 기록|샘플링프로브,가스분석기
+@SAFE|안전|작업 위험 통제|위험 상태|안전 상태
+안전 양수 조작 스테이션|Two hand control station|양손 조작 조건에서만 기동 요청|2버튼,동시성검증
+안전 매트|Safety pressure sensitive mat|위험구역 바닥 진입 감지|압력매트,평가모듈
+안전 범퍼|Safety bumper|이동 장비 접촉을 감지 정지 요청|변형프로파일,스위치
+열쇠 교환 인터록 시스템|Trapped key interlock system|격리 순서에 따라 접근 허용|키교환함,잠금장치
+화염 감지기|Flame detector|화염의 광학 특성 감지|UVIR검출기,경보출력
+화재 수신반|Fire alarm control panel|감지기 경보를 통합 표시 중계|입력루프,경보제어
+가스 자동 소화 패키지|Gas suppression package|밀폐 설비 화재에 소화가스 방출|용기뱅크,기동밸브
+불꽃 감지 소화 시스템|Spark detection extinguishing system|덕트 내 불꽃을 감지해 국소 소화|불꽃센서,분사밸브
+폭발 격리 밸브 시스템|Explosion isolation system|분진 폭발의 배관 전파 차단|격리밸브,압력검출
+추락 방지 수평 생명선|Horizontal lifeline|고소 이동 중 추락 보호 연결|앵커,생명선
+맨홀 구조용 삼각대|Confined space rescue tripod|제한공간 작업자 인양 구조|삼각대,구조윈치
+자동 심장충격기 보관 스테이션|AED station|응급 심폐 대응 장비 제공|AED,보관함
+휴대용 다중가스 측정기|Portable multigas detector|작업자 주변 위험 가스 감시|복합센서,경보부|MERGE:N180:가스 감지기의 휴대형 파생형
+산업용 호흡 공기 공급대|Breathing air station|작업자에게 여과 호흡 공기 공급|여과기,공기품질감시
+용접 차광 커튼|Welding screen|용접광 차단|커튼,지지대|MERGE:E118:작업 차폐막 파생형
+안전 속도 감시기|Safe speed monitor|회전축 안전 속도 조건 감시|엔코더입력,안전출력
+@MAINT|유지보수|설비 정비|고장 예방|복구 확인
+베어링 유도 가열기|Bearing induction heater|정비용 베어링을 균일 가열|유도코어,온도프로브
+유압 베어링 풀러|Hydraulic bearing puller|축에서 압입 부품 탈거|풀러조,유압램
+축 정렬 측정기|Shaft alignment system|커플링 양축의 정렬 오차 측정|레이저헤드,표시장치
+벨트 장력 측정기|Belt tension meter|벨트 고유진동으로 장력 확인|음향센서,연산기
+오일 분석 샘플링 스테이션|Oil sampling station|운전 오일을 오염 없이 채취|샘플밸브,시료병
+오일 마모입자 분석기|Wear debris analyzer|윤활유 금속 마모입자 상태 분석|입자검출기,샘플유로
+온라인 윤활 분배 스테이션|Central lubrication station|지정 지점에 윤활제를 주기 공급|윤활펌프,분배기
+휴대형 밸런싱 분석기|Portable balancing analyzer|현장 회전체 불평형 교정|진동프로브,위상센서
+산업용 고압 세척기|Industrial pressure washer|정비 표면 오염을 고압수로 제거|고압펌프,분사랜스
+부품 초음파 세척기|Ultrasonic parts cleaner|침지 초음파로 미세 오염 제거|초음파진동자,세정조
+스팀 세척기|Steam cleaner|증기로 설비 오염 세척|증기발생기,노즐
+공구 연마기|Tool grinder|절삭 공구 형상을 재연삭|연삭주축,공구홀더
+드릴 재연마기|Drill resharpener|드릴 날 재연삭|숫돌,각도치구|MERGE:Tool grinder:공구 종류별 연마기 파생형
+열풍 수축 공구|Hot air rework tool|열수축 튜브와 부품 국소 가열|히터,풍량조절
+볼트 유압 텐셔너|Hydraulic bolt tensioner|볼트를 축방향 인장 체결|텐셔너,압력펌프
+이동식 정비 갠트리|Portable maintenance gantry|장비 부품을 현장에서 인양|갠트리프레임,호이스트
+산업용 진공 청소기|Industrial vacuum cleaner|바닥과 장비의 분진 회수|흡입기,수거통
+배관 동결 격리기|Pipe freezing isolation system|배관 유체를 동결해 국소 정비 격리|동결헤드,냉동유닛
+튜브 열교환기 청관기|Tube cleaning machine|열교환관 내부 침적물 제거|유연축,청소헤드
+모터 권선 서지 시험기|Motor winding surge tester|권선 턴간 절연 결함 검사|펄스발생기,파형취득
+밸브 래핑 정비기|Valve lapping machine|밸브 시트의 밀봉면 복원|래핑헤드,시트지그
+@QUALITY|품질|신뢰성 및 재료 시험|시료 채취|품질 승인
+항온항습 시험챔버|Temperature humidity test chamber|환경 변화에 대한 제품 내구 검증|냉동기,습도제어
+열충격 시험기|Thermal shock chamber|급격한 온도 변화 내구 검증|고온조,저온조
+염수분무 시험기|Salt spray chamber|염분 환경의 부식 저항 평가|분무기,시험챔버
+UV 내후성 시험기|UV weathering tester|광열 노화에 대한 재료 내구 평가|UV램프,분무기
+진동 시험 시스템|Electrodynamic vibration tester|정해진 진동 프로파일로 내구 시험|가진기,증폭기
+낙하 시험기|Drop tester|운송 낙하 충격을 재현|승강대,릴리스기구
+충격 시험기|Impact tester|시편 파괴 충격 에너지 평가|해머,시편지그
+피로 시험기|Fatigue testing machine|반복 하중에서 수명 확인|반복구동축,하중계
+크리프 시험기|Creep testing machine|고온 지속 하중 변형 평가|가열로,정하중기구
+마찰 마모 시험기|Tribometer|접촉 재료의 마찰과 마모 측정|접촉지그,하중센서
+압축 포장 시험기|Package compression tester|포장 적재 하중 내구 확인|압축판,하중계
+파열 강도 시험기|Burst strength tester|판지와 필름 파열 압력 평가|가압다이어프램,압력계
+투습도 시험기|Water vapor transmission tester|포장막 수분 투과량 측정|확산셀,수분검출
+산소 투과도 시험기|Oxygen transmission tester|포장막 산소 투과량 측정|확산셀,산소검출
+시차주사열량계|Differential scanning calorimeter|재료 열전이 특성 측정|가열셀,열유속검출
+열중량 분석기|Thermogravimetric analyzer|온도 변화에 따른 질량 감소 측정|가열로,미량저울
+동적 기계 분석기|Dynamic mechanical analyzer|온도별 점탄성 특성 측정|진동클램프,온도챔버
+유변물성 분석기|Rheometer|전단 조건별 재료 유동 특성 측정|회전지오메트리,토크검출
+기체 크로마토그래프|Gas chromatograph|휘발성 혼합물 성분 분리 정량|컬럼,검출기
+액체 크로마토그래프|Liquid chromatograph|액상 혼합 성분 분리 정량|고압펌프,컬럼
+칼피셔 적정기|Karl Fischer titrator|미량 수분을 반응 적정|적정셀,시약공급
+자동 전위차 적정기|Potentiometric titrator|반응 종말점으로 성분 정량|뷰렛,전극
+X선 회절 분석기|X ray diffractometer|결정 구조와 상을 분석|X선원,고니오미터
+주사전자현미경|Scanning electron microscope|미세 형상과 표면을 전자 영상화|전자총,진공챔버
+금속조직 시편 절단기|Metallographic cut off machine|조직 손상을 줄여 시편 절단|절단휠,냉각회로
+금속조직 시편 마운팅 프레스|Metallographic mounting press|시편을 수지에 고정|가열금형,가압부
+금속조직 시편 연마기|Metallographic polishing machine|조직 관찰용 평탄면 준비|연마판,시편헤드
+실험실 시료 분할기|Sample riffle splitter|벌크 시료를 대표 소량으로 분할|분할슈트,시료통
+@WORKER|작업자 지원|현장 작업 지원|작업 지시|작업 기록
+피킹 라이트 스테이션|Pick to light station|위치별 수량을 작업자에게 안내|표시등,확인버튼
+작업 순서 프로젝션 시스템|Assembly projection guidance system|조립 위치와 순서를 작업면에 투사|프로젝터,기준카메라
+작업자 토크 공구 컨트롤러|Hand tool torque controller|수동 체결 결과를 작업물과 연결|공구포트,판정로직
+수동 밸런스 리프터|Manual balance manipulator|중량물을 균형 상태로 보조 이동|밸런스암,공압회로
+착용형 작업 보조 장치|Industrial exoskeleton|반복 들기 작업의 신체 하중 보조|프레임,보조기구
+ESD 인체 검사 스테이션|ESD personnel tester|입장 전 신발과 손목띠 저항 검사|전극판,측정회로
+산업용 신발 세척기|Industrial boot washer|위생 구역 입장 전 신발 세정|브러시,분사부
+작업복 건조 보관기|Workwear drying cabinet|작업복 수분을 제거해 보관|열풍순환,행거
+급수·음수 스테이션|Drinking water station|작업자 음용수 공급|정수부,급수밸브
+현장 작업 이력 키오스크|Shopfloor reporting kiosk|작업 시작 종료와 이상을 입력|인증리더,터치단말|MERGE:Industrial panel PC:공통 패널 PC의 화면 용도 파생형
+세척용 장화 소독조|Boot disinfection bath|장화 바닥 위생 처리|약액조,발판|MERGE:Industrial boot washer:신발 세정 설비의 처리 방식 파생형
+@TOOL|금형/공구|공구 금형 서비스|금형 준비|생산 장착
+금형 다이 스포팅 프레스|Die spotting press|상하 금형 맞춤 상태 검사|반전플래튼,저압가압
+금형 반전기|Mold flipper|중량 금형을 안전하게 반전|회전크래들,잠금기구
+금형 냉각회로 세척기|Mold cooling channel cleaner|금형 유로 스케일 제거|세정펌프,약액탱크
+핫러너 온도 제어기|Hot runner temperature controller|금형 노즐별 히터 온도 제어|다채널제어,출력모듈
+금형 진공 클램핑 테이블|Vacuum clamping table|평판 소재를 진공으로 고정|진공존,테이블|PART:N153:조립 위치 결정 지그의 고정 방식
+퀵 다이 체인지 클램핑 시스템|Quick die change clamping system|금형 교환 잠금과 해제 자동화|클램프,유압유닛
+공구 파손 검출 스테이션|Tool breakage detection station|공정 전후 공구 길이와 파손 확인|레이저검출기,측정사이클
+절삭 공구 세척 코팅 준비기|Tool cleaning preparation station|코팅 전 절삭공구 오염 제거|세정조,건조부|MERGE:Ultrasonic parts cleaner:공구 전용 세정 치구 파생형
+공구 식별 읽기쓰기 스테이션|Tool identification station|공구 ID와 수명정보 교환|RFID리더,공구포트|MERGE:N178:RFID 리더의 공구 적용 구성
+인서트 자동 체결기|Insert screw assembly machine|공구 인서트를 토크 체결|체결축,공구지그|MERGE:E122:자동 나사체결기 치구 파생형
+금형 리프팅 빔|Mold lifting beam|금형 인양 하중 분산|빔,샤클|PART:E171:크레인 하위 인양구
+@SEMI|반도체/전자 제조|반도체 전자 제조|웨이퍼 PCB 원료|전기 검사
+웨이퍼 세정 웨트벤치|Wafer wet bench|웨이퍼를 약액 세정|약액조,웨이퍼핸들러
+웨이퍼 스핀 린스 드라이어|Wafer spin rinse dryer|웨이퍼 수세 후 원심 건조|스핀바스켓,질소분사
+웨이퍼 CMP 장비|Chemical mechanical planarization tool|화학 기계 작용으로 표면 평탄화|폴리싱패드,캐리어헤드
+웨이퍼 노광 스캐너|Lithography scanner|마스크 패턴을 감광막에 전사|노광광학계,스테이지
+레지스트 코터 디벨로퍼|Resist coat develop track|감광막 도포 베이크 현상 연계|코팅모듈,현상모듈
+플라즈마 식각기|Plasma etch tool|패턴 영역 재료를 선택 제거|플라즈마챔버,가스공급
+이온 주입기|Ion implanter|반도체에 도펀트 이온 주입|이온원,빔라인
+에피택시 성장 장비|Epitaxy reactor|기판 위 단결정층 성장|반응챔버,가스전달
+원자층 증착기|Atomic layer deposition tool|교번 표면 반응으로 박막 형성|전구체밸브,반응실
+화학기상 증착기|Chemical vapor deposition tool|기상 화학 반응으로 막 성장|반응챔버,가스공급
+급속 열처리 장비|Rapid thermal processing tool|웨이퍼를 단시간 가열 활성화|램프가열,고속온도계
+웨이퍼 프로버|Wafer prober|웨이퍼 다이에 전기 접촉 검사|프로브카드,정렬스테이지
+반도체 자동 테스트 장비|Semiconductor automatic test equipment|다핀 반도체 기능과 파라미터 검사|테스트헤드,신호채널
+테스트 핸들러|Semiconductor test handler|패키지를 온도 조절해 검사 인계|소켓이송,온도챔버
+다이 소터|Die sorter|검사맵에 따라 개별 다이 분류|픽헤드,트레이
+다이 어태치 본더|Die attach bonder|다이를 기판에 부착|픽헤드,접착도포
+와이어 본더|Wire bonder|칩과 패키지를 미세 와이어 연결|본딩헤드,와이어공급
+플립칩 본더|Flip chip bonder|범프를 뒤집어 기판에 정렬 접합|정렬광학계,본딩헤드
+하이브리드 본더|Hybrid bonder|절연막과 금속 접합면을 정렬 직접 접합|초정밀정렬,표면활성
+반도체 몰딩 프레스|Semiconductor encapsulation press|패키지를 수지로 봉지|트랜스퍼포트,몰딩금형
+패키지 싱귤레이션 장비|Package singulation machine|패키지 어레이를 개별 분리|절단주축,픽업테이블
+웨이퍼 백그라인더|Wafer back grinder|웨이퍼 뒷면을 박막화|연삭헤드,척
+웨이퍼 다이싱쏘|Wafer dicing saw|웨이퍼를 다이 단위 절단|블레이드주축,테이프프레임
+웨이퍼 테이프 마운터|Wafer tape mounter|가공용 지지 테이프 부착|라미네이팅롤,프레임홀더
+웨이퍼 디본더|Wafer debonder|임시 접합 캐리어에서 웨이퍼 분리|분리헤드,온도제어
+FOUP 세척기|FOUP cleaner|웨이퍼 캐리어의 입자와 오염 제거|세정노즐,건조모듈
+SMT 스텐실 프린터|SMT stencil printer|PCB 패드에 솔더페이스트 인쇄|스퀴지,스텐실
+솔더페이스트 검사기|Solder paste inspection system|인쇄 페이스트의 높이와 체적 판정|3D광학계,이송테이블
+SMT 마운터|SMT pick and place machine|PCB에 전자부품 고속 실장|픽헤드,부품피더
+리플로우 오븐|Reflow oven|페이스트를 용융해 SMT 접합|다존가열,컨베이어
+웨이브 솔더링기|Wave soldering machine|솔더 웨이브로 스루홀 접합|솔더포트,플럭서
+PCB 자동 광학 검사기|PCB automated optical inspection|실장 부품의 누락과 위치 검사|다각카메라,보드이송|MERGE:N121:표면 결함 검사의 PCB 레시피 구성
+PCB 인서킷 테스터|In circuit tester|보드 회로 노드의 전기값 검사|프로브치구,계측채널
+PCB 라우터 분리기|PCB depaneling router|보드 연결 탭을 밀링 분리|라우터주축,보드지그
+PCB 컨포멀 코팅기|Conformal coating machine|전자보드에 보호막 선택 도포|정량밸브,XYZ축
+PCB 전기 기능 검사대|PCB functional test station|완성 회로의 실제 동작 검증|전원공급,부하계측
+본드 풀 시험기|Bond pull tester|미세 본딩 와이어의 접합강도 검사|마이크로훅,하중계
+다이 전단 시험기|Die shear tester|접합 다이의 전단강도 검사|전단툴,하중센서
+전자 패키지 테이프 릴 포장기|Tape and reel packaging machine|반도체를 캐리어 테이프에 포장|포켓테이프,커버실링
+프로그램 다운로드 스테이션|Device programming station|장치 펌웨어를 기록 검증|프로그래머,검사소켓
+@BAT|배터리 제조|전지 제조|활물질 집전체|팩 출하
+배터리 슬러리 진공 믹서|Battery slurry vacuum mixer|활물질과 바인더를 탈포 혼합|행성믹서,진공계통
+배터리 전극 슬롯다이 코터|Battery electrode slot die coater|집전체에 전극 슬러리 정량 도포|슬롯다이,웹이송
+전극 건조 터널|Electrode drying tunnel|코팅 전극의 용제 제거|다존열풍,배기회수
+전극 캘린더|Electrode calender|전극 밀도와 두께 압연 조절|가압롤,두께계
+전극 슬리터|Electrode slitter|전극 웹을 폭별 절단|슬릿나이프,권취부|MERGE:N080:코일 슬리터의 재료 용도 파생형
+전극 노칭기|Electrode notching machine|전극 탭과 윤곽 형상 절단|노칭금형,웹피더
+전극 진공 건조기|Electrode vacuum dryer|전극 잔류 수분 제거|진공챔버,가열선반
+전지 스태킹기|Battery cell stacking machine|전극과 분리막을 교번 적층|픽헤드,정렬카메라
+전지 권취기|Battery winding machine|전극 분리막을 젤리롤로 권취|권취맨드렐,장력제어
+젤리롤 삽입기|Jelly roll insertion machine|권취체를 셀 케이스에 삽입|삽입가이드,서보푸셔
+전해액 진공 주입기|Electrolyte vacuum filling machine|셀에 전해액을 정량 함침|진공챔버,계량펌프
+셀 탈기 실링기|Cell degassing sealing machine|셀 활성화 가스를 배출해 재밀봉|진공챔버,실링헤드
+셀 포메이션 충방전기|Cell formation cycler|초기 충방전으로 전극 계면 형성|충방전채널,접촉지그
+셀 에이징 랙|Cell aging rack|정해진 환경에서 셀 안정화 관찰|접촉트레이,온도감시
+셀 OCV 저항 선별기|Cell OCV resistance sorter|전압과 저항으로 셀 등급 분류|계측프로브,선별게이트
+배터리 셀 절연 래퍼|Cell insulation wrapper|셀 외면에 절연 필름 적용|필름피더,랩핑헤드
+배터리 모듈 압축 조립기|Battery module compression assembly|셀 스택을 정하중으로 모듈 조립|압축플래튼,하중계
+배터리 버스바 접합 셀|Battery busbar joining cell|셀 단자와 버스바를 용접|용접헤드,셀지그|MERGE:N082:레이저 용접기의 배터리 지그 구성
+배터리 팩 절연 충전 시험기|Battery pack end of line tester|팩 통신 충방전 절연을 통합 검사|배터리사이클러,BMS인터페이스
+배터리 열폭주 시험챔버|Battery thermal runaway test chamber|셀 이상 발열 시험을 격리 수행|방호챔버,가스수집
+배터리 파우치 성형기|Battery pouch forming machine|알루미늄 라미네이트 외장을 성형|성형금형,프레스
+전극 건식 코팅 라인|Dry electrode coating line|용제 없이 전극층을 집전체에 형성|분말섬유화,라미네이팅
+전극 웹 비접촉 중량계|Electrode basis weight gauge|이동 전극의 단위면적 질량 측정|계측헤드,횡행축
+전지 탭 초음파 용접기|Battery tab ultrasonic welder|전극 탭 접합|혼,앤빌|MERGE:E147:초음파 접합기의 전지용 지그 구성
+배터리 방전 안전 스테이션|Battery safe discharge station|폐셀을 관리된 부하로 방전|방전부하,온도감시
+@FOOD|식품/제약 등 범용 제조 설비|위생 제품 제조|식품 의약 원료|포장 출하
+곡물 정선기|Grain precleaner|원곡에서 큰 이물과 미분 제거|체망,흡입부
+곡물 석발기|Destoner|비중 차로 원곡의 돌 분리|진동베드,송풍기
+곡물 탈피기|Dehuller|곡립 껍질을 분리|탈피롤,껍질분리기
+곡물 제분 롤러밀|Roller flour mill|곡물을 분쇄해 분말 생성|분쇄롤,공급롤
+플랜시프터|Plansifter|제분물을 입도별 분급|다층체망,진동프레임
+곡물 플레이킹롤|Flaking mill|조질한 곡립을 플레이크로 성형|압연롤,급료기
+중력식 원료 선별기|Gravity separator|밀도 차로 종실 품질 분리|경사베드,공기층
+식품 광학 선별기|Food optical sorter|원료 색상 형상과 이물 자동 배제|광학센서,배출에어젯
+산업용 반죽 믹서|Industrial dough mixer|가루와 물을 반죽으로 혼합|혼합볼,반죽훅
+반죽 분할기|Dough divider|반죽을 일정 질량으로 분할|분할챔버,컷오프
+반죽 라운더|Dough rounder|분할 반죽을 둥글게 성형|원추롤,성형트랙
+반죽 시터|Dough sheeter|반죽을 균일 두께 시트로 압연|롤,두께조절
+발효 챔버|Dough proofing chamber|온습도에 맞춰 반죽 발효|습도제어,트레이랙
+연속 베이킹 오븐|Continuous baking oven|연속 반죽을 베이킹 제품으로 전환|가열존,이송벨트
+식품 증숙기|Food steamer|증기로 식재료를 가열 조리|증기분배기,처리챔버
+연속 프라이어|Continuous fryer|식품을 뜨거운 기름에 튀김|유조,여과회로
+식품 블랜처|Food blancher|짧은 열처리로 효소 불활성화|온수조,이송벨트
+IQF 급속 냉동기|Individual quick freezer|개별 식품을 급속 냉동|저온송풍,이송벨트
+레토르트 살균기|Retort sterilizer|밀봉 식품을 가압 가열 처리|압력용기,순환분사
+판형 연속 살균기|HTST pasteurizer|유체 식품을 가열 유지 급랭|열교환기,유지관
+UHT 멸균기|UHT sterilizer|초고온 단시간으로 액상 식품 처리|가열모듈,무균냉각
+고압 식품 처리기|High pressure food processor|비가열 고압으로 제품 처리|고압용기,증압기
+고압 균질기|High pressure homogenizer|액상 분산 입자를 미세화|고압펌프,균질밸브
+크림 분리 원심기|Cream separator|우유 지방과 탈지유 분리|디스크스택,액상출구
+식품 탈수 원심기|Food dewatering centrifuge|고형 식품 표면 수분 제거|바스켓,드레인
+분무 건조기|Spray dryer|액상 원료를 분말로 건조|분무기,건조챔버
+동결 건조기|Freeze dryer|동결 제품의 수분을 승화 제거|진공챔버,냉각선반
+유동층 건조기|Fluid bed dryer|유동화 입자의 수분 제거|분산판,열풍기
+농축 증발기|Food evaporator|액상 원료에서 물을 증발 농축|증발면,기액분리기
+식품 발효 탱크|Food fermentation vessel|미생물 작용으로 원료 전환|교반기,온도제어
+바이오리액터|Bioreactor|세포 배양 조건을 제어|교반기,가스공급
+크로마토그래피 공정 스키드|Process chromatography skid|생산물 성분을 분리 정제|컬럼,펌프계통
+한외여과 스키드|Ultrafiltration skid|고분자와 저분자 성분 분리|막모듈,순환펌프
+무균 여과 스키드|Sterile filtration skid|충전 전 제품을 제균 여과|멸균필터,무균밸브
+CIP 세정 스키드|Clean in place skid|분해 없이 위생 배관 세정|약액탱크,회수회로
+SIP 멸균 스키드|Sterilize in place skid|밀폐 공정 계통을 현장 증기 멸균|증기분배,응축수관리
+고전단 과립기|High shear granulator|분말과 결합액을 과립화|임펠러,초퍼
+롤러 압축 과립기|Roller compactor granulator|건식 분말을 압축 후 과립화|압축롤,밀
+의약품 정제 프레스|Tablet press|분말을 정량 압축해 정제 생성|터릿,펀치
+정제 코팅기|Tablet coater|정제에 기능성 코팅층 적용|회전팬,분사건
+캡슐 충전기|Capsule filling machine|캡슐 몸체에 정량 원료 충전|캡슐분리기,도징부
+정제 탈분기|Tablet deduster|정제 표면 잔류 분진 제거|진동트랙,집진포트
+제약용 무균 아이솔레이터|Pharmaceutical isolator|제품과 작업자를 밀폐 장벽으로 분리|글러브포트,여과계통
+바이알 세척기|Vial washer|의약품 용기를 내부 외부 세정|노즐매니폴드,용기핸들러
+탈파이로젠 터널|Depyrogenation tunnel|건열로 용기 발열성 물질 저감|고온존,청정냉각존
+무균 바이알 충전 마개기|Aseptic vial filler stoppering machine|무균 액상 충전 후 마개 장착|충전니들,스토퍼피더
+앰플 충전 밀봉기|Ampoule filling sealing machine|유리 앰플 충전 후 용융 밀봉|충전니들,화염버너
+프리필드 시린지 충전기|Prefilled syringe filling machine|주사기에 무균 충전하고 플런저 삽입|충전펌프,플런저삽입
+캡슐 중량 선별기|Capsule checkweigher|캡슐 중량 판정|계량셀,분류부|MERGE:E158:중량 선별기의 취급물 파생형
+의약품 동결건조 로더|Lyophilizer loading system|무균 용기를 동결건조기에 인계|로딩푸셔,무균이송
+증기 멸균 오토클레이브|Steam sterilizer autoclave|기구와 원료를 증기로 멸균|압력챔버,진공펌프
+과산화수소 증기 발생기|Vaporized hydrogen peroxide generator|격리 공간의 생물 오염 저감|기화기,농도감시
+시약 자동 조제 스키드|Reagent preparation skid|정해진 농도로 시약 용액 조제|계량탱크,혼합기
+제약 분말 봉쇄 이송 밸브|Contained powder transfer valve|고활성 분말을 노출 없이 인계|분할버터플라이,밀봉부
+식품 성형 디포지터|Food depositor|점성 식품을 형상과 용량별 토출|피스톤펌프,노즐
+초콜릿 템퍼링기|Chocolate tempering machine|냉각 가열로 결정 상태 제어|열교환부,교반기
+초콜릿 엔로버|Chocolate enrober|제품 표면을 초콜릿으로 피복|커튼헤드,바텀코터
+커피 로스터|Coffee roaster|원두를 열처리해 풍미 형성|로스팅드럼,냉각트레이
+식품 조리 압출기|Food cooking extruder|압력 열과 전단으로 식품 조직 형성|스크루,조리배럴
+고기 그라인더|Meat grinder|육류를 지정 입도로 분쇄|오거,분쇄판
+진공 육류 텀블러|Vacuum meat tumbler|감압 회전으로 염지액 함침|회전드럼,진공회로
+뼈 분리기|Meat bone separator|육류에서 뼈와 연조직 분리|압축부,분리스크린
+치즈 커드 절단기|Cheese curd cutter|응고 커드를 균일하게 절단|커드나이프,탱크
+유제품 버터 처닝기|Butter churn|크림 지방을 응집해 버터 생성|회전드럼,수분배출

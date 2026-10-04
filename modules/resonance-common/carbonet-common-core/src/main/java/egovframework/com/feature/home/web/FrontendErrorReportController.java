@@ -1,6 +1,8 @@
 package egovframework.com.feature.home.web;
 
 import egovframework.com.common.error.ErrorEventService;
+import egovframework.com.platform.service.workbench.SrTicketWorkbenchPort;
+import egovframework.com.platform.request.workbench.SrTicketCreateRequest;
 import egovframework.com.platform.workbench.service.SrSelfHealingService;
 import egovframework.com.feature.home.dto.request.FrontendErrorReportRequest;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -33,6 +37,7 @@ public class FrontendErrorReportController {
 
     private final SrSelfHealingService srSelfHealingService;
     private final ErrorEventService errorEventService;
+    private final SrTicketWorkbenchPort srTicketWorkbenchService;
 
     @PostMapping("/report")
     @ResponseBody
@@ -48,20 +53,21 @@ public class FrontendErrorReportController {
         
         Map<String, Object> response = new LinkedHashMap<>();
         
-        ErrorDedupEntry dedupEntry = ERROR_DEDUP.compute(fingerprint, (key, existing) -> {
-            if (existing == null) {
-                return new ErrorDedupEntry(1, LocalDateTime.now());
-            }
-            if (existing.isExpired(DEDUP_WINDOW_MINUTES)) {
+        ERROR_DEDUP.entrySet().removeIf(entry -> entry.getValue().isExpired(DEDUP_WINDOW_MINUTES));
+        AtomicBoolean admitted = new AtomicBoolean(false);
+        ERROR_DEDUP.compute(fingerprint, (key, existing) -> {
+            if (existing == null || existing.isExpired(DEDUP_WINDOW_MINUTES)) {
+                admitted.set(true);
                 return new ErrorDedupEntry(1, LocalDateTime.now());
             }
             if (existing.count >= MAX_REPORTS_PER_FINGERPRINT) {
                 return existing;
             }
+            admitted.set(true);
             return new ErrorDedupEntry(existing.count + 1, existing.lastSeen);
         });
         
-        if (dedupEntry.count > MAX_REPORTS_PER_FINGERPRINT) {
+        if (!admitted.get()) {
             log.debug("Error fingerprint {} exceeded dedup threshold, skipping ticket creation", fingerprint);
             response.put("status", "deduplicated");
             response.put("message", "Error report throttled");
@@ -96,8 +102,8 @@ public class FrontendErrorReportController {
                         fingerprint, request.getMessage(), "SYSTEM-AUTO");
                 response.put("selfHealing", healResult);
                 
-                if (Boolean.TRUE.equals(healResult.get("success"))) {
-                    response.put("status", "self_healing_triggered");
+                if (Boolean.TRUE.equals(healResult.get("success")) && healResult.get("ticketId") != null) {
+                    response.put("status", "ticket_created");
                     response.put("ticketId", healResult.get("ticketId"));
                     response.put("message", healResult.get("message"));
                     return ResponseEntity.ok(response);
@@ -107,11 +113,11 @@ public class FrontendErrorReportController {
             log.warn("[FrontendErrorReport] Self-healing analysis failed: {}", e.getMessage());
         }
         
-        boolean ticketCreated = createAutoTicket(request, fingerprint, currentUserId, companyId);
+        String ticketId = createAutoTicket(request, fingerprint, currentUserId, companyId);
         
-        if (ticketCreated) {
+        if (ticketId != null) {
             response.put("status", "ticket_created");
-            response.put("ticketId", fingerprint);
+            response.put("ticketId", ticketId);
             response.put("message", "Auto-created SR ticket for review");
         } else {
             response.put("status", "logged");
@@ -148,7 +154,7 @@ public class FrontendErrorReportController {
         return null;
     }
 
-    private boolean createAutoTicket(FrontendErrorReportRequest request, String fingerprint, String userId, String companyId) {
+    private String createAutoTicket(FrontendErrorReportRequest request, String fingerprint, String userId, String companyId) {
         try {
             log.info("[FrontendErrorReport] Creating auto-ticket for fingerprint: {}, type: {}", 
                     fingerprint, request.getErrorType());
@@ -177,12 +183,21 @@ public class FrontendErrorReportController {
             description.append("**User Agent:**\n```\n").append(request.getUserAgent()).append("```\n\n");
             description.append("**発生日時:** ").append(request.getTimestamp());
             
-            log.debug("[FrontendErrorReport] Auto-ticket description generated for fingerprint: {}", fingerprint);
-            return true;
+            String ticketId = "FE-" + UUID.randomUUID().toString().replace("-", "");
+            SrTicketCreateRequest ticket = new SrTicketCreateRequest();
+            ticket.setTicketId(ticketId);
+            ticket.setPageId(request.getPageId());
+            ticket.setPageLabel("프론트엔드 오류 검토");
+            ticket.setSummary("Frontend error: " + request.getErrorType());
+            ticket.setInstruction(description.toString());
+            ticket.setGeneratedDirection("오류 증거를 검토한 후 담당자가 수정 여부를 승인합니다. 자동 실행하지 않습니다.");
+            Map<String, Object> created = srTicketWorkbenchService.createTicket(ticket, "SYSTEM-FRONTEND-ERROR");
+            if (created == null || !Boolean.TRUE.equals(created.get("success"))) return null;
+            return ticketId;
             
         } catch (Exception e) {
             log.error("[FrontendErrorReport] Failed to create auto-ticket for fingerprint: {}", fingerprint, e);
-            return false;
+            return null;
         }
     }
 

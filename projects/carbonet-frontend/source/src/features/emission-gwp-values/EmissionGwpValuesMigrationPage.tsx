@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -1345,8 +1346,7 @@ export function EmissionGwpValuesMigrationPage() {
             : "공식 행을 수정하기 전에 섹션과 검색어로 범위를 좁힙니다."}
           icon="manage_search"
         >
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[2fr,1fr,1fr,auto,auto]">
-            <div>
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="gwpKeyword">{en ? "Keyword" : "검색어"}</label>
               <AdminInput
                 id="gwpKeyword"
@@ -1360,34 +1360,27 @@ export function EmissionGwpValuesMigrationPage() {
                   }
                 }}
               />
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="gwpSection">{en ? "Section" : "섹션"}</label>
               <AdminSelect id="gwpSection" value={searchDraft.sectionCode} onChange={(event) => setSearchDraft((current) => ({ ...current, sectionCode: event.target.value }))}>
                 {sectionOptions.map((option) => (
                   <option key={stringOf(option, "value")} value={stringOf(option, "value")}>{stringOf(option, "label")}</option>
                 ))}
               </AdminSelect>
-            </div>
-            <div>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="gwpPdfComparePolicy">{en ? "Compare Policy" : "비교 정책"}</label>
               <AdminSelect id="gwpPdfComparePolicy" value={searchDraft.pdfComparePolicy} onChange={(event) => setSearchDraft((current) => ({ ...current, pdfComparePolicy: event.target.value }))}>
                 {pdfComparePolicyOptions.map((option) => (
                   <option key={stringOf(option, "value")} value={stringOf(option, "value")}>{stringOf(option, "label")}</option>
                 ))}
               </AdminSelect>
-            </div>
-            <div className="flex items-end gap-2">
-              <MemberButton onClick={applySearchFilters} type="button" variant="primary">
+            </div></div></>} actions={<><MemberButton onClick={applySearchFilters} type="button" variant="primary">
                 {en ? "Search" : "검색"}
               </MemberButton>
-            </div>
-            <div className="flex items-end gap-2">
-              <MemberButton onClick={resetSearchFilters} type="button" variant="secondary">
+<MemberButton onClick={resetSearchFilters} type="button" variant="secondary">
                 {en ? "Reset" : "초기화"}
-              </MemberButton>
-            </div>
-          </div>
+              </MemberButton></>}></CommonSearchSection></div>
         </CollectionResultPanel>
 
         {selectedRow ? (

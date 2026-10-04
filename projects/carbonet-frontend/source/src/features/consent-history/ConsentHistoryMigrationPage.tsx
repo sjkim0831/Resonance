@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { FormEvent, useEffect, useState } from "react";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { fetchJsonWithResponse } from "../../lib/api/core";
@@ -194,16 +195,14 @@ function FilterForm({
   return (
     <form
       aria-label={en ? "Filter consent history" : "동의 이력 필터"}
-      className="mb-6 grid gap-3 rounded-lg border border-[var(--kr-gov-border-light)] bg-white p-4 sm:p-5"
+      className="ccus-search-host"
       onSubmit={onSubmit}
       {...registeredAsset(
         ASSET.component.filterForm,
         ASSET.section.filter,
         ASSET.classSet.filter
       )}
-    >
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_220px_180px] lg:items-end">
-        <div>
+    ><CommonSearchSection basic={<><div className="ccus-search-field"><div>
           <label
             htmlFor="ch-filter-keyword"
             className="mb-1 block text-xs font-medium text-[var(--kr-gov-text-secondary)]"
@@ -219,9 +218,27 @@ function FilterForm({
             value={keyword}
             {...registeredAsset(ASSET.component.filterInput, ASSET.section.filter)}
           />
-        </div>
-
-        <div>
+        </div></div>
+<div className="ccus-search-field"><div>
+          <label
+            htmlFor="ch-filter-agreed"
+            className="mb-1 block text-xs font-medium text-[var(--kr-gov-text-secondary)]"
+          >
+            {en ? "Agreement status" : "동의 상태"}
+          </label>
+          <select
+            id="ch-filter-agreed"
+            aria-label={en ? "Filter by agreement status" : "동의 상태로 필터"}
+            className="w-full rounded border border-[var(--kr-gov-border-light)] px-3 py-2 text-sm"
+            onChange={(e) => onAgreedChange(e.target.value)}
+            value={agreed}
+            {...registeredAsset(ASSET.component.filterSelect, ASSET.section.filter)}
+          >
+            <option value="ALL">{en ? "All statuses" : "전체 상태"}</option>
+            <option value="Y">{en ? "Agreed" : "동의"}</option>
+            <option value="N">{en ? "Not agreed" : "미동의"}</option>
+          </select>
+        </div></div></>} advanced={<><div className="ccus-search-field"><div>
           <label
             htmlFor="ch-filter-consent-type"
             className="mb-1 block text-xs font-medium text-[var(--kr-gov-text-secondary)]"
@@ -243,39 +260,14 @@ function FilterForm({
               </option>
             ))}
           </select>
-        </div>
-
-        <div>
-          <label
-            htmlFor="ch-filter-agreed"
-            className="mb-1 block text-xs font-medium text-[var(--kr-gov-text-secondary)]"
-          >
-            {en ? "Agreement status" : "동의 상태"}
-          </label>
-          <select
-            id="ch-filter-agreed"
-            aria-label={en ? "Filter by agreement status" : "동의 상태로 필터"}
-            className="w-full rounded border border-[var(--kr-gov-border-light)] px-3 py-2 text-sm"
-            onChange={(e) => onAgreedChange(e.target.value)}
-            value={agreed}
-            {...registeredAsset(ASSET.component.filterSelect, ASSET.section.filter)}
-          >
-            <option value="ALL">{en ? "All statuses" : "전체 상태"}</option>
-            <option value="Y">{en ? "Agreed" : "동의"}</option>
-            <option value="N">{en ? "Not agreed" : "미동의"}</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="flex gap-2 lg:justify-end">
-        <button
+        </div></div></>} actions={<><button
           className="flex-1 rounded bg-[var(--kr-gov-blue)] px-5 py-2 font-bold text-white sm:flex-none lg:px-6"
           type="submit"
           {...registeredAsset(ASSET.component.actionButton, ASSET.section.filter)}
         >
           {en ? "Search" : "조회"}
         </button>
-        <button
+<button
           aria-label={en ? "Reset filters" : "필터 초기화"}
           className="flex-1 rounded border border-[var(--kr-gov-border-light)] bg-white px-5 py-2 text-sm text-[var(--kr-gov-text-secondary)] sm:flex-none lg:px-6"
           type="button"
@@ -283,9 +275,7 @@ function FilterForm({
           {...registeredAsset(ASSET.component.actionButton, ASSET.section.filter)}
         >
           {en ? "Reset" : "초기화"}
-        </button>
-      </div>
-    </form>
+        </button></>}></CommonSearchSection></form>
   );
 }
 

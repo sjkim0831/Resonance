@@ -79,6 +79,7 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_detail", "/emission/project/detail", "/en/emission/project/detail", "/emission/project/detail");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_progress", "/emission/project/progress", "/en/emission/project/progress", "/emission/project/progress");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_my_tasks", "/emission/my-tasks", "/en/emission/my-tasks", "/emission/my-tasks");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "mypage_my_tasks", "/mypage/my-tasks", "/en/mypage/my-tasks", "/mypage/my-tasks");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "organizational-boundary", "/emission/organizational-boundary", "/en/emission/organizational-boundary", "/emission/organizational-boundary");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_deadline_status", "/emission/deadline-status", "/en/emission/deadline-status", "/emission/deadline-status");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_data_input", "/emission/data_input", "/en/emission/data_input", "/emission/data_input");
@@ -272,7 +273,11 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
             return "";
         }
         String route = HOME_PATH_TO_ROUTE.get(path);
-        return route == null ? "" : route;
+        if (route != null) return route;
+        // Unknown user-page paths are handed to the SDUI resolver. Static routes above always win.
+        return path.startsWith("/mypage/") || path.startsWith("/emission/") || path.startsWith("/co2/")
+                || path.startsWith("/monitoring/") || path.startsWith("/certificate/") || path.startsWith("/trade/")
+                || path.startsWith("/support/") || path.startsWith("/edu/") ? "dynamic-page-runtime" : "";
     }
 
     private static String localizeHomePath(String path) {

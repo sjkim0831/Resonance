@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 447,
+  "blueprintCode": "BP_ADOPT_2C3C6AA7747C36D5B431",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_2C3C6AA7747C36D5B431"
+  },
+  "route": "/admin/external/connection_list",
+  "pageName": "API 키",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1100103",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "a239dea28fbbe1fc6813155858a0002a6242a3e0492639c24e48308c57e1aaad",
+  "artifactHash": "c5623a4e4a5fd7718123e06dcea7c595afd698d9f8a4a6540e8aa84a4a8e4fbb"
+}

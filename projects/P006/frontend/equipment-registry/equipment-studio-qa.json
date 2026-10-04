@@ -1,0 +1,38 @@
+{
+  "runDate": "2026-09-28",
+  "route": "http://172.16.1.232/projects/P006/assets/equipment-registry/equipment-studio.html",
+  "checks": {
+    "staticPageRendered": true,
+    "javascriptModuleLoaded": true,
+    "retryControlRendered": true,
+    "javascriptSyntax": "PASS",
+    "serviceHealthHttp": 200,
+    "registryMetaHttpWithExistingAdminSession": 200,
+    "backendTransactionRollbackQa": "30/30 PASS",
+    "browserEquipmentCrudEvidenceUpdateReloadAndBinaryUpload": "11/11 PASS",
+    "crudReadWriteRestore": "PASS",
+    "databaseWrites": 0
+  },
+  "artifacts": {
+    "backend": "equipment-studio-backend-qa.json",
+    "browser": "equipment-studio-browser-qa.json",
+    "screenshot": "equipment-studio-browser-qa.png",
+    "n076Readiness": "n076-readiness.json",
+    "n076ReadinessReadable": "n076-readiness.md"
+  },
+  "n076AssetAudit": {
+    "originalUsdReferenceFound": true,
+    "catalogRenderFound": true,
+    "webGlb": "34,276 bytes; 66 nodes; 21 meshes; 392 triangles; 0 materials; 0 animations",
+    "manufacturerEvidenceFoundInScopedSearch": false,
+    "connectedToCurrentAutomobilePlan": false,
+    "decision": "REFERENCE_ONLY_REAL_EQUIPMENT_UNVERIFIED"
+  },
+    "finding": "The P006 local backend was restored through its enabled systemd unit. Using the existing admin session harness, the browser flow created an isolated QA hierarchy/equipment, registered a MANUAL URI and uploaded a small synthetic text evidence file, verified its SHA-256 metadata, updated the management number and restored both evidence records after reload. The exact QA hierarchy/equipment and hash-verified unshared uploaded file were removed after verification.",
+  "databaseWrites": 0,
+  "qaFixtureRowsCreated": 1,
+  "qaUploadedSyntheticFilesCreated": 1,
+  "qaUploadedSyntheticFilesRemoved": 1,
+  "qaFixtureRowsRemaining": 0,
+  "followUp": "Repeat with the first actual equipment and its real photo, measurement drawing, model, and motion evidence; then connect the reviewed common Asset to a process plan."
+}

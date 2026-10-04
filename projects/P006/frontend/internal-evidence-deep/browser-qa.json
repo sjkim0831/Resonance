@@ -1,0 +1,16 @@
+{
+  "url": "http://172.16.1.232/projects/P006/assets/internal-evidence-deep/",
+  "assetRows": 58,
+  "p1": 14,
+  "partial": 4,
+  "externalClassification": 54,
+  "sufficient": 0,
+  "detailSections": 8,
+  "filters": "PASS",
+  "mobileOverflow": false,
+  "errors": [],
+  "businessWrites": 0,
+  "deviceWrites": 0,
+  "externalRequestsSent": 0,
+  "seconds": 1.333
+}

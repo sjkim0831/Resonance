@@ -1,0 +1,138 @@
+{
+  "id": "calculation-report",
+  "sortOrder": 3,
+  "name": "산정 · 검증 · 보고",
+  "assignee": "미배정",
+  "model": "gpt-6-luna",
+  "state": "PLANNED",
+  "goal": "활동자료를 계산·검토하여 보고서로 출력",
+  "ownedPaths": [
+    "projects/carbonet-frontend/source/src/features/emission-project-list/EmissionProjectResultPage.tsx",
+    "projects/carbonet-frontend/source/src/features/emission-project-list/EmissionProjectReviewPage.tsx",
+    "projects/carbonet-frontend/source/src/features/emission-project-list/EmissionProjectReportPage.tsx"
+  ],
+  "steps": [
+    {
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_CALCULATE",
+      "expectedVersion": "4.0.0",
+      "pageIds": [
+        "emission-calculation"
+      ]
+    },
+    {
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_VALIDATE",
+      "expectedVersion": "4.0.0",
+      "pageIds": [
+        "emission-review-approval"
+      ]
+    },
+    {
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_CORRECT",
+      "expectedVersion": "4.0.0",
+      "pageIds": [
+        "emission-review-approval"
+      ]
+    },
+    {
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_APPROVE",
+      "expectedVersion": "4.0.0",
+      "pageIds": [
+        "emission-review-approval"
+      ]
+    },
+    {
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_REPORT",
+      "expectedVersion": "4.0.0",
+      "pageIds": [
+        "emission-report-write"
+      ]
+    },
+    {
+      "processCode": "ACTIVITY_DATA",
+      "stepCode": "ACTIVITY_DATA_03_VERIFY",
+      "expectedVersion": "1.4.0",
+      "pageIds": [
+        "emission-review-approval"
+      ]
+    },
+    {
+      "processCode": "ACTIVITY_DATA",
+      "stepCode": "ACTIVITY_DATA_04_APPROVE",
+      "expectedVersion": "1.4.0",
+      "pageIds": [
+        "emission-review-approval"
+      ]
+    },
+    {
+      "processCode": "EMISSION_CALCULATION",
+      "stepCode": "EMISSION_CALCULATION_01_PLAN",
+      "expectedVersion": "1.2.0",
+      "pageIds": [
+        "emission-calculation"
+      ]
+    },
+    {
+      "processCode": "EMISSION_CALCULATION",
+      "stepCode": "EMISSION_CALCULATION_02_WORK",
+      "expectedVersion": "1.2.0",
+      "pageIds": [
+        "emission-calculation"
+      ]
+    },
+    {
+      "processCode": "EMISSION_CALCULATION",
+      "stepCode": "EMISSION_CALCULATION_03_VERIFY",
+      "expectedVersion": "1.2.0",
+      "pageIds": [
+        "emission-calculation"
+      ]
+    },
+    {
+      "processCode": "EMISSION_CALCULATION",
+      "stepCode": "EMISSION_CALCULATION_04_APPROVE",
+      "expectedVersion": "1.2.0",
+      "pageIds": [
+        "emission-calculation"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "pageId": "emission-calculation",
+      "route": "/emission/calculation",
+      "sourcePath": "projects/carbonet-frontend/source/src/features/emission-project-list/EmissionProjectResultPage.tsx",
+      "permissionCodes": []
+    },
+    {
+      "pageId": "emission-review-approval",
+      "route": "/emission/review-approval",
+      "sourcePath": "projects/carbonet-frontend/source/src/features/emission-project-list/EmissionProjectReviewPage.tsx",
+      "permissionCodes": []
+    },
+    {
+      "pageId": "emission-report-write",
+      "route": "/emission/report-write",
+      "sourcePath": "projects/carbonet-frontend/source/src/features/emission-project-list/EmissionProjectReportPage.tsx",
+      "permissionCodes": []
+    }
+  ],
+  "apis": [],
+  "permissions": [],
+  "dependencies": [
+    {
+      "contractId": "project-context",
+      "version": "1"
+    },
+    {
+      "contractId": "activity-snapshot",
+      "version": "1"
+    }
+  ],
+  "migrationVersions": [],
+  "evidence": {}
+}

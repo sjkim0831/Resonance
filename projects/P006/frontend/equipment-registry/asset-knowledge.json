@@ -1,0 +1,5699 @@
+{
+  "schemaVersion": "p006-knowledge-1",
+  "catalogSha256": "40d1c7ca0f1afee9382d79ba3d5df4cae708f598d08b50c41a8a81073258ccd4",
+  "profiles": [
+    {
+      "assetId": "A004",
+      "assetName": "방폭 배출 패널",
+      "category": "건축·인프라",
+      "purpose": {
+        "summary": "방폭 보호",
+        "detailedDescription": "이상 압력 발생 시 보호 대상의 압력을 방출하도록 설계하는 안전 구성품. 배출 면적·개방 압력·설치 방향은 제조사 설계가 필요합니다.",
+        "processRole": "안전 보호",
+        "installationRole": "보호 대상 외함의 승인된 개구부"
+      },
+      "io": {
+        "inputs": [],
+        "outputs": [
+          "비정상 압력 방출"
+        ]
+      },
+      "requiredProducts": [],
+      "optionalProducts": [],
+      "processRelatedProducts": [],
+      "safetyRelatedProducts": [
+        {
+          "assetId": "E056",
+          "assetName": "집진기",
+          "relationType": "SAFETY_CONTROL",
+          "reason": "분진 집진기의 폭발 보호 구성 검토",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        },
+        {
+          "assetId": "A393",
+          "assetName": "폭발 격리 밸브 시스템",
+          "relationType": "SAFETY_CONTROL",
+          "reason": "연결 덕트의 폭발 전파 격리 검토",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        },
+        {
+          "assetId": "N164",
+          "assetName": "안전 PLC",
+          "relationType": "SAFETY_CONTROL",
+          "reason": "승인된 작동 감지 신호와 안전 제어 연계 검토",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        }
+      ],
+      "controlRelatedProducts": [],
+      "connectionRequirements": [
+        "제조사 사양·접속 도면·매체·접속 치수 확인",
+        "논리 관계는 물리 Port 호환성을 보장하지 않음"
+      ],
+      "ports": [],
+      "evidence": [
+        {
+          "source": "entry-catalog/entries.json",
+          "assetId": "A004",
+          "entryPath": "/home/sjkim/OmniverseProjects/assets/catalog/A004.usda",
+          "scope": "CATALOG_IDENTITY_ONLY"
+        },
+        {
+          "source": "https://rembe.com/en-us/industry-and-application-guide",
+          "scope": "PRODUCT_FAMILY_ONLY_NOT_P006_MODEL_APPROVAL"
+        }
+      ],
+      "verificationStatus": "CANDIDATE",
+      "physicalPortStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E001",
+      "assetName": "트리밍 장비",
+      "category": "주조·단조",
+      "purpose": {
+        "summary": "트리밍 공정",
+        "detailedDescription": "소재의 잔여 가장자리·버를 제거하는 공정 설비입니다. 실제 절삭 방식과 소재 조건은 모델 자료로 확인해야 합니다.",
+        "processRole": "가공",
+        "installationRole": "소재 공급·회수 작업 공간"
+      },
+      "io": {
+        "inputs": [
+          "가공 전 소재"
+        ],
+        "outputs": [
+          "가공품",
+          "잔재"
+        ]
+      },
+      "requiredProducts": [],
+      "optionalProducts": [],
+      "processRelatedProducts": [
+        {
+          "assetId": "E034",
+          "assetName": "직선 컨베이어",
+          "relationType": "PROCESS_UPSTREAM",
+          "reason": "소재 공급 물류 후보",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        },
+        {
+          "assetId": "E075",
+          "assetName": "스크랩 수거 컨테이너",
+          "relationType": "PROCESS_DOWNSTREAM",
+          "reason": "트리밍 잔재 회수 후보",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        }
+      ],
+      "safetyRelatedProducts": [],
+      "controlRelatedProducts": [],
+      "connectionRequirements": [
+        "제조사 사양·접속 도면·매체·접속 치수 확인",
+        "논리 관계는 물리 Port 호환성을 보장하지 않음"
+      ],
+      "ports": [],
+      "evidence": [
+        {
+          "source": "entry-catalog/entries.json",
+          "assetId": "E001",
+          "entryPath": "/home/sjkim/OmniverseProjects/assets/catalog/E001.usda",
+          "scope": "CATALOG_IDENTITY_ONLY"
+        }
+      ],
+      "verificationStatus": "CANDIDATE",
+      "physicalPortStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E073",
+      "assetName": "냉각수 펌프 유닛",
+      "category": "유틸리티",
+      "purpose": {
+        "summary": "냉각수 이송",
+        "detailedDescription": "냉각수를 순환·이송하는 펌프 유닛입니다. 유체·양정·유량·접속 규격을 확인해야 합니다.",
+        "processRole": "유체 이송",
+        "installationRole": "흡입 조건과 정비 공간 확보"
+      },
+      "io": {
+        "inputs": [
+          "냉각수",
+          "동력"
+        ],
+        "outputs": [
+          "가압 냉각수"
+        ]
+      },
+      "requiredProducts": [],
+      "optionalProducts": [
+        {
+          "assetId": "E233",
+          "assetName": "배관 유량계",
+          "relationType": "OPTIONAL",
+          "reason": "순환 유량 계측 검토",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        }
+      ],
+      "processRelatedProducts": [
+        {
+          "assetId": "E225",
+          "assetName": "냉각수 저장 탱크",
+          "relationType": "PROCESS_UPSTREAM",
+          "reason": "냉각수 저장·회수 계통 검토",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        }
+      ],
+      "safetyRelatedProducts": [],
+      "controlRelatedProducts": [],
+      "connectionRequirements": [
+        "제조사 사양·접속 도면·매체·접속 치수 확인",
+        "논리 관계는 물리 Port 호환성을 보장하지 않음"
+      ],
+      "ports": [],
+      "evidence": [
+        {
+          "source": "entry-catalog/entries.json",
+          "assetId": "E073",
+          "entryPath": "/home/sjkim/OmniverseProjects/assets/catalog/E073.usda",
+          "scope": "CATALOG_IDENTITY_ONLY"
+        }
+      ],
+      "verificationStatus": "CANDIDATE",
+      "physicalPortStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E225",
+      "assetName": "냉각수 저장 탱크",
+      "category": "유틸리티",
+      "purpose": {
+        "summary": "냉각수 저장",
+        "detailedDescription": "냉각수의 저장·회수 완충 역할을 하는 탱크입니다. 용량·재질·수위 및 접속구는 미확정입니다.",
+        "processRole": "저장",
+        "installationRole": "유출 대응과 정비 공간"
+      },
+      "io": {
+        "inputs": [
+          "회수 냉각수"
+        ],
+        "outputs": [
+          "공급 냉각수"
+        ]
+      },
+      "requiredProducts": [],
+      "optionalProducts": [
+        {
+          "assetId": "E233",
+          "assetName": "배관 유량계",
+          "relationType": "OPTIONAL",
+          "reason": "공급·회수 유량 측정 후보",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        }
+      ],
+      "processRelatedProducts": [
+        {
+          "assetId": "E073",
+          "assetName": "냉각수 펌프 유닛",
+          "relationType": "PROCESS_DOWNSTREAM",
+          "reason": "저장 냉각수의 순환 공급 후보",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        }
+      ],
+      "safetyRelatedProducts": [],
+      "controlRelatedProducts": [],
+      "connectionRequirements": [
+        "제조사 사양·접속 도면·매체·접속 치수 확인",
+        "논리 관계는 물리 Port 호환성을 보장하지 않음"
+      ],
+      "ports": [],
+      "evidence": [
+        {
+          "source": "entry-catalog/entries.json",
+          "assetId": "E225",
+          "entryPath": "/home/sjkim/OmniverseProjects/assets/catalog/E225.usda",
+          "scope": "CATALOG_IDENTITY_ONLY"
+        }
+      ],
+      "verificationStatus": "CANDIDATE",
+      "physicalPortStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A286",
+      "assetName": "다유체 자동 스위칭 매니폴드",
+      "category": "배관",
+      "purpose": {
+        "summary": "유체 분배",
+        "detailedDescription": "여러 유체 경로를 전환·분배하는 매니폴드입니다. 상호 혼합 금지 조건·매체·압력과 각 분기 규격 검토가 필요합니다.",
+        "processRole": "분배",
+        "installationRole": "배관 지지와 점검 공간"
+      },
+      "io": {
+        "inputs": [
+          "선택된 유체"
+        ],
+        "outputs": [
+          "선택 경로 유체"
+        ]
+      },
+      "requiredProducts": [],
+      "optionalProducts": [
+        {
+          "assetId": "E233",
+          "assetName": "배관 유량계",
+          "relationType": "OPTIONAL",
+          "reason": "분기 유량 감시 후보",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        },
+        {
+          "assetId": "N161",
+          "assetName": "PLC 본체",
+          "relationType": "OPTIONAL",
+          "reason": "전환 명령과 상태 감시 후보",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        }
+      ],
+      "processRelatedProducts": [],
+      "safetyRelatedProducts": [],
+      "controlRelatedProducts": [],
+      "connectionRequirements": [
+        "제조사 사양·접속 도면·매체·접속 치수 확인",
+        "논리 관계는 물리 Port 호환성을 보장하지 않음"
+      ],
+      "ports": [],
+      "evidence": [
+        {
+          "source": "entry-catalog/entries.json",
+          "assetId": "A286",
+          "entryPath": "/home/sjkim/OmniverseProjects/assets/catalog/A286.usda",
+          "scope": "CATALOG_IDENTITY_ONLY"
+        }
+      ],
+      "verificationStatus": "CANDIDATE",
+      "physicalPortStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A393",
+      "assetName": "폭발 격리 밸브 시스템",
+      "category": "SAFE",
+      "purpose": {
+        "summary": "폭발 격리",
+        "detailedDescription": "연결 계통으로 폭발이 전파되는 것을 제한하는 안전 시스템 제품군입니다. 작동 방식과 인증 설치 조건은 미확정입니다.",
+        "processRole": "안전 격리",
+        "installationRole": "승인된 격리 거리와 설치 방향"
+      },
+      "io": {
+        "inputs": [],
+        "outputs": []
+      },
+      "requiredProducts": [],
+      "optionalProducts": [],
+      "processRelatedProducts": [],
+      "safetyRelatedProducts": [
+        {
+          "assetId": "E056",
+          "assetName": "집진기",
+          "relationType": "SAFETY_CONTROL",
+          "reason": "집진 계통의 전파 차단 검토",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        },
+        {
+          "assetId": "A004",
+          "assetName": "방폭 배출 패널",
+          "relationType": "SAFETY_CONTROL",
+          "reason": "압력 방출과 격리의 시스템 구성 검토",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        }
+      ],
+      "controlRelatedProducts": [],
+      "connectionRequirements": [
+        "제조사 사양·접속 도면·매체·접속 치수 확인",
+        "논리 관계는 물리 Port 호환성을 보장하지 않음"
+      ],
+      "ports": [],
+      "evidence": [
+        {
+          "source": "entry-catalog/entries.json",
+          "assetId": "A393",
+          "entryPath": "/home/sjkim/OmniverseProjects/assets/catalog/A393.usda",
+          "scope": "CATALOG_IDENTITY_ONLY"
+        },
+        {
+          "source": "https://rembe.com/en-us/industry-and-application-guide",
+          "scope": "PRODUCT_FAMILY_ONLY_NOT_P006_MODEL_APPROVAL"
+        }
+      ],
+      "verificationStatus": "CANDIDATE",
+      "physicalPortStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E034",
+      "assetName": "직선 컨베이어",
+      "category": "컨베이어·물류",
+      "purpose": {
+        "summary": "직선 이송",
+        "detailedDescription": "제품을 직선 경로로 이송하는 물류 설비입니다. 적재 하중·속도·이송 높이·인계 조건을 확인해야 합니다.",
+        "processRole": "물류",
+        "installationRole": "전후 장비 인계 높이 정합"
+      },
+      "io": {
+        "inputs": [
+          "제품",
+          "동력"
+        ],
+        "outputs": [
+          "이송 제품"
+        ]
+      },
+      "requiredProducts": [],
+      "optionalProducts": [
+        {
+          "assetId": "E077",
+          "assetName": "컨베이어 분기·합류 모듈",
+          "relationType": "OPTIONAL",
+          "reason": "분기·합류 구간 후보",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        }
+      ],
+      "processRelatedProducts": [
+        {
+          "assetId": "E001",
+          "assetName": "트리밍 장비",
+          "relationType": "PROCESS_DOWNSTREAM",
+          "reason": "가공 설비로 소재 인계 후보",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        }
+      ],
+      "safetyRelatedProducts": [],
+      "controlRelatedProducts": [],
+      "connectionRequirements": [
+        "제조사 사양·접속 도면·매체·접속 치수 확인",
+        "논리 관계는 물리 Port 호환성을 보장하지 않음"
+      ],
+      "ports": [],
+      "evidence": [
+        {
+          "source": "entry-catalog/entries.json",
+          "assetId": "E034",
+          "entryPath": "/home/sjkim/OmniverseProjects/assets/catalog/E034.usda",
+          "scope": "CATALOG_IDENTITY_ONLY"
+        }
+      ],
+      "verificationStatus": "CANDIDATE",
+      "physicalPortStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E056",
+      "assetName": "집진기",
+      "category": "환경·집진",
+      "purpose": {
+        "summary": "분진 포집",
+        "detailedDescription": "공기 중 분진을 포집하는 장치입니다. 분진 성상·집진 방식·배출 조건·방폭 필요 여부를 별도 확인합니다.",
+        "processRole": "배출/환기",
+        "installationRole": "흡입·배기 경로와 유지보수 공간"
+      },
+      "io": {
+        "inputs": [
+          "분진 함유 공기"
+        ],
+        "outputs": [
+          "처리 공기",
+          "포집 분진"
+        ]
+      },
+      "requiredProducts": [],
+      "optionalProducts": [],
+      "processRelatedProducts": [],
+      "safetyRelatedProducts": [
+        {
+          "assetId": "A004",
+          "assetName": "방폭 배출 패널",
+          "relationType": "SAFETY_CONTROL",
+          "reason": "가연성 분진 공정일 때 압력 방출 검토",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        },
+        {
+          "assetId": "A393",
+          "assetName": "폭발 격리 밸브 시스템",
+          "relationType": "SAFETY_CONTROL",
+          "reason": "폭발 전파 격리 검토",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        }
+      ],
+      "controlRelatedProducts": [],
+      "connectionRequirements": [
+        "제조사 사양·접속 도면·매체·접속 치수 확인",
+        "논리 관계는 물리 Port 호환성을 보장하지 않음"
+      ],
+      "ports": [],
+      "evidence": [
+        {
+          "source": "entry-catalog/entries.json",
+          "assetId": "E056",
+          "entryPath": "/home/sjkim/OmniverseProjects/assets/catalog/E056.usda",
+          "scope": "CATALOG_IDENTITY_ONLY"
+        },
+        {
+          "source": "https://rembe.com/en-us/industry-and-application-guide",
+          "scope": "PRODUCT_FAMILY_ONLY_NOT_P006_MODEL_APPROVAL"
+        }
+      ],
+      "verificationStatus": "CANDIDATE",
+      "physicalPortStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E233",
+      "assetName": "배관 유량계",
+      "category": "센서·비전·RFID",
+      "purpose": {
+        "summary": "유량 계측",
+        "detailedDescription": "배관의 유량을 측정하는 계측 제품군입니다. 유체·측정 원리·직관 길이·통신 규격을 확인해야 합니다.",
+        "processRole": "계측",
+        "installationRole": "측정에 필요한 배관 구간"
+      },
+      "io": {
+        "inputs": [
+          "측정 유체"
+        ],
+        "outputs": [
+          "계측 신호"
+        ]
+      },
+      "requiredProducts": [],
+      "optionalProducts": [
+        {
+          "assetId": "E073",
+          "assetName": "냉각수 펌프 유닛",
+          "relationType": "OPTIONAL",
+          "reason": "펌프 계통의 유량 감시",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        },
+        {
+          "assetId": "N161",
+          "assetName": "PLC 본체",
+          "relationType": "OPTIONAL",
+          "reason": "계측 신호 수집 검토",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        }
+      ],
+      "processRelatedProducts": [],
+      "safetyRelatedProducts": [],
+      "controlRelatedProducts": [],
+      "connectionRequirements": [
+        "제조사 사양·접속 도면·매체·접속 치수 확인",
+        "논리 관계는 물리 Port 호환성을 보장하지 않음"
+      ],
+      "ports": [],
+      "evidence": [
+        {
+          "source": "entry-catalog/entries.json",
+          "assetId": "E233",
+          "entryPath": "/home/sjkim/OmniverseProjects/assets/catalog/E233.usda",
+          "scope": "CATALOG_IDENTITY_ONLY"
+        }
+      ],
+      "verificationStatus": "CANDIDATE",
+      "physicalPortStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N161",
+      "assetName": "PLC 본체",
+      "category": "PLC·산업 네트워크",
+      "purpose": {
+        "summary": "공정 제어",
+        "detailedDescription": "입력 신호와 프로그램으로 출력 장치를 제어하는 PLC 본체입니다. I/O 모듈·전원·프로토콜·안전 기능은 별도 사양입니다.",
+        "processRole": "제어",
+        "installationRole": "제어반 환경과 전원 조건"
+      },
+      "io": {
+        "inputs": [
+          "센서 신호"
+        ],
+        "outputs": [
+          "제어 명령"
+        ]
+      },
+      "requiredProducts": [],
+      "optionalProducts": [
+        {
+          "assetId": "E233",
+          "assetName": "배관 유량계",
+          "relationType": "OPTIONAL",
+          "reason": "유량 신호 입력 후보",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        },
+        {
+          "assetId": "E242",
+          "assetName": "공압 솔레노이드 밸브 매니폴드",
+          "relationType": "OPTIONAL",
+          "reason": "공압 밸브 명령 출력 후보",
+          "verificationStatus": "CANDIDATE",
+          "physicalConnection": false,
+          "sourcePortId": null,
+          "targetPortId": null
+        }
+      ],
+      "processRelatedProducts": [],
+      "safetyRelatedProducts": [],
+      "controlRelatedProducts": [],
+      "connectionRequirements": [
+        "제조사 사양·접속 도면·매체·접속 치수 확인",
+        "논리 관계는 물리 Port 호환성을 보장하지 않음"
+      ],
+      "ports": [],
+      "evidence": [
+        {
+          "source": "entry-catalog/entries.json",
+          "assetId": "N161",
+          "entryPath": "/home/sjkim/OmniverseProjects/assets/catalog/N161.usda",
+          "scope": "CATALOG_IDENTITY_ONLY"
+        }
+      ],
+      "verificationStatus": "CANDIDATE",
+      "physicalPortStatus": "EVIDENCE_MISSING"
+    }
+  ],
+  "inventory": [
+    {
+      "assetId": "A004",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A005",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A006",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A007",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A008",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A010",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A011",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A015",
+      "category": "입고·출하",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A016",
+      "category": "입고·출하",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A017",
+      "category": "입고·출하",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A019",
+      "category": "입고·출하",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A020",
+      "category": "입고·출하",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A021",
+      "category": "입고·출하",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A022",
+      "category": "입고·출하",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A023",
+      "category": "입고·출하",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A026",
+      "category": "입고·출하",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A030",
+      "category": "창고·보관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A031",
+      "category": "창고·보관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A032",
+      "category": "창고·보관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A038",
+      "category": "창고·보관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A041",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A042",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A045",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A049",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A050",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A051",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A052",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A054",
+      "category": "AGV·AMR",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A055",
+      "category": "AGV·AMR",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A056",
+      "category": "AGV·AMR",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A057",
+      "category": "AGV·AMR",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A060",
+      "category": "AGV·AMR",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A064",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A065",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A066",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A068",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A069",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A070",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A071",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A072",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A073",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A077",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A079",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A082",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A083",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A085",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A087",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A088",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A089",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A090",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A091",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A092",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A093",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A094",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A095",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A099",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A100",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A101",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A102",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A103",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A104",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A106",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A107",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A109",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A111",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A112",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A113",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A114",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A115",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A116",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A117",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A118",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A119",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A120",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A121",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A122",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A123",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A125",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A129",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A131",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A132",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A133",
+      "category": "열처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A135",
+      "category": "열처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A136",
+      "category": "열처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A137",
+      "category": "열처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A139",
+      "category": "열처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A141",
+      "category": "열처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A142",
+      "category": "열처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A143",
+      "category": "열처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A145",
+      "category": "열처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A147",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A148",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A149",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A150",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A151",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A152",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A153",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A154",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A155",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A156",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A158",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A159",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A162",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A165",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A166",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A167",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A168",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A169",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A170",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A171",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A173",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A174",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A176",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A177",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A178",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A182",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A183",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A184",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A190",
+      "category": "조립 자동화",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A191",
+      "category": "조립 자동화",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A192",
+      "category": "조립 자동화",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A193",
+      "category": "조립 자동화",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A195",
+      "category": "조립 자동화",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A196",
+      "category": "조립 자동화",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A197",
+      "category": "조립 자동화",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A198",
+      "category": "조립 자동화",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A199",
+      "category": "조립 자동화",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A200",
+      "category": "조립 자동화",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A201",
+      "category": "조립 자동화",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A202",
+      "category": "조립 자동화",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A203",
+      "category": "조립 자동화",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A206",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A207",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A208",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A209",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A210",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A212",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A214",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A215",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A216",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A217",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A218",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A219",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A220",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A221",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A222",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A223",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A224",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A225",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A226",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A227",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A228",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A230",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A231",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A232",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A233",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A235",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A236",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A237",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A238",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A239",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A240",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A241",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A242",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A243",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A246",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A247",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A248",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A259",
+      "category": "로봇·EOAT",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A260",
+      "category": "로봇·EOAT",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A264",
+      "category": "동력전달",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A265",
+      "category": "동력전달",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A266",
+      "category": "동력전달",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A269",
+      "category": "동력전달",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A271",
+      "category": "공압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A272",
+      "category": "공압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A273",
+      "category": "공압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A274",
+      "category": "공압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A275",
+      "category": "공압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A277",
+      "category": "공압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A278",
+      "category": "유압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A279",
+      "category": "유압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A280",
+      "category": "유압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A281",
+      "category": "유압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A282",
+      "category": "유압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A284",
+      "category": "유압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A285",
+      "category": "배관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A286",
+      "category": "배관",
+      "classification": "CONNECTION_MEDIUM",
+      "mediumType": "MANIFOLD",
+      "verificationStatus": "CANDIDATE"
+    },
+    {
+      "assetId": "A287",
+      "category": "배관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A288",
+      "category": "배관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A289",
+      "category": "배관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A290",
+      "category": "배관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A291",
+      "category": "배관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A292",
+      "category": "배관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A294",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A295",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A296",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A297",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A298",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A299",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A300",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A301",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A302",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A303",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A304",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A305",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A306",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A307",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A308",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A309",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A310",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A311",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A312",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A313",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A314",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A315",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A316",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A318",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A320",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A321",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A322",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A323",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A324",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A326",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A327",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A331",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A332",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A333",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A334",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A335",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A336",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A337",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A338",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A339",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A340",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A343",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A344",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A346",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A348",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A349",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A350",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A351",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A352",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A353",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A355",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A356",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A358",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A360",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A361",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A362",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A363",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A365",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A367",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A369",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A370",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A371",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A373",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A374",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A375",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A376",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A377",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A378",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A379",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A380",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A381",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A382",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A383",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A384",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A385",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A386",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A387",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A388",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A389",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A390",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A391",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A392",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A393",
+      "category": "SAFE",
+      "classification": "CONNECTION_MEDIUM",
+      "mediumType": "VALVE",
+      "verificationStatus": "CANDIDATE"
+    },
+    {
+      "assetId": "A394",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A395",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A396",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A398",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A400",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A401",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A402",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A403",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A404",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A406",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A407",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A409",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A410",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A412",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A414",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A415",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A417",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A418",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A419",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A420",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A421",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A422",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A423",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A424",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A425",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A426",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A427",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A428",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A429",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A430",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A431",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A432",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A433",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A434",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A435",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A436",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A437",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A438",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A439",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A440",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A441",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A442",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A443",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A444",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A445",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A446",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A447",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A448",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A449",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A450",
+      "category": "작업자 지원",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A451",
+      "category": "작업자 지원",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A453",
+      "category": "작업자 지원",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A454",
+      "category": "작업자 지원",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A455",
+      "category": "작업자 지원",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A456",
+      "category": "작업자 지원",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A458",
+      "category": "작업자 지원",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A461",
+      "category": "금형·공구",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A462",
+      "category": "금형·공구",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A463",
+      "category": "금형·공구",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A464",
+      "category": "금형·공구",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A466",
+      "category": "금형·공구",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A467",
+      "category": "금형·공구",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A472",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A473",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A474",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A475",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A476",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A477",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A478",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A479",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A480",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A481",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A482",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A483",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A484",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A485",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A486",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A487",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A488",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A489",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A490",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A491",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A492",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A493",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A494",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A495",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A496",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A497",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A498",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A499",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A500",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A501",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A502",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A504",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A505",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A506",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A507",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A508",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A509",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A510",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A511",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A512",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A513",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A514",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A515",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A517",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A519",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A520",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A521",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A522",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A523",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A524",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A526",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A530",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A531",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A532",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A533",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A534",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A536",
+      "category": "배터리 제조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A537",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A538",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A539",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A540",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A541",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A542",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A543",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A544",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A545",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A546",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A547",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A548",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A549",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A550",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A551",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A552",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A553",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A554",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A555",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A556",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A558",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A559",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A560",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A562",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A563",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A564",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A566",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A568",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A569",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A571",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A572",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A573",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A574",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A575",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A576",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A577",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A578",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A579",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A580",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A581",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A582",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A583",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A584",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A586",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A587",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A588",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A591",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A592",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A593",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A594",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A595",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A596",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A597",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A598",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A599",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "A600",
+      "category": "식품·제약",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E001",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E002",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E003",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E004",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E005",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E006",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E023",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E024",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E025",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E026",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E027",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E029",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E030",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E031",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E032",
+      "category": "조립 자동화",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E033",
+      "category": "창고·보관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E034",
+      "category": "컨베이어·물류",
+      "classification": "CONNECTION_MEDIUM",
+      "mediumType": "CONVEYOR",
+      "verificationStatus": "CANDIDATE"
+    },
+    {
+      "assetId": "E035",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E039",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E040",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E041",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E042",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E043",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E044",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E045",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E046",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E047",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E048",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E049",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E050",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E051",
+      "category": "창고·보관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E052",
+      "category": "창고·보관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E053",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E054",
+      "category": "공압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E055",
+      "category": "공압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E056",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E057",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E058",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E073",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E074",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E075",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E077",
+      "category": "컨베이어·물류",
+      "classification": "CONNECTION_MEDIUM",
+      "mediumType": "CONVEYOR",
+      "verificationStatus": "CANDIDATE"
+    },
+    {
+      "assetId": "E078",
+      "category": "컨베이어·물류",
+      "classification": "CONNECTION_MEDIUM",
+      "mediumType": "CONVEYOR",
+      "verificationStatus": "CANDIDATE"
+    },
+    {
+      "assetId": "E079",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E080",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E081",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E082",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E083",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E084",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E085",
+      "category": "입고·출하",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E086",
+      "category": "창고·보관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E089",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E090",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E091",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E094",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E095",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E096",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E097",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E098",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E099",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E101",
+      "category": "창고·보관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E102",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E104",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E105",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E106",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E109",
+      "category": "창고·보관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E110",
+      "category": "창고·보관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E114",
+      "category": "공압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E115",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E118",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E119",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E120",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E121",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E122",
+      "category": "조립 자동화",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E123",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E124",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E125",
+      "category": "AGV·AMR",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E127",
+      "category": "작업자 지원",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E128",
+      "category": "작업자 지원",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E130",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E131",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E132",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E133",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E134",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E135",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E136",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E137",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E138",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E139",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E140",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E141",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E142",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E143",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E144",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E145",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E146",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E147",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E148",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E149",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E150",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E151",
+      "category": "조립 자동화",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E154",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E155",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E156",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E157",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E158",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E159",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E160",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E161",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E162",
+      "category": "품질",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E163",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E164",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E165",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E166",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E167",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E168",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E169",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E170",
+      "category": "AGV·AMR",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E171",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E172",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E173",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E174",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E175",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E176",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E177",
+      "category": "컨베이어·물류",
+      "classification": "CONNECTION_MEDIUM",
+      "mediumType": "CONVEYOR",
+      "verificationStatus": "CANDIDATE"
+    },
+    {
+      "assetId": "E178",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E179",
+      "category": "컨베이어·물류",
+      "classification": "CONNECTION_MEDIUM",
+      "mediumType": "CONVEYOR",
+      "verificationStatus": "CANDIDATE"
+    },
+    {
+      "assetId": "E180",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E181",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E182",
+      "category": "유압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E183",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E184",
+      "category": "창고·보관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E185",
+      "category": "창고·보관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E187",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E188",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E189",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E190",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E191",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E192",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E193",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E194",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E195",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E197",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E198",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E199",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E200",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E201",
+      "category": "전기·제어",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E202",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E204",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E205",
+      "category": "작업자 지원",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E206",
+      "category": "작업자 지원",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E207",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E208",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E209",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E210",
+      "category": "작업자 지원",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E220",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E221",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E224",
+      "category": "공압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E225",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E226",
+      "category": "유틸리티",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E229",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E230",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E232",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E233",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E234",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E235",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E236",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E237",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E238",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E239",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E240",
+      "category": "동력전달",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E241",
+      "category": "동력전달",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E242",
+      "category": "공압",
+      "classification": "CONNECTION_MEDIUM",
+      "mediumType": "MANIFOLD",
+      "verificationStatus": "CANDIDATE"
+    },
+    {
+      "assetId": "E243",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E244",
+      "category": "공압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "E245",
+      "category": "동력전달",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N007",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N008",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N010",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N014",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N018",
+      "category": "건축·인프라",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N021",
+      "category": "컨베이어·물류",
+      "classification": "CONNECTION_MEDIUM",
+      "mediumType": "CONVEYOR",
+      "verificationStatus": "CANDIDATE"
+    },
+    {
+      "assetId": "N022",
+      "category": "컨베이어·물류",
+      "classification": "CONNECTION_MEDIUM",
+      "mediumType": "CONVEYOR",
+      "verificationStatus": "CANDIDATE"
+    },
+    {
+      "assetId": "N027",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N030",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N031",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N032",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N038",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N039",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N040",
+      "category": "컨베이어·물류",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N049",
+      "category": "반도체·전자",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N050",
+      "category": "창고·보관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N055",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N057",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N058",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N059",
+      "category": "유지보수",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N062",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N063",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N064",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N065",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N068",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N069",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N070",
+      "category": "기계 가공",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N071",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N072",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N075",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N076",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N077",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N079",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N080",
+      "category": "판금·성형",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N081",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N082",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N083",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N084",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N085",
+      "category": "용접·접합",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N086",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N088",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N089",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N090",
+      "category": "표면처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N091",
+      "category": "열처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N094",
+      "category": "열처리",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N097",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N098",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N099",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N100",
+      "category": "주조·단조",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N101",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N102",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N103",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N104",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N105",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N106",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N107",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N109",
+      "category": "플라스틱·고무",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N121",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N122",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N123",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N124",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N125",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N126",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N127",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N128",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N129",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N130",
+      "category": "검사·계측",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N131",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N132",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N134",
+      "category": "포장",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N140",
+      "category": "입고·출하",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N141",
+      "category": "로봇·EOAT",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N142",
+      "category": "로봇·EOAT",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N143",
+      "category": "로봇·EOAT",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N145",
+      "category": "로봇·EOAT",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N147",
+      "category": "동력전달",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N149",
+      "category": "동력전달",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N161",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N163",
+      "category": "동력전달",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N164",
+      "category": "PLC·산업 네트워크",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N171",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N172",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N173",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N175",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N176",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N178",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N179",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N180",
+      "category": "센서·비전·RFID",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N185",
+      "category": "유압",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N191",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N192",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N193",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N194",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N195",
+      "category": "환경·집진",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N198",
+      "category": "안전",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    },
+    {
+      "assetId": "N200",
+      "category": "창고·보관",
+      "classification": "PORT_CONTRACT_UNRESOLVED",
+      "mediumType": null,
+      "verificationStatus": "EVIDENCE_MISSING"
+    }
+  ]
+}

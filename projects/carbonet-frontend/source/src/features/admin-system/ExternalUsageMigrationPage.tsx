@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
@@ -109,22 +110,11 @@ export function ExternalUsageMigrationPage() {
           description={en ? "Filter by integration, auth method, or health state before opening downstream screens." : "하위 운영 화면으로 이동하기 전에 연계, 인증 방식, 상태 기준으로 범위를 좁힙니다."}
           icon="filter_alt"
         >
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4 xl:w-[68rem]">
-            <div>
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalUsageKeyword">{en ? "Keyword" : "검색어"}</label>
               <AdminInput id="externalUsageKeyword" value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder={en ? "Connection, partner, consumer" : "연계명, 기관명, 소비 시스템"} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-bold" htmlFor="externalUsageAuthMethod">{en ? "Auth Method" : "인증 방식"}</label>
-              <AdminSelect id="externalUsageAuthMethod" value={authMethod} onChange={(event) => setAuthMethod(event.target.value)}>
-                <option value="ALL">{en ? "All" : "전체"}</option>
-                <option value="OAUTH2">OAUTH2</option>
-                <option value="API_KEY">API_KEY</option>
-                <option value="MUTUAL_TLS">MUTUAL_TLS</option>
-                <option value="OBSERVED">OBSERVED</option>
-              </AdminSelect>
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalUsageStatus">{en ? "Status" : "상태"}</label>
               <AdminSelect id="externalUsageStatus" value={status} onChange={(event) => setStatus(event.target.value)}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -133,13 +123,18 @@ export function ExternalUsageMigrationPage() {
                 <option value="DEGRADED">DEGRADED</option>
                 <option value="ACTIVE">ACTIVE</option>
               </AdminSelect>
-            </div>
-            <div className="flex items-end">
-              <button className="gov-btn gov-btn-outline w-full" type="button" onClick={() => { setKeyword(""); setAuthMethod("ALL"); setStatus("ALL"); }}>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
+              <label className="mb-1 block text-sm font-bold" htmlFor="externalUsageAuthMethod">{en ? "Auth Method" : "인증 방식"}</label>
+              <AdminSelect id="externalUsageAuthMethod" value={authMethod} onChange={(event) => setAuthMethod(event.target.value)}>
+                <option value="ALL">{en ? "All" : "전체"}</option>
+                <option value="OAUTH2">OAUTH2</option>
+                <option value="API_KEY">API_KEY</option>
+                <option value="MUTUAL_TLS">MUTUAL_TLS</option>
+                <option value="OBSERVED">OBSERVED</option>
+              </AdminSelect>
+            </div></div></>} actions={<><button className="gov-btn gov-btn-outline w-full" type="button" onClick={() => { setKeyword(""); setAuthMethod("ALL"); setStatus("ALL"); }}>
                 {en ? "Reset Filters" : "검색 조건 초기화"}
-              </button>
-            </div>
-          </div>
+              </button></>}></CommonSearchSection></div>
         </CollectionResultPanel>
         <section className="gov-card overflow-hidden p-0" data-help-id="external-usage-table">
           <GridToolbar

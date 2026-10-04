@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
@@ -270,8 +271,22 @@ export function PasswordResetMigrationPage() {
         fallback={null}
       >
         <section className="mb-6 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-6 shadow-sm" data-help-id="password-reset-search">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-6">
-            {page?.canManageAllCompanies ? (
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><label className="block text-sm font-bold text-[var(--kr-gov-text-secondary)] md:col-span-2">
+              <span className="mb-2 block">{en ? "Keyword" : "검색어"}</span>
+              <input
+                className="w-full rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] px-3 py-2 text-sm"
+                placeholder={en ? "Search member ID, actor ID, or IP" : "회원 ID, 수행자 ID, IP 검색"}
+                value={draftSearchKeyword}
+                onChange={(event) => setDraftSearchKeyword(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    handleSearch();
+                  }
+                }}
+              />
+            </label></div>
+<div className="ccus-search-field">{page?.canManageAllCompanies ? (
               <label className="block text-sm font-bold text-[var(--kr-gov-text-secondary)]">
                 <span className="mb-2 block">회원사</span>
                 <select
@@ -287,8 +302,7 @@ export function PasswordResetMigrationPage() {
                   })}
                 </select>
               </label>
-            ) : null}
-            <label className="block text-sm font-bold text-[var(--kr-gov-text-secondary)]">
+            ) : null}</div></>} advanced={<><div className="ccus-search-field"><label className="block text-sm font-bold text-[var(--kr-gov-text-secondary)]">
               <span className="mb-2 block">{en ? "Reset Type" : "유형"}</span>
               <select
                 className="w-full rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] px-3 py-2 text-sm"
@@ -299,9 +313,8 @@ export function PasswordResetMigrationPage() {
                 <option value="ADMIN_MEMBER_RESET">{en ? "Admin Reset" : "관리자 초기화"}</option>
                 <option value="SELF_SERVICE">{en ? "Self Service" : "사용자 직접 변경"}</option>
               </select>
-            </label>
-
-            <label className="block text-sm font-bold text-[var(--kr-gov-text-secondary)]">
+            </label></div>
+<div className="ccus-search-field"><label className="block text-sm font-bold text-[var(--kr-gov-text-secondary)]">
               <span className="mb-2 block">{en ? "Member ID" : "회원 ID"}</span>
               <input
                 className="w-full rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] px-3 py-2 text-sm"
@@ -309,29 +322,10 @@ export function PasswordResetMigrationPage() {
                 value={draftMemberId}
                 onChange={(event) => setDraftMemberId(event.target.value)}
               />
-            </label>
-
-            <label className="block text-sm font-bold text-[var(--kr-gov-text-secondary)] md:col-span-2">
-              <span className="mb-2 block">{en ? "Keyword" : "검색어"}</span>
-              <input
-                className="w-full rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] px-3 py-2 text-sm"
-                placeholder={en ? "Search member ID, actor ID, or IP" : "회원 ID, 수행자 ID, IP 검색"}
-                value={draftSearchKeyword}
-                onChange={(event) => setDraftSearchKeyword(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    handleSearch();
-                  }
-                }}
-              />
-            </label>
-
-            <div className="flex items-end gap-2 md:justify-end">
-              <button className="gov-btn gov-btn-primary" type="button" onClick={handleSearch}>
+            </label></div></>} actions={<><button className="gov-btn gov-btn-primary" type="button" onClick={handleSearch}>
                 {en ? "Search" : "검색"}
               </button>
-              <button
+<button
                 className="gov-btn gov-btn-secondary"
                 onClick={() => {
                   setMemberId("");
@@ -349,18 +343,7 @@ export function PasswordResetMigrationPage() {
                 type="button"
               >
                 {en ? "Reset" : "초기화"}
-              </button>
-              <PermissionButton
-                allowed={!!page?.canUseResetPassword}
-                className="gov-btn gov-btn-outline-blue"
-                onClick={handleReset}
-                reason={en ? "Company-scoped administrators must enter a target member ID." : "회사 범위 관리자는 대상 회원 ID가 필요합니다."}
-                type="button"
-              >
-                {en ? "Reset Password" : "비밀번호 초기화"}
-              </PermissionButton>
-            </div>
-          </div>
+              </button></>}></CommonSearchSection></div>
         </section>
 
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.8fr)_380px]">

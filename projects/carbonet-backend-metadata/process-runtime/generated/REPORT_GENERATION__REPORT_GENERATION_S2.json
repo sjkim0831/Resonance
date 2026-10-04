@@ -1,0 +1,2134 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "REPORT_GENERATION",
+    "name": "보고서 생성·미리보기",
+    "domain": "CERTIFICATE",
+    "workType": "CERTIFICATE",
+    "goal": "확정 데이터 스냅샷에서 재현 가능한 보고서를 생성한다."
+  },
+  "step": {
+    "code": "REPORT_GENERATION_S2",
+    "version": 2,
+    "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "CALCULATOR",
+      "ownerActorCode": "CALCULATOR",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
+    },
+    "business": {
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
+      "domainCode": "CERTIFICATE",
+      "processName": "보고서 생성·미리보기",
+      "stepName": "보고서 생성·미리보기 - 업무 실행·중간 결과 저장",
+      "goal": "확정 데이터 스냅샷에서 재현 가능한 보고서를 생성한다.",
+      "requirement": "보고서 생성·미리보기의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+      "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+      "riskLevel": "HIGH",
+      "slaHours": 72,
+      "regulationRefs": "",
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {},
+      "extensions": {}
+    },
+    "transition": {
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
+      "commandCode": "REPORT_GENERATION_EXECUTE",
+      "fromState": "STEP_1_COMPLETED",
+      "toState": "STEP_2_COMPLETED",
+      "stepOrder": 2,
+      "stepType": "TASK",
+      "parentStepCode": null,
+      "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+      "policy": {
+        "auditRequired": true,
+        "optimisticLock": true,
+        "idempotencyRequired": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
+    },
+    "input": {
+      "tenantId": "required",
+      "actorCode": "required",
+      "projectId": "contextual",
+      "idempotencyKey": "required",
+      "businessPayload": "required"
+    },
+    "output": {
+      "state": "STEP_2_COMPLETED",
+      "evidence": "required",
+      "auditEvent": "required",
+      "nextTaskCreated": true
+    },
+    "guide": {
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
+      "processCode": "REPORT_GENERATION",
+      "stepCode": "REPORT_GENERATION_S2",
+      "stepOrder": 2,
+      "workTypeCode": "CERTIFICATE",
+      "actorCode": "CALCULATOR",
+      "title": "보고서 생성·미리보기 - 업무 실행·중간 결과 저장",
+      "purpose": "보고서 생성·미리보기의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+      "entryCondition": "STEP_1_COMPLETED",
+      "completionCondition": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+      "userPath": "/generated/report-generation/report-generation-s2",
+      "adminPath": "/admin/generated/report-generation/report-generation-s2",
+      "relatedBusinessRoute": null,
+      "nextStepCode": "REPORT_GENERATION_S3",
+      "nextAction": "STEP_2_COMPLETED",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+        "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+        "routeStatus": "DESIGN_ONLY",
+        "audience": "ADMIN",
+        "screenType": "REPORT_DOCUMENT",
+        "title": "보고서 생성·미리보기 - 업무 실행·중간 결과 저장 관리",
+        "purpose": "보고서 생성·미리보기의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+        "layout": "RESPONSIVE_WORKSPACE",
+        "theme": "KRDS_GOV_DEFAULT",
+        "designAuthority": {
+          "source": "LEGACY_REGISTERED_DEFAULT",
+          "layout": "RESPONSIVE_WORKSPACE",
+          "theme": "KRDS_GOV_DEFAULT",
+          "defaulted": [
+            "layout",
+            "theme"
+          ]
+        },
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "공통",
+            "fieldOrder": 10,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "tenantId"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트",
+            "fieldGroup": "공통",
+            "fieldOrder": 20,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "projectId",
+            "controlType": "PROJECT_SELECT",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "projectId"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 30,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "processCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "processCode"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "단계 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 40,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "stepCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "stepCode"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "UUID",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": false,
+            "fieldCode": "recordId",
+            "fieldName": "업무 레코드 ID",
+            "fieldGroup": "공통",
+            "fieldOrder": 50,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": false,
+              "immutable": true
+            },
+            "apiProperty": "recordId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "recordId"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": true,
+            "fieldCode": "statusCode",
+            "fieldName": "처리 상태",
+            "fieldGroup": "공통",
+            "fieldOrder": 60,
+            "validation": {
+              "codeGroup": "WORK_STATUS"
+            },
+            "apiProperty": "statusCode",
+            "controlType": "STATUS_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "statusCode"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "fieldName": "담당 액터",
+            "fieldGroup": "공통",
+            "fieldOrder": 70,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "ownerActorCode",
+            "controlType": "ACTOR_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": true,
+            "fieldCode": "rowVersion",
+            "fieldName": "데이터 버전",
+            "fieldGroup": "공통",
+            "fieldOrder": 80,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "rowVersion",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "rowVersion"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": false,
+            "fieldCode": "createdAt",
+            "fieldName": "등록 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 90,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "createdAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "createdAt"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": false,
+            "fieldCode": "updatedAt",
+            "fieldName": "최종 수정 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 100,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "updatedAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "updatedAt"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "fieldName": "증빙 수",
+            "fieldGroup": "공통",
+            "fieldOrder": 110,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "evidenceCount",
+            "controlType": "EVIDENCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "evidenceCount"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": true,
+            "fieldCode": "reportId",
+            "fieldName": "보고서",
+            "fieldGroup": "CERTIFICATE",
+            "fieldOrder": 200,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "reportId",
+            "controlType": "REPORT_SELECT",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "report_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "reportId"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": false,
+            "fieldCode": "certificateId",
+            "fieldName": "인증서",
+            "fieldGroup": "CERTIFICATE",
+            "fieldOrder": 210,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "certificateId",
+            "controlType": "CERTIFICATE_LINK",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "certificate_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "certificateId"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": true,
+            "fieldCode": "reportVersion",
+            "fieldName": "보고서 버전",
+            "fieldGroup": "CERTIFICATE",
+            "fieldOrder": 220,
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": false,
+              "required": true
+            },
+            "apiProperty": "reportVersion",
+            "controlType": "VERSION",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "reportVersion"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "HASH",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": true,
+            "fieldCode": "integrityHash",
+            "fieldName": "무결성 해시",
+            "fieldGroup": "CERTIFICATE",
+            "fieldOrder": 230,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "integrityHash",
+            "controlType": "HASH_VIEW",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "integrity_hash",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": true,
+            "code": "integrityHash"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "HASH",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": true,
+            "fieldCode": "datasetHash",
+            "fieldName": "데이터셋 해시",
+            "fieldGroup": "CERTIFICATE",
+            "fieldOrder": 240,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "datasetHash",
+            "controlType": "HASH_VIEW",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": true,
+            "code": "datasetHash"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": true,
+            "fieldCode": "certificateStatus",
+            "fieldName": "인증 상태",
+            "fieldGroup": "CERTIFICATE",
+            "fieldOrder": 250,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "certificateStatus",
+            "controlType": "STATUS_BADGE",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "certificate_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "certificateStatus"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": false,
+            "fieldCode": "issuedAt",
+            "fieldName": "발급 일시",
+            "fieldGroup": "CERTIFICATE",
+            "fieldOrder": 260,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "issuedAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "issued_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "issuedAt"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": true,
+            "fieldCode": "documentVersion",
+            "fieldName": "문서 버전",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 400,
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": false,
+              "required": true
+            },
+            "apiProperty": "documentVersion",
+            "controlType": "VERSION",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "documentVersion"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": true,
+            "fieldCode": "languageCode",
+            "fieldName": "문서 언어",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 410,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "languageCode",
+            "controlType": "LANGUAGE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "languageCode"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "HASH",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": false,
+            "fieldCode": "documentHash",
+            "fieldName": "문서 해시",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 420,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "documentHash",
+            "controlType": "HASH_VIEW",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": true,
+            "code": "documentHash"
+          },
+          {
+            "route": "/admin/planned/certificate/report-generation/report-generation-s2",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+            "required": false,
+            "fieldCode": "downloadFormat",
+            "fieldName": "다운로드 형식",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 430,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "downloadFormat",
+            "controlType": "FORMAT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:ADMIN",
+            "evidenceRequired": false,
+            "code": "downloadFormat"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "CALCULATOR",
+            "entryState": "STEP_1_COMPLETED",
+            "commandCode": "REPORT_GENERATION_EXECUTE",
+            "resultState": "STEP_2_COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "retry": "idempotent commands only",
+          "states": [
+            "loading",
+            "empty",
+            "validation-error",
+            "authority-denied",
+            "conflict",
+            "dependency-blocked",
+            "server-error",
+            "recovery"
+          ]
+        },
+        "responsive": {
+          "mobile": "single-column and priority fields",
+          "tablet": "adaptive two-column",
+          "desktop": "task-optimized grid",
+          "overflow": "wrap-or-scroll-with-sticky-key-column"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "errorSummary": true,
+          "focusManagement": true
+        }
+      },
+      {
+        "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+        "route": "/planned/certificate/report-generation/report-generation-s2",
+        "routeStatus": "DESIGN_ONLY",
+        "audience": "USER",
+        "screenType": "REPORT_DOCUMENT",
+        "title": "보고서 생성·미리보기 - 업무 실행·중간 결과 저장",
+        "purpose": "보고서 생성·미리보기의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+        "layout": "RESPONSIVE_WORKSPACE",
+        "theme": "KRDS_GOV_DEFAULT",
+        "designAuthority": {
+          "source": "LEGACY_REGISTERED_DEFAULT",
+          "layout": "RESPONSIVE_WORKSPACE",
+          "theme": "KRDS_GOV_DEFAULT",
+          "defaulted": [
+            "layout",
+            "theme"
+          ]
+        },
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "공통",
+            "fieldOrder": 10,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "tenantId"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트",
+            "fieldGroup": "공통",
+            "fieldOrder": 20,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "projectId",
+            "controlType": "PROJECT_SELECT",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "projectId"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 30,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "processCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "processCode"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "단계 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 40,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "stepCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "stepCode"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "UUID",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": false,
+            "fieldCode": "recordId",
+            "fieldName": "업무 레코드 ID",
+            "fieldGroup": "공통",
+            "fieldOrder": 50,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": false,
+              "immutable": true
+            },
+            "apiProperty": "recordId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "recordId"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": true,
+            "fieldCode": "statusCode",
+            "fieldName": "처리 상태",
+            "fieldGroup": "공통",
+            "fieldOrder": 60,
+            "validation": {
+              "codeGroup": "WORK_STATUS"
+            },
+            "apiProperty": "statusCode",
+            "controlType": "STATUS_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "statusCode"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "fieldName": "담당 액터",
+            "fieldGroup": "공통",
+            "fieldOrder": 70,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "ownerActorCode",
+            "controlType": "ACTOR_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": true,
+            "fieldCode": "rowVersion",
+            "fieldName": "데이터 버전",
+            "fieldGroup": "공통",
+            "fieldOrder": 80,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "rowVersion",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "rowVersion"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": false,
+            "fieldCode": "createdAt",
+            "fieldName": "등록 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 90,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "createdAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "createdAt"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": false,
+            "fieldCode": "updatedAt",
+            "fieldName": "최종 수정 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 100,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "updatedAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "updatedAt"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "fieldName": "증빙 수",
+            "fieldGroup": "공통",
+            "fieldOrder": 110,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "evidenceCount",
+            "controlType": "EVIDENCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "evidenceCount"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": true,
+            "fieldCode": "reportId",
+            "fieldName": "보고서",
+            "fieldGroup": "CERTIFICATE",
+            "fieldOrder": 200,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "reportId",
+            "controlType": "REPORT_SELECT",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "report_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "reportId"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": false,
+            "fieldCode": "certificateId",
+            "fieldName": "인증서",
+            "fieldGroup": "CERTIFICATE",
+            "fieldOrder": 210,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "certificateId",
+            "controlType": "CERTIFICATE_LINK",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "certificate_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "certificateId"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": true,
+            "fieldCode": "reportVersion",
+            "fieldName": "보고서 버전",
+            "fieldGroup": "CERTIFICATE",
+            "fieldOrder": 220,
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": false,
+              "required": true
+            },
+            "apiProperty": "reportVersion",
+            "controlType": "VERSION",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "reportVersion"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "HASH",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": true,
+            "fieldCode": "integrityHash",
+            "fieldName": "무결성 해시",
+            "fieldGroup": "CERTIFICATE",
+            "fieldOrder": 230,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "integrityHash",
+            "controlType": "HASH_VIEW",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "integrity_hash",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": true,
+            "code": "integrityHash"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "HASH",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": true,
+            "fieldCode": "datasetHash",
+            "fieldName": "데이터셋 해시",
+            "fieldGroup": "CERTIFICATE",
+            "fieldOrder": 240,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "datasetHash",
+            "controlType": "HASH_VIEW",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": true,
+            "code": "datasetHash"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": true,
+            "fieldCode": "certificateStatus",
+            "fieldName": "인증 상태",
+            "fieldGroup": "CERTIFICATE",
+            "fieldOrder": 250,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "certificateStatus",
+            "controlType": "STATUS_BADGE",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "certificate_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "certificateStatus"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": false,
+            "fieldCode": "issuedAt",
+            "fieldName": "발급 일시",
+            "fieldGroup": "CERTIFICATE",
+            "fieldOrder": 260,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "issuedAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "issued_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "issuedAt"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": true,
+            "fieldCode": "documentVersion",
+            "fieldName": "문서 버전",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 400,
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": false,
+              "required": true
+            },
+            "apiProperty": "documentVersion",
+            "controlType": "VERSION",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "documentVersion"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": true,
+            "fieldCode": "languageCode",
+            "fieldName": "문서 언어",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 410,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "languageCode",
+            "controlType": "LANGUAGE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "languageCode"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "HASH",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": false,
+            "fieldCode": "documentHash",
+            "fieldName": "문서 해시",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 420,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "documentHash",
+            "controlType": "HASH_VIEW",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": true,
+            "code": "documentHash"
+          },
+          {
+            "route": "/planned/certificate/report-generation/report-generation-s2",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+            "required": false,
+            "fieldCode": "downloadFormat",
+            "fieldName": "다운로드 형식",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 430,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "downloadFormat",
+            "controlType": "FORMAT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "CALCULATOR:USER",
+            "evidenceRequired": false,
+            "code": "downloadFormat"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "CALCULATOR",
+            "entryState": "STEP_1_COMPLETED",
+            "commandCode": "REPORT_GENERATION_EXECUTE",
+            "resultState": "STEP_2_COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "retry": "idempotent commands only",
+          "states": [
+            "loading",
+            "empty",
+            "validation-error",
+            "authority-denied",
+            "conflict",
+            "dependency-blocked",
+            "server-error",
+            "recovery"
+          ]
+        },
+        "responsive": {
+          "mobile": "single-column and priority fields",
+          "tablet": "adaptive two-column",
+          "desktop": "task-optimized grid",
+          "overflow": "wrap-or-scroll-with-sticky-key-column"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "errorSummary": true,
+          "focusManagement": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorGuard": true,
+        "rowVersion": true,
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": "COMMON_PROCESS_EXECUTION_RUNTIME_V1",
+        "method": "CONTRACT"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "CALCULATOR",
+        "entryState": "STEP_1_COMPLETED",
+        "commandCode": "REPORT_GENERATION_EXECUTE",
+        "resultState": "STEP_2_COMPLETED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "idempotencyRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "CALCULATOR",
+      "ownerActorCode": "CALCULATOR",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
+    },
+    "handoffPolicy": {},
+    "handoffs": [
+      {
+        "failure": {
+          "onInvalid": "VALIDATION_ERROR",
+          "onMissing": "DEPENDENCY_BLOCKED",
+          "onConflict": "RELOAD_AND_REVIEW",
+          "onUnauthorized": "DENY_AND_AUDIT"
+        },
+        "payload": {
+          "toInput": {
+            "tenantId": "required",
+            "actorCode": "required",
+            "projectId": "contextual",
+            "idempotencyKey": "required",
+            "businessPayload": "required"
+          },
+          "fromOutput": {
+            "state": "STEP_2_COMPLETED",
+            "evidence": "required",
+            "auditEvent": "required",
+            "nextTaskCreated": true
+          },
+          "requiredContext": [
+            "tenantId",
+            "projectId",
+            "recordId",
+            "statusCode",
+            "rowVersion"
+          ]
+        },
+        "integrity": {
+          "optimisticLock": true,
+          "immutableSnapshot": true,
+          "hashWhenEvidenceOrCalculation": true
+        },
+        "toStepCode": "REPORT_GENERATION_S3",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "processCode",
+          "recordId",
+          "rowVersion"
+        ],
+        "handoffType": "STEP",
+        "authorization": {
+          "toActor": "VERIFIER",
+          "fromActor": "CALCULATOR",
+          "tenantIsolation": true,
+          "projectIsolation": true,
+          "segregationChecked": true
+        },
+        "toProcessCode": "REPORT_GENERATION"
+      }
+    ]
+  },
+  "database": {
+    "transactional": true,
+    "migrationRequired": true,
+    "mappings": [
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "tenantId",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "projectId",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "stepCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": false,
+            "fieldCode": "recordId",
+            "apiProperty": "recordId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "statusCode",
+            "apiProperty": "statusCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "apiProperty": "ownerActorCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "rowVersion",
+            "apiProperty": "rowVersion",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "createdAt",
+            "apiProperty": "createdAt",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "updatedAt",
+            "apiProperty": "updatedAt",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "apiProperty": "evidenceCount",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportId",
+            "apiProperty": "reportId",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "report_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "certificateId",
+            "apiProperty": "certificateId",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "certificate_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportVersion",
+            "apiProperty": "reportVersion",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "integrityHash",
+            "apiProperty": "integrityHash",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "integrity_hash",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "datasetHash",
+            "apiProperty": "datasetHash",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "certificateStatus",
+            "apiProperty": "certificateStatus",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "certificate_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "issuedAt",
+            "apiProperty": "issuedAt",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "issued_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "documentVersion",
+            "apiProperty": "documentVersion",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "languageCode",
+            "apiProperty": "languageCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "documentHash",
+            "apiProperty": "documentHash",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "downloadFormat",
+            "apiProperty": "downloadFormat",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          }
+        ],
+        "audience": "ADMIN",
+        "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_ADMIN",
+        "primaryEntity": "emission_project_report"
+      },
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "tenantId",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "projectId",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "stepCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": false,
+            "fieldCode": "recordId",
+            "apiProperty": "recordId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "statusCode",
+            "apiProperty": "statusCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "apiProperty": "ownerActorCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "rowVersion",
+            "apiProperty": "rowVersion",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "createdAt",
+            "apiProperty": "createdAt",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "updatedAt",
+            "apiProperty": "updatedAt",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "apiProperty": "evidenceCount",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportId",
+            "apiProperty": "reportId",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "report_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "certificateId",
+            "apiProperty": "certificateId",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "certificate_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportVersion",
+            "apiProperty": "reportVersion",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "integrityHash",
+            "apiProperty": "integrityHash",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "integrity_hash",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "datasetHash",
+            "apiProperty": "datasetHash",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "certificateStatus",
+            "apiProperty": "certificateStatus",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "certificate_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "issuedAt",
+            "apiProperty": "issuedAt",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "issued_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "documentVersion",
+            "apiProperty": "documentVersion",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "languageCode",
+            "apiProperty": "languageCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "documentHash",
+            "apiProperty": "documentHash",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "downloadFormat",
+            "apiProperty": "downloadFormat",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          }
+        ],
+        "audience": "USER",
+        "pageCode": "REPORT_GENERATION_REPORT_GENERATION_S2_USER",
+        "primaryEntity": "emission_project_report"
+      }
+    ],
+    "schemaSetVersion": 2,
+    "primaryEntities": [
+      "emission_project_report"
+    ],
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "보고서 생성·미리보기 - 권한·직무분리 위반",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "order": 1,
+          "command": "REPORT_GENERATION_REQUEST",
+          "stepCode": "REPORT_GENERATION_S1",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 2,
+          "command": "REPORT_GENERATION_EXECUTE",
+          "stepCode": "REPORT_GENERATION_S2",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 3,
+          "command": "REPORT_GENERATION_REVIEW",
+          "stepCode": "REPORT_GENERATION_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "REPORT_GENERATION_COMPLETE",
+          "stepCode": "REPORT_GENERATION_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REPORT_GENERATION_AUTH",
+      "assertions": [
+        "비인가 액션 거부",
+        "요청·검토·승인 직무분리",
+        "거부 감사 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트·프로젝트, 정상·오류 입력과 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "보고서 생성·미리보기 - 필수값·업무예외",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "order": 1,
+          "command": "REPORT_GENERATION_REQUEST",
+          "stepCode": "REPORT_GENERATION_S1",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 2,
+          "command": "REPORT_GENERATION_EXECUTE",
+          "stepCode": "REPORT_GENERATION_S2",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 3,
+          "command": "REPORT_GENERATION_REVIEW",
+          "stepCode": "REPORT_GENERATION_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "REPORT_GENERATION_COMPLETE",
+          "stepCode": "REPORT_GENERATION_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REPORT_GENERATION_EXCEPTION",
+      "assertions": [
+        "잘못된 입력 거부",
+        "상태 불변",
+        "보완 Task 생성",
+        "필드 오류 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트·프로젝트, 정상·오류 입력과 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "보고서 생성·미리보기 - 정상 완료",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "order": 1,
+          "command": "REPORT_GENERATION_REQUEST",
+          "stepCode": "REPORT_GENERATION_S1",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 2,
+          "command": "REPORT_GENERATION_EXECUTE",
+          "stepCode": "REPORT_GENERATION_S2",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 3,
+          "command": "REPORT_GENERATION_REVIEW",
+          "stepCode": "REPORT_GENERATION_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "REPORT_GENERATION_COMPLETE",
+          "stepCode": "REPORT_GENERATION_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REPORT_GENERATION_HAPPY",
+      "assertions": [
+        "최종 상태 도달",
+        "모든 증적 존재",
+        "후속 Task 연결",
+        "감사 로그 완전"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트·프로젝트, 정상·오류 입력과 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "보고서 생성·미리보기 - 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "order": 1,
+          "command": "REPORT_GENERATION_REQUEST",
+          "stepCode": "REPORT_GENERATION_S1",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 2,
+          "command": "REPORT_GENERATION_EXECUTE",
+          "stepCode": "REPORT_GENERATION_S2",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 3,
+          "command": "REPORT_GENERATION_REVIEW",
+          "stepCode": "REPORT_GENERATION_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "REPORT_GENERATION_COMPLETE",
+          "stepCode": "REPORT_GENERATION_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REPORT_GENERATION_ISOLATION",
+      "assertions": [
+        "타 테넌트·프로젝트 데이터 미노출",
+        "직접 식별자 접근 거부",
+        "파일·검색·내보내기 격리"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트·프로젝트, 정상·오류 입력과 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "보고서 생성·미리보기 - 중단·중복·롤백 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "order": 1,
+          "command": "REPORT_GENERATION_REQUEST",
+          "stepCode": "REPORT_GENERATION_S1",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 2,
+          "command": "REPORT_GENERATION_EXECUTE",
+          "stepCode": "REPORT_GENERATION_S2",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 3,
+          "command": "REPORT_GENERATION_REVIEW",
+          "stepCode": "REPORT_GENERATION_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "REPORT_GENERATION_COMPLETE",
+          "stepCode": "REPORT_GENERATION_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REPORT_GENERATION_RECOVERY",
+      "assertions": [
+        "중복 생성 없음",
+        "중단 단계부터 재개",
+        "롤백 후 원본 보존",
+        "재시도 이력 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트·프로젝트, 정상·오류 입력과 감사 수집기가 준비되어 있다."
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
+    "security": {
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true,
+      "segregationOfDuties": true,
+      "rateLimitRequired": false,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "standard": "WCAG 2.1 AA",
+      "keyboard": true,
+      "focus": true,
+      "errorSummary": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": true,
+      "targetHours": 72,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
+  },
+  "sourceHash": "1782fc855533fc4011245a80b5be3348",
+  "approvalStatus": "APPROVED",
+  "packageHash": "b969a507a5383d98a6681361b6cfe19c584f06b2493cb08f7cf6d89bc4978f24"
+}

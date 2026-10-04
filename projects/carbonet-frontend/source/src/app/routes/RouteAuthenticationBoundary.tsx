@@ -11,6 +11,7 @@ type RouteAuthenticationBoundaryProps = {
 };
 
 export function requiresRouteAuthentication(page: MigrationPageId): boolean {
+  if (page === "signin-auth-choice") return true;
   return !getRouteAuthorityScope(page).actorFamily.startsWith("PUBLIC_");
 }
 
@@ -29,8 +30,10 @@ export function RouteAuthenticationBoundary({ children, page, routePath }: Route
 
   useEffect(() => {
     if (!loginOnly || session.loading || session.error || session.value?.authenticated !== true) return;
+    const requested = new URLSearchParams(window.location.search).get("returnUrl");
+    const linkPath = isEnglish() ? "/en/signin/authChoice" : "/signin/authChoice";
     const destination = session.value.canEnterAdminConsole ? "/admin" : "/home";
-    window.location.replace(isEnglish() ? `/en${destination}` : destination);
+    window.location.replace(requested === linkPath ? linkPath : isEnglish() ? `/en${destination}` : destination);
   }, [loginOnly, session.loading, session.error, session.value?.authenticated, session.value?.canEnterAdminConsole]);
 
   useEffect(() => {

@@ -508,19 +508,16 @@ public class AdminPageManagementCommandService {
     }
 
     private boolean isValidPageManagementUrl(String menuUrl, String menuType) {
-        if ("USER".equals(menuType)) {
-            return menuUrl.startsWith("/home")
-                    || menuUrl.startsWith("/en/home")
-                    || menuUrl.startsWith("/join/")
-                    || menuUrl.startsWith("/join/en/")
-                    || menuUrl.startsWith("/signin/")
-                    || menuUrl.startsWith("/en/signin/")
-                    || "/mypage".equals(menuUrl)
-                    || "/en/mypage".equals(menuUrl)
-                    || "/sitemap".equals(menuUrl)
-                    || "/en/sitemap".equals(menuUrl);
+        String path = safeString(menuUrl);
+        if (!path.startsWith("/") || path.startsWith("//") || path.contains("\\")
+                || path.contains("..") || path.contains("%2f") || path.contains("%2F")
+                || path.contains("%5c") || path.contains("%5C")) {
+            return false;
         }
-        return menuUrl.startsWith("/admin/") || menuUrl.startsWith("/en/admin/");
+        if ("USER".equals(menuType)) {
+            return !path.startsWith("/admin/") && !path.startsWith("/en/admin/");
+        }
+        return path.startsWith("/admin/") || path.startsWith("/en/admin/");
     }
 
     private String buildDefaultViewFeatureCode(String pageCode) {

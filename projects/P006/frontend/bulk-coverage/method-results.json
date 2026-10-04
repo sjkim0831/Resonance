@@ -1,0 +1,26 @@
+[
+  {
+    "method": "MODIFY",
+    "start": 213,
+    "connected": 110,
+    "remaining": 103
+  },
+  {
+    "method": "COMPOSE",
+    "start": 74,
+    "connected": 66,
+    "remaining": 8
+  },
+  {
+    "method": "NEW_BASE",
+    "start": 183,
+    "connected": 0,
+    "remaining": 183
+  },
+  {
+    "method": "WAIT_DATA",
+    "start": 58,
+    "connected": 0,
+    "remaining": 58
+  }
+]

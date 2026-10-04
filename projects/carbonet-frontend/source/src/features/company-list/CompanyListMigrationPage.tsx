@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -149,26 +150,18 @@ export function CompanyListMigrationPage() {
               title="검색 조건"
             />
           </div>
-          <form className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-4" onSubmit={handleSearchSubmit}>
-            <div>
-              <span className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2">상태</span>
-              <AdminSelect aria-label="회원사 상태" value={draftFilters.status} onChange={(e) => updateDraft("status", e.target.value)}>
-                {STATUS_OPTIONS.map((option) => <option key={option.value || "all"} value={option.value}>{option.label}</option>)}
-              </AdminSelect>
-            </div>
-            <div className="md:col-span-3">
+          <form className="ccus-search-host" onSubmit={handleSearchSubmit}><CommonSearchSection basic={<><div className="ccus-search-field"><div className="md:col-span-3">
               <span className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2">검색어</span>
               <div className="flex gap-2">
                 <AdminInput aria-label="회원사 검색어" className="flex-1" placeholder="기관명, 사업자등록번호 검색" value={draftFilters.searchKeyword} onChange={(e) => updateDraft("searchKeyword", e.target.value)} />
               </div>
-            </div>
-            <div className="md:col-span-4">
-              <div className="flex flex-col gap-3 border-t border-[var(--kr-gov-border-light)] pt-5 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
-                  동일한 목록형 화면은 검색 카드, 상단 툴바, 결과 테이블 순서를 유지합니다.
-                </p>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <MemberButton
+            </div></div>
+<div className="ccus-search-field"><div>
+              <span className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2">상태</span>
+              <AdminSelect aria-label="회원사 상태" value={draftFilters.status} onChange={(e) => updateDraft("status", e.target.value)}>
+                {STATUS_OPTIONS.map((option) => <option key={option.value || "all"} value={option.value}>{option.label}</option>)}
+              </AdminSelect>
+            </div></div></>} actions={<><MemberButton
                     onClick={() => {
                       setDraftFilters(DEFAULT_FILTERS);
                       setFilters(DEFAULT_FILTERS);
@@ -178,13 +171,9 @@ export function CompanyListMigrationPage() {
                   >
                     {MEMBER_BUTTON_LABELS.reset}
                   </MemberButton>
-                  <MemberButton icon="search" type="submit" variant="primary">
+<MemberButton icon="search" type="submit" variant="primary">
                     {MEMBER_BUTTON_LABELS.search}
-                  </MemberButton>
-                </div>
-              </div>
-            </div>
-          </form>
+                  </MemberButton></>}></CommonSearchSection></form>
         </section>
 
         <section className="gov-card p-0 overflow-hidden" data-help-id="company-list-table">

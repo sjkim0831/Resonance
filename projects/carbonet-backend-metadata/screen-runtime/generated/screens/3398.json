@@ -1,0 +1,519 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 3398,
+  "blueprintCode": "BP_AUTO_E4DD49A0A3F4B0B3433BB862",
+  "identity": {
+    "processCode": "CO2_QUALITY_ANALYSIS",
+    "stepCode": "CQA_PLAN",
+    "actorCode": "LAB_ANALYST",
+    "audience": "USER",
+    "pageId": "AUTO_E4DD49A0A3F4B0B3433B"
+  },
+  "route": "/work/co2-quality-analysis",
+  "pageName": "성분예측·시료·시험계획 사용자 업무 화면",
+  "screenType": "CONTENT",
+  "templateCode": "KRDS_CONTENT",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "kpis": [
+      "진행률",
+      "기한",
+      "차단건",
+      "미결 증적",
+      "후속업무"
+    ],
+    "errors": [
+      {
+        "code": "FORBIDDEN",
+        "recovery": "권한·업무분리 확인"
+      },
+      {
+        "code": "CONFLICT",
+        "recovery": "최신 버전 재조회"
+      },
+      {
+        "code": "DEPENDENCY_FAILURE",
+        "recovery": "멱등키로 안전 재시도"
+      }
+    ],
+    "fields": [
+      {
+        "route": "/work/co2-quality-analysis?step=cqa_plan",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "CO2_QUALITY_ANALYSIS_CQA_PLAN_USER",
+        "required": true,
+        "fieldCode": "projectId",
+        "fieldName": "프로젝트",
+        "fieldGroup": "업무 범위",
+        "fieldOrder": 10,
+        "validation": {
+          "type": "code",
+          "nullable": false,
+          "required": true,
+          "allowUnknown": false
+        },
+        "apiProperty": "projectId",
+        "controlType": "PROJECT_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "LAB_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/co2-quality-analysis?step=cqa_plan",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "CO2_QUALITY_ANALYSIS_CQA_PLAN_USER",
+        "required": true,
+        "fieldCode": "businessId",
+        "fieldName": "업무 대상 ID",
+        "fieldGroup": "업무 범위",
+        "fieldOrder": 20,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "businessId",
+        "controlType": "ENTITY_SELECT",
+        "sourceTable": null,
+        "privacyClass": "CONFIDENTIAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "LAB_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/co2-quality-analysis?step=cqa_plan",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "CO2_QUALITY_ANALYSIS_CQA_PLAN_USER",
+        "required": true,
+        "fieldCode": "referenceCode",
+        "fieldName": "참조·로트·신청 번호",
+        "fieldGroup": "업무 범위",
+        "fieldOrder": 30,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "referenceCode",
+        "controlType": "TEXT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "LAB_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/co2-quality-analysis?step=cqa_plan",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "CO2_QUALITY_ANALYSIS_CQA_PLAN_USER",
+        "required": true,
+        "fieldCode": "statusCode",
+        "fieldName": "업무 상태",
+        "fieldGroup": "상태",
+        "fieldOrder": 40,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "statusCode",
+        "controlType": "STATUS_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "LAB_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/co2-quality-analysis?step=cqa_plan",
+        "audience": "USER",
+        "dataType": "DATETIME",
+        "editable": true,
+        "pageCode": "CO2_QUALITY_ANALYSIS_CQA_PLAN_USER",
+        "required": true,
+        "fieldCode": "effectiveAt",
+        "fieldName": "발생·적용 일시",
+        "fieldGroup": "기준",
+        "fieldOrder": 50,
+        "validation": {
+          "type": "date-time",
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "effectiveAt",
+        "controlType": "DATETIME",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "LAB_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/co2-quality-analysis?step=cqa_plan",
+        "audience": "USER",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "pageCode": "CO2_QUALITY_ANALYSIS_CQA_PLAN_USER",
+        "required": false,
+        "fieldCode": "quantityValue",
+        "fieldName": "수량·측정·금액 값",
+        "fieldGroup": "전문값",
+        "fieldOrder": 60,
+        "validation": {
+          "numeric": true,
+          "unitRequiredWhenPresent": true
+        },
+        "apiProperty": "quantityValue",
+        "controlType": "NUMBER",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "LAB_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/co2-quality-analysis?step=cqa_plan",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "CO2_QUALITY_ANALYSIS_CQA_PLAN_USER",
+        "required": false,
+        "fieldCode": "unitCode",
+        "fieldName": "단위·통화",
+        "fieldGroup": "전문값",
+        "fieldOrder": 70,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "unitCode",
+        "controlType": "UNIT_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "LAB_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/co2-quality-analysis?step=cqa_plan",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "CO2_QUALITY_ANALYSIS_CQA_PLAN_USER",
+        "required": false,
+        "fieldCode": "qualityCode",
+        "fieldName": "품질·적합 등급",
+        "fieldGroup": "품질·외부검증",
+        "fieldOrder": 80,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "qualityCode",
+        "controlType": "QUALITY_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "LAB_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/co2-quality-analysis?step=cqa_plan",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "CO2_QUALITY_ANALYSIS_CQA_PLAN_USER",
+        "required": false,
+        "fieldCode": "externalCheckStatus",
+        "fieldName": "외부검증 상태",
+        "fieldGroup": "품질·외부검증",
+        "fieldOrder": 90,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "externalCheckStatus",
+        "controlType": "STATUS_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "LAB_ANALYST:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/work/co2-quality-analysis?step=cqa_plan",
+        "audience": "USER",
+        "dataType": "ARRAY",
+        "editable": true,
+        "pageCode": "CO2_QUALITY_ANALYSIS_CQA_PLAN_USER",
+        "required": true,
+        "fieldCode": "evidenceIds",
+        "fieldName": "원본·결정 증빙",
+        "fieldGroup": "증적",
+        "fieldOrder": 100,
+        "validation": {
+          "minItems": 1,
+          "hashRequired": true
+        },
+        "apiProperty": "evidenceIds",
+        "controlType": "FILE_UPLOAD",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "LAB_ANALYST:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/work/co2-quality-analysis?step=cqa_plan",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "CO2_QUALITY_ANALYSIS_CQA_PLAN_USER",
+        "required": false,
+        "fieldCode": "decisionCode",
+        "fieldName": "판정·승인 결과",
+        "fieldGroup": "결정",
+        "fieldOrder": 110,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "decisionCode",
+        "controlType": "DECISION_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "LAB_ANALYST:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/work/co2-quality-analysis?step=cqa_plan",
+        "audience": "USER",
+        "dataType": "TEXT",
+        "editable": true,
+        "pageCode": "CO2_QUALITY_ANALYSIS_CQA_PLAN_USER",
+        "required": false,
+        "fieldCode": "decisionComment",
+        "fieldName": "판정·보완·반려 사유",
+        "fieldGroup": "결정",
+        "fieldOrder": 120,
+        "validation": {
+          "requiredWhen": [
+            "CORRECTION",
+            "REJECTED"
+          ]
+        },
+        "apiProperty": "decisionComment",
+        "controlType": "TEXTAREA",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "LAB_ANALYST:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/work/co2-quality-analysis?step=cqa_plan",
+        "audience": "USER",
+        "dataType": "INTEGER",
+        "editable": true,
+        "pageCode": "CO2_QUALITY_ANALYSIS_CQA_PLAN_USER",
+        "required": true,
+        "fieldCode": "rowVersion",
+        "fieldName": "데이터 버전",
+        "fieldGroup": "무결성",
+        "fieldOrder": 130,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "rowVersion",
+        "controlType": "VERSION",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "LAB_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/co2-quality-analysis?step=cqa_plan",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "CO2_QUALITY_ANALYSIS_CQA_PLAN_USER",
+        "required": false,
+        "fieldCode": "nextTaskId",
+        "fieldName": "다음 업무",
+        "fieldGroup": "후속업무",
+        "fieldOrder": 140,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "nextTaskId",
+        "controlType": "TASK_LINK",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "LAB_ANALYST:USER",
+        "evidenceRequired": false
+      }
+    ],
+    "states": [
+      "LOADING",
+      "EMPTY",
+      "ERROR",
+      "FORBIDDEN",
+      "READY",
+      "BLOCKED",
+      "CONFLICT",
+      "COMPLETED"
+    ],
+    "actions": [
+      "PLAN_CO2_ANALYSIS",
+      "SAVE_DRAFT",
+      "REQUEST_CORRECTION"
+    ],
+    "sections": [
+      "업무요약",
+      "선행조건",
+      "전문 데이터",
+      "검증·증적",
+      "결정·이력",
+      "다음업무"
+    ],
+    "extensions": {
+      "contractId": 454,
+      "sharedRuntime": true
+    },
+    "responsive": {
+      "mobile": "single-column-actions-bottom",
+      "tablet": "adaptive-grid",
+      "desktop": "list-detail-workspace"
+    },
+    "permissions": [
+      {
+        "code": "LAB_ANALYST",
+        "scope": "TENANT_PROJECT",
+        "segregationOfDuties": true,
+        "serverAuthorization": true
+      }
+    ],
+    "validations": [
+      {
+        "code": "ENTRY_AND_REQUIRED_FIELDS",
+        "type": "CONTRACT"
+      },
+      {
+        "code": "STATE_AND_VERSION",
+        "type": "CONCURRENCY"
+      }
+    ],
+    "apiContracts": [
+      "/api/work/co2-quality-analysis/cqa_plan"
+    ],
+    "designSystem": "KRDS_GOV",
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG_2_1_AA",
+      "nonColorStatus": true,
+      "focusManagement": true
+    },
+    "dataContracts": [
+      "tenantId",
+      "projectId",
+      "businessId",
+      "recordId",
+      "statusCode",
+      "rowVersion",
+      "evidenceHash",
+      "nextTaskId"
+    ],
+    "schemaVersion": "2.0.0",
+    "completionRule": "대표 시료·시험방법·장비·허용기준이 승인됨",
+    "exitConditions": [
+      "대표 시료·시험방법·장비·허용기준이 승인됨"
+    ],
+    "businessPurpose": "공정 투입·배출 자료로 예상 성분과 필수 시험·장비·채취계획을 정한다.",
+    "entryConditions": [
+      "다음 프로세스 시작 조건을 충족한다: 추적 가능한 CO2 로트와 시료채취 지점, 품질 기준이 존재한다. 현재 상태는 READY이며 서버가 테넌트·프로젝트·액터 권한을 확인한 경우에만 진입한다."
+    ],
+    "actorResponsibilities": [
+      "LAB_ANALYST 액터가 권한·업무분리 정책에 따라 성분예측·시료·시험계획 사용자 업무 화면 업무를 수행한다."
+    ]
+  },
+  "traceability": {
+    "contractId": 454,
+    "requirementIds": [
+      "CO2_QUALITY_ANALYSIS:CQA_PLAN:USER"
+    ],
+    "generationBatchId": 183,
+    "designReadinessScore": 100,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "8894777c59f1fdc7a83c06a3d94dfc5e83fadde8902875b2c48eae3cd18fc23f",
+  "artifactHash": "cff3cc596f9cc7c083447250656dc9ca7c4e09868e65acb4cc6c47b3f0e4b4e2"
+}

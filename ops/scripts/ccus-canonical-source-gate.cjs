@@ -11,7 +11,8 @@ if(cwd!==source)errors.push('Running frontend source mismatch: '+cwd);
 const proxyCwd=cp.execFileSync('systemctl',['show','carbonet-dev-proxy','--property=WorkingDirectory','--value'],{encoding:'utf8'}).trim();
 if(proxyCwd!==root+'/ops/runtime')errors.push('Proxy source mismatch: '+proxyCwd);
 const oldSync=cp.spawnSync('systemctl',['is-enabled','carbonet-dev-design-sync.timer'],{encoding:'utf8'}).stdout.trim();
-if(oldSync!=='disabled')errors.push('Legacy automatic sync must be disabled: '+oldSync);
+const oldSyncActive=cp.spawnSync('systemctl',['is-active','carbonet-dev-design-sync.timer'],{encoding:'utf8'}).stdout.trim();
+if(!['disabled','masked','not-found'].includes(oldSync)||!['inactive','failed','unknown'].includes(oldSyncActive))errors.push('Legacy automatic sync must be disabled or absent and inactive: '+oldSync+'/'+oldSyncActive);
 const files=[];
 function walk(dir){for(const e of fs.readdirSync(dir,{withFileTypes:true})){if(['node_modules','.cache','target','build','dist'].includes(e.name))continue;const p=path.join(dir,e.name);if(e.isSymbolicLink())continue;if(e.isDirectory())walk(p);else if(e.isFile()&&!p.includes('/public/qa/'))files.push(p);}}
 walk(path.join(source,'src'));walk(path.join(source,'public'));

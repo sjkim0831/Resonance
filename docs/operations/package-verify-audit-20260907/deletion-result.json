@@ -1,0 +1,12 @@
+{
+  "deleted": true,
+  "path": "/opt/resonance-package-verify",
+  "files": 733,
+  "bytes": 101861292,
+  "services": {
+    "carbonet-production-direct": "active",
+    "ccus-postgresql-native": "active",
+    "carbonet-dev-proxy": "active"
+  },
+  "seconds": 0.3914503501728177
+}

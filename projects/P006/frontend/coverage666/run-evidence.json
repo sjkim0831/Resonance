@@ -1,0 +1,88 @@
+{
+  "startedAt": "2026-09-10T04:04:20Z",
+  "completedAt": "2026-09-10T04:22:52.623Z",
+  "baselineHash": "bef76a59ca7050aebcc0e1924b583152b0ad73ba648a62eb2e261efd397ebc95",
+  "kpi": {
+    "previousLinked": 372,
+    "thisRunConnected": 294,
+    "currentLinked": 666,
+    "currentPercent": 91.99,
+    "remainingUnlinked": 58,
+    "blocked": 58,
+    "ready": 10,
+    "readyPromotions": 0,
+    "real": 0,
+    "newBases": 16,
+    "reusedBases": 7,
+    "oldBasesReviewed": 16,
+    "variants": 178,
+    "assetsPerNewBase": 18.375,
+    "standaloneReferenceModelsAvoided": 294,
+    "referencePlacementVerified": 470
+  },
+  "sourceHashes": {
+    "coverage666-design.cjs": "c5ce7989416b2eda895d428b81d4d4c0e5814349306e887c0ac3332b9b8ff0b1",
+    "plan-coverage666.cjs": "2525def57b5068a9cfa7d18dc9245bb548d84df6963df25e90c15f33591df971",
+    "build-coverage666.py": "37bfecfe57b96a0e25e4d7ec7c9007f82611933b61a79492abc74321ecfc9fc1",
+    "verify-coverage666-all.py": "f83ed6d2d38e5bc5c7c8c673fbb97a34cdc93a0e34bc3d2a302f0c8e1eaaf9db",
+    "render-coverage666.py": "84f810f4e7ca8222250e7b8e0a5e13960a33adaf639c74ea1d97bc18f359c79f",
+    "finalize-coverage666.cjs": "45ac724a2e349efd8503c2de6b9500ba9114527cfd50e8b4b96bc834b4997c84",
+    "coverage666-page.html": "8aa264b814f8bdfca3be0550a9976a7e42d43b1a2085ae2a02a8c2388417c8c3",
+    "verify-coverage666-ui.cjs": "2449654277c88548438e6e396f8e133cf3711ccb7e03412277a21a87ddb580f3",
+    "publish-coverage666.sh": "ad5020405d733e67b6f030b182e7265a2b0b5f2e4615d9caa153ed4e01c13c9c",
+    "build-asset-readiness.cjs": "686e02ff29ea26e8d32aa9c85dd56bedff865aee13c673486aab4a1fc81acc64"
+  },
+  "publicLoadMs": 1187,
+  "webQaMs": 13726,
+  "timings": {
+    "usdBuildSeconds": 2.8617217540740967,
+    "allConnectionsSeconds": 0.7031018733978271,
+    "rtxCaptureSeconds": 156.2100863456726
+  },
+  "capacity": {
+    "assets": 294,
+    "zipBytes": 140421,
+    "usdBytes": 2674084,
+    "sha256": "b2417729aca7a75a8e7e6ddefbc2a29e7f73731db32ea07dae3da6b80d7f0cae",
+    "portableRoundtrip": true,
+    "readyPromotions": 0
+  },
+  "visual": {
+    "scope": "REFERENCE_RENDER_PRESENT_AND_FRAMED_NOT_TYPE_OR_FUNCTION_VERIFICATION",
+    "reviewer": "Codex screenshot inspection",
+    "contactSheets": [
+      "contact-01.png",
+      "contact-02.png",
+      "contact-03.png",
+      "contact-04.png",
+      "contact-05.png",
+      "contact-06.png",
+      "contact-07.png",
+      "contact-08.png"
+    ],
+    "variantsInspected": 178,
+    "browserScreens": [
+      "browser-overview.png",
+      "browser-mobile.png"
+    ],
+    "changes": [
+      "개별 Variant 카메라 거리·화각 수정 후 197장 재렌더링",
+      "해시 검증을 Kit 종료 후 수행하여 마지막 PNG 비동기 저장 완료를 확인"
+    ],
+    "findings": [
+      "검수 접촉시트에서 178개 형상 렌더 존재와 프레임 내 배치를 확인",
+      "베이스 재사용으로 유사 외형이 존재하며 별도 장비로서의 종류/내부 기구 정확성은 아직 미검증",
+      "일부 세부 기구는 단순화된 기준 형상이며 실제 제품·물리 기능 완성 판정에 사용할 수 없음",
+      "모듈 장착/작업물 연결 앵커는 참고 위치이며 현장 장착 검증이 아님"
+    ],
+    "typeVerified": false,
+    "functionalVerified": false,
+    "physicalVerified": false,
+    "readyPromotions": 0,
+    "realPromotions": 0
+  },
+  "plcWrites": 0,
+  "liveStageChanged": false,
+  "businessWrites": 0,
+  "elapsedSeconds": 1112.623
+}

@@ -1,0 +1,29 @@
+{
+ "version":"P006-CONTROL-REFERENCE-1",
+ "scope":"REFERENCE_LAYOUT_ONLY_NOT_AS_BUILT",
+ "dimensionsBasis":"Versioned project reference envelope; not manufacturer dimensions. Port positions are illustrative anchors, protocol/address/pin mapping UNBOUND.",
+ "sourceAsset":"E234",
+ "sourcePrim":"/Product/case",
+ "assets":[
+ {"id":"N161","form":"din","size":[0.18,0.14,0.12],"ports":8,"display":false},
+ {"id":"N163","form":"drive","size":[0.1,0.25,0.18],"ports":5,"display":true},
+ {"id":"N164","form":"din","size":[0.14,0.14,0.12],"ports":8,"display":false},
+ {"id":"A060","form":"rack","size":[0.44,0.088,0.35],"ports":4,"display":false},
+ {"id":"A298","form":"din","size":[0.072,0.1,0.075],"ports":4,"display":true},
+ {"id":"A309","form":"panel","size":[0.32,0.24,0.07],"ports":3,"display":true},
+ {"id":"A310","form":"din","size":[0.1,0.14,0.1],"ports":4,"display":false},
+ {"id":"A311","form":"din","size":[0.09,0.14,0.1],"ports":4,"display":false},
+ {"id":"A312","form":"rack","size":[0.44,0.044,0.26],"ports":6,"display":true},
+ {"id":"A313","form":"din","size":[0.1,0.14,0.1],"ports":2,"display":false},
+ {"id":"A314","form":"din","size":[0.09,0.14,0.1],"ports":3,"display":false},
+ {"id":"A315","form":"panel","size":[0.16,0.1,0.06],"ports":3,"display":true},
+ {"id":"A316","form":"din","size":[0.13,0.055,0.045],"ports":8,"display":false},
+ {"id":"A318","form":"din","size":[0.08,0.13,0.09],"ports":3,"display":false},
+ {"id":"A320","form":"din","size":[0.1,0.14,0.1],"ports":4,"display":false},
+ {"id":"A321","form":"din","size":[0.14,0.12,0.09],"ports":8,"display":false},
+ {"id":"A326","form":"drive","size":[0.16,0.11,0.12],"ports":6,"display":true},
+ {"id":"A339","form":"panel","size":[0.096,0.096,0.08],"ports":4,"display":true},
+ {"id":"A400","form":"din","size":[0.045,0.1,0.075],"ports":4,"display":false},
+ {"id":"A464","form":"drive","size":[0.35,0.4,0.3],"ports":8,"display":true}
+ ]
+}

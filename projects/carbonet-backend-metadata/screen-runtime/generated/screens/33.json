@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 33,
+  "blueprintCode": "BP_ADOPT_6A09CD836D68378AB0CE",
+  "identity": {
+    "processCode": "LCA_EXECUTION",
+    "stepCode": "LCA_EXECUTION_01_PLAN",
+    "actorCode": "LCA_PRACTITIONER",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_6A09CD836D68378AB0CE"
+  },
+  "route": "/admin/emission/lci-classification",
+  "pageName": "LCI 분류 관리",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "LCA",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1040309",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "bbdf8680e633e5d94830c306d6fec7e815ec7dabe90fb5f62a379a368223a2cd",
+  "artifactHash": "ff916918fc45d7d8c4749bf2b9f4ff0dd083222bdb27e00b42ed977c1b82ae4d"
+}

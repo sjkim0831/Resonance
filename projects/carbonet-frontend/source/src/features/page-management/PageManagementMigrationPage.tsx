@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -598,9 +599,8 @@ export function PageManagementMigrationPage() {
             title={en ? "Register Page" : "페이지 등록"}
           />
           <div className="p-6">
-        <form action={buildLocalizedPath("/admin/system/page-management/create", "/en/admin/system/page-management/create")} className="grid grid-cols-1 gap-4 xl:grid-cols-6" method="post" onSubmit={submitCreateForm}>
-          <input name="menuType" type="hidden" value={draft.menuType} className="krds-control-field" />
-          <div>
+        <form action={buildLocalizedPath("/admin/system/page-management/create", "/en/admin/system/page-management/create")} className="ccus-search-host" method="post" onSubmit={submitCreateForm}><CommonSearchSection basic={<><div className="ccus-search-field"><input name="menuType" type="hidden" value={draft.menuType} className="krds-control-field" /></div>
+<div className="ccus-search-field"><div>
             <label className="gov-label" htmlFor="domainCode">{en ? "Domain" : "도메인"}</label>
             <select className="gov-select" id="domainCode" name="domainCode" value={createForm.domainCode} onChange={(event) => ensureDomainPrefix(event.target.value)}>
               <option value="">{en ? "Select" : "선택"}</option>
@@ -608,40 +608,35 @@ export function PageManagementMigrationPage() {
                 <option key={stringOf(opt, "code")} value={stringOf(opt, "code")}>{stringOf(opt, "label")}</option>
               ))}
             </select>
-          </div>
-          <div>
+          </div></div></>} advanced={<><div className="ccus-search-field"><div>
             <label className="gov-label" htmlFor="code">{en ? "Page Code" : "페이지 코드"}</label>
             <input className="gov-input" id="code" maxLength={8} name="code" placeholder={en ? "e.g. A0060105" : "예: A0060105"} value={createForm.code} onChange={(event) => setCreateForm((current) => ({ ...current, code: event.target.value.toUpperCase() }))} />
             {createDuplicateCode ? <p className="mt-1 text-xs text-red-600">{en ? "This code already exists." : "이미 존재하는 코드입니다."}</p> : null}
-          </div>
-          <div>
+          </div></div>
+<div className="ccus-search-field"><div>
             <label className="gov-label" htmlFor="codeNm">{en ? "Page Name" : "페이지명"}</label>
             <input className="gov-input" id="codeNm" name="codeNm" placeholder={en ? "e.g. Page Management" : "예: 페이지 관리"} value={createForm.codeNm} onChange={(event) => setCreateForm((current) => ({ ...current, codeNm: event.target.value }))} />
-          </div>
-          <div>
+          </div></div>
+<div className="ccus-search-field"><div>
             <label className="gov-label" htmlFor="codeDc">{en ? "English Page Name" : "영문 페이지명"}</label>
             <input className="gov-input" id="codeDc" name="codeDc" placeholder="Page Management" value={createForm.codeDc} onChange={(event) => setCreateForm((current) => ({ ...current, codeDc: event.target.value }))} />
-          </div>
-          <div className="xl:col-span-2">
+          </div></div>
+<div className="ccus-search-field"><div className="xl:col-span-2">
             <label className="gov-label" htmlFor="menuUrl">{en ? "Page URL" : "페이지 URL"}</label>
             <input className="gov-input" id="menuUrl" name="menuUrl" placeholder={en ? "e.g. /admin/system/page-management" : "예: /admin/system/page-management"} value={createForm.menuUrl} onChange={(event) => setCreateForm((current) => ({ ...current, menuUrl: event.target.value }))} />
             {createDuplicateUrlOwner ? <p className="mt-1 text-xs text-red-600">{en ? `Duplicate URL with ${createDuplicateUrlOwner}` : `${createDuplicateUrlOwner} 코드와 URL 중복`}</p> : null}
-          </div>
-          <div>
+          </div></div>
+<div className="ccus-search-field"><div>
             <label className="gov-label">{en ? "Menu Icon" : "메뉴 아이콘"}</label>
             <input name="menuIcon" type="hidden" value={createForm.menuIcon} className="krds-control-field" />
             <IconPicker helperText={en ? "Scroll to view the full icon list." : "스크롤해서 전체 아이콘을 볼 수 있습니다."} icons={iconOptions} onChange={(value) => setCreateForm((current) => ({ ...current, menuIcon: value }))} searchPlaceholder={en ? "Search icons" : "아이콘 검색"} value={createForm.menuIcon} />
-          </div>
-          <div>
+          </div></div>
+<div className="ccus-search-field"><div>
             <label className="gov-label" htmlFor="useAt">{en ? "Use" : "사용 여부"}</label>
             <select className="gov-select" id="useAt" name="useAt" value={createForm.useAt} onChange={(event) => setCreateForm((current) => ({ ...current, useAt: event.target.value }))}>
               {useAtOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
             </select>
-          </div>
-          <div className="flex justify-end gap-2 xl:col-span-6">
-            <button className="gov-btn gov-btn-primary" type="submit">{en ? "Add Page Code" : "페이지 코드 추가"}</button>
-          </div>
-        </form>
+          </div></div></>} actions={<><button className="gov-btn gov-btn-primary" type="submit">{en ? "Add Page Code" : "페이지 코드 추가"}</button></>}></CommonSearchSection></form>
           </div>
         </section>
 

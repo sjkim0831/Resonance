@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 442,
+  "blueprintCode": "BP_ADOPT_A00024D0DB463278B996",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_A00024D0DB463278B996"
+  },
+  "route": "/admin/emission/validation-rule",
+  "pageName": "마감·알림 정책",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1070110",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "ab1fcb9c3b6f3054657f4e8e388b37b8ffe6de464e147f43d38b83d33bf6fddc",
+  "artifactHash": "4b34b29e0f9cb9be4305ce4119fbfaa005223fd41e407c1d004035fd9d3ac8b4"
+}

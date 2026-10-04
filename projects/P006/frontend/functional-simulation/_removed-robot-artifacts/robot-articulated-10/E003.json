@@ -1,0 +1,32 @@
+{
+  "assetId": "E003",
+  "assetName": "세척/스프레이 로봇",
+  "representationType": "VISUAL_ARTICULATED_ROBOT",
+  "motionSource": "VISUAL_FUNCTIONAL_SIMULATION",
+  "manufacturerVerified": false,
+  "kinematicsVerified": false,
+  "sourceGLB": "/projects/P006/assets/functional-simulation/derived-mechanical-53/E003.glb",
+  "derivedGLB": "/projects/P006/assets/functional-simulation/robot-articulated-9/E003.glb",
+  "tool": "suctionTool",
+  "jointHierarchy": [
+    "robotRoot",
+    "base",
+    "shoulder",
+    "elbow",
+    "wrist",
+    "suctionTool"
+  ],
+  "jointCount": 5,
+  "animatedJointCount": 4,
+  "sequenceType": "PICK_AND_PLACE",
+  "sequencePoses": [
+    "HOME",
+    "APPROACH",
+    "PICK",
+    "LIFT",
+    "TRANSFER",
+    "PLACE",
+    "RETRACT",
+    "HOME"
+  ]
+}

@@ -1,0 +1,368 @@
+[
+  {
+    "id": "N161",
+    "name": "PLC 본체",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "N163",
+    "name": "서보 드라이브",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "N164",
+    "name": "안전 PLC",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A060",
+    "name": "AMR 함대 관제 서버",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A298",
+    "name": "절연 감시 장치",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A309",
+    "name": "산업용 패널 PC",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A310",
+    "name": "산업용 엣지 게이트웨이",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A311",
+    "name": "산업용 방화벽",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A312",
+    "name": "산업용 시간 동기 서버",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A313",
+    "name": "산업용 데이터 다이오드",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A314",
+    "name": "산업 네트워크 TAP",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A315",
+    "name": "필드버스 진단기",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A316",
+    "name": "IO-Link 마스터",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A318",
+    "name": "시리얼 디바이스 서버",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A320",
+    "name": "원격 유지보수 접속 장치",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A321",
+    "name": "분산 데이터 수집기",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A326",
+    "name": "산업용 비전 조명 제어기",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A339",
+    "name": "전력 미터",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A400",
+    "name": "안전 속도 감시기",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "A464",
+    "name": "핫러너 온도 제어기",
+    "category": "PLACEMENT_COORDINATE",
+    "cause": "Resolver references aggregate Catalog, not asset-specific child. Not a scale or variant modelling error.",
+    "action": "FIXED_REFERENCE_TARGET",
+    "evidence": {
+      "identity": true,
+      "dimensions": true,
+      "unit": true,
+      "up": true,
+      "bottom": true,
+      "composition": true
+    }
+  },
+  {
+    "id": "E001",
+    "name": "트리밍 장비",
+    "category": "DESIGN_BASIS_INSUFFICIENT",
+    "observed": "PLACEMENT_COORDINATE_OFFSET",
+    "offsetMeters": -2.968998908996582,
+    "unit": 1.0,
+    "upAxis": "Y",
+    "action": "RETAIN_UNCHANGED",
+    "cause": "Bounds lowest point differs from root, but support plane versus pit/underground component is unproven. Translating by bbox minimum would invent a mounting datum."
+  },
+  {
+    "id": "E002",
+    "name": "주탕 로봇",
+    "category": "DESIGN_BASIS_INSUFFICIENT",
+    "observed": "PLACEMENT_COORDINATE_OFFSET",
+    "offsetMeters": -2.430055618286133,
+    "unit": 1.0,
+    "upAxis": "Y",
+    "action": "RETAIN_UNCHANGED",
+    "cause": "Bounds lowest point differs from root, but support plane versus pit/underground component is unproven. Translating by bbox minimum would invent a mounting datum."
+  },
+  {
+    "id": "E003",
+    "name": "세척/스프레이 로봇",
+    "category": "DESIGN_BASIS_INSUFFICIENT",
+    "observed": "PLACEMENT_COORDINATE_OFFSET",
+    "offsetMeters": -0.2455877661705017,
+    "unit": 1.0,
+    "upAxis": "Y",
+    "action": "RETAIN_UNCHANGED",
+    "cause": "Bounds lowest point differs from root, but support plane versus pit/underground component is unproven. Translating by bbox minimum would invent a mounting datum."
+  },
+  {
+    "id": "E004",
+    "name": "취출 로봇",
+    "category": "DESIGN_BASIS_INSUFFICIENT",
+    "observed": "PLACEMENT_COORDINATE_OFFSET",
+    "offsetMeters": -1.652252197265625,
+    "unit": 1.0,
+    "upAxis": "Y",
+    "action": "RETAIN_UNCHANGED",
+    "cause": "Bounds lowest point differs from root, but support plane versus pit/underground component is unproven. Translating by bbox minimum would invent a mounting datum."
+  },
+  {
+    "id": "E005",
+    "name": "용해로/가열로",
+    "category": "DESIGN_BASIS_INSUFFICIENT",
+    "observed": "PLACEMENT_COORDINATE_OFFSET",
+    "offsetMeters": -2.3699994683265686,
+    "unit": 1.0,
+    "upAxis": "Y",
+    "action": "RETAIN_UNCHANGED",
+    "cause": "Bounds lowest point differs from root, but support plane versus pit/underground component is unproven. Translating by bbox minimum would invent a mounting datum."
+  },
+  {
+    "id": "E006",
+    "name": "냉각장치",
+    "category": "DESIGN_BASIS_INSUFFICIENT",
+    "observed": "PLACEMENT_COORDINATE_OFFSET",
+    "offsetMeters": 0.0065470412373542786,
+    "unit": 1.0,
+    "upAxis": "Y",
+    "action": "RETAIN_UNCHANGED",
+    "cause": "Bounds lowest point differs from root, but support plane versus pit/underground component is unproven. Translating by bbox minimum would invent a mounting datum."
+  }
+]

@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -182,20 +183,11 @@ export function ExternalWebhooksMigrationPage() {
           </div>
         </section>
         <CollectionResultPanel data-help-id="external-webhooks-filters" title={en ? "Webhook Filters" : "웹훅 조회 조건"} description={en ? "Narrow targets by keyword, sync mode, or delivery status before opening the connection detail." : "연계 상세로 이동하기 전에 검색어, 연계 방식, 전달 상태 기준으로 범위를 좁힙니다."} icon="tune">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4 xl:w-[68rem]">
-            <div>
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalWebhookKeyword">{en ? "Keyword" : "검색어"}</label>
               <AdminInput id="externalWebhookKeyword" value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder={en ? "Connection, partner, endpoint" : "연계명, 기관명, 엔드포인트"} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-bold" htmlFor="externalWebhookSyncMode">{en ? "Sync Mode" : "연계 방식"}</label>
-              <AdminSelect id="externalWebhookSyncMode" value={syncMode} onChange={(event) => setSyncMode(event.target.value)}>
-                <option value="ALL">{en ? "All" : "전체"}</option>
-                <option value="WEBHOOK">WEBHOOK</option>
-                <option value="HYBRID">HYBRID</option>
-              </AdminSelect>
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalWebhookStatus">{en ? "Status" : "상태"}</label>
               <AdminSelect id="externalWebhookStatus" value={status} onChange={(event) => setStatus(event.target.value)}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -204,13 +196,16 @@ export function ExternalWebhooksMigrationPage() {
                 <option value="DEGRADED">DEGRADED</option>
                 <option value="DISABLED">DISABLED</option>
               </AdminSelect>
-            </div>
-            <div className="flex items-end">
-              <button className="gov-btn gov-btn-outline w-full" type="button" onClick={() => { setKeyword(""); setSyncMode("ALL"); setStatus("ALL"); }}>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
+              <label className="mb-1 block text-sm font-bold" htmlFor="externalWebhookSyncMode">{en ? "Sync Mode" : "연계 방식"}</label>
+              <AdminSelect id="externalWebhookSyncMode" value={syncMode} onChange={(event) => setSyncMode(event.target.value)}>
+                <option value="ALL">{en ? "All" : "전체"}</option>
+                <option value="WEBHOOK">WEBHOOK</option>
+                <option value="HYBRID">HYBRID</option>
+              </AdminSelect>
+            </div></div></>} actions={<><button className="gov-btn gov-btn-outline w-full" type="button" onClick={() => { setKeyword(""); setSyncMode("ALL"); setStatus("ALL"); }}>
                 {en ? "Reset Filters" : "검색 조건 초기화"}
-              </button>
-            </div>
-          </div>
+              </button></>}></CommonSearchSection></div>
         </CollectionResultPanel>
         <section className="gov-card overflow-hidden p-0" data-help-id="external-webhooks-targets">
           <GridToolbar title={en ? "Webhook Targets" : "웹훅 대상"} meta={(en ? "Refreshed at " : "갱신 시각 ") + stringOf(page as Record<string, unknown>, "refreshedAt")} actions={<p className="text-sm text-[var(--kr-gov-text-secondary)]">{en ? `${rows.length} targets / ${deliveryRows.length} delivery policies` : `대상 ${rows.length}건 / 전달 정책 ${deliveryRows.length}건`}</p>} />

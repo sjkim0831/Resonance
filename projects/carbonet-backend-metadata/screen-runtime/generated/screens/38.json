@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 38,
+  "blueprintCode": "BP_ADOPT_6FEA47F578A83E34BF57",
+  "identity": {
+    "processCode": "LCA_EXECUTION",
+    "stepCode": "LCA_EXECUTION_01_PLAN",
+    "actorCode": "LCA_PRACTITIONER",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_6FEA47F578A83E34BF57"
+  },
+  "route": "/admin/emission/survey-admin",
+  "pageName": "LCA 데이터 수집",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "LCA",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1040307",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "618d636d94b411a58595de07314e3a9d402d3dc0e241274e8475201faf2c8afe",
+  "artifactHash": "6f1ff7e1cedb19afc6e358d95ab84b2f3c8f0cbcd02e5ed5c3b1c07ad2ee250d"
+}

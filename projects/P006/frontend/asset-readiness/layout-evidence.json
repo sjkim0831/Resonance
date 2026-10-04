@@ -1,0 +1,361 @@
+{
+  "scope": "REFERENCE_LAYOUT_KINEMATIC_NOT_PHYSICAL_E2E",
+  "assets": 10,
+  "instances": 13,
+  "families": 5,
+  "collisionPairs": [],
+  "clearances": [
+    {
+      "instance": "receiving",
+      "aisleEdgeDistance": 1.449999988079071
+    },
+    {
+      "instance": "transfer",
+      "aisleEdgeDistance": 1.3950000112049281
+    },
+    {
+      "instance": "assembly",
+      "aisleEdgeDistance": 1.3749999999999996
+    },
+    {
+      "instance": "inspection",
+      "aisleEdgeDistance": 1.3749999999999996
+    },
+    {
+      "instance": "packing",
+      "aisleEdgeDistance": 1.3749999999999996
+    },
+    {
+      "instance": "shipping",
+      "aisleEdgeDistance": 1.449999988079071
+    },
+    {
+      "instance": "rework",
+      "aisleEdgeDistance": 1.375
+    },
+    {
+      "instance": "scrap",
+      "aisleEdgeDistance": 1.449999987855553
+    }
+  ],
+  "links": [
+    {
+      "from": "receiving",
+      "to": "transfer",
+      "sourcePrim": "/Factory/Assets/receiving/Ports/out",
+      "targetPrim": "/Factory/Assets/transfer/Ports/in",
+      "mode": "SIMULATED_OPERATOR_TRANSFER_KINEMATIC",
+      "status": "REFERENCE_CONNECTED"
+    },
+    {
+      "from": "transfer",
+      "to": "assembly",
+      "sourcePrim": "/Factory/Assets/transfer/Ports/out",
+      "targetPrim": "/Factory/Assets/assembly/Ports/in",
+      "mode": "SIMULATED_OPERATOR_TRANSFER_KINEMATIC",
+      "status": "REFERENCE_CONNECTED"
+    },
+    {
+      "from": "assembly",
+      "to": "inspection",
+      "sourcePrim": "/Factory/Assets/assembly/Ports/out",
+      "targetPrim": "/Factory/Assets/inspection/Ports/in",
+      "mode": "SIMULATED_OPERATOR_TRANSFER_KINEMATIC",
+      "status": "REFERENCE_CONNECTED"
+    },
+    {
+      "from": "inspection",
+      "to": "packing",
+      "sourcePrim": "/Factory/Assets/inspection/Ports/out",
+      "targetPrim": "/Factory/Assets/packing/Ports/in",
+      "mode": "SIMULATED_OPERATOR_TRANSFER_KINEMATIC",
+      "status": "REFERENCE_CONNECTED"
+    },
+    {
+      "from": "packing",
+      "to": "shipping",
+      "sourcePrim": "/Factory/Assets/packing/Ports/out",
+      "targetPrim": "/Factory/Assets/shipping/Ports/in",
+      "mode": "SIMULATED_OPERATOR_TRANSFER_KINEMATIC",
+      "status": "REFERENCE_CONNECTED"
+    },
+    {
+      "from": "inspection",
+      "to": "rework",
+      "sourcePrim": "/Factory/Assets/inspection/Ports/out",
+      "targetPrim": "/Factory/Assets/rework/Ports/in",
+      "mode": "SIMULATED_OPERATOR_TRANSFER_KINEMATIC",
+      "status": "REFERENCE_CONNECTED"
+    },
+    {
+      "from": "rework",
+      "to": "inspection",
+      "sourcePrim": "/Factory/Assets/rework/Ports/out",
+      "targetPrim": "/Factory/Assets/inspection/Ports/in",
+      "mode": "SIMULATED_OPERATOR_TRANSFER_KINEMATIC",
+      "status": "REFERENCE_CONNECTED"
+    },
+    {
+      "from": "inspection",
+      "to": "scrap",
+      "sourcePrim": "/Factory/Assets/inspection/Ports/out",
+      "targetPrim": "/Factory/Assets/scrap/Ports/in",
+      "mode": "SIMULATED_OPERATOR_TRANSFER_KINEMATIC",
+      "status": "REFERENCE_CONNECTED"
+    }
+  ],
+  "events": [
+    {
+      "case": "PASS",
+      "seq": 0,
+      "frame": 0,
+      "instance": "receiving",
+      "state": "PROCESS",
+      "position": [
+        -7.0,
+        1.0089999771118163,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "PASS",
+      "seq": 1,
+      "frame": 120,
+      "instance": "transfer",
+      "state": "PROCESS",
+      "position": [
+        -4.0,
+        0.945000011920929,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "PASS",
+      "seq": 2,
+      "frame": 240,
+      "instance": "assembly",
+      "state": "PROCESS",
+      "position": [
+        -1.0,
+        0.945000011920929,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "PASS",
+      "seq": 3,
+      "frame": 360,
+      "instance": "inspection",
+      "state": "INSPECT",
+      "position": [
+        1.5,
+        0.945000011920929,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "PASS",
+      "seq": 4,
+      "frame": 480,
+      "instance": "packing",
+      "state": "PROCESS",
+      "position": [
+        4.0,
+        0.945000011920929,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "PASS",
+      "seq": 5,
+      "frame": 600,
+      "instance": "shipping",
+      "state": "COMPLETE",
+      "position": [
+        7.0,
+        1.0089999771118163,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "REWORK_PASS",
+      "seq": 0,
+      "frame": 900,
+      "instance": "receiving",
+      "state": "PROCESS",
+      "position": [
+        -7.0,
+        1.0089999771118163,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "REWORK_PASS",
+      "seq": 1,
+      "frame": 1020,
+      "instance": "transfer",
+      "state": "PROCESS",
+      "position": [
+        -4.0,
+        0.945000011920929,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "REWORK_PASS",
+      "seq": 2,
+      "frame": 1140,
+      "instance": "assembly",
+      "state": "PROCESS",
+      "position": [
+        -1.0,
+        0.945000011920929,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "REWORK_PASS",
+      "seq": 3,
+      "frame": 1260,
+      "instance": "inspection",
+      "state": "INSPECT",
+      "position": [
+        1.5,
+        0.945000011920929,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "REWORK_PASS",
+      "seq": 4,
+      "frame": 1380,
+      "instance": "rework",
+      "state": "REWORK",
+      "position": [
+        1.5,
+        0.945000011920929,
+        3.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "REWORK_PASS",
+      "seq": 5,
+      "frame": 1500,
+      "instance": "inspection",
+      "state": "INSPECT",
+      "position": [
+        1.5,
+        0.945000011920929,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "REWORK_PASS",
+      "seq": 6,
+      "frame": 1620,
+      "instance": "packing",
+      "state": "PROCESS",
+      "position": [
+        4.0,
+        0.945000011920929,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "REWORK_PASS",
+      "seq": 7,
+      "frame": 1740,
+      "instance": "shipping",
+      "state": "COMPLETE",
+      "position": [
+        7.0,
+        1.0089999771118163,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "SCRAP",
+      "seq": 0,
+      "frame": 1800,
+      "instance": "receiving",
+      "state": "PROCESS",
+      "position": [
+        -7.0,
+        1.0089999771118163,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "SCRAP",
+      "seq": 1,
+      "frame": 1920,
+      "instance": "transfer",
+      "state": "PROCESS",
+      "position": [
+        -4.0,
+        0.945000011920929,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "SCRAP",
+      "seq": 2,
+      "frame": 2040,
+      "instance": "assembly",
+      "state": "PROCESS",
+      "position": [
+        -1.0,
+        0.945000011920929,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "SCRAP",
+      "seq": 3,
+      "frame": 2160,
+      "instance": "inspection",
+      "state": "INSPECT",
+      "position": [
+        1.5,
+        0.945000011920929,
+        -2.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "SCRAP",
+      "seq": 4,
+      "frame": 2280,
+      "instance": "scrap",
+      "state": "SCRAPPED",
+      "position": [
+        4.0,
+        0.17999999940395353,
+        3.0
+      ],
+      "source": "SIMULATED_OPERATOR"
+    }
+  ],
+  "sqliteRoundtrip": true,
+  "usdEventRoundtrip": true,
+  "realSignals": 0,
+  "seconds": 0.075,
+  "layoutSha256": "233715e50b4d44207bdd452420e328877718779ae4ad328cf269bdb595746fd9"
+}

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 93,
+  "blueprintCode": "BP_ADOPT_F39E4264B5F033A8B693",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_F39E4264B5F033A8B693"
+  },
+  "route": "/admin/system/cron-monitoring",
+  "pageName": "크론 모니터링",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1120144",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "e01b9d2417017234a26a4f70e9e26fd08f503213a11ecee7b02de3ee4fc6b91d",
+  "artifactHash": "ec81aafb0a415b9909be604a3639272ff62cdd70c3b7f8df64177244b09cd68b"
+}

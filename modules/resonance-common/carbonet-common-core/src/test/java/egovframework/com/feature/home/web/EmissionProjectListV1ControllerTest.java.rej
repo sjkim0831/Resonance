@@ -1,0 +1,21 @@
+--- modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/feature/home/web/EmissionProjectListV1ControllerTest.java
++++ modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/feature/home/web/EmissionProjectListV1ControllerTest.java
+@@ -57,6 +57,9 @@
+         doAnswer(invocation -> queryForListResult(invocation, project))
+                 .when(jdbc).queryForList(anyString(), any(Object[].class));
+         doAnswer(invocation -> queryForObjectResult(invocation))
+                 .when(jdbc).queryForObject(anyString(), any(Class.class), any(Object[].class));
++        when(jdbc.queryForMap(contains("emission_current_contract"), any(Object[].class)))
++                .thenReturn(Map.of("projectCount", 1L, "completedCount", 0L, "calculatedCount", 0L,
++                        "notCalculatedCount", 1L, "approvedProjectCount", 0L, "approvedTotalEmission", 0L));
+ 
+         ResponseEntity<?> response = new EmissionProjectListV1Controller(jdbc, users)
+@@ -76,3 +79,8 @@
+         assertFalse(body.containsKey("tenantId"));
++        Map<?, ?> summary = assertInstanceOf(Map.class, body.get("summary"));
++        assertEquals(1L, summary.get("projectCount"));
++        assertEquals(0L, summary.get("approvedProjectCount"));
++        assertEquals(0, ((Number) summary.get("approvedTotalEmission")).intValue());
++        verify(jdbc).queryForMap(contains("emission_current_contract"), any(Object[].class));
+ 
+         List<?> items = assertInstanceOf(List.class, body.get("items"));

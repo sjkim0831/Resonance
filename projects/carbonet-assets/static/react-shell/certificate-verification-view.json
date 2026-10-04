@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 2,
+  "screen": "CERTIFICATE_VERIFICATION",
+  "routeScope": ["/home/certificate-verify", "/admin/emission/survey-report-verify"],
+  "verificationFlow": { "continueAfterByteMismatch": true },
+  "audiences": {
+    "public": { "showIdentifiers": false, "showIssuedCertificateId": false, "showTechnicalOcrAudit": false },
+    "admin": { "showIdentifiers": true, "showIssuedCertificateId": true, "showTechnicalOcrAudit": true }
+  },
+  "labels": {
+    "ko": { "graphComparison": "그래프 데이터 전체 대조", "detailComparison": "상세 계산 데이터 전체 대조" },
+    "en": { "graphComparison": "All graph data", "detailComparison": "All detail calculation data" }
+  },
+  "pagePolicy": {
+    "graphPages": "use-api-page-number",
+    "detailPages": "all-detected-detail-pages",
+    "lastPage": "digital-verification-identifiers"
+  }
+}

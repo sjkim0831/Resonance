@@ -1,0 +1,14 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { assess } from './menu-change-preflight.mjs';
+const plan = { changes: [{ menu: 'H1030304', publish: false }] };
+const menu = { homeMenu: [{sections:[{items:[{code:'H1030304',label:'원료별 기여도',url:'/emission/lca?menu=H1030304'}]}]}] };
+const route = 'koPath: "/emission/lca"';
+test('anonymous automation does not imply user browser logout', () => assert.ok(assess(plan,{},401,menu,route,'').blockers.includes('AUTOMATION_SESSION_NOT_AUTHENTICATED')));
+test('an HTML shell route cannot prove correct menu dispatch', () => assert.equal(assess(plan,{authenticated:true},200,menu,route,'').changes[0].evidence[0].status,'LEGACY_MENU_HAS_NO_DEDICATED_DISPATCH'));
+test('plan-only changes are never applied', () => assert.ok(assess(plan,{authenticated:true},200,menu,route,'').blockers.includes('NO_EXECUTABLE_MENU_OPERATIONS')));
+test('unimplemented tabs block publication', () => assert.ok(assess(plan,{authenticated:true},200,menu,route,'').blockers.includes('PLAN_CONTAINS_UNIMPLEMENTED_OR_CONDITIONAL_CHANGES')));
+test('missing menu identified', () => assert.equal(assess(plan,{},401,{},route,'').changes[0].evidence[0].status,'MENU_NOT_FOUND'));
+test('source match explicitly remains non-E2E evidence', () => assert.equal(assess(plan,{},401,menu,route,'menuCode === "H1030304"').changes[0].evidence[0].status,'SOURCE_ROUTE_FOUND_NOT_E2E_VERIFIED'));
+test('successful preflight is not deployment', () => assert.equal(assess({changes:[],operations:[{}]},{authenticated:true},200,{},'','').status,'PREFLIGHT_ONLY_NOT_APPLIED'));
+test('403 remains blocking for authenticated user', () => assert.ok(assess(plan,{authenticated:true},403,menu,route,'').blockers.includes('MENU_ADMIN_HTTP_403')));

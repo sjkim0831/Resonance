@@ -1,0 +1,2260 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "MEASUREMENT_DATA_QUALITY",
+    "name": "측정기기·교정·데이터 품질",
+    "domain": "DATA_GOVERNANCE",
+    "workType": "DATA_GOVERNANCE",
+    "goal": "측정기기의 유효성과 원시자료 품질을 지속 점검하고 결측·이상치를 통제한다."
+  },
+  "step": {
+    "code": "MEASUREMENT_DATA_QUALITY_S3",
+    "version": 2,
+    "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "VERIFIER",
+      "ownerActorCode": "SITE_DATA_OWNER",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
+    },
+    "business": {
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
+      "domainCode": "DATA_GOVERNANCE",
+      "processName": "측정기기·교정·데이터 품질",
+      "stepName": "결측·이상치 판정·대체",
+      "goal": "측정기기의 유효성과 원시자료 품질을 지속 점검하고 결측·이상치를 통제한다.",
+      "requirement": "결측·이상치 판정·대체 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+      "completionRule": "결측·이상치 판정·대체의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+      "riskLevel": "CRITICAL",
+      "slaHours": 24,
+      "regulationRefs": "ISO 14064-1, 측정기기 교정 기준",
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {},
+      "extensions": {}
+    },
+    "transition": {
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
+      "commandCode": "MEASUREMENT_DATA_QUALITY_EXECUTE_3",
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "stepOrder": 3,
+      "stepType": "DECISION",
+      "parentStepCode": null,
+      "completionRule": "결측·이상치 판정·대체의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+      "policy": {
+        "auditRequired": true,
+        "optimisticLock": true,
+        "idempotencyRequired": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
+    },
+    "input": {
+      "tenantId": "required",
+      "actorCode": "VERIFIER",
+      "projectId": "required",
+      "stepOrder": 3,
+      "processCode": "MEASUREMENT_DATA_QUALITY",
+      "idempotencyKey": "required"
+    },
+    "output": {
+      "state": "STEP_3_COMPLETED",
+      "evidence": "required",
+      "auditEvent": "required",
+      "nextTaskCreated": true
+    },
+    "guide": {
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
+      "processCode": "MEASUREMENT_DATA_QUALITY",
+      "stepCode": "MEASUREMENT_DATA_QUALITY_S3",
+      "stepOrder": 3,
+      "workTypeCode": "DATA_GOVERNANCE",
+      "actorCode": "VERIFIER",
+      "title": "결측·이상치 판정·대체",
+      "purpose": "결측·이상치 판정·대체 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+      "entryCondition": "STEP_2_COMPLETED",
+      "completionCondition": "결측·이상치 판정·대체의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+      "userPath": "/generated/measurement-data-quality/measurement-data-quality-s3",
+      "adminPath": "/admin/generated/measurement-data-quality/measurement-data-quality-s3",
+      "relatedBusinessRoute": null,
+      "nextStepCode": "MEASUREMENT_DATA_QUALITY_S4",
+      "nextAction": "STEP_3_COMPLETED",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+        "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+        "routeStatus": "DESIGN_ONLY",
+        "audience": "ADMIN",
+        "screenType": "WORKSPACE",
+        "title": "결측·이상치 판정·대체 관리",
+        "purpose": "결측·이상치 판정·대체 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+        "layout": "RESPONSIVE_WORKSPACE",
+        "theme": "KRDS_GOV_DEFAULT",
+        "designAuthority": {
+          "source": "LEGACY_REGISTERED_DEFAULT",
+          "layout": "RESPONSIVE_WORKSPACE",
+          "theme": "KRDS_GOV_DEFAULT",
+          "defaulted": [
+            "layout",
+            "theme"
+          ]
+        },
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "공통",
+            "fieldOrder": 10,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "tenantId"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트",
+            "fieldGroup": "공통",
+            "fieldOrder": 20,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "projectId",
+            "controlType": "PROJECT_SELECT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "projectId"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 30,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "processCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "processCode"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "단계 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 40,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "stepCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "stepCode"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "UUID",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": false,
+            "fieldCode": "recordId",
+            "fieldName": "업무 레코드 ID",
+            "fieldGroup": "공통",
+            "fieldOrder": 50,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": false,
+              "immutable": true
+            },
+            "apiProperty": "recordId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "recordId"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": true,
+            "fieldCode": "statusCode",
+            "fieldName": "처리 상태",
+            "fieldGroup": "공통",
+            "fieldOrder": 60,
+            "validation": {
+              "codeGroup": "WORK_STATUS"
+            },
+            "apiProperty": "statusCode",
+            "controlType": "STATUS_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "statusCode"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "fieldName": "담당 액터",
+            "fieldGroup": "공통",
+            "fieldOrder": 70,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "ownerActorCode",
+            "controlType": "ACTOR_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": true,
+            "fieldCode": "rowVersion",
+            "fieldName": "데이터 버전",
+            "fieldGroup": "공통",
+            "fieldOrder": 80,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "rowVersion",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "rowVersion"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": false,
+            "fieldCode": "createdAt",
+            "fieldName": "등록 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 90,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "createdAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "createdAt"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": false,
+            "fieldCode": "updatedAt",
+            "fieldName": "최종 수정 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 100,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "updatedAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "updatedAt"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "fieldName": "증빙 수",
+            "fieldGroup": "공통",
+            "fieldOrder": 110,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "evidenceCount",
+            "controlType": "EVIDENCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "evidenceCount"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "YEAR",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": true,
+            "fieldCode": "reportingYear",
+            "fieldName": "보고연도",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 200,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "reportingYear",
+            "controlType": "YEAR",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "reporting_year",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "reportingYear"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": true,
+            "fieldCode": "organizationId",
+            "fieldName": "조직",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 210,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "organizationId",
+            "controlType": "ORGANIZATION_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "organizationId"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": true,
+            "fieldCode": "siteId",
+            "fieldName": "사업장",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 220,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "siteId",
+            "controlType": "SITE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "siteId"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": false,
+            "fieldCode": "facilityId",
+            "fieldName": "배출시설",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 230,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "facilityId",
+            "controlType": "FACILITY_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "facilityId"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": true,
+            "fieldCode": "scopeCode",
+            "fieldName": "Scope",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 240,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "scopeCode",
+            "controlType": "SCOPE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "scopeCode"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": false,
+            "fieldCode": "activityValue",
+            "fieldName": "활동량",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 250,
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "activityValue",
+            "controlType": "NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "activityValue"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": false,
+            "fieldCode": "unitCode",
+            "fieldName": "단위",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 260,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "unitCode",
+            "controlType": "UNIT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "unitCode"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": false,
+            "fieldCode": "factorId",
+            "fieldName": "배출계수",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 270,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "factorId",
+            "controlType": "FACTOR_SEARCH",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "factorId"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": false,
+            "fieldCode": "emissionValue",
+            "fieldName": "배출량",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 280,
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "emissionValue",
+            "controlType": "CALCULATED_NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "emissionValue"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "fieldName": "데이터 품질",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 290,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "qualityStatus",
+            "controlType": "QUALITY_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "qualityStatus"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "TEXT",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": false,
+            "fieldCode": "taskComment",
+            "fieldName": "업무 메모",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 400,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "taskComment",
+            "controlType": "TEXTAREA",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "taskComment"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": false,
+            "fieldCode": "dueAt",
+            "fieldName": "마감 일시",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 410,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "dueAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "dueAt"
+          },
+          {
+            "route": "/admin/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+            "required": false,
+            "fieldCode": "nextActorCode",
+            "fieldName": "다음 담당 액터",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 420,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "nextActorCode",
+            "controlType": "ACTOR_VIEW",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "nextActorCode"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "VERIFIER",
+            "entryState": "STEP_2_COMPLETED",
+            "commandCode": "MEASUREMENT_DATA_QUALITY_EXECUTE_3",
+            "resultState": "STEP_3_COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "retry": "idempotent commands only",
+          "states": [
+            "loading",
+            "empty",
+            "validation-error",
+            "authority-denied",
+            "conflict",
+            "dependency-blocked",
+            "server-error",
+            "recovery"
+          ]
+        },
+        "responsive": {
+          "mobile": "single-column and priority fields",
+          "tablet": "adaptive two-column",
+          "desktop": "task-optimized grid",
+          "overflow": "wrap-or-scroll-with-sticky-key-column"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "errorSummary": true,
+          "focusManagement": true
+        }
+      },
+      {
+        "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+        "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+        "routeStatus": "DESIGN_ONLY",
+        "audience": "USER",
+        "screenType": "WORKSPACE",
+        "title": "결측·이상치 판정·대체",
+        "purpose": "결측·이상치 판정·대체 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+        "layout": "RESPONSIVE_WORKSPACE",
+        "theme": "KRDS_GOV_DEFAULT",
+        "designAuthority": {
+          "source": "LEGACY_REGISTERED_DEFAULT",
+          "layout": "RESPONSIVE_WORKSPACE",
+          "theme": "KRDS_GOV_DEFAULT",
+          "defaulted": [
+            "layout",
+            "theme"
+          ]
+        },
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "공통",
+            "fieldOrder": 10,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "tenantId"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트",
+            "fieldGroup": "공통",
+            "fieldOrder": 20,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "projectId",
+            "controlType": "PROJECT_SELECT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "projectId"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 30,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "processCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "processCode"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "단계 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 40,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "stepCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "stepCode"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "UUID",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": false,
+            "fieldCode": "recordId",
+            "fieldName": "업무 레코드 ID",
+            "fieldGroup": "공통",
+            "fieldOrder": 50,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": false,
+              "immutable": true
+            },
+            "apiProperty": "recordId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "recordId"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": true,
+            "fieldCode": "statusCode",
+            "fieldName": "처리 상태",
+            "fieldGroup": "공통",
+            "fieldOrder": 60,
+            "validation": {
+              "codeGroup": "WORK_STATUS"
+            },
+            "apiProperty": "statusCode",
+            "controlType": "STATUS_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "statusCode"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "fieldName": "담당 액터",
+            "fieldGroup": "공통",
+            "fieldOrder": 70,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "ownerActorCode",
+            "controlType": "ACTOR_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": true,
+            "fieldCode": "rowVersion",
+            "fieldName": "데이터 버전",
+            "fieldGroup": "공통",
+            "fieldOrder": 80,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "rowVersion",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "rowVersion"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": false,
+            "fieldCode": "createdAt",
+            "fieldName": "등록 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 90,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "createdAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "createdAt"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": false,
+            "fieldCode": "updatedAt",
+            "fieldName": "최종 수정 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 100,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "updatedAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "updatedAt"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "fieldName": "증빙 수",
+            "fieldGroup": "공통",
+            "fieldOrder": 110,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "evidenceCount",
+            "controlType": "EVIDENCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "evidenceCount"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "YEAR",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": true,
+            "fieldCode": "reportingYear",
+            "fieldName": "보고연도",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 200,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "reportingYear",
+            "controlType": "YEAR",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "reporting_year",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "reportingYear"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": true,
+            "fieldCode": "organizationId",
+            "fieldName": "조직",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 210,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "organizationId",
+            "controlType": "ORGANIZATION_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "organizationId"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": true,
+            "fieldCode": "siteId",
+            "fieldName": "사업장",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 220,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "siteId",
+            "controlType": "SITE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "siteId"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": false,
+            "fieldCode": "facilityId",
+            "fieldName": "배출시설",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 230,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "facilityId",
+            "controlType": "FACILITY_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "facilityId"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": true,
+            "fieldCode": "scopeCode",
+            "fieldName": "Scope",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 240,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "scopeCode",
+            "controlType": "SCOPE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "scopeCode"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": false,
+            "fieldCode": "activityValue",
+            "fieldName": "활동량",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 250,
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "activityValue",
+            "controlType": "NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "activityValue"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": false,
+            "fieldCode": "unitCode",
+            "fieldName": "단위",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 260,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "unitCode",
+            "controlType": "UNIT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "unitCode"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": false,
+            "fieldCode": "factorId",
+            "fieldName": "배출계수",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 270,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "factorId",
+            "controlType": "FACTOR_SEARCH",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "factorId"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": false,
+            "fieldCode": "emissionValue",
+            "fieldName": "배출량",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 280,
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "emissionValue",
+            "controlType": "CALCULATED_NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "emissionValue"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "fieldName": "데이터 품질",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 290,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "qualityStatus",
+            "controlType": "QUALITY_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "qualityStatus"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "TEXT",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": false,
+            "fieldCode": "taskComment",
+            "fieldName": "업무 메모",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 400,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "taskComment",
+            "controlType": "TEXTAREA",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "taskComment"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": false,
+            "fieldCode": "dueAt",
+            "fieldName": "마감 일시",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 410,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "dueAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "dueAt"
+          },
+          {
+            "route": "/planned/emission/measurement-data-quality/measurement-data-quality-s3",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+            "required": false,
+            "fieldCode": "nextActorCode",
+            "fieldName": "다음 담당 액터",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 420,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "nextActorCode",
+            "controlType": "ACTOR_VIEW",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "nextActorCode"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "VERIFIER",
+            "entryState": "STEP_2_COMPLETED",
+            "commandCode": "MEASUREMENT_DATA_QUALITY_EXECUTE_3",
+            "resultState": "STEP_3_COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "retry": "idempotent commands only",
+          "states": [
+            "loading",
+            "empty",
+            "validation-error",
+            "authority-denied",
+            "conflict",
+            "dependency-blocked",
+            "server-error",
+            "recovery"
+          ]
+        },
+        "responsive": {
+          "mobile": "single-column and priority fields",
+          "tablet": "adaptive two-column",
+          "desktop": "task-optimized grid",
+          "overflow": "wrap-or-scroll-with-sticky-key-column"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "errorSummary": true,
+          "focusManagement": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorGuard": true,
+        "rowVersion": true,
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": "COMMON_PROCESS_EXECUTION_RUNTIME_V1",
+        "method": "CONTRACT"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "VERIFIER",
+        "entryState": "STEP_2_COMPLETED",
+        "commandCode": "MEASUREMENT_DATA_QUALITY_EXECUTE_3",
+        "resultState": "STEP_3_COMPLETED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "idempotencyRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "VERIFIER",
+      "ownerActorCode": "SITE_DATA_OWNER",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
+    },
+    "handoffPolicy": {},
+    "handoffs": [
+      {
+        "failure": {
+          "onInvalid": "VALIDATION_ERROR",
+          "onMissing": "DEPENDENCY_BLOCKED",
+          "onConflict": "RELOAD_AND_REVIEW",
+          "onUnauthorized": "DENY_AND_AUDIT"
+        },
+        "payload": {
+          "toInput": {
+            "tenantId": "required",
+            "actorCode": "APPROVER",
+            "projectId": "required",
+            "stepOrder": 4,
+            "processCode": "MEASUREMENT_DATA_QUALITY",
+            "idempotencyKey": "required"
+          },
+          "fromOutput": {
+            "state": "STEP_3_COMPLETED",
+            "evidence": "required",
+            "auditEvent": "required",
+            "nextTaskCreated": true
+          },
+          "requiredContext": [
+            "tenantId",
+            "projectId",
+            "recordId",
+            "statusCode",
+            "rowVersion"
+          ]
+        },
+        "integrity": {
+          "optimisticLock": true,
+          "immutableSnapshot": true,
+          "hashWhenEvidenceOrCalculation": true
+        },
+        "toStepCode": "MEASUREMENT_DATA_QUALITY_S4",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "processCode",
+          "recordId",
+          "rowVersion"
+        ],
+        "handoffType": "STEP",
+        "authorization": {
+          "toActor": "APPROVER",
+          "fromActor": "VERIFIER",
+          "tenantIsolation": true,
+          "projectIsolation": true,
+          "segregationChecked": true
+        },
+        "toProcessCode": "MEASUREMENT_DATA_QUALITY"
+      }
+    ]
+  },
+  "database": {
+    "transactional": true,
+    "migrationRequired": true,
+    "mappings": [
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "tenantId",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "projectId",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "stepCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": false,
+            "fieldCode": "recordId",
+            "apiProperty": "recordId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "statusCode",
+            "apiProperty": "statusCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "apiProperty": "ownerActorCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "rowVersion",
+            "apiProperty": "rowVersion",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "createdAt",
+            "apiProperty": "createdAt",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "updatedAt",
+            "apiProperty": "updatedAt",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "apiProperty": "evidenceCount",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportingYear",
+            "apiProperty": "reportingYear",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "reporting_year",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "organizationId",
+            "apiProperty": "organizationId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "siteId",
+            "apiProperty": "siteId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "facilityId",
+            "apiProperty": "facilityId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "scopeCode",
+            "apiProperty": "scopeCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "activityValue",
+            "apiProperty": "activityValue",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "unitCode",
+            "apiProperty": "unitCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "factorId",
+            "apiProperty": "factorId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "emissionValue",
+            "apiProperty": "emissionValue",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "apiProperty": "qualityStatus",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "taskComment",
+            "apiProperty": "taskComment",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "dueAt",
+            "apiProperty": "dueAt",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "nextActorCode",
+            "apiProperty": "nextActorCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          }
+        ],
+        "audience": "ADMIN",
+        "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_ADMIN",
+        "primaryEntity": "emission_project_registry"
+      },
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "tenantId",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "projectId",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "stepCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": false,
+            "fieldCode": "recordId",
+            "apiProperty": "recordId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "statusCode",
+            "apiProperty": "statusCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "apiProperty": "ownerActorCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "rowVersion",
+            "apiProperty": "rowVersion",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "createdAt",
+            "apiProperty": "createdAt",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "updatedAt",
+            "apiProperty": "updatedAt",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "apiProperty": "evidenceCount",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportingYear",
+            "apiProperty": "reportingYear",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "reporting_year",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "organizationId",
+            "apiProperty": "organizationId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "siteId",
+            "apiProperty": "siteId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "facilityId",
+            "apiProperty": "facilityId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "scopeCode",
+            "apiProperty": "scopeCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "activityValue",
+            "apiProperty": "activityValue",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "unitCode",
+            "apiProperty": "unitCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "factorId",
+            "apiProperty": "factorId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "emissionValue",
+            "apiProperty": "emissionValue",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "apiProperty": "qualityStatus",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "taskComment",
+            "apiProperty": "taskComment",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "dueAt",
+            "apiProperty": "dueAt",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "nextActorCode",
+            "apiProperty": "nextActorCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          }
+        ],
+        "audience": "USER",
+        "pageCode": "MEASUREMENT_DATA_QUALITY_MEASUREMENT_DATA_QUALITY_S3_USER",
+        "primaryEntity": "emission_project_registry"
+      }
+    ],
+    "schemaSetVersion": 2,
+    "primaryEntities": [
+      "emission_project_registry"
+    ],
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "측정기기·교정·데이터 품질 - 권한분리 위반",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "order": 1,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_1",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S1",
+          "actorCode": "SITE_DATA_OWNER"
+        },
+        {
+          "order": 2,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_2",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S2",
+          "actorCode": "SITE_DATA_OWNER"
+        },
+        {
+          "order": 3,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_3",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_4",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MEASUREMENT_DATA_QUALITY_AUTH",
+      "assertions": [
+        "비인가 액션 403",
+        "요청자와 승인자 분리",
+        "거부 시도 감사 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "측정기기·교정·데이터 품질 - 필수값·업무예외",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "order": 1,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_1",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S1",
+          "actorCode": "SITE_DATA_OWNER"
+        },
+        {
+          "order": 2,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_2",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S2",
+          "actorCode": "SITE_DATA_OWNER"
+        },
+        {
+          "order": 3,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_3",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_4",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MEASUREMENT_DATA_QUALITY_EXCEPTION",
+      "assertions": [
+        "잘못된 입력 거부",
+        "상태 불변",
+        "보완 태스크 생성",
+        "원인과 필드 오류 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "측정기기·교정·데이터 품질 - 정상 완료",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "order": 1,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_1",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S1",
+          "actorCode": "SITE_DATA_OWNER"
+        },
+        {
+          "order": 2,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_2",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S2",
+          "actorCode": "SITE_DATA_OWNER"
+        },
+        {
+          "order": 3,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_3",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_4",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MEASUREMENT_DATA_QUALITY_HAPPY",
+      "assertions": [
+        "최종 상태 도달",
+        "모든 단계 증적 존재",
+        "다음 태스크 연결",
+        "감사 로그 완전"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "측정기기·교정·데이터 품질 - 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "order": 1,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_1",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S1",
+          "actorCode": "SITE_DATA_OWNER"
+        },
+        {
+          "order": 2,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_2",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S2",
+          "actorCode": "SITE_DATA_OWNER"
+        },
+        {
+          "order": 3,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_3",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_4",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MEASUREMENT_DATA_QUALITY_ISOLATION",
+      "assertions": [
+        "타 테넌트·프로젝트 자료 0건",
+        "직접 식별자 접근 403 또는 404",
+        "검색·파일·내보내기 격리"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "측정기기·교정·데이터 품질 - 중단·중복요청 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "order": 1,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_1",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S1",
+          "actorCode": "SITE_DATA_OWNER"
+        },
+        {
+          "order": 2,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_2",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S2",
+          "actorCode": "SITE_DATA_OWNER"
+        },
+        {
+          "order": 3,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_3",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "MEASUREMENT_DATA_QUALITY_EXECUTE_4",
+          "stepCode": "MEASUREMENT_DATA_QUALITY_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MEASUREMENT_DATA_QUALITY_RECOVERY",
+      "assertions": [
+        "멱등키 중복 생성 없음",
+        "중단 단계부터 안전 재개",
+        "롤백 후 원본 보존",
+        "재시도 횟수와 결과 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
+    "security": {
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true,
+      "segregationOfDuties": true,
+      "rateLimitRequired": false,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "standard": "WCAG 2.1 AA",
+      "keyboard": true,
+      "focus": true,
+      "errorSummary": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": true,
+      "targetHours": 24,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
+  },
+  "sourceHash": "e8f63fd5bc77f283000ce03d9c29292b",
+  "approvalStatus": "APPROVED",
+  "packageHash": "178c0f270b90bc4224c539c2631ac84d98ee03d1ac42a7c34c356565a392d979"
+}

@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import type { DeptRolePagePayload } from "../../lib/api/authTypes";
 import { GridToolbar, MemberButton, MemberPagination, MemberPermissionButton } from "../admin-ui/common";
 
@@ -86,10 +87,7 @@ export function DeptRoleMemberTable({ page, canUseAllCompanies, canUseOwnCompany
     <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] overflow-hidden" data-help-id="dept-role-members">
       <GridToolbar actions={<span className="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[var(--kr-gov-text-secondary)]">{page?.companyMemberCount ?? 0}{t(page, "명", " members")}</span>} title={t(page, "선택 회사의 회원별 권한 할당", "Member role assignments for the selected company")} />
       <div className="flex flex-col gap-3 border-b border-[var(--kr-gov-border-light)] bg-white px-4 py-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex w-full max-w-xl items-center gap-2">
-          <input aria-label={t(page, "회원 권한 검색어", "Member role search")} className="h-10 flex-1 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] px-3 text-sm" placeholder={t(page, "회원 ID, 이름, 부서명 검색", "Search by member ID, name, or department")} value={memberSearchDraft} onChange={(e) => setMemberSearchDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onMemberSearchSubmit(); } }} />
-          <MemberButton onClick={onMemberSearchSubmit} type="button" variant="info">{t(page, "검색", "Search")}</MemberButton>
-        </div>
+        <CommonSearchSection basic={<label>{t(page,"회원 권한 검색어","Member role search")}<input aria-label={t(page, "회원 권한 검색어", "Member role search")} className="h-10 flex-1 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] px-3 text-sm" placeholder={t(page, "회원 ID, 이름, 부서명 검색", "Search by member ID, name, or department")} value={memberSearchDraft} onChange={(e) => setMemberSearchDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onMemberSearchSubmit(); } }} /></label>} actions={<MemberButton onClick={onMemberSearchSubmit} type="button" variant="primary">{t(page, "검색", "Search")}</MemberButton>}/>
         <p className="text-xs text-[var(--kr-gov-text-secondary)]">{t(page, `페이지 ${currentMemberPage} / ${totalMemberPages}`, `Page ${currentMemberPage} / ${totalMemberPages}`)}</p>
       </div>
       <div className="overflow-x-auto">

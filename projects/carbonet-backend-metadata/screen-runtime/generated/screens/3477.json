@@ -1,0 +1,519 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 3477,
+  "blueprintCode": "BP_AUTO_D26E4331C1BEE0DA5110C099",
+  "identity": {
+    "processCode": "COMPANY_MANAGER_DELEGATION",
+    "stepCode": "CMD_REQUEST",
+    "actorCode": "COMPANY_ADMIN",
+    "audience": "USER",
+    "pageId": "AUTO_D26E4331C1BEE0DA5110"
+  },
+  "route": "/work/company-manager-delegation",
+  "pageName": "위임·승계 요청과 후보 검증 사용자 업무 화면",
+  "screenType": "WORKFLOW",
+  "templateCode": "KRDS_WORKFLOW",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "kpis": [
+      "진행률",
+      "기한",
+      "차단건",
+      "미결 증적",
+      "후속업무"
+    ],
+    "errors": [
+      {
+        "code": "FORBIDDEN",
+        "recovery": "권한·업무분리 확인"
+      },
+      {
+        "code": "CONFLICT",
+        "recovery": "최신 버전 재조회"
+      },
+      {
+        "code": "DEPENDENCY_FAILURE",
+        "recovery": "멱등키로 안전 재시도"
+      }
+    ],
+    "fields": [
+      {
+        "route": "/work/company-manager-delegation?step=cmd_request",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "COMPANY_MANAGER_DELEGATION_CMD_REQUEST_USER",
+        "required": true,
+        "fieldCode": "projectId",
+        "fieldName": "프로젝트",
+        "fieldGroup": "업무 범위",
+        "fieldOrder": 10,
+        "validation": {
+          "type": "code",
+          "nullable": false,
+          "required": true,
+          "allowUnknown": false
+        },
+        "apiProperty": "projectId",
+        "controlType": "PROJECT_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "COMPANY_ADMIN:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/company-manager-delegation?step=cmd_request",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "COMPANY_MANAGER_DELEGATION_CMD_REQUEST_USER",
+        "required": true,
+        "fieldCode": "businessId",
+        "fieldName": "업무 대상 ID",
+        "fieldGroup": "업무 범위",
+        "fieldOrder": 20,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "businessId",
+        "controlType": "ENTITY_SELECT",
+        "sourceTable": null,
+        "privacyClass": "CONFIDENTIAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "COMPANY_ADMIN:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/company-manager-delegation?step=cmd_request",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "COMPANY_MANAGER_DELEGATION_CMD_REQUEST_USER",
+        "required": true,
+        "fieldCode": "referenceCode",
+        "fieldName": "참조·로트·신청 번호",
+        "fieldGroup": "업무 범위",
+        "fieldOrder": 30,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "referenceCode",
+        "controlType": "TEXT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "COMPANY_ADMIN:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/company-manager-delegation?step=cmd_request",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "COMPANY_MANAGER_DELEGATION_CMD_REQUEST_USER",
+        "required": true,
+        "fieldCode": "statusCode",
+        "fieldName": "업무 상태",
+        "fieldGroup": "상태",
+        "fieldOrder": 40,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "statusCode",
+        "controlType": "STATUS_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "COMPANY_ADMIN:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/company-manager-delegation?step=cmd_request",
+        "audience": "USER",
+        "dataType": "DATETIME",
+        "editable": true,
+        "pageCode": "COMPANY_MANAGER_DELEGATION_CMD_REQUEST_USER",
+        "required": true,
+        "fieldCode": "effectiveAt",
+        "fieldName": "발생·적용 일시",
+        "fieldGroup": "기준",
+        "fieldOrder": 50,
+        "validation": {
+          "type": "date-time",
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "effectiveAt",
+        "controlType": "DATETIME",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "COMPANY_ADMIN:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/company-manager-delegation?step=cmd_request",
+        "audience": "USER",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "pageCode": "COMPANY_MANAGER_DELEGATION_CMD_REQUEST_USER",
+        "required": false,
+        "fieldCode": "quantityValue",
+        "fieldName": "수량·측정·금액 값",
+        "fieldGroup": "전문값",
+        "fieldOrder": 60,
+        "validation": {
+          "numeric": true,
+          "unitRequiredWhenPresent": true
+        },
+        "apiProperty": "quantityValue",
+        "controlType": "NUMBER",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "COMPANY_ADMIN:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/company-manager-delegation?step=cmd_request",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "COMPANY_MANAGER_DELEGATION_CMD_REQUEST_USER",
+        "required": false,
+        "fieldCode": "unitCode",
+        "fieldName": "단위·통화",
+        "fieldGroup": "전문값",
+        "fieldOrder": 70,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "unitCode",
+        "controlType": "UNIT_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "COMPANY_ADMIN:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/company-manager-delegation?step=cmd_request",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "COMPANY_MANAGER_DELEGATION_CMD_REQUEST_USER",
+        "required": false,
+        "fieldCode": "qualityCode",
+        "fieldName": "품질·적합 등급",
+        "fieldGroup": "품질·외부검증",
+        "fieldOrder": 80,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "qualityCode",
+        "controlType": "QUALITY_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "COMPANY_ADMIN:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/company-manager-delegation?step=cmd_request",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "COMPANY_MANAGER_DELEGATION_CMD_REQUEST_USER",
+        "required": false,
+        "fieldCode": "externalCheckStatus",
+        "fieldName": "외부검증 상태",
+        "fieldGroup": "품질·외부검증",
+        "fieldOrder": 90,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "externalCheckStatus",
+        "controlType": "STATUS_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "COMPANY_ADMIN:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/work/company-manager-delegation?step=cmd_request",
+        "audience": "USER",
+        "dataType": "ARRAY",
+        "editable": true,
+        "pageCode": "COMPANY_MANAGER_DELEGATION_CMD_REQUEST_USER",
+        "required": true,
+        "fieldCode": "evidenceIds",
+        "fieldName": "원본·결정 증빙",
+        "fieldGroup": "증적",
+        "fieldOrder": 100,
+        "validation": {
+          "minItems": 1,
+          "hashRequired": true
+        },
+        "apiProperty": "evidenceIds",
+        "controlType": "FILE_UPLOAD",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "COMPANY_ADMIN:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/work/company-manager-delegation?step=cmd_request",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "COMPANY_MANAGER_DELEGATION_CMD_REQUEST_USER",
+        "required": false,
+        "fieldCode": "decisionCode",
+        "fieldName": "판정·승인 결과",
+        "fieldGroup": "결정",
+        "fieldOrder": 110,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "decisionCode",
+        "controlType": "DECISION_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "COMPANY_ADMIN:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/work/company-manager-delegation?step=cmd_request",
+        "audience": "USER",
+        "dataType": "TEXT",
+        "editable": true,
+        "pageCode": "COMPANY_MANAGER_DELEGATION_CMD_REQUEST_USER",
+        "required": false,
+        "fieldCode": "decisionComment",
+        "fieldName": "판정·보완·반려 사유",
+        "fieldGroup": "결정",
+        "fieldOrder": 120,
+        "validation": {
+          "requiredWhen": [
+            "CORRECTION",
+            "REJECTED"
+          ]
+        },
+        "apiProperty": "decisionComment",
+        "controlType": "TEXTAREA",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "COMPANY_ADMIN:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/work/company-manager-delegation?step=cmd_request",
+        "audience": "USER",
+        "dataType": "INTEGER",
+        "editable": true,
+        "pageCode": "COMPANY_MANAGER_DELEGATION_CMD_REQUEST_USER",
+        "required": true,
+        "fieldCode": "rowVersion",
+        "fieldName": "데이터 버전",
+        "fieldGroup": "무결성",
+        "fieldOrder": 130,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "rowVersion",
+        "controlType": "VERSION",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "COMPANY_ADMIN:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/company-manager-delegation?step=cmd_request",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "COMPANY_MANAGER_DELEGATION_CMD_REQUEST_USER",
+        "required": false,
+        "fieldCode": "nextTaskId",
+        "fieldName": "다음 업무",
+        "fieldGroup": "후속업무",
+        "fieldOrder": 140,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "nextTaskId",
+        "controlType": "TASK_LINK",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "COMPANY_ADMIN:USER",
+        "evidenceRequired": false
+      }
+    ],
+    "states": [
+      "LOADING",
+      "EMPTY",
+      "ERROR",
+      "FORBIDDEN",
+      "READY",
+      "BLOCKED",
+      "CONFLICT",
+      "COMPLETED"
+    ],
+    "actions": [
+      "REQUEST_MANAGER_DELEGATION",
+      "SAVE_DRAFT",
+      "REQUEST_CORRECTION"
+    ],
+    "sections": [
+      "업무요약",
+      "선행조건",
+      "전문 데이터",
+      "검증·증적",
+      "결정·이력",
+      "다음업무"
+    ],
+    "extensions": {
+      "contractId": 472,
+      "sharedRuntime": true
+    },
+    "responsive": {
+      "mobile": "single-column-actions-bottom",
+      "tablet": "adaptive-grid",
+      "desktop": "list-detail-workspace"
+    },
+    "permissions": [
+      {
+        "code": "COMPANY_ADMIN",
+        "scope": "TENANT_PROJECT",
+        "segregationOfDuties": true,
+        "serverAuthorization": true
+      }
+    ],
+    "validations": [
+      {
+        "code": "ENTRY_AND_REQUIRED_FIELDS",
+        "type": "CONTRACT"
+      },
+      {
+        "code": "STATE_AND_VERSION",
+        "type": "CONCURRENCY"
+      }
+    ],
+    "apiContracts": [
+      "/api/work/company-manager-delegation/cmd_request"
+    ],
+    "designSystem": "KRDS_GOV",
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG_2_1_AA",
+      "nonColorStatus": true,
+      "focusManagement": true
+    },
+    "dataContracts": [
+      "tenantId",
+      "projectId",
+      "businessId",
+      "recordId",
+      "statusCode",
+      "rowVersion",
+      "evidenceHash",
+      "nextTaskId"
+    ],
+    "schemaVersion": "2.0.0",
+    "completionRule": "유효 후보와 인계 대상 업무가 확정됨",
+    "exitConditions": [
+      "유효 후보와 인계 대상 업무가 확정됨"
+    ],
+    "businessPurpose": "위임 범위·기간·사유·후임자 재직·미결업무를 확인한다.",
+    "entryConditions": [
+      "다음 프로세스 시작 조건을 충족한다: 승인된 회원사와 유효한 기존·후임 담당자 후보가 존재한다. 현재 상태는 READY이며 서버가 테넌트·프로젝트·액터 권한을 확인한 경우에만 진입한다."
+    ],
+    "actorResponsibilities": [
+      "COMPANY_ADMIN 액터가 권한·업무분리 정책에 따라 위임·승계 요청과 후보 검증 사용자 업무 화면 업무를 수행한다."
+    ]
+  },
+  "traceability": {
+    "contractId": 472,
+    "requirementIds": [
+      "COMPANY_MANAGER_DELEGATION:CMD_REQUEST:USER"
+    ],
+    "generationBatchId": 183,
+    "designReadinessScore": 100,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "572b61470854eb0135f8796b3025577ef20226995e62f9f467a297e6d3838d7b",
+  "artifactHash": "2c18e91b7932666b3328d66f04b117db0b3a71bca93eccf496a274741baaa2bb"
+}

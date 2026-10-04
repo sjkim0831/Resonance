@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -340,8 +341,7 @@ export function SensorListMigrationPage() {
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-2 xl:grid-cols-4">
-            <div>
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="sensor-keyword">
                 {en ? "Keyword" : "검색어"}
               </label>
@@ -351,8 +351,8 @@ export function SensorListMigrationPage() {
                 value={searchKeyword}
                 onChange={(event) => setSearchKeyword(event.target.value)}
               />
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="sensor-status">
                 {en ? "Status" : "상태"}
               </label>
@@ -363,8 +363,7 @@ export function SensorListMigrationPage() {
                 <option value="REVIEW">{en ? "Review" : "검토"}</option>
                 <option value="STABLE">{en ? "Stable" : "안정"}</option>
               </AdminSelect>
-            </div>
-            <div>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="sensor-type">
                 {en ? "Sensor Type" : "센서 유형"}
               </label>
@@ -376,8 +375,8 @@ export function SensorListMigrationPage() {
                 <option value="OPS">{en ? "Operations" : "운영"}</option>
                 <option value="WEB">{en ? "Web Access" : "웹 접근"}</option>
               </AdminSelect>
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="sensor-severity">
                 {en ? "Severity" : "심각도"}
               </label>
@@ -388,8 +387,7 @@ export function SensorListMigrationPage() {
                 <option value="MEDIUM">Medium</option>
                 <option value="LOW">Low</option>
               </AdminSelect>
-            </div>
-          </div>
+            </div></div></>} actions={<></>}></CommonSearchSection></div>
         </section>
 
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,0.9fr)]">

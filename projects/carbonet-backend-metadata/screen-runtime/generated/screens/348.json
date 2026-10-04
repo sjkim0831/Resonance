@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 348,
+  "blueprintCode": "BP_ADOPT_FF91F78871A036968FEB",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_FF91F78871A036968FEB"
+  },
+  "route": "/admin/content/board_list",
+  "pageName": "사용자 도움말",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1080304",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "70f37f8c9f7803697a8c3003163c2006ee980ca9c65e345b4a00759ab3fcc6c1",
+  "artifactHash": "76bb9b1a9c718c7b2fbe19312f0b1707492cb7cd3e14a4df732ae971f78a0fcc"
+}

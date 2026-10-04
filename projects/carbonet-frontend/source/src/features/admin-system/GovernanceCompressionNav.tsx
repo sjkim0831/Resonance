@@ -10,6 +10,11 @@ type GovernanceNavItem = {
 };
 
 const SYSTEM_GOVERNANCE_NAV_ITEMS: GovernanceNavItem[] = [
+  { id: "process-management", labelKo: "프로세스 관리", labelEn: "Process Management", koPath: "/admin/system/actor-process?tab=processes", enPath: "/en/admin/system/actor-process?tab=processes", icon: "account_tree" },
+  { id: "step-management", labelKo: "절차 관리", labelEn: "Procedure Management", koPath: "/admin/system/actor-process?tab=steps", enPath: "/en/admin/system/actor-process?tab=steps", icon: "format_list_numbered" },
+  { id: "workflow-reference", labelKo: "전체 업무 대조", labelEn: "Workflow Comparison", koPath: "/admin/system/actor-process?tab=workflow-reference", enPath: "/en/admin/system/actor-process?tab=workflow-reference", icon: "compare_arrows" },
+  { id: "process-catalog", labelKo: "전체 정의 카탈로그", labelEn: "Definition Catalog", koPath: "/admin/system/process-catalog", enPath: "/en/admin/system/process-catalog", icon: "menu_book" },
+  { id: "work-implementation", labelKo: "업무 구현 관리", labelEn: "Work Implementation", koPath: "/admin/system/work-implementation", enPath: "/en/admin/system/work-implementation", icon: "fact_check" },
   {
     id: "code-list",
     labelKo: "공통코드 조회",
@@ -276,7 +281,7 @@ export function GovernanceCompressionNav({
   en: boolean;
 }) {
   return (
-    <nav className="mb-4" data-help-id="system-governance-compression-nav">
+    <nav aria-hidden="true" className="hidden" data-help-id="system-governance-compression-nav">
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-6">
         {SYSTEM_GOVERNANCE_NAV_ITEMS.map((item) => {
           const active = item.id === activeId;

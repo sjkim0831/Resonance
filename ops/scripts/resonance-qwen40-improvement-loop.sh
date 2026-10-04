@@ -131,7 +131,7 @@ ANSWER_FILE="$RAW_DIR/answer-${TS//[:+]/-}.txt"
   tail -30 "$OUT_DIR/startup-watchdog-events.jsonl" 2>/dev/null || true
   echo
   echo "## Recent Deploy Logs"
-  latest_deploy="$(ls -t /opt/util/k9s/web/logs/deploy-80-*.log 2>/dev/null | head -1 || true)"
+  latest_deploy="$(ls -t /opt/Resonance/runtime/tools/k9s/web/logs/deploy-80-*.log 2>/dev/null | head -1 || true)"
   [[ -n "$latest_deploy" ]] && tail -120 "$latest_deploy" || true
 } > "$EVIDENCE_FILE"
 

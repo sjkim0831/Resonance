@@ -1,0 +1,82 @@
+[
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/build",
+    "bytes": 5548038
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/.gradle",
+    "bytes": 5544070
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-ops/platform-version-control/build",
+    "bytes": 109891
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-common/platform-help-content/build",
+    "bytes": 212510
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-common/platform-request-contracts/build",
+    "bytes": 114502
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-common/carbonet-common-core/build",
+    "bytes": 10733966
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-common/carbonet-contract-metadata/build",
+    "bytes": 36295
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-common/platform-observability-query/build",
+    "bytes": 185618
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-common/platform-observability-payload/build",
+    "bytes": 348280
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-common/versioncontrol-core/build",
+    "bytes": 219038
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-common/runtimecontrol-core/build",
+    "bytes": 349299
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-common/mapper-infra/build",
+    "bytes": 33945
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-common/platform-help/build",
+    "bytes": 59282
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-common/common-auth/build",
+    "bytes": 47380
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-common/stable-execution-gate/build",
+    "bytes": 125041
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-common/web-support/build",
+    "bytes": 31262
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-common/platform-service-contracts/build",
+    "bytes": 154376
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-builder/screenbuilder-carbonet-adapter/build",
+    "bytes": 353447
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-builder/screenbuilder-core/build",
+    "bytes": 626550
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807/modules/resonance-builder/carbonet-builder-observability/build",
+    "bytes": 235547
+  }
+]

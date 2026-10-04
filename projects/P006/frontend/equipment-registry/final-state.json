@@ -1,0 +1,36 @@
+{
+  "status": "PASS",
+  "actualCustomers": 0,
+  "actualInstances": 0,
+  "types": 16,
+  "assets": 724,
+  "entryUsd": 666,
+  "documents": [
+    {
+      "file": "design.md",
+      "status": 200,
+      "bytes": 5993
+    },
+    {
+      "file": "qa.json",
+      "status": 200,
+      "bytes": 2703
+    },
+    {
+      "file": "browser-qa.json",
+      "status": 200,
+      "bytes": 2046
+    },
+    {
+      "file": "preservation.json",
+      "status": 200,
+      "bytes": 152
+    },
+    {
+      "file": "process-test.md",
+      "status": 200,
+      "bytes": 3568
+    }
+  ],
+  "authenticatedBrowser": true
+}

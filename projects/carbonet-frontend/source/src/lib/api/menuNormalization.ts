@@ -1,5 +1,6 @@
 import type { BootstrappedHomePayload } from "./appBootstrapTypes";
 import type { AdminMenuTreePayload } from "./adminShellTypes";
+import { menuText } from "../../features/menu-management/menuRegistration";
 
 type HomeMenuSection = {
   label?: string;
@@ -21,7 +22,8 @@ const EMISSION_HOME_MENU_KO: HomeMenuRecord = {
       items: [
         { label: "탄소 배출 대시보드", url: "/emission/index" },
         { label: "배출량 관리", url: "/emission/project_list" },
-        { label: "내 배출 업무", url: "/emission/my-tasks" },
+        { label: "탄소배출 내 업무", url: "/emission/my-tasks" },
+        { label: "일반 내 업무", url: "/mypage/my-tasks" },
         { label: "마감·지연 현황", url: "/emission/deadline-status" }
       ]
     },
@@ -62,6 +64,7 @@ const EMISSION_HOME_MENU_EN: HomeMenuRecord = {
         { label: "Emission Dashboard", url: "/en/emission/index" },
         { label: "Emission Management", url: "/en/emission/project_list" },
         { label: "My Emission Tasks", url: "/en/emission/my-tasks" },
+        { label: "My Work Summary", url: "/en/mypage/my-tasks" },
         { label: "Deadline & Delay Status", url: "/en/emission/deadline-status" }
       ]
     },
@@ -777,13 +780,32 @@ export function normalizeHomeEmissionMenu<T extends BootstrappedHomePayload | nu
   // Home navigation is DB-managed. Never replace the server payload with the
   // historical source-side menu catalog; that made menu-management saves and
   // Flyway navigation migrations invisible until another frontend release.
-  return payload;
+  if (!payload || !Array.isArray(payload.homeMenu)) return payload;
+  // Menu names are plain text, but older saved records may contain HTML
+  // entities (for example `&middot;`). Decode them once at the API boundary;
+  // React still renders the result as text and never interprets it as HTML.
+  return {
+    ...payload,
+    homeMenu: payload.homeMenu.map(top => ({
+      ...top,
+      ...(top.label != null ? { label: menuText(top.label) } : {}),
+      ...(Array.isArray(top.sections) ? {
+        sections: top.sections.map(section => ({
+          ...section,
+          ...(section.label != null ? { label: menuText(section.label) } : {}),
+          ...(Array.isArray(section.items) ? {
+            items: section.items.map(item => ({ ...item, ...(item.label != null ? { label: menuText(item.label) } : {}) }))
+          } : {})
+        }))
+      } : {})
+    }))
+  } as T;
 }
 
 export function normalizeAdminEmissionMenuTree(payload: AdminMenuTreePayload): AdminMenuTreePayload {
   const candidate = payload as unknown;
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
-    return getNormalizedAdminMenuTree();
+    return {};
   }
   const entries = Object.entries(candidate as Record<string, unknown>);
   const validDomains = entries.filter(([key]) => !["status", "message", "timestamp", "path"].includes(key));
@@ -792,15 +814,7 @@ export function normalizeAdminEmissionMenuTree(payload: AdminMenuTreePayload): A
     const domain = value as Record<string, unknown>;
     return typeof domain.label === "string" && Array.isArray(domain.groups);
   });
-  if (!hasValidDomainShape) return getNormalizedAdminMenuTree();
-  const validPayload = payload as AdminMenuTreePayload;
-  const hasLcaDomain = Object.values(validPayload).some((domain) => `${domain.label || ""} ${domain.labelEn || ""}`.toLowerCase().includes("lca"));
-  if (hasLcaDomain) return validPayload;
-  const result: AdminMenuTreePayload = {};
-  Object.entries(validPayload).forEach(([key, domain]) => {
-    result[key] = domain;
-    if (key === "A002") result.A104 = ADMIN_DOMAIN_OVERRIDES.A104;
-  });
-  if (!result.A104) result.A104 = ADMIN_DOMAIN_OVERRIDES.A104;
-  return result;
+  if (!hasValidDomainShape) return {};
+  // Navigation must reflect the server menu definition without legacy additions.
+  return payload;
 }

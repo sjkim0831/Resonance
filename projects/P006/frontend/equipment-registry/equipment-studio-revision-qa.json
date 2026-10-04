@@ -1,0 +1,24 @@
+{
+  "runAt": "2026-09-29T12:35:00+09:00",
+  "route": "http://172.16.1.232/projects/P006/assets/equipment-registry/equipment-studio.html?rev=studio-revision-pilot-3",
+  "scope": "Equipment Studio saved-GLB comparison and Product Planner unreviewed draft wiring",
+  "deployment": {
+    "staticResourcesChecked": 6,
+    "http200": 6,
+    "sourceBytes": 172081,
+    "backupBytes": 162357,
+    "additionalServiceCost": 0,
+    "databaseChanged": false,
+    "catalogOriginalChanged": false
+  },
+  "checks": [
+    { "name": "equipment-studio module syntax", "result": "PASS", "method": "node --check" },
+    { "name": "product-planner-details syntax", "result": "PASS", "method": "node --check" },
+    { "name": "comparison control visible", "result": "PASS", "method": "Playwright DOM count 1 and live CUA accessibility tree" },
+    { "name": "page JavaScript exceptions", "result": "PASS", "count": 0, "method": "Playwright pageerror listener" },
+    { "name": "draft apply flow with persisted GLB and plan", "result": "NOT_RUN", "reason": "This isolated browser review returned no equipment registry records; no actual stored GLB evidence or active saved process could be selected. No synthetic success data was injected." },
+    { "name": "modified GLB quality/function comparison", "result": "NOT_RUN", "reason": "A distinct, representative modified GLB file and its source/inspection evidence were not available in the review session." }
+  ],
+  "screenshot": "equipment-studio-revision-qa.png",
+  "followUp": "Use one real equipment record, its catalog source Asset ID, one distinct modified GLB evidence file, and a saved Product Planner process to complete upload, reload, visual comparison, draft application, and 3D render checks."
+}

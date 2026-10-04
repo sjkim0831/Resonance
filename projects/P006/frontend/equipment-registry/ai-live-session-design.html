@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>설비 AI 작업 세션 · 설계와 QA</title>
+<style>
+:root{font:15px/1.7 system-ui,"Malgun Gothic",sans-serif;color:#173b56;background:#edf4f8}body{margin:0}main{max-width:1040px;margin:28px auto;padding:28px;background:#fff;border:1px solid #d4e1e9;border-radius:12px}a{color:#007d8a}h1{margin:8px 0}h2{margin:26px 0 8px;font-size:19px}.lead{color:#577084}.callout{padding:14px;border-left:4px solid #008b96;background:#edf7f8;border-radius:6px}table{width:100%;border-collapse:collapse}th,td{padding:10px;border:1px solid #d5e2ea;text-align:left;vertical-align:top}th{background:#f3f7f9}.next{padding:14px;background:#fff6e6;border:1px solid #f0d9ae;border-radius:7px}.small{color:#657e8e;font-size:12px}
+</style></head><body><main>
+<a href="equipment-studio.html">← 설비 스튜디오</a>
+<h1>설비 AI 작업 세션</h1>
+<p class="lead">설계·화면·백엔드·QA · 개정 2026-10-01</p>
+<p class="callout"><b>원씽:</b> 조사 중 실제로 확인된 진행 이벤트와 사용자용 중간 응답을 작업 ID별로 저장하여 화면에 즉시 보여주고 새로고침 뒤에도 이어서 확인한다.</p>
+<h2>사용 절차</h2>
+<ol><li>제품과 공정을 고르고 왼쪽 목록에서 설비를 선택한다. 대상 이름과 설비 ID를 확인한다.</li><li>참고자료 수집 또는 가동 정보 수집을 시작한다. Kilo GPT-6.1 Sol Fast가 작업 ID를 만든다.</li><li>실시간 작업 내역에서 경과 시간, 최근 갱신 시각, 검색어/URL, 검색 완료·실패, 응답 조각을 확인한다.</li><li>‘중간 응답 전문’을 펼쳐 현재까지 받은 사용자용 응답을 확인한다. 내부 추론과 비밀 값은 표시하지 않는다.</li><li>완료되면 보고서와 출처를 검토한다. 확인된 결과와 출처는 기존 참고자료 목록에 미검토 상태로 저장된다.</li></ol>
+<h2>화면·API 계약</h2>
+<table><thead><tr><th>단계</th><th>상태</th><th>입력</th><th>출력</th></tr></thead><tbody>
+<tr><td>참고자료 수집</td><td>실행 가능</td><td>설비·제품·공정·등록 링크/자료 이름</td><td>검색 활동, 중간 응답, 보고서·출처 목록</td></tr>
+<tr><td>3D 시안 5개</td><td>생성 기능 미연결</td><td>향후 참고자료와 외형 기준</td><td>향후 5개 이미지 후보·차이점</td></tr>
+<tr><td>USD 제작</td><td>생성 기능 미연결</td><td>향후 선택 시안·검토 치수</td><td>향후 USD·GLB·썸네일</td></tr>
+<tr><td>가동 정보 수집</td><td>실행 가능</td><td>설비·공정·참고자료</td><td>가동 검색 활동, 중간 응답, 근거 보고서</td></tr>
+<tr><td>애니메이션 제작</td><td>생성 기능 미연결</td><td>향후 검토 모델·가동 정의</td><td>향후 설비 애니메이션·공정 미리보기</td></tr>
+</tbody></table>
+<p>브라우저는 3초마다 로그인 사용자 전용 API에서 최근 작업 20개를 읽는다. 작업 파일은 계정별로 분리한다. 각 작업에는 마지막 갱신 시각, 최대 100개 활동, 최대 12,000자 중간 응답이 저장된다. Kilo 이벤트가 들어오는 시점에만 진행 상태가 바뀌며 임의 진행률은 표시하지 않는다.</p>
+<p class="callout"><b>자료 누적·삭제 규칙:</b> 조사 보고서는 실행별로 보관하고 출처 URL은 중복 없이 누적한다. 각 자료 행에서 사용자가 직접 삭제할 수 있으며, 삭제된 URL은 기록을 남겨 다음 조사에서도 다시 등록하지 않는다. 목록에는 신규·중복 출처 수를 표시한다.</p>
+<h2>품질·보안·제한</h2>
+<ul><li>페이지 역할: 로그인한 설비 작성자가 조사와 결과 검토를 수행한다. 서버는 작업과 자료를 계정별로 분리한다.</li><li>로그에는 공개 검색 도구 이름, 확인된 URL/검색어, 사용자에게 반환할 텍스트만 둔다. 내부 사고 과정은 숨긴다.</li><li>`sk-...` 형태의 문자열은 화면·저장 로그에 그대로 남기지 않는다.</li><li>서버 재시작으로 중단된 작업은 실패로 복구하고 자동 재요청하지 않는다.</li><li>현재 지원: 참고자료·가동정보 조사. 시안·USD·애니메이션 버튼은 아직 실행할 생성 API가 없다.</li></ul>
+<h2>QA 검증 절차</h2>
+<ol><li>모의 작업을 실행해 ‘시작 → 검색 중 → 검색 완료 → 중간 응답 → 완료’를 시간순으로 확인한다.</li><li>페이지를 새로고침하고 동일 작업 ID, 로그, 경과 시간이 다시 표시되는지 확인한다.</li><li>미지원 단계가 ‘기능 미연결’로 나타나고 클릭할 수 없는지 확인한다.</li><li>작업 실패/로그인 만료와 브라우저 오류를 구분한다.</li><li>실제 Kilo 실행은 별도 유료 요청이므로 필요할 때 대상 설비 1건으로 확인한다.</li></ol>
+<h2>소요 시간·비용·다음 작업</h2>
+<p>이번 UI/백엔드 수정 예상 5분, 백업 포함 배포 1분 이내, 화면 검수 2분 내외. 구독형 Kilo 한도 사용으로 별도 API 가격은 산정하지 않는다. 실 Kilo 조사 시간은 웹 응답에 따라 달라지며 서버 제한은 10분이다.</p>
+<p class="next"><b>다음 1개 작업:</b> 실시간 응답을 실제 Kilo 세션 1회에서 검증한 뒤, 3D 시안 5개 생성 API의 입력/출력 계약과 파일 저장 규칙을 확정한다.</p>
+<p class="small">확신도: UI 저장·복원 경로 95%, Kilo가 중간 텍스트 이벤트를 내보내는 빈도는 실제 로그인 세션 검증 전 70%. 방어: 90% (계정 분리·로그 크기 제한·민감 문자열 마스킹). 공격: 80% (확인된 이벤트와 부분 응답을 즉시 드러냄).</p>
+</main></body></html>

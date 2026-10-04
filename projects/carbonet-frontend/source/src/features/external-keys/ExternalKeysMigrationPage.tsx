@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -313,12 +314,20 @@ export function ExternalKeysMigrationPage() {
           description={en ? "Filter by connection, auth method, or rotation urgency before opening the owning connection flow." : "운영 연결 화면으로 이동하기 전에 연계, 인증 방식, 교체 긴급도 기준으로 범위를 좁힙니다."}
           icon="vpn_key"
         >
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4 xl:w-[68rem]">
-            <div>
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalKeyKeyword">{en ? "Keyword" : "검색어"}</label>
               <AdminInput id="externalKeyKeyword" placeholder={en ? "Connection, owner, credential" : "연계명, 담당자, 인증키"} value={keyword} onChange={(event) => setKeyword(event.target.value)} />
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
+              <label className="mb-1 block text-sm font-bold" htmlFor="externalKeyRotationStatus">{en ? "Rotation Status" : "교체 상태"}</label>
+              <AdminSelect id="externalKeyRotationStatus" value={rotationStatus} onChange={(event) => setRotationStatus(event.target.value)}>
+                <option value="ALL">{en ? "All" : "전체"}</option>
+                <option value="HEALTHY">HEALTHY</option>
+                <option value="ROTATE_SOON">ROTATE_SOON</option>
+                <option value="ROTATE_NOW">ROTATE_NOW</option>
+                <option value="EXPIRED">EXPIRED</option>
+              </AdminSelect>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalKeyAuthMethod">{en ? "Auth Method" : "인증 방식"}</label>
               <AdminSelect id="externalKeyAuthMethod" value={authMethod} onChange={(event) => setAuthMethod(event.target.value)}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -328,23 +337,9 @@ export function ExternalKeysMigrationPage() {
                 <option value="MUTUAL_TLS">MUTUAL_TLS</option>
                 <option value="OBSERVED">OBSERVED</option>
               </AdminSelect>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-bold" htmlFor="externalKeyRotationStatus">{en ? "Rotation Status" : "교체 상태"}</label>
-              <AdminSelect id="externalKeyRotationStatus" value={rotationStatus} onChange={(event) => setRotationStatus(event.target.value)}>
-                <option value="ALL">{en ? "All" : "전체"}</option>
-                <option value="HEALTHY">HEALTHY</option>
-                <option value="ROTATE_SOON">ROTATE_SOON</option>
-                <option value="ROTATE_NOW">ROTATE_NOW</option>
-                <option value="EXPIRED">EXPIRED</option>
-              </AdminSelect>
-            </div>
-            <div className="flex items-end">
-              <button className="gov-btn gov-btn-outline w-full" type="button" onClick={() => { setKeyword(""); setAuthMethod("ALL"); setRotationStatus("ALL"); }}>
+            </div></div></>} actions={<><button className="gov-btn gov-btn-outline w-full" type="button" onClick={() => { setKeyword(""); setAuthMethod("ALL"); setRotationStatus("ALL"); }}>
                 {en ? "Reset Filters" : "검색 조건 초기화"}
-              </button>
-            </div>
-          </div>
+              </button></>}></CommonSearchSection></div>
         </CollectionResultPanel>
 
         <section className="gov-card overflow-hidden p-0" data-help-id="external-keys-inventory">

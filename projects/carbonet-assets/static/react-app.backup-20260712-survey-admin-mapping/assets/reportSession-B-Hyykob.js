@@ -1,1 +1,0 @@
-const e="carbonet:emission-survey-report",n="OUTPUT_PRODUCTS";function o(s){window.sessionStorage.setItem(e,JSON.stringify(s))}function t(){const s=window.sessionStorage.getItem(e)||"";if(!s)return null;try{return JSON.parse(s)}catch{return null}}export{n as E,t as l,o as s};

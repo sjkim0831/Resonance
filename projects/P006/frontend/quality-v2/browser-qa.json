@@ -1,0 +1,12 @@
+{
+  "rows": 666,
+  "geometry": 10,
+  "decisions": 26,
+  "search": true,
+  "evidence": true,
+  "liveResolverCorrection": true,
+  "mobileOverflow": false,
+  "errors": [],
+  "deviceWrites": 0,
+  "seconds": 2.382
+}

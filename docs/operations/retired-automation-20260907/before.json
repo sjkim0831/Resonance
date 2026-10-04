@@ -1,0 +1,101 @@
+[
+  {
+    "unit": "resonance-safe-disk-cleanup.service",
+    "before": {
+      "ActiveState": "failed",
+      "FragmentPath": "/etc/systemd/system/resonance-safe-disk-cleanup.service",
+      "UnitFileState": "linked"
+    },
+    "linkTarget": "/opt/Resonance/ops/host-config/systemd/resonance-safe-disk-cleanup.service"
+  },
+  {
+    "unit": "resonance-incremental-screen-generation.service",
+    "before": {
+      "ActiveState": "inactive",
+      "FragmentPath": "/etc/systemd/system/resonance-incremental-screen-generation.service",
+      "UnitFileState": "linked"
+    },
+    "linkTarget": "/opt/Resonance/ops/host-config/systemd/resonance-incremental-screen-generation.service"
+  },
+  {
+    "unit": "resonance-all-process-contract-audit.service",
+    "before": {
+      "ActiveState": "failed",
+      "FragmentPath": "/etc/systemd/system/resonance-all-process-contract-audit.service",
+      "UnitFileState": "linked"
+    },
+    "linkTarget": "/opt/Resonance/ops/host-config/systemd/resonance-all-process-contract-audit.service"
+  },
+  {
+    "unit": "resonance-full-screen-nightly.service",
+    "before": {
+      "ActiveState": "failed",
+      "FragmentPath": "/etc/systemd/system/resonance-full-screen-nightly.service",
+      "UnitFileState": "linked"
+    },
+    "linkTarget": "/opt/Resonance/ops/host-config/systemd/resonance-full-screen-nightly.service"
+  },
+  {
+    "unit": "resonance-react-asset-prune.service",
+    "before": {
+      "ActiveState": "inactive",
+      "FragmentPath": "/etc/systemd/system/resonance-react-asset-prune.service",
+      "UnitFileState": "linked"
+    },
+    "linkTarget": "/opt/Resonance/ops/host-config/systemd/resonance-react-asset-prune.service"
+  },
+  {
+    "unit": "resonance-recovery.service",
+    "before": {
+      "ActiveState": "inactive",
+      "FragmentPath": "/etc/systemd/system/resonance-recovery.service",
+      "UnitFileState": "linked"
+    },
+    "linkTarget": "/opt/Resonance/ops/host-config/systemd/resonance-recovery.service"
+  },
+  {
+    "unit": "resonance-safe-disk-cleanup.timer",
+    "before": {
+      "ActiveState": "inactive",
+      "FragmentPath": "/etc/systemd/system/resonance-safe-disk-cleanup.timer",
+      "UnitFileState": "enabled"
+    },
+    "linkTarget": "/opt/Resonance/ops/host-config/systemd/resonance-safe-disk-cleanup.timer"
+  },
+  {
+    "unit": "resonance-incremental-screen-generation.timer",
+    "before": {
+      "ActiveState": "inactive",
+      "FragmentPath": "/etc/systemd/system/resonance-incremental-screen-generation.timer",
+      "UnitFileState": "enabled"
+    },
+    "linkTarget": "/opt/Resonance/ops/host-config/systemd/resonance-incremental-screen-generation.timer"
+  },
+  {
+    "unit": "resonance-all-process-contract-audit.timer",
+    "before": {
+      "ActiveState": "inactive",
+      "FragmentPath": "/etc/systemd/system/resonance-all-process-contract-audit.timer",
+      "UnitFileState": "enabled"
+    },
+    "linkTarget": "/opt/Resonance/ops/host-config/systemd/resonance-all-process-contract-audit.timer"
+  },
+  {
+    "unit": "resonance-full-screen-nightly.timer",
+    "before": {
+      "ActiveState": "inactive",
+      "FragmentPath": "/etc/systemd/system/resonance-full-screen-nightly.timer",
+      "UnitFileState": "enabled"
+    },
+    "linkTarget": "/opt/Resonance/ops/host-config/systemd/resonance-full-screen-nightly.timer"
+  },
+  {
+    "unit": "resonance-react-asset-prune.timer",
+    "before": {
+      "ActiveState": "inactive",
+      "FragmentPath": "/etc/systemd/system/resonance-react-asset-prune.timer",
+      "UnitFileState": "enabled"
+    },
+    "linkTarget": "/opt/Resonance/ops/host-config/systemd/resonance-react-asset-prune.timer"
+  }
+]

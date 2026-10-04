@@ -74,7 +74,8 @@ public class FilterConfig {
                 authGroupManageService,
                 employeeMemberRepository,
                 enterpriseMemberRepository,
-                projectRuntimeContext
+                projectRuntimeContext,
+                traceEventService
         ));
         registrationBean.addUrlPatterns("/*");
         registrationBean.setOrder(3);

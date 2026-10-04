@@ -20,6 +20,8 @@ public class TraceEventService {
     private final ObservabilityMapper observabilityMapper;
     private final ObjectMapper objectMapper;
     private final ProjectRuntimeContext projectRuntimeContext;
+    @org.springframework.beans.factory.annotation.Value("${ccus.telemetry.technical-rollup.enabled:true}")
+    private boolean technicalRollupEnabled = true;
 
     public TraceEventService(ObservabilityMapper observabilityMapper, ObjectMapper objectMapper, ProjectRuntimeContext projectRuntimeContext) {
         this.observabilityMapper = observabilityMapper;
@@ -27,10 +29,31 @@ public class TraceEventService {
         this.projectRuntimeContext = projectRuntimeContext;
     }
 
-    public void recordRequestEvent(TraceContext traceContext, String resultCode, int durationMs, int responseStatus) {
-        if (traceContext == null) {
-            return;
+    public boolean tryAggregateTechnicalRequest(TraceContext traceContext, String resultCode, int durationMs, int responseStatus) {
+        if (traceContext == null) return false;
+        if (technicalRollupEnabled && "GET".equals(traceContext.getHttpMethod())
+                && "/api/frontend/session".equals(traceContext.getRequestUri())
+                && "SUCCESS".equals(resultCode) && responseStatus >= 200 && responseStatus < 300) {
+            if (traceContext.isTechnicalRequestAggregated()) return true;
+            try {
+                int stored = observabilityMapper.aggregateTechnicalRequest(Map.of(
+                        "projectId", currentProjectId(), "route", traceContext.getRequestUri(),
+                        "method", "GET", "status", responseStatus, "durationMs", Math.max(0, durationMs)));
+                if (stored == 1) {
+                    traceContext.markTechnicalRequestAggregated();
+                    return true;
+                }
+            } catch (Exception aggregationFailure) {
+                // Fail open for observability: retain the original individual event.
+                log.warn("Technical request aggregation unavailable; preserving individual trace");
+            }
         }
+        return false;
+    }
+
+    public void recordRequestEvent(TraceContext traceContext, String resultCode, int durationMs, int responseStatus) {
+        if (traceContext == null) return;
+        if (tryAggregateTechnicalRequest(traceContext, resultCode, durationMs, responseStatus)) return;
         TraceEventRecordVO traceEvent = new TraceEventRecordVO();
         traceEvent.setEventId(TraceIdGenerator.next("EVT"));
         traceEvent.setProjectId(currentProjectId());
@@ -42,15 +65,35 @@ public class TraceEventService {
         traceEvent.setApiId(traceContext.getApiId());
         traceEvent.setResultCode(resultCode);
         traceEvent.setDurationMs(durationMs);
-        traceEvent.setPayloadSummaryJson("{\"uri\":\"" + safe(traceContext.getRequestUri())
-                + "\",\"method\":\"" + safe(traceContext.getHttpMethod())
-                + "\",\"status\":" + responseStatus + "}");
+        Map<String, Object> requestPayload = new LinkedHashMap<>();
+        requestPayload.put("uri", safe(traceContext.getRequestUri()));
+        requestPayload.put("method", safe(traceContext.getHttpMethod()));
+        requestPayload.put("status", responseStatus);
+        boolean technicalRead = "GET".equalsIgnoreCase(traceContext.getHttpMethod()) &&
+                java.util.Set.of("/api/frontend/session", "/actuator/health").contains(safe(traceContext.getRequestUri()));
+        boolean telemetryIngest = "/api/telemetry/events".equals(traceContext.getRequestUri());
+        requestPayload.put("usageClassification", Map.of("version", 1,
+                "origin", "UNKNOWN", "trust", "SERVER_ROUTE_CLASSIFICATION",
+                "activity", telemetryIngest ? "TELEMETRY_INGEST" : technicalRead ? "TECHNICAL_READ" : "API_REQUEST",
+                "attention", responseStatus >= 400 ? "ERROR_OR_SECURITY" : "NORMAL",
+                "analyticsEligible", false));
+        try { traceEvent.setPayloadSummaryJson(objectMapper.writeValueAsString(requestPayload)); }
+        catch (JsonProcessingException ignored) { traceEvent.setPayloadSummaryJson("{}"); }
         tryInsertTraceEvent(traceEvent, "uri=" + traceContext.getRequestUri() + ", status=" + responseStatus);
     }
 
     public int recordFrontendEvents(List<FrontendTelemetryEvent> events) {
+        return recordFrontendBatch(events).acceptedCount();
+    }
+
+    public record FrontendBatchResult(int acceptedCount, List<String> acceptedEventIds,
+                                      List<FrontendTelemetryEvent> newEvents) {}
+
+    public FrontendBatchResult recordFrontendBatch(List<FrontendTelemetryEvent> events) {
+        List<String> acknowledged = new ArrayList<>();
+        List<FrontendTelemetryEvent> inserted = new ArrayList<>();
         if (events == null || events.isEmpty()) {
-            return 0;
+            return new FrontendBatchResult(0, acknowledged, inserted);
         }
 
         int accepted = 0;
@@ -65,7 +108,15 @@ public class TraceEventService {
             }
 
             TraceEventRecordVO traceEvent = new TraceEventRecordVO();
-            traceEvent.setEventId(TraceIdGenerator.next("EVT"));
+            String clientId = safe(event.getEventId());
+            if (!clientId.isEmpty() && !clientId.matches("[A-Za-z0-9_-]{16,80}")) continue;
+            try {
+                String identity = currentProjectId() + "|" + objectMapper.writer()
+                        .with(com.fasterxml.jackson.databind.SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+                        .writeValueAsString(event);
+                traceEvent.setEventId(clientId.isEmpty() ? TraceIdGenerator.next("EVT") : "FE_" +
+                        java.util.UUID.nameUUIDFromBytes(identity.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            } catch (Exception serializationFailure) { continue; }
             traceEvent.setProjectId(currentProjectId());
             traceEvent.setTraceId(traceId);
             traceEvent.setSpanId(safe(event.getRequestId()));
@@ -78,11 +129,16 @@ public class TraceEventService {
             traceEvent.setResultCode(safe(event.getResult()));
             traceEvent.setDurationMs(event.getDurationMs());
             traceEvent.setPayloadSummaryJson(toPayloadJson(event));
-            if (tryInsertTraceEvent(traceEvent, "traceId=" + traceId + ", eventType=" + eventType)) {
+            try {
+                int rows = observabilityMapper.insertFrontendTraceEvent(traceEvent);
                 accepted++;
+                if (!clientId.isEmpty()) acknowledged.add(clientId);
+                if (rows > 0) inserted.add(event);
+            } catch (Exception persistenceFailure) {
+                log.warn("Frontend telemetry persistence failed; event remains unacknowledged", persistenceFailure);
             }
         }
-        return accepted;
+        return new FrontendBatchResult(accepted, acknowledged, inserted);
     }
 
     private boolean tryInsertTraceEvent(TraceEventRecordVO traceEvent, String contextSummary) {

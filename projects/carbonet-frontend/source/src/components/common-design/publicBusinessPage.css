@@ -1,0 +1,60 @@
+/* Public business-page theme. Shares the breadcrumb container dimensions. */
+html body:has(.ccus-public-business-page),
+html body #root:has(.ccus-public-business-page),
+.ccus-public-business-page { background: #fff !important; }
+.ccus-public-business-page .ccus-business-content {
+  box-sizing: border-box; width: 100%; max-width: 1280px !important;
+  margin: 0 auto; padding: 0 32px 64px !important;
+}
+.ccus-business-content .emission-page-intro {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  flex-wrap: wrap; gap: 20px; padding: 8px 0 28px !important;
+  margin: 0 0 24px !important; border: 0 !important;
+  border-bottom: 1px solid #c6d0dc !important; border-radius: 0 !important;
+  background: #fff !important; box-shadow: none !important;
+}
+.ccus-business-content .emission-page-intro__category { display: none; }
+.ccus-business-content .emission-page-intro__title {
+  margin: 0 !important; font-size: 32px !important; line-height: 1.4 !important;
+  font-weight: 700 !important; color: #1d1d1d !important;
+}
+.ccus-business-content .emission-page-intro__description {
+  margin: 10px 0 0 !important; font-size: 16px !important;
+  line-height: 1.6 !important; color: #526174 !important;
+}
+.ccus-business-content .emission-page-intro__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.ccus-business-content .emission-page-intro__actions a {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: 10px 16px !important; border: 1px solid #8b95a5 !important;
+  border-radius: 4px !important; font-size: 14px !important; font-weight: 600;
+  background: #fff !important; color: #12365c !important; white-space: nowrap;
+}
+.ccus-business-content .emission-page-intro__actions a:last-child {
+  background: #00378b !important; color: #fff !important; border-color: #00378b !important;
+}
+.ccus-business-content .dashboard-card {
+  border-color: #c6d0dc !important; border-radius: 4px !important;
+  box-shadow: none !important; transform: none !important;
+}
+.ccus-business-content section[aria-label="filters"] { margin-top: 0 !important; }
+.ccus-business-content section[aria-label="filters"] > div:first-child { background: #f8f9fa !important; }
+.ccus-business-content :is(input,select) { min-width: 0; border-radius: 4px !important; }
+.ccus-business-content .emission-kpi-grid {
+  gap: 0 !important; border-top: 1px solid #c6d0dc;
+  border-bottom: 1px solid #c6d0dc; margin-top: 24px !important;
+}
+.ccus-business-content .emission-kpi-grid article {
+  padding: 20px 16px !important; border: 0 !important;
+  border-right: 1px solid #e5e7eb !important; border-radius: 0 !important;
+}
+.ccus-business-content .emission-kpi-grid article > div { display: none; }
+.ccus-business-content .emission-kpi-grid article > p:first-of-type { margin-top: 0 !important; }
+.ccus-business-content .emission-kpi-grid article:last-child { border-right: 0 !important; }
+.ccus-business-content :is(a,button,select,input):focus-visible { outline: 2px solid #246beb; outline-offset: 3px; }
+@media(max-width:600px) {
+  .ccus-public-business-page .ccus-business-content { padding: 0 16px 48px !important; }
+  .ccus-business-content .emission-page-intro__title { font-size: 28px !important; }
+  .ccus-business-content .emission-page-intro__actions { width: 100%; }
+  .ccus-business-content .emission-kpi-grid { grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
+  .ccus-business-content .emission-kpi-grid article:nth-child(even) { border-right: 0 !important; }
+}

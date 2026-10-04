@@ -1,0 +1,26 @@
+{
+  "route": {
+    "url": "http://172.16.1.232/projects/P006/assets/equipment-registry/product-planner.html?rev=planner-main-2#process",
+    "title": "제품 생산 계획 · 통합 설계·3D | WOOSU",
+    "editorOpen": true,
+    "processVisible": true,
+    "sceneCanvases": 1,
+    "runCollapsed": true
+  },
+  "draftPreserved": true,
+  "discarded": true,
+  "status": "저장·3D 적용 완료 · 0분부터 재생하세요.",
+  "savedName": "통합 QA 자동차",
+  "siteRows": 4,
+  "timeChanged": "0.0 / 260분",
+  "expanded": "부지 3 · 공장 3 · 설비 GLB 13/13 · 실패 0 · 미연결 0 · 완제품 0/1",
+  "expansionStatus": "적용하지 않음: 차체·도어 패널 세트: 부품 제작 공정은 담당 공장에 배정하세요. 다른 공장 가공은 운송 단계를 확장한 뒤 지원합니다. 차체·도어 패널 세트: 제작 작업은 1개여야 합니다.",
+  "validExpansion": "부지 4 · 공장 4 · 설비 GLB 14/14 · 실패 0 · 미연결 0 · 완제품 0/1",
+  "validExpansionStatus": "저장·3D 적용 완료 · 0분부터 재생하세요.",
+  "conflict": "적용하지 않음: 다른 화면에서 계획이 변경됐습니다. 변경 취소 후 최신 계획을 다시 불러오세요.",
+  "clock": "1.3 / 260분",
+  "complete": "완료",
+  "counts": "부지 4 · 공장 4 · 설비 GLB 14/14 · 실패 0 · 미연결 0 · 완제품 1/1",
+  "restored": "부지 4 · 공장 4 · 설비 GLB 14/14 · 실패 0 · 미연결 0 · 완제품 0/1",
+  "errors": []
+}

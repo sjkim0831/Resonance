@@ -1,0 +1,95 @@
+.design-studio { --studio-blue:#0758d9; grid-template-columns:minmax(0,1fr) 350px; color:#162d4d; }
+.design-studio > header { background:linear-gradient(110deg,#082957,#173e75); color:white; padding:16px 20px; border-radius:12px; }
+.design-studio > header h1 { color:white; font-size:22px; }
+.design-studio > header a { background:white; color:#123e72; }
+.design-studio > section.sm\:grid-cols-3 { font-size:12px; }
+.design-studio > section.flex { padding:8px 12px; }
+.design-studio > [aria-label="업무 설계 지도"],.design-studio > [aria-label="개발 통합 작업실"] { height:calc(100dvh - 395px); min-height:540px; }
+.design-studio .studio-map { border:1px solid #d9e3f2; border-radius:12px; background:#fff; overflow:hidden; }
+.studio-tabs { display:flex; gap:12px; padding:0 14px; border-bottom:1px solid #dce5f2; flex-shrink:0; }
+.design-studio .studio-tabs button { padding:13px 10px; border:0; border-bottom:3px solid transparent; font-weight:700; font-size:14px; background:white; color:#596d8a; }
+.design-studio .studio-tabs button[aria-pressed=true] { color:#005be3; border-bottom-color:#005be3; background:#f0f6ff; }
+.studio-columns { display:grid; grid-template-columns:200px minmax(0,1fr); min-height:0; flex:1; }
+.studio-tree { overflow:auto; background:#f6f9ff; padding:16px 10px; border-right:1px solid #dce5f2; }
+.studio-tree h2 { font-weight:800; padding:0 8px 16px; }
+.studio-tree summary { font-size:13px; font-weight:700; cursor:pointer; padding:10px 6px; overflow-wrap:anywhere; }
+.studio-tree button { display:block; width:100%; text-align:left; border-radius:8px; padding:10px; font-size:13px; margin:3px 0; overflow-wrap:anywhere; }
+.studio-tree button.selected { background:#dceaff; color:#0058d9; font-weight:800; }
+.studio-center { padding:14px; overflow:auto; min-width:0; }
+.studio-step-picker { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; font-size:12px; }
+.studio-step-picker label { flex:1; font-weight:700; }
+.studio-step-picker select { display:block; width:100%; padding:8px; border:1px solid #cddbed; border-radius:6px; margin-top:4px; background:white; }
+.studio-card { border:1px solid #dce5f2; border-radius:10px; padding:18px; background:white; }
+.studio-card header { display:flex; align-items:center; gap:12px; }
+.studio-symbol { background:#e8f1ff; color:#065eff; border-radius:12px; font-size:32px; padding:4px 12px; }
+.studio-card h2 { font-size:21px; font-weight:800; }
+.studio-card header p { font-size:12px; color:#64748b; }
+.studio-badges { display:flex; flex-wrap:wrap; gap:6px; margin:14px 0; }
+.studio-badges span { font-size:11px; background:#edf3fb; border-radius:5px; padding:5px 8px; }
+.studio-contracts { display:grid; grid-template-columns:1fr 1fr; gap:20px; font-size:13px; line-height:1.6; }
+.studio-contracts dt { color:#62728a; font-size:12px; margin-top:12px; }
+.studio-contracts dd { white-space:pre-wrap; overflow-wrap:anywhere; max-height:110px; overflow:auto; }
+.studio-contracts h3 { font-weight:800; margin:12px 0 6px; }
+.studio-contracts p { white-space:pre-wrap; overflow-wrap:anywhere; max-height:125px; overflow:auto; }
+.studio-contracts a { display:block; color:#065bec; text-decoration:underline; }
+.studio-edit { margin-top:18px; width:100%; border:1px solid #4080ff; color:#005bed; border-radius:7px; padding:10px; font-weight:800; background:#f7faff; }
+.studio-issues { margin-top:12px; border:1px solid #dce5f2; padding:14px; border-radius:10px; font-size:12px; }
+.studio-issues h3 { font-weight:800; font-size:14px; }
+.studio-issues span { font-size:12px; color:#9b5b00; margin-left:8px; }
+.studio-issues p { margin:8px 0; }
+.studio-issues a { color:#005be3; text-decoration:underline; }
+.studio-alternate { overflow:auto; flex:1; min-height:0; }
+.design-studio .studio-alternate [aria-label="업무 설계 보기"] { display:none; }
+.design-studio > [aria-label="개발 통합 작업실"] { border-color:#d9e3f2; background:#fff; }
+.design-studio [aria-label="개발 진행 상황"] { background:linear-gradient(#f7faff,#edf4ff); }
+.design-studio button:focus-visible,.design-studio a:focus-visible { outline:3px solid #f3b51b; outline-offset:2px; }
+.design-studio > header { padding:10px 16px; }
+.design-studio > section.flex input,.design-studio > section.flex select { height:34px; }
+.design-studio .studio-card { padding:12px; }
+.design-studio .studio-card h2 { font-size:18px; }
+.design-studio .studio-contracts { font-size:12px; gap:14px; line-height:1.45; }
+.design-studio .studio-contracts dd,.design-studio .studio-contracts p { font-size:12px !important; font-weight:400; line-height:1.45 !important; max-height:76px; overflow:auto !important; }
+.design-studio .studio-contracts dt,.design-studio .studio-contracts h3 { margin-top:8px; font-size:12px; }
+.design-studio .studio-badges { margin:10px 0; }
+.design-studio .studio-step-picker { margin-bottom:8px; }
+.design-studio .studio-edit { margin-top:12px; padding:8px; font-size:13px; }
+.design-studio [aria-label="개발 통합 작업실"] > .grid > .space-y-4 > :nth-child(2) { display:none; }
+.studio-primary-actions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; padding-top:14px; }
+.studio-primary-actions button { padding:10px 4px; border:1px solid #367dff; border-radius:7px; background:#fff; color:#0759d7; font-weight:800; font-size:13px; }
+.studio-primary-actions .primary { background:#0864ef; color:#fff; }
+#studio-primary-actions:has(.studio-primary-actions) > .studio-edit { display:none; }
+.studio-run-stages { display:flex; justify-content:space-between; gap:4px; border-bottom:1px solid #dce5f2; padding:6px 0 14px; }
+.studio-run-stages span { border:1px solid #c8d8f0; border-radius:9px; background:#f3f7ff; padding:8px 4px; text-align:center; font-weight:700; flex:1; }
+.studio-run-stages span[aria-current=step] { border-color:#0b64ee; background:#e5efff; color:#0759d7; }
+.studio-run-stages small { display:block; font-size:10px; margin-top:4px; }
+.studio-run-status { font-size:12px; padding:10px; background:#f2f6fc; border-radius:6px; margin:10px 0; }
+.structure-editor {position:sticky;top:0;z-index:3;background:white;padding:8px 0;}
+.step-resources {margin:8px 0;border:1px solid #d5deea;border-radius:8px;padding:10px;background:#f7faff;}
+.resource-content {font-size:13px;line-height:1.6;max-height:420px;overflow:auto;padding-top:10px;}
+.resource-content h3 {font-size:14px;font-weight:700;margin-top:12px;}
+.resource-content select,.resource-content input {display:block;width:100%;padding:7px;border:1px solid #b6c3d5;border-radius:4px;background:white;}
+.resource-content a {color:#064590;text-decoration:underline;padding:6px;}
+.resource-content form {display:grid;gap:8px;margin:10px 0;}
+.resource-content [role=alert] {color:#b42318;}
+.structure-actions {display:flex;gap:8px;flex-wrap:wrap;}
+.structure-actions button,.structure-dialog button {border:1px solid #246beb;border-radius:6px;padding:9px 12px;color:#064590;background:white;font-weight:700;}
+.structure-backdrop {position:fixed;inset:0;background:#001b3e88;z-index:10000;display:flex;align-items:center;justify-content:center;}
+.structure-dialog {background:white;border-radius:12px;padding:24px;width:min(760px,95vw);max-height:85vh;overflow:auto;color:#17263b;box-shadow:0 12px 40px #001b3e44;}
+.structure-dialog header {display:flex;justify-content:space-between;align-items:center;}
+.structure-dialog form {display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.structure-dialog label {display:block;font-weight:700;}
+.structure-dialog input,.structure-dialog textarea {display:block;width:100%;border:1px solid #aebbd0;border-radius:5px;padding:8px;margin-top:5px;}
+.structure-dialog p,.structure-dialog form>button {grid-column:1/-1;}
+.structure-dialog [role=alert],.structure-editor>[role=alert] {color:#b42318;}
+.structure-dialog button:disabled {opacity:.5;}
+.design-studio > [aria-label="개발 통합 작업실"] > header > div > p:first-child { display:none; }
+.design-studio [aria-label="개발 진행 상황"] > p:first-of-type { display:none; }
+.design-studio [aria-label="개발 통합 작업실"] > .grid > .space-y-4 > :first-child > button:nth-child(-n+3) { display:none; }
+.design-studio > header { padding:8px 14px; }
+.design-studio > header h1 { font-size:19px; }
+.design-studio > section.sm\:grid-cols-3 { display:none; }
+.design-studio > [aria-label="업무 설계 지도"],.design-studio > [aria-label="개발 통합 작업실"] { grid-row:3; height:calc(100dvh - 300px); min-height:540px; }
+.design-studio .studio-card header p { margin:0; }
+@media(max-width:1599px) { .design-studio > [aria-label="개발 통합 작업실"] { grid-row:auto; height:auto; } }
+@media(max-width:1599px) { .design-studio { grid-template-columns:minmax(0,1fr); } .design-studio > [aria-label="개발 통합 작업실"] { grid-column:1; grid-row:auto; height:auto; min-height:0; } }
+@media(max-width:767px) { .studio-columns,.studio-contracts { display:block; } .studio-tree { max-height:180px; } .design-studio > [aria-label="업무 설계 지도"] { height:auto; } .studio-tabs { gap:0; } }

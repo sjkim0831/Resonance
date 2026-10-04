@@ -1,0 +1,75 @@
+{
+  "runDate": "2026-09-28T12:32:48.635Z",
+  "route": "http://172.16.1.232/projects/P006/assets/equipment-registry/equipment-studio.html",
+  "tests": [
+    {
+      "name": "QA_HIERARCHY_CREATED",
+      "pass": true,
+      "details": "독립 QA 고객/부지/라인/공정"
+    },
+    {
+      "name": "AUTHENTICATED_STUDIO_LOADED",
+      "pass": true,
+      "details": "현재 화면에서 API 조회 완료"
+    },
+    {
+      "name": "STUDIO_EQUIPMENT_CREATE",
+      "pass": true,
+      "details": "HTTP 200"
+    },
+    {
+      "name": "STUDIO_EVIDENCE_REFERENCE_CREATE",
+      "pass": true,
+      "details": "HTTP 200"
+    },
+    {
+      "name": "STUDIO_EVIDENCE_VISIBLE",
+      "pass": true
+    },
+    {
+      "name": "STUDIO_EVIDENCE_BINARY_UPLOAD",
+      "pass": true,
+      "details": "HTTP 200"
+    },
+    {
+      "name": "STUDIO_EVIDENCE_FILE_HASH",
+      "pass": true
+    },
+    {
+      "name": "STUDIO_EQUIPMENT_UPDATE",
+      "pass": true,
+      "details": "HTTP 200"
+    },
+    {
+      "name": "STUDIO_RELOAD_RESTORE",
+      "pass": true,
+      "details": "새로고침 후 관리번호와 경로/업로드 자료 2건 복원"
+    },
+    {
+      "name": "NO_BROWSER_JS_ERRORS",
+      "pass": true
+    },
+    {
+      "name": "API_RELOAD_STATE",
+      "pass": true
+    }
+  ],
+  "fixtureCustomerId": "30e4d06d-2a69-4f8c-a077-f0809bde43a6",
+  "fixtureCustomerCode": "QA_STUDIO_C_1790598769176",
+  "fixtureEquipmentId": "8fdc9524-8953-457f-934a-4d82c888620b",
+  "mocked": false,
+  "persistedTestRows": 0,
+  "cleanup": {
+    "status": "PASS",
+    "removedQaCustomer": 1,
+    "removedQaEquipment": 1,
+    "removedUploadedSyntheticFiles": 1,
+    "databaseRowsRemaining": 0,
+    "fileDeletionGuard": "storage path restricted to DATA root; SHA-256 and non-shared evidence verified"
+  },
+  "screenshot": "equipment-studio-browser-qa.png",
+  "elapsedSeconds": 2.78,
+  "passed": 11,
+  "total": 11,
+  "cleanupRequired": false
+}

@@ -1,0 +1,228 @@
+{
+  "tests": [
+    {
+      "name": "EXISTING_ADMIN_LOGIN",
+      "pass": true
+    },
+    {
+      "name": "ANONYMOUS_DENIED",
+      "pass": true
+    },
+    {
+      "name": "CSRF_MISSING_DENIED",
+      "pass": true
+    },
+    {
+      "name": "PUBLIC_CATALOG_724",
+      "pass": true
+    },
+    {
+      "name": "CONNECTED_666",
+      "pass": true
+    },
+    {
+      "name": "REGISTRY_62",
+      "pass": true
+    },
+    {
+      "name": "8_RELATION_TYPES",
+      "pass": true
+    },
+    {
+      "name": "12_PARAMETRIC_TEMPLATES",
+      "pass": true
+    },
+    {
+      "name": "NON_ADMIN_DENIED",
+      "pass": true
+    },
+    {
+      "name": "SAVE_V1",
+      "pass": true
+    },
+    {
+      "name": "SAME_ASSET_MULTIPLE_INSTANCES",
+      "pass": true
+    },
+    {
+      "name": "RESTORE_XYZ_ROTATION_SCALE",
+      "pass": true
+    },
+    {
+      "name": "PARAMETERS_PRESERVED",
+      "pass": true
+    },
+    {
+      "name": "RELATION_PRESERVED",
+      "pass": true
+    },
+    {
+      "name": "INTAKE_REFERENCE_ONLY",
+      "pass": true
+    },
+    {
+      "name": "COMPLETE_RESTORE",
+      "pass": true
+    },
+    {
+      "name": "STALE_VERSION_409",
+      "pass": true
+    },
+    {
+      "name": "TAMPER_ENTRY",
+      "pass": true
+    },
+    {
+      "name": "UNCONNECTED_BLOCKED",
+      "pass": true
+    },
+    {
+      "name": "UNKNOWN_ASSET",
+      "pass": true
+    },
+    {
+      "name": "NEGATIVE_SCALE",
+      "pass": true
+    },
+    {
+      "name": "NAN_POSITION",
+      "pass": true
+    },
+    {
+      "name": "MISSING_COORDINATE",
+      "pass": true
+    },
+    {
+      "name": "EXCESS_COORDINATE",
+      "pass": true
+    },
+    {
+      "name": "UNKNOWN_INTAKE",
+      "pass": true
+    },
+    {
+      "name": "UNKNOWN_EQUIPMENT",
+      "pass": true
+    },
+    {
+      "name": "DUPLICATE_INSTANCE",
+      "pass": true
+    },
+    {
+      "name": "ORPHAN_RELATION",
+      "pass": true
+    },
+    {
+      "name": "SELF_RELATION",
+      "pass": true
+    },
+    {
+      "name": "UNKNOWN_RELATION_TYPE",
+      "pass": true
+    },
+    {
+      "name": "UNSUPPORTED_UNIT",
+      "pass": true
+    },
+    {
+      "name": "READY_INJECTION_DENIED",
+      "pass": true
+    },
+    {
+      "name": "NEGATIVE_PARAM",
+      "pass": true
+    },
+    {
+      "name": "PARAM_TEMPLATE_MISMATCH",
+      "pass": true
+    },
+    {
+      "name": "DUPLICATE_EDGE",
+      "pass": true
+    },
+    {
+      "name": "RELATION_REQUIRES",
+      "pass": true
+    },
+    {
+      "name": "RELATION_CONNECTS_TO",
+      "pass": true
+    },
+    {
+      "name": "RELATION_INPUT_FROM",
+      "pass": true
+    },
+    {
+      "name": "RELATION_OUTPUT_TO",
+      "pass": true
+    },
+    {
+      "name": "RELATION_OPTIONAL_WITH",
+      "pass": true
+    },
+    {
+      "name": "RELATION_SAFETY_FOR",
+      "pass": true
+    },
+    {
+      "name": "RELATION_CONTROLLED_BY",
+      "pass": true
+    },
+    {
+      "name": "RELATION_UTILITY_FOR",
+      "pass": true
+    },
+    {
+      "name": "DELETE_INSTANCE_AND_EDGE",
+      "pass": true
+    },
+    {
+      "name": "REVISION_HISTORY",
+      "pass": true
+    },
+    {
+      "name": "DATA_DRIVEN_RELATED",
+      "pass": true
+    },
+    {
+      "name": "RELATED_PROVENANCE",
+      "pass": true
+    },
+    {
+      "name": "PRESERVE_asset",
+      "pass": true
+    },
+    {
+      "name": "PRESERVE_equipment_intake",
+      "pass": true
+    },
+    {
+      "name": "PRESERVE_intake_matching_review",
+      "pass": true
+    },
+    {
+      "name": "666_ENTRY_BYTES_UNCHANGED",
+      "pass": true
+    }
+  ],
+  "passed": 51,
+  "seconds": 0.32,
+  "mocked": false,
+  "equipmentAssetWrites": 0,
+  "layoutWrites": "transaction rolled back",
+  "actor": "Existing PROJECT_ADMIN",
+  "preserved": {
+    "asset": {
+      "hash": "0e283c6d48d5f6b12e1fbc4115a66ffd",
+      "n": 724
+    },
+    "equipment_intake": {
+      "hash": "797dec2b6aee5adf12580bb33fd9c0a4",
+      "n": 62
+    },
+    "intake_matching_review": {
+      "hash": "eacac77b5764b7c920b99af7e5600138",
+      "n": 26
+    }
+  }
+}

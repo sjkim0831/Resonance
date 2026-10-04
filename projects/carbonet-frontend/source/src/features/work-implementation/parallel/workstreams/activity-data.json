@@ -1,0 +1,63 @@
+{
+  "id": "activity-data",
+  "sortOrder": 2,
+  "name": "활동자료 · 증빙",
+  "assignee": "미배정",
+  "model": "gpt-6-luna",
+  "state": "PLANNED",
+  "goal": "자료 요청부터 입력·증빙 제출까지 연결",
+  "ownedPaths": [
+    "projects/carbonet-frontend/source/src/features/emission-carbon-workflow/EmissionDataRequestFunctionalPage.tsx",
+    "projects/carbonet-frontend/source/src/features/emission-data-input/EmissionDataInputMigrationPage.tsx"
+  ],
+  "steps": [
+    {
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_COLLECT",
+      "expectedVersion": "4.0.0",
+      "pageIds": [
+        "emission-activity-data"
+      ]
+    },
+    {
+      "processCode": "ACTIVITY_DATA",
+      "stepCode": "ACTIVITY_DATA_01_PLAN",
+      "expectedVersion": "1.4.0",
+      "pageIds": [
+        "emission-data-request"
+      ]
+    },
+    {
+      "processCode": "ACTIVITY_DATA",
+      "stepCode": "ACTIVITY_DATA_02_WORK",
+      "expectedVersion": "1.4.0",
+      "pageIds": [
+        "emission-activity-data"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "pageId": "emission-data-request",
+      "route": "/emission/data-request",
+      "sourcePath": "projects/carbonet-frontend/source/src/features/emission-carbon-workflow/EmissionDataRequestFunctionalPage.tsx",
+      "permissionCodes": []
+    },
+    {
+      "pageId": "emission-activity-data",
+      "route": "/emission/activity-data",
+      "sourcePath": "projects/carbonet-frontend/source/src/features/emission-data-input/EmissionDataInputMigrationPage.tsx",
+      "permissionCodes": []
+    }
+  ],
+  "apis": [],
+  "permissions": [],
+  "dependencies": [
+    {
+      "contractId": "project-context",
+      "version": "1"
+    }
+  ],
+  "migrationVersions": [],
+  "evidence": {}
+}

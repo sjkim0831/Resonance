@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { EmissionPageIntro } from "../emission-common/EmissionPageIntro";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 
@@ -90,13 +91,10 @@ export function AdminEmissionProjectPrerequisitesPage() {
     { label: en ? "Project prerequisites" : "프로젝트 사전 설정" },
   ]} title={en ? "Emission Project Prerequisite Control" : "배출량 프로젝트 사전 설정"}>
     <main className="space-y-5" data-testid="admin-emission-project-prerequisites">
-      <section className="rounded-2xl border border-blue-900/10 bg-gradient-to-r from-[#052b57] to-[#174ea6] p-6 text-white shadow-sm">
-        <p className="text-sm font-bold text-blue-100">ACTOR · PROCESS · TEST · TASK</p>
-        <div className="mt-2 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div><h2 className="text-2xl font-black sm:text-3xl">{en ? "Close prerequisites before starting the 20-step relay" : "20단계 업무 릴레이 시작 전 선행 조건을 닫습니다"}</h2><p className="mt-2 max-w-4xl text-sm leading-6 text-blue-50">{en ? "This control page prevents projects from entering collection or calculation with missing master data, actors, policies, or report settings." : "기준정보·담당자·업무정책·보고 설정이 빠진 프로젝트가 수집·산정 단계로 진입하지 않도록 통제합니다."}</p></div>
-          <div className="rounded-xl bg-white/10 p-4"><span className="text-xs font-bold text-blue-100">{en ? "Confirmed automatically" : "자동 확인"}</span><strong className="mt-1 block text-3xl font-black">{readyCount} / {items.length}</strong></div>
-        </div>
-      </section>
+      <EmissionPageIntro level={2} category={en ? "Project prerequisites" : "프로젝트 사전 설정"}
+        title={en ? "Close prerequisites before starting the 20-step relay" : "20단계 업무 릴레이 시작 전 선행 조건을 닫습니다"}
+        description={en ? "This control page prevents projects from entering collection or calculation with missing master data, actors, policies, or report settings." : "기준정보·담당자·업무정책·보고 설정이 빠진 프로젝트가 수집·산정 단계로 진입하지 않도록 통제합니다."}
+        actions={<div className="rounded-lg border border-blue-200 bg-white p-4"><span className="text-sm font-bold">{en ? "Confirmed automatically" : "자동 확인"}</span><strong className="mt-1 block text-3xl font-bold">{readyCount} / {items.length}</strong></div>} />
 
       <section className="rounded-2xl border bg-white p-5 shadow-sm">
         <label className="block max-w-2xl"><span className="mb-2 block text-sm font-bold text-slate-700">{en ? "Target project" : "점검 대상 프로젝트"}</span><select className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base" value={projectId} onChange={event => setProjectId(event.target.value)} disabled={loading}><option value="">{loading ? (en ? "Loading..." : "불러오는 중") : (en ? "Select a project" : "프로젝트 선택")}</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name || project.id} · {project.site || (en ? "No site" : "사업장 미지정")}</option>)}</select></label>

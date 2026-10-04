@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
@@ -185,21 +186,11 @@ export function ExternalSyncMigrationPage() {
               ))}
             </div>
           ) : null}
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4 xl:w-[68rem]">
-            <div>
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalSyncKeyword">{en ? "Keyword" : "검색어"}</label>
               <AdminInput id="externalSyncKeyword" placeholder={en ? "Connection, queue, endpoint" : "연계명, 큐, 엔드포인트"} value={keyword} onChange={(event) => setKeyword(event.target.value)} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-bold" htmlFor="externalSyncMode">{en ? "Sync Mode" : "동기화 방식"}</label>
-              <AdminSelect id="externalSyncMode" value={syncMode} onChange={(event) => setSyncMode(event.target.value)}>
-                <option value="ALL">{en ? "All" : "전체"}</option>
-                <option value="SCHEDULED">{en ? "Scheduled" : "스케줄 수집"}</option>
-                <option value="HYBRID">{en ? "Hybrid" : "혼합형"}</option>
-                <option value="WEBHOOK">{en ? "Webhook" : "웹훅"}</option>
-              </AdminSelect>
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalSyncStatus">{en ? "Status" : "상태"}</label>
               <AdminSelect id="externalSyncStatus" value={status} onChange={(event) => setStatus(event.target.value)}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -209,13 +200,17 @@ export function ExternalSyncMigrationPage() {
                 <option value="FAILED">FAILED</option>
                 <option value="DISABLED">DISABLED</option>
               </AdminSelect>
-            </div>
-            <div className="flex items-end">
-              <button className="gov-btn gov-btn-outline w-full" onClick={resetFilters} type="button">
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
+              <label className="mb-1 block text-sm font-bold" htmlFor="externalSyncMode">{en ? "Sync Mode" : "동기화 방식"}</label>
+              <AdminSelect id="externalSyncMode" value={syncMode} onChange={(event) => setSyncMode(event.target.value)}>
+                <option value="ALL">{en ? "All" : "전체"}</option>
+                <option value="SCHEDULED">{en ? "Scheduled" : "스케줄 수집"}</option>
+                <option value="HYBRID">{en ? "Hybrid" : "혼합형"}</option>
+                <option value="WEBHOOK">{en ? "Webhook" : "웹훅"}</option>
+              </AdminSelect>
+            </div></div></>} actions={<><button className="gov-btn gov-btn-outline w-full" onClick={resetFilters} type="button">
                 {en ? "Reset Filters" : "검색 조건 초기화"}
-              </button>
-            </div>
-          </div>
+              </button></>}></CommonSearchSection></div>
         </CollectionResultPanel>
 
         <section className="gov-card overflow-hidden p-0" data-help-id="external-sync-registry">

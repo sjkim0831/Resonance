@@ -1,5 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { UtilityFallback } from "./features/runtime-assist/UtilityFallback";
+import { emissionContractHelp, emissionContractPage } from "./features/emission-common/currentEmissionContract";
+import { EmissionDesignBoundary } from "./features/emission-common/EmissionDesignBoundary";
 import { getMissingInsttWarningEventName } from "./platform/telemetry/fetch";
 import { usePageTelemetry } from "./platform/telemetry/usePageTelemetry";
 import { useTelemetryTransport } from "./platform/telemetry/useTelemetryTransport";
@@ -587,8 +589,8 @@ export default function App() {
           <HelpOverlay
             open={helpOpen}
             pageId={page}
-            helpContent={helpContent}
-            workContext={screenWorkContext}
+            helpContent={emissionContractHelp(routePath,page) || helpContent}
+            workContext={emissionContractPage(routePath)&&!screenWorkContext?.accessRestricted?null:screenWorkContext}
             onClose={() => setHelpOpen(false)}
           />
         </Suspense>
@@ -650,6 +652,7 @@ export default function App() {
       <ErrorBoundary resetKey={boundaryResetKey}>
         <Suspense fallback={<PageLoadingFallback />}>
           <RouteAuthenticationBoundary page={page} routePath={routePath}>
+            <EmissionDesignBoundary routePath={routePath}>
             {useGlobalUserGnb ? (
               <GlobalUserGnbShell>
                 <CurrentPage key={boundaryResetKey} />
@@ -657,6 +660,7 @@ export default function App() {
             ) : (
               <CurrentPage key={boundaryResetKey} />
             )}
+            </EmissionDesignBoundary>
           </RouteAuthenticationBoundary>
         </Suspense>
       </ErrorBoundary>

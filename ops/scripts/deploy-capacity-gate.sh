@@ -4,7 +4,7 @@ set -euo pipefail
 DISK_PATH="${CARBONET_DEPLOY_DISK_PATH:-/opt}"
 MIN_FREE_AFTER_BYTES="${CARBONET_DEPLOY_MIN_FREE_AFTER_BYTES:-128849018880}"
 RESERVED_WORK_BYTES="${CARBONET_DEPLOY_RESERVED_WORK_BYTES:-42949672960}"
-STATUS_FILE="${CARBONET_DEPLOY_CAPACITY_STATUS_FILE:-/opt/resonance-data/deploy/capacity-status.json}"
+STATUS_FILE="${CARBONET_DEPLOY_CAPACITY_STATUS_FILE:-/opt/Resonance/runtime/platform-data/deploy/capacity-status.json}"
 KUBECONFIG="${CARBONET_KUBECONFIG:-${KUBECONFIG:-/home/sjkim/.kube/config}}"
 
 is_uint() {

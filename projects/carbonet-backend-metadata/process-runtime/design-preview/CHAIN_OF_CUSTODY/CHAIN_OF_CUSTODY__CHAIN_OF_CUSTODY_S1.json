@@ -149,7 +149,11 @@
             "fieldName": "프로세스 코드",
             "fieldGroup": "공통",
             "fieldOrder": 30,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
             "apiProperty": "processCode",
             "controlType": "HIDDEN",
             "sourceTable": "framework_process_definition",
@@ -170,7 +174,11 @@
             "fieldName": "단계 코드",
             "fieldGroup": "공통",
             "fieldOrder": 40,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
             "apiProperty": "stepCode",
             "controlType": "HIDDEN",
             "sourceTable": "framework_process_step",
@@ -191,7 +199,11 @@
             "fieldName": "업무 레코드 ID",
             "fieldGroup": "공통",
             "fieldOrder": 50,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": false,
+              "immutable": true
+            },
             "apiProperty": "recordId",
             "controlType": "HIDDEN",
             "sourceTable": null,
@@ -235,7 +247,14 @@
             "fieldName": "담당 액터",
             "fieldGroup": "공통",
             "fieldOrder": 70,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "ownerActorCode",
             "controlType": "ACTOR_SELECT",
             "sourceTable": null,
@@ -279,7 +298,11 @@
             "fieldName": "등록 일시",
             "fieldGroup": "공통",
             "fieldOrder": 90,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "createdAt",
             "controlType": "DATETIME",
             "sourceTable": "emission_project_registry",
@@ -300,7 +323,11 @@
             "fieldName": "최종 수정 일시",
             "fieldGroup": "공통",
             "fieldOrder": 100,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "updatedAt",
             "controlType": "DATETIME",
             "sourceTable": "emission_project_registry",
@@ -344,7 +371,14 @@
             "fieldName": "보고연도",
             "fieldGroup": "EMISSION",
             "fieldOrder": 200,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "reportingYear",
             "controlType": "YEAR",
             "sourceTable": "emission_project_registry",
@@ -365,7 +399,14 @@
             "fieldName": "조직",
             "fieldGroup": "EMISSION",
             "fieldOrder": 210,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "organizationId",
             "controlType": "ORGANIZATION_SELECT",
             "sourceTable": null,
@@ -386,7 +427,14 @@
             "fieldName": "사업장",
             "fieldGroup": "EMISSION",
             "fieldOrder": 220,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "siteId",
             "controlType": "SITE_SELECT",
             "sourceTable": null,
@@ -407,7 +455,14 @@
             "fieldName": "배출시설",
             "fieldGroup": "EMISSION",
             "fieldOrder": 230,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "facilityId",
             "controlType": "FACILITY_SELECT",
             "sourceTable": null,
@@ -428,7 +483,14 @@
             "fieldName": "Scope",
             "fieldGroup": "EMISSION",
             "fieldOrder": 240,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "scopeCode",
             "controlType": "SCOPE_SELECT",
             "sourceTable": null,
@@ -449,7 +511,12 @@
             "fieldName": "활동량",
             "fieldGroup": "EMISSION",
             "fieldOrder": 250,
-            "validation": {},
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "activityValue",
             "controlType": "NUMBER",
             "sourceTable": null,
@@ -470,7 +537,14 @@
             "fieldName": "단위",
             "fieldGroup": "EMISSION",
             "fieldOrder": 260,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "unitCode",
             "controlType": "UNIT_SELECT",
             "sourceTable": null,
@@ -491,7 +565,14 @@
             "fieldName": "배출계수",
             "fieldGroup": "EMISSION",
             "fieldOrder": 270,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "factorId",
             "controlType": "FACTOR_SEARCH",
             "sourceTable": null,
@@ -512,7 +593,12 @@
             "fieldName": "배출량",
             "fieldGroup": "EMISSION",
             "fieldOrder": 280,
-            "validation": {},
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "emissionValue",
             "controlType": "CALCULATED_NUMBER",
             "sourceTable": null,
@@ -533,7 +619,14 @@
             "fieldName": "데이터 품질",
             "fieldGroup": "EMISSION",
             "fieldOrder": 290,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "qualityStatus",
             "controlType": "QUALITY_BADGE",
             "sourceTable": null,
@@ -554,7 +647,14 @@
             "fieldName": "업무명",
             "fieldGroup": "업무 처리",
             "fieldOrder": 400,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "businessName",
             "controlType": "TEXT",
             "sourceTable": null,
@@ -575,7 +675,14 @@
             "fieldName": "목적·근거",
             "fieldGroup": "업무 처리",
             "fieldOrder": 410,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "businessPurpose",
             "controlType": "TEXTAREA",
             "sourceTable": null,
@@ -596,7 +703,11 @@
             "fieldName": "적용 시작일",
             "fieldGroup": "업무 처리",
             "fieldOrder": 420,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": false,
+              "required": true
+            },
             "apiProperty": "effectiveFrom",
             "controlType": "DATE",
             "sourceTable": null,
@@ -617,7 +728,11 @@
             "fieldName": "적용 종료일",
             "fieldGroup": "업무 처리",
             "fieldOrder": 430,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "effectiveTo",
             "controlType": "DATE",
             "sourceTable": null,
@@ -741,7 +856,11 @@
             "fieldName": "프로세스 코드",
             "fieldGroup": "공통",
             "fieldOrder": 30,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
             "apiProperty": "processCode",
             "controlType": "HIDDEN",
             "sourceTable": "framework_process_definition",
@@ -762,7 +881,11 @@
             "fieldName": "단계 코드",
             "fieldGroup": "공통",
             "fieldOrder": 40,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
             "apiProperty": "stepCode",
             "controlType": "HIDDEN",
             "sourceTable": "framework_process_step",
@@ -783,7 +906,11 @@
             "fieldName": "업무 레코드 ID",
             "fieldGroup": "공통",
             "fieldOrder": 50,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": false,
+              "immutable": true
+            },
             "apiProperty": "recordId",
             "controlType": "HIDDEN",
             "sourceTable": null,
@@ -827,7 +954,14 @@
             "fieldName": "담당 액터",
             "fieldGroup": "공통",
             "fieldOrder": 70,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "ownerActorCode",
             "controlType": "ACTOR_SELECT",
             "sourceTable": null,
@@ -871,7 +1005,11 @@
             "fieldName": "등록 일시",
             "fieldGroup": "공통",
             "fieldOrder": 90,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "createdAt",
             "controlType": "DATETIME",
             "sourceTable": "emission_project_registry",
@@ -892,7 +1030,11 @@
             "fieldName": "최종 수정 일시",
             "fieldGroup": "공통",
             "fieldOrder": 100,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "updatedAt",
             "controlType": "DATETIME",
             "sourceTable": "emission_project_registry",
@@ -936,7 +1078,14 @@
             "fieldName": "보고연도",
             "fieldGroup": "EMISSION",
             "fieldOrder": 200,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "reportingYear",
             "controlType": "YEAR",
             "sourceTable": "emission_project_registry",
@@ -957,7 +1106,14 @@
             "fieldName": "조직",
             "fieldGroup": "EMISSION",
             "fieldOrder": 210,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "organizationId",
             "controlType": "ORGANIZATION_SELECT",
             "sourceTable": null,
@@ -978,7 +1134,14 @@
             "fieldName": "사업장",
             "fieldGroup": "EMISSION",
             "fieldOrder": 220,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "siteId",
             "controlType": "SITE_SELECT",
             "sourceTable": null,
@@ -999,7 +1162,14 @@
             "fieldName": "배출시설",
             "fieldGroup": "EMISSION",
             "fieldOrder": 230,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "facilityId",
             "controlType": "FACILITY_SELECT",
             "sourceTable": null,
@@ -1020,7 +1190,14 @@
             "fieldName": "Scope",
             "fieldGroup": "EMISSION",
             "fieldOrder": 240,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "scopeCode",
             "controlType": "SCOPE_SELECT",
             "sourceTable": null,
@@ -1041,7 +1218,12 @@
             "fieldName": "활동량",
             "fieldGroup": "EMISSION",
             "fieldOrder": 250,
-            "validation": {},
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "activityValue",
             "controlType": "NUMBER",
             "sourceTable": null,
@@ -1062,7 +1244,14 @@
             "fieldName": "단위",
             "fieldGroup": "EMISSION",
             "fieldOrder": 260,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "unitCode",
             "controlType": "UNIT_SELECT",
             "sourceTable": null,
@@ -1083,7 +1272,14 @@
             "fieldName": "배출계수",
             "fieldGroup": "EMISSION",
             "fieldOrder": 270,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "factorId",
             "controlType": "FACTOR_SEARCH",
             "sourceTable": null,
@@ -1104,7 +1300,12 @@
             "fieldName": "배출량",
             "fieldGroup": "EMISSION",
             "fieldOrder": 280,
-            "validation": {},
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "emissionValue",
             "controlType": "CALCULATED_NUMBER",
             "sourceTable": null,
@@ -1125,7 +1326,14 @@
             "fieldName": "데이터 품질",
             "fieldGroup": "EMISSION",
             "fieldOrder": 290,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "qualityStatus",
             "controlType": "QUALITY_BADGE",
             "sourceTable": null,
@@ -1146,7 +1354,14 @@
             "fieldName": "업무명",
             "fieldGroup": "업무 처리",
             "fieldOrder": 400,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "businessName",
             "controlType": "TEXT",
             "sourceTable": null,
@@ -1167,7 +1382,14 @@
             "fieldName": "목적·근거",
             "fieldGroup": "업무 처리",
             "fieldOrder": 410,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "businessPurpose",
             "controlType": "TEXTAREA",
             "sourceTable": null,
@@ -1188,7 +1410,11 @@
             "fieldName": "적용 시작일",
             "fieldGroup": "업무 처리",
             "fieldOrder": 420,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": false,
+              "required": true
+            },
             "apiProperty": "effectiveFrom",
             "controlType": "DATE",
             "sourceTable": null,
@@ -1209,7 +1435,11 @@
             "fieldName": "적용 종료일",
             "fieldGroup": "업무 처리",
             "fieldOrder": 430,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "effectiveTo",
             "controlType": "DATE",
             "sourceTable": null,
@@ -1774,12 +2004,14 @@
       }
     ],
     "transactional": true,
-    "schemaSetVersion": 1,
+    "schemaSetVersion": 2,
     "migrationRequired": true,
     "primaryEntities": [
       "emission_project_registry"
     ],
-    "historyRequired": true
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
   },
   "tests": [
     {
@@ -2027,8 +2259,8 @@
       "errorSummary": true
     }
   },
-  "sourceHash": "1ba616e3456728f1a7528bd4c5b6a996",
+  "sourceHash": "74795fa781ea620e805c9854cb44778e02a969164dbb377664d3677b485d62f0",
   "approvalStatus": "APPROVED",
   "generationStatus": "GENERATED",
-  "packageHash": "b5dc616e47d7e68eba85b061ada01c847634435e14966b76d03dc530fd7af59e"
+  "packageHash": "b79f94ef061299869e160a643eb0a8768c5ad3e0107fb680659aabce940dbe3e"
 }

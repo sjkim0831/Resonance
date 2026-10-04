@@ -1,0 +1,12 @@
+{
+  "scope": "DESIGN_STRUCTURE_ONLY",
+  "status": "PASS",
+  "releaseStatus": "BLOCKED",
+  "requirements": 115,
+  "featureContracts": 115,
+  "typedNewEntities": 8,
+  "derivedTestDefinitions": 996,
+  "executedRuntimeTests": 0,
+  "openDecisions": 6,
+  "generatedAt": "2026-10-01T04:51:24.139Z"
+}

@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import type { ReactNode } from "react";
 import type { CompanyApprovePagePayload } from "../../lib/api/memberTypes";
 import { buildLocalizedPath } from "../../lib/navigation/runtime";
@@ -61,48 +62,21 @@ export function CompanyApproveSearchSection({
   totalPages: number;
 }) {
   return (
-    <section className="gov-card mb-6 overflow-hidden p-0" data-help-id="company-approve-search">
-      <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
-        <MemberSectionToolbar
-          actions={(
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
-                현재 페이지 {currentPage} / {totalPages}
-              </span>
-            </div>
-          )}
-          meta="회원사 승인 목록은 상태 검색과 결과 액션 영역을 동일한 카드 구조 안에서 유지합니다."
-          title="검색 조건"
-        />
-      </div>
-      <div className="grid gap-4 px-6 py-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-end">
-        <label>
-          <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">상태</span>
-          <AdminSelect value={draftFilters.status} onChange={(event) => updateDraft("status", event.target.value)}>
-            {COMPANY_APPROVE_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </AdminSelect>
-        </label>
-        <label>
+    <section className="ccus-search-host" data-help-id="company-approve-search"><CommonSearchSection basic={<><div className="ccus-search-field"><label>
           <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">검색어</span>
           <AdminInput
             placeholder="회원사명, 사업자등록번호 검색"
             value={draftFilters.searchKeyword}
             onChange={(event) => updateDraft("searchKeyword", event.target.value)}
           />
-        </label>
-      </div>
-      <div className="border-t border-[var(--kr-gov-border-light)] px-6 py-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
-            동일한 승인형 화면은 검색 카드, 결과 테이블, 검토 모달 순서를 동일하게 유지합니다.
-          </p>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <MemberButton onClick={resetFilters} type="button" variant="secondary">{MEMBER_BUTTON_LABELS.reset}</MemberButton>
-            <MemberButton onClick={() => applyFilters(1)} type="button" variant="primary">{MEMBER_BUTTON_LABELS.search}</MemberButton>
-          </div>
-        </div>
-      </div>
-    </section>
+        </label></div>
+<div className="ccus-search-field"><label>
+          <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">상태</span>
+          <AdminSelect value={draftFilters.status} onChange={(event) => updateDraft("status", event.target.value)}>
+            {COMPANY_APPROVE_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </AdminSelect>
+        </label></div></>} actions={<><MemberButton onClick={resetFilters} type="button" variant="secondary">{MEMBER_BUTTON_LABELS.reset}</MemberButton>
+<MemberButton onClick={() => applyFilters(1)} type="button" variant="primary">{MEMBER_BUTTON_LABELS.search}</MemberButton></>}></CommonSearchSection></section>
   );
 }
 

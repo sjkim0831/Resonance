@@ -1,0 +1,461 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 3277,
+  "blueprintCode": "BP_AUTO_7F255169F9A6C6D44FFD86D3",
+  "identity": {
+    "processCode": "FACILITY_ASSET_REGISTRY",
+    "stepCode": "FAR_REGISTER",
+    "actorCode": "FACILITY_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "AUTO_7F255169F9A6C6D44FFD"
+  },
+  "route": "/admin/ccus/facility/facility-asset-registry",
+  "pageName": "설비·태그·위치 등록 관리자 업무 화면",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "kpis": [
+      "진행률",
+      "기한",
+      "이상·차단",
+      "증빙 완결성"
+    ],
+    "errors": [
+      {
+        "code": "FORBIDDEN",
+        "recovery": "권한·업무분리 확인"
+      },
+      {
+        "code": "CONFLICT",
+        "recovery": "최신 버전 재조회"
+      },
+      {
+        "code": "DEPENDENCY_FAILURE",
+        "recovery": "멱등키로 안전 재시도"
+      }
+    ],
+    "fields": [
+      {
+        "route": "/admin/ccus/facility/facility-asset-registry?step=far_register",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_REGISTER_ADMIN",
+        "required": true,
+        "fieldCode": "projectId",
+        "fieldName": "프로젝트",
+        "fieldGroup": "컨텍스트",
+        "fieldOrder": 10,
+        "validation": {
+          "type": "code",
+          "nullable": false,
+          "required": true,
+          "allowUnknown": false
+        },
+        "apiProperty": "projectId",
+        "controlType": "PROJECT_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/ccus/facility/facility-asset-registry?step=far_register",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_REGISTER_ADMIN",
+        "required": true,
+        "fieldCode": "facilityId",
+        "fieldName": "설비 ID",
+        "fieldGroup": "설비",
+        "fieldOrder": 20,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "facilityId",
+        "controlType": "FACILITY_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/ccus/facility/facility-asset-registry?step=far_register",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_REGISTER_ADMIN",
+        "required": true,
+        "fieldCode": "assetTag",
+        "fieldName": "설비 태그",
+        "fieldGroup": "설비",
+        "fieldOrder": 30,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "assetTag",
+        "controlType": "TEXT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/ccus/facility/facility-asset-registry?step=far_register",
+        "audience": "ADMIN",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_REGISTER_ADMIN",
+        "required": true,
+        "fieldCode": "siteCode",
+        "fieldName": "사업장·저장소",
+        "fieldGroup": "설비",
+        "fieldOrder": 40,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "siteCode",
+        "controlType": "SITE_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/ccus/facility/facility-asset-registry?step=far_register",
+        "audience": "ADMIN",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_REGISTER_ADMIN",
+        "required": true,
+        "fieldCode": "statusCode",
+        "fieldName": "업무 상태",
+        "fieldGroup": "운영",
+        "fieldOrder": 50,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "statusCode",
+        "controlType": "STATUS_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/ccus/facility/facility-asset-registry?step=far_register",
+        "audience": "ADMIN",
+        "dataType": "DATETIME",
+        "editable": true,
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_REGISTER_ADMIN",
+        "required": true,
+        "fieldCode": "effectiveAt",
+        "fieldName": "발생·적용 일시",
+        "fieldGroup": "운영",
+        "fieldOrder": 60,
+        "validation": {
+          "type": "date-time",
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "effectiveAt",
+        "controlType": "DATETIME",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/ccus/facility/facility-asset-registry?step=far_register",
+        "audience": "ADMIN",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_REGISTER_ADMIN",
+        "required": true,
+        "fieldCode": "measurementValue",
+        "fieldName": "측정·운영 값",
+        "fieldGroup": "전문값",
+        "fieldOrder": 70,
+        "validation": {
+          "numeric": true,
+          "unitRequired": true
+        },
+        "apiProperty": "measurementValue",
+        "controlType": "NUMBER_UNIT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/ccus/facility/facility-asset-registry?step=far_register",
+        "audience": "ADMIN",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_REGISTER_ADMIN",
+        "required": true,
+        "fieldCode": "unitCode",
+        "fieldName": "단위",
+        "fieldGroup": "전문값",
+        "fieldOrder": 80,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "unitCode",
+        "controlType": "UNIT_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/ccus/facility/facility-asset-registry?step=far_register",
+        "audience": "ADMIN",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_REGISTER_ADMIN",
+        "required": true,
+        "fieldCode": "riskLevel",
+        "fieldName": "위험 등급",
+        "fieldGroup": "위험·검토",
+        "fieldOrder": 90,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "riskLevel",
+        "controlType": "RISK_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:ADMIN",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/ccus/facility/facility-asset-registry?step=far_register",
+        "audience": "ADMIN",
+        "dataType": "ARRAY",
+        "editable": true,
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_REGISTER_ADMIN",
+        "required": true,
+        "fieldCode": "evidenceIds",
+        "fieldName": "원본 증빙",
+        "fieldGroup": "증빙",
+        "fieldOrder": 100,
+        "validation": {
+          "minItems": 1,
+          "hashRequired": true
+        },
+        "apiProperty": "evidenceIds",
+        "controlType": "FILE_UPLOAD",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:ADMIN",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/admin/ccus/facility/facility-asset-registry?step=far_register",
+        "audience": "ADMIN",
+        "dataType": "TEXT",
+        "editable": true,
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_REGISTER_ADMIN",
+        "required": false,
+        "fieldCode": "approvalComment",
+        "fieldName": "검토·승인 의견",
+        "fieldGroup": "승인",
+        "fieldOrder": 110,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "approvalComment",
+        "controlType": "TEXTAREA",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:ADMIN",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/admin/ccus/facility/facility-asset-registry?step=far_register",
+        "audience": "ADMIN",
+        "dataType": "INTEGER",
+        "editable": true,
+        "pageCode": "FACILITY_ASSET_REGISTRY_FAR_REGISTER_ADMIN",
+        "required": true,
+        "fieldCode": "rowVersion",
+        "fieldName": "데이터 버전",
+        "fieldGroup": "무결성",
+        "fieldOrder": 120,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "rowVersion",
+        "controlType": "VERSION",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:ADMIN",
+        "evidenceRequired": false
+      }
+    ],
+    "states": [
+      "LOADING",
+      "EMPTY",
+      "ERROR",
+      "FORBIDDEN",
+      "READY",
+      "BLOCKED",
+      "CONFLICT"
+    ],
+    "actions": [
+      "REGISTER_FACILITY",
+      "SAVE_DRAFT",
+      "REQUEST_CORRECTION"
+    ],
+    "sections": [
+      "업무요약",
+      "검색·필터",
+      "전문 데이터",
+      "증빙·이력",
+      "명령·다음업무"
+    ],
+    "extensions": {
+      "contractId": 305,
+      "sharedRuntime": true
+    },
+    "responsive": {
+      "mobile": "single-column-actions-bottom",
+      "tablet": "adaptive-grid",
+      "desktop": "list-detail-workspace"
+    },
+    "permissions": [
+      {
+        "code": "FACILITY_OPERATOR",
+        "scope": "TENANT_PROJECT",
+        "segregationOfDuties": true,
+        "serverAuthorization": true
+      }
+    ],
+    "validations": [
+      {
+        "code": "ENTRY_AND_REQUIRED_FIELDS",
+        "type": "CONTRACT"
+      },
+      {
+        "code": "STATE_AND_VERSION",
+        "type": "CONCURRENCY"
+      }
+    ],
+    "apiContracts": [
+      "/api/ccus/facility/facility-asset-registry/far_register"
+    ],
+    "designSystem": "KRDS_GOV",
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG_2_1_AA",
+      "nonColorStatus": true,
+      "focusManagement": true
+    },
+    "dataContracts": [
+      "tenantId",
+      "projectId",
+      "facilityId",
+      "recordId",
+      "statusCode",
+      "rowVersion",
+      "evidenceHash"
+    ],
+    "schemaVersion": "2.0.0",
+    "completionRule": "필수 기준정보와 중복 태그 검사가 완료됨",
+    "exitConditions": [
+      "필수 기준정보와 중복 태그 검사가 완료됨"
+    ],
+    "businessPurpose": "설비 식별자·공정·위치·사양·용량·위험등급을 등록한다.",
+    "entryConditions": [
+      "다음 프로세스 시작 조건을 충족한다: 승인된 사업장과 설비 도입 근거가 존재한다. 현재 상태는 READY이며 서버가 테넌트·프로젝트·액터 권한을 확인한 경우에만 진입한다."
+    ],
+    "actorResponsibilities": [
+      "FACILITY_OPERATOR 액터가 권한·업무분리 정책에 따라 설비·태그·위치 등록 관리자 업무 화면 업무를 수행한다."
+    ]
+  },
+  "traceability": {
+    "contractId": 305,
+    "requirementIds": [
+      "FACILITY_ASSET_REGISTRY:FAR_REGISTER:ADMIN"
+    ],
+    "generationBatchId": 183,
+    "designReadinessScore": 100,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "d64e02376ca4cd8285cf3bcbcb8dbc4dbf1d36e3d6355a6362ca8d74b7eee9bf",
+  "artifactHash": "ffd35b7a9e63f6cf9d566332f228c7cf2b0befcb992964e28761073b0e5ce485"
+}

@@ -1,0 +1,313 @@
+{
+  "evidenceDate": "2026-09-10",
+  "assets": [
+    {
+      "id": "E001",
+      "name": "트리밍 장비",
+      "path": "/home/sjkim/OmniverseProjects/p006-remaining-pbr-20260909/cuter_low/asset.usda",
+      "defaultPrim": "/Product",
+      "upAxis": "Y",
+      "metersPerUnit": 1,
+      "worldMin": [
+        -1.2445019483566284,
+        0,
+        -1.3999218344688416
+      ],
+      "worldMax": [
+        1.2445019483566284,
+        5.937997817993164,
+        1.3999218344688416
+      ],
+      "prims": 46,
+      "joints": [],
+      "rigidBodies": [],
+      "colliders": [],
+      "animatedAttributes": [],
+      "connectionRelationships": [],
+      "compositionErrors": [],
+      "role": "후처리 트리밍",
+      "confidence": "PROVISIONAL_NOT_ASSEMBLY_VERIFIED",
+      "assembly": "UNVERIFIED",
+      "reason": "주조기 배출부가 아니라 별도 후공정",
+      "required": "주조품 지지/클램프/절단 영역 규격 확인 후 인계"
+    },
+    {
+      "id": "E012",
+      "name": "주조기 기반 후보",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate-library-20260909-v2/casterDan/asset.usda",
+      "defaultPrim": "/Product",
+      "upAxis": "Y",
+      "metersPerUnit": 1,
+      "worldMin": [
+        -3.838259220123291,
+        0,
+        -1.3162353038787842
+      ],
+      "worldMax": [
+        3.838259220123291,
+        2.4802796840667725,
+        1.3162353038787842
+      ],
+      "prims": 28,
+      "joints": [],
+      "rigidBodies": [],
+      "colliders": [],
+      "animatedAttributes": [],
+      "connectionRelationships": [],
+      "compositionErrors": [],
+      "role": "주조기 본체 기반 후보",
+      "confidence": "PROVISIONAL_NOT_ASSEMBLY_VERIFIED",
+      "assembly": "UNVERIFIED",
+      "reason": "베이스/외피 후보, 내부 공정 기능 확정 불가",
+      "required": "공통 기준좌표·고정부 체결면·금형 공간 실측 필요"
+    },
+    {
+      "id": "E013",
+      "name": "주조기 고정부",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate-library-20260909-v2/casterFix/asset.usda",
+      "defaultPrim": "/Product",
+      "upAxis": "Y",
+      "metersPerUnit": 1,
+      "worldMin": [
+        -0.9231762588024139,
+        0,
+        -2.350534677505493
+      ],
+      "worldMax": [
+        0.9231762588024139,
+        4.154794812202454,
+        2.350534677505493
+      ],
+      "prims": 16,
+      "joints": [],
+      "rigidBodies": [],
+      "colliders": [],
+      "animatedAttributes": [],
+      "connectionRelationships": [],
+      "compositionErrors": [],
+      "role": "고정부 후보",
+      "confidence": "PROVISIONAL_NOT_ASSEMBLY_VERIFIED",
+      "assembly": "UNVERIFIED",
+      "reason": "이름/형상 분류 근거; 본체에 실제 체결된 관계 없음",
+      "required": "베이스와 고정 체결; 금형 정렬/타이바 기준면 확인"
+    },
+    {
+      "id": "E014",
+      "name": "주조기 구동부 후보",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate-library-20260909-v2/casterPush/asset.usda",
+      "defaultPrim": "/Product",
+      "upAxis": "Y",
+      "metersPerUnit": 1,
+      "worldMin": [
+        -1.8145891278982162,
+        0,
+        -1.1103743761777878
+      ],
+      "worldMax": [
+        1.8145891278982162,
+        2.042998254299164,
+        1.1103743761777878
+      ],
+      "prims": 53,
+      "joints": [],
+      "rigidBodies": [],
+      "colliders": [],
+      "animatedAttributes": [],
+      "connectionRelationships": [],
+      "compositionErrors": [],
+      "role": "구동부 후보",
+      "confidence": "PROVISIONAL_NOT_ASSEMBLY_VERIFIED",
+      "assembly": "UNVERIFIED",
+      "reason": "프레스/클램핑 축인지 미확정",
+      "required": "가동판/액추에이터 축·스트로크·원점·말단 제한 필요"
+    },
+    {
+      "id": "E015",
+      "name": "주조기 후면부",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate-library-20260909-v2/casterPushBack/asset.usda",
+      "defaultPrim": "/Product",
+      "upAxis": "Y",
+      "metersPerUnit": 1,
+      "worldMin": [
+        -3.3943694829940796,
+        0,
+        -1.0146631002426147
+      ],
+      "worldMax": [
+        3.3943694829940796,
+        2.3294241428375244,
+        1.0146631002426147
+      ],
+      "prims": 26,
+      "joints": [],
+      "rigidBodies": [],
+      "colliders": [],
+      "animatedAttributes": [],
+      "connectionRelationships": [],
+      "compositionErrors": [],
+      "role": "후면부 후보",
+      "confidence": "PROVISIONAL_NOT_ASSEMBLY_VERIFIED",
+      "assembly": "UNVERIFIED",
+      "reason": "후면 프레임/보조부 가능, 배출부로 확정 불가",
+      "required": "후면 체결·하중 경로·구동부 간섭 확인"
+    },
+    {
+      "id": "E016",
+      "name": "용탕 관련 구동부",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate-library-20260909-v2/meltPush/asset.usda",
+      "defaultPrim": "/Product",
+      "upAxis": "Y",
+      "metersPerUnit": 1,
+      "worldMin": [
+        -1.8077294826507568,
+        0,
+        -0.5653954744338989
+      ],
+      "worldMax": [
+        1.8077294826507568,
+        4.1476311683654785,
+        0.5653954744338989
+      ],
+      "prims": 19,
+      "joints": [],
+      "rigidBodies": [],
+      "colliders": [],
+      "animatedAttributes": [],
+      "connectionRelationships": [],
+      "compositionErrors": [],
+      "role": "용탕 관련 구동부 후보",
+      "confidence": "PROVISIONAL_NOT_ASSEMBLY_VERIFIED",
+      "assembly": "UNVERIFIED",
+      "reason": "투입/래들/구동 역할 미확정",
+      "required": "용탕 이송 장치인지 원본 도면으로 확인; 회전축/가열 안전 필요"
+    },
+    {
+      "id": "E123",
+      "name": "3차원 측정기",
+      "path": "/home/sjkim/OmniverseProjects/p006-cmm-20260909-v2/cmm/asset.usda",
+      "defaultPrim": "/Product",
+      "upAxis": "Y",
+      "metersPerUnit": 1,
+      "worldMin": [
+        -0.7250000238418579,
+        -1.490116086078075e-10,
+        -0.5249999761581421
+      ],
+      "worldMax": [
+        1.2200000029802323,
+        1.9349999982118606,
+        0.5249999761581421
+      ],
+      "prims": 113,
+      "joints": [],
+      "rigidBodies": [],
+      "colliders": [],
+      "animatedAttributes": [],
+      "connectionRelationships": [],
+      "compositionErrors": [],
+      "role": "독립 검사 설비",
+      "confidence": "PROVISIONAL_NOT_ASSEMBLY_VERIFIED",
+      "assembly": "UNVERIFIED",
+      "reason": "주조 셀 본체 아님",
+      "required": "검사 치구·접근 경로·측정 좌표/공차 연계"
+    }
+  ],
+  "relations": [
+    [
+      "고정 베이스",
+      "static collider 또는 고정 rigid body",
+      "둘 중 중복 구성 피함; 지면 앵커·하중·단위 검증"
+    ],
+    [
+      "가동판/취출부",
+      "rigid body + prismatic/revolute joint",
+      "축·joint local frame·limit·drive·mass/inertia 실측 후"
+    ],
+    [
+      "금형/고정부",
+      "fixed joint 또는 단일 강체 묶음",
+      "본체와 정렬된 체결·분해 가능 경계 확인"
+    ],
+    [
+      "작업물",
+      "rigid body + convex collider",
+      "실제 치수·질량·grasp frame·열상태 필요"
+    ],
+    [
+      "로봇/다축 구동",
+      "articulation root 후보",
+      "검증된 tree 구조일 때만; 셀 전체에 무조건 적용 금지"
+    ],
+    [
+      "충돌/접촉",
+      "static mesh / 단순화 convex",
+      "이동체와 정적부를 구분, collision group/접촉 연속성 시험"
+    ]
+  ],
+  "route": [
+    [
+      "원재료/용탕 투입",
+      "용탕 투입구/래들 규격 미확정",
+      "input.present; 투입 허가",
+      "좌표 UNBOUND"
+    ],
+    [
+      "금형 충전·응고",
+      "금형 cavity·게이트·클램프 부족",
+      "command.ack/cycle.running",
+      "금속 주조 방식·압력/온도 조건 미확정"
+    ],
+    [
+      "금형 개방·취출",
+      "ejector·그리퍼·취출 stroke 미확정",
+      "cycle.done/output.present",
+      "응고품과 원재료 로트 genealogy 필요"
+    ],
+    [
+      "냉각·배출 버퍼",
+      "고온품 지지면·대기 용량·열조건 미확정",
+      "output.present",
+      "배출 위치/손상 방지 확인"
+    ],
+    [
+      "후처리",
+      "E001 재사용 후보",
+      "handoff.request/ack",
+      "목적지 수용·클램프 확인"
+    ],
+    [
+      "검사/재작업/폐기",
+      "E123/E001/E075 재사용 후보",
+      "inspection.value/equipment.fault",
+      "합불 규칙·NG 버퍼·폐기/재용해는 승인된 별도 경로"
+    ]
+  ],
+  "missing": [
+    [
+      "금형 cavity·게이트·가동/고정 금형 관계",
+      "물리 주조 성립에 필수",
+      "기존 금형 부품 먼저 대조; CAD 확보 전 형상 생성 보류"
+    ],
+    [
+      "투입 장치·정위치 포켓",
+      "방식별 필수",
+      "E016·래들 기존 자산 재사용 가능성 확인"
+    ],
+    [
+      "취출/배출 기구·그리퍼·지지면",
+      "배출과 인계에 필수",
+      "기존 취출 로봇/컨베이어 재사용 검토"
+    ],
+    [
+      "작업물 실제 형상·질량·응고 전후 정의",
+      "이동/검사에 필수",
+      "시험 상자를 실제 주조품으로 간주하지 않음"
+    ],
+    [
+      "센서 bracket·검출 zone 및 케이블/안전 영역",
+      "검증에 필수",
+      "센서 자산 재사용, 도면 후 위치 결정"
+    ]
+  ],
+  "rule": "새 모델0. 의미상 필요한 구조를 식별했으나 정확한 형상/좌표는 원본 도면 없이는 제작하지 않음"
+}

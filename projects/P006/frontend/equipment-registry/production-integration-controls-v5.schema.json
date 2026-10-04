@@ -1,0 +1,607 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "P006 v5 control records - proposed",
+  "$defs": {
+    "MigrationRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourceSnapshotId",
+        "sourceHash",
+        "sourceSchemaVersion",
+        "targetSchemaVersion",
+        "mappingVersion",
+        "mode",
+        "status",
+        "conflictIds",
+        "backupArtifactId",
+        "ownerId"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "이관 ID"
+        },
+        "sourceSnapshotId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "읽기 전용 원본"
+        },
+        "sourceHash": {
+          "type": "string",
+          "minLength": 1,
+          "description": "SHA256",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "sourceSchemaVersion": {
+          "type": "string",
+          "minLength": 1,
+          "description": "원본 스키마"
+        },
+        "targetSchemaVersion": {
+          "type": "string",
+          "minLength": 1,
+          "description": "대상 스키마"
+        },
+        "mappingVersion": {
+          "type": "string",
+          "minLength": 1,
+          "description": "변환기 버전"
+        },
+        "mode": {
+          "enum": [
+            "DRY_RUN",
+            "APPLY",
+            "RESTORE"
+          ]
+        },
+        "status": {
+          "enum": [
+            "DRAFT",
+            "VALIDATING",
+            "AWAITING_APPROVAL",
+            "APPLIED",
+            "FAILED",
+            "RESTORED"
+          ]
+        },
+        "conflictIds": {
+          "type": "array",
+          "description": "미해결 충돌",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ID"
+          },
+          "uniqueItems": true
+        },
+        "backupArtifactId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "검증된 원본 백업"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "실행 주체"
+        }
+      }
+    },
+    "ModelChangeProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "fromVersionId",
+        "toVersionId",
+        "affectedPlacementIds",
+        "selectedPlacementIds",
+        "baseRevision",
+        "status",
+        "reviewerId"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "제안ID"
+        },
+        "fromVersionId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "기존버전"
+        },
+        "toVersionId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "신규버전"
+        },
+        "affectedPlacementIds": {
+          "type": "array",
+          "description": "전체 영향",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ID"
+          },
+          "uniqueItems": true
+        },
+        "selectedPlacementIds": {
+          "type": "array",
+          "description": "반영 대상",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ID"
+          },
+          "uniqueItems": true
+        },
+        "baseRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "DRAFT",
+            "REVIEWED",
+            "APPLIED",
+            "REJECTED"
+          ]
+        },
+        "reviewerId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "MutationEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestId",
+        "idempotencyKey",
+        "baseRevision",
+        "selectionToken",
+        "operation",
+        "targetId",
+        "payloadHash"
+      ],
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "추적ID"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "description": "중복 방지 키"
+        },
+        "baseRevision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selectionToken": {
+          "type": "string",
+          "minLength": 1,
+          "description": "선택 세대"
+        },
+        "operation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "허용 operation"
+        },
+        "targetId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "대상ID"
+        },
+        "payloadHash": {
+          "type": "string",
+          "minLength": 1,
+          "description": "동일키 다른내용 거부",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "RecoveryCheckpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "jobId",
+        "stage",
+        "sequence",
+        "state",
+        "successfulArtifactIds",
+        "failedArtifactIds",
+        "resumeFrom",
+        "lastErrorCode"
+      ],
+      "properties": {
+        "jobId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "작업ID"
+        },
+        "stage": {
+          "enum": [
+            "REFERENCE",
+            "CONCEPT",
+            "GEOMETRY",
+            "MOTION_SPEC",
+            "ANIMATION"
+          ]
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "enum": [
+            "QUEUED",
+            "RUNNING",
+            "CANCEL_REQUESTED",
+            "CANCELLED",
+            "PARTIAL",
+            "FAILED",
+            "SUCCEEDED"
+          ]
+        },
+        "successfulArtifactIds": {
+          "type": "array",
+          "description": "성공 산출물",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ID"
+          },
+          "uniqueItems": true
+        },
+        "failedArtifactIds": {
+          "type": "array",
+          "description": "실패 산출물",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ID"
+          },
+          "uniqueItems": true
+        },
+        "resumeFrom": {
+          "type": "string",
+          "minLength": 1,
+          "description": "재개 단계"
+        },
+        "lastErrorCode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "EvidenceRights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceId",
+        "sourceUrl",
+        "retrievedAt",
+        "rightsHolder",
+        "license",
+        "status",
+        "allowedUses",
+        "rightsEvidenceIds",
+        "reviewerId"
+      ],
+      "properties": {
+        "evidenceId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "자료ID"
+        },
+        "sourceUrl": {
+          "type": "string",
+          "minLength": 1,
+          "description": "원문URL",
+          "format": "uri"
+        },
+        "retrievedAt": {
+          "type": "string",
+          "minLength": 1,
+          "description": "확보시각",
+          "format": "date-time"
+        },
+        "rightsHolder": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "license": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "enum": [
+            "UNKNOWN",
+            "RESTRICTED",
+            "VERIFIED"
+          ]
+        },
+        "allowedUses": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "INTERNAL_REVIEW",
+              "DERIVATIVE",
+              "REDISTRIBUTE"
+            ]
+          }
+        },
+        "rightsEvidenceIds": {
+          "type": "array",
+          "description": "허가 근거",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ID"
+          },
+          "uniqueItems": true
+        },
+        "reviewerId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "CompatibilityReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "fromVersionId",
+        "toVersionId",
+        "unitScale",
+        "sourceUpAxis",
+        "targetUpAxis",
+        "missingNodePaths",
+        "missingPortIds",
+        "status",
+        "reviewerId"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "검사ID"
+        },
+        "fromVersionId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "이전버전"
+        },
+        "toVersionId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "신규버전"
+        },
+        "unitScale": {
+          "type": "number",
+          "minimum": 0,
+          "description": "단위 배율; 의미검사 >0"
+        },
+        "sourceUpAxis": {
+          "enum": [
+            "X",
+            "Y",
+            "Z"
+          ]
+        },
+        "targetUpAxis": {
+          "const": "Y"
+        },
+        "missingNodePaths": {
+          "type": "array",
+          "description": "누락 가동부",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ID"
+          },
+          "uniqueItems": true
+        },
+        "missingPortIds": {
+          "type": "array",
+          "description": "누락 포트",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ID"
+          },
+          "uniqueItems": true
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "UNKNOWN"
+          ]
+        },
+        "reviewerId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "PerformanceRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "fixtureId",
+        "deviceProfile",
+        "durationSec",
+        "cameraCount",
+        "instanceCount",
+        "frameP95Ms",
+        "pauseDriftMs",
+        "retainedMemoryGrowthRatio",
+        "droppedFrames",
+        "captureArtifactIds"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "시험ID"
+        },
+        "fixtureId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "데이터셋"
+        },
+        "deviceProfile": {
+          "type": "string",
+          "minLength": 1,
+          "description": "CPU/GPU/RAM/OS/브라우저"
+        },
+        "durationSec": {
+          "type": "number",
+          "minimum": 0,
+          "description": "시간"
+        },
+        "cameraCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "instanceCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "frameP95Ms": {
+          "type": "number",
+          "minimum": 0,
+          "description": "프레임 p95"
+        },
+        "pauseDriftMs": {
+          "type": "number",
+          "minimum": 0,
+          "description": "정지중 시간 변동"
+        },
+        "retainedMemoryGrowthRatio": {
+          "type": "number",
+          "minimum": 0,
+          "description": "워밍업 이후 메모리 증가율"
+        },
+        "droppedFrames": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "captureArtifactIds": {
+          "type": "array",
+          "description": "녹화/스크린샷",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ID"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "GenerationManifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "designRevision",
+        "generatorVersion",
+        "sourceHash",
+        "generatedFileIds",
+        "extensionFileIds",
+        "conflictFileIds",
+        "backupArtifactId",
+        "state"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "생성ID"
+        },
+        "designRevision": {
+          "type": "string",
+          "minLength": 1,
+          "description": "설계버전"
+        },
+        "generatorVersion": {
+          "type": "string",
+          "minLength": 1,
+          "description": "생성기버전"
+        },
+        "sourceHash": {
+          "type": "string",
+          "minLength": 1,
+          "description": "입력해시",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "generatedFileIds": {
+          "type": "array",
+          "description": "생성영역",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ID"
+          },
+          "uniqueItems": true
+        },
+        "extensionFileIds": {
+          "type": "array",
+          "description": "수동확장영역",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ID"
+          },
+          "uniqueItems": true
+        },
+        "conflictFileIds": {
+          "type": "array",
+          "description": "충돌파일",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ID"
+          },
+          "uniqueItems": true
+        },
+        "backupArtifactId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "복원본"
+        },
+        "state": {
+          "enum": [
+            "DRAFT",
+            "CONFLICT",
+            "VALIDATED",
+            "RELEASED",
+            "ROLLED_BACK"
+          ]
+        }
+      }
+    }
+  }
+}

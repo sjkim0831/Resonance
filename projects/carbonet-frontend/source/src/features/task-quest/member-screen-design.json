@@ -1,0 +1,429 @@
+{
+  "groups": [
+    {
+      "flow": "유형 → 약관 → 본인확인 → 정보 입력·제출 → 접수 완료",
+      "id": "MEMBER_MAP_1",
+      "pages": [
+        {
+          "status": "기능 검증 대기",
+          "path": "/join/step1",
+          "name": "회원가입 위저드",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/join/step2",
+          "name": "회원가입 약관",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/join/step3",
+          "name": "회원가입 본인확인",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/join/step4",
+          "name": "회원가입 정보입력",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/join/step5",
+          "name": "회원가입 완료",
+          "actor": "해당 사용자"
+        }
+      ],
+      "name": "회원가입 신청"
+    },
+    {
+      "flow": "관리자 신청 조회·심사·승인/반려 → 신청자 결과 조회",
+      "id": "MEMBER_MAP_2",
+      "pages": [
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/approve",
+          "name": "회원 승인",
+          "actor": "권한 있는 관리자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/join/memberStatusSearch",
+          "name": "회원가입 신청 상태 확인",
+          "actor": "해당 사용자"
+        }
+      ],
+      "name": "회원가입 심사·결과"
+    },
+    {
+      "flow": "일반/관리자 로그인 선택; 인증 선택은 필요한 경우만, 접근 거부는 예외 안내",
+      "id": "MEMBER_MAP_3",
+      "pages": [
+        {
+          "status": "기능 검증 대기",
+          "path": "/signin/loginView",
+          "name": "Login",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/login/loginView",
+          "name": "Admin Login",
+          "actor": "권한 있는 관리자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/signin/authChoice",
+          "name": "Auth Choice",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/signin/loginForbidden",
+          "name": "Forbidden",
+          "actor": "해당 사용자"
+        }
+      ],
+      "name": "로그인·접근 안내"
+    },
+    {
+      "flow": "아이디 찾기 → 결과 / 비밀번호 찾기 → 결과; 이후 로그인으로 복귀",
+      "id": "MEMBER_MAP_4",
+      "pages": [
+        {
+          "status": "기능 검증 대기",
+          "path": "/signin/findId",
+          "name": "Find ID",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/signin/findId/result",
+          "name": "Find ID Result",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/signin/findPassword",
+          "name": "Find Password",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/signin/findPassword/result",
+          "name": "Find Password Result",
+          "actor": "해당 사용자"
+        }
+      ],
+      "name": "아이디·비밀번호 복구"
+    },
+    {
+      "flow": "마이페이지 진입 → 내 정보 / 연락처 변경 / 비밀번호 변경 선택",
+      "id": "MEMBER_MAP_5",
+      "pages": [
+        {
+          "status": "기능 검증 대기",
+          "path": "/mypage/index",
+          "name": "마이페이지 대시보드",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/mypage/profile",
+          "name": "마이페이지",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/mypage/email",
+          "name": "이메일/전화 변경",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/mypage/password",
+          "name": "비밀번호 변경",
+          "actor": "해당 사용자"
+        }
+      ],
+      "name": "내 정보·연락처·비밀번호"
+    },
+    {
+      "flow": "알림 조회 → 관련 업무로 이동; 알림 설정 / 마케팅 설정은 독립 선택",
+      "id": "MEMBER_MAP_6",
+      "pages": [
+        {
+          "status": "기능 검증 대기",
+          "path": "/home/alerts",
+          "name": "주요 알림",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/mypage/notification",
+          "name": "알림 설정",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/mypage/marketing",
+          "name": "마케팅 수신",
+          "actor": "해당 사용자"
+        }
+      ],
+      "name": "알림·수신 설정"
+    },
+    {
+      "flow": "등록 → 접수 완료 → 관리자 심사 → 결과 조회·상세; 안내는 보조, 반려 시 재신청 후 심사 복귀",
+      "id": "MEMBER_MAP_7",
+      "pages": [
+        {
+          "status": "기능 검증 대기",
+          "path": "/join/companyRegister",
+          "name": "공개 회원사 등록",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/join/companyRegisterComplete",
+          "name": "회원사 등록 완료",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/company-approve",
+          "name": "회원사 승인",
+          "actor": "권한 있는 관리자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/join/companyJoinStatusSearch",
+          "name": "Join Status",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/join/companyJoinStatusGuide",
+          "name": "Join Status Guide",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/join/companyJoinStatusDetail",
+          "name": "Join Status Detail",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/join/companyReapply",
+          "name": "반려 재신청",
+          "actor": "해당 사용자"
+        }
+      ],
+      "name": "회원사 가입·심사·보완"
+    },
+    {
+      "flow": "사용자 기업 정보 / 관리자 기업 목록 → 상세 또는 계정 관리",
+      "id": "MEMBER_MAP_8",
+      "pages": [
+        {
+          "status": "기능 검증 대기",
+          "path": "/mypage/company",
+          "name": "기업 정보",
+          "actor": "해당 사용자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/company_list",
+          "name": "회원사 목록",
+          "actor": "권한 있는 관리자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/company_detail",
+          "name": "회원사 상세",
+          "actor": "권한 있는 관리자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/company_account",
+          "name": "회원사 계정",
+          "actor": "권한 있는 관리자"
+        }
+      ],
+      "name": "회원사 정보·계정 관리"
+    },
+    {
+      "flow": "직원 조회·초대·소속 관리를 한 화면에서; 초대 수락 경로는 별도 확인 보류",
+      "id": "MEMBER_MAP_9",
+      "pages": [
+        {
+          "status": "기능 검증 대기",
+          "path": "/mypage/staff",
+          "name": "담당자 관리",
+          "actor": "해당 사용자"
+        }
+      ],
+      "name": "직원·소속 관리"
+    },
+    {
+      "flow": "권한 그룹 확인·설정 → 부서·회원 매핑 / 개별 권한 변경; 필요 작업 선택",
+      "id": "MEMBER_MAP_10",
+      "pages": [
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/auth/group",
+          "name": "권한 그룹",
+          "actor": "권한 있는 관리자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/dept-role-mapping",
+          "name": "부서·회원 권한 할당",
+          "actor": "권한 있는 관리자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/auth-change",
+          "name": "권한 변경",
+          "actor": "권한 있는 관리자"
+        }
+      ],
+      "name": "조직·권한 관리"
+    },
+    {
+      "flow": "같은 화면 내 요청·인계; 관리자 승인 경로는 별도 확인 보류",
+      "id": "MEMBER_MAP_11",
+      "pages": [
+        {
+          "status": "기능 검증 대기",
+          "path": "/work/company-manager-delegation",
+          "name": "회원사 담당자 위임·승계",
+          "actor": "해당 사용자"
+        }
+      ],
+      "name": "담당자 위임·승계"
+    },
+    {
+      "flow": "회원 목록 → 상세 → 수정; 직접 등록은 별도 선택 분기",
+      "id": "MEMBER_MAP_12",
+      "pages": [
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/list",
+          "name": "회원 목록",
+          "actor": "권한 있는 관리자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/detail",
+          "name": "회원 상세",
+          "actor": "권한 있는 관리자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/edit",
+          "name": "회원 수정",
+          "actor": "권한 있는 관리자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/register",
+          "name": "회원 등록",
+          "actor": "권한 있는 관리자"
+        }
+      ],
+      "name": "관리자 회원 관리"
+    },
+    {
+      "flow": "관리자 목록 → 생성 또는 권한 관리",
+      "id": "MEMBER_MAP_13",
+      "pages": [
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/admin_list",
+          "name": "관리자 목록",
+          "actor": "권한 있는 관리자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/admin_account",
+          "name": "관리자 생성",
+          "actor": "권한 있는 관리자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/admin_account/permissions",
+          "name": "관리자 권한",
+          "actor": "권한 있는 관리자"
+        }
+      ],
+      "name": "관리자 계정 관리"
+    },
+    {
+      "flow": "휴면 활성화 / 비밀번호 초기화 / 접근 차단 이력 확인; 증상에 따라 선택",
+      "id": "MEMBER_MAP_14",
+      "pages": [
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/activate",
+          "name": "휴면 계정",
+          "actor": "권한 있는 관리자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/reset_password",
+          "name": "비밀번호 초기화",
+          "actor": "권한 있는 관리자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/security",
+          "name": "회원 접근 차단 이력",
+          "actor": "권한 있는 관리자"
+        }
+      ],
+      "name": "계정 활성화·접근 복구"
+    },
+    {
+      "flow": "회원 통계 / 로그인 이력 / 약관·동의 이력; 참고·조회 업무",
+      "id": "MEMBER_MAP_15",
+      "pages": [
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/stats",
+          "name": "회원 통계",
+          "actor": "권한 있는 관리자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/login_history",
+          "name": "로그인 이력",
+          "actor": "권한 있는 관리자"
+        },
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/system/consent-history",
+          "name": "약관·동의 이력",
+          "actor": "권한 있는 관리자"
+        }
+      ],
+      "name": "회원 현황·감사 조회"
+    },
+    {
+      "flow": "관리자 탈퇴 회원 조회; 탈퇴 신청·승인 기능과 동일시하지 않음",
+      "id": "MEMBER_MAP_16",
+      "pages": [
+        {
+          "status": "기능 검증 대기",
+          "path": "/admin/member/withdrawn",
+          "name": "탈퇴 회원",
+          "actor": "권한 있는 관리자"
+        }
+      ],
+      "name": "탈퇴 회원 조회"
+    }
+  ],
+  "version": 1
+}

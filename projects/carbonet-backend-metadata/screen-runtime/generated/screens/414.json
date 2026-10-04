@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 414,
+  "blueprintCode": "BP_ADOPT_758ADA9C965A3D5DA4A7",
+  "identity": {
+    "processCode": "LCA_EXECUTION",
+    "stepCode": "LCA_EXECUTION_01_PLAN",
+    "actorCode": "LCA_PRACTITIONER",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_758ADA9C965A3D5DA4A7"
+  },
+  "route": "/admin/emission/survey-admin",
+  "pageName": "LCA 프로젝트 관리",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "LCA",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1040101",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "e58b46b43d847d016b46ef8dd4c20e6124883fba70e20cc4f41314c6ca9acf5e",
+  "artifactHash": "95221867243281ff36b5f05d7e13f59693ef6b5f0346564ea2e7dcdb43238d95"
+}

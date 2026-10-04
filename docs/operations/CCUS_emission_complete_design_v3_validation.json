@@ -1,0 +1,10 @@
+{
+  "pages": 70,
+  "operations": 188,
+  "pageTestDefinitions": 552,
+  "processScenarios": 8,
+  "danglingEdges": 0,
+  "missingPageContracts": 0,
+  "status": "STRUCTURAL_DESIGN_VALIDATED_NOT_IMPLEMENTED",
+  "bytes": 203594
+}

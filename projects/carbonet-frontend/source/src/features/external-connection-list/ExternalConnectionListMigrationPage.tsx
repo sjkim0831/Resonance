@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -327,23 +328,7 @@ export function ExternalConnectionListMigrationPage() {
           </article>
         </section>
 
-        <div data-help-id="external-connection-list-filters">
-          <CollectionResultPanel
-            title={en ? "External Connection Filters" : "외부 연계 조회 조건"}
-            description={en ? "Filter by connection, partner, status, protocol, or source before opening add or edit flows." : "등록 또는 수정 작업 전에 연계, 기관, 상태, 프로토콜, 데이터 출처 기준으로 범위를 좁힙니다."}
-            icon="hub"
-          >
-            {activeFilterLabels.length > 0 ? (
-              <div className="mb-4 flex flex-wrap gap-2">
-                {activeFilterLabels.map((label) => (
-                  <span key={label} className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-                    {label}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-6 xl:w-[86rem]">
-              <div>
+        <div data-help-id="external-connection-list-filters" className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div>
                 <label className="mb-1 block text-sm font-bold" htmlFor="externalConnectionKeyword">{en ? "Keyword" : "검색어"}</label>
                 <AdminInput
                   id="externalConnectionKeyword"
@@ -351,22 +336,21 @@ export function ExternalConnectionListMigrationPage() {
                   value={keyword}
                   onChange={(event) => setKeyword(event.target.value)}
                 />
-              </div>
-              <div>
+              </div></div>
+<div className="ccus-search-field"><div>
                 <label className="mb-1 block text-sm font-bold" htmlFor="externalConnectionStatus">{en ? "Status" : "운영 상태"}</label>
                 <AdminSelect id="externalConnectionStatus" value={status} onChange={(event) => setStatus(event.target.value)}>
                   <option value="ALL">{en ? "All" : "전체"}</option>
                   {statusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                 </AdminSelect>
-              </div>
-              <div>
+              </div></div></>} advanced={<><div className="ccus-search-field"><div>
                 <label className="mb-1 block text-sm font-bold" htmlFor="externalConnectionProtocol">{en ? "Protocol" : "프로토콜"}</label>
                 <AdminSelect id="externalConnectionProtocol" value={protocol} onChange={(event) => setProtocol(event.target.value)}>
                   <option value="ALL">{en ? "All" : "전체"}</option>
                   {protocolOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                 </AdminSelect>
-              </div>
-              <div>
+              </div></div>
+<div className="ccus-search-field"><div>
                 <label className="mb-1 block text-sm font-bold" htmlFor="externalConnectionSource">{en ? "Source" : "출처"}</label>
                 <AdminSelect id="externalConnectionSource" value={source} onChange={(event) => setSource(event.target.value)}>
                   <option value="ALL">{en ? "All" : "전체"}</option>
@@ -376,8 +360,8 @@ export function ExternalConnectionListMigrationPage() {
                     </option>
                   ))}
                 </AdminSelect>
-              </div>
-              <div>
+              </div></div>
+<div className="ccus-search-field"><div>
                 <label className="mb-1 block text-sm font-bold" htmlFor="externalConnectionSort">{en ? "Sort" : "정렬"}</label>
                 <AdminSelect id="externalConnectionSort" value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
                   <option value="PRIORITY">{en ? "Priority" : "우선순위"}</option>
@@ -386,9 +370,7 @@ export function ExternalConnectionListMigrationPage() {
                   <option value="LAST_SEEN">{en ? "Last Seen" : "최신 관측순"}</option>
                   <option value="NAME">{en ? "Name" : "이름순"}</option>
                 </AdminSelect>
-              </div>
-              <div className="flex items-end">
-                <button
+              </div></div></>} actions={<><button
                   className="gov-btn gov-btn-outline w-full"
                   type="button"
                   onClick={() => {
@@ -401,11 +383,15 @@ export function ExternalConnectionListMigrationPage() {
                   }}
                 >
                   {en ? "Reset Filters" : "검색 조건 초기화"}
-                </button>
+                </button></>}>{activeFilterLabels.length > 0 ? (
+              <div className="mb-4 flex flex-wrap gap-2">
+                {activeFilterLabels.map((label) => (
+                  <span key={label} className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                    {label}
+                  </span>
+                ))}
               </div>
-            </div>
-          </CollectionResultPanel>
-        </div>
+            ) : null}</CommonSearchSection></div>
 
         <section className="gov-card overflow-hidden p-0" data-help-id="external-connection-list-table">
           <div className="flex flex-col gap-3 border-b border-[var(--kr-gov-border-light)] px-6 py-5 lg:flex-row lg:items-end lg:justify-between">

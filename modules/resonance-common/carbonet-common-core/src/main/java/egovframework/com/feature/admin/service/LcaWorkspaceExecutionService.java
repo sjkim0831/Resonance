@@ -102,9 +102,15 @@ public class LcaWorkspaceExecutionService {
         if (!expectedActor.equals(assignedActor)) throw new IllegalArgumentException("assignedActor must match the process owner: " + expectedActor);
         Object rawPayload = body == null ? null : body.get("payload");
         if (!(rawPayload instanceof Map<?, ?>)) throw new IllegalArgumentException("payload must be a JSON object");
+        Object rawProjectId = ((Map<?, ?>) rawPayload).get("projectId");
+        String projectId = rawProjectId == null ? "" : String.valueOf(rawProjectId).trim();
+        if ("LCA_IMPACT_ASSESSMENT".equals(process) && (projectId.isEmpty() || projectId.length() > 120)) {
+            throw new IllegalArgumentException("projectId is required for LCIA assessment settings");
+        }
         String payload = writeJson(rawPayload);
         String user = requireActor(actor);
         assertAuthority(user, expectedActor);
+        if ("LCA_IMPACT_ASSESSMENT".equals(process)) assertProjectAuthority(user, projectId, expectedActor);
         UUID id = jdbc.queryForObject("""
                 insert into framework_lca_workspace_record(process_code,business_key,payload_json,assigned_actor,created_by,updated_by)
                 values(?,?,?::jsonb,?,?,?)
@@ -214,6 +220,17 @@ public class LcaWorkspaceExecutionService {
                    and valid_from<=current_date and (valid_until is null or valid_until>=current_date)
                 """, Integer.class, accountId, actorCode);
         if (count == null || count < 1) throw new SecurityException("required LCA actor is not assigned: " + actorCode);
+    }
+
+    private void assertProjectAuthority(String accountId, String projectId, String actorCode) {
+        if ("webmaster".equalsIgnoreCase(accountId)) return;
+        Integer count = jdbc.queryForObject("""
+                select count(*) from framework_account_actor_assignment
+                 where lower(account_id)=lower(?) and project_id=? and actor_code=?
+                   and assignment_status='ACTIVE' and valid_from<=current_date
+                   and (valid_until is null or valid_until>=current_date)
+                """, Integer.class, accountId, projectId, actorCode);
+        if (count == null || count < 1) throw new SecurityException("LCIA specialist is not assigned to project: " + projectId);
     }
 
     private void assertAnyAuthority(String accountId, List<String> actorCodes) {

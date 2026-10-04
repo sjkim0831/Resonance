@@ -1,0 +1,608 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 15895,
+  "blueprintCode": "BP_AUTO_8BA626F86CB12610BA119952",
+  "identity": {
+    "processCode": "LCA_DATA_QUALITY_UNCERTAINTY",
+    "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S4",
+    "actorCode": "APPROVER",
+    "audience": "USER",
+    "pageId": "AUTO_8BA626F86CB12610BA11"
+  },
+  "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s4",
+  "pageName": "개선 우선순위·한계 승인",
+  "screenType": "WORKFLOW",
+  "templateCode": "KRDS_WORKFLOW",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "kpis": [
+      {
+        "code": "COMPLETION_RATE",
+        "unit": "PERCENT"
+      },
+      {
+        "code": "BLOCKING_ERROR",
+        "unit": "COUNT"
+      },
+      {
+        "code": "SLA_REMAINING",
+        "unit": "MINUTE"
+      }
+    ],
+    "errors": [
+      {
+        "code": "FORBIDDEN",
+        "recovery": "권한·업무분리 확인"
+      },
+      {
+        "code": "CONFLICT",
+        "recovery": "최신 버전 재조회"
+      },
+      {
+        "code": "DEPENDENCY_FAILURE",
+        "recovery": "멱등키로 안전 재시도"
+      }
+    ],
+    "fields": [
+      {
+        "code": "tenantId",
+        "name": "테넌트",
+        "dataType": "STRING",
+        "editable": false,
+        "required": true,
+        "validation": {
+          "minLength": 1
+        },
+        "apiProperty": "tenantId",
+        "controlType": "HIDDEN",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "projectId",
+        "name": "프로젝트",
+        "dataType": "STRING",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "minLength": 1
+        },
+        "apiProperty": "projectId",
+        "controlType": "PROJECT_SELECT",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "processCode",
+        "name": "프로세스 코드",
+        "dataType": "CODE",
+        "editable": false,
+        "required": true,
+        "validation": {
+          "source": "SERVER_CONTEXT",
+          "required": true,
+          "immutable": true
+        },
+        "apiProperty": "processCode",
+        "controlType": "HIDDEN",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "stepCode",
+        "name": "단계 코드",
+        "dataType": "CODE",
+        "editable": false,
+        "required": true,
+        "validation": {
+          "source": "SERVER_CONTEXT",
+          "required": true,
+          "immutable": true
+        },
+        "apiProperty": "stepCode",
+        "controlType": "HIDDEN",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "recordId",
+        "name": "업무 레코드 ID",
+        "dataType": "UUID",
+        "editable": false,
+        "required": false,
+        "validation": {
+          "source": "SERVER_CONTEXT",
+          "required": false,
+          "immutable": true
+        },
+        "apiProperty": "recordId",
+        "controlType": "HIDDEN",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "statusCode",
+        "name": "처리 상태",
+        "dataType": "CODE",
+        "editable": false,
+        "required": true,
+        "validation": {
+          "codeGroup": "WORK_STATUS"
+        },
+        "apiProperty": "statusCode",
+        "controlType": "STATUS_BADGE",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "ownerActorCode",
+        "name": "담당 액터",
+        "dataType": "CODE",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "ownerActorCode",
+        "controlType": "ACTOR_SELECT",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "rowVersion",
+        "name": "데이터 버전",
+        "dataType": "INTEGER",
+        "editable": false,
+        "required": true,
+        "validation": {
+          "min": 0
+        },
+        "apiProperty": "rowVersion",
+        "controlType": "HIDDEN",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "createdAt",
+        "name": "등록 일시",
+        "dataType": "DATETIME",
+        "editable": false,
+        "required": false,
+        "validation": {
+          "type": "date-time",
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "createdAt",
+        "controlType": "DATETIME",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "updatedAt",
+        "name": "최종 수정 일시",
+        "dataType": "DATETIME",
+        "editable": false,
+        "required": false,
+        "validation": {
+          "type": "date-time",
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "updatedAt",
+        "controlType": "DATETIME",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "evidenceCount",
+        "name": "증빙 수",
+        "dataType": "INTEGER",
+        "editable": false,
+        "required": false,
+        "validation": {
+          "min": 0
+        },
+        "apiProperty": "evidenceCount",
+        "controlType": "EVIDENCE_LINK",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "lcaProjectId",
+        "name": "LCA 프로젝트",
+        "dataType": "STRING",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "type": "code",
+          "nullable": false,
+          "required": true,
+          "allowUnknown": false
+        },
+        "apiProperty": "lcaProjectId",
+        "controlType": "PROJECT_SELECT",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "productId",
+        "name": "제품",
+        "dataType": "STRING",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "productId",
+        "controlType": "PRODUCT_SELECT",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "processId",
+        "name": "공정",
+        "dataType": "STRING",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "processId",
+        "controlType": "PROCESS_SELECT",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "flowType",
+        "name": "흐름 구분",
+        "dataType": "CODE",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "flowType",
+        "controlType": "FLOW_TYPE_SELECT",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "substanceId",
+        "name": "물질",
+        "dataType": "STRING",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "substanceId",
+        "controlType": "SUBSTANCE_SEARCH",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "quantity",
+        "name": "수량",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "quantity",
+        "controlType": "NUMBER",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "unitCode",
+        "name": "단위",
+        "dataType": "CODE",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "unitCode",
+        "controlType": "UNIT_SELECT",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "allocationRatio",
+        "name": "할당 비율",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "allocationRatio",
+        "controlType": "PERCENT",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "impactCategory",
+        "name": "영향범주",
+        "dataType": "CODE",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "impactCategory",
+        "controlType": "IMPACT_SELECT",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "impactResult",
+        "name": "영향평가 결과",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "impactResult",
+        "controlType": "CALCULATED_NUMBER",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "decisionCode",
+        "name": "판정",
+        "dataType": "CODE",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "decisionCode",
+        "controlType": "DECISION_RADIO",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "reviewComment",
+        "name": "검토 의견",
+        "dataType": "TEXT",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "reviewComment",
+        "controlType": "TEXTAREA",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "rejectionReasonCode",
+        "name": "반려 사유",
+        "dataType": "CODE",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "rejectionReasonCode",
+        "controlType": "REASON_SELECT",
+        "permissionCode": "APPROVER:USER"
+      },
+      {
+        "code": "decidedAt",
+        "name": "판정 일시",
+        "dataType": "DATETIME",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "type": "date-time",
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "decidedAt",
+        "controlType": "DATETIME",
+        "permissionCode": "APPROVER:USER"
+      }
+    ],
+    "states": [
+      "STEP_3_COMPLETED",
+      "LOADING",
+      "EMPTY",
+      "READY",
+      "SAVING",
+      "ERROR",
+      "FORBIDDEN",
+      "CONFLICT",
+      "RECOVERY",
+      "STEP_4_COMPLETED"
+    ],
+    "actions": [
+      {
+        "code": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_4",
+        "transactional": true,
+        "idempotencyRequired": true
+      },
+      {
+        "code": "SAVE_DRAFT",
+        "transactional": true
+      },
+      {
+        "code": "ATTACH_EVIDENCE",
+        "auditRequired": true
+      },
+      {
+        "code": "LCA_DATA_QUALITY_UNCERTAINTY_ROLLBACK_4",
+        "recovery": true
+      }
+    ],
+    "sections": [
+      {
+        "code": "TASK_CONTEXT"
+      },
+      {
+        "code": "SEARCH_FILTER"
+      },
+      {
+        "code": "WORKSPACE"
+      },
+      {
+        "code": "EVIDENCE_HISTORY"
+      },
+      {
+        "code": "NEXT_TASK"
+      }
+    ],
+    "extensions": {
+      "contractId": 37834,
+      "sharedRuntime": true
+    },
+    "responsive": {
+      "mobile": "single-column-actions-bottom",
+      "tablet": "adaptive-grid",
+      "desktop": "list-detail-workspace"
+    },
+    "permissions": [
+      {
+        "code": "APPROVER",
+        "scope": "TENANT_PROJECT",
+        "segregationOfDuties": true,
+        "serverAuthorization": true
+      }
+    ],
+    "validations": [
+      {
+        "code": "ENTRY_AND_REQUIRED_FIELDS",
+        "type": "CONTRACT"
+      },
+      {
+        "code": "STATE_AND_VERSION",
+        "type": "CONCURRENCY"
+      }
+    ],
+    "apiContracts": [
+      {
+        "path": "/home/api/process-executions",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/screen-contract",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/{executionId}/commands",
+        "method": "POST"
+      },
+      {
+        "path": "/home/api/process-executions/draft",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/draft",
+        "method": "PUT"
+      }
+    ],
+    "designSystem": "KRDS_GOV",
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG_2_1_AA",
+      "nonColorStatus": true,
+      "focusManagement": true
+    },
+    "dataContracts": [
+      {
+        "keys": [
+          "tenantId",
+          "projectId",
+          "processCode"
+        ],
+        "entity": "PROCESS_EXECUTION",
+        "versioned": true,
+        "tenantScoped": true
+      },
+      {
+        "keys": [
+          "tenantId",
+          "projectId"
+        ],
+        "entity": "lca_process_inventory",
+        "versioned": true
+      },
+      {
+        "entity": "AUDIT_EVENT",
+        "appendOnly": true
+      }
+    ],
+    "schemaVersion": "2.0.0",
+    "completionRule": "개선 우선순위·한계 승인의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+    "exitConditions": [
+      "개선 우선순위·한계 승인의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다."
+    ],
+    "businessPurpose": "개선 우선순위·한계 승인 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+    "entryConditions": [
+      "STEP_3_COMPLETED 상태이고 입력 계약과 액터 권한 검증을 통과해야 한다."
+    ],
+    "actorResponsibilities": [
+      "APPROVER 액터가 권한·업무분리 정책에 따라 개선 우선순위·한계 승인 업무를 수행한다."
+    ]
+  },
+  "traceability": {
+    "contractId": 37834,
+    "requirementIds": [
+      "LCA_DATA_QUALITY_UNCERTAINTY:LCA_DATA_QUALITY_UNCERTAINTY_S4:USER"
+    ],
+    "generationBatchId": 183,
+    "designReadinessScore": 100,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "4680a9310d6c2d16bce21843084252f6e21b5c796a91353578e0ed44fb3d04f8",
+  "artifactHash": "27c6972d9aef5ccc42f5d47ff3a173ce198ef4f15eb1053dd340038762ddf958"
+}

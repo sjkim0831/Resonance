@@ -1,0 +1,151 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 3260,
+  "blueprintCode": "BP_AUTO_94A6F9F0973317C8B25CE3F5",
+  "identity": {
+    "processCode": "ACTIVITY_DATA",
+    "stepCode": "ACTIVITY_DATA_02_WORK",
+    "actorCode": "SITE_DATA_OWNER",
+    "audience": "ADMIN",
+    "pageId": "AUTO_94A6F9F0973317C8B25C"
+  },
+  "route": "/emission/activity-data",
+  "pageName": "활동자료·증빙 수집 관리자 업무 화면",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "kpis": [
+      "제출완료율",
+      "증빙연결률",
+      "기한초과 건수",
+      "품질오류 건수"
+    ],
+    "errors": [
+      {
+        "code": "FORBIDDEN",
+        "recovery": "권한·업무분리 확인"
+      },
+      {
+        "code": "CONFLICT",
+        "recovery": "최신 버전 재조회"
+      },
+      {
+        "code": "DEPENDENCY_FAILURE",
+        "recovery": "멱등키로 안전 재시도"
+      }
+    ],
+    "fields": [
+      "사업장",
+      "배출원",
+      "활동자료",
+      "값",
+      "단위",
+      "기간",
+      "출처",
+      "증빙",
+      "담당자",
+      "마감",
+      "품질상태"
+    ],
+    "states": [
+      "LOADING",
+      "EMPTY",
+      "ERROR",
+      "FORBIDDEN",
+      "READY",
+      "SAVING",
+      "CONFLICT",
+      "STALE_VERSION"
+    ],
+    "actions": [
+      "자료 요청",
+      "엑셀 업로드",
+      "임시저장",
+      "품질검사",
+      "제출",
+      "보완 요청",
+      "다음 업무 이동"
+    ],
+    "sections": [
+      "운영 현황",
+      "검색·필터",
+      "대상 목록",
+      "상세 작업공간",
+      "정책·이력",
+      "사용자 화면 연결"
+    ],
+    "extensions": {
+      "contractId": 68,
+      "sharedRuntime": true
+    },
+    "responsive": {
+      "mobile": "single-column-actions-bottom",
+      "tablet": "adaptive-grid",
+      "desktop": "list-detail-workspace"
+    },
+    "permissions": [
+      {
+        "code": "SITE_DATA_OWNER",
+        "scope": "TENANT_PROJECT",
+        "segregationOfDuties": true,
+        "serverAuthorization": true
+      }
+    ],
+    "validations": [
+      {
+        "code": "ENTRY_AND_REQUIRED_FIELDS",
+        "type": "CONTRACT"
+      },
+      {
+        "code": "STATE_AND_VERSION",
+        "type": "CONCURRENCY"
+      }
+    ],
+    "apiContracts": [
+      "GET|POST /home/api/emission-projects/{id}/activities; POST /home/api/emission-projects/{id}/activities/upload; GET|POST /home/api/emission-projects/{id}/quality; GET|POST /home/api/emission-projects/{id}/submissions; POST /home/api/emission-projects/{id}/submissions/{submissionId}/submit"
+    ],
+    "designSystem": "KRDS_GOV",
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG_2_1_AA",
+      "nonColorStatus": true,
+      "focusManagement": true
+    },
+    "dataContracts": [
+      "emission_activity_request; emission_activity_data; emission_activity_quality_run; emission_activity_submission; emission_activity_submission_item; emission_activity_submission_evidence; emission_activity_submission_event; emission_submission_review"
+    ],
+    "schemaVersion": "2.0.0",
+    "completionRule": "필수 자료와 증빙이 품질검사를 통과하고 제출 스냅샷이 DATA_SUBMITTED 상태로 잠긴다.",
+    "exitConditions": [
+      "필수 자료와 증빙이 품질검사를 통과하고 제출 스냅샷이 DATA_SUBMITTED 상태로 잠긴다."
+    ],
+    "businessPurpose": "사업장·배출원별 활동자료의 값, 단위, 기간, 출처와 원본 증빙을 수집하고 제출 품질을 관리한다.",
+    "entryConditions": [
+      "프로젝트가 PLANNED이며 수집 항목, 제출 책임자와 마감이 배정되어 있다."
+    ],
+    "actorResponsibilities": [
+      "SITE_DATA_OWNER 액터가 권한·업무분리 정책에 따라 활동자료·증빙 수집 관리자 업무 화면 업무를 수행한다."
+    ]
+  },
+  "traceability": {
+    "contractId": 68,
+    "requirementIds": [
+      "ACTIVITY_DATA:ACTIVITY_DATA_02_WORK:ADMIN"
+    ],
+    "generationBatchId": 72,
+    "designReadinessScore": 100,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "e96e80eac8e10fba12f6a854c093323bde73b35ece33c69a7b1a4d518570e24a",
+  "artifactHash": "e287d47f2c1185eb54ba591537f1e79847b33af02d7ee252d4b558f4b6f43fca"
+}

@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import {
   UserPortalFooter
 } from "../../components/user-shell/UserPortalChrome";
@@ -340,8 +341,8 @@ export function MypageStaffMigrationPage() {
         <main className="mx-auto max-w-5xl px-5 py-10 lg:px-8" id="main-content">
           <header className="border-b border-slate-300 pb-6">
             <p className="text-sm font-bold text-[#246beb]">기업 업무환경 구성 · 직원 준비</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-[#052b57]">회사 직원·기본 권한 확인</h1>
-            <p className="mt-3 text-base text-slate-600">활성화된 회사에서 직원 초대와 회사 공통 권한 준비 여부를 확인합니다.</p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-[#052b57]">기업 관리자 준비·다음 업무 안내</h1>
+            <p className="mt-3 text-base text-slate-600">이 주소는 기존 온보딩 링크입니다. 기업 승인과 최초 관리자의 소속·접근 여부를 확인한 뒤, 직원 초대와 세부 권한 관리는 필요한 경우에만 별도 진행합니다.</p>
           </header>
 
           <section className="mt-8 rounded-2xl border border-slate-300 bg-white shadow-sm" aria-labelledby="company-context-title">
@@ -376,8 +377,14 @@ export function MypageStaffMigrationPage() {
           </section>
 
           <aside className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-            <h2 className="font-black text-emerald-950">완료 기준</h2>
-            <ul className="mt-3 grid gap-2 text-sm text-emerald-900 md:grid-cols-2"><li>1. 회사 관리자 계정이 활성 상태입니다.</li><li>2. 필요한 직원의 초대·소속 가입 여부를 확인합니다.</li></ul>
+            <h2 className="font-black text-emerald-950">온보딩 완료 전 확인 기준 — 자동 검증 결과가 아닙니다</h2>
+            <ul className="mt-3 grid gap-2 text-sm text-emerald-900 md:grid-cols-2"><li>1. 기업 승인이 완료되었는지 확인합니다.</li><li>2. 최초 기업관리자의 소속·계정 활성·접근 가능 여부를 확인합니다.</li></ul>
+            <p className="mt-3 text-sm">직원 전체 초대 및 세부 권한 배정은 온보딩 필수 조건이 아닙니다. 업무 담당자·결재자 지정과 시스템 접근 권한은 별개입니다.</p>
+            <nav className="mt-4 flex flex-wrap gap-4" aria-label="독립 권한 관리 업무">
+              <a className="font-bold underline" href="/admin/auth/group">권한 그룹 정의</a>
+              <a className="font-bold underline" href="/admin/member/dept-role-mapping">부서·회원 권한 할당</a>
+              <a className="font-bold underline" href="/admin/member/auth-change">기존 권한 변경</a>
+            </nav>
           </aside>
         </main>
         <UserPortalFooter addressLine={copy.footerAddress} copyright="© 2026 CCUS Carbon Footprint Platform. All rights reserved." footerLinks={copy.footerLinks} lastModifiedLabel={copy.lastModifiedLabel} orgName={copy.footerOrg} serviceLine={copy.footerService} waAlt={copy.footerWaAlt}/>
@@ -565,18 +572,13 @@ export function MypageStaffMigrationPage() {
 
         <section className="mx-auto -mt-8 max-w-7xl px-4 lg:px-8">
           <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-xl">
-            <div className="flex flex-col gap-4 md:flex-row">
-              <label className="relative flex-1">
+            <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><label className="relative flex-1">
                 <span className="material-symbols-outlined pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
                 <input className="h-14 w-full rounded-xl bg-slate-50 pl-12 pr-4 text-sm outline-none transition focus:bg-white focus:ring-2 focus:ring-blue-500" placeholder={copy.searchPlaceholder} type="text" />
-              </label>
-              <div className="flex gap-2">
-                <button className="h-14 rounded-xl bg-[#246beb] px-8 text-sm font-bold text-white transition hover:bg-[#1d56bc]" type="button">{copy.search}</button>
-                <button className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200" type="button">
+              </label></div></>} actions={<><button className="h-14 rounded-xl bg-[#246beb] px-8 text-sm font-bold text-white transition hover:bg-[#1d56bc]" type="button">{copy.search}</button>
+<button className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200" type="button">
                   <span className="material-symbols-outlined">filter_list</span>
-                </button>
-              </div>
-            </div>
+                </button></>}></CommonSearchSection></div>
           </div>
         </section>
 

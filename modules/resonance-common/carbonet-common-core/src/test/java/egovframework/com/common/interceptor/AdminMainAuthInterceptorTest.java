@@ -10,6 +10,7 @@ import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.junit.jupiter.api.Test;
 
 import java.io.PrintWriter;
@@ -34,7 +35,7 @@ class AdminMainAuthInterceptorTest {
     private final HttpServletResponse response=mock(HttpServletResponse.class);
     private final StringWriter responseBody=new StringWriter();
     private final AdminMainAuthInterceptor interceptor=new AdminMainAuthInterceptor(
-            jwtProvider,permissions,enterpriseMembers,employeeMembers,authorityPolicy,currentUsers);
+            jwtProvider,permissions,enterpriseMembers,employeeMembers,authorityPolicy,currentUsers,mock(JdbcTemplate.class));
 
     @BeforeEach
     void authenticate() throws Exception {

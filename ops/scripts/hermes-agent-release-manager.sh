@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_DIR="${HERMES_AGENT_BASE_DIR:-/opt/util/ai}"
+BASE_DIR="${HERMES_AGENT_BASE_DIR:-/opt/Resonance/runtime/tools/ai}"
 SOURCE_DIR="${HERMES_AGENT_SOURCE_DIR:-$BASE_DIR/hermes-agent-v20260516}"
 RELEASES_DIR="${HERMES_AGENT_RELEASES_DIR:-$BASE_DIR/hermes-agent-releases}"
 ACTIVE_LINK="${HERMES_AGENT_ACTIVE_LINK:-$BASE_DIR/hermes-agent-active}"

@@ -1,0 +1,170 @@
+{
+  "pass": true,
+  "tests": [
+    {
+      "name": "AUTHENTICATED_PUBLIC_API",
+      "pass": true
+    },
+    {
+      "name": "62_SINGLE_LIST",
+      "pass": true
+    },
+    {
+      "name": "36_REFERENCE_PRESERVED",
+      "pass": true
+    },
+    {
+      "name": "26_BLOCKED_PRESERVED",
+      "pass": true
+    },
+    {
+      "name": "26_REVIEW_RECORDS",
+      "pass": true
+    },
+    {
+      "name": "NO_REFERENCE_REVIEW_OVERRIDE",
+      "pass": true
+    },
+    {
+      "name": "NINE_CRITERIA_EACH",
+      "pass": true
+    },
+    {
+      "name": "COUNTS",
+      "pass": true
+    },
+    {
+      "name": "OWNERSHIP_STILL_UNKNOWN",
+      "pass": true
+    },
+    {
+      "name": "DAMP_MODEL_NOT_COPIED",
+      "pass": true
+    },
+    {
+      "name": "EXTRA_INFO_EVERY_REVIEW",
+      "pass": true
+    },
+    {
+      "name": "REVIEW_IDS_EXACT_SOURCE",
+      "pass": true
+    },
+    {
+      "name": "6_MODIFICATION_BASES_NOT_CONNECTED",
+      "pass": true
+    },
+    {
+      "name": "INFO_REQUIRED_NO_AUTO_RECOMMENDATION",
+      "pass": true
+    },
+    {
+      "name": "NO_NEW_AUTHORIZATION",
+      "pass": true
+    },
+    {
+      "name": "NO_READY_REAL",
+      "pass": true
+    },
+    {
+      "name": "ALL62_COLUMNS_UNCHANGED",
+      "pass": true
+    },
+    {
+      "name": "ALL724_ASSET_DB_UNCHANGED",
+      "pass": true
+    },
+    {
+      "name": "NO_ACTUAL_CUSTOMER_CREATED",
+      "pass": true
+    },
+    {
+      "name": "AUDIT_26",
+      "pass": true
+    },
+    {
+      "name": "CANDIDATE_ENTRY_EXISTS_A038",
+      "pass": true
+    },
+    {
+      "name": "CANDIDATE_ENTRY_EXISTS_A374",
+      "pass": true
+    },
+    {
+      "name": "CANDIDATE_ENTRY_EXISTS_A376",
+      "pass": true
+    },
+    {
+      "name": "CANDIDATE_ENTRY_EXISTS_A377",
+      "pass": true
+    },
+    {
+      "name": "CANDIDATE_ENTRY_EXISTS_E005",
+      "pass": true
+    },
+    {
+      "name": "CANDIDATE_ENTRY_EXISTS_E073",
+      "pass": true
+    },
+    {
+      "name": "CANDIDATE_ENTRY_EXISTS_E079",
+      "pass": true
+    },
+    {
+      "name": "CANDIDATE_ENTRY_EXISTS_E192",
+      "pass": true
+    },
+    {
+      "name": "CANDIDATE_ENTRY_EXISTS_E194",
+      "pass": true
+    },
+    {
+      "name": "CANDIDATE_ENTRY_EXISTS_E198",
+      "pass": true
+    },
+    {
+      "name": "CANDIDATE_ENTRY_EXISTS_E242",
+      "pass": true
+    },
+    {
+      "name": "CANDIDATE_ENTRY_EXISTS_N014",
+      "pass": true
+    },
+    {
+      "name": "CANDIDATE_ENTRY_EXISTS_N099",
+      "pass": true
+    },
+    {
+      "name": "CANDIDATE_ENTRY_EXISTS_N101",
+      "pass": true
+    },
+    {
+      "name": "MODIFICATION_IMAGE_PNG",
+      "pass": true
+    }
+  ],
+  "seconds": 0.12,
+  "businessWrites": 0,
+  "actor": "existing PROJECT_ADMIN",
+  "counts": {
+    "total": 62,
+    "recommended": 36,
+    "acceptedConnections": 0,
+    "ownershipPending": 62,
+    "grades": {
+      "EXACT_MATCH": 0,
+      "CLOSE_MATCH": 0,
+      "REFERENCE_MATCH": 36,
+      "NO_MATCH": 0,
+      "BLOCKED": 26
+    },
+    "recommendationCoverage": 58.06,
+    "blockedReview": {
+      "REFERENCE_MATCH_POSSIBLE": 0,
+      "EXISTING_ASSET_MODIFICATION": 6,
+      "EXISTING_ASSET_COMBINATION": 0,
+      "NEW_ASSET_REQUIRED": 0,
+      "EQUIPMENT_INFO_REQUIRED": 20
+    }
+  },
+  "sourceFilesPreserved": 848
+}

@@ -1,0 +1,1292 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 4076,
+  "blueprintCode": "BP_AUTO_5383E6B60B8F9705733D640D",
+  "identity": {
+    "processCode": "CERTIFICATE_ISSUANCE",
+    "stepCode": "CERTIFICATE_ISSUANCE_02_WORK",
+    "actorCode": "APPROVER",
+    "audience": "ADMIN",
+    "pageId": "AUTO_5383E6B60B8F9705733D"
+  },
+  "route": "/admin/emission/survey-report-print",
+  "pageName": "인증서·PDF 발급 관리",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "kpis": [
+      "PDF 발급 성공률",
+      "원장·PDF 데이터셋 완전 일치율",
+      "시각지문 등록률",
+      "OCR 항목 일치율",
+      "중복 발급 멱등 처리율"
+    ],
+    "errors": [
+      {
+        "code": "FORBIDDEN",
+        "recovery": "권한·업무분리 확인"
+      },
+      {
+        "code": "CONFLICT",
+        "recovery": "최신 버전 재조회"
+      },
+      {
+        "code": "DEPENDENCY_FAILURE",
+        "recovery": "멱등키로 안전 재시도"
+      }
+    ],
+    "fields": [
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "certificateId",
+        "fieldName": "인증서 ID",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 1,
+        "validation": {
+          "pattern": "^CRN-[0-9]{8}-[A-F0-9]{12}$"
+        },
+        "apiProperty": "record.certificateId",
+        "controlType": "HIDDEN",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "certificate_id",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "INTEGER",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "payloadVersion",
+        "fieldName": "검증 페이로드 버전",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 2,
+        "validation": {
+          "minimum": 2
+        },
+        "apiProperty": "record.version",
+        "controlType": "HIDDEN",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "payload_version",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "DATETIME",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "issuedAt",
+        "fieldName": "발급 일시",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 3,
+        "validation": {
+          "type": "date-time",
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "record.issuedAt",
+        "controlType": "DATETIME",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "issued_at",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "reportTitle",
+        "fieldName": "리포트 제목",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 4,
+        "validation": {
+          "maxLength": 500
+        },
+        "apiProperty": "record.reportTitle",
+        "controlType": "TEXT",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "report_title",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "productName",
+        "fieldName": "제품명",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 5,
+        "validation": {
+          "maxLength": 500
+        },
+        "apiProperty": "record.productName",
+        "controlType": "TEXT",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "product_name",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "DATETIME",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "generatedAt",
+        "fieldName": "산정 결과 생성 일시",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 6,
+        "validation": {
+          "type": "date-time",
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "record.generatedAt",
+        "controlType": "DATETIME",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "report_generated_at",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "totalEmission",
+        "fieldName": "총 탄소배출량",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 7,
+        "validation": {
+          "minimum": 0
+        },
+        "apiProperty": "record.totalEmission",
+        "controlType": "NUMBER",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "total_emission",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "INTEGER",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "rowCount",
+        "fieldName": "전체 인벤토리 행 수",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 8,
+        "validation": {
+          "minimum": 0
+        },
+        "apiProperty": "record.rowCount",
+        "controlType": "METRIC",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "row_count",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "INTEGER",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "calculatedRowCount",
+        "fieldName": "산정 완료 행 수",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 9,
+        "validation": {
+          "minimum": 0
+        },
+        "apiProperty": "record.calculatedRowCount",
+        "controlType": "METRIC",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "calculated_row_count",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "INTEGER",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "warningCount",
+        "fieldName": "검토 경고 수",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 10,
+        "validation": {
+          "minimum": 0
+        },
+        "apiProperty": "record.warningCount",
+        "controlType": "METRIC",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "warning_count",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "payloadHash",
+        "fieldName": "페이로드 해시",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 11,
+        "validation": {
+          "length": 64
+        },
+        "apiProperty": "record.payloadHash",
+        "controlType": "HASH",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "payload_hash",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "integrityCode",
+        "fieldName": "무결성 코드",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 12,
+        "validation": {
+          "length": 24
+        },
+        "apiProperty": "record.integrityCode",
+        "controlType": "HASH",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "integrity_code",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "datasetHash",
+        "fieldName": "데이터셋 해시",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 13,
+        "validation": {
+          "length": 64
+        },
+        "apiProperty": "record.datasetHash",
+        "controlType": "HASH",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_hash",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "JSON",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "dataset",
+        "fieldName": "정규화 데이터셋",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 14,
+        "validation": {
+          "schema": "emission-report-dataset-2.0.0"
+        },
+        "apiProperty": "record.dataset",
+        "controlType": "JSON_VIEW",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "issuerId",
+        "fieldName": "발급 담당자",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 15,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "registry.issuerId",
+        "controlType": "TEXT",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "PERSONAL",
+        "sourceColumn": "issuer_id",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "CODE",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "statusCode",
+        "fieldName": "발급 상태",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 16,
+        "validation": {
+          "enum": [
+            "ISSUED",
+            "REVOKED"
+          ]
+        },
+        "apiProperty": "registry.statusCode",
+        "controlType": "STATUS",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "status_code",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "DATETIME",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "registryCreatedAt",
+        "fieldName": "원장 등록 일시",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 17,
+        "validation": {
+          "type": "date-time",
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "registry.createdAt",
+        "controlType": "DATETIME",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "created_at",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "DATETIME",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "registryUpdatedAt",
+        "fieldName": "원장 수정 일시",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 18,
+        "validation": {
+          "type": "date-time",
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "registry.updatedAt",
+        "controlType": "DATETIME",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "updated_at",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "JSON",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "visualProfile",
+        "fieldName": "PDF 시각 지문",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 19,
+        "validation": {
+          "maxBytes": 2000000
+        },
+        "apiProperty": "registry.visualProfile",
+        "controlType": "JSON_VIEW",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "visual_profile_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "INTEGER",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "visualProfileVersion",
+        "fieldName": "시각 지문 버전",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 20,
+        "validation": {
+          "minimum": 1
+        },
+        "apiProperty": "registry.visualProfileVersion",
+        "controlType": "HIDDEN",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "visual_profile_version",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "DATETIME",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "visualProfileUpdatedAt",
+        "fieldName": "시각 지문 등록 일시",
+        "fieldGroup": "발급·무결성",
+        "fieldOrder": 21,
+        "validation": {
+          "type": "date-time",
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "registry.visualProfileUpdatedAt",
+        "controlType": "DATETIME",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "visual_profile_updated_at",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "displayTitle",
+        "fieldName": "표지 유형명",
+        "fieldGroup": "보고서 요약",
+        "fieldOrder": 22,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "record.dataset.displayTitle",
+        "controlType": "TEXT",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": false,
+        "fieldCode": "classificationMajor",
+        "fieldName": "대분류",
+        "fieldGroup": "보고서 요약",
+        "fieldOrder": 23,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "record.dataset.classification.majorLabel",
+        "controlType": "TEXT",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": false,
+        "fieldCode": "classificationMiddle",
+        "fieldName": "중분류",
+        "fieldGroup": "보고서 요약",
+        "fieldOrder": 24,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "record.dataset.classification.middleLabel",
+        "controlType": "TEXT",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": false,
+        "fieldCode": "classificationSmall",
+        "fieldName": "소분류",
+        "fieldGroup": "보고서 요약",
+        "fieldOrder": 25,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "record.dataset.classification.smallLabel",
+        "controlType": "TEXT",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "scopeCategory",
+        "fieldName": "산정 범주",
+        "fieldGroup": "보고서 요약",
+        "fieldOrder": 26,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "record.dataset.calculationScope.categoryName",
+        "controlType": "TEXT",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "scopeTier",
+        "fieldName": "산정 Tier",
+        "fieldGroup": "보고서 요약",
+        "fieldOrder": 27,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "record.dataset.calculationScope.tierLabel",
+        "controlType": "TEXT",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "INTEGER",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "factorCount",
+        "fieldName": "배출계수 수",
+        "fieldGroup": "보고서 요약",
+        "fieldOrder": 28,
+        "validation": {
+          "minimum": 0
+        },
+        "apiProperty": "record.dataset.calculationScope.factorCount",
+        "controlType": "METRIC",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "outputQuantityTotal",
+        "fieldName": "총 산출물 질량",
+        "fieldGroup": "보고서 요약",
+        "fieldOrder": 29,
+        "validation": {
+          "minimum": 0
+        },
+        "apiProperty": "record.dataset.verificationSummary.totalOutputMass",
+        "controlType": "NUMBER",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "normalizationFactor",
+        "fieldName": "정규화 배율",
+        "fieldGroup": "보고서 요약",
+        "fieldOrder": 30,
+        "validation": {
+          "minimum": 0
+        },
+        "apiProperty": "record.dataset.normalization.factor",
+        "controlType": "NUMBER",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "BOOLEAN",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "normalizationApplied",
+        "fieldName": "정규화 적용 여부",
+        "fieldGroup": "보고서 요약",
+        "fieldOrder": 31,
+        "validation": {
+          "type": "boolean",
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "record.dataset.normalization.applied",
+        "controlType": "STATUS",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "DECIMAL",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "dataConfidence",
+        "fieldName": "데이터 신뢰도",
+        "fieldGroup": "보고서 요약",
+        "fieldOrder": 32,
+        "validation": {
+          "maximum": 100,
+          "minimum": 0
+        },
+        "apiProperty": "record.dataset.summary.dataConfidence",
+        "controlType": "METRIC",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "STRING",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": false,
+        "fieldCode": "topContributorLabel",
+        "fieldName": "최대 기여 항목",
+        "fieldGroup": "보고서 요약",
+        "fieldOrder": 33,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "record.dataset.summary.topContributorLabel",
+        "controlType": "TEXT",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "DECIMAL",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": false,
+        "fieldCode": "topContributorSharePercent",
+        "fieldName": "최대 기여율",
+        "fieldGroup": "보고서 요약",
+        "fieldOrder": 34,
+        "validation": {
+          "maximum": 100,
+          "minimum": 0
+        },
+        "apiProperty": "record.dataset.summary.topContributorSharePercent",
+        "controlType": "METRIC",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "JSON",
+        "editable": true,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "sectionSummaries",
+        "fieldName": "섹션별 기여도",
+        "fieldGroup": "산출물·검증 데이터",
+        "fieldOrder": 35,
+        "validation": {
+          "itemsRequired": true
+        },
+        "apiProperty": "record.dataset.sectionSummaries",
+        "controlType": "CHART",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "DECIMAL",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "totalCarbonEmission",
+        "fieldName": "검증 총 탄소배출량",
+        "fieldGroup": "산출물·검증 데이터",
+        "fieldOrder": 36,
+        "validation": {
+          "minimum": 0
+        },
+        "apiProperty": "record.dataset.verificationSummary.totalCarbonEmission",
+        "controlType": "NUMBER",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "DECIMAL",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "productGwp",
+        "fieldName": "제품 GWP",
+        "fieldGroup": "산출물·검증 데이터",
+        "fieldOrder": 37,
+        "validation": {
+          "minimum": 0
+        },
+        "apiProperty": "record.dataset.verificationSummary.productGwp",
+        "controlType": "NUMBER",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "DECIMAL",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "processGwp",
+        "fieldName": "공정 GWP",
+        "fieldGroup": "산출물·검증 데이터",
+        "fieldOrder": 38,
+        "validation": {
+          "minimum": 0
+        },
+        "apiProperty": "record.dataset.verificationSummary.processGwp",
+        "controlType": "NUMBER",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "byproductAllocation",
+        "fieldName": "부산물 할당 방식",
+        "fieldGroup": "산출물·검증 데이터",
+        "fieldOrder": 39,
+        "validation": {
+          "enum": [
+            "allocated",
+            "unallocated"
+          ]
+        },
+        "apiProperty": "record.dataset.verificationSummary.byproductAllocation",
+        "controlType": "SELECT",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "JSON",
+        "editable": true,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "outputRows",
+        "fieldName": "제품·부산물 배출 결과",
+        "fieldGroup": "산출물·검증 데이터",
+        "fieldOrder": 40,
+        "validation": {
+          "itemsRequired": true
+        },
+        "apiProperty": "record.dataset.outputRows",
+        "controlType": "TABLE",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "JSON",
+        "editable": true,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "inventoryRows",
+        "fieldName": "상세 계산 인벤토리",
+        "fieldGroup": "산출물·검증 데이터",
+        "fieldOrder": 41,
+        "validation": {
+          "itemsRequired": true
+        },
+        "apiProperty": "record.dataset.rows",
+        "controlType": "TABLE",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "JSON",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": false,
+        "fieldCode": "scenarios",
+        "fieldName": "시나리오 비교",
+        "fieldGroup": "산출물·검증 데이터",
+        "fieldOrder": 42,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "record.dataset.scenarios",
+        "controlType": "CARD_LIST",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "JSON",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": false,
+        "fieldCode": "alerts",
+        "fieldName": "검토 경고",
+        "fieldGroup": "산출물·검증 데이터",
+        "fieldOrder": 43,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "record.dataset.alerts",
+        "controlType": "ALERT_LIST",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/admin/emission/survey-report-print",
+        "audience": "ADMIN",
+        "dataType": "CODE",
+        "editable": false,
+        "pageCode": "CERTIFICATE_ISSUANCE_CERTIFICATE_ISSUANCE_02_WORK_ADMIN",
+        "required": true,
+        "fieldCode": "reportType",
+        "fieldName": "리포트 유형",
+        "fieldGroup": "산출물·검증 데이터",
+        "fieldOrder": 44,
+        "validation": {
+          "enum": [
+            "EMISSION_SURVEY",
+            "LCA_SUMMARY"
+          ]
+        },
+        "apiProperty": "record.reportType",
+        "controlType": "HIDDEN",
+        "sourceTable": "carbonet_report_verification_registry",
+        "privacyClass": "INTERNAL",
+        "sourceColumn": "dataset_json",
+        "mappingStatus": "DB_RESOLVED",
+        "permissionCode": "PERM_REPORT_CERTIFICATE_ISSUE",
+        "evidenceRequired": false
+      }
+    ],
+    "states": [
+      "LOADING",
+      "EMPTY",
+      "READY",
+      "EDITING",
+      "PROOFREADING",
+      "ISSUING",
+      "SUCCESS",
+      "ERROR",
+      "FORBIDDEN",
+      "SESSION_EXPIRED"
+    ],
+    "actions": [
+      {
+        "api": "POST /admin/api/admin/emission-survey-report/proofread",
+        "code": "PROOFREAD_LABELS"
+      },
+      {
+        "api": "POST /admin/api/admin/emission-survey-report/issue-pdf",
+        "code": "ISSUE_PDF",
+        "atomicEvidence": true
+      },
+      {
+        "api": "POST /admin/api/admin/emission-survey-report/verify",
+        "code": "VERIFY_DATASET"
+      },
+      {
+        "api": "POST /admin/api/admin/emission-survey-report/verify-ocr",
+        "code": "VERIFY_OCR"
+      },
+      {
+        "code": "RETURN_TO_REPORT",
+        "guard": "preserve returnLang"
+      }
+    ],
+    "sections": [
+      {
+        "id": "report-hero",
+        "purpose": "제품명·총 배출량"
+      },
+      {
+        "id": "normalization",
+        "purpose": "산출물 질량·GWP·할당"
+      },
+      {
+        "id": "contribution",
+        "purpose": "섹션별 막대·원 그래프"
+      },
+      {
+        "id": "inventory",
+        "purpose": "물질별 계산 상세"
+      },
+      {
+        "id": "verification",
+        "purpose": "인증 ID·해시·QR"
+      },
+      {
+        "id": "actions",
+        "purpose": "언어·디자인·PDF 발급"
+      }
+    ],
+    "extensions": {
+      "contractId": 585,
+      "sharedRuntime": true
+    },
+    "responsive": {
+      "mobile": "single-column-actions-bottom",
+      "tablet": "adaptive-grid",
+      "desktop": "list-detail-workspace"
+    },
+    "permissions": [
+      {
+        "code": "APPROVER",
+        "scope": "TENANT_PROJECT",
+        "segregationOfDuties": true,
+        "serverAuthorization": true
+      }
+    ],
+    "validations": [
+      {
+        "code": "ENTRY_AND_REQUIRED_FIELDS",
+        "type": "CONTRACT"
+      },
+      {
+        "code": "STATE_AND_VERSION",
+        "type": "CONCURRENCY"
+      }
+    ],
+    "apiContracts": [
+      {
+        "path": "/admin/api/admin/emission-survey-report/proofread",
+        "method": "POST"
+      },
+      {
+        "path": "/admin/api/admin/emission-survey-report/issue-pdf",
+        "method": "POST",
+        "response": "application/pdf"
+      },
+      {
+        "path": "/admin/api/admin/emission-survey-report/verify",
+        "method": "POST"
+      },
+      {
+        "path": "/admin/api/admin/emission-survey-report/verify-ocr",
+        "method": "POST"
+      }
+    ],
+    "designSystem": "KRDS_GOV",
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG_2_1_AA",
+      "nonColorStatus": true,
+      "focusManagement": true
+    },
+    "dataContracts": [
+      {
+        "stage": "DRAFT",
+        "schema": "EmissionSurveyReportPayload",
+        "storage": "sessionStorage:carbonet:emission-survey-report"
+      },
+      {
+        "stage": "ISSUED",
+        "entity": "carbonet_report_verification_registry",
+        "pdfEngine": "Chromium",
+        "immutableKeys": [
+          "certificate_id",
+          "payload_hash",
+          "integrity_code",
+          "dataset_hash"
+        ],
+        "schemaVersion": "emission-report-dataset-2.0.0"
+      }
+    ],
+    "schemaVersion": "2.0.0",
+    "completionRule": "최종 PDF가 생성되고 인증서 ID, 데이터셋 해시, 무결성 코드, 발급자, 최종 PDF 시각지문이 ISSUED 원장에 동일 트랜잭션 흐름으로 저장된다.",
+    "exitConditions": [
+      "최종 PDF가 생성되고 인증서 ID, 데이터셋 해시, 무결성 코드, 발급자, 최종 PDF 시각지문이 ISSUED 원장에 동일 트랜잭션 흐름으로 저장된다."
+    ],
+    "businessPurpose": "확정된 배출 산정 결과를 검토 가능한 보고서 DOM으로 구성하고, 동일 DOM을 Chromium PDF로 발급하면서 정규화 데이터셋·해시·QR·시각지문을 원장에 원자적으로 등록한다.",
+    "entryConditions": [
+      "APPROVER가 확정된 산정 세션과 제품·부산물 질량, 배출계수 및 섹션별 결과를 보유하고 인증서 발급 권한으로 진입한다."
+    ],
+    "actorResponsibilities": [
+      "APPROVER 액터가 권한·업무분리 정책에 따라 인증서·PDF 발급 관리 업무를 수행한다."
+    ]
+  },
+  "traceability": {
+    "contractId": 585,
+    "requirementIds": [
+      "CERTIFICATE_ISSUANCE:CERTIFICATE_ISSUANCE_02_WORK:ADMIN"
+    ],
+    "generationBatchId": 182,
+    "designReadinessScore": 100,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "75bdf9ce1bee2173bee88965ac81757a7064f517a53f624f0522e0e148613482",
+  "artifactHash": "8d9af7958961b4443c1b7b8d1f68159413792fb588ea2841d0a54fb65b4f17e2"
+}

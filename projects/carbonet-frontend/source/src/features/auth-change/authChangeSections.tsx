@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import type { Dispatch, SetStateAction } from "react";
 import type { AuthChangePagePayload } from "../../lib/api/authTypes";
 import { buildLocalizedPath } from "../../lib/navigation/runtime";
@@ -152,8 +153,15 @@ export function AuthChangeTableSection({
         title={t(page, "관리자 권한 변경 대상", "Administrator Authority Targets")}
       />
       <div className="p-6">
-      <div className="mb-4 grid grid-cols-1 gap-3 xl:grid-cols-[1.3fr_0.7fr_auto]">
-        <label>
+      <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><label>
+          <span className="mb-2 block text-[13px] font-bold text-[var(--kr-gov-text-secondary)]">{t(page, "변경 상태", "Change State")}</span>
+          <AdminSelect value={assignmentFilter} onChange={(event) => setAssignmentFilter(event.target.value)}>
+            <option value="ALL">{t(page, "전체", "All")}</option>
+            <option value="PENDING">{t(page, "변경 대기만", "Pending only")}</option>
+            <option value="UNCHANGED">{t(page, "변경 없음", "Unchanged")}</option>
+          </AdminSelect>
+        </label></div>
+<div className="ccus-search-field"><label>
           <span className="mb-2 block text-[13px] font-bold text-[var(--kr-gov-text-secondary)]">{t(page, "관리자 검색", "Admin Search")}</span>
           <AdminInput
             placeholder={t(page, "ID, 이름, 현재 권한 검색", "Search by ID, name, or current role")}
@@ -166,21 +174,9 @@ export function AuthChangeTableSection({
               }
             }}
           />
-        </label>
-        <label>
-          <span className="mb-2 block text-[13px] font-bold text-[var(--kr-gov-text-secondary)]">{t(page, "변경 상태", "Change State")}</span>
-          <AdminSelect value={assignmentFilter} onChange={(event) => setAssignmentFilter(event.target.value)}>
-            <option value="ALL">{t(page, "전체", "All")}</option>
-            <option value="PENDING">{t(page, "변경 대기만", "Pending only")}</option>
-            <option value="UNCHANGED">{t(page, "변경 없음", "Unchanged")}</option>
-          </AdminSelect>
-        </label>
-        <div className="flex items-end">
-          <MemberButton className="w-full sm:w-auto" onClick={onSearchSubmit} type="button" variant="secondary">
+        </label></div></>} actions={<><MemberButton className="w-full sm:w-auto" onClick={onSearchSubmit} type="button" variant="secondary">
             {t(page, "조회", "Search")}
-          </MemberButton>
-        </div>
-      </div>
+          </MemberButton></>}></CommonSearchSection></div>
       {searchKeyword ? (
         <p className="mb-4 text-sm text-[var(--kr-gov-text-secondary)]">
           {t(page, "적용 검색어", "Applied keyword")}: <span className="font-semibold text-[var(--kr-gov-text-primary)]">{searchKeyword}</span>

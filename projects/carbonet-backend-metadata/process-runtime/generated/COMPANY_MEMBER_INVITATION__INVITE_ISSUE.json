@@ -1,0 +1,760 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "COMPANY_MEMBER_INVITATION",
+    "name": "회원사 직원 초대·소속 가입·액터 배정",
+    "domain": "MEMBER",
+    "workType": "MEMBER",
+    "goal": "회원사 마스터가 필요한 직원만 초대하고, 초대받은 사용자가 본인 계정을 개설한 뒤 승인된 액터와 최소 권한을 자동 배정받아 로그인할 수 있게 한다."
+  },
+  "step": {
+    "code": "INVITE_ISSUE",
+    "version": 2,
+    "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "COMPANY_ADMIN",
+      "ownerActorCode": "COMPANY_ADMIN",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [
+        {
+          "guard": {
+            "actorCode": "COMPANY_ADMIN",
+            "auditRequired": true,
+            "leastPrivilege": true,
+            "tenantFromSession": true
+          },
+          "scope": "TENANT",
+          "resource": {
+            "resource": "company-member-invitation",
+            "scopeKey": "tenantId"
+          },
+          "permissionCode": "COMPANY_MEMBER_INVITATION_ISSUE"
+        },
+        {
+          "guard": {
+            "source": "PROFESSIONAL_SCREEN_CONTRACT",
+            "actorCode": "COMPANY_ADMIN"
+          },
+          "scope": "PROJECT",
+          "resource": {
+            "audience": "USER",
+            "routePath": "/mypage/staff",
+            "contractId": 654017
+          },
+          "permissionCode": "COMPANY_MEMBER_INVITATION_ISSUE"
+        }
+      ],
+      "delegation": {},
+      "extensions": {
+        "useAt": "Y",
+        "purpose": "기업·조직·부서·사업장과 담당자를 관리한다.",
+        "actorName": "기업 관리자",
+        "actorType": "OPERATION",
+        "competency": "",
+        "relatedActors": [
+          {
+            "useAt": "Y",
+            "purpose": "기업·조직·부서·사업장과 담당자를 관리한다.",
+            "actorCode": "COMPANY_ADMIN",
+            "actorName": "기업 관리자",
+            "actorType": "OPERATION",
+            "competency": "",
+            "actorNameEn": "Company Administrator",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "COMPANY_APPROVE",
+              "ORG_MANAGE",
+              "SITE_MANAGE"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": true,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          },
+          {
+            "useAt": "Y",
+            "purpose": "회원 가입·상태·잠금·탈퇴와 로그인 이력을 관리한다.",
+            "actorCode": "MEMBER_ADMIN",
+            "actorName": "회원 관리자",
+            "actorType": "OPERATION",
+            "competency": "",
+            "actorNameEn": "Member Administrator",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "MEMBER_APPROVE",
+              "MEMBER_REVIEW",
+              "MEMBER_SUSPEND"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": true,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          }
+        ],
+        "accountability": "",
+        "responsibility": "",
+        "capabilityCodes": [
+          "COMPANY_APPROVE",
+          "ORG_MANAGE",
+          "SITE_MANAGE"
+        ],
+        "reviewCycleDays": 365,
+        "delegationAllowed": true,
+        "conflictActorCodes": [],
+        "escalationActorCode": "MEMBER_ADMIN",
+        "segregationActorCodes": [
+          "MEMBER_ADMIN"
+        ],
+        "maxConcurrentAssignments": 0
+      }
+    },
+    "business": {
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
+      "domainCode": "MEMBER",
+      "processName": "회원사 직원 초대·소속 가입·액터 배정",
+      "stepName": "직원 정보·액터 검증 및 1회용 초대 발급",
+      "goal": "회원사 마스터가 필요한 직원만 초대하고, 초대받은 사용자가 본인 계정을 개설한 뒤 승인된 액터와 최소 권한을 자동 배정받아 로그인할 수 있게 한다.",
+      "requirement": "직원 이름·이메일·담당 액터를 입력하고 최소 권한 원칙으로 초대를 발급한다.",
+      "completionRule": "요청자가 해당 회원사의 마스터이고 이메일 형식과 액터 활성 상태를 통과한 뒤 기존 활성 초대가 폐기되고 24시간 유효한 신규 토큰 해시가 저장된다.",
+      "riskLevel": "HIGH",
+      "slaHours": 24,
+      "regulationRefs": "개인정보 보호법 제29조; 전자정부법 제56조; OWASP ASVS 4.0 V2,V3,V4",
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {},
+      "extensions": {}
+    },
+    "transition": {
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
+      "commandCode": "ISSUE_COMPANY_MEMBER_INVITATION",
+      "fromState": "READY",
+      "toState": "INVITED",
+      "stepOrder": 1,
+      "stepType": "TASK",
+      "parentStepCode": null,
+      "completionRule": "요청자가 해당 회원사의 마스터이고 이메일 형식과 액터 활성 상태를 통과한 뒤 기존 활성 초대가 폐기되고 24시간 유효한 신규 토큰 해시가 저장된다.",
+      "policy": {
+        "auditRequired": true,
+        "optimisticLock": true,
+        "idempotencyRequired": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
+    },
+    "input": {
+      "email": "email",
+      "actorCode": "actor",
+      "memberName": "string",
+      "tenantFromSession": true
+    },
+    "output": {
+      "status": "ACTIVE",
+      "expiresAt": "datetime",
+      "invitationId": "uuid",
+      "activationPath": "string"
+    },
+    "guide": {
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
+      "processCode": "COMPANY_MEMBER_INVITATION",
+      "stepCode": "INVITE_ISSUE",
+      "stepOrder": 1,
+      "workTypeCode": "MEMBER",
+      "actorCode": "COMPANY_ADMIN",
+      "title": "직원 정보·액터 검증 및 1회용 초대 발급",
+      "purpose": "직원 이름·이메일·담당 액터를 입력하고 최소 권한 원칙으로 초대를 발급한다.",
+      "entryCondition": "READY",
+      "completionCondition": "요청자가 해당 회원사의 마스터이고 이메일 형식과 액터 활성 상태를 통과한 뒤 기존 활성 초대가 폐기되고 24시간 유효한 신규 토큰 해시가 저장된다.",
+      "userPath": "/mypage/staff",
+      "adminPath": "/mypage/staff",
+      "relatedBusinessRoute": null,
+      "nextStepCode": "INVITE_ACTIVATE",
+      "nextAction": "INVITED",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "COMPANY_MEMBER_INVITATION_INVITE_ISSUE_USER",
+        "route": "/mypage/staff",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "USER",
+        "screenType": "WORKSPACE",
+        "title": "회원사 직원 초대 발급",
+        "purpose": "직원 이름·이메일·담당 액터를 입력하고 최소 권한 원칙으로 초대를 발급한다.",
+        "layout": "RESPONSIVE_WORKSPACE",
+        "theme": "KRDS_GOV_DEFAULT",
+        "designAuthority": {
+          "source": "LEGACY_REGISTERED_DEFAULT",
+          "layout": "RESPONSIVE_WORKSPACE",
+          "theme": "KRDS_GOV_DEFAULT",
+          "defaulted": [
+            "layout",
+            "theme"
+          ]
+        },
+        "sections": [
+          "초대 대상 입력",
+          "액터 선택",
+          "초대 발급",
+          "발급 결과·만료 확인"
+        ],
+        "fields": [
+          {
+            "route": "/mypage/staff",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "COMPANY_MEMBER_INVITATION_INVITE_ISSUE_USER",
+            "required": true,
+            "fieldCode": "actorCode",
+            "fieldName": "actorCode",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 10,
+            "validation": {
+              "required": true
+            },
+            "apiProperty": "actorCode",
+            "controlType": "TEXT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "actorCode"
+          },
+          {
+            "route": "/mypage/staff",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "COMPANY_MEMBER_INVITATION_INVITE_ISSUE_USER",
+            "required": true,
+            "fieldCode": "email",
+            "fieldName": "email",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 20,
+            "validation": {
+              "required": true
+            },
+            "apiProperty": "email",
+            "controlType": "TEXT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "email"
+          },
+          {
+            "route": "/mypage/staff",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "COMPANY_MEMBER_INVITATION_INVITE_ISSUE_USER",
+            "required": true,
+            "fieldCode": "memberName",
+            "fieldName": "memberName",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 30,
+            "validation": {
+              "required": true
+            },
+            "apiProperty": "memberName",
+            "controlType": "TEXT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "memberName"
+          },
+          {
+            "route": "/mypage/staff",
+            "audience": "USER",
+            "dataType": "BOOLEAN",
+            "editable": true,
+            "pageCode": "COMPANY_MEMBER_INVITATION_INVITE_ISSUE_USER",
+            "required": true,
+            "fieldCode": "tenantFromSession",
+            "fieldName": "tenantFromSession",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 40,
+            "validation": {
+              "required": true
+            },
+            "apiProperty": "tenantFromSession",
+            "controlType": "CHECKBOX",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_ADMIN:USER",
+            "evidenceRequired": false,
+            "code": "tenantFromSession"
+          }
+        ],
+        "commands": [
+          {
+            "code": "LOAD_CONTEXT",
+            "method": "GET",
+            "commandCode": "ISSUE_COMPANY_MEMBER_INVITATION",
+            "actorCode": "COMPANY_ADMIN",
+            "serverAuthorization": true,
+            "entryState": "READY",
+            "resultState": "INVITED",
+            "idempotencyRequired": true
+          },
+          {
+            "code": "ISSUE_INVITATION",
+            "method": "POST",
+            "commandCode": "ISSUE_COMPANY_MEMBER_INVITATION",
+            "actorCode": "COMPANY_ADMIN",
+            "serverAuthorization": true,
+            "entryState": "READY",
+            "resultState": "INVITED",
+            "idempotencyRequired": true
+          },
+          {
+            "primary": true,
+            "actorCode": "COMPANY_ADMIN",
+            "entryState": "READY",
+            "markerType": "PRIMARY_STEP_COMMAND",
+            "commandCode": "ISSUE_COMPANY_MEMBER_INVITATION",
+            "resultState": "INVITED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": [
+          "LOADING",
+          "READY",
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "EXPIRED",
+          "USED",
+          "COMPLETED"
+        ],
+        "responsive": {
+          "mobile": "single-column",
+          "tablet": "adaptive-two-column",
+          "desktop": "task-optimized",
+          "noTextOverflow": true
+        },
+        "accessibility": {
+          "standard": "WCAG 2.1 AA",
+          "keyboard": true,
+          "focus": true,
+          "errorSummary": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "path": "/api/company-member-invitations/context",
+        "method": "GET"
+      },
+      {
+        "path": "/api/company-member-invitations",
+        "method": "POST"
+      },
+      {
+        "primary": true,
+        "actorCode": "COMPANY_ADMIN",
+        "actorGuard": true,
+        "markerType": "PRIMARY_STEP_API",
+        "rowVersion": true,
+        "commandCode": "ISSUE_COMPANY_MEMBER_INVITATION",
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": [
+          "POST /api/company-member-invitations"
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "code": "LOAD_CONTEXT",
+        "method": "GET",
+        "commandCode": "ISSUE_COMPANY_MEMBER_INVITATION",
+        "actorCode": "COMPANY_ADMIN",
+        "serverAuthorization": true,
+        "entryState": "READY",
+        "resultState": "INVITED",
+        "idempotencyRequired": true
+      },
+      {
+        "code": "ISSUE_INVITATION",
+        "method": "POST",
+        "commandCode": "ISSUE_COMPANY_MEMBER_INVITATION",
+        "actorCode": "COMPANY_ADMIN",
+        "serverAuthorization": true,
+        "entryState": "READY",
+        "resultState": "INVITED",
+        "idempotencyRequired": true
+      },
+      {
+        "primary": true,
+        "actorCode": "COMPANY_ADMIN",
+        "entryState": "READY",
+        "markerType": "PRIMARY_STEP_COMMAND",
+        "commandCode": "ISSUE_COMPANY_MEMBER_INVITATION",
+        "resultState": "INVITED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "idempotencyRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "COMPANY_ADMIN",
+      "ownerActorCode": "COMPANY_ADMIN",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [
+        {
+          "guard": {
+            "actorCode": "COMPANY_ADMIN",
+            "auditRequired": true,
+            "leastPrivilege": true,
+            "tenantFromSession": true
+          },
+          "scope": "TENANT",
+          "resource": {
+            "resource": "company-member-invitation",
+            "scopeKey": "tenantId"
+          },
+          "permissionCode": "COMPANY_MEMBER_INVITATION_ISSUE"
+        },
+        {
+          "guard": {
+            "source": "PROFESSIONAL_SCREEN_CONTRACT",
+            "actorCode": "COMPANY_ADMIN"
+          },
+          "scope": "PROJECT",
+          "resource": {
+            "audience": "USER",
+            "routePath": "/mypage/staff",
+            "contractId": 654017
+          },
+          "permissionCode": "COMPANY_MEMBER_INVITATION_ISSUE"
+        }
+      ],
+      "delegation": {},
+      "extensions": {
+        "useAt": "Y",
+        "purpose": "기업·조직·부서·사업장과 담당자를 관리한다.",
+        "actorName": "기업 관리자",
+        "actorType": "OPERATION",
+        "competency": "",
+        "relatedActors": [
+          {
+            "useAt": "Y",
+            "purpose": "기업·조직·부서·사업장과 담당자를 관리한다.",
+            "actorCode": "COMPANY_ADMIN",
+            "actorName": "기업 관리자",
+            "actorType": "OPERATION",
+            "competency": "",
+            "actorNameEn": "Company Administrator",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "COMPANY_APPROVE",
+              "ORG_MANAGE",
+              "SITE_MANAGE"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": true,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          },
+          {
+            "useAt": "Y",
+            "purpose": "회원 가입·상태·잠금·탈퇴와 로그인 이력을 관리한다.",
+            "actorCode": "MEMBER_ADMIN",
+            "actorName": "회원 관리자",
+            "actorType": "OPERATION",
+            "competency": "",
+            "actorNameEn": "Member Administrator",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "MEMBER_APPROVE",
+              "MEMBER_REVIEW",
+              "MEMBER_SUSPEND"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": true,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          }
+        ],
+        "accountability": "",
+        "responsibility": "",
+        "capabilityCodes": [
+          "COMPANY_APPROVE",
+          "ORG_MANAGE",
+          "SITE_MANAGE"
+        ],
+        "reviewCycleDays": 365,
+        "delegationAllowed": true,
+        "conflictActorCodes": [],
+        "escalationActorCode": "MEMBER_ADMIN",
+        "segregationActorCodes": [
+          "MEMBER_ADMIN"
+        ],
+        "maxConcurrentAssignments": 0
+      }
+    },
+    "handoffPolicy": {},
+    "handoffs": [
+      {
+        "failure": {
+          "retry": "idempotent",
+          "onFailure": "retain current verified state"
+        },
+        "payload": {
+          "toState": "INVITED",
+          "recordId": "required",
+          "fromState": "INVITED"
+        },
+        "integrity": {
+          "hashRequired": true,
+          "rowVersionRequired": true
+        },
+        "toStepCode": "INVITE_ACTIVATE",
+        "contextKeys": [
+          "tenantId",
+          "processCode",
+          "stepCode",
+          "actorCode",
+          "rowVersion"
+        ],
+        "handoffType": "STEP",
+        "authorization": {
+          "toActor": "PUBLIC_APPLICANT",
+          "fromActor": "COMPANY_ADMIN",
+          "serverAuthorization": true
+        },
+        "toProcessCode": "COMPANY_MEMBER_INVITATION"
+      }
+    ]
+  },
+  "database": {
+    "mappings": [],
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "caseCode": "COMPANY_MEMBER_INVITATION_INVITE_ISSUE_HAPPY_PATH",
+      "name": "직원 정보·액터 검증 및 1회용 초대 발급 HAPPY_PATH",
+      "type": "HAPPY_PATH",
+      "status": "APPROVED",
+      "sourceRequirement": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "COMPANY_MEMBER_INVITATION",
+          "stepCode": "INVITE_ISSUE",
+          "scenario": "HAPPY_PATH"
+        }
+      ],
+      "assertions": [
+        "HAPPY_PATH contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "COMPANY_MEMBER_INVITATION_INVITE_ISSUE_EXCEPTION",
+      "name": "직원 정보·액터 검증 및 1회용 초대 발급 EXCEPTION",
+      "type": "EXCEPTION",
+      "status": "APPROVED",
+      "sourceRequirement": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "COMPANY_MEMBER_INVITATION",
+          "stepCode": "INVITE_ISSUE",
+          "scenario": "EXCEPTION"
+        }
+      ],
+      "assertions": [
+        "EXCEPTION contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "COMPANY_MEMBER_INVITATION_INVITE_ISSUE_AUTHORITY",
+      "name": "직원 정보·액터 검증 및 1회용 초대 발급 AUTHORITY",
+      "type": "AUTHORITY",
+      "status": "APPROVED",
+      "sourceRequirement": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "COMPANY_MEMBER_INVITATION",
+          "stepCode": "INVITE_ISSUE",
+          "scenario": "AUTHORITY"
+        }
+      ],
+      "assertions": [
+        "AUTHORITY contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "COMPANY_MEMBER_INVITATION_INVITE_ISSUE_ISOLATION",
+      "name": "직원 정보·액터 검증 및 1회용 초대 발급 ISOLATION",
+      "type": "ISOLATION",
+      "status": "APPROVED",
+      "sourceRequirement": "ISOLATION",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "COMPANY_MEMBER_INVITATION",
+          "stepCode": "INVITE_ISSUE",
+          "scenario": "ISOLATION"
+        }
+      ],
+      "assertions": [
+        "ISOLATION contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "COMPANY_MEMBER_INVITATION_INVITE_ISSUE_RECOVERY",
+      "name": "직원 정보·액터 검증 및 1회용 초대 발급 RECOVERY",
+      "type": "RECOVERY",
+      "status": "APPROVED",
+      "sourceRequirement": "RECOVERY",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "COMPANY_MEMBER_INVITATION",
+          "stepCode": "INVITE_ISSUE",
+          "scenario": "RECOVERY"
+        }
+      ],
+      "assertions": [
+        "RECOVERY contract is enforced before live promotion"
+      ]
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
+    "security": {
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true,
+      "segregationOfDuties": true,
+      "rateLimitRequired": false,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "standard": "WCAG 2.1 AA",
+      "keyboard": true,
+      "focus": true,
+      "errorSummary": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": true,
+      "targetHours": 24,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
+  },
+  "sourceHash": "fb0ee376dd882d4a4aca8248a880f681cc1bddd917e142313b5c8c2969d918c4",
+  "approvalStatus": "APPROVED",
+  "packageHash": "2216186034ac0f069f99a546fc362fcf3c56e88934676a2a505b1507b1d217df"
+}

@@ -27,12 +27,14 @@ function p006RefreshBatchUi() {
   const count = p006BatchSelection.size;
   const countNode = document.querySelector("[data-batch-selection-count]");
   const placeButton = document.querySelector("[data-batch-place]");
-  if (countNode) countNode.textContent = `선택 ${count.toLocaleString()}개`;
+  const countText = `선택 ${count.toLocaleString()}개`;
+  if (countNode && countNode.textContent !== countText) countNode.textContent = countText;
   if (placeButton) {
     placeButton.disabled = !count || p006BatchBusy;
-    placeButton.textContent = count
+    const placeText = count
       ? `선택 ${count.toLocaleString()}개 자동배치`
       : "자산을 선택하세요";
+    if (placeButton.textContent !== placeText) placeButton.textContent = placeText;
   }
   document.documentElement.dataset.p006BatchSelected = String(count);
 }
@@ -190,4 +192,3 @@ const p006BatchObserver = new MutationObserver(() => {
 });
 p006BatchObserver.observe(document.documentElement, { childList: true, subtree: true });
 p006MountBatchToolbar();
-

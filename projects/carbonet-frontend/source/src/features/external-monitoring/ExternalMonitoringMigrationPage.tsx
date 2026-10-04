@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -104,12 +105,11 @@ export function ExternalMonitoringMigrationPage() {
         </section>
 
         <CollectionResultPanel data-help-id="external-monitoring-filters" title={en ? "Monitoring Filters" : "모니터링 조회 조건"} description={en ? "Narrow by connection, health state, or alert severity before opening a follow-up page." : "후속 운영 화면으로 이동하기 전에 연계, 건강 상태, 경보 등급 기준으로 범위를 좁힙니다."} icon="monitoring">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4 xl:w-[68rem]">
-            <div>
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalMonitoringKeyword">{en ? "Keyword" : "검색어"}</label>
               <AdminInput id="externalMonitoringKeyword" value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder={en ? "Connection, partner, owner" : "연계명, 기관명, 담당자"} />
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalMonitoringHealth">{en ? "Health" : "건강 상태"}</label>
               <AdminSelect id="externalMonitoringHealth" value={healthStatus} onChange={(event) => setHealthStatus(event.target.value)}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -117,8 +117,7 @@ export function ExternalMonitoringMigrationPage() {
                 <option value="REVIEW">REVIEW</option>
                 <option value="DEGRADED">DEGRADED</option>
               </AdminSelect>
-            </div>
-            <div>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalMonitoringAlert">{en ? "Top Alert" : "상위 경보"}</label>
               <AdminSelect id="externalMonitoringAlert" value={alertLevel} onChange={(event) => setAlertLevel(event.target.value)}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -127,13 +126,9 @@ export function ExternalMonitoringMigrationPage() {
                 <option value="MEDIUM">MEDIUM</option>
                 <option value="NONE">{en ? "No Alerts" : "경보 없음"}</option>
               </AdminSelect>
-            </div>
-            <div className="flex items-end">
-              <button className="gov-btn gov-btn-outline w-full" type="button" onClick={() => { setKeyword(""); setHealthStatus("ALL"); setAlertLevel("ALL"); }}>
+            </div></div></>} actions={<><button className="gov-btn gov-btn-outline w-full" type="button" onClick={() => { setKeyword(""); setHealthStatus("ALL"); setAlertLevel("ALL"); }}>
                 {en ? "Reset Filters" : "검색 조건 초기화"}
-              </button>
-            </div>
-          </div>
+              </button></>}></CommonSearchSection></div>
         </CollectionResultPanel>
 
         <section className="gov-card overflow-hidden p-0" data-help-id="external-monitoring-overview">

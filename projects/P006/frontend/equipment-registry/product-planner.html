@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#12324a">
+  <title>신규 제품 생산 설계 · WOOSU</title>
+  <link rel="stylesheet" href="product-planner.css?v=20260927-process-cell-candidates-1">
+  <link rel="stylesheet" href="product-planner-equipment-status.css?v=20260928-process-equipment-needs-1">
+  <link rel="stylesheet" href="product-planner-multiview.css?v=camera-quality-7">
+</head>
+<body>
+  <header class="pp-topbar">
+    <a class="pp-brand" href="production-network.html" aria-label="WOOSU 생산망으로 이동">
+      <span class="pp-brand-mark" aria-hidden="true">W</span>
+      <span><strong>WOOSU</strong><small>P006 · DIGITAL TWIN</small></span>
+    </a>
+    <div class="pp-title"><p class="pp-eyebrow">PRODUCT PLANNING</p><h1>신규 제품 생산 설계</h1><p>제품 구성부터 공정 실행까지, 필요한 설계 정보를 한 페이지에서 연결합니다.</p></div>
+    <a class="pp-network-link" href="production-scene.html">↗ 부지·공장 3D 현장</a>
+    <a class="pp-network-link" href="production-network.html"><span aria-hidden="true">↗</span> 기존 생산망 보기</a>
+  </header>
+
+  <main class="pp-main">
+    <div id="appNotice" class="pp-notice" role="status" aria-live="polite">설계 입력을 준비하고 있습니다.</div>
+
+    <nav class="pp-steps" aria-label="생산 설계 단계">
+      <button type="button" data-tab="product" class="is-active" aria-current="step"><span>01</span> 제품·주요 부품</button>
+      <button type="button" data-tab="site"><span>02</span> 부지·공장</button>
+      <button type="button" data-tab="process"><span>03</span> 공정·운송</button>
+      <button type="button" data-tab="run"><span>04</span> 실행</button>
+    </nav>
+
+    <section class="pp-panel pp-toolbar" aria-label="설계 저장 및 불러오기">
+      <div class="pp-save-group">
+        <label class="pp-control pp-plan-picker">저장된 설계
+          <select id="savedPlans" aria-label="저장된 제품 생산 설계"><option value="">설계를 선택하세요</option></select>
+        </label>
+        <button id="loadPlan" type="button" class="pp-button pp-secondary">불러오기</button>
+        <button id="savePlan" type="button" class="pp-button pp-primary">설계 저장</button>
+        <button id="exportPlan" type="button" class="pp-button pp-secondary">JSON 내보내기</button>
+        <label class="pp-button pp-secondary pp-file-button">JSON 가져오기<input id="importPlan" type="file" accept="application/json,.json"></label>
+      </div>
+      <div class="pp-server-group"><button id="saveServer" type="button" class="pp-button pp-outline">서버에 저장</button><span id="saveStatus" role="status">저장 전</span></div>
+    </section>
+
+    <section class="pp-panel pp-content" data-panel="product" aria-labelledby="productHeading">
+      <div class="pp-section-heading"><div><p class="pp-eyebrow">01 · PRODUCT & BOM</p><h2 id="productHeading">제품과 주요 부품</h2><p>완제품을 구성하는 주요 부품만 등록하고, 수량은 완제품 1개 기준으로 입력합니다.</p></div><span class="pp-step-badge">설계 기준</span></div>
+      <div class="pp-product-fields">
+        <label class="pp-control">제품 선택<select id="productSelect"><option value="">제품을 선택하거나 새 제품 정보를 입력하세요</option></select></label>
+        <label class="pp-control pp-product-name">제품명<input id="productName" type="text" placeholder="예: 소형 모듈 조립품"></label>
+        <label class="pp-control">생산 수량<input id="quantity" type="number" min="1" step="1" value="1" inputmode="numeric"></label>
+        <label class="pp-control pp-product-source">기준·출처<input id="productSource" type="text" placeholder="예: 요구사항 문서, 담당자 확인, 가정"></label>
+      </div>
+      <div id="productOverview" class="pp-overview" aria-live="polite"></div>
+      <section class="pp-subpanel" aria-labelledby="rcStructureHeading"><div class="pp-table-heading"><div><h3 id="rcStructureHeading">RC Car USD 구조 기반 부품 검토</h3><p>원본 USD의 9개 Xform 그룹을 6개 구조 항목으로 정리했습니다. 실제 Mesh 기반 3D 분해·조립 검토 시연을 볼 수 있습니다.</p></div><div><a class="pp-button pp-primary" href="product-planner-rc-car-assembly.html">3D 구조 그룹 조립 시연</a> <a class="pp-button pp-secondary" href="product-planner-rc-car-structure.html">구조·근거 목록</a> <a class="pp-button pp-secondary" href="product-planner-rc-car-review.html">CAD·BOM 검토 기록</a></div></div><div class="pp-note">외부 RC 자동차 후보 · USD 원본은 정적 Stage · 이동 순서는 구조 검토 제안이며 BOM·실제 체결 순서·기계 동작으로 검증된 값이 아닙니다.</div></section>
+      <section class="pp-subpanel pp-model-coverage" aria-labelledby="modelCoverageHeading">
+        <div class="pp-table-heading"><div><h3 id="modelCoverageHeading">완제품·주요 부품·설비 모델 현황</h3><p>실제 카탈로그 경로가 있는지와 현재 계획에 연결됐는지를 구분합니다.</p></div><div><button id="downloadModelAcquisition" type="button" class="pp-button pp-secondary">모델 확보 목록 CSV</button> <a class="pp-button pp-secondary" href="product-planner-model-inventory.html">자동차 모델 실사 결과</a> <button type="button" class="pp-button pp-secondary" data-tab="process">공정·설비 모델 보기</button></div></div>
+        <div id="modelCoverageSummary" class="pp-coverage-summary" aria-live="polite">카탈로그 모델을 확인하고 있습니다.</div>
+        <div class="pp-table-wrap"><table><thead><tr><th scope="col">구분</th><th scope="col">제품·부품·공정</th><th scope="col">필요 수량</th><th scope="col">Asset ID</th><th scope="col">USD 원본</th><th scope="col">웹 GLB</th><th scope="col">확인 상태</th></tr></thead><tbody id="modelCoverageRows"><tr><td colspan="7">카탈로그 조회 중</td></tr></tbody></table></div>
+        <p class="pp-note"><span aria-hidden="true">ⓘ</span> 카탈로그 경로 존재는 제품·공정 적합성이나 실제 동작 검증을 뜻하지 않습니다. 누락된 제품·부품 모델은 별도 모델 확보가 필요합니다.</p>
+      </section>
+      <div class="pp-table-heading"><div><h3>주요 부품 구성표</h3><p>수량은 제품 1개를 만들 때 필요한 수량입니다. 예시 값은 자유롭게 바꿀 수 있습니다.</p></div><button id="addPart" type="button" class="pp-button pp-outline">＋ 부품 추가</button></div>
+      <div class="pp-table-wrap"><table><thead><tr><th scope="col">주요 부품</th><th scope="col">완제품당 수량</th><th scope="col">조달</th><th scope="col">담당 공장</th><th scope="col">확보시간(분)</th><th scope="col">결합 공정</th><th scope="col">작업</th></tr></thead><tbody id="partsBody"></tbody></table></div>
+      <p class="pp-note"><span aria-hidden="true">ⓘ</span> 이 화면은 편집 가능한 기능 시연입니다. 부품, 소요시간, 조달 방식은 실제 기준으로 확인한 값이 아니라 입력자의 설계 가정입니다.</p>
+    </section>
+
+    <section class="pp-panel pp-content" data-panel="site" aria-labelledby="siteHeading" hidden>
+      <div class="pp-section-heading"><div><p class="pp-eyebrow">02 · SITE & FACTORY</p><h2 id="siteHeading">부지와 공장</h2><p>실제 또는 가상 부지와 그 위의 생산 공장을 연결합니다. 이름과 관계를 먼저 정리할 수 있습니다.</p></div><span class="pp-step-badge">장소 정의</span></div>
+      <div class="pp-table-heading"><div><h3>부지 목록</h3><p>부지명은 프로젝트 내에서 식별 가능한 이름으로 입력합니다.</p></div><button id="addSite" type="button" class="pp-button pp-outline">＋ 부지 추가</button></div>
+      <div class="pp-table-wrap"><table><thead><tr><th scope="col">구분</th><th scope="col">부지명</th><th scope="col">작업</th></tr></thead><tbody id="sitesBody"></tbody></table></div>
+      <div class="pp-table-heading pp-spaced"><div><h3>공장 목록</h3><p>각 공장을 부지에 배치합니다. Layout 연결은 선택 사항이며 이 화면에서 실제 3D 배치를 검증하지 않습니다.</p></div><button id="addFactory" type="button" class="pp-button pp-outline">＋ 공장 추가</button></div>
+      <div class="pp-table-wrap"><table><thead><tr><th scope="col">구분</th><th scope="col">공장명</th><th scope="col">부지</th><th scope="col">Layout ID (선택)</th><th scope="col">작업</th></tr></thead><tbody id="factoriesBody"></tbody></table></div>
+    </section>
+
+    <section class="pp-panel pp-content" data-panel="process" aria-labelledby="processHeading" hidden>
+      <div class="pp-section-heading"><div><p class="pp-eyebrow">03 · PROCESS & LOGISTICS</p><h2 id="processHeading">공정과 운송</h2><p>부품이 어느 공장에서 어떤 순서로 처리되고 이동하는지 입력합니다.</p></div><span class="pp-step-badge">흐름 정의</span></div>
+      <div class="pp-table-heading"><div><h3>공정 목록</h3><p>선행 공정과 대상 부품을 지정해 실행 순서를 표현합니다. 같은 부품의 공정은 표에 표시된 행 순서대로 진행하며, 공정시간은 배치 전체 또는 개당 기준의 입력 가정입니다.</p></div><button id="addProcess" type="button" class="pp-button pp-outline">＋ 공정 추가</button></div>
+      <div class="pp-table-wrap"><table><thead><tr><th scope="col">공정명</th><th scope="col">작업</th><th scope="col">대상 부품</th><th scope="col">공장</th><th scope="col">선행 공정</th><th scope="col">소요시간(분)</th><th scope="col">작업</th></tr></thead><tbody id="processesBody"></tbody></table></div>
+      <section class="pp-subpanel pp-equipment-candidates" aria-labelledby="equipmentCandidateHeading"><div class="pp-table-heading"><div><h3 id="equipmentCandidateHeading">공정별 설비 Asset 후보</h3><p>13개 설비 대상 공정을 모두 표시합니다. 복합 공정 5개는 설비군의 대표 시각화 후보를 표시하며 실제 설비군 전체 배치와 공정 적합성은 검증되지 않았습니다.</p></div></div><div id="equipmentCandidateSummary" class="pp-coverage-summary" role="status" aria-live="polite">자산 카탈로그를 읽는 중입니다.</div><div class="pp-table-wrap"><table><thead><tr><th scope="col">공정·배정 상태와 필요한 설비군</th><th scope="col">후보 범주</th><th scope="col">GLB 경로 보유 카탈로그 후보·판정 근거</th><th scope="col">후보를 입력란에 반영</th></tr></thead><tbody id="equipmentCandidateRows"><tr><td colspan="4">카탈로그를 불러오면 후보 범주를 표시합니다.</td></tr></tbody></table></div><p class="pp-note">13개 중 8개는 단일 자산명 기반 후보, 5개는 복합 셀을 대표하는 시각화 후보입니다. ‘설비 후보 연결’은 명시적 실행 선택 시 빈 연결에 후보 모델 경로를 반영하고 브라우저에 저장합니다. 기존 연결은 보존합니다. 이는 서버 DB 저장, 자동차 공정 적합성, 전체 설비군 완비, 기계 동작 검증을 뜻하지 않습니다. 추가 참고 후보는 각 공정 카드의 미리보기에서 확인할 수 있습니다.</p></section>
+      <div class="pp-table-heading pp-spaced"><div><h3>공장 간 운송 경로</h3><p>거리와 운송·하역 시간으로 경로를 기록합니다. 실행 화면의 이동은 실제 물리나 운송 시간을 재현하지 않는 도식입니다.</p></div><button id="addRoute" type="button" class="pp-button pp-outline">＋ 경로 추가</button></div>
+      <div class="pp-table-wrap"><table><thead><tr><th scope="col">부품</th><th scope="col">출발공장</th><th scope="col">도착공장</th><th scope="col">부지간 거리(km)</th><th scope="col">운송(분)</th><th scope="col">하역(분)</th><th scope="col">작업</th></tr></thead><tbody id="routesBody"></tbody></table></div>
+      <div id="flowOverview" class="pp-overview pp-flow-overview" aria-live="polite"></div>
+      <section class="pp-subpanel"><h3>완제품·부품·설비 USD 연결</h3><p>USD 원본과 웹 표시용 GLB를 별도로 연결합니다. 카탈로그 Asset ID를 고르면 경로가 채워집니다. 설비 후보는 시각화용이며 자동차 공정 적합성은 별도 검증이 필요합니다.</p><button id="suggestEquipment" type="button" class="pp-button pp-secondary">설비 후보 연결·저장</button> <button id="applyModels" type="button" class="pp-button pp-primary">모델 연결·시간 근거 적용</button> <button id="validateModels" type="button" class="pp-button pp-secondary">모델 경로 점검</button><div id="modelSummary" role="status" aria-live="polite"></div><div id="modelValidation" class="pp-note" role="status" aria-live="polite" hidden></div><div class="pp-table-wrap"><table><thead><tr><th>대상</th><th>설비 Asset ID / 원본 USD</th><th>웹 GLB</th><th>모델 근거 / 시간 근거</th></tr></thead><tbody id="modelRows"></tbody></table></div><p class="pp-note">모델 경로 점검은 같은 P006 웹 자산 경로의 HTTP 응답과 GLB 헤더만 확인합니다. USD 원본·제품 대응·차종 BOM·조립 적합성은 승인하지 않습니다.</p></section>
+    </section>
+
+    <section class="pp-panel pp-content" data-panel="run" aria-labelledby="runHeading" hidden>
+      <div class="pp-section-heading"><div><p class="pp-eyebrow">04 · PLAN REVIEW</p><h2 id="runHeading">실행 검토</h2><p>입력한 설계의 연결 상태와 순서를 확인하고, 시연 실행을 진행합니다.</p></div><span class="pp-step-badge">검토·시연</span></div>
+      <div class="pp-run-controls">
+        <button id="runAllAnimation" type="button" class="pp-button pp-primary">▶ 전체 공정 애니메이션 재생</button>
+        <button id="runStart" type="button" class="pp-button pp-outline">일정만 실행</button>
+        <button id="runStep" type="button" class="pp-button pp-secondary">다음 단계</button>
+        <button id="runPause" type="button" class="pp-button pp-secondary">Ⅱ 일시정지</button>
+        <button id="runReset" type="button" class="pp-button pp-secondary">↺ 초기화</button>
+        <label class="pp-check"><input id="animationEnabled" type="checkbox" checked> 흐름 애니메이션</label>
+        <label class="pp-control pp-speed">시연 배속<select id="speed"><option value="1">1×</option><option value="10">10×</option><option value="60">60×</option><option value="600">600×</option></select></label>
+      </div>
+      <section class="pp-subpanel pp-production-scene-embed" aria-labelledby="productionSceneEmbedHeading">
+        <div class="pp-table-heading"><div><h3 id="productionSceneEmbedHeading">생산 현장 3D · 부지·공장·설비·운송</h3><p>현재 선택한 제품 계획을 표시합니다. 위 실행·일시정지·초기화·배속 조작과 재생 시간을 공유합니다.</p></div><a class="pp-button pp-secondary" href="production-scene.html?rev=camera-quality-7" target="_blank" rel="noopener noreferrer">3D 크게 열기 ↗</a></div>
+        <div id="productionSceneSync" class="pp-note" role="status" aria-live="polite">선택한 생산 계획이 준비되면 부지·공장·설비·운송 3D가 같은 실행 시간에 맞춰 표시됩니다.</div>
+        <div id="productionSceneDirectHost" class="pp-production-scene-direct" aria-label="페이지 내 생산 현장 3D"></div>
+        <p class="pp-note">3D 안의 ‘전체 생산망 / 부지별 동시 보기’는 같은 설비 모델과 시간표를 사용합니다. 동기화는 이 브라우저의 같은 생산 계획과 실행 시간을 기준으로 합니다. <a href="PRODUCTION-SCENE-EXECUTION-EMBED.md" target="_blank" rel="noopener noreferrer">화면 설계 · QA · 다음 업무</a></p>
+      </section>
+      <details class="pp-subpanel pp-run-advanced"><summary>상세 검토 · 보조 시연 화면</summary><div class="pp-run-advanced-body">
+      <section class="pp-subpanel pp-site-camera-section"><div class="pp-table-heading"><div><h3>부지·공장별 독립 카메라</h3><p>각 부지 전체 화면과 그 안의 공장 화면을 따로 표시합니다. 카메라 조작과 표시 대상은 각 화면마다 독립적이며, 계획의 공정 시간·설비 모델·작업물 위치를 함께 사용합니다.</p></div><div><button id="connectDemoModels" type="button" class="pp-button pp-secondary">설비 후보 연결·저장</button> <button id="loadSiteCameras" type="button" class="pp-button pp-outline">카메라 모델 불러오기</button></div></div><div id="siteCameraNotice" class="pp-note">부지·공장별 카메라를 준비합니다. 각 화면에는 설비 보기·설비와 작업물·작업물 보기와 개별 카메라 조작이 있습니다.</div><div id="siteCameras" class="pp-camera-grid"></div></section>
+      <section class="pp-subpanel pp-e096-cycle" aria-labelledby="e096CycleHeading"><div class="pp-table-heading"><div><h3 id="e096CycleHeading">설비+작업물 동시 사이클 · E096 소형 프레스</h3><p>실제 E096 프레스 모델과 시연용 작업물을 한 화면에서 봅니다. 공정 계획에 E096이 배정되어 있으면 전체 재생 시간에 동기화됩니다.</p></div><a class="pp-button pp-secondary" href="product-planner-e096-press-cycle.html?rev=e096-sync-toggle-1" target="_blank" rel="noopener noreferrer">별도 화면으로 열기</a></div><div class="pp-note">계획에 E096이 배정되지 않았어도 내장 화면의 ‘실제 E096 모델 로드’와 ‘독립 공정 시연’으로 확인할 수 있습니다. 주황 작업물은 0.18 × 0.05 × 0.12m FUNCTIONAL_DEMO Proxy이며 입력·배출축, 접촉, ram 이동은 시연 가정입니다. 제조사 Stroke·Pivot·금형·차종 적합성은 미검증입니다.</div><iframe title="E096 프레스와 시연 작업물 공정 사이클" src="product-planner-e096-press-cycle.html?embed=1&rev=e096-sync-toggle-1" loading="lazy" style="display:block;width:100%;height:min(760px,82vh);min-height:560px;border:1px solid #bfd0dc;border-radius:8px;background:#eef5f8" referrerpolicy="same-origin"></iframe><p class="pp-note">같은 출처의 공정 시간 채널로 전체 계획을 수신합니다. 실제 작업물 모델이 없으므로 시연 Box만 표시하며, 공정·애니메이션 승인 상태는 변경하지 않습니다. <a href="PRODUCT-PLANNER-E096-PRESS-CYCLE.md">시연 범위와 근거 보기</a> · <a href="product-planner-e096-motion-pilot.html" target="_blank" rel="noopener noreferrer">기존 Ram 단독 검토 열기</a></p></section>
+      <section class="pp-subpanel"><h3>시간순 전체 생산 계획</h3><p>시작·종료는 입력 시간과 선행조건으로 계산합니다. 병렬 작업 시간은 단순 합산하지 않습니다.</p><div id="currentExplanation" role="status"></div><div class="pp-table-wrap"><table><thead><tr><th>공정·부품</th><th>부지 / 공장</th><th>시작 → 종료(분)</th><th>시간표</th><th>시간 근거</th></tr></thead><tbody id="timelineRows"></tbody></table></div></section>
+      <section class="pp-subpanel pp-process-connections" aria-labelledby="processConnectionsHeading"><div class="pp-table-heading"><div><h3 id="processConnectionsHeading">공정별 설비·작업물 연결표</h3><p>투입 부품, 필요 설비, 시연 작업점, 산출물과 다음 이동을 공정별로 확인합니다.</p></div><button type="button" class="pp-button pp-secondary" data-tab="process">공정·설비 연결 편집</button></div><div id="processConnectionSummary" class="pp-coverage-summary" role="status" aria-live="polite">공정 연결을 계산하는 중입니다.</div><div class="pp-table-wrap"><table><thead><tr><th scope="col">순서</th><th scope="col">단계·작업</th><th scope="col">투입 제품·부품</th><th scope="col">부지·공장</th><th scope="col">예정 시간</th><th scope="col">필요 설비</th><th scope="col">산출물·다음 단계</th><th scope="col">실행 동작</th></tr></thead><tbody id="processConnectionRows"><tr><td colspan="8">공정 조건을 계산하면 연결표가 표시됩니다.</td></tr></tbody></table></div><p class="pp-note"><span aria-hidden="true">ⓘ</span> `FUNCTIONAL_DEMO` 모듈은 공정 순서와 입력 시간에 따라 설비 인근의 시연 작업점으로 이동한 뒤 조립 위치에 모입니다. 실제 부품 형상·BOM·Port 접촉·차종 적합성은 미검증이며, 설비 자체 동작은 실제 GLB Animation Clip 또는 별도 검증된 Pilot이 있을 때만 표시합니다.</p></section>
+      <section class="pp-subpanel pp-spaced"><h3>공정 시간 연동 3D 설비·모듈 흐름</h3><p>실제 연결된 설비 GLB와 FUNCTIONAL_DEMO 모듈을 공정 시간표에 맞춰 함께 표시합니다. 모듈은 해당 공정 설비의 작업 지점으로 이동하고, 부지 간 운송 시간에는 공장 사이를 움직이며, 조립 시간에는 조립 지점으로 모입니다. 작업점 좌표와 조립 형상은 시연용이고 물리적 Port 연결을 뜻하지 않습니다. GLB 동작 Clip이 없는 설비는 정적으로 보입니다. 아래 공정 카드에는 시작 전부터 종료 후까지 제품·부품·공장·예정시간·설비/모델 상태를 전부 표시합니다. 실제 모델이 없는 공정 카드의 `후보 모델 미리보기`는 Asset Registry GLB를 참고용으로만 표시하며 설비 배정·차종 적합성 승인·작동 검증이 아닙니다.</p><button id="loadPlanner3d" type="button" class="pp-button pp-outline">공정 설비와 모듈 흐름 보기</button> <button id="closePlanner3d" type="button" class="pp-button pp-secondary">3D 닫기·자원 해제</button> <button id="focusPlannerOverview" type="button" class="pp-button pp-secondary">전체 배치 보기</button> <label class="pp-check pp-follow-toggle"><input id="followActiveEquipment" type="checkbox"> 현재 공정 셀 따라가기</label><div class="pp-catalog-row" style="display:flex;flex-wrap:wrap;gap:12px;margin:10px 0;padding:8px;background:#f4f8fa"><label><input id="showFactoryInfrastructure" type="checkbox" checked> 부지·공장 인프라</label><label><input id="showTransportAnimation" type="checkbox" checked> 운반수단·대기</label><label><input id="showPackagingAnimation" type="checkbox"> 포장 단계</label><label>운반수단 <select id="transportMode"><option value="truck">트럭</option><option value="agv">AGV</option><option value="forklift">지게차</option><option value="conveyor">컨베이어</option></select></label><label><input id="showProductTransformation" type="checkbox" checked> 제품 조립 변화</label></div><div id="planner3dStatus" role="status">모델 미로딩</div><div id="planner3dProgress" class="pp-demo-progress" aria-live="polite">모델을 불러오면 모든 공정 카드에 제품·부품·설비·상태가 표시됩니다.</div><div id="planner3dEquipmentLegend" class="pp-equipment-legend" aria-live="polite" hidden></div><canvas id="planner3d" style="width:100%;height:420px" aria-label="전체 공정 설비, 작업점과 시연 작업물의 상태를 보여주는 3D 화면" hidden></canvas><small class="pp-note">공정 카드의 ‘설비 보기’는 배정 설비를, `후보 모델 미리보기`는 미배정 후보 모델을 확대합니다. 전체 배치 보기에서는 임시 후보 모델을 닫습니다. 카메라: 드래그 회전 · Alt+드래그 위치 이동 · 휠 확대.</small></section>
+      <section class="pp-subpanel pp-spaced" aria-labelledby="assemblyCellPilotHeading"><div class="pp-table-heading"><div><h3 id="assemblyCellPilotHeading">조립 공정 셀 · 전체 시간표 동기화</h3><p>Product Planner에서 실행 중인 같은 계획의 공정, 부품, 공장, 지정 설비와 시간을 셀 화면에 전달합니다.</p></div><a class="pp-button pp-secondary" href="product-planner-assembly-cell-pilot.html?rev=assembly-cell-5" target="_blank" rel="noopener noreferrer">셀 크게 열기</a></div><div class="pp-note">E032 작업대·버퍼는 정적 Pilot 기준물이며 생산 계획에 배정된 설비라고 보장하지 않습니다. 공정에 설비 GLB가 지정되어 있으면 현재/다음 단계에 함께 표시하고, 차체·구동·배터리·섀시 주요 부품 Proxy를 공정 시간과 동기화합니다. 실물 BOM·Port·물리 결합·공정 호환성은 미검증이며 연결/Flow 승인 상태는 변경하지 않습니다.</div><iframe title="Product Planner 전체 공정 시간표와 조립 셀 동기화" src="product-planner-assembly-cell-pilot.html?embed=1&rev=assembly-cell-5" loading="lazy" style="display:block;width:100%;height:min(760px,82vh);min-height:560px;border:1px solid #bfd0dc;border-radius:8px;background:#eef5f8" referrerpolicy="same-origin"></iframe><p class="pp-note">사용 순서: 이 화면에서 `전체 공정 애니메이션 재생` → 셀에서 `전체 공정 시간표와 동기화`. 다른 탭에서도 같은 Product Planner 계획이면 연결됩니다. <a href="PRODUCT-PLANNER-RUN-CELL-SYNC.md">동기화 기준·검증 경계</a></p></section>
+      </div></details>
+      <div class="pp-run-grid">
+        <div class="pp-scene-wrap"><div class="pp-scene-label"><strong>생산 흐름 도식</strong><span>개념 시각화 · 축척/기계 물리 미반영</span></div>
+          <svg id="runScene" viewBox="0 0 1000 380" role="img" aria-label="부품과 공장의 생산 흐름을 보여주는 도식">
+            <defs><pattern id="sceneGrid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M 32 0 L 0 0 0 32" fill="none" stroke="#e8eff3" stroke-width="1"/></pattern></defs>
+            <rect width="1000" height="380" fill="#f8fbfc"/><rect width="1000" height="380" fill="url(#sceneGrid)"/><text x="500" y="190" text-anchor="middle" fill="#73899a" font-size="18">설계 실행 시 생산 흐름이 여기에 표시됩니다</text>
+          </svg>
+          <p class="pp-note pp-scene-note"><span aria-hidden="true">ⓘ</span> 경로 애니메이션은 입력한 사용자 시간 기준의 프로세스 흐름을 이해하기 위한 개략도입니다. 실제 기계·3D 시뮬레이션, 물리, 실제 운송 성능을 예측하거나 검증하지 않습니다.</p>
+        </div>
+        <aside class="pp-run-side"><section class="pp-subpanel"><h3>실행 전 검증</h3><div id="validationList" aria-live="polite"></div></section><section class="pp-subpanel"><h3>요약 지표</h3><div id="runMetrics"></div></section></aside>
+      </div>
+      <section class="pp-subpanel pp-events"><div class="pp-table-heading"><div><h3>프로세스 진행 기록</h3><p>실행 순서에 따라 확인된 단계와 입·출력 정보를 기록합니다.</p></div></div><ol id="eventLog" aria-live="polite"></ol></section>
+    </section>
+
+    <details id="help" class="pp-panel pp-help"><summary>화면 도움말 · 입력 기준</summary><div class="pp-help-body"><p><strong>진행 순서:</strong> 제품과 주요 부품 → 부지와 공장 → 공정과 운송 → 실행 검토. 위 단계 탭으로 언제든 이동할 수 있습니다.</p><p><strong>공정별 연결표:</strong> 시간표에 포함된 구매·제작·운송·조립·검사 단계를 나열합니다. 공정 단계의 설비 연결은 ‘공정·설비 연결 편집’에서 Asset ID와 모델 경로를 입력한 뒤 적용하세요. 설비 미지정·GLB 미연결은 실행 화면 동작도 미연결로 표시됩니다.</p><p><strong>모델 현황:</strong> 완제품·부품의 실제 GLB가 미연결이면 자동차 예시에 한해 별도 FUNCTIONAL_DEMO 3D 모듈을 표시합니다. 생성 형상은 USD/GLB 원본이 아니며 실제 제품·차종·부품 사양을 대표하지 않습니다. 설비 후보 Asset ID와 모델 경로가 있어도 자동차 공정 적합성이 확정된 것은 아닙니다.</p><p><strong>모델 경로 점검:</strong> 공정·운송의 USD 연결 영역에서 GLB 경로를 반영한 후 점검 버튼을 누르면 같은 P006 웹 자산 경로의 HTTP 응답과 파일 앞부분 서명을 확인합니다. 전체 모델 파싱, USD 내용, 차종/BOM·공정 적합성은 판정하지 않습니다.</p><p><strong>전체 공정 재생:</strong> 실행 검토에서 ‘전체 공정 애니메이션 재생’을 한 번 누르세요. 3D 모듈과 부지별 카메라를 준비하고 0분부터 마지막 출고까지 함께 실행합니다. 도중에는 일시정지·다음 단계·배속을 쓸 수 있습니다. 일시정지 후에는 ‘이어서 재생’으로 현재 시간부터 계속합니다. ‘일정만 실행’은 2D 시간표·흐름도만 재생합니다.</p><p><strong>3D 설비 공정 표시:</strong> 실행 중인 공정 설비에는 주황색 바닥 하이라이트가 나타나고, 현재 작업 설비 목록의 ‘보기’를 누르면 카메라가 해당 설비로 이동합니다. GLB Animation Clip이 있으면 입력 시간표에 맞춰 재생하지만, Clip이 없으면 설비는 정적 표시이며 하이라이트는 공정 상태 표시일 뿐 기계 동작이 아닙니다. 자동차 공정/설비 적합성은 별도 검증 대상입니다.</p><p><strong>E096 동작 Pilot:</strong> Asset ID가 E096이고 GLB에 bed·ram·tool Mesh가 확인되면 배정된 공정 시간에 맞춰 시험 왕복과 FUNCTIONAL_DEMO 작업물을 3D 화면에 표시합니다. Geometry에서 계산한 Stroke는 후보이며 제조사 스트로크·실제 기계 동작으로 검증되지 않았습니다.</p><p><strong>입력 기준:</strong> 부품 수량은 완제품 1개당 수량이며, 시간·거리 값은 검증된 실측치가 아닌 설계 가정으로 취급합니다. 기준 출처를 제품 정보에 함께 적어두세요.</p><p><strong>시연 범위:</strong> FUNCTIONAL_DEMO는 일정 연동 UI 동작 검증입니다. 실제 생산 BOM, 기계동작, 물리 법칙, 작업물 경로, 실제 생산능력의 적합성을 보증하지 않습니다.</p><p><strong>저장:</strong> 설계 파일은 JSON으로 내보내거나 가져올 수 있습니다. 서버 저장은 연결된 저장 기능이 제공될 때만 사용하세요.</p></div></details>
+    <details class="pp-panel pp-help"><summary>전체 공정 3D 카메라 도움말</summary><div class="pp-help-body"><p>실행 탭에는 전체 생산망 3D와 부지별 카메라, 공장별 카메라가 함께 표시됩니다. 부지 카메라는 그 부지 안의 설비·작업물을, 공장 카메라는 선택한 공장의 설비·작업물을 표시합니다. 각 카메라의 ‘설비 보기’·‘설비·작업물’·‘작업물 보기’와 드래그 회전·Alt+드래그 이동·휠 확대 상태는 독립적으로 조정됩니다. 전체 공정 재생을 시작하면 부지·공장 카메라 모델도 준비되고, 같은 시간표로 진행 상태가 갱신됩니다. 각 카드에는 설비 대상 수, Asset+GLB 연결 수, 3D 로드 수, 미연결 공정명이 표시됩니다. 설비 GLB가 없는 작업점은 실제 설비로 세지 않으며 빈 모델은 카드에서 미연결로 표시합니다. 카탈로그 후보 연결은 시각화 참고이며 자동차 공정 적합성이나 기계 동작 승인을 뜻하지 않습니다.</p></div></details>
+    <footer class="pp-footer"><span>설계 문서: <a href="PRODUCT-PLANNER-DESIGN.md">기본 설계</a> · <a href="PRODUCT-PLANNER-CAR-V2.md">자동차 공정·USD·QA·다음 업무</a> · <a href="PRODUCT-PLANNER-CAR-DEMO-3D.md">자동차 3D 조립 데모 QA</a> · <a href="PRODUCT-PLANNER-E096-RAM-MOTION-PILOT.md">E096 가동부 Pilot</a> · <a href="PRODUCT-PLANNER-MODEL-ACQUISITION.md">자동차 모델 확보 목록</a> · <a href="PRODUCT-PLANNER-EQUIPMENT-CANDIDATE-CAMERA.md">설비 후보·부지 카메라 설계</a> · <a href="PRODUCT-PLANNER-CANDIDATE-GEOMETRY-PREVIEW.md">후보 GLB 미리보기 설계</a> · <a href="PRODUCT-PLANNER-QA.md">QA·다음 업무 카드</a></span><a href="production-network.html">← 전체 생산망으로 돌아가기</a></footer>
+    <details class="pp-panel pp-help"><summary>공정별 설비 후보 도움말</summary><div class="pp-help-body"><p>공정 작업명과 종류로 설비 Asset 범주 후보를 제안합니다. GLB 경로 보유 여부는 카탈로그 경로 기준이며, 브라우저 로딩·기능·제품 적합성을 보증하지 않습니다. 후보를 선택하면 공정 설비 Asset ID와 USD/GLB 입력란에 복사됩니다. 계획에 반영하려면 ‘모델 연결·시간 근거 적용’을 누르세요. 후보는 관계·Flow·애니메이션 승인으로 승격되지 않습니다.</p></div></details>
+    <details class="pp-panel pp-help"><summary>설비가 보이지 않을 때 · 연결·저장 안내</summary><div class="pp-help-body"><p>03 공정·운송의 ‘설비 후보 연결·저장’은 빈 공정 연결에 카탈로그 시각화 후보를 적용하고 브라우저에 저장합니다. 04 실행의 ‘후보 연결·브라우저 저장·전체 3D 보기’는 같은 처리를 한 뒤 전체 공정 3D를 엽니다. 자동차 예시에서 13개 설비 대상 공정 중 기존 8개 후보와 복합 셀 대표 후보 5개를 포함합니다. 후보 연결은 서버 DB 저장, 전체 설비군 완비, 자동차 적합성 또는 기계 동작 검증이 아닙니다. 서버 DB 저장은 별도 버튼입니다. 기존 연결은 덮어쓰지 않으며, 실행 중에는 연결 작업을 차단합니다.</p><p>설비 카드의 ‘보기’로 개별 설비를 확대하세요. 정적 설비는 표시만 되며 연결을 기계 동작 검증으로 간주하지 않습니다.</p><a href="PRODUCT-PLANNER-CANDIDATE-COMMIT.md">연결 복구 설계 · QA · 다음 업무 카드</a></div></details>
+  </main>
+  <p class="pp-panel"><a href="PRODUCT-PLANNER-13-EQUIPMENT-VERIFIED.md">13개 설비 적용·저장·전체 재생 검수 결과 / 다음 업무</a></p>
+  <script src="product-planner-core.js?v=20260925-3"></script>
+  <script src="product-planner-multiview.js?v=direct-plan-sync-4"></script>
+  <script src="product-planner-car-demo.js?v=20260928-finished-product-2"></script>
+  <script src="product-planner-details.js?v=direct-plan-sync-4"></script>
+  <script src="product-planner.js?v=direct-plan-sync-4"></script>
+  <script src="product-planner-direct-scene.js?v=direct-plan-sync-4"></script>
+    <details class="pp-panel pp-help"><summary>설비와 작업물이 따로 보일 때 · 공정 3D 안내</summary><div class="pp-help-body"><p>실행 화면에서 ‘공정 설비와 모듈 흐름 보기’를 누르면 시간표 순서로 연결된 설비 GLB와 시연 모듈을 같은 공정 작업점 주변에 표시합니다. 작업물은 시연 좌표로 움직이며, 검증된 Port가 없으므로 실제 투입구·기계를 통과한다고 의미하지 않습니다.</p><p>‘설비 GLB 미연결 · 작업점’ 표식은 위치 안내일 뿐 실제 설비 모델이 아닙니다. 설비 형상을 보려면 해당 공정에 Asset/GLB 모델을 연결해야 합니다. 가상 모듈의 형태 변화, 실제 부품·BOM·충돌·기계 가동은 별도 근거 없이는 검증된 것으로 보지 않습니다.</p><a href="PRODUCT-PLANNER-DESIGN.md">설계와 범위</a> · <a href="PRODUCT-PLANNER-QA.md">QA·다음 업무</a></div></details>
+<style>
+  [data-panel="run"] > .pp-run-controls{position:sticky;top:0;z-index:8;background:#fff;padding:10px;border:1px solid #bfd0dc;border-radius:8px;box-shadow:0 4px 14px #15395712}
+  [data-panel="run"] #runStart,[data-panel="run"] #animationEnabled{display:none!important}
+  .pp-production-scene-embed{padding:12px;background:#f5f9fb}
+  .pp-production-scene-direct{display:block;width:100%;height:min(780px,76vh);min-height:640px;border:1px solid #bfd0dc;border-radius:8px;background:#eef5f8;overflow:hidden}
+  .pp-run-advanced{margin:14px 0;border:1px solid #bfd0dc;border-radius:8px;background:#f8fbfc}
+  .pp-run-advanced>summary{padding:14px 16px;color:#153957;font-weight:700;cursor:pointer}
+  .pp-run-advanced-body{padding:0 12px 12px}
+  @media(max-width:800px){.pp-production-scene-direct{height:74vh;min-height:560px}.pp-run-advanced-body{padding:0 6px 8px}}
+</style>
+<script>
+(()=>{
+  const panel=document.querySelector('[data-panel="run"]');
+  if(!panel)return;
+  const embed=panel.querySelector('.pp-production-scene-embed');
+  const legacy=panel.querySelector('.pp-run-advanced');
+  if(!embed||!legacy)return;
+  const byId=id=>panel.querySelector('#'+id)?.closest('section');
+  const timeline=byId('timelineRows');
+  const connections=byId('processConnectionRows');
+  const details=document.createElement('details');details.className='pp-run-advanced';
+  const summary=document.createElement('summary');summary.textContent='상세 검토 · 보조 시연 화면';
+  const body=document.createElement('div');body.className='pp-run-advanced-body';
+  details.append(summary,body);
+  const siteCameraSection=byId('siteCameras');
+  if(siteCameraSection)embed.after(siteCameraSection);
+  const supplemental=[byId('e096CycleHeading'),byId('loadPlanner3d'),byId('assemblyCellPilotHeading')].filter(Boolean);
+  for(const section of [...new Set(supplemental)])body.append(section);
+  legacy.remove();
+  const help=document.querySelector('#help .pp-help-body');
+  if(help){const p=[...help.querySelectorAll('p')].find(x=>x.textContent.includes('전체 공정 재생'));if(p)p.innerHTML='<strong>통합 실행:</strong> 상단의 전체 공정 애니메이션 재생을 누르면 시간표와 생산 현장 3D가 함께 시작됩니다. 3D 화면에서 전체 생산망 또는 부지별 동시 보기를 선택하고, 왼쪽 부지·공장 목록과 오른쪽 운송 현황을 확인하세요. 시간순 계획과 공정별 연결표는 아래에서 검토하고, 이전 시험 화면은 상세 검토를 펼쳐 확인합니다.';}
+  embed.after(...[timeline,connections,details].filter(Boolean));
+})();
+</script>
+</body>
+</html>

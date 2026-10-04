@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 377,
+  "blueprintCode": "BP_ADOPT_CEB088E53BAA3A6ABE88",
+  "identity": {
+    "processCode": "LCA_EXECUTION",
+    "stepCode": "LCA_EXECUTION_01_PLAN",
+    "actorCode": "LCA_PRACTITIONER",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_CEB088E53BAA3A6ABE88"
+  },
+  "route": "/admin/emission/definition-studio",
+  "pageName": "LCI 분류",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "LCA",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1060305",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "6f69a3526850f314772334b68106d3c536446f625b46388435147f7cee1f781c",
+  "artifactHash": "f830ca00e3c39261fca77efda1bc6f2c9f9ca1e62e7da7fd7af8e1d14ca11ca0"
+}

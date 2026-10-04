@@ -145,7 +145,7 @@ async function saveMypageSectionPayload(
     buildPortalForm(payload, resolvePortalInsttId(session, insttId)),
     { headers: buildPortalHeaders(session) }
   );
-  if (!isPortalResponseAccepted(response)) {
+  if (!response.ok || body.saved !== true) {
     throw new Error(body.message || `${fallbackMessage}: ${response.status}`);
   }
   return body;

@@ -1,0 +1,59 @@
+{
+  "version": "two-track-quality-v1",
+  "internalInvestigation": "CLOSED_NO_RESCAN",
+  "trackAIndependent": true,
+  "trackBIndependent": true,
+  "gateOrder": [
+    "USD_CONNECTED",
+    "GEOMETRY_VERIFIED",
+    "PHYSICAL_VERIFIED",
+    "FUNCTION_VERIFIED",
+    "PORT_VERIFIED",
+    "ASSET_READY"
+  ],
+  "requiredEvidence": {
+    "GEOMETRY_VERIFIED": [
+      "geometryTechnical",
+      "assetKindAndShapeReview",
+      "geometrySource"
+    ],
+    "PHYSICAL_VERIFIED": [
+      "dimensions",
+      "placementBasis",
+      "hierarchy",
+      "physics"
+    ],
+    "FUNCTION_VERIFIED": [
+      "motionExecution",
+      "workpieceInterface",
+      "processExecution"
+    ],
+    "PORT_VERIFIED": [
+      "portCompatibility"
+    ],
+    "ASSET_READY": [
+      "saveRestore",
+      "qualitySignoff"
+    ]
+  },
+  "invalidation": "base/source hash or Variant/local override changes invalidate inherited checks. Individual bounds, mount, ports, workpiece and runtime evidence never inherited blindly.",
+  "promotion": "USD shape validity alone cannot promote GEOMETRY_VERIFIED; type/shape review and source evidence required. Presence of collider, animation hook or port name does not certify physical/function/port.",
+  "evidenceContract": [
+    "status",
+    "source",
+    "artifact",
+    "reviewer",
+    "timestamp",
+    "subjectSha256",
+    "scope",
+    "dependencySignature"
+  ],
+  "scopeWhitelist": [
+    "APPROVED_DESIGN",
+    "MEASURED_EQUIPMENT",
+    "TECHNICAL_USD_TEST"
+  ],
+  "legacy": "Preserve10 reference-layout ASSET_READY records; do not count as strict full-chain ASSET_READY.",
+  "REAL": "Must additionally prove actual identity/read-only connection/tag read/value change/timestamp/event correlation/repeat observations; simulation excluded.",
+  "runtimeActions": "No device connection, no business writes, no source USD edits."
+}

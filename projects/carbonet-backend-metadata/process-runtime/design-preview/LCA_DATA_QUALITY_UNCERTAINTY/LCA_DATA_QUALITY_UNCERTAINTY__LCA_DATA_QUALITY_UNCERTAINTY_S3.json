@@ -149,7 +149,11 @@
             "fieldName": "프로세스 코드",
             "fieldGroup": "공통",
             "fieldOrder": 30,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
             "apiProperty": "processCode",
             "controlType": "HIDDEN",
             "sourceTable": "framework_process_definition",
@@ -170,7 +174,11 @@
             "fieldName": "단계 코드",
             "fieldGroup": "공통",
             "fieldOrder": 40,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
             "apiProperty": "stepCode",
             "controlType": "HIDDEN",
             "sourceTable": "framework_process_step",
@@ -191,7 +199,11 @@
             "fieldName": "업무 레코드 ID",
             "fieldGroup": "공통",
             "fieldOrder": 50,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": false,
+              "immutable": true
+            },
             "apiProperty": "recordId",
             "controlType": "HIDDEN",
             "sourceTable": null,
@@ -235,7 +247,14 @@
             "fieldName": "담당 액터",
             "fieldGroup": "공통",
             "fieldOrder": 70,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "ownerActorCode",
             "controlType": "ACTOR_SELECT",
             "sourceTable": null,
@@ -279,7 +298,11 @@
             "fieldName": "등록 일시",
             "fieldGroup": "공통",
             "fieldOrder": 90,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "createdAt",
             "controlType": "DATETIME",
             "sourceTable": null,
@@ -300,7 +323,11 @@
             "fieldName": "최종 수정 일시",
             "fieldGroup": "공통",
             "fieldOrder": 100,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "updatedAt",
             "controlType": "DATETIME",
             "sourceTable": null,
@@ -344,7 +371,12 @@
             "fieldName": "LCA 프로젝트",
             "fieldGroup": "LCA",
             "fieldOrder": 200,
-            "validation": {},
+            "validation": {
+              "type": "code",
+              "nullable": false,
+              "required": true,
+              "allowUnknown": false
+            },
             "apiProperty": "lcaProjectId",
             "controlType": "PROJECT_SELECT",
             "sourceTable": null,
@@ -365,7 +397,14 @@
             "fieldName": "제품",
             "fieldGroup": "LCA",
             "fieldOrder": 210,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "productId",
             "controlType": "PRODUCT_SELECT",
             "sourceTable": null,
@@ -386,7 +425,14 @@
             "fieldName": "공정",
             "fieldGroup": "LCA",
             "fieldOrder": 220,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "processId",
             "controlType": "PROCESS_SELECT",
             "sourceTable": null,
@@ -407,7 +453,14 @@
             "fieldName": "흐름 구분",
             "fieldGroup": "LCA",
             "fieldOrder": 230,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "flowType",
             "controlType": "FLOW_TYPE_SELECT",
             "sourceTable": null,
@@ -428,7 +481,14 @@
             "fieldName": "물질",
             "fieldGroup": "LCA",
             "fieldOrder": 240,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "substanceId",
             "controlType": "SUBSTANCE_SEARCH",
             "sourceTable": null,
@@ -449,7 +509,12 @@
             "fieldName": "수량",
             "fieldGroup": "LCA",
             "fieldOrder": 250,
-            "validation": {},
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": false,
+              "required": true
+            },
             "apiProperty": "quantity",
             "controlType": "NUMBER",
             "sourceTable": null,
@@ -470,7 +535,14 @@
             "fieldName": "단위",
             "fieldGroup": "LCA",
             "fieldOrder": 260,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "unitCode",
             "controlType": "UNIT_SELECT",
             "sourceTable": null,
@@ -491,7 +563,12 @@
             "fieldName": "할당 비율",
             "fieldGroup": "LCA",
             "fieldOrder": 270,
-            "validation": {},
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "allocationRatio",
             "controlType": "PERCENT",
             "sourceTable": null,
@@ -512,7 +589,14 @@
             "fieldName": "영향범주",
             "fieldGroup": "LCA",
             "fieldOrder": 280,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "impactCategory",
             "controlType": "IMPACT_SELECT",
             "sourceTable": null,
@@ -533,7 +617,12 @@
             "fieldName": "영향평가 결과",
             "fieldGroup": "LCA",
             "fieldOrder": 290,
-            "validation": {},
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "impactResult",
             "controlType": "CALCULATED_NUMBER",
             "sourceTable": null,
@@ -554,7 +643,14 @@
             "fieldName": "업무 메모",
             "fieldGroup": "업무 처리",
             "fieldOrder": 400,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "taskComment",
             "controlType": "TEXTAREA",
             "sourceTable": null,
@@ -575,7 +671,11 @@
             "fieldName": "마감 일시",
             "fieldGroup": "업무 처리",
             "fieldOrder": 410,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "dueAt",
             "controlType": "DATETIME",
             "sourceTable": null,
@@ -596,7 +696,14 @@
             "fieldName": "다음 담당 액터",
             "fieldGroup": "업무 처리",
             "fieldOrder": 420,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "nextActorCode",
             "controlType": "ACTOR_VIEW",
             "sourceTable": null,
@@ -720,7 +827,11 @@
             "fieldName": "프로세스 코드",
             "fieldGroup": "공통",
             "fieldOrder": 30,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
             "apiProperty": "processCode",
             "controlType": "HIDDEN",
             "sourceTable": "framework_process_definition",
@@ -741,7 +852,11 @@
             "fieldName": "단계 코드",
             "fieldGroup": "공통",
             "fieldOrder": 40,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
             "apiProperty": "stepCode",
             "controlType": "HIDDEN",
             "sourceTable": "framework_process_step",
@@ -762,7 +877,11 @@
             "fieldName": "업무 레코드 ID",
             "fieldGroup": "공통",
             "fieldOrder": 50,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": false,
+              "immutable": true
+            },
             "apiProperty": "recordId",
             "controlType": "HIDDEN",
             "sourceTable": null,
@@ -806,7 +925,14 @@
             "fieldName": "담당 액터",
             "fieldGroup": "공통",
             "fieldOrder": 70,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "ownerActorCode",
             "controlType": "ACTOR_SELECT",
             "sourceTable": null,
@@ -850,7 +976,11 @@
             "fieldName": "등록 일시",
             "fieldGroup": "공통",
             "fieldOrder": 90,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "createdAt",
             "controlType": "DATETIME",
             "sourceTable": null,
@@ -871,7 +1001,11 @@
             "fieldName": "최종 수정 일시",
             "fieldGroup": "공통",
             "fieldOrder": 100,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "updatedAt",
             "controlType": "DATETIME",
             "sourceTable": null,
@@ -915,7 +1049,12 @@
             "fieldName": "LCA 프로젝트",
             "fieldGroup": "LCA",
             "fieldOrder": 200,
-            "validation": {},
+            "validation": {
+              "type": "code",
+              "nullable": false,
+              "required": true,
+              "allowUnknown": false
+            },
             "apiProperty": "lcaProjectId",
             "controlType": "PROJECT_SELECT",
             "sourceTable": null,
@@ -936,7 +1075,14 @@
             "fieldName": "제품",
             "fieldGroup": "LCA",
             "fieldOrder": 210,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "productId",
             "controlType": "PRODUCT_SELECT",
             "sourceTable": null,
@@ -957,7 +1103,14 @@
             "fieldName": "공정",
             "fieldGroup": "LCA",
             "fieldOrder": 220,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "processId",
             "controlType": "PROCESS_SELECT",
             "sourceTable": null,
@@ -978,7 +1131,14 @@
             "fieldName": "흐름 구분",
             "fieldGroup": "LCA",
             "fieldOrder": 230,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "flowType",
             "controlType": "FLOW_TYPE_SELECT",
             "sourceTable": null,
@@ -999,7 +1159,14 @@
             "fieldName": "물질",
             "fieldGroup": "LCA",
             "fieldOrder": 240,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "substanceId",
             "controlType": "SUBSTANCE_SEARCH",
             "sourceTable": null,
@@ -1020,7 +1187,12 @@
             "fieldName": "수량",
             "fieldGroup": "LCA",
             "fieldOrder": 250,
-            "validation": {},
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": false,
+              "required": true
+            },
             "apiProperty": "quantity",
             "controlType": "NUMBER",
             "sourceTable": null,
@@ -1041,7 +1213,14 @@
             "fieldName": "단위",
             "fieldGroup": "LCA",
             "fieldOrder": 260,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "unitCode",
             "controlType": "UNIT_SELECT",
             "sourceTable": null,
@@ -1062,7 +1241,12 @@
             "fieldName": "할당 비율",
             "fieldGroup": "LCA",
             "fieldOrder": 270,
-            "validation": {},
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "allocationRatio",
             "controlType": "PERCENT",
             "sourceTable": null,
@@ -1083,7 +1267,14 @@
             "fieldName": "영향범주",
             "fieldGroup": "LCA",
             "fieldOrder": 280,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "impactCategory",
             "controlType": "IMPACT_SELECT",
             "sourceTable": null,
@@ -1104,7 +1295,12 @@
             "fieldName": "영향평가 결과",
             "fieldGroup": "LCA",
             "fieldOrder": 290,
-            "validation": {},
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "impactResult",
             "controlType": "CALCULATED_NUMBER",
             "sourceTable": null,
@@ -1125,7 +1321,14 @@
             "fieldName": "업무 메모",
             "fieldGroup": "업무 처리",
             "fieldOrder": 400,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "taskComment",
             "controlType": "TEXTAREA",
             "sourceTable": null,
@@ -1146,7 +1349,11 @@
             "fieldName": "마감 일시",
             "fieldGroup": "업무 처리",
             "fieldOrder": 410,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "dueAt",
             "controlType": "DATETIME",
             "sourceTable": null,
@@ -1167,7 +1374,14 @@
             "fieldName": "다음 담당 액터",
             "fieldGroup": "업무 처리",
             "fieldOrder": 420,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "nextActorCode",
             "controlType": "ACTOR_VIEW",
             "sourceTable": null,
@@ -1716,12 +1930,14 @@
       }
     ],
     "transactional": true,
-    "schemaSetVersion": 1,
+    "schemaSetVersion": 2,
     "migrationRequired": true,
     "primaryEntities": [
       "lca_process_inventory"
     ],
-    "historyRequired": true
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
   },
   "tests": [
     {
@@ -1969,8 +2185,8 @@
       "errorSummary": true
     }
   },
-  "sourceHash": "d81a3192766a6a6b42a73dbc6211bafc",
+  "sourceHash": "c8848aabdc21cb70f985a17b036ca4a673d2a17b6669550935ec2642ce17dff6",
   "approvalStatus": "APPROVED",
   "generationStatus": "GENERATED",
-  "packageHash": "50ff9356f675a6d5c9d74a7b8e3382042660664302235b2b465aedefc1959933"
+  "packageHash": "a6fecea2d840eae3ab61e16df3b5da0972ba2d24cc6c6c8ef1eb4e2b6dc6a6db"
 }

@@ -1,0 +1,461 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 3348,
+  "blueprintCode": "BP_AUTO_302BFC695298494D97BEE562",
+  "identity": {
+    "processCode": "FACILITY_OPERATION_MONITORING",
+    "stepCode": "FOM_PLAN",
+    "actorCode": "FACILITY_OPERATOR",
+    "audience": "USER",
+    "pageId": "AUTO_302BFC695298494D97BE"
+  },
+  "route": "/ccus/facility/facility-operation-monitoring",
+  "pageName": "운전계획·허용범위 설정 사용자 업무 화면",
+  "screenType": "DASHBOARD",
+  "templateCode": "KRDS_DASHBOARD",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "kpis": [
+      "진행률",
+      "기한",
+      "이상·차단",
+      "증빙 완결성"
+    ],
+    "errors": [
+      {
+        "code": "FORBIDDEN",
+        "recovery": "권한·업무분리 확인"
+      },
+      {
+        "code": "CONFLICT",
+        "recovery": "최신 버전 재조회"
+      },
+      {
+        "code": "DEPENDENCY_FAILURE",
+        "recovery": "멱등키로 안전 재시도"
+      }
+    ],
+    "fields": [
+      {
+        "route": "/ccus/facility/facility-operation-monitoring?step=fom_plan",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "FACILITY_OPERATION_MONITORING_FOM_PLAN_USER",
+        "required": true,
+        "fieldCode": "projectId",
+        "fieldName": "프로젝트",
+        "fieldGroup": "컨텍스트",
+        "fieldOrder": 10,
+        "validation": {
+          "type": "code",
+          "nullable": false,
+          "required": true,
+          "allowUnknown": false
+        },
+        "apiProperty": "projectId",
+        "controlType": "PROJECT_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/facility-operation-monitoring?step=fom_plan",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "FACILITY_OPERATION_MONITORING_FOM_PLAN_USER",
+        "required": true,
+        "fieldCode": "facilityId",
+        "fieldName": "설비 ID",
+        "fieldGroup": "설비",
+        "fieldOrder": 20,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "facilityId",
+        "controlType": "FACILITY_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/facility-operation-monitoring?step=fom_plan",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "FACILITY_OPERATION_MONITORING_FOM_PLAN_USER",
+        "required": true,
+        "fieldCode": "assetTag",
+        "fieldName": "설비 태그",
+        "fieldGroup": "설비",
+        "fieldOrder": 30,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "assetTag",
+        "controlType": "TEXT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/facility-operation-monitoring?step=fom_plan",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "FACILITY_OPERATION_MONITORING_FOM_PLAN_USER",
+        "required": true,
+        "fieldCode": "siteCode",
+        "fieldName": "사업장·저장소",
+        "fieldGroup": "설비",
+        "fieldOrder": 40,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "siteCode",
+        "controlType": "SITE_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/facility-operation-monitoring?step=fom_plan",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "FACILITY_OPERATION_MONITORING_FOM_PLAN_USER",
+        "required": true,
+        "fieldCode": "statusCode",
+        "fieldName": "업무 상태",
+        "fieldGroup": "운영",
+        "fieldOrder": 50,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "statusCode",
+        "controlType": "STATUS_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/facility-operation-monitoring?step=fom_plan",
+        "audience": "USER",
+        "dataType": "DATETIME",
+        "editable": true,
+        "pageCode": "FACILITY_OPERATION_MONITORING_FOM_PLAN_USER",
+        "required": true,
+        "fieldCode": "effectiveAt",
+        "fieldName": "발생·적용 일시",
+        "fieldGroup": "운영",
+        "fieldOrder": 60,
+        "validation": {
+          "type": "date-time",
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "effectiveAt",
+        "controlType": "DATETIME",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/facility-operation-monitoring?step=fom_plan",
+        "audience": "USER",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "pageCode": "FACILITY_OPERATION_MONITORING_FOM_PLAN_USER",
+        "required": true,
+        "fieldCode": "measurementValue",
+        "fieldName": "측정·운영 값",
+        "fieldGroup": "전문값",
+        "fieldOrder": 70,
+        "validation": {
+          "numeric": true,
+          "unitRequired": true
+        },
+        "apiProperty": "measurementValue",
+        "controlType": "NUMBER_UNIT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/facility-operation-monitoring?step=fom_plan",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "FACILITY_OPERATION_MONITORING_FOM_PLAN_USER",
+        "required": true,
+        "fieldCode": "unitCode",
+        "fieldName": "단위",
+        "fieldGroup": "전문값",
+        "fieldOrder": 80,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "unitCode",
+        "controlType": "UNIT_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/facility-operation-monitoring?step=fom_plan",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "FACILITY_OPERATION_MONITORING_FOM_PLAN_USER",
+        "required": true,
+        "fieldCode": "riskLevel",
+        "fieldName": "위험 등급",
+        "fieldGroup": "위험·검토",
+        "fieldOrder": 90,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "riskLevel",
+        "controlType": "RISK_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/ccus/facility/facility-operation-monitoring?step=fom_plan",
+        "audience": "USER",
+        "dataType": "ARRAY",
+        "editable": true,
+        "pageCode": "FACILITY_OPERATION_MONITORING_FOM_PLAN_USER",
+        "required": true,
+        "fieldCode": "evidenceIds",
+        "fieldName": "원본 증빙",
+        "fieldGroup": "증빙",
+        "fieldOrder": 100,
+        "validation": {
+          "minItems": 1,
+          "hashRequired": true
+        },
+        "apiProperty": "evidenceIds",
+        "controlType": "FILE_UPLOAD",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/ccus/facility/facility-operation-monitoring?step=fom_plan",
+        "audience": "USER",
+        "dataType": "TEXT",
+        "editable": true,
+        "pageCode": "FACILITY_OPERATION_MONITORING_FOM_PLAN_USER",
+        "required": false,
+        "fieldCode": "approvalComment",
+        "fieldName": "검토·승인 의견",
+        "fieldGroup": "승인",
+        "fieldOrder": 110,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "approvalComment",
+        "controlType": "TEXTAREA",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/ccus/facility/facility-operation-monitoring?step=fom_plan",
+        "audience": "USER",
+        "dataType": "INTEGER",
+        "editable": true,
+        "pageCode": "FACILITY_OPERATION_MONITORING_FOM_PLAN_USER",
+        "required": true,
+        "fieldCode": "rowVersion",
+        "fieldName": "데이터 버전",
+        "fieldGroup": "무결성",
+        "fieldOrder": 120,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "rowVersion",
+        "controlType": "VERSION",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "FACILITY_OPERATOR:USER",
+        "evidenceRequired": false
+      }
+    ],
+    "states": [
+      "LOADING",
+      "EMPTY",
+      "ERROR",
+      "FORBIDDEN",
+      "READY",
+      "BLOCKED",
+      "CONFLICT"
+    ],
+    "actions": [
+      "PLAN_OPERATION",
+      "SAVE_DRAFT",
+      "REQUEST_CORRECTION"
+    ],
+    "sections": [
+      "업무요약",
+      "검색·필터",
+      "전문 데이터",
+      "증빙·이력",
+      "명령·다음업무"
+    ],
+    "extensions": {
+      "contractId": 310,
+      "sharedRuntime": true
+    },
+    "responsive": {
+      "mobile": "single-column-actions-bottom",
+      "tablet": "adaptive-grid",
+      "desktop": "list-detail-workspace"
+    },
+    "permissions": [
+      {
+        "code": "FACILITY_OPERATOR",
+        "scope": "TENANT_PROJECT",
+        "segregationOfDuties": true,
+        "serverAuthorization": true
+      }
+    ],
+    "validations": [
+      {
+        "code": "ENTRY_AND_REQUIRED_FIELDS",
+        "type": "CONTRACT"
+      },
+      {
+        "code": "STATE_AND_VERSION",
+        "type": "CONCURRENCY"
+      }
+    ],
+    "apiContracts": [
+      "/api/ccus/facility/facility-operation-monitoring/fom_plan"
+    ],
+    "designSystem": "KRDS_GOV",
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG_2_1_AA",
+      "nonColorStatus": true,
+      "focusManagement": true
+    },
+    "dataContracts": [
+      "tenantId",
+      "projectId",
+      "facilityId",
+      "recordId",
+      "statusCode",
+      "rowVersion",
+      "evidenceHash"
+    ],
+    "schemaVersion": "2.0.0",
+    "completionRule": "다음 완료 기준을 검증한다: 승인 운전창과 알람 기준이 확정됨. 결과·버전·감사 증적을 저장한 뒤 PLANNED 상태로 원자적으로 전이한다.",
+    "exitConditions": [
+      "다음 완료 기준을 검증한다: 승인 운전창과 알람 기준이 확정됨. 결과·버전·감사 증적을 저장한 뒤 PLANNED 상태로 원자적으로 전이한다."
+    ],
+    "businessPurpose": "처리량·압력·온도·에너지 목표와 허용범위를 설정한다.",
+    "entryConditions": [
+      "다음 프로세스 시작 조건을 충족한다: 운영 가능한 설비와 유효한 계측기가 등록되어 있다. 현재 상태는 READY이며 서버가 테넌트·프로젝트·액터 권한을 확인한 경우에만 진입한다."
+    ],
+    "actorResponsibilities": [
+      "FACILITY_OPERATOR 액터가 권한·업무분리 정책에 따라 운전계획·허용범위 설정 사용자 업무 화면 업무를 수행한다."
+    ]
+  },
+  "traceability": {
+    "contractId": 310,
+    "requirementIds": [
+      "FACILITY_OPERATION_MONITORING:FOM_PLAN:USER"
+    ],
+    "generationBatchId": 183,
+    "designReadinessScore": 100,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "3e7fedcde621a256162d8cec9fe70ee903c08d418a6b99b3f43c34dc04bbcb80",
+  "artifactHash": "b27db14514a38aa156b9a9b8d75c6d200f511bc3167f2ae5bb8120a3f1fb62ec"
+}

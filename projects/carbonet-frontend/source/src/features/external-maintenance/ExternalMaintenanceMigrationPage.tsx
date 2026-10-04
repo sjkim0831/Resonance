@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -223,21 +224,11 @@ export function ExternalMaintenanceMigrationPage() {
           description={en ? "Narrow the maintenance queue before coordinating fallback routing, partner notice, or recovery proof." : "대체 경로, 파트너 공지, 복구 증적을 조정하기 전에 점검 대상을 좁힙니다."}
           icon="build"
         >
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4 xl:w-[68rem]">
-            <div>
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalMaintenanceKeyword">{en ? "Keyword" : "검색어"}</label>
               <AdminInput id="externalMaintenanceKeyword" placeholder={en ? "Connection, partner, owner" : "연계명, 기관명, 담당자"} value={keyword} onChange={(event) => setKeyword(event.target.value)} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-bold" htmlFor="externalMaintenanceMode">{en ? "Sync Mode" : "동기화 방식"}</label>
-              <AdminSelect id="externalMaintenanceMode" value={syncMode} onChange={(event) => setSyncMode(event.target.value)}>
-                <option value="ALL">{en ? "All" : "전체"}</option>
-                <option value="SCHEDULED">{en ? "Scheduled" : "스케줄 수집"}</option>
-                <option value="HYBRID">{en ? "Hybrid" : "혼합형"}</option>
-                <option value="WEBHOOK">{en ? "Webhook" : "웹훅"}</option>
-              </AdminSelect>
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalMaintenanceStatus">{en ? "Status" : "점검 상태"}</label>
               <AdminSelect id="externalMaintenanceStatus" value={status} onChange={(event) => setStatus(event.target.value)}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -245,13 +236,17 @@ export function ExternalMaintenanceMigrationPage() {
                 <option value="DUE_SOON">DUE_SOON</option>
                 <option value="BLOCKED">BLOCKED</option>
               </AdminSelect>
-            </div>
-            <div className="flex items-end">
-              <button className="gov-btn gov-btn-outline w-full" onClick={() => { setKeyword(""); setSyncMode("ALL"); setStatus("ALL"); }} type="button">
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
+              <label className="mb-1 block text-sm font-bold" htmlFor="externalMaintenanceMode">{en ? "Sync Mode" : "동기화 방식"}</label>
+              <AdminSelect id="externalMaintenanceMode" value={syncMode} onChange={(event) => setSyncMode(event.target.value)}>
+                <option value="ALL">{en ? "All" : "전체"}</option>
+                <option value="SCHEDULED">{en ? "Scheduled" : "스케줄 수집"}</option>
+                <option value="HYBRID">{en ? "Hybrid" : "혼합형"}</option>
+                <option value="WEBHOOK">{en ? "Webhook" : "웹훅"}</option>
+              </AdminSelect>
+            </div></div></>} actions={<><button className="gov-btn gov-btn-outline w-full" onClick={() => { setKeyword(""); setSyncMode("ALL"); setStatus("ALL"); }} type="button">
                 {en ? "Reset Filters" : "검색 조건 초기화"}
-              </button>
-            </div>
-          </div>
+              </button></>}></CommonSearchSection></div>
         </CollectionResultPanel>
 
         <section className="gov-card overflow-hidden p-0" data-help-id="external-maintenance-inventory">

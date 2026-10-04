@@ -1,0 +1,302 @@
+[
+  {
+    "id": "E023",
+    "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E023.usda",
+    "sha256": "29c6b0d705a7d284e5f215b08cda8823a960151ec87a1458408e4f2e8806abdc",
+    "baseSha256": "951d71bff05c31af7b5f8a417cca86573ebd9ec75ea585d966830522e252a17b",
+    "dimensions": [
+      20.0,
+      0.11999999731779099,
+      12.0
+    ],
+    "boundsMin": [
+      -10.0,
+      0.0,
+      -6.0
+    ],
+    "checks": {
+      "composition": true,
+      "unit": true,
+      "upAxis": true,
+      "dimension": true,
+      "floorOrigin": true,
+      "kindStructure": true,
+      "ports": true,
+      "sensorControlHierarchy": true,
+      "orientation": true
+    },
+    "basis": "P006-REFERENCE-FACTORY-1.0",
+    "dimensionScope": "PROJECT_REFERENCE_NOT_AS_BUILT",
+    "visualReview": false
+  },
+  {
+    "id": "E024",
+    "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E024.usda",
+    "sha256": "fbae75250409205378c14c47b4886f4f6ca2aa705b595954dd62095a5996ef26",
+    "baseSha256": "3c99005446b49624411d0441de15addb83dc738b9c29e4acbb54f545ec27183b",
+    "dimensions": [
+      20.0,
+      2.4000000953674316,
+      0.11999999731779099
+    ],
+    "boundsMin": [
+      -10.0,
+      0.0,
+      -0.05999999865889549
+    ],
+    "checks": {
+      "composition": true,
+      "unit": true,
+      "upAxis": true,
+      "dimension": true,
+      "floorOrigin": true,
+      "kindStructure": true,
+      "ports": true,
+      "sensorControlHierarchy": true,
+      "orientation": true
+    },
+    "basis": "P006-REFERENCE-FACTORY-1.0",
+    "dimensionScope": "PROJECT_REFERENCE_NOT_AS_BUILT",
+    "visualReview": false
+  },
+  {
+    "id": "E025",
+    "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E025.usda",
+    "sha256": "3d265128fcafbb1042bb57f31d4871fc27dae56741cf7a36ef323698d3504b10",
+    "baseSha256": "3c99005446b49624411d0441de15addb83dc738b9c29e4acbb54f545ec27183b",
+    "dimensions": [
+      1.399999976158142,
+      2.200000047683716,
+      0.11999999731779099
+    ],
+    "boundsMin": [
+      -0.699999988079071,
+      0.0,
+      -0.05999999865889549
+    ],
+    "checks": {
+      "composition": true,
+      "unit": true,
+      "upAxis": true,
+      "dimension": true,
+      "floorOrigin": true,
+      "kindStructure": true,
+      "ports": true,
+      "sensorControlHierarchy": true,
+      "orientation": true
+    },
+    "basis": "P006-REFERENCE-FACTORY-1.0",
+    "dimensionScope": "PROJECT_REFERENCE_NOT_AS_BUILT",
+    "visualReview": false
+  },
+  {
+    "id": "E030",
+    "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E030.usda",
+    "sha256": "0dae17538dd1c8190223ae78267af9bc4e4c562c6cba91012b6c97d62df84bd6",
+    "baseSha256": "951d71bff05c31af7b5f8a417cca86573ebd9ec75ea585d966830522e252a17b",
+    "dimensions": [
+      16.0,
+      0.004000000189989805,
+      1.5
+    ],
+    "boundsMin": [
+      -8.0,
+      0.0,
+      -0.75
+    ],
+    "checks": {
+      "composition": true,
+      "unit": true,
+      "upAxis": true,
+      "dimension": true,
+      "floorOrigin": true,
+      "kindStructure": true,
+      "ports": true,
+      "sensorControlHierarchy": true,
+      "orientation": true
+    },
+    "basis": "P006-REFERENCE-FACTORY-1.0",
+    "dimensionScope": "PROJECT_REFERENCE_NOT_AS_BUILT",
+    "visualReview": false
+  },
+  {
+    "id": "E031",
+    "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E031.usda",
+    "sha256": "affc271cc688667745bccadd912a399b7fb62f35021db4ae5878211a52e3a281",
+    "baseSha256": "3c99005446b49624411d0441de15addb83dc738b9c29e4acbb54f545ec27183b",
+    "dimensions": [
+      2.0,
+      1.7999999523162837,
+      0.07999999821186066
+    ],
+    "boundsMin": [
+      -1.0,
+      0.0,
+      -0.03999999910593033
+    ],
+    "checks": {
+      "composition": true,
+      "unit": true,
+      "upAxis": true,
+      "dimension": true,
+      "floorOrigin": true,
+      "kindStructure": true,
+      "ports": true,
+      "sensorControlHierarchy": true,
+      "orientation": true
+    },
+    "basis": "P006-REFERENCE-FACTORY-1.0",
+    "dimensionScope": "PROJECT_REFERENCE_NOT_AS_BUILT",
+    "visualReview": false
+  },
+  {
+    "id": "E032",
+    "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E032.usda",
+    "sha256": "3fa662f7a32334c7f5aaae463f0684a962c42b854815a167b13e26e90f2c2706",
+    "baseSha256": "967d96d2b2db9d92d5532c6aaeacf49f80b6f3a2f61574f4a60eb7175f5e293f",
+    "dimensions": [
+      1.2000000476837154,
+      0.8000000191926957,
+      0.75
+    ],
+    "boundsMin": [
+      -0.6000000238418577,
+      -7.62939467158219e-09,
+      -0.375
+    ],
+    "checks": {
+      "composition": true,
+      "unit": true,
+      "upAxis": true,
+      "dimension": true,
+      "floorOrigin": true,
+      "kindStructure": true,
+      "ports": true,
+      "sensorControlHierarchy": true,
+      "orientation": true
+    },
+    "basis": "P006-REFERENCE-FACTORY-1.0",
+    "dimensionScope": "PROJECT_REFERENCE_NOT_AS_BUILT",
+    "visualReview": false
+  },
+  {
+    "id": "E033",
+    "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E033.usda",
+    "sha256": "6e51ca69c58b0dfef6400e8b7f8f2af49a0c46470e822a2001f992297e0fb1e6",
+    "baseSha256": "967d96d2b2db9d92d5532c6aaeacf49f80b6f3a2f61574f4a60eb7175f5e293f",
+    "dimensions": [
+      1.2000000476837158,
+      1.7999999686777581,
+      0.6000000238418579
+    ],
+    "boundsMin": [
+      -0.6000000238418579,
+      -1.7166137289414956e-08,
+      -0.30000001192092896
+    ],
+    "checks": {
+      "composition": true,
+      "unit": true,
+      "upAxis": true,
+      "dimension": true,
+      "floorOrigin": true,
+      "kindStructure": true,
+      "ports": true,
+      "sensorControlHierarchy": true,
+      "orientation": true
+    },
+    "basis": "P006-REFERENCE-FACTORY-1.0",
+    "dimensionScope": "PROJECT_REFERENCE_NOT_AS_BUILT",
+    "visualReview": false
+  },
+  {
+    "id": "E034",
+    "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E034.usda",
+    "sha256": "a87d88598fafc25ab11c1a4287aa2e7bb97347e3d2f0e2c1f863be9888c727b4",
+    "baseSha256": "c987c5a7e72d166a69efca90e1bec19e2b561543e2264d62a555a600a3259674",
+    "dimensions": [
+      3.0480000972747794,
+      0.8000000201463701,
+      0.7099999775901434
+    ],
+    "boundsMin": [
+      -1.5240000486373897,
+      -7.62939467158219e-09,
+      -0.3549999887950717
+    ],
+    "checks": {
+      "composition": true,
+      "unit": true,
+      "upAxis": true,
+      "dimension": true,
+      "floorOrigin": true,
+      "kindStructure": true,
+      "ports": true,
+      "sensorControlHierarchy": true,
+      "orientation": true
+    },
+    "basis": "P006-REFERENCE-FACTORY-1.0",
+    "dimensionScope": "PROJECT_REFERENCE_NOT_AS_BUILT",
+    "visualReview": false
+  },
+  {
+    "id": "E053",
+    "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E053.usda",
+    "sha256": "edb44dafc5e144ca18ca4bf8df9d03d814f31da20eda998caaa469a111e55111",
+    "baseSha256": "967d96d2b2db9d92d5532c6aaeacf49f80b6f3a2f61574f4a60eb7175f5e293f",
+    "dimensions": [
+      1.2000000476837154,
+      0.8000000191926957,
+      0.75
+    ],
+    "boundsMin": [
+      -0.6000000238418577,
+      -7.62939467158219e-09,
+      -0.375
+    ],
+    "checks": {
+      "composition": true,
+      "unit": true,
+      "upAxis": true,
+      "dimension": true,
+      "floorOrigin": true,
+      "kindStructure": true,
+      "ports": true,
+      "sensorControlHierarchy": true,
+      "orientation": true
+    },
+    "basis": "P006-REFERENCE-FACTORY-1.0",
+    "dimensionScope": "PROJECT_REFERENCE_NOT_AS_BUILT",
+    "visualReview": false
+  },
+  {
+    "id": "E075",
+    "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E075.usda",
+    "sha256": "a4a0425fb253ff766c7d1e70a5d2d010f815378f23ed329fad63866579a42081",
+    "baseSha256": "982397814d9a976a353dd235f61ae1e4936c267b9d90265a20bdaf450821e970",
+    "dimensions": [
+      0.8000000125169754,
+      0.6999999883398413,
+      0.6000000242888928
+    ],
+    "boundsMin": [
+      -0.4000000062584877,
+      -2.607703150636631e-10,
+      -0.3000000121444464
+    ],
+    "checks": {
+      "composition": true,
+      "unit": true,
+      "upAxis": true,
+      "dimension": true,
+      "floorOrigin": true,
+      "kindStructure": true,
+      "ports": true,
+      "sensorControlHierarchy": true,
+      "orientation": true
+    },
+    "basis": "P006-REFERENCE-FACTORY-1.0",
+    "dimensionScope": "PROJECT_REFERENCE_NOT_AS_BUILT",
+    "visualReview": false
+  }
+]

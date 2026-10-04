@@ -1,0 +1,12 @@
+ M ops/scripts/auto-deploy-main.sh
+ M ops/scripts/carbonet-auto-deploy-failure-handler.sh
+ M ops/scripts/deploy-carbonet-kubeadm-k8s.sh
+ M ops/scripts/plan-incremental-work.sh
+ M ops/scripts/resonance-k8s-build-deploy-80-v2.sh
+ M ops/scripts/test-no-change-preflight-fast-path.sh
+ M ops/scripts/test-plan-incremental-work.sh
+?? ops/k8s/carbonet-runtime-resources.json
+?? ops/scripts/reconcile-runtime-resource-contract.sh
+?? ops/scripts/runtime-resource-authority-state.mjs
+?? ops/scripts/test-runtime-resource-authority-state.mjs
+?? ops/scripts/test-runtime-resource-contract.sh

@@ -1,0 +1,291 @@
+{
+  "tests": [
+    {
+      "name": "724_ASSET_CARDS",
+      "pass": true
+    },
+    {
+      "name": "58_UNCONNECTED_DISABLED",
+      "pass": true
+    },
+    {
+      "name": "ASSET_SEARCH",
+      "pass": true
+    },
+    {
+      "name": "REAL_HTML_DRAG_CREATES_UUID",
+      "pass": true
+    },
+    {
+      "name": "ASSET_ENTRY_REFERENCE",
+      "pass": true
+    },
+    {
+      "name": "POINTER_MOVE_CHANGES_XZ",
+      "pass": true
+    },
+    {
+      "name": "GRID_SNAP",
+      "pass": true
+    },
+    {
+      "name": "XYZ_ROTATION_SCALE",
+      "pass": true
+    },
+    {
+      "name": "REGISTRY_INSTANCE_REFERENCE",
+      "pass": true
+    },
+    {
+      "name": "CONTEXT_MENU_RELATED",
+      "pass": true
+    },
+    {
+      "name": "RELATED_PROVENANCE_VISIBLE",
+      "pass": true
+    },
+    {
+      "name": "RELATED_INSTANCE_AND_EDGE",
+      "pass": true
+    },
+    {
+      "name": "RELATED_RULE_DATA",
+      "pass": true
+    },
+    {
+      "name": "COPY_UNIQUE_ID",
+      "pass": true
+    },
+    {
+      "name": "COPY_NO_REAL_EQUIPMENT_DUPLICATION",
+      "pass": true
+    },
+    {
+      "name": "X_DELETE",
+      "pass": true
+    },
+    {
+      "name": "UNDO_DELETE",
+      "pass": true
+    },
+    {
+      "name": "REDO_DELETE",
+      "pass": true
+    },
+    {
+      "name": "MULTISELECT",
+      "pass": true
+    },
+    {
+      "name": "MANUAL_TYPED_RELATION",
+      "pass": true
+    },
+    {
+      "name": "ALIGN_Z",
+      "pass": true
+    },
+    {
+      "name": "12_BUILDING_PARAMETRIC",
+      "pass": true
+    },
+    {
+      "name": "FLOOR_DROP",
+      "pass": true
+    },
+    {
+      "name": "FLOOR_WALL_PARAMS",
+      "pass": true
+    },
+    {
+      "name": "DB_SAVE_VERSION",
+      "pass": true
+    },
+    {
+      "name": "API_DB_EQUALS_CANVAS",
+      "pass": true
+    },
+    {
+      "name": "REFRESH_FULL_RESTORE",
+      "pass": true
+    },
+    {
+      "name": "RESTORED_UI_INSTANCES",
+      "pass": true
+    },
+    {
+      "name": "RESTORED_LINES",
+      "pass": true
+    },
+    {
+      "name": "REGISTRY_62_CARDS",
+      "pass": true
+    },
+    {
+      "name": "REGISTRY_26_STILL_BLOCKED",
+      "pass": true
+    },
+    {
+      "name": "PROCESS_FILTER",
+      "pass": true
+    },
+    {
+      "name": "LIVE_VERSION_CONFLICT",
+      "pass": true
+    },
+    {
+      "name": "CONFLICT_PRESERVES_DB",
+      "pass": true
+    },
+    {
+      "name": "MOBILE_BODY_NO_OVERFLOW",
+      "pass": true
+    },
+    {
+      "name": "NO_JS_ERRORS",
+      "pass": true
+    }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "action": "자산 검색 → 미니 썸네일 실제 마우스 Drag",
+      "input": "E001",
+      "output": {
+        "instanceId": "cc15dc2a-9c42-4487-8c41-7f4db8e7ca2c",
+        "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E001.usda"
+      }
+    },
+    {
+      "step": 2,
+      "action": "이동 / XYZ·회전Snap·Scale / 원장 참조",
+      "output": {
+        "id": "cc15dc2a-9c42-4487-8c41-7f4db8e7ca2c",
+        "assetId": "E001",
+        "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E001.usda",
+        "templateId": null,
+        "equipmentId": null,
+        "intakeId": "CHECKLIST-Sheet1-B012",
+        "label": "트리밍 장비",
+        "position": [
+          -4,
+          0.5,
+          0
+        ],
+        "rotation": [
+          0,
+          90,
+          0
+        ],
+        "scale": [
+          1.2,
+          1,
+          1
+        ],
+        "parameters": {}
+      }
+    },
+    {
+      "step": 3,
+      "action": "우클릭 → 연관 자산 추가",
+      "output": {
+        "id": "d37f504e-c588-4908-bbb0-a6867285e5f4",
+        "from": "cc15dc2a-9c42-4487-8c41-7f4db8e7ca2c",
+        "to": "f70bf11a-287d-4ae1-b3b8-899dcecbefa7",
+        "type": "OPTIONAL_WITH",
+        "source": {
+          "method": "CATALOG_RELATION_SUGGESTION",
+          "ruleId": "64593fabc358c4b58ab54298",
+          "note": "사용자 선택 · 포트/기능 미검증"
+        }
+      }
+    },
+    {
+      "step": 4,
+      "action": "Building 바닥/벽 Drag → 파라미터 수정",
+      "output": [
+        {
+          "id": "97f4f6c4-6778-435c-9596-e32a9b830821",
+          "assetId": "E023",
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E023.usda",
+          "templateId": "floor",
+          "equipmentId": null,
+          "intakeId": null,
+          "label": "바닥",
+          "position": [
+            0,
+            -0.15,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "parameters": {
+            "width": 26,
+            "length": 18,
+            "height": 0.15
+          }
+        },
+        {
+          "id": "20f425c7-5023-456d-b617-c629236458d0",
+          "assetId": "E024",
+          "entryUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E024.usda",
+          "templateId": "wall",
+          "equipmentId": null,
+          "intakeId": null,
+          "label": "벽",
+          "position": [
+            0,
+            0,
+            -8
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "parameters": {
+            "width": 26,
+            "length": 0.2,
+            "height": 3.2
+          }
+        }
+      ]
+    },
+    {
+      "step": 5,
+      "action": "DB 저장 및 독립 API 재조회",
+      "output": {
+        "id": "b327100a-6ad1-4011-9d8d-1a4c973e65eb",
+        "version": 1,
+        "instances": 4,
+        "relationships": 2
+      }
+    },
+    {
+      "step": 6,
+      "action": "새로고침 → 완전 복원",
+      "output": "Asset/Entry/Position/Rotation/Scale/Parameters/Registry/Relationship/settings all equal"
+    }
+  ],
+  "mocked": false,
+  "actor": "Existing P006 PROJECT_ADMIN",
+  "equipmentAssetWrites": 0,
+  "layoutWrites": 1,
+  "layoutId": "b327100a-6ad1-4011-9d8d-1a4c973e65eb",
+  "layoutName": "QA Factory Composer E2E 2026-09-10T10:52:36.349Z",
+  "url": "http://172.16.1.232/projects/P006/assets/equipment-registry/composer.html?layout=b327100a-6ad1-4011-9d8d-1a4c973e65eb",
+  "seconds": 6.283,
+  "passed": 36
+}

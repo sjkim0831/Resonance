@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BACKUP_DIR="${CARBONET_DB_BACKUP_DIR:-/opt/resonance-backups/postgresql/pre-deploy}"
+BACKUP_DIR="${CARBONET_DB_BACKUP_DIR:-/opt/Resonance/backups/postgresql/pre-deploy}"
 KEEP_RECENT_HOURS="${CARBONET_BACKUP_KEEP_RECENT_HOURS:-24}"
 KEEP_DAILY_DAYS="${CARBONET_BACKUP_KEEP_DAILY_DAYS:-7}"
 DRY_RUN="${CARBONET_BACKUP_PRUNE_DRY_RUN:-false}"
 
 resolved_dir="$(readlink -f "$BACKUP_DIR" 2>/dev/null || true)"
-if [[ -z "$resolved_dir" || "$resolved_dir" == / || "$resolved_dir" != /opt/resonance-backups/postgresql/pre-deploy ]]; then
+if [[ -z "$resolved_dir" || "$resolved_dir" == / || "$resolved_dir" != /opt/Resonance/backups/postgresql/pre-deploy ]]; then
   echo "[backup-retention] refusing unsafe backup directory: $BACKUP_DIR" >&2
   exit 1
 fi

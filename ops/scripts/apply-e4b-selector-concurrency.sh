@@ -10,7 +10,7 @@ backup="$(mktemp)"
 had_target=false
 
 [[ -f "$source_dropin" ]]
-binary="/opt/util/ai/vLLM/llama.cpp-tq3/build/bin/llama-server"
+binary="/opt/Resonance/runtime/tools/ai/vLLM/llama.cpp-tq3/build/bin/llama-server"
 binary_help="$("$binary" --help 2>&1 || true)"
 grep -q -- '--api-key-file' <<<"$binary_help"
 [[ -s /etc/resonance/secrets/e4b-api-key ]]

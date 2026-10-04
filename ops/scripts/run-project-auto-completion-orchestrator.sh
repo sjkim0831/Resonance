@@ -1117,7 +1117,7 @@ if (( design_document_rc == 0 )) && [[ "$completed" -gt 0 ]]; then
   member_package_rc=$?
   set -e
   if (( member_package_rc == 0 )); then
-    member_package_latest="$(readlink -f /opt/resonance-data/backups/member-process-design-recovery-auto/latest)"
+    member_package_latest="$(readlink -f /opt/Resonance/runtime/platform-data/backups/member-process-design-recovery-auto/latest)"
     member_package_result="$(jq -cn --arg status READY --arg output "$member_package_latest/package.zip" --arg summary "$member_package_output" '{status:$status,output:$output,summary:$summary}')"
   else
     design_document_rc=1

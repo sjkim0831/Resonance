@@ -1,0 +1,15 @@
+{
+  "schema": "P006_DISPLAY_LOD_PILOT_V1",
+  "assetId": "E001",
+  "scope": "rendering only",
+  "sourceGeometrySha256": "4f450810d8b0ad638f5005175f895337abf7302ec360329abb57deac3d888024",
+  "manufacturerVerified": false,
+  "animationPreservation": "UNVERIFIED_NO_EMBEDDED_CLIP",
+  "anchorCollisionGeometry": "ORIGINAL_UNCHANGED",
+  "levels": [
+    {"level":"ORIGINAL","path":"/projects/P006/assets/3d-derived/E001.glb","bytes":5639388,"triangles":6587,"vertices":8932,"meshes":6,"materials":2,"textures":6,"nodes":16,"sha256":"4f450810d8b0ad638f5005175f895337abf7302ec360329abb57deac3d888024"},
+    {"level":"LOD1","path":"/projects/P006/assets/3d-derived/LOD/E001-lod1.glb","bytes":5586836,"triangles":5101,"vertices":7586,"meshes":6,"materials":2,"textures":6,"nodes":16,"sha256":"e7f944149511f7f4fd9cc1ccbe6f1a7b54b963eb898d664d154273b65aa31fa7","method":"gltf-transform simplify 4.5.0 --ratio 0.6 --error 0.002"},
+    {"level":"LOD2","path":"/projects/P006/assets/3d-derived/LOD/E001-lod2.glb","bytes":5563628,"triangles":4466,"vertices":6980,"meshes":6,"materials":2,"textures":6,"nodes":16,"sha256":"7ee3f81a5fb511e7ed62c769988833632883f3416d219ba10055379de204ebda","method":"gltf-transform simplify 4.5.0 --ratio 0.25 --error 0.02"}
+  ],
+  "nodeHierarchyAndTransformsPreserved": true
+}

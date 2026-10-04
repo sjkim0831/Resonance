@@ -1,0 +1,10 @@
+811303014	/root/.npm/_cacache
+CLEANED /root/.npm/_cacache
+329552	/root/.cache/pip
+CLEANED /root/.cache/pip
+8112725	/home/sjkim/.cache/pip
+CLEANED /home/sjkim/.cache/pip
+58880325	/home/sjkim/.cache/node-gyp
+CLEANED /home/sjkim/.cache/node-gyp
+12564400	/tmp/node-compile-cache
+CLEANED /tmp/node-compile-cache

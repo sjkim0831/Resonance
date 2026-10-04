@@ -1,0 +1,13 @@
+{
+  "url": "http://172.16.1.232/projects/P006/assets/blocked58/",
+  "rows": 58,
+  "stageRows": 724,
+  "detailFields": 19,
+  "filters": "PASS",
+  "mobileOverflow": false,
+  "pageErrors": [],
+  "publicFiles": "PASS",
+  "businessWrites": 0,
+  "deviceWrites": 0,
+  "durationSeconds": 1.54
+}

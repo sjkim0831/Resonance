@@ -27,25 +27,31 @@ public class TelemetryController {
     @PostMapping("/events")
     public ResponseEntity<Map<String, Object>> ingestEvents(@RequestBody(required = false) FrontendTelemetryBatchRequest request,
                                                             HttpServletRequest httpRequest) {
-        int accepted = 0;
+        var events = request == null ? null : request.getEvents();
+        if (events != null && events.size() > 100) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "reason", "batch_too_large"));
+        }
+        var result = new TraceEventService.FrontendBatchResult(0, java.util.List.of(), java.util.List.of());
         try {
-            accessEventService.recordFrontendPageViews(request == null ? null : request.getEvents(), httpRequest);
+            result = traceEventService.recordFrontendBatch(events);
         } catch (Exception ignored) {
-            // Keep frontend telemetry non-blocking even when observability persistence is degraded.
+            // Unacknowledged events are retried by the client.
         }
         try {
-            accepted = traceEventService.recordFrontendEvents(request == null ? null : request.getEvents());
+            accessEventService.recordFrontendPageViews(result.newEvents(), httpRequest);
         } catch (Exception ignored) {
-            accepted = 0;
+            // Auxiliary projections remain best-effort; trace is the canonical ledger.
         }
         try {
-            errorEventService.recordFrontendTelemetryErrors(request == null ? null : request.getEvents());
+            errorEventService.recordFrontendTelemetryErrors(result.newEvents());
         } catch (Exception ignored) {
             // Keep frontend telemetry non-blocking even when observability persistence is degraded.
         }
         Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("acceptedCount", accepted);
+        response.put("success", result.acceptedCount() == (events == null ? 0 : events.size()));
+        response.put("acceptedCount", result.acceptedCount());
+        response.put("acceptedEventIds", result.acceptedEventIds());
+        response.put("newCount", result.newEvents().size());
         return ResponseEntity.ok(response);
     }
 }

@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -158,13 +159,12 @@ export function BoardListMigrationPage() {
             title={en ? "Filters" : "조회 조건"}
           />
           <form
-            className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-4"
+            className="ccus-search-host"
             onSubmit={(event) => {
               event.preventDefault();
               setFilters(draft);
             }}
-          >
-            <div className="md:col-span-2">
+          ><CommonSearchSection basic={<><div className="ccus-search-field"><div className="md:col-span-2">
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="board-search">
                 {en ? "Keyword" : "검색어"}
               </label>
@@ -174,8 +174,8 @@ export function BoardListMigrationPage() {
                 value={draft.searchKeyword}
                 onChange={(event) => setDraft({ ...draft, searchKeyword: event.target.value })}
               />
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="board-type">
                 {en ? "Board Type" : "게시 유형"}
               </label>
@@ -188,10 +188,7 @@ export function BoardListMigrationPage() {
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </AdminSelect>
-            </div>
-            <div className="flex items-end justify-end">
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <MemberButton
+            </div></div></>} actions={<><MemberButton
                   type="button"
                   variant="secondary"
                   onClick={() => {
@@ -203,12 +200,9 @@ export function BoardListMigrationPage() {
                 >
                   {en ? "Reset" : "초기화"}
                 </MemberButton>
-                <MemberButton type="submit" variant="primary" icon="search">
+<MemberButton type="submit" variant="primary" icon="search">
                   {en ? "Search" : "검색"}
-                </MemberButton>
-              </div>
-            </div>
-          </form>
+                </MemberButton></>}></CommonSearchSection></form>
         </section>
 
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,1fr)]">

@@ -1,0 +1,519 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 3827,
+  "blueprintCode": "BP_AUTO_E1A4408BE0B9A589148F8A54",
+  "identity": {
+    "processCode": "CERTIFICATION_ELIGIBILITY_CHECK",
+    "stepCode": "CEC_VALIDATE_COMPANY",
+    "actorCode": "CERTIFICATE_OFFICER",
+    "audience": "USER",
+    "pageId": "AUTO_E1A4408BE0B9A589148F"
+  },
+  "route": "/work/certification-eligibility-check",
+  "pageName": "법인·회원사·신청 유효성 검증 사용자 업무 화면",
+  "screenType": "WORKFLOW",
+  "templateCode": "KRDS_WORKFLOW",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "kpis": [
+      "진행률",
+      "기한",
+      "차단건",
+      "미결 증적",
+      "후속업무"
+    ],
+    "errors": [
+      {
+        "code": "FORBIDDEN",
+        "recovery": "권한·업무분리 확인"
+      },
+      {
+        "code": "CONFLICT",
+        "recovery": "최신 버전 재조회"
+      },
+      {
+        "code": "DEPENDENCY_FAILURE",
+        "recovery": "멱등키로 안전 재시도"
+      }
+    ],
+    "fields": [
+      {
+        "route": "/work/certification-eligibility-check?step=cec_validate_company",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "CERTIFICATION_ELIGIBILITY_CHECK_CEC_VALIDATE_COMPANY_USER",
+        "required": true,
+        "fieldCode": "projectId",
+        "fieldName": "프로젝트",
+        "fieldGroup": "업무 범위",
+        "fieldOrder": 10,
+        "validation": {
+          "type": "code",
+          "nullable": false,
+          "required": true,
+          "allowUnknown": false
+        },
+        "apiProperty": "projectId",
+        "controlType": "PROJECT_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "CERTIFICATE_OFFICER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/certification-eligibility-check?step=cec_validate_company",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "CERTIFICATION_ELIGIBILITY_CHECK_CEC_VALIDATE_COMPANY_USER",
+        "required": true,
+        "fieldCode": "businessId",
+        "fieldName": "업무 대상 ID",
+        "fieldGroup": "업무 범위",
+        "fieldOrder": 20,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "businessId",
+        "controlType": "ENTITY_SELECT",
+        "sourceTable": null,
+        "privacyClass": "CONFIDENTIAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "CERTIFICATE_OFFICER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/certification-eligibility-check?step=cec_validate_company",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "CERTIFICATION_ELIGIBILITY_CHECK_CEC_VALIDATE_COMPANY_USER",
+        "required": true,
+        "fieldCode": "referenceCode",
+        "fieldName": "참조·로트·신청 번호",
+        "fieldGroup": "업무 범위",
+        "fieldOrder": 30,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "referenceCode",
+        "controlType": "TEXT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "CERTIFICATE_OFFICER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/certification-eligibility-check?step=cec_validate_company",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "CERTIFICATION_ELIGIBILITY_CHECK_CEC_VALIDATE_COMPANY_USER",
+        "required": true,
+        "fieldCode": "statusCode",
+        "fieldName": "업무 상태",
+        "fieldGroup": "상태",
+        "fieldOrder": 40,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "statusCode",
+        "controlType": "STATUS_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "CERTIFICATE_OFFICER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/certification-eligibility-check?step=cec_validate_company",
+        "audience": "USER",
+        "dataType": "DATETIME",
+        "editable": true,
+        "pageCode": "CERTIFICATION_ELIGIBILITY_CHECK_CEC_VALIDATE_COMPANY_USER",
+        "required": true,
+        "fieldCode": "effectiveAt",
+        "fieldName": "발생·적용 일시",
+        "fieldGroup": "기준",
+        "fieldOrder": 50,
+        "validation": {
+          "type": "date-time",
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "effectiveAt",
+        "controlType": "DATETIME",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "CERTIFICATE_OFFICER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/certification-eligibility-check?step=cec_validate_company",
+        "audience": "USER",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "pageCode": "CERTIFICATION_ELIGIBILITY_CHECK_CEC_VALIDATE_COMPANY_USER",
+        "required": false,
+        "fieldCode": "quantityValue",
+        "fieldName": "수량·측정·금액 값",
+        "fieldGroup": "전문값",
+        "fieldOrder": 60,
+        "validation": {
+          "numeric": true,
+          "unitRequiredWhenPresent": true
+        },
+        "apiProperty": "quantityValue",
+        "controlType": "NUMBER",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "CERTIFICATE_OFFICER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/certification-eligibility-check?step=cec_validate_company",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "CERTIFICATION_ELIGIBILITY_CHECK_CEC_VALIDATE_COMPANY_USER",
+        "required": false,
+        "fieldCode": "unitCode",
+        "fieldName": "단위·통화",
+        "fieldGroup": "전문값",
+        "fieldOrder": 70,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "unitCode",
+        "controlType": "UNIT_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "CERTIFICATE_OFFICER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/certification-eligibility-check?step=cec_validate_company",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "CERTIFICATION_ELIGIBILITY_CHECK_CEC_VALIDATE_COMPANY_USER",
+        "required": false,
+        "fieldCode": "qualityCode",
+        "fieldName": "품질·적합 등급",
+        "fieldGroup": "품질·외부검증",
+        "fieldOrder": 80,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "qualityCode",
+        "controlType": "QUALITY_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "CERTIFICATE_OFFICER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/certification-eligibility-check?step=cec_validate_company",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "CERTIFICATION_ELIGIBILITY_CHECK_CEC_VALIDATE_COMPANY_USER",
+        "required": false,
+        "fieldCode": "externalCheckStatus",
+        "fieldName": "외부검증 상태",
+        "fieldGroup": "품질·외부검증",
+        "fieldOrder": 90,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "externalCheckStatus",
+        "controlType": "STATUS_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "CERTIFICATE_OFFICER:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/work/certification-eligibility-check?step=cec_validate_company",
+        "audience": "USER",
+        "dataType": "ARRAY",
+        "editable": true,
+        "pageCode": "CERTIFICATION_ELIGIBILITY_CHECK_CEC_VALIDATE_COMPANY_USER",
+        "required": true,
+        "fieldCode": "evidenceIds",
+        "fieldName": "원본·결정 증빙",
+        "fieldGroup": "증적",
+        "fieldOrder": 100,
+        "validation": {
+          "minItems": 1,
+          "hashRequired": true
+        },
+        "apiProperty": "evidenceIds",
+        "controlType": "FILE_UPLOAD",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "CERTIFICATE_OFFICER:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/work/certification-eligibility-check?step=cec_validate_company",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "CERTIFICATION_ELIGIBILITY_CHECK_CEC_VALIDATE_COMPANY_USER",
+        "required": false,
+        "fieldCode": "decisionCode",
+        "fieldName": "판정·승인 결과",
+        "fieldGroup": "결정",
+        "fieldOrder": 110,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "decisionCode",
+        "controlType": "DECISION_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "CERTIFICATE_OFFICER:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/work/certification-eligibility-check?step=cec_validate_company",
+        "audience": "USER",
+        "dataType": "TEXT",
+        "editable": true,
+        "pageCode": "CERTIFICATION_ELIGIBILITY_CHECK_CEC_VALIDATE_COMPANY_USER",
+        "required": false,
+        "fieldCode": "decisionComment",
+        "fieldName": "판정·보완·반려 사유",
+        "fieldGroup": "결정",
+        "fieldOrder": 120,
+        "validation": {
+          "requiredWhen": [
+            "CORRECTION",
+            "REJECTED"
+          ]
+        },
+        "apiProperty": "decisionComment",
+        "controlType": "TEXTAREA",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "CERTIFICATE_OFFICER:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/work/certification-eligibility-check?step=cec_validate_company",
+        "audience": "USER",
+        "dataType": "INTEGER",
+        "editable": true,
+        "pageCode": "CERTIFICATION_ELIGIBILITY_CHECK_CEC_VALIDATE_COMPANY_USER",
+        "required": true,
+        "fieldCode": "rowVersion",
+        "fieldName": "데이터 버전",
+        "fieldGroup": "무결성",
+        "fieldOrder": 130,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "rowVersion",
+        "controlType": "VERSION",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "CERTIFICATE_OFFICER:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/certification-eligibility-check?step=cec_validate_company",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "CERTIFICATION_ELIGIBILITY_CHECK_CEC_VALIDATE_COMPANY_USER",
+        "required": false,
+        "fieldCode": "nextTaskId",
+        "fieldName": "다음 업무",
+        "fieldGroup": "후속업무",
+        "fieldOrder": 140,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "nextTaskId",
+        "controlType": "TASK_LINK",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "CERTIFICATE_OFFICER:USER",
+        "evidenceRequired": false
+      }
+    ],
+    "states": [
+      "LOADING",
+      "EMPTY",
+      "ERROR",
+      "FORBIDDEN",
+      "READY",
+      "BLOCKED",
+      "CONFLICT",
+      "COMPLETED"
+    ],
+    "actions": [
+      "VALIDATE_CERT_COMPANY",
+      "SAVE_DRAFT",
+      "REQUEST_CORRECTION"
+    ],
+    "sections": [
+      "업무요약",
+      "선행조건",
+      "전문 데이터",
+      "검증·증적",
+      "결정·이력",
+      "다음업무"
+    ],
+    "extensions": {
+      "contractId": 460,
+      "sharedRuntime": true
+    },
+    "responsive": {
+      "mobile": "single-column-actions-bottom",
+      "tablet": "adaptive-grid",
+      "desktop": "list-detail-workspace"
+    },
+    "permissions": [
+      {
+        "code": "CERTIFICATE_OFFICER",
+        "scope": "TENANT_PROJECT",
+        "segregationOfDuties": true,
+        "serverAuthorization": true
+      }
+    ],
+    "validations": [
+      {
+        "code": "ENTRY_AND_REQUIRED_FIELDS",
+        "type": "CONTRACT"
+      },
+      {
+        "code": "STATE_AND_VERSION",
+        "type": "CONCURRENCY"
+      }
+    ],
+    "apiContracts": [
+      "/api/work/certification-eligibility-check/cec_validate_company"
+    ],
+    "designSystem": "KRDS_GOV",
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG_2_1_AA",
+      "nonColorStatus": true,
+      "focusManagement": true
+    },
+    "dataContracts": [
+      "tenantId",
+      "projectId",
+      "businessId",
+      "recordId",
+      "statusCode",
+      "rowVersion",
+      "evidenceHash",
+      "nextTaskId"
+    ],
+    "schemaVersion": "2.0.0",
+    "completionRule": "다음 완료 기준을 검증한다: 신청 주체와 법인 유효성이 확인됨. 결과·버전·감사 증적을 저장한 뒤 IN_PROGRESS 상태로 원자적으로 전이한다.",
+    "exitConditions": [
+      "다음 완료 기준을 검증한다: 신청 주체와 법인 유효성이 확인됨. 결과·버전·감사 증적을 저장한 뒤 IN_PROGRESS 상태로 원자적으로 전이한다."
+    ],
+    "businessPurpose": "법인인증서·신청 권한·회원사 상태·첨부 원본을 검증한다.",
+    "entryConditions": [
+      "다음 프로세스 시작 조건을 충족한다: 검토 가능한 인증 신청과 잠긴 산정·보고서 데이터셋이 존재한다. 현재 상태는 READY이며 서버가 테넌트·프로젝트·액터 권한을 확인한 경우에만 진입한다."
+    ],
+    "actorResponsibilities": [
+      "CERTIFICATE_OFFICER 액터가 권한·업무분리 정책에 따라 법인·회원사·신청 유효성 검증 사용자 업무 화면 업무를 수행한다."
+    ]
+  },
+  "traceability": {
+    "contractId": 460,
+    "requirementIds": [
+      "CERTIFICATION_ELIGIBILITY_CHECK:CEC_VALIDATE_COMPANY:USER"
+    ],
+    "generationBatchId": 182,
+    "designReadinessScore": 100,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "038b4b5314e095ccd92faf184dbd807ce2c7d2fa456b5ea76eb9be5899660ad4",
+  "artifactHash": "6bf7f0b73ee2223cc2a1dde3035e278da5a3125d473fb218c9b845359a4ced76"
+}

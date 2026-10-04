@@ -1,6 +1,6 @@
 {
   "schemaVersion" : 1,
-  "generatedAt" : "2026-07-26T05:26:45.232718220Z",
+  "generatedAt" : "2026-07-30T11:18:19.274573493Z",
   "entryCount" : 342,
   "stateSummary" : {
     "APPROVED" : 0,
@@ -11,8 +11,8 @@
   },
   "policy" : {
     "approvalRequiresReviewer" : true,
-    "automaticApproval" : false,
-    "verificationRequiresEvidence" : true
+    "verificationRequiresEvidence" : true,
+    "automaticApproval" : false
   },
   "entries" : [ {
     "useCaseId" : "UC-A001",

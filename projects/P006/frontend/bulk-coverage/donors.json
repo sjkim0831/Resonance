@@ -1,0 +1,5079 @@
+{
+  "rows": [
+    {
+      "id": "E023",
+      "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E023.usda",
+      "hash": "29c6b0d705a7d284e5f215b08cda8823a960151ec87a1458408e4f2e8806abdc",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Asset/Geometry/surface",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E031",
+      "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E031.usda",
+      "hash": "affc271cc688667745bccadd912a399b7fb62f35021db4ae5878211a52e3a281",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Asset/Geometry/post0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/post1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/header",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/bar0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/bar1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/bar2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/bar3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/bar4",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/bar5",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/bar6",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/bar7",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/bar8",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/bar9",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/bar10",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E032",
+      "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E032.usda",
+      "hash": "3fa662f7a32334c7f5aaae463f0684a962c42b854815a167b13e26e90f2c2706",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Asset/Geometry/leg0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/leg1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/leg2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/leg3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/shelf0",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E034",
+      "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E034.usda",
+      "hash": "a87d88598fafc25ab11c1a4287aa2e7bb97347e3d2f0e2c1f863be9888c727b4",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Asset/Geometry/leg0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/leg1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/leg2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/leg3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/rail0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/rail1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/roller0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller2",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller3",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller4",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller5",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller6",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller7",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller8",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller9",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller10",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller11",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller12",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller13",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller14",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller15",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller16",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller17",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller18",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller19",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller20",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller21",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller22",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller23",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller24",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller25",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller26",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller27",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller28",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller29",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller30",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller31",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller32",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller33",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller34",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller35",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller36",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller37",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller38",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller39",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller40",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller41",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller42",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller43",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller44",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller45",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller46",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller47",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller48",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Asset/Geometry/roller49",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E039",
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/stairs/asset.usda",
+      "hash": "d2d3df38d8551e7ca648ac4bfe548d7955f03a1345909b386be576c6a52deba5",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/step0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/step1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/step2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/step3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/step4",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/step5",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/step6",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/step7",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E042",
+      "path": "/home/sjkim/OmniverseProjects/p006-structure-modules-20260909-v1/railing/asset.usda",
+      "hash": "0a6f492c70dfbe75b8073000ceb7deff3f26f0354cc82c923c727c192a364bf0",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/post0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/post1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/post2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/rail0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/rail1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/rail2",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E047",
+      "path": "/home/sjkim/OmniverseProjects/p006-logistics-modules-20260909-v1/cart/asset.usda",
+      "hash": "c24b790ebd6432d8aad23434a93b84f2c49f8a213ac7562a01ee41d001769267",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/wheel0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/wheel1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/wheel2",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/wheel3",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/deck",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/handlePost0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/handlePost1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/handle",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E051",
+      "path": "/home/sjkim/OmniverseProjects/p006-workshop-modules-20260909-v1/toolcabinet/asset.usda",
+      "hash": "e7c18466146666a763b8eee4db56cd3cdfb28c620f35456f93a443598c997a00",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/body",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/drawer0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/handle0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/drawer1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/handle1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/drawer2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/handle2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/drawer3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/handle3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/drawer4",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/handle4",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/top",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E052",
+      "path": "/home/sjkim/OmniverseProjects/p006-workshop-modules-20260909-v1/partsstorage/asset.usda",
+      "hash": "0fb594bd806ec0a29870ca934aae5ef31addaaa7b678bb13d95d44693d86a88b",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/back",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/side0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/side1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/shelf0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binBottom0_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide0_0_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide0_0_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binFront0_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/label0_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binBottom0_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide0_1_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide0_1_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binFront0_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/label0_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binBottom0_2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide0_2_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide0_2_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binFront0_2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/label0_2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/shelf1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binBottom1_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide1_0_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide1_0_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binFront1_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/label1_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binBottom1_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide1_1_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide1_1_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binFront1_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/label1_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binBottom1_2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide1_2_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide1_2_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binFront1_2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/label1_2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/shelf2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binBottom2_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide2_0_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide2_0_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binFront2_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/label2_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binBottom2_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide2_1_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide2_1_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binFront2_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/label2_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binBottom2_2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide2_2_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide2_2_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binFront2_2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/label2_2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/shelf3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binBottom3_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide3_0_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide3_0_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binFront3_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/label3_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binBottom3_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide3_1_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide3_1_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binFront3_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/label3_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binBottom3_2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide3_2_0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binSide3_2_1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/binFront3_2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/label3_2",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E053",
+      "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E053.usda",
+      "hash": "edb44dafc5e144ca18ca4bf8df9d03d814f31da20eda998caaa469a111e55111",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Asset/Geometry/leg0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/leg1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/leg2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/leg3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/shelf0",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E056",
+      "path": "/home/sjkim/OmniverseProjects/p006-utility-modules-20260909-v1/dustcollector/asset.usda",
+      "hash": "7e7619462ea63b96fd84fd22d2c93b2163650e29d0f1e9885c8ccea609727ec0",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/leg0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/leg1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/leg2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/leg3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/filterHousing",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/door",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/latch0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/latch1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/hopperUpper",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/hopperLower",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/collectionBin",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/inlet",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/fanHousing",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/exhaust",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E057",
+      "path": "/home/sjkim/OmniverseProjects/p006-safety-modules-20260909-v1/extinguisher/asset.usda",
+      "hash": "3239018e6f44d06d2de46d68ea522e64b65bdf978018ff94c7df3e61f1fc4457",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/base",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/body",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/shoulder",
+          "type": "Sphere"
+        },
+        {
+          "path": "/Product/valve",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/handle",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/gauge",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/gaugeFace",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/label",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/hose",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/hoseTop",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/nozzle",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E073",
+      "path": "/home/sjkim/OmniverseProjects/p006-process-modules-20260909-v1/coolantpump/asset.usda",
+      "hash": "4d675d087e1aba3cdc74977ef54e3a12d91427ab0b1878332fe0e71a2d172d1a",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/skid",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/motor",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/coupling",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/pump",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/inlet",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/outlet",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/fin0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fin1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fin2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fin3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fin4",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fin5",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fin6",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E074",
+      "path": "/home/sjkim/OmniverseProjects/p006-process-modules-20260909-v1/feedhopper/asset.usda",
+      "hash": "9bfa1ceed05ce3ad0c6e9a041aaab05052bf2553d9c4263fb4698f90993e6ab6",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/leg0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/leg1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/leg2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/leg3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/hopper",
+          "type": "Mesh"
+        },
+        {
+          "path": "/Product/rimZ0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/rimZ1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/rimX0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/rimX1",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E075",
+      "path": "/home/sjkim/OmniverseProjects/p006-reference-factory-v1/E075.usda",
+      "hash": "a4a0425fb253ff766c7d1e70a5d2d010f815378f23ed329fad63866579a42081",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Asset/Geometry/bottom",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/end0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/end1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/side0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Asset/Geometry/side1",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E077",
+      "path": "/home/sjkim/OmniverseProjects/p006-transfer-modules-20260909-v1/junction/asset.usda",
+      "hash": "00585f249546db7275e7c8cd38397b28510caccc25b2bedc751b47e2a219eb8f",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/leg0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/leg1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/leg2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/leg3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/main",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/branch",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/branchLeg0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/branchLeg1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/roller0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller2",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller3",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller4",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller5",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller6",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller7",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller8",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller9",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller10",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller11",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/branchRoller0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/branchRoller1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/branchRoller2",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/branchRoller3",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/branchRoller4",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E078",
+      "path": "/home/sjkim/OmniverseProjects/p006-transfer-modules-20260909-v1/conveyorlift/asset.usda",
+      "hash": "9a45668210c2cdfb5f5b219d398cb0fb15bbb7175a39905d44f402cdd16d0f72",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/base",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/mast0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/topCap0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/mast1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/topCap1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/deck",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/roller0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller2",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller3",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller4",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller5",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller6",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/crossbar",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E079",
+      "path": "/home/sjkim/OmniverseProjects/p006-transfer-modules-20260909-v1/rotarytransfer/asset.usda",
+      "hash": "beacaf321f72f96835be3168214e7655eb0b9781cf6bc68822b56c45418fbdc8",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/base",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/pedestal",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/table",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller2",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller3",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller4",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller5",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller6",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller7",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller8",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E081",
+      "path": "/home/sjkim/OmniverseProjects/p006-shipping-modules-20260909-v1/palletscale/asset.usda",
+      "hash": "5ebee4bb0876e828b34c64f8328c9d320aa2a34ae068afd118be2a41db286dd7",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/foot0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/weighingDeck",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/displayBase",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/post",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/indicator",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/screen",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E083",
+      "path": "/home/sjkim/OmniverseProjects/p006-shipping-modules-20260909-v1/cartonsealer/asset.usda",
+      "hash": "4df0167ceafa0ba9ae765dde2b5f586befcfd9e8e9d5c4e6ab893ccc835e9a05",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/leg0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/leg1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/leg2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/leg3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/frame",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/roller0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller2",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller3",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller4",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller5",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller6",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller7",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller8",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/roller9",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/upright0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/upright1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/bridge",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tapeHead",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tapeRoll",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/sideBelt0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/sideBelt1",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E086",
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/palletmagazine/asset.usda",
+      "hash": "a92040a442ab5994c54e2ac544812d12cbd135b9c3b30a2e1a949fa6cf71732a",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/base",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/post0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/post1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/post2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/post3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/stack0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/stack1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/stack2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/stack3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/stack4",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/stack5",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/stack6",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/top0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/top1",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E090",
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/estopstand/asset.usda",
+      "hash": "d06cd9cf2e39bd601ab92830980667f019d4078ea2d4fc19507d422f4b25ceaa",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/foot",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/post",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/box",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/button",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E094",
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/junctionbox/asset.usda",
+      "hash": "59bad592e8cb7bcb817662c80d4c462d3e42eb17449b6f3cb0456f1b64984389",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/body",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/door",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/gland0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/gland1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/gland2",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/gland3",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E095",
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/drillpress/asset.usda",
+      "hash": "ca9b9132276439cc4c65a5fae385b7a8f9ffa208bc83d6bdc7b19b741357552a",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/base",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/column",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/table",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/head",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/spindle",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/motor",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E096",
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/smallpress/asset.usda",
+      "hash": "5c66ae7f0fa0f75e624bce036cb4ccffccb9d57a4958b174096fdb261cae5b29",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/base",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/column0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/column1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/bed",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/bridge",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/ram",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/tool",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E097",
+      "path": "/home/sjkim/OmniverseProjects/p006-expansion-modules-20260909-v1/washbooth/asset.usda",
+      "hash": "84b2f851e7b3c9e5e1215744f1486490332cc264904735138f565025a0907be5",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/sump",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/side0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/side1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/back",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/top",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate4",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate5",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate6",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate7",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate8",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate9",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate10",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate11",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/spraybar",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E098",
+      "path": "/home/sjkim/OmniverseProjects/p006-finishing-modules-20260909-v1/dryingoven/asset.usda",
+      "hash": "2d9c8d8676fe6cd4b44d339eee4de604e9146ae2f03954ba75351bd490060a0c",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/base",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/body",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/door",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/window",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/handle",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/controls",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/vent",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E105",
+      "path": "/home/sjkim/OmniverseProjects/p006-service-modules-20260909-v1/hosereel/asset.usda",
+      "hash": "54992840fb8b5751125c7b8d12f6dc0f1b381c3d9a8a387116be2800e0626ae0",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/base",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/stand0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/flange0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/stand1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/flange1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/hosecoil",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/axle",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/crank",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E109",
+      "path": "/home/sjkim/OmniverseProjects/p006-container-modules-20260909-v1/closeddrum/asset.usda",
+      "hash": "516eabe76a1c26eecc00c4bfb32dc08ad938c733b55ca0031be6ba349a167f57",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/body",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/band0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/band1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/band2",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/band3",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/lid",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/cap",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E115",
+      "path": "/home/sjkim/OmniverseProjects/p006-air-options-20260909-v1/condensatecan/asset.usda",
+      "hash": "1ae755726c8fdde7cdef9fd34efc331b2a74864ee0f5c0dbd341c82b7adc812e",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/body",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/lid",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/inlet",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/handleleg0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/handleleg1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/handle",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E118",
+      "path": "/home/sjkim/OmniverseProjects/p006-mobile-screen-20260909-v1/mobilescreen/asset.usda",
+      "hash": "b7b66a12b9c83043285968d8f4218be8bd3e25ca0f7431c6f4c02085ee2dca33",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/post0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/wheel00",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/wheel01",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/post1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/wheel10",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/wheel11",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/top",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/panel",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E120",
+      "path": "/home/sjkim/OmniverseProjects/p006-cnclathe-20260909-v2/cnclathe/asset.usda",
+      "hash": "b540b5f1ccde9f93304a455232cc9ca1ed717860c1ec06cb578b56fd8cbf0188",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/base",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/bed",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/bedGuide0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/bedGuide1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/rear",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/headstock",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/rightCabinet",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/top",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/spindleFlange",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/chuck",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/jaw0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/jaw1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/jaw2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/workpiece",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/saddle",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/crossSlide",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/toolPost",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/turret",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/toolHolder",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/toolTip",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tailstockBase",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tailstock",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/quill",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/chipTray",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/traySlat0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/traySlat1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/traySlat2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/traySlat3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/traySlat4",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/door",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/window",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/handle",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/doorTrack",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/console",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/screen",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/key0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/key1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/key2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/key3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/controlKnob",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E121",
+      "path": "/home/sjkim/OmniverseProjects/p006-machiningcenter-20260909-v2/machiningcenter/asset.usda",
+      "hash": "b703b427cd851f417817d3ac552f25f9effa6b67996f437c7e5334bf3b3c435d",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/base",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tableBase",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/rear",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/side0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/side1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/roof",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tableStrip0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tableStrip1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tableStrip2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tableStrip3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/axisBase0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/cover00",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/cover01",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/cover02",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/cover03",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/cover04",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/axisBase1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/cover10",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/cover11",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/cover12",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/cover13",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/cover14",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/column",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/zGuide0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/zGuide1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/head",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/spindle",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/holder",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/tool",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/fixture",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/sample",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/clamp0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/clamp1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/chipTray",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate4",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate5",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/grate6",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/door",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/window",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/handle",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/track",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/console",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/screen",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/key0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/key1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/key2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/key3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/knob",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/nozzleMount",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/nozzle",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E123",
+      "path": "/home/sjkim/OmniverseProjects/p006-cmm-20260909-v2/cmm/asset.usda",
+      "hash": "6d204d3d04e5c4b9741794ff0d07a96a4cf5b8d53e4bc7c9ac5feef8090e8181",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/granite",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot00",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/pedestal00",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot01",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/pedestal01",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot10",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/pedestal10",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot11",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/pedestal11",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/brace",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/yRail0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/carriage0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/bridgeLeg0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/yRail1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/carriage1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/bridgeLeg1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/bridge",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/xGuide",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/probeCarriage",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/zRam",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/probeHead",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/stylus",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/probeBall",
+          "type": "Sphere"
+        },
+        {
+          "path": "/Product/fixture",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/sample",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fixtureStop0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fixtureStop1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/gridMark00",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/gridMark01",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/gridMark10",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/gridMark11",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/gridMark20",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/gridMark21",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/gridMark30",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/gridMark31",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/controllerBase",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/controllerCabinet",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/controllerFace",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/vent0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/vent1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/vent2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/vent3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/screenStand",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/monitor",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/display",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/keyTray",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/keyboard",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E124",
+      "path": "/home/sjkim/OmniverseProjects/p006-caseerector-20260909-v2/asset.usda",
+      "hash": "f06226ab1cbbe13eea106b214c3da74b92d162e84de12afb9a2e2cdcbcc0ae17",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/Frame/foot00",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/Frame/leg00",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Frame/foot01",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/Frame/leg01",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Frame/foot10",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/Frame/leg10",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Frame/foot11",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/Frame/leg11",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Frame/beam0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Frame/beam1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Magazine/shelf",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Magazine/blank0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Magazine/blank1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Magazine/blank2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Magazine/blank3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Magazine/blank4",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Magazine/blank5",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Magazine/blank6",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Magazine/guide0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Magazine/guide1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Magazine/pusher",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Pickup/post0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Pickup/post1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Pickup/axisRail",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Pickup/carriage",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Pickup/verticalSlide",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Pickup/cupCrossbar",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Pickup/cup0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/Pickup/cup1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/Folding/flapRail0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Folding/flapRail1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Folding/actuator",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Folding/rod",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Discharge/belt0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Discharge/belt1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Discharge/roller0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/Discharge/roller1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/Discharge/roller2",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/Discharge/roller3",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/Discharge/roller4",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/Discharge/roller5",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/Discharge/roller6",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/Discharge/roller7",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/Discharge/roller8",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/Carton/bottom",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Carton/wall0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Carton/wall1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Carton/end0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Carton/end1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Carton/openFlap0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Carton/openFlap1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Guard/post0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Guard/post1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Guard/rail",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Controls/housing",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Controls/display",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/Controls/button0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/Controls/button1",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E125",
+      "path": "/home/sjkim/OmniverseProjects/p006-priority10-20260909-v1/amr/asset.usda",
+      "hash": "a949018655e64b5a7c358b21f537784a76d6a85b352d92e96be88b83f849400b",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/wheel00",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/wheel01",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/wheel10",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/wheel11",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/chassis",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/loaddeck",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/bumper",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/scanner",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E130",
+      "path": "/home/sjkim/OmniverseProjects/p006-strapper-20260910-v1/strapper/asset.usda",
+      "hash": "7f237fa0379a49a263a9c800ad326f3b5146f3dfb0aad223038e0080760715f5",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/cabinet",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot00",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot01",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot10",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot11",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/table",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/arch0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/track0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/arch1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/track1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/archTop",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/strapSlot",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/serviceDoor",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/handle",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/controls",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/button0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/button1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/spoolFlange0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/spoolFlange1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/bandRoll",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E131",
+      "path": "/home/sjkim/OmniverseProjects/p006-shrink-20260910-v1/shrink/asset.usda",
+      "hash": "f6c4f548c321ce1a05018f2d57787e288511566f8c44d6561b2861b4ab20de7f",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/foot00",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/leg00",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot01",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/leg01",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot10",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/leg10",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot11",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/leg11",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/belt",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/rail0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/rail1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tunnelWall0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tunnelWall1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tunnelRoof",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/curtain00",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/curtain01",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/curtain02",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/curtain03",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/curtain04",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/curtain05",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/curtain06",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/curtain10",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/curtain11",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/curtain12",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/curtain13",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/curtain14",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/curtain15",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/curtain16",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/controls",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/display",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/button0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/button1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fanCover",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/vent0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/vent1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/vent2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/vent3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/vent4",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/vent5",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/warning",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E135",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C006/asset.usda",
+      "hash": "9045e5f717b04502f781040bf667f6ff0c1e32b9682eac6b3942a27f8a514805",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E137",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C008/asset.usda",
+      "hash": "e7e943dbd1e174c79f42fca017f784b579a7b618669e8eda22d3fa34d92b98c5",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E141",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C012/asset.usda",
+      "hash": "1e04fc5f286ae8b1a8cbc520147db41f1e3a0fa182ccef904f46299c82b5150f",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E142",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C013/asset.usda",
+      "hash": "d0fc85110f12949dbad5042ce95d1b75cb5a39f9484ef8ad2e982e3d2ed0edf9",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E144",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C015/asset.usda",
+      "hash": "699900297741e19c5f46a5bc4605274a97f2f9ece53c9e2fea55cee351284b5d",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E145",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C017/asset.usda",
+      "hash": "b4d851136eb7ad831295e3258ba8e3d9a4c8efeffa059b87ac9ff59a7dd42a81",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E146",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C018/asset.usda",
+      "hash": "6b9e44dc678e7f356929e3b303ee1f60032cda7333e699a9b300ade2aa27b3a1",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part010",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part011",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part012",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part013",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E147",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C019/asset.usda",
+      "hash": "765d5e26e83692b36b328af40350753c90586cd355de2650dcc981879df8a25f",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part010",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part011",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part012",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part013",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part014",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E148",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C020/asset.usda",
+      "hash": "0ba89cb0b37442cd6adc379b5481bdb5fce6b8ff147b13fa65673f7f6ccf0b44",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part010",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part011",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E149",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C021/asset.usda",
+      "hash": "0cb7ff0bc43c4ab9d57ae53484b99ead157fdb81c26465a446d896d0386a5128",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part010",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part011",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E159",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C032/asset.usda",
+      "hash": "ad82c174b5e2a2dc483103faae2f22bde67e929bca69811cfddc72b216c74ded",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E163",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C039/asset.usda",
+      "hash": "6e285fbb5415d0d8478d26c67d4e9e787ae04a30b7d639f5940b55a734906bdf",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part010",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E164",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C040/asset.usda",
+      "hash": "7233e651b324696edbfe1e6ba479e324fc31f6fa3ae7f4056fa027261aeb6dc3",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part010",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part011",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part012",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E165",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C041/asset.usda",
+      "hash": "43041c661d274170c617a38dbffd4582f008e4cb32457025114fd716124297af",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part010",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part011",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E166",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C042/asset.usda",
+      "hash": "8b9e10ffc95cc4c7a76391f413e5c56ee8e6c83b4bcf51c4b99bd6f15b29ff22",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part010",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part011",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part012",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part013",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E173",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C050/asset.usda",
+      "hash": "218f9e41a6917db42c62b96a504e3b607eb6ea118a97787f3d9e5c96caeae263",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E177",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C054/asset.usda",
+      "hash": "bd4142cd7cba9f05f3113536a11f5564e57fb8f61d16f6b0b686a8a8c5f6c753",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E180",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C057/asset.usda",
+      "hash": "aa61ae35a86c930ce64e4d16b2791e23b2209ff7adc4251310b3a0b5380f8b06",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E182",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C059/asset.usda",
+      "hash": "0408a69a16fba9706dbde4001bb365d715b3a1b18621791d42a6366198dd7479",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E183",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C060/asset.usda",
+      "hash": "bb93538e3b48852ff99f651638ed7a4293b167d05a3cb6d2696fa1c1aa57e745",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E187",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C065/asset.usda",
+      "hash": "84ffd4604b971c9608bd44410fc3e024fd578089bbd65c63eb9e6c7d8a30e6f5",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part010",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part011",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part012",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part013",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part014",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part015",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part016",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part017",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part018",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part019",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part020",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part021",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E188",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C066/asset.usda",
+      "hash": "69257658f5d284efcf5b5ac18705318d4cede5871f256ea2e0092239d4d867ae",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E189",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C067/asset.usda",
+      "hash": "7203ba4514e84c1d415d9b31d419678dd287e114728bad13fd33484629d7a91c",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E192",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C070/asset.usda",
+      "hash": "216a3f4454fef76809bb91b266012527b8ab0779730b37dabaff81581af3d439",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part010",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part011",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part012",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part013",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part014",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part015",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part016",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part017",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E193",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C071/asset.usda",
+      "hash": "081ee39fc1522a390b341965b936a474658ebee206f973ac9caf5c13a3730da6",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part010",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part011",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part012",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part013",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part014",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part015",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part016",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part017",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part018",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part019",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part020",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part021",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E197",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C075/asset.usda",
+      "hash": "b363a6693dc2361406bd001b5a659ff3e1bca5883de11e538907678a45b84f31",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part010",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part011",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part012",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part013",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part014",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part015",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part016",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part017",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E198",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C076/asset.usda",
+      "hash": "83c8a1025eba21f231c42e057452ca116a04961763286ed2a4507e2276cd76f1",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/part010",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part011",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part012",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E199",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C077/asset.usda",
+      "hash": "a842f767eeace55e482a0588cfa0395e2183a8d0b5f8e8842da8d6c3ee4f3a6d",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part009",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part010",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part011",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part012",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E202",
+      "path": "/home/sjkim/OmniverseProjects/p006-candidate100-20260910-v1/C080/asset.usda",
+      "hash": "1681e320c1164c90490423a6b06d3e94dbf778d1b41e3472a4860afa4485a19a",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/part001",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part002",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part003",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part004",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part005",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part006",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part007",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/part008",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E225",
+      "path": "/home/sjkim/OmniverseProjects/p006-peripheral10-20260910-v1/watertank/asset.usda",
+      "hash": "ea3ac309f0826781132caf52077d69331576de2a911d038b19782297dd510ef0",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/foot0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tank",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/lid",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/outlet",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/levelGauge",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E230",
+      "path": "/home/sjkim/OmniverseProjects/p006-peripheral10-20260910-v1/interlock/asset.usda",
+      "hash": "cfdd3d6f93896523fb42dac8f66048bbc9e072f6e29f0050eb80967aa9f664ec",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/body",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/head",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/actuator",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/mountplate",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E232",
+      "path": "/home/sjkim/OmniverseProjects/p006-instrument4-20260910-v1/pressuregauge/asset.usda",
+      "hash": "2c680dac8cf2172d115af366cdc4791382e063627024beddb3ac3b3deabd5d6f",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/stem",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/case",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/dial",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/needle",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tick0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tick1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tick2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tick3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tick4",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tick5",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tick6",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tick7",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tick8",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E233",
+      "path": "/home/sjkim/OmniverseProjects/p006-instrument4-20260910-v1/flowmeter/asset.usda",
+      "hash": "804c7ca91c28cb48f81f2585cdba34094991c408fd19f97309ab37388e1c80ae",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/tube",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/flange0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/flange1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/neck",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/head",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/screen",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E236",
+      "path": "/home/sjkim/OmniverseProjects/p006-sensor4-20260910-v1/temperature/asset.usda",
+      "hash": "186c439803fb751fc88087e818f0da0ae95da435d05889b5e8fe0c1110f1045a",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/probe",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/fitting",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/head",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/lid",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/gland",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E237",
+      "path": "/home/sjkim/OmniverseProjects/p006-sensor4-20260910-v1/ultrasonic/asset.usda",
+      "hash": "cbb832fccdc2a414e8eb7d25452554dd8b0e68a6ae00221527489d5dbc6a26e3",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/face",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/body",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/flange",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/electronics",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/display",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/gland",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E238",
+      "path": "/home/sjkim/OmniverseProjects/p006-sensor4-20260910-v1/encoder/asset.usda",
+      "hash": "0ec5b3e0cf4f9aac36aee791225879c4d5ae3647c990843a8bb2d5f3811823a7",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/shaft",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/body",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/flange",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/rear",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/bolt0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/bolt1",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E239",
+      "path": "/home/sjkim/OmniverseProjects/p006-sensor4-20260910-v1/proximity/asset.usda",
+      "hash": "20dd24e6a043626b0d4670d1a9ef74ee6c1d46e333bda3447a755ddcfa241328",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/barrel",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/sensingFace",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/nut0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/nut1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/cable",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/led",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E240",
+      "path": "/home/sjkim/OmniverseProjects/p006-drive4-20260910-v1/servomotor/asset.usda",
+      "hash": "5e4431c13b98f6df38efbb3c69d5419c85d89127b8088c72e3d4779751b41171",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/body",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/flange",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/shaft",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/encoder",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/connector0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/connector1",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E241",
+      "path": "/home/sjkim/OmniverseProjects/p006-drive4-20260910-v1/inverter/asset.usda",
+      "hash": "103cd682fbbf54634e4a500022908a460ed7e8a3af6440649cde0671bfe44fd4",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/body",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/front",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/display",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/button0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/button1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/button2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/button3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/button4",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/button5",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fin0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fin1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fin2",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fin3",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fin4",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fin5",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fin6",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/fin7",
+          "type": "Cube"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E244",
+      "path": "/home/sjkim/OmniverseProjects/p006-actuator2-20260910-v1/aircylinder/asset.usda",
+      "hash": "97f7df06f43a6ca77ee9973cef6544e6b25d5d2dfffab084586e97fa8553267d",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/barrel",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/end0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/end1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/tie0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/tie1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/tie2",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/tie3",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/rod",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/rodnut",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/airport0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/airport1",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    },
+    {
+      "id": "E245",
+      "path": "/home/sjkim/OmniverseProjects/p006-actuator2-20260910-v1/gearbox/asset.usda",
+      "hash": "494652271b7a7a54a80a5082d4e424d82f6b1b60132722451cbe16da05c7bbf9",
+      "composed": true,
+      "geometry": [
+        {
+          "path": "/Product/housing",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot0",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/foot1",
+          "type": "Cube"
+        },
+        {
+          "path": "/Product/outputFlange",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/outputShaft",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/inputFlange",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/inputShaft",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/oilplug",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/bolt0_0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/bolt0_1",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/bolt1_0",
+          "type": "Cylinder"
+        },
+        {
+          "path": "/Product/bolt1_1",
+          "type": "Cylinder"
+        }
+      ],
+      "unit": 1.0,
+      "upAxis": "Y"
+    }
+  ],
+  "seconds": 0.0892484188079834
+}

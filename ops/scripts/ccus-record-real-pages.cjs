@@ -5,7 +5,7 @@ const crypto = require('node:crypto');
 const root = '/opt/Resonance';
 const qa = root + '/projects/carbonet-frontend/source/public/qa';
 const run = new Date().toISOString().replace(/[:.]/g, '-');
-const out = root + '/runtime/recordings/' + run;
+const out = root + '/var/test-evidence/recordings/' + run;
 const base = 'http://172.16.1.232';
 const atomic = (file, value) => { fs.mkdirSync(path.dirname(file), {recursive:true}); fs.writeFileSync(file+'.tmp', JSON.stringify(value,null,2)); fs.renameSync(file+'.tmp',file); };
 (async()=>{

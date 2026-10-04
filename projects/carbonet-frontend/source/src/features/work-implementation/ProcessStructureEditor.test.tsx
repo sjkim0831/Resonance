@@ -1,0 +1,15 @@
+import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
+import {it,expect,vi,afterEach,beforeEach} from 'vitest';
+import {ProcessStructureEditor} from './ProcessStructureEditor';
+const definition={process:{processCode:'TEST',processVersion:'2',processName:'테스트',goal:'목적',startCondition:'시작',completionCondition:'완료'},steps:[{stepCode:'S1',stepName:'절차',stepOrder:1,actorCode:'ADMIN',fromState:'DRAFT',commandCode:'SAVE',toState:'DONE',completionRule:'저장'}]};
+const json=(body:any,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json'}});
+let fetcher:ReturnType<typeof vi.fn>;
+beforeEach(()=>{fetcher=vi.fn().mockResolvedValue(json(definition));vi.stubGlobal('fetch',fetcher);});
+afterEach(()=>{cleanup();vi.unstubAllGlobals();});
+function setup(){const onSaved=vi.fn().mockResolvedValue(undefined);render(<ProcessStructureEditor processCode="TEST" stepCode="S1" onSaved={onSaved}/>);return onSaved;}
+it('편집 전 공식 상세를 불러오고 이름을 로딩',async()=>{setup();fireEvent.click(screen.getByText('프로세스 편집'));expect(await screen.findByLabelText('프로세스명')).toHaveValue('테스트');expect(fetcher.mock.calls[0][0]).toBe('/admin/api/system/actor-process/processes/TEST/structure');});
+it('변경 사유 없으면 저장 차단',async()=>{setup();fireEvent.click(screen.getByText('프로세스 편집'));await screen.findByLabelText('프로세스명');expect(screen.getByText('공식 저장 후 재조회')).toBeDisabled();});
+it('변경 필드와 예상 버전을 저장하고 재조회',async()=>{const saved=setup();fireEvent.click(screen.getByText('프로세스 편집'));await screen.findByLabelText('프로세스명');fireEvent.change(screen.getByLabelText('프로세스명'),{target:{value:'수정명'}});fireEvent.change(screen.getByLabelText('변경 사유'),{target:{value:'이름 개선'}});fetcher.mockResolvedValue(json({success:true,processVersion:'3'}));fireEvent.click(screen.getByText('공식 저장 후 재조회'));await waitFor(()=>expect(saved).toHaveBeenCalledTimes(1));expect(JSON.parse(fetcher.mock.calls[1][1].body)).toMatchObject({expectedProcessVersion:'2',mode:'process',changes:{processName:'수정명'}});expect(await screen.findByText('공식 저장 완료 · 설계 v3')).toBeInTheDocument();});
+it('409 입력 보존 및 재조회 금지',async()=>{const saved=setup();fireEvent.click(screen.getByText('절차 편집·순서 변경'));await screen.findByLabelText('절차명');fireEvent.change(screen.getByLabelText('절차명'),{target:{value:'보존명'}});fireEvent.change(screen.getByLabelText('변경 사유'),{target:{value:'수정'}});fetcher.mockResolvedValue(json({success:false},409));fireEvent.click(screen.getByText('공식 저장 후 재조회'));await screen.findAllByText(/다른 수정이 먼저/);expect(screen.getByLabelText('절차명')).toHaveValue('보존명');expect(saved).not.toHaveBeenCalled();});
+it('권한 거부시 편집창을 열지 않음',async()=>{fetcher.mockResolvedValue(json({message:'설계 관리자 권한이 필요합니다'},403));setup();fireEvent.click(screen.getByText('프로세스 편집'));await screen.findByRole('alert');expect(screen.queryByRole('dialog')).toBeNull();});
+it('절차 추가는 기존 절차 수 다음 순서로 시작',async()=>{setup();fireEvent.click(screen.getByText('＋ 절차 추가'));expect(await screen.findByLabelText('절차 순서')).toHaveValue(2);expect(screen.getByLabelText('새 절차 코드')).toHaveValue('');});

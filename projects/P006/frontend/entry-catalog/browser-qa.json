@@ -1,0 +1,17 @@
+{
+  "cards": 666,
+  "individualSourceCards": 166,
+  "sharedSourceCards": 500,
+  "entryDownloadsHashVerified": 666,
+  "contentBrowserThumbnailRoute": true,
+  "search": true,
+  "category": true,
+  "expand": true,
+  "pathCopy": true,
+  "mobileOverflow": false,
+  "errors": [],
+  "seconds": 4.07,
+  "businessWrites": 0,
+  "deviceWrites": 0,
+  "interactiveMstscContentBrowser": "NOT_TESTED_TO_AVOID_DISRUPTING_USER_SESSION"
+}

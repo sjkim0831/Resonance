@@ -1,0 +1,11 @@
+{
+  "commit": "3e7f565016e500996a67c12387c00c642fc2c5c5",
+  "remote_branch": "backup/ccus-opt-cleanup-20260907",
+  "remote_matches": true,
+  "staged_selection": 3550,
+  "secret_suspects_excluded": [
+    "modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/feature/auth/service/AccountRecoveryServiceTest.java",
+    "ops/diagnostics/portone-verification-check.test.mjs",
+    "ops/scripts/provision-project-postgres.sh"
+  ]
+}

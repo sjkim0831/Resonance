@@ -1,0 +1,22 @@
+# /etc/systemd/system/resonance-full-screen-nightly.service -> /opt/Resonance/ops/host-config/systemd/resonance-full-screen-nightly.service
+[Unit]
+Description=Resonance nightly full TypeScript contract and 1000-screen regression sweep
+After=network-online.target kubelet.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+WorkingDirectory=/opt/Resonance/var/deploy-worktrees/runtime-build
+EnvironmentFile=-/etc/resonance/secrets/admin-smoke.env
+Environment=FULL_SCREEN_SMOKE_CHANGED_ONLY=false
+Environment=FULL_SCREEN_SMOKE_WORKERS=4
+Environment=FULL_SCREEN_SMOKE_RETRIES=0
+ExecStart=/usr/bin/bash /opt/Resonance/var/deploy-worktrees/runtime-build/ops/scripts/run-nightly-frontend-contracts.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+# /run/systemd/system/resonance-full-screen-nightly.service.d/override.conf
+[Unit]
+ConditionPathExists=!/run/resonance-release-maintenance.hold

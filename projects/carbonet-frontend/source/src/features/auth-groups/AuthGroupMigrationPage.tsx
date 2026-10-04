@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { FormEvent, useEffect, useState } from "react";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { readBootstrappedAuthGroupPageData } from "../../lib/api/bootstrap";
@@ -1287,8 +1288,7 @@ export function AuthGroupMigrationPage() {
             <span className="material-symbols-outlined text-[var(--kr-gov-blue)]">person_search</span>
             <h3 className="text-lg font-bold">{text(page, "사용자 권한 검색", "User Authority Search")}</h3>
           </div>
-          <form className="mb-4 flex flex-wrap items-end gap-3" onSubmit={handleUserSearch}>
-            <label className="min-w-[18rem]">
+          <form className="ccus-search-host" onSubmit={handleUserSearch}><CommonSearchSection basic={<><div className="ccus-search-field"><label className="min-w-[18rem]">
               <span className="block text-[13px] font-bold text-[var(--kr-gov-text-secondary)] mb-2">
                 {text(page, "회사명", "Company")}
               </span>
@@ -1304,8 +1304,8 @@ export function AuthGroupMigrationPage() {
                   </option>
                 ))}
               </AdminSelect>
-            </label>
-            <label className="min-w-[18rem]">
+            </label></div>
+<div className="ccus-search-field"><label className="min-w-[18rem]">
               <span className="block text-[13px] font-bold text-[var(--kr-gov-text-secondary)] mb-2">
                 {text(page, "사용자 검색", "User search")}
               </span>
@@ -1315,11 +1315,9 @@ export function AuthGroupMigrationPage() {
                 value={userSearchInput}
                 onChange={(event) => setUserSearchInput(event.target.value)}
               />
-            </label>
-            <MemberButton className="h-10" size="xs" type="submit" variant="primary">
+            </label></div></>} actions={<><MemberButton className="h-10" size="xs" type="submit" variant="primary">
               {text(page, "검색", "Search")}
-            </MemberButton>
-          </form>
+            </MemberButton></>}></CommonSearchSection></form>
           <div className="overflow-x-auto">
             <AdminTable>
               <thead>

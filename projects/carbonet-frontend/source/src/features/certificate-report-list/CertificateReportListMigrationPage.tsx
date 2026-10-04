@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -245,17 +246,11 @@ export function CertificateReportListMigrationPage() {
           </section>
 
           <section className="mx-auto max-w-7xl px-4 pb-16 lg:px-8">
-            <div className="gov-card overflow-hidden" data-help-id="certificate-report-list-filters">
-              <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
-                <h3 className="text-lg font-black">{en ? "Search and Focus" : "검색 및 집중 보기"}</h3>
-                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Filter the portfolio by keyword, stage, and priority before opening the next task." : "검색어, 단계, 긴급도로 문서 포트폴리오를 좁힌 뒤 다음 작업으로 이동합니다."}</p>
-              </div>
-              <div className="grid gap-4 px-6 py-6 lg:grid-cols-[minmax(0,1.5fr),220px,220px,auto]">
-                <label>
+            <div className="ccus-search-host" data-help-id="certificate-report-list-filters"><CommonSearchSection basic={<><div className="ccus-search-field"><label>
                   <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Keyword" : "검색어"}</span>
                   <input className="w-full rounded-xl border border-[var(--kr-gov-border-light)] px-4 py-3 text-sm outline-none focus:border-[var(--kr-gov-blue)]" placeholder={en ? "Document ID, company, site, assignee" : "문서번호, 회사명, 배출지, 담당자"} value={searchKeyword} onChange={(event) => setSearchKeyword(event.target.value)} />
-                </label>
-                <label>
+                </label></div>
+<div className="ccus-search-field"><label>
                   <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Stage" : "단계"}</span>
                   <select className="w-full rounded-xl border border-[var(--kr-gov-border-light)] px-4 py-3 text-sm outline-none focus:border-[var(--kr-gov-blue)]" value={stageFilter} onChange={(event) => setStageFilter(event.target.value as "ALL" | DocumentRow["stageKey"])}>
                     <option value="ALL">{en ? "All" : "전체"}</option>
@@ -263,24 +258,18 @@ export function CertificateReportListMigrationPage() {
                     <option value="review">{en ? "In Review" : "내부 검토"}</option>
                     <option value="issued">{en ? "Issued" : "발급 완료"}</option>
                   </select>
-                </label>
-                <label>
+                </label></div></>} advanced={<><div className="ccus-search-field"><label>
                   <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Priority" : "긴급도"}</span>
                   <select className="w-full rounded-xl border border-[var(--kr-gov-border-light)] px-4 py-3 text-sm outline-none focus:border-[var(--kr-gov-blue)]" value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value as "ALL" | DocumentRow["priority"])}>
                     <option value="ALL">{en ? "All" : "전체"}</option>
                     <option value="urgent">{en ? "Urgent" : "긴급"}</option>
                     <option value="normal">{en ? "Normal" : "정상"}</option>
                   </select>
-                </label>
-                <div className="flex items-end gap-2">
-                  <button className="gov-btn border border-slate-200 text-slate-700 hover:bg-slate-50" type="button" onClick={() => {
+                </label></div></>} actions={<><button className="gov-btn border border-slate-200 text-slate-700 hover:bg-slate-50" type="button" onClick={() => {
                     setSearchKeyword("");
                     setStageFilter("ALL");
                     setPriorityFilter("ALL");
-                  }}>{en ? "Reset" : "초기화"}</button>
-                </div>
-              </div>
-            </div>
+                  }}>{en ? "Reset" : "초기화"}</button></>}></CommonSearchSection></div>
 
             <section className="gov-card mt-6 overflow-hidden" data-help-id="certificate-report-list-table">
               <div className="border-b border-[var(--kr-gov-border-light)] bg-slate-50 px-6 py-5">

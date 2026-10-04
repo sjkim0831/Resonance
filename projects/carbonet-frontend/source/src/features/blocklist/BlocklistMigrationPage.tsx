@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -430,7 +431,7 @@ export function BlocklistMigrationPage() {
           />
         </div>
         <form
-          className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-4"
+          className="ccus-search-host"
           onSubmit={(event) => {
             event.preventDefault();
             logGovernanceScope("ACTION", "blocklist-search", {
@@ -441,16 +442,23 @@ export function BlocklistMigrationPage() {
             });
             setFilters(draft);
           }}
-        >
-          <div className="md:col-span-2">
+        ><CommonSearchSection basic={<><div className="ccus-search-field"><div className="md:col-span-2">
             <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Keyword" : "검색어"}</span>
             <AdminInput
               placeholder={en ? "Block ID, target, reason, owner" : "차단 ID, 대상, 사유, 등록 주체 검색"}
               value={draft.searchKeyword}
               onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))}
             />
-          </div>
-          <div>
+          </div></div>
+<div className="ccus-search-field"><div>
+            <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Status" : "상태"}</span>
+            <AdminSelect value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))}>
+              <option value="">{en ? "All Status" : "전체 상태"}</option>
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="PENDING">PENDING</option>
+              <option value="RELEASED">RELEASED</option>
+            </AdminSelect>
+          </div></div></>} advanced={<><div className="ccus-search-field"><div>
             <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Block Type" : "차단 유형"}</span>
             <AdminSelect value={draft.blockType} onChange={(event) => setDraft((current) => ({ ...current, blockType: event.target.value }))}>
               <option value="">{en ? "All Types" : "전체 유형"}</option>
@@ -459,42 +467,20 @@ export function BlocklistMigrationPage() {
               <option value="ACCOUNT">{en ? "Account" : "계정"}</option>
               <option value="UA">User-Agent</option>
             </AdminSelect>
-          </div>
-          <div>
+          </div></div>
+<div className="ccus-search-field"><div>
             <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Source" : "소스"}</span>
             <AdminSelect value={draft.source} onChange={(event) => setDraft((current) => ({ ...current, source: event.target.value }))}>
               <option value="">{en ? "All Sources" : "전체 소스"}</option>
               <option value="system">{en ? "System Rules" : "시스템 룰"}</option>
               <option value="monitoring">{en ? "Monitoring Escalation" : "모니터링 승격"}</option>
             </AdminSelect>
-          </div>
-          <div>
-            <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Status" : "상태"}</span>
-            <AdminSelect value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))}>
-              <option value="">{en ? "All Status" : "전체 상태"}</option>
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="PENDING">PENDING</option>
-              <option value="RELEASED">RELEASED</option>
-            </AdminSelect>
-          </div>
-          <div className="md:col-span-4">
-            <div className="flex flex-col gap-3 border-t border-[var(--kr-gov-border-light)] pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
-                {en
-                  ? "Monitoring-origin blocks can be extended or released directly and keep their source event linkage."
-                  : "모니터링 승격 차단은 원본 이벤트 연결을 유지한 채 즉시 해제하거나 1일 연장할 수 있습니다."}
-              </p>
-              <MemberButtonGroup className="justify-end">
-                <MemberButton onClick={resetFilters} type="button" variant="secondary">
+          </div></div></>} actions={<><MemberButton onClick={resetFilters} type="button" variant="secondary">
                   {en ? "Reset" : "초기화"}
                 </MemberButton>
-                <MemberButton icon="search" type="submit" variant="primary">
+<MemberButton icon="search" type="submit" variant="primary">
                   {en ? "Search" : "조회"}
-                </MemberButton>
-              </MemberButtonGroup>
-            </div>
-          </div>
-        </form>
+                </MemberButton></>}></CommonSearchSection></form>
       </section>
 
       <section className="gov-card mb-8" data-help-id="blocklist-summary">

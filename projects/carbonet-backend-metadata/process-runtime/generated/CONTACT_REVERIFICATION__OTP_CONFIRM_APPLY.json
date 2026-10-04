@@ -1,0 +1,676 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "CONTACT_REVERIFICATION",
+    "name": "이메일·휴대전화 변경·재인증",
+    "domain": "MEMBER",
+    "workType": "MEMBER",
+    "goal": "로그인 회원이 신규 연락처의 소유권을 10분 OTP로 증명한 뒤에만 연락처를 변경한다."
+  },
+  "step": {
+    "code": "OTP_CONFIRM_APPLY",
+    "version": 1,
+    "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "MEMBER_USER",
+      "ownerActorCode": "MEMBER_USER",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [
+        {
+          "guard": {
+            "selfOnly": true,
+            "singleUse": true,
+            "maxAttempts": 5
+          },
+          "scope": "RECORD",
+          "resource": {
+            "resource": "member-contact"
+          },
+          "permissionCode": "CONTACT_VERIFIED_APPLY"
+        }
+      ],
+      "delegation": {},
+      "extensions": {
+        "useAt": "Y",
+        "purpose": "승인된 권한 범위에서 개인 업무와 프로젝트를 수행한다.",
+        "actorName": "일반 회원",
+        "actorType": "BUSINESS",
+        "competency": "",
+        "relatedActors": [
+          {
+            "useAt": "Y",
+            "purpose": "회원 가입·상태·잠금·탈퇴와 로그인 이력을 관리한다.",
+            "actorCode": "MEMBER_ADMIN",
+            "actorName": "회원 관리자",
+            "actorType": "OPERATION",
+            "competency": "",
+            "actorNameEn": "Member Administrator",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "MEMBER_APPROVE",
+              "MEMBER_REVIEW",
+              "MEMBER_SUSPEND"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": true,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          },
+          {
+            "useAt": "Y",
+            "purpose": "승인된 권한 범위에서 개인 업무와 프로젝트를 수행한다.",
+            "actorCode": "MEMBER_USER",
+            "actorName": "일반 회원",
+            "actorType": "BUSINESS",
+            "competency": "",
+            "actorNameEn": "Member User",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "PROFILE_EDIT",
+              "PROFILE_VIEW",
+              "WORK_EXECUTE"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": true,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          }
+        ],
+        "accountability": "",
+        "responsibility": "",
+        "capabilityCodes": [
+          "PROFILE_EDIT",
+          "PROFILE_VIEW",
+          "WORK_EXECUTE"
+        ],
+        "reviewCycleDays": 365,
+        "delegationAllowed": true,
+        "conflictActorCodes": [],
+        "escalationActorCode": "MEMBER_ADMIN",
+        "segregationActorCodes": [
+          "MEMBER_ADMIN"
+        ],
+        "maxConcurrentAssignments": 0
+      }
+    },
+    "business": {
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
+      "domainCode": "MEMBER",
+      "processName": "이메일·휴대전화 변경·재인증",
+      "stepName": "OTP 확인·연락처 변경·단일사용 잠금",
+      "goal": "로그인 회원이 신규 연락처의 소유권을 10분 OTP로 증명한 뒤에만 연락처를 변경한다.",
+      "requirement": "인증번호를 확인하고 인증된 연락처로 변경한다.",
+      "completionRule": "5회 이내 유효한 OTP가 일치할 때 신규 연락처를 반영하고 challenge를 consumed 처리한다.",
+      "riskLevel": "HIGH",
+      "slaHours": 1,
+      "regulationRefs": "개인정보 보호법 제29조; OWASP ASVS V2,V3,V4",
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {},
+      "extensions": {}
+    },
+    "transition": {
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
+      "commandCode": "CONFIRM_AND_APPLY_CONTACT",
+      "fromState": "OTP_SENT",
+      "toState": "COMPLETED",
+      "stepOrder": 3,
+      "stepType": "DECISION",
+      "parentStepCode": null,
+      "completionRule": "5회 이내 유효한 OTP가 일치할 때 신규 연락처를 반영하고 challenge를 consumed 처리한다.",
+      "policy": {
+        "auditRequired": true,
+        "optimisticLock": true,
+        "idempotencyRequired": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
+    },
+    "input": {
+      "challengeId": "uuid",
+      "verificationCode": "6digits"
+    },
+    "output": {
+      "saved": true,
+      "channel": "EMAIL|PHONE"
+    },
+    "guide": {
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
+      "processCode": "CONTACT_REVERIFICATION",
+      "stepCode": "OTP_CONFIRM_APPLY",
+      "stepOrder": 3,
+      "workTypeCode": "MEMBER",
+      "actorCode": "MEMBER_USER",
+      "title": "OTP 확인·연락처 변경·단일사용 잠금",
+      "purpose": "인증번호를 확인하고 인증된 연락처로 변경한다.",
+      "entryCondition": "OTP_SENT",
+      "completionCondition": "5회 이내 유효한 OTP가 일치할 때 신규 연락처를 반영하고 challenge를 consumed 처리한다.",
+      "userPath": "/mypage/email",
+      "adminPath": "/mypage/email",
+      "relatedBusinessRoute": null,
+      "nextStepCode": null,
+      "nextAction": "COMPLETED",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "CONTACT_REVERIFICATION_OTP_CONFIRM_APPLY_USER",
+        "route": "/mypage/email",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "USER",
+        "screenType": "WORKSPACE",
+        "title": "OTP 확인·연락처 변경·단일사용 잠금",
+        "purpose": "인증번호를 확인하고 인증된 연락처로 변경한다.",
+        "layout": "RESPONSIVE_WORKSPACE",
+        "theme": "KRDS_GOV_DEFAULT",
+        "designAuthority": {
+          "source": "LEGACY_REGISTERED_DEFAULT",
+          "layout": "RESPONSIVE_WORKSPACE",
+          "theme": "KRDS_GOV_DEFAULT",
+          "defaulted": [
+            "layout",
+            "theme"
+          ]
+        },
+        "sections": [
+          {
+            "code": "TASK_CONTEXT",
+            "label": "업무 문맥"
+          },
+          {
+            "code": "WORKSPACE",
+            "label": "업무 처리"
+          },
+          {
+            "code": "EVIDENCE_HISTORY",
+            "label": "증적·이력"
+          },
+          {
+            "code": "NEXT_TASK",
+            "label": "다음 업무"
+          }
+        ],
+        "fields": [
+          {
+            "route": "/mypage/email",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "CONTACT_REVERIFICATION_OTP_CONFIRM_APPLY_USER",
+            "required": true,
+            "fieldCode": "challengeId",
+            "fieldName": "challengeId",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 10,
+            "validation": {
+              "required": true
+            },
+            "apiProperty": "challengeId",
+            "controlType": "TEXT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_USER:USER",
+            "evidenceRequired": false,
+            "code": "challengeId"
+          },
+          {
+            "route": "/mypage/email",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "CONTACT_REVERIFICATION_OTP_CONFIRM_APPLY_USER",
+            "required": true,
+            "fieldCode": "verificationCode",
+            "fieldName": "verificationCode",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 20,
+            "validation": {
+              "required": true
+            },
+            "apiProperty": "verificationCode",
+            "controlType": "TEXT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_USER:USER",
+            "evidenceRequired": false,
+            "code": "verificationCode"
+          }
+        ],
+        "commands": [
+          {
+            "code": "CONFIRM_AND_APPLY_CONTACT",
+            "auditRequired": true,
+            "transactional": true,
+            "idempotencyRequired": true,
+            "commandCode": "CONFIRM_AND_APPLY_CONTACT",
+            "actorCode": "MEMBER_USER",
+            "serverAuthorization": true,
+            "entryState": "OTP_SENT",
+            "resultState": "COMPLETED"
+          },
+          {
+            "primary": true,
+            "actorCode": "MEMBER_USER",
+            "entryState": "OTP_SENT",
+            "markerType": "PRIMARY_STEP_COMMAND",
+            "commandCode": "CONFIRM_AND_APPLY_CONTACT",
+            "resultState": "COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": [
+          "OTP_SENT",
+          "COMPLETED",
+          "LOADING",
+          "ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "RECOVERY"
+        ],
+        "responsive": {
+          "mobile": "single-column",
+          "tablet": "adaptive-two-column",
+          "desktop": "task-optimized",
+          "noTextOverflow": true
+        },
+        "accessibility": {
+          "standard": "WCAG 2.1 AA",
+          "keyboard": true,
+          "focus": true,
+          "errorSummary": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorCode": "MEMBER_USER",
+        "commandCode": "CONFIRM_AND_APPLY_CONTACT",
+        "declaredContract": "POST /api/mypage/contact-verification/confirm",
+        "serverAuthorization": true
+      },
+      {
+        "primary": true,
+        "actorCode": "MEMBER_USER",
+        "actorGuard": true,
+        "markerType": "PRIMARY_STEP_API",
+        "rowVersion": true,
+        "commandCode": "CONFIRM_AND_APPLY_CONTACT",
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": [
+          "POST /api/mypage/contact-verification/confirm"
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "code": "CONFIRM_AND_APPLY_CONTACT",
+        "auditRequired": true,
+        "transactional": true,
+        "idempotencyRequired": true,
+        "commandCode": "CONFIRM_AND_APPLY_CONTACT",
+        "actorCode": "MEMBER_USER",
+        "serverAuthorization": true,
+        "entryState": "OTP_SENT",
+        "resultState": "COMPLETED"
+      },
+      {
+        "primary": true,
+        "actorCode": "MEMBER_USER",
+        "entryState": "OTP_SENT",
+        "markerType": "PRIMARY_STEP_COMMAND",
+        "commandCode": "CONFIRM_AND_APPLY_CONTACT",
+        "resultState": "COMPLETED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "idempotencyRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "MEMBER_USER",
+      "ownerActorCode": "MEMBER_USER",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [
+        {
+          "guard": {
+            "selfOnly": true,
+            "singleUse": true,
+            "maxAttempts": 5
+          },
+          "scope": "RECORD",
+          "resource": {
+            "resource": "member-contact"
+          },
+          "permissionCode": "CONTACT_VERIFIED_APPLY"
+        }
+      ],
+      "delegation": {},
+      "extensions": {
+        "useAt": "Y",
+        "purpose": "승인된 권한 범위에서 개인 업무와 프로젝트를 수행한다.",
+        "actorName": "일반 회원",
+        "actorType": "BUSINESS",
+        "competency": "",
+        "relatedActors": [
+          {
+            "useAt": "Y",
+            "purpose": "회원 가입·상태·잠금·탈퇴와 로그인 이력을 관리한다.",
+            "actorCode": "MEMBER_ADMIN",
+            "actorName": "회원 관리자",
+            "actorType": "OPERATION",
+            "competency": "",
+            "actorNameEn": "Member Administrator",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "MEMBER_APPROVE",
+              "MEMBER_REVIEW",
+              "MEMBER_SUSPEND"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": true,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          },
+          {
+            "useAt": "Y",
+            "purpose": "승인된 권한 범위에서 개인 업무와 프로젝트를 수행한다.",
+            "actorCode": "MEMBER_USER",
+            "actorName": "일반 회원",
+            "actorType": "BUSINESS",
+            "competency": "",
+            "actorNameEn": "Member User",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "PROFILE_EDIT",
+              "PROFILE_VIEW",
+              "WORK_EXECUTE"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": true,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          }
+        ],
+        "accountability": "",
+        "responsibility": "",
+        "capabilityCodes": [
+          "PROFILE_EDIT",
+          "PROFILE_VIEW",
+          "WORK_EXECUTE"
+        ],
+        "reviewCycleDays": 365,
+        "delegationAllowed": true,
+        "conflictActorCodes": [],
+        "escalationActorCode": "MEMBER_ADMIN",
+        "segregationActorCodes": [
+          "MEMBER_ADMIN"
+        ],
+        "maxConcurrentAssignments": 0
+      }
+    },
+    "handoffPolicy": {},
+    "handoffs": [
+      {
+        "failure": {
+          "onInvalid": "VALIDATION_ERROR",
+          "onMissing": "DEPENDENCY_BLOCKED",
+          "onConflict": "RELOAD_AND_REVIEW",
+          "onUnauthorized": "DENY_AND_AUDIT"
+        },
+        "payload": {
+          "autoStart": true,
+          "chainCode": "MEMBER_PROFILE_SECURITY_V1",
+          "targetInput": "READY",
+          "sourceOutput": "COMPLETED"
+        },
+        "integrity": {
+          "evidenceHash": true,
+          "optimisticLock": true,
+          "immutableSnapshot": true,
+          "sourceTransactionCommitted": true
+        },
+        "toStepCode": "PERSONAL_DATA_SCOPE",
+        "contextKeys": [
+          "tenantId",
+          "businessId",
+          "recordId",
+          "rowVersion"
+        ],
+        "handoffType": "PROCESS",
+        "authorization": {
+          "toActor": "MEMBER_USER",
+          "fromActor": "MEMBER_USER",
+          "leastPrivilege": true,
+          "tenantIsolation": true,
+          "segregationChecked": true
+        },
+        "toProcessCode": "PERSONAL_DATA_RIGHTS"
+      }
+    ]
+  },
+  "database": {
+    "mappings": [],
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "caseCode": "CONTACT_REVERIFICATION_OTP_CONFIRM_APPLY_HAPPY_PATH",
+      "name": "OTP 확인·연락처 변경·단일사용 잠금 HAPPY_PATH",
+      "type": "HAPPY_PATH",
+      "status": "APPROVED",
+      "sourceRequirement": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "CONTACT_REVERIFICATION",
+          "stepCode": "OTP_CONFIRM_APPLY",
+          "scenario": "HAPPY_PATH"
+        }
+      ],
+      "assertions": [
+        "HAPPY_PATH contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "CONTACT_REVERIFICATION_OTP_CONFIRM_APPLY_EXCEPTION",
+      "name": "OTP 확인·연락처 변경·단일사용 잠금 EXCEPTION",
+      "type": "EXCEPTION",
+      "status": "APPROVED",
+      "sourceRequirement": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "CONTACT_REVERIFICATION",
+          "stepCode": "OTP_CONFIRM_APPLY",
+          "scenario": "EXCEPTION"
+        }
+      ],
+      "assertions": [
+        "EXCEPTION contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "CONTACT_REVERIFICATION_OTP_CONFIRM_APPLY_AUTHORITY",
+      "name": "OTP 확인·연락처 변경·단일사용 잠금 AUTHORITY",
+      "type": "AUTHORITY",
+      "status": "APPROVED",
+      "sourceRequirement": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "CONTACT_REVERIFICATION",
+          "stepCode": "OTP_CONFIRM_APPLY",
+          "scenario": "AUTHORITY"
+        }
+      ],
+      "assertions": [
+        "AUTHORITY contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "CONTACT_REVERIFICATION_OTP_CONFIRM_APPLY_ISOLATION",
+      "name": "OTP 확인·연락처 변경·단일사용 잠금 ISOLATION",
+      "type": "ISOLATION",
+      "status": "APPROVED",
+      "sourceRequirement": "ISOLATION",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "CONTACT_REVERIFICATION",
+          "stepCode": "OTP_CONFIRM_APPLY",
+          "scenario": "ISOLATION"
+        }
+      ],
+      "assertions": [
+        "ISOLATION contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "CONTACT_REVERIFICATION_OTP_CONFIRM_APPLY_RECOVERY",
+      "name": "OTP 확인·연락처 변경·단일사용 잠금 RECOVERY",
+      "type": "RECOVERY",
+      "status": "APPROVED",
+      "sourceRequirement": "RECOVERY",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "CONTACT_REVERIFICATION",
+          "stepCode": "OTP_CONFIRM_APPLY",
+          "scenario": "RECOVERY"
+        }
+      ],
+      "assertions": [
+        "RECOVERY contract is enforced before live promotion"
+      ]
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
+    "security": {
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true,
+      "segregationOfDuties": true,
+      "rateLimitRequired": false,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "standard": "WCAG 2.1 AA",
+      "keyboard": true,
+      "focus": true,
+      "errorSummary": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": true,
+      "targetHours": 1,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
+  },
+  "sourceHash": "0e0d2cf1979607edc7cdf17c7d54d94fbff8fba3a7d400f8cbcc7845b228ee01",
+  "approvalStatus": "APPROVED",
+  "packageHash": "446e936cb4a7edeece43ec6ed4e6ae13279b2a7f85c7f67257313be538ee5878"
+}

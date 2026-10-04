@@ -1,0 +1,15 @@
+{
+  "checks": [
+    "all USD hashes match build evidence",
+    "all 3101 geometric prims have resolvable materials",
+    "portable ZIP reopens all 176 unique IDs with floor origin preserved"
+  ],
+  "assets": 176,
+  "materials": 3101,
+  "seconds": 0.18659496307373047,
+  "zipBytes": 64367,
+  "usdBytes": 1046676,
+  "packageHash": "fd770af4f4b63a0d50338c89c1532659673db5b5a66cc07ed600e21a38e85218",
+  "readyPromotions": 0,
+  "real": 0
+}

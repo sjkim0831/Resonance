@@ -1,0 +1,658 @@
+[
+  {
+    "id": "E023",
+    "test": "category1_full_requalification",
+    "result": "PASS",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "subjectHash": true,
+      "designHash": true,
+      "dependencyHashes": true,
+      "coreParts": true,
+      "equipmentType": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "E024",
+    "test": "category1_full_requalification",
+    "result": "PASS",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "subjectHash": true,
+      "designHash": true,
+      "dependencyHashes": true,
+      "coreParts": true,
+      "equipmentType": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "E025",
+    "test": "category1_full_requalification",
+    "result": "PASS",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "subjectHash": true,
+      "designHash": true,
+      "dependencyHashes": true,
+      "coreParts": true,
+      "equipmentType": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "E030",
+    "test": "category1_full_requalification",
+    "result": "PASS",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "subjectHash": true,
+      "designHash": true,
+      "dependencyHashes": true,
+      "coreParts": true,
+      "equipmentType": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "E031",
+    "test": "category1_full_requalification",
+    "result": "PASS",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "subjectHash": true,
+      "designHash": true,
+      "dependencyHashes": true,
+      "coreParts": true,
+      "equipmentType": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "E032",
+    "test": "category1_full_requalification",
+    "result": "PASS",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "subjectHash": true,
+      "designHash": true,
+      "dependencyHashes": true,
+      "coreParts": true,
+      "equipmentType": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "E033",
+    "test": "category1_full_requalification",
+    "result": "PASS",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "subjectHash": true,
+      "designHash": true,
+      "dependencyHashes": true,
+      "coreParts": true,
+      "equipmentType": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "E034",
+    "test": "category1_full_requalification",
+    "result": "PASS",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "subjectHash": true,
+      "designHash": true,
+      "dependencyHashes": true,
+      "coreParts": true,
+      "equipmentType": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "E053",
+    "test": "category1_full_requalification",
+    "result": "PASS",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "subjectHash": true,
+      "designHash": true,
+      "dependencyHashes": true,
+      "coreParts": true,
+      "equipmentType": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "E075",
+    "test": "category1_full_requalification",
+    "result": "PASS",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "subjectHash": true,
+      "designHash": true,
+      "dependencyHashes": true,
+      "coreParts": true,
+      "equipmentType": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "N161",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "N163",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "N164",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A060",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A298",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A309",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A310",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A311",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A312",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A313",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A314",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A315",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A316",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A318",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A320",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A321",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A326",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A339",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A400",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "id": "A464",
+    "test": "category2_design_comparison",
+    "result": "TECHNICAL_PASS_SEMANTIC_HOLD",
+    "checks": {
+      "composed": true,
+      "nonempty": true,
+      "unit": true,
+      "upAxis": true,
+      "rootTransform": true,
+      "specificReference": true,
+      "identity": true,
+      "floor": true,
+      "technicalGeometry": true,
+      "referenceEnvelope": true,
+      "configuration": true,
+      "enclosureParts": true,
+      "orientation": true
+    }
+  },
+  {
+    "test": "204_unique_bases_666_unique_assets_no_omissions",
+    "result": "PASS"
+  },
+  {
+    "test": "20_corrected_references_preserved",
+    "result": "PASS"
+  },
+  {
+    "test": "226_source_dependency_hashes_match_v1_baseline",
+    "result": "PASS"
+  },
+  {
+    "test": "no_function_physics_port_inheritance",
+    "result": "PASS"
+  }
+]

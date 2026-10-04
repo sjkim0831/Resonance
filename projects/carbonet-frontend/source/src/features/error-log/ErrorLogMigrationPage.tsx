@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -171,11 +172,19 @@ export function ErrorLogMigrationPage() {
               title="검색 조건"
             />
           </div>
-          <form className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-4" onSubmit={(event) => {
+          <form className="ccus-search-host" onSubmit={(event) => {
             event.preventDefault();
             applyFilters(1);
-          }}>
-            <div>
+          }}><CommonSearchSection basic={<><div className="ccus-search-field"><div>
+              <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">검색어</span>
+              <AdminInput
+                id="searchKeyword"
+                placeholder="메시지, 사용자, URI, pageId 검색"
+                value={draftFilters.searchKeyword}
+                onChange={(event) => updateDraft("searchKeyword", event.target.value)}
+              />
+            </div></div>
+<div className="ccus-search-field"><div>
               <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">회사</span>
               <AdminSelect
                 disabled={!page?.canManageAllCompanies}
@@ -190,8 +199,7 @@ export function ErrorLogMigrationPage() {
                   </option>
                 ))}
               </AdminSelect>
-            </div>
-            <div>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">소스</span>
               <AdminSelect id="sourceType" value={draftFilters.sourceType} onChange={(event) => updateDraft("sourceType", event.target.value)}>
                 {sourceTypeOptions.map((option) => (
@@ -200,8 +208,8 @@ export function ErrorLogMigrationPage() {
                   </option>
                 ))}
               </AdminSelect>
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">오류 유형</span>
               <AdminSelect id="errorType" value={draftFilters.errorType} onChange={(event) => updateDraft("errorType", event.target.value)}>
                 {errorTypeOptions.map((option) => (
@@ -210,28 +218,8 @@ export function ErrorLogMigrationPage() {
                   </option>
                 ))}
               </AdminSelect>
-            </div>
-            <div>
-              <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">검색어</span>
-              <AdminInput
-                id="searchKeyword"
-                placeholder="메시지, 사용자, URI, pageId 검색"
-                value={draftFilters.searchKeyword}
-                onChange={(event) => updateDraft("searchKeyword", event.target.value)}
-              />
-            </div>
-            <div className="md:col-span-4">
-              <div className="flex flex-col gap-3 border-t border-[var(--kr-gov-border-light)] pt-5 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
-                  영구 저장된 백엔드 오류, 페이지 격리 오류, 프런트 오류 리포트를 한 화면에서 확인합니다.
-                </p>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <MemberButton onClick={resetFilters} type="button" variant="secondary">초기화</MemberButton>
-                  <MemberButton icon="search" type="submit" variant="primary">검색</MemberButton>
-                </div>
-              </div>
-            </div>
-          </form>
+            </div></div></>} actions={<><MemberButton onClick={resetFilters} type="button" variant="secondary">초기화</MemberButton>
+<MemberButton icon="search" type="submit" variant="primary">검색</MemberButton></>}></CommonSearchSection></form>
         </div>
 
         <div className="gov-card p-0 overflow-hidden" data-help-id="error-log-table">

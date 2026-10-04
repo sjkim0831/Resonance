@@ -1,0 +1,27 @@
+{
+  "resolverChanges": [
+    "N161",
+    "N163",
+    "N164",
+    "A060",
+    "A298",
+    "A309",
+    "A310",
+    "A311",
+    "A312",
+    "A313",
+    "A314",
+    "A315",
+    "A316",
+    "A318",
+    "A320",
+    "A321",
+    "A326",
+    "A339",
+    "A400",
+    "A464"
+  ],
+  "backup": "/home/sjkim/OmniverseProjects/p006-quality-v2/published-resolver-backup.json",
+  "seconds": 0.018,
+  "bytes": 9017632
+}

@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "path": "_Class1RC.usd",
+    "sha256": "b7101cc8918fc958ac1c80ef01499587c12227adbdb4f3df1aefedaac06afaf1",
+    "license": "MIT; preserve upstream LICENSE alongside derivative"
+  },
+  "stage": {
+    "primCount": 60,
+    "meshCount": 36,
+    "metersPerUnit": 0.01,
+    "upAxis": "Z"
+  },
+  "output": {
+    "file": "p006-rc-car-structure.glb",
+    "bytes": 28242564,
+    "sha256": "16eed1958b41de70266d27e47f93c4aefc04ef8de17091a266308de8b3b79bff",
+    "format": "glTF 2.0 binary (GLB)",
+    "coordinateSystem": "Y-up, meters; source USD world transforms baked",
+    "exportMethod": "OpenUSD mesh points/topology; polygon fan triangulation",
+    "derivedFor": "visual structure review only"
+  },
+  "structure": {
+    "componentCount": 6,
+    "sourceMeshCount": 36,
+    "pointCount": 1762662,
+    "triangleCount": 587554,
+    "boundsMeters": {
+      "min": [
+        -0.20059999847412108,
+        1.5258788987893014e-09,
+        -0.13540059852600098
+      ],
+      "max": [
+        0.20059999847412113,
+        0.08619999847412121,
+        0.13540059852600117
+      ]
+    },
+    "jointCount": 0,
+    "animationClipCount": 0,
+    "componentStats": {
+      "chassis": {
+        "meshCount": 2,
+        "pointCount": 1263666,
+        "triangleCount": 421222,
+        "sourcePrimPaths": [
+          "/World/Geometry/_Class1RC/Chassis__refset_Entire_Part"
+        ],
+        "boundsMeters": {
+          "min": [
+            -0.17500000000000002,
+            0.02520213890075684,
+            -0.075
+          ],
+          "max": [
+            0.2,
+            0.06442470550537109,
+            0.075
+          ]
+        }
+      },
+      "front-upper-arm-pair": {
+        "meshCount": 6,
+        "pointCount": 12702,
+        "triangleCount": 4234,
+        "sourcePrimPaths": [
+          "/World/Geometry/_Class1RC/_ArmFrontUpper__refset_Entire_Part",
+          "/World/Geometry/_Class1RC/_ArmFrontUpper_mirror__refset_Entire_Part"
+        ],
+        "boundsMeters": {
+          "min": [
+            0.12514756774902344,
+            0.05052079010009766,
+            -0.10623392486572267
+          ],
+          "max": [
+            0.18985244750976563,
+            0.06572441864013673,
+            0.10623392486572267
+          ]
+        }
+      },
+      "front-lower-arm-pair": {
+        "meshCount": 6,
+        "pointCount": 9390,
+        "triangleCount": 3130,
+        "sourcePrimPaths": [
+          "/World/Geometry/_Class1RC/_ArmFrontLower__refset_Entire_Part",
+          "/World/Geometry/_Class1RC/_ArmFrontLower_mirror__refset_Entire_Part"
+        ],
+        "boundsMeters": {
+          "min": [
+            0.12503935241699218,
+            0.02693601417541504,
+            -0.1071619567871094
+          ],
+          "max": [
+            0.18996064758300782,
+            0.04583600616455079,
+            0.1071619567871094
+          ]
+        }
+      },
+      "trailing-arm-pair": {
+        "meshCount": 6,
+        "pointCount": 6456,
+        "triangleCount": 2152,
+        "sourcePrimPaths": [
+          "/World/Geometry/_Class1RC/TrailingArm__refset_Entire_Part",
+          "/World/Geometry/_Class1RC/_mirrorTrailingArm__refset_Entire_Part"
+        ],
+        "boundsMeters": {
+          "min": [
+            -0.16575,
+            0.03485000228881836,
+            -0.11200000000000002
+          ],
+          "max": [
+            -0.07,
+            0.051350002288818364,
+            0.11200000000000002
+          ]
+        }
+      },
+      "front-unsprung-mass": {
+        "meshCount": 8,
+        "pointCount": 235224,
+        "triangleCount": 78408,
+        "sourcePrimPaths": [
+          "/World/Geometry/_Class1RC/UnsprungMassFront__refset_MODEL"
+        ],
+        "boundsMeters": {
+          "min": [
+            0.11440000152587886,
+            1.5258788987893014e-09,
+            -0.13540059852600098
+          ],
+          "max": [
+            0.20059999847412113,
+            0.08619999847412121,
+            0.13540059852600117
+          ]
+        }
+      },
+      "rear-unsprung-mass": {
+        "meshCount": 8,
+        "pointCount": 235224,
+        "triangleCount": 78408,
+        "sourcePrimPaths": [
+          "/World/Geometry/_Class1RC/UnsprungMassRear__refset_MODEL"
+        ],
+        "boundsMeters": {
+          "min": [
+            -0.20059999847412108,
+            1.5258789076710854e-09,
+            -0.13540059852600098
+          ],
+          "max": [
+            -0.11440000152587888,
+            0.0861999984741211,
+            0.13540059852600114
+          ]
+        }
+      }
+    }
+  },
+  "gates": {
+    "sourceStageOpened": true,
+    "meshCountsMatched": true,
+    "pointCountsMatched": true,
+    "trianglesMatchedSourceFaces": true,
+    "sourceAssemblySequenceVerified": false,
+    "machineAnimationVerified": false,
+    "demoMotionType": "USER_DEFINED_TRANSLATION_ASSEMBLY_REVIEW"
+  }
+}

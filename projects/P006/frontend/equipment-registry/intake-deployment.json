@@ -1,0 +1,10 @@
+{
+  "deploySeconds": 0.28,
+  "backup": "/opt/Resonance/projects/P006/runtime/equipment-registry/backups/intake-20260910-191521",
+  "sourceFilesPreserved": true,
+  "assetDbPreserved": true,
+  "importedCandidates": 62,
+  "newEquipmentInstances": 0,
+  "originalUsdWrites": 0,
+  "bytesAdded": 202662
+}

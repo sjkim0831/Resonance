@@ -66,6 +66,7 @@ public interface EmployeeMemberRepository extends JpaRepository<EmplyrInfo, Stri
             Sort sort);
 
     Optional<EmplyrInfo> findFirstByAuthCi(String authCi);
+    long countByAuthCi(String authCi);
 
     Optional<EmplyrInfo> findFirstByAuthDi(String authDi);
 

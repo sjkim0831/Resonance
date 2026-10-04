@@ -47,7 +47,21 @@
         )
     </insert>
 
-    <insert id="insertTraceEvent" parameterType="egovframework.com.common.trace.TraceEventRecordVO">
+    <insert id="aggregateTechnicalRequest" parameterType="map">
+        INSERT INTO telemetry_technical_minute (
+            bucket_start, project_id, route, http_method, response_status,
+            request_count, duration_sum_ms, duration_max_ms, first_seen, last_seen
+        ) VALUES (
+            date_trunc('minute', CURRENT_TIMESTAMP), #{projectId}, #{route}, #{method}, #{status},
+            1, #{durationMs}, #{durationMs}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        ) ON CONFLICT (bucket_start, project_id, route, http_method, response_status)
+        DO UPDATE SET request_count = telemetry_technical_minute.request_count + 1,
+            duration_sum_ms = telemetry_technical_minute.duration_sum_ms + EXCLUDED.duration_sum_ms,
+            duration_max_ms = GREATEST(telemetry_technical_minute.duration_max_ms, EXCLUDED.duration_max_ms),
+            last_seen = GREATEST(telemetry_technical_minute.last_seen, EXCLUDED.last_seen)
+    </insert>
+
+    <sql id="traceEventInsertSql">
         INSERT INTO TRACE_EVENT (
             EVENT_ID,
             PROJECT_ID,
@@ -79,6 +93,14 @@
             #{payloadSummaryJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             CURRENT_TIMESTAMP
         )
+    </sql>
+    <insert id="insertTraceEvent" parameterType="egovframework.com.common.trace.TraceEventRecordVO">
+        <include refid="traceEventInsertSql"/>
+    </insert>
+
+    <insert id="insertFrontendTraceEvent" parameterType="egovframework.com.common.trace.TraceEventRecordVO">
+        <include refid="traceEventInsertSql"/>
+        ON CONFLICT (EVENT_ID) DO NOTHING
     </insert>
 
     <insert id="insertAccessEvent" parameterType="egovframework.com.common.logging.AccessEventRecordVO">

@@ -781,6 +781,18 @@ public class ActorProcessGovernanceService {
      * clients. The full governance dashboard is intentionally broad and can be
      * tens of megabytes; validators must not depend on that aggregate payload.
      */
+    public Map<String,Object> processCatalog() {
+        List<Map<String,Object>> types=jdbc.queryForList("select work_type_code as \"workTypeCode\",work_type_name as \"workTypeName\",sort_order,use_at from framework_business_work_type order by sort_order nulls last,work_type_code");
+        List<Map<String,Object>> processes=jdbc.queryForList("select p.process_code as \"processCode\",p.process_name as \"processName\",p.domain_code as \"domainCode\",p.process_status as \"processStatus\",p.lifecycle_status as \"lifecycleStatus\",p.process_version as \"processVersion\",p.definition_locked as \"definitionLocked\",p.development_order as \"developmentOrder\",seq.workflow_order as \"workflowOrder\" from framework_process_definition p left join framework_business_process_sequence seq using(process_code) order by (select sort_order from framework_business_work_type w where upper(w.work_type_code)=upper(p.domain_code)) nulls last,seq.workflow_order nulls last,p.development_order nulls last,p.process_code");
+        List<Map<String,Object>> steps=jdbc.queryForList("select s.process_code as \"processCode\",s.step_code as \"stepCode\",s.step_name as \"stepName\",s.step_order as \"stepOrder\",s.automation_status as \"automationStatus\",s.from_state as \"fromState\",s.command_code as \"commandCode\",s.to_state as \"toState\",b.audience as \"audience\",r.route_key as \"routePath\",b.screen_resource_id as \"screenResourceId\",b.binding_status as \"screenBindingStatus\",r.implementation_status as \"implementationStatus\" from framework_process_step s left join framework_process_step_screen_binding b on b.process_code=s.process_code and b.step_code=s.step_code and b.binding_status='ACTIVE' left join framework_screen_resource r on r.screen_resource_id=b.screen_resource_id order by s.process_code,s.step_order,s.step_code");
+        List<Map<String,Object>> runtime=jdbc.queryForList("select process_code as \"processCode\",count(*) total,count(*) filter(where execution_status in ('RUNNING','IN_PROGRESS')) running,count(*) filter(where execution_status in ('COMPLETED','DONE')) completed,count(*) filter(where execution_status in ('FAILED','ERROR')) failed,count(*) filter(where execution_status in ('CANCELLED','CANCELED')) cancelled from framework_process_execution group by process_code");
+        Map<String,Map<String,Object>> rt=new HashMap<>(); runtime.forEach(row->rt.put(String.valueOf(row.get("processCode")),row));
+        Map<String,Object> result=ProcessCatalogAssembler.assemble(types,processes,steps,runtime);
+        result.put("generatedAt",java.time.Instant.now().toString());
+        result.put("definitionVersion",null);
+        return result;
+    }
+
     public Map<String,Object> processDesign(String requestedProcess) {
         String process=req(Map.of("processCode",requestedProcess),"processCode");
         List<Map<String,Object>> definitions=jdbc.queryForList(
@@ -6693,6 +6705,116 @@ public class ActorProcessGovernanceService {
         return result;
     }
 
+    @Transactional
+    public Map<String,Object> updateStepContract(String processCode,String stepCode,Map<String,Object> body,String actor){
+        String process=req(Map.of("processCode",processCode),"processCode").toUpperCase(Locale.ROOT);
+        String step=req(Map.of("stepCode",stepCode),"stepCode").toUpperCase(Locale.ROOT);
+        if(!process.matches("[A-Z0-9_]{3,80}")||!step.matches("[A-Z0-9_]{2,80}")) throw new IllegalArgumentException("INVALID_PROCESS_OR_STEP_CODE");
+        if(actor==null||actor.isBlank())throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
+        if(body==null)throw new IllegalArgumentException("REQUEST_BODY_REQUIRED");
+        Set<String> allowed=Set.of("inputContract","outputContract","completionRule","decisionRule","revisionReason","expectedProcessVersion","expectedStructureHash");
+        for(String key:body.keySet())if(!allowed.contains(key))throw new IllegalArgumentException("UNSUPPORTED_STEP_CONTRACT_FIELD: "+key);
+        String reason=req(body,"revisionReason"), expectedVersion=str(body,"expectedProcessVersion"), expectedHash=str(body,"expectedStructureHash");
+        if(reason.length()>2000)throw new IllegalArgumentException("REVISION_REASON_TOO_LONG");
+        if(expectedVersion.isEmpty()&&expectedHash.isEmpty())throw new IllegalArgumentException("EXPECTED_PROCESS_VERSION_OR_STRUCTURE_HASH_REQUIRED");
+        Map<String,Object> p=jdbc.queryForMap("select process_version from framework_process_definition where process_code=? for update",process);
+        if(p.isEmpty())throw new IllegalArgumentException("PROCESS_NOT_FOUND: "+process);
+        String currentVersion=String.valueOf(p.get("process_version"));
+        if(!expectedVersion.isEmpty()&&!expectedVersion.equals(currentVersion))throw new IllegalStateException("STALE_PROCESS_VERSION");
+        String currentHash=jdbc.queryForObject("select framework_process_structure_hash(?)",String.class,process);
+        if(!expectedHash.isEmpty()&&!expectedHash.equals(currentHash))throw new IllegalStateException("STALE_PROCESS_STRUCTURE_HASH");
+        Integer exists=jdbc.queryForObject("select count(*) from framework_process_step where process_code=? and step_code=?",Integer.class,process,step);
+        if(exists==null||exists!=1)throw new IllegalArgumentException("STEP_NOT_FOUND: "+step);
+        String before=snapshotProcessDefinition(process); beginProcessDesignRevision(process,actor);
+        List<String> changed=new ArrayList<>();
+        if(body.containsKey("inputContract")){String v=req(body,"inputContract");validateJsonObject(v,"inputContract");jdbc.update("update framework_process_step set input_contract=? where process_code=? and step_code=?",v,process,step);changed.add("inputContract");}
+        if(body.containsKey("outputContract")){String v=req(body,"outputContract");validateJsonObject(v,"outputContract");jdbc.update("update framework_process_step set output_contract=? where process_code=? and step_code=?",v,process,step);changed.add("outputContract");}
+        if(body.containsKey("completionRule")){jdbc.update("update framework_process_step set completion_rule=? where process_code=? and step_code=?",req(body,"completionRule"),process,step);changed.add("completionRule");}
+        if(body.containsKey("decisionRule")){jdbc.update("update framework_process_step set decision_rule=? where process_code=? and step_code=?",req(body,"decisionRule"),process,step);changed.add("decisionRule");}
+        if(changed.isEmpty())throw new IllegalArgumentException("STEP_CONTRACT_CHANGE_REQUIRED");
+        String newHash=jdbc.queryForObject("select framework_process_structure_hash(?)",String.class,process);
+        if(newHash==null||newHash.equals(currentHash))throw new IllegalArgumentException("NO_CONTRACT_CHANGE");
+        Map<String,Object> finalized=finalizeProcessDesignRevision(process,actor);
+        String after=snapshotProcessDefinition(process);
+        String afterVersion=jdbc.queryForObject("select process_version from framework_process_definition where process_code=?",String.class,process);
+        Map<String,Object> result=new LinkedHashMap<>();result.put("success",true);result.put("processCode",process);result.put("stepCode",step);result.put("changedFields",changed);result.put("beforeSnapshot",jsonValue(before));result.put("afterSnapshot",jsonValue(after));result.put("processVersion",afterVersion);result.put("structureHash",newHash);result.put("revision",finalized);return result;
+    }
+
+    /** Read-only revision history used by the integrated work design screen. */
+    public Map<String,Object> processRevisionHistory(String processCode,int requestedLimit){
+        String process=req(Map.of("processCode",processCode),"processCode").trim().toUpperCase(Locale.ROOT);
+        if(!process.matches("^[A-Z][A-Z0-9_]{1,79}$"))
+            throw new IllegalArgumentException("INVALID_PROCESS_CODE");
+        int limit=Math.max(1,Math.min(requestedLimit,100));
+        Integer exists=jdbc.queryForObject(
+            "select count(*) from framework_process_definition where process_code=?",Integer.class,process);
+        if(exists==null||exists!=1)throw new IllegalArgumentException("PROCESS_NOT_FOUND: "+process);
+        List<Map<String,Object>> snapshots=jdbc.queryForList("""
+            select revision_id as "revisionId",process_code as "processCode",
+                   revision_reason as "revisionReason",created_by as actor,
+                   created_at as "createdAt",snapshot::text as snapshot
+              from framework_process_design_revision
+             where process_code=?
+             order by revision_id desc
+             limit ?
+            """,process,limit);
+        List<Map<String,Object>> revisions=new ArrayList<>();
+        for(int index=0;index<snapshots.size();index++){
+            Map<String,Object> row=snapshots.get(index);
+            Map<String,Object> after=jsonMap(String.valueOf(row.get("snapshot")));
+            Map<String,Object> before=index+1<snapshots.size()
+                ?jsonMap(String.valueOf(snapshots.get(index+1).get("snapshot"))):Map.of();
+            Map<String,Object> afterDefinition=objectMap(after.get("definition"));
+            Map<String,Object> beforeDefinition=objectMap(before.get("definition"));
+            List<String> changedFields=new ArrayList<>();
+            List<Map<String,Object>> stepChanges=new ArrayList<>();
+            if(before.isEmpty())changedFields.add("INITIAL_SNAPSHOT");
+            else{
+                Set<String> definitionKeys=new java.util.TreeSet<>();
+                definitionKeys.addAll(beforeDefinition.keySet());definitionKeys.addAll(afterDefinition.keySet());
+                for(String key:definitionKeys)if(!java.util.Objects.equals(beforeDefinition.get(key),afterDefinition.get(key)))
+                    changedFields.add("definition."+key);
+                Map<String,Map<String,Object>> beforeSteps=stepMap(before.get("steps"));
+                Map<String,Map<String,Object>> afterSteps=stepMap(after.get("steps"));
+                Set<String> stepCodes=new java.util.TreeSet<>();stepCodes.addAll(beforeSteps.keySet());stepCodes.addAll(afterSteps.keySet());
+                for(String stepCode:stepCodes){
+                    Map<String,Object> oldStep=beforeSteps.get(stepCode),newStep=afterSteps.get(stepCode);
+                    String status;
+                    if(oldStep==null){status="ADDED";changedFields.add("STEP_ADDED:"+stepCode);}
+                    else if(newStep==null){status="REMOVED_FROM_SNAPSHOT";changedFields.add("STEP_REMOVED_FROM_SNAPSHOT:"+stepCode);}
+                    else if(!java.util.Objects.equals(oldStep,newStep)){
+                        status="MODIFIED";
+                        changedFields.add("STEP_MODIFIED:"+stepCode);
+                        Set<String> keys=new java.util.TreeSet<>();keys.addAll(oldStep.keySet());keys.addAll(newStep.keySet());
+                        for(String key:keys)if(!java.util.Objects.equals(oldStep.get(key),newStep.get(key)))
+                            changedFields.add("step."+stepCode+"."+key);
+                    }else continue;
+                    Map<String,Object> change=new LinkedHashMap<>();change.put("stepCode",stepCode);change.put("status",status);
+                    change.put("stepName",newStep==null?oldStep.getOrDefault("step_name",stepCode):newStep.getOrDefault("step_name",stepCode));
+                    change.put("before",oldStep==null?Map.of():oldStep);change.put("after",newStep==null?Map.of():newStep);
+                    stepChanges.add(change);
+                }
+                if(!java.util.Objects.equals(before.get("executionSpecs"),after.get("executionSpecs")))changedFields.add("executionSpecs");
+            }
+            Map<String,Object> revision=new LinkedHashMap<>();
+            revision.put("revisionId",row.get("revisionId"));revision.put("processCode",process);
+            revision.put("stepCode","");revision.put("changeType","PROCESS_DESIGN_REVISION");
+            revision.put("revisionReason",row.get("revisionReason"));revision.put("actor",row.get("actor"));
+            revision.put("createdAt",row.get("createdAt"));
+            revision.put("beforeProcessVersion",beforeDefinition.getOrDefault("process_version",""));
+            revision.put("afterProcessVersion",afterDefinition.getOrDefault("process_version",""));
+            revision.put("changedFields",changedFields);revision.put("stepChanges",stepChanges);
+            revision.put("beforeSnapshot",before);revision.put("afterSnapshot",after);
+            revisions.add(revision);
+        }
+        return Map.of("processCode",process,"limit",limit,"revisions",revisions);
+    }
+
+    private String snapshotProcessDefinition(String process){
+        String value=jdbc.queryForObject("select jsonb_build_object('snapshot_schema_version',1,'process_definition',(select to_jsonb(p) from framework_process_definition p where p.process_code=?),'steps',coalesce((select jsonb_agg(to_jsonb(s) order by s.step_order,s.step_code) from framework_process_step s where s.process_code=?),'[]'::jsonb),'execution_specs',coalesce((select jsonb_agg(to_jsonb(e) order by e.step_code,e.spec_version,e.source_hash) from framework_step_execution_spec e where e.process_code=?),'[]'::jsonb),'process_version',(select p.process_version from framework_process_definition p where p.process_code=?),'structure_hash',(select p.structure_hash from framework_process_definition p where p.process_code=?))::text",String.class,process,process,process,process,process);
+        if(value==null)throw new IllegalStateException("PROCESS_SNAPSHOT_REQUIRED"); return value;
+    }
+
     @Transactional public Map<String,Object> reconcileRequirementImportSteps(
             String processCode,java.util.Collection<String> requestedStepCodes,String actor){
         String process=req(Map.of("processCode",processCode),"processCode")
@@ -9734,5 +9856,21 @@ public class ActorProcessGovernanceService {
     private static String toJson(Object value){try{return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(value==null?Map.of():value);}catch(Exception e){throw new IllegalArgumentException("configuration must be JSON serializable",e);}}
     private static Object jsonValue(String value){try{return new com.fasterxml.jackson.databind.ObjectMapper().readValue(value,Object.class);}catch(Exception e){throw new IllegalArgumentException("database returned invalid JSON value",e);}}
     @SuppressWarnings("unchecked") private static Map<String,Object> jsonMap(String value){try{return new com.fasterxml.jackson.databind.ObjectMapper().readValue(value,LinkedHashMap.class);}catch(Exception e){throw new IllegalArgumentException("database returned invalid JSON",e);}}
+    private static Map<String,Object> objectMap(Object value){
+        if(!(value instanceof Map<?,?> raw))return Map.of();
+        Map<String,Object> result=new LinkedHashMap<>();
+        raw.forEach((key,item)->result.put(String.valueOf(key),item));
+        return result;
+    }
+    private static Map<String,Map<String,Object>> stepMap(Object value){
+        Map<String,Map<String,Object>> result=new java.util.TreeMap<>();
+        if(!(value instanceof Collection<?> rows))return result;
+        for(Object row:rows){
+            Map<String,Object> step=objectMap(row);
+            String code=String.valueOf(step.getOrDefault("step_code",step.getOrDefault("stepCode",""))).trim();
+            if(!code.isEmpty())result.put(code,step);
+        }
+        return result;
+    }
     private static String jsonEscape(String value){return value==null?"":value.replace("\\","\\\\").replace("\"","\\\"").replace("\r","\\r").replace("\n","\\n");}
 }

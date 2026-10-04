@@ -1,0 +1,226 @@
+{
+  "schema": "P006_CAR_MODEL_INVENTORY_AUDIT_V1",
+  "auditedAt": "2026-09-26",
+  "scope": {
+    "registryEntries": 724,
+    "webAssetManifestEntries": 724,
+    "frontendModelFiles": 905,
+    "vehicleProductModelsByRegistryName": 0,
+    "vehicleProductFilesFoundByFilename": 0,
+    "caveat": "File inventory and registry-name audit only; the semantic contents of every model mesh were not individually reviewed."
+  },
+  "productModelAvailability": {
+    "completeVehicle": { "required": 1, "available": 0, "status": "MISSING" },
+    "majorParts": [
+      { "part": "차체·도어 패널 세트", "quantityPerVehicle": 1, "availableProductModel": false },
+      { "part": "구동 모터·감속기 모듈", "quantityPerVehicle": 1, "availableProductModel": false },
+      { "part": "배터리 팩", "quantityPerVehicle": 1, "availableProductModel": false },
+      { "part": "서스펜션·조향·제동 모듈", "quantityPerVehicle": 1, "availableProductModel": false },
+      { "part": "열관리 모듈", "quantityPerVehicle": 1, "availableProductModel": false },
+      { "part": "배선·전력전자 모듈", "quantityPerVehicle": 1, "availableProductModel": false },
+      { "part": "시트·내장 세트", "quantityPerVehicle": 1, "availableProductModel": false },
+      { "part": "대시보드·제어기 모듈", "quantityPerVehicle": 1, "availableProductModel": false },
+      { "part": "유리 세트", "quantityPerVehicle": 1, "availableProductModel": false },
+      { "part": "범퍼·외장 세트", "quantityPerVehicle": 1, "availableProductModel": false },
+      { "part": "등화 모듈 세트", "quantityPerVehicle": 1, "availableProductModel": false },
+      { "part": "휠·타이어 조립체", "quantityPerVehicle": 4, "availableProductModel": false }
+    ]
+  },
+  "verifiedWebGlbCandidates": [
+    { "assetId": "N076", "role": "차체 패널 성형 설비 후보", "glbPath": "/projects/P006/assets/3d-derived/N076.glb", "sourceUsd": "/home/sjkim/OmniverseProjects/assets/catalog/N076.usda", "dimensionsMeters": [2.3999998569, 1.8000001907, 2.9999998295], "httpStatus": 200, "bytes": 34276, "glbHeader": "PASS", "vehicleProcessFit": "UNVERIFIED" },
+    { "assetId": "E148", "role": "차체 접합 설비 후보", "glbPath": "/projects/P006/assets/3d-derived/E148.glb", "sourceUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E148.usda", "dimensionsMeters": [0.9999999404, 0.7349999547, 1.6850000948], "httpStatus": 200, "bytes": 14600, "glbHeader": "PASS", "vehicleProcessFit": "UNVERIFIED" },
+    { "assetId": "E121", "role": "구동 모듈 제작 설비 후보", "glbPath": "/projects/P006/assets/3d-derived/E121.glb", "sourceUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E121.usda", "dimensionsMeters": [2.2549998164, 1.6950000525, 2.0999999650], "httpStatus": 200, "bytes": 81500, "glbHeader": "PASS", "vehicleProcessFit": "UNVERIFIED" },
+    { "assetId": "E053", "role": "모듈 검사 설비 후보", "glbPath": "/projects/P006/assets/3d-derived/E053.glb", "sourceUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E053.usda", "dimensionsMeters": [1.1999999285, 0.7500000298, 0.8000001047], "httpStatus": 200, "bytes": 8064, "glbHeader": "PASS", "vehicleProcessFit": "UNVERIFIED" },
+    { "assetId": "A195", "role": "전장/하니스 조립 설비 후보", "glbPath": "/projects/P006/assets/3d-derived/A195.glb", "sourceUsd": "/home/sjkim/OmniverseProjects/assets/catalog/A195.usda", "dimensionsMeters": [2.3999999762, 1.6000000834, 2.0999999680], "httpStatus": 200, "bytes": 36300, "glbHeader": "PASS", "vehicleProcessFit": "UNVERIFIED" },
+    { "assetId": "E240", "role": "서보 모터 범용 구성요소 참고", "glbPath": "/projects/P006/assets/functional-simulation/derived-mechanical-53/E240.glb", "sourceUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E240.usda", "dimensionsMeters": [0.1899999827, 0.3925000131, 0.1900000216], "httpStatus": 200, "bytes": 25156, "glbHeader": "PASS", "vehiclePartFit": "UNVERIFIED" },
+    { "assetId": "E245", "role": "감속기 범용 구성요소 참고", "glbPath": "/projects/P006/assets/3d-derived/E245.glb", "sourceUsd": "/home/sjkim/OmniverseProjects/assets/catalog/E245.usda", "dimensionsMeters": [0.3524999768, 0.3999999911, 0.2880000287], "httpStatus": 200, "bytes": 24088, "glbHeader": "PASS", "vehiclePartFit": "UNVERIFIED" }
+  ],
+  "automotiveTermMatchesThatAreNotProducts": [
+    { "assetId": "A176", "name": "타이어 빌딩기", "kind": "설비", "productModel": false },
+    { "assetId": "A387", "name": "안전 범퍼", "kind": "안전 자산", "productModel": false },
+    { "assetId": "A530", "name": "배터리 팩 절연 충전 시험기", "kind": "시험 설비", "productModel": false },
+    { "assetId": "E046", "name": "차량 진입 방지 기둥", "kind": "건축 인프라", "productModel": false },
+    { "assetId": "N008", "name": "차량 차단기", "kind": "건축 인프라", "productModel": false }
+  ],
+  "gates": {
+    "catalogGlbHttpAndHeader": "PASS_7_OF_7",
+    "gltfLoaderPilot": {
+      "assetIds": ["N076", "E148", "E121", "E053", "A195", "E240", "E245"],
+      "equipmentCandidateCount": 5,
+      "genericComponentReferenceCount": 2,
+      "result": "PASS_7_OF_7",
+      "meshCount": 138,
+      "triangleCount": 2492,
+      "embeddedAnimationClipCount": 0,
+      "visualSceneInspection": "PASS",
+      "planOrDatabaseChanged": false
+    },
+    "E240_E245_fullGltfLoaderParse": "PASS_2_OF_2",
+    "usdStageValidation": "NOT_TESTED_IN_BROWSER",
+    "automotivePartIdentity": "NOT_VERIFIED",
+    "bomAndAssemblyCompatibility": "NOT_VERIFIED",
+    "productionDataChanged": false
+  },
+  "externalModelCandidates": [
+    {
+      "candidateId": "NVIDIA-OMNIVERSE-RC-CAR-CAD-1.0",
+      "productName": "RC CAR CAD 1.0",
+      "classification": "RC_CAR_FUNCTIONAL_DEMO_CANDIDATE",
+      "passengerVehicle": false,
+      "scale": "UNRESOLVED",
+      "sourceRepository": "https://github.com/NVIDIA-Omniverse/RC-Car-CAD",
+      "sourceRevision": "407bd553ee57668ceb58d81ffd7f4d617dee3dfa",
+      "readme": "https://github.com/NVIDIA-Omniverse/RC-Car-CAD#readme",
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/NVIDIA-Omniverse/RC-Car-CAD/blob/main/LICENSE",
+        "noticeRequired": true
+      },
+      "sourceArchived": true,
+      "sourceClaims": [
+        "원격 조종 자동차 설계용 CAD·CAE·BOM 자료 저장소",
+        "전체 NX 조립 진입 파일은 _Class1RC.prt로 문서화됨",
+        "Omniverse 변환과 suspension/steering physics joint 구성 이정표를 설명함"
+      ],
+      "files": [
+        {
+          "kind": "NX full assembly source",
+          "path": "https://github.com/NVIDIA-Omniverse/RC-Car-CAD/blob/main/_Class1RC.prt",
+          "bytes": 717885,
+          "status": "SOURCE_LISTED_NOT_DOWNLOADED",
+          "notes": "NX assembly opening and completeness not tested"
+        },
+        {
+          "kind": "converted USD assembly candidate",
+          "path": "https://github.com/NVIDIA-Omniverse/RC-Car-CAD/blob/main/convertedAssets/_Class1RC_094321/_Class1RC.usd",
+          "bytes": 33843828,
+          "status": "TEMP_STAGING_STAGE_OPEN_PASS_GUI_RENDER_PASS_STATIC_ONLY_NOT_IMPORTED",
+          "notes": "Read-only copy opened with usd-core 26.8 and actual Omniverse Kit RTX viewport in /tmp; source contains 59 prims/36 meshes/23 Xforms; Z-up, 0.01 m/unit; no time-sampled attributes or joint prims. Visual view shows chassis plate, suspension-arm groups and wheel/tire geometry; mechanical articulation, BOM mapping and full vehicle body are not proven. Source USDC emits deprecated version 0.7.0 warning."
+        },
+        {
+          "kind": "GLB visual candidate",
+          "path": "https://github.com/NVIDIA-Omniverse/RC-Car-CAD/blob/407bd553ee57668ceb58d81ffd7f4d617dee3dfa/poly%202022-10-13%2017_03_55.glb",
+          "bytes": 6757152,
+          "status": "FULL_GLTFLOADER_PARSE_AND_BROWSER_RENDER_PASS_EXTERNAL_NOT_IMPORTED",
+          "notes": "GLTFLoader 전체 파싱·WebGL 표시 PASS · Mesh 1 / Triangle 49,999 / Animation 0. 작고 단일 텍스처 형상이며 완성 차량 아님. 개체·단위 미확정. P006 미반입."
+        },
+        {
+          "kind": "USD topology optimization sample",
+          "path": "https://github.com/NVIDIA-Omniverse/RC-Car-CAD/blob/main/xPhysTilde_lc_3_t.usd",
+          "bytes": 2804371,
+          "status": "SOURCE_LISTED_NOT_DOWNLOADED",
+          "notes": "Not identified as a finished vehicle or a car module; excluded from product counts"
+        }
+      ],
+      "bom": {
+        "repoReadmeMentionsBom": true,
+        "standaloneStructuredBomFileLocated": false,
+        "status": "BOM_MENTIONED_FILE_NOT_LOCATED"
+      },
+      "glbMetadataInspection": {
+        "method": "Browser fetch of immutable GitHub raw revision; Three.js GLTFLoader.parseAsync to Object3D scene; WebGL render and visual inspection",
+        "sourceRevision": "407bd553ee57668ceb58d81ffd7f4d617dee3dfa",
+        "sourceUrl": "https://raw.githubusercontent.com/NVIDIA-Omniverse/RC-Car-CAD/407bd553ee57668ceb58d81ffd7f4d617dee3dfa/poly%202022-10-13%2017_03_55.glb",
+        "httpStatus": 200,
+        "contentLength": 6757152,
+        "bytesRead": 6757152,
+        "sha256": "3297b6d06830f0ceb1f023488610ba8bb9da0f9f165dc1f4fec273788fc62486",
+        "glbVersion": 2,
+        "generator": "Polycam",
+        "nodes": 1,
+        "namedNodes": 0,
+        "meshes": 1,
+        "object3dSceneNodes": 2,
+        "vertices": 28648,
+        "triangles": 49999,
+        "materials": 1,
+        "textures": 3,
+        "sourceBounds": {
+          "x": 0.0975,
+          "y": 0.0772,
+          "z": 0.1077,
+          "unit": "UNRESOLVED"
+        },
+        "animationClips": 0,
+        "fullGlbDownloaded": true,
+        "gltfLoaderParse": "PASS",
+        "browserRender": "PASS",
+        "visualInspection": "One compact dark textured object is rendered; it is not identifiable as a complete RC vehicle. Specific object identity and units/scale remain unresolved.",
+        "visualVehicleIdentity": "NOT_A_COMPLETE_VEHICLE_MODEL_VERIFIED",
+        "webCryptoDigest": "UNAVAILABLE_ON_HTTP_ORIGIN; SHA computed from immutable-revision temporary source download",
+        "temporaryReviewCopyPersistedToP006": false,
+        "status": "FULL_GLTFLOADER_PARSE_AND_BROWSER_RENDER_PASS_EXTERNAL_CANDIDATE_NOT_IMPORTED"
+      },
+      "usdStageInspection": {
+        "status": "STAGE_OPEN_PASS_GUI_RENDER_PASS_STATIC_ONLY",
+        "inspectionEnvironment": "Temporary isolated server directory /tmp/p006-rc-omniverse-review-20260926; not Production asset storage",
+        "parser": "OpenUSD usd-core 26.8 + NVIDIA Omniverse Kit RTX viewport",
+        "stageOpen": true,
+        "fileBytes": 33843828,
+        "sha256": "b7101cc8918fc958ac1c80ef01499587c12227adbdb4f3df1aefedaac06afaf1",
+        "defaultPrim": "/World",
+        "upAxis": "Z",
+        "metersPerUnit": 0.01,
+        "primCount": 59,
+        "xformCount": 23,
+        "meshCount": 36,
+        "meshPointCount": 1762662,
+        "meshFaceCount": 587554,
+        "jointPrimCount": 0,
+        "timeSampledAttributeCount": 0,
+        "externalReferenceCount": 0,
+        "omniVerseGuiRender": "PASS",
+        "viewerStagePrimCount": 74,
+        "viewerAddedPrimCount": 15,
+        "viewerAddedPrimNote": "Kit stage adds Render settings, viewport cameras and light rig; source-file geometry counts remain 59 prims/36 meshes/23 Xforms",
+        "visualIdentityScope": "RC chassis plate, suspension-arm geometry and four corner wheel/tire assemblies are visible; complete outer body shell is not present in the rendered view",
+        "componentGroups": [
+          "_mirrorTrailingArm__refset_Entire_Part",
+          "TrailingArm__refset_Entire_Part",
+          "_ArmFrontUpper_mirror__refset_Entire_Part",
+          "_ArmFrontLower_mirror__refset_Entire_Part",
+          "_ArmFrontLower__refset_Entire_Part",
+          "_ArmFrontUpper__refset_Entire_Part",
+          "Chassis__refset_Entire_Part",
+          "UnsprungMassFront__refset_MODEL",
+          "UnsprungMassRear__refset_MODEL"
+        ],
+        "sourceGeometryBoundsStageUnits": {
+          "x": [-20.06, 20.06],
+          "y": [-13.54, 13.54],
+          "z": [0.0, 8.62],
+          "note": "World bounds in stage units; metersPerUnit=0.01, so approx overall extents are 0.4012 x 0.2708 x 0.0862 m"
+        },
+        "assemblyStructure": "Named chassis/suspension/wheel component Xform groups exist and meshes occupy front/rear and left/right wheel locations. Xform grouping and spatial placement alone do not prove a mechanical joint or working assembly.",
+        "structureEvidenceFile": "p006-rc-car-usd-structure-report.json",
+        "viewportScreenshot": "evidence/p006-rc-car-omniverse-20260926.png",
+        "animationVerified": false,
+        "visualIdentityVerified": true,
+        "visualIdentityQualification": "Partial RC chassis/undercarriage identification only; not a complete body shell or passenger car",
+        "sourceCompatibilityWarning": "USDC deprecated crate version 0.7.0; OpenUSD warned future USD versions may not read it",
+        "p006Imported": false
+      },
+      "knownLimitations": [
+        "저장소가 2026-07-23 보관(읽기 전용) 상태임",
+        "저장소 문서가 데이터가 의도적으로 미완성이며 일부 조립/부품 정리가 부정확할 수 있다고 명시함",
+        "GLB는 immutable revision에서 전체 GLTFLoader parse와 WebGL 렌더 PASS: 1 mesh·49,999 triangles·Animation 0. 화면상 하나의 소형 텍스처 객체이며 완성차가 아님; 개별 객체 의미와 단위/스케일은 미확인",
+        "승용차 모델이 아니며 P006 자동차 생산 공정 근거로 사용할 수 없음",
+        "NX assembly는 열지 않았으며, USD는 usd-core 26.8 Stage Open과 Omniverse Kit RTX GUI 렌더 PASS; 시각 식별은 RC 하부 샤시/서스펜션/바퀴 범위로 한정되고 계층별 제품/BOM 의미는 미검증",
+        "USD는 59 Prim/36 Mesh/23 Xform의 정적 구조이며 joint prim 0, time-sampled attribute 0: USD 자체에 재생 가능한 기계 애니메이션이 확인되지 않음",
+        "USDC crate version 0.7.0 deprecated 경고 발생; 이후 USD 구현에서 호환성 문제가 생길 수 있음",
+        "임시 staging 검사 파일은 P006 카탈로그나 Production 자산에 반입되지 않았고, BOM 추출·조립 및 동작은 별도 검증 필요"
+      ],
+      "p006Status": "EXTERNAL_CANDIDATE_NOT_IMPORTED_USD_STAGE_OPEN_AND_GUI_RENDER_PASS_STATIC_ONLY",
+      "countedAsP006ProductModel": false,
+      "countedAsPassengerCarModel": false,
+      "approvedForProcessOrAnimation": false
+    }
+  ],
+  "nextRequiredInputs": [
+    "완성차 차종/품번 및 사용 권한이 확인된 USD와 웹 GLB",
+    "주요 부품 12종의 차종 대응 USD와 웹 GLB",
+    "단위·좌표축·바닥 기준과 모듈별 조립 Anchor",
+    "해당 차종 BOM과 공정 순서 근거",
+    "동작 시연 대상 설비의 가동부 Prim/Pivot/Axis 또는 animation clip 근거"
+  ]
+}

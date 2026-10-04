@@ -1,0 +1,84 @@
+{
+  "generatedAt": "2026-09-10T03:51:55.059Z",
+  "tests": [
+    {
+      "name": "528개 전수 5단계 재사용 검토",
+      "status": "PASS"
+    },
+    {
+      "name": "176개 연결 ID 중복 없음 및 계획 일치",
+      "status": "PASS"
+    },
+    {
+      "name": "176개 USD 9개 검사 통과",
+      "status": "PASS"
+    },
+    {
+      "name": "17개 레이아웃 저장 복원, AABB 중복 0",
+      "status": "PASS"
+    },
+    {
+      "name": "자료 대기 58종 연결 금지",
+      "status": "PASS"
+    },
+    {
+      "name": "READY 및 REAL 신규 승격 0",
+      "status": "PASS"
+    },
+    {
+      "name": "이동식 ZIP 176개 복원",
+      "status": "PASS"
+    },
+    {
+      "name": "17개 독립 RTX 렌더 존재",
+      "status": "PASS"
+    },
+    {
+      "name": "최종 724 = 연결 372 + 미연결 352",
+      "status": "PASS"
+    }
+  ],
+  "package": {
+    "checks": [
+      "all USD hashes match build evidence",
+      "all 3101 geometric prims have resolvable materials",
+      "portable ZIP reopens all 176 unique IDs with floor origin preserved"
+    ],
+    "assets": 176,
+    "materials": 3101,
+    "seconds": 0.18659496307373047,
+    "zipBytes": 64367,
+    "usdBytes": 1046676,
+    "packageHash": "fd770af4f4b63a0d50338c89c1532659673db5b5a66cc07ed600e21a38e85218",
+    "readyPromotions": 0,
+    "real": 0
+  },
+  "render": {
+    "seconds": 14.554778814315796,
+    "images": [
+      "layout-all.png",
+      "layout-cabinet.png",
+      "layout-sensor.png",
+      "layout-vessel.png",
+      "layout-chamber.png",
+      "layout-roll.png",
+      "layout-panel.png",
+      "layout-wash.png",
+      "layout-linear.png",
+      "layout-access.png",
+      "layout-rotary.png",
+      "layout-chute.png",
+      "layout-magazine.png",
+      "layout-fluid.png",
+      "layout-workstation.png",
+      "layout-service.png",
+      "layout-mobile-top.png"
+    ],
+    "renderer": "RTX",
+    "isolated": true,
+    "liveStageChanged": false
+  },
+  "liveStageChanged": false,
+  "businessWrites": 0,
+  "plcWrites": 0
+}

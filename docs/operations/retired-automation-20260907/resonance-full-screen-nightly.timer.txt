@@ -1,0 +1,16 @@
+# /etc/systemd/system/resonance-full-screen-nightly.timer -> /opt/Resonance/ops/host-config/systemd/resonance-full-screen-nightly.timer
+[Unit]
+Description=Run the full screen regression sweep outside the development loop
+
+[Timer]
+OnCalendar=*-*-* 03:40:00
+Persistent=true
+RandomizedDelaySec=10m
+Unit=resonance-full-screen-nightly.service
+
+[Install]
+WantedBy=timers.target
+
+# /run/systemd/system/resonance-full-screen-nightly.timer.d/override.conf
+[Unit]
+ConditionPathExists=!/run/resonance-release-maintenance.hold

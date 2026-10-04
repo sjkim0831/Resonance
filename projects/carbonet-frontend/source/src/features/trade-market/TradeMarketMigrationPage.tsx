@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -481,30 +482,27 @@ export function TradeMarketMigrationPage() {
                   <h3 className="mt-2 text-xl font-black text-slate-950">{content.summaryTitle}</h3>
                   <p className="mt-2 text-sm text-slate-500">{content.summaryBody}</p>
                 </div>
-                <div className="grid gap-4 px-6 py-6 lg:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))]">
-                  <label className="block">
+                <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><label className="block">
                     <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Keyword" : "검색어"}</span>
                     <AdminInput placeholder={content.searchPlaceholder} value={keyword} onChange={(event) => setKeyword(event.target.value)} />
-                  </label>
-                  <label className="block">
+                  </label></div>
+<div className="ccus-search-field"><label className="block">
                     <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{content.statusLabel}</span>
                     <select className="w-full rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] px-4 py-3 text-sm outline-none transition focus:border-[var(--kr-gov-blue)] focus:ring-2 focus:ring-[var(--kr-gov-blue)]/20" value={status} onChange={(event) => setStatus(event.target.value)}>
                       {content.filters.statuses.map((item) => <option key={item} value={item}>{item}</option>)}
                     </select>
-                  </label>
-                  <label className="block">
+                  </label></div></>} advanced={<><div className="ccus-search-field"><label className="block">
                     <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{content.categoryLabel}</span>
                     <select className="w-full rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] px-4 py-3 text-sm outline-none transition focus:border-[var(--kr-gov-blue)] focus:ring-2 focus:ring-[var(--kr-gov-blue)]/20" value={category} onChange={(event) => setCategory(event.target.value)}>
                       {content.filters.categories.map((item) => <option key={item} value={item}>{item}</option>)}
                     </select>
-                  </label>
-                  <label className="block">
+                  </label></div>
+<div className="ccus-search-field"><label className="block">
                     <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{content.regionLabel}</span>
                     <select className="w-full rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] px-4 py-3 text-sm outline-none transition focus:border-[var(--kr-gov-blue)] focus:ring-2 focus:ring-[var(--kr-gov-blue)]/20" value={region} onChange={(event) => setRegion(event.target.value)}>
                       {content.filters.regions.map((item) => <option key={item} value={item}>{item}</option>)}
                     </select>
-                  </label>
-                </div>
+                  </label></div></>} actions={<></>}></CommonSearchSection></div>
 
                 {filteredAssets.length === 0 ? (
                   <PageStatusNotice className="mx-6 mb-6" tone="warning">{content.emptyState}</PageStatusNotice>

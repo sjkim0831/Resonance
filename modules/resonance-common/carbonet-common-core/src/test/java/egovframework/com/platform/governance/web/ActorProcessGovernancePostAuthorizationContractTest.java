@@ -9,6 +9,7 @@ import egovframework.com.framework.authority.service.FrameworkAuthorityPolicySer
 import egovframework.com.platform.codex.service.AuthGroupManageService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 
 import java.lang.reflect.Method;
@@ -52,7 +53,7 @@ class ActorProcessGovernancePostAuthorizationContractTest {
         AdminMainAuthInterceptor interceptor=new AdminMainAuthInterceptor(
                 mock(JwtTokenProvider.class),mock(AuthGroupManageService.class),mock(EnterpriseMemberService.class),
                 mock(EmployeeMemberRepository.class),mock(FrameworkAuthorityPolicyService.class),
-                mock(CurrentUserContextService.class));
+                mock(CurrentUserContextService.class),mock(JdbcTemplate.class));
         Method local=AdminMainAuthInterceptor.class.getDeclaredMethod(
                 "isLocallyGuardedAdminOperation",HttpServletRequest.class,String.class);
         Method worker=AdminMainAuthInterceptor.class.getDeclaredMethod(

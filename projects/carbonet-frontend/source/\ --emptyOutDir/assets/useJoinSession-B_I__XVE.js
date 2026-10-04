@@ -1,1 +1,0 @@
-import{nn as e}from"./environmentManagementHub-n6ko3Bmi.js";import{t}from"./joinSession-w8VH6zK-.js";function n(n={}){let{enabled:r=!0,onSuccess:i}=n;return e(async()=>{let e=await t();if(!e)throw Error(`Join session is unavailable`);return e},[],{enabled:r,onSuccess:i})}export{n as t};

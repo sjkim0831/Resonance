@@ -1,0 +1,624 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "PERSONAL_DATA_RIGHTS",
+    "name": "개인정보 열람·정정·다운로드",
+    "domain": "MEMBER",
+    "workType": "MEMBER",
+    "goal": "회원이 자신의 개인정보 범위와 처리 이력을 열람하고 검증된 정정 화면으로 이동하거나 안전한 사본을 내려받는다."
+  },
+  "step": {
+    "code": "PERSONAL_DATA_DOWNLOAD_AUDIT",
+    "version": 1,
+    "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "MEMBER_USER",
+      "ownerActorCode": "MEMBER_USER",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [
+        {
+          "guard": {
+            "noRawPii": true,
+            "selfOnly": true
+          },
+          "scope": "RECORD",
+          "resource": {
+            "resource": "export-audit"
+          },
+          "permissionCode": "PERSONAL_DATA_EXPORT_AUDIT"
+        }
+      ],
+      "delegation": {},
+      "extensions": {
+        "useAt": "Y",
+        "purpose": "승인된 권한 범위에서 개인 업무와 프로젝트를 수행한다.",
+        "actorName": "일반 회원",
+        "actorType": "BUSINESS",
+        "competency": "",
+        "relatedActors": [
+          {
+            "useAt": "Y",
+            "purpose": "승인된 권한 범위에서 개인 업무와 프로젝트를 수행한다.",
+            "actorCode": "MEMBER_USER",
+            "actorName": "일반 회원",
+            "actorType": "BUSINESS",
+            "competency": "",
+            "actorNameEn": "Member User",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "PROFILE_EDIT",
+              "PROFILE_VIEW",
+              "WORK_EXECUTE"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": true,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          },
+          {
+            "useAt": "Y",
+            "purpose": "개인정보 접근·보유·파기와 침해 대응을 감독한다.",
+            "actorCode": "PRIVACY_OFFICER",
+            "actorName": "개인정보 보호책임자",
+            "actorType": "AUDIT",
+            "competency": "",
+            "actorNameEn": "Privacy Officer",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "ACCESS_REVIEW",
+              "ERASURE_APPROVE",
+              "PRIVACY_AUDIT"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": false,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          }
+        ],
+        "accountability": "",
+        "responsibility": "",
+        "capabilityCodes": [
+          "PROFILE_EDIT",
+          "PROFILE_VIEW",
+          "WORK_EXECUTE"
+        ],
+        "reviewCycleDays": 365,
+        "delegationAllowed": true,
+        "conflictActorCodes": [],
+        "escalationActorCode": "PRIVACY_OFFICER",
+        "segregationActorCodes": [
+          "PRIVACY_OFFICER"
+        ],
+        "maxConcurrentAssignments": 0
+      }
+    },
+    "business": {
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
+      "domainCode": "MEMBER",
+      "processName": "개인정보 열람·정정·다운로드",
+      "stepName": "다운로드 완료·감사 확인",
+      "goal": "회원이 자신의 개인정보 범위와 처리 이력을 열람하고 검증된 정정 화면으로 이동하거나 안전한 사본을 내려받는다.",
+      "requirement": "다운로드 이력을 확인한다.",
+      "completionRule": "다운로드 시각·회원·해시가 저장되고 최근 10건을 본인만 열람한다.",
+      "riskLevel": "HIGH",
+      "slaHours": 24,
+      "regulationRefs": "개인정보 보호법 제4조·제35조·제36조; 개인정보 안전성 확보조치 기준",
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {},
+      "extensions": {}
+    },
+    "transition": {
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
+      "commandCode": "RECORD_DOWNLOAD",
+      "fromState": "EXPORT_READY",
+      "toState": "COMPLETED",
+      "stepOrder": 4,
+      "stepType": "DECISION",
+      "parentStepCode": null,
+      "completionRule": "다운로드 시각·회원·해시가 저장되고 최근 10건을 본인만 열람한다.",
+      "policy": {
+        "auditRequired": true,
+        "optimisticLock": true,
+        "idempotencyRequired": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
+    },
+    "input": {
+      "memberId": "session"
+    },
+    "output": {
+      "exportHistory": "self-only"
+    },
+    "guide": {
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
+      "processCode": "PERSONAL_DATA_RIGHTS",
+      "stepCode": "PERSONAL_DATA_DOWNLOAD_AUDIT",
+      "stepOrder": 4,
+      "workTypeCode": "MEMBER",
+      "actorCode": "MEMBER_USER",
+      "title": "다운로드 완료·감사 확인",
+      "purpose": "다운로드 이력을 확인한다.",
+      "entryCondition": "EXPORT_READY",
+      "completionCondition": "다운로드 시각·회원·해시가 저장되고 최근 10건을 본인만 열람한다.",
+      "userPath": "/mypage/personal-data",
+      "adminPath": "/mypage/personal-data",
+      "relatedBusinessRoute": null,
+      "nextStepCode": null,
+      "nextAction": "COMPLETED",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "PERSONAL_DATA_RIGHTS_PERSONAL_DATA_DOWNLOAD_AUDIT_USER",
+        "route": "/mypage/personal-data",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "USER",
+        "screenType": "WORKSPACE",
+        "title": "다운로드 완료·감사 확인",
+        "purpose": "다운로드 이력을 확인한다.",
+        "layout": "RESPONSIVE_WORKSPACE",
+        "theme": "KRDS_GOV_DEFAULT",
+        "designAuthority": {
+          "source": "LEGACY_REGISTERED_DEFAULT",
+          "layout": "RESPONSIVE_WORKSPACE",
+          "theme": "KRDS_GOV_DEFAULT",
+          "defaulted": [
+            "layout",
+            "theme"
+          ]
+        },
+        "sections": [
+          {
+            "code": "TASK_CONTEXT",
+            "label": "업무 문맥"
+          },
+          {
+            "code": "WORKSPACE",
+            "label": "업무 처리"
+          },
+          {
+            "code": "EVIDENCE_HISTORY",
+            "label": "증적·이력"
+          },
+          {
+            "code": "NEXT_TASK",
+            "label": "다음 업무"
+          }
+        ],
+        "fields": [
+          {
+            "route": "/mypage/personal-data",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "PERSONAL_DATA_RIGHTS_PERSONAL_DATA_DOWNLOAD_AUDIT_USER",
+            "required": true,
+            "fieldCode": "memberId",
+            "fieldName": "memberId",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 10,
+            "validation": {
+              "required": true
+            },
+            "apiProperty": "memberId",
+            "controlType": "TEXT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_USER:USER",
+            "evidenceRequired": false,
+            "code": "memberId"
+          }
+        ],
+        "commands": [
+          {
+            "code": "RECORD_DOWNLOAD",
+            "auditRequired": true,
+            "transactional": true,
+            "idempotencyRequired": true,
+            "commandCode": "RECORD_DOWNLOAD",
+            "actorCode": "MEMBER_USER",
+            "serverAuthorization": true,
+            "entryState": "EXPORT_READY",
+            "resultState": "COMPLETED"
+          },
+          {
+            "primary": true,
+            "actorCode": "MEMBER_USER",
+            "entryState": "EXPORT_READY",
+            "markerType": "PRIMARY_STEP_COMMAND",
+            "commandCode": "RECORD_DOWNLOAD",
+            "resultState": "COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": [
+          "EXPORT_READY",
+          "COMPLETED",
+          "LOADING",
+          "ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "RECOVERY"
+        ],
+        "responsive": {
+          "mobile": "single-column",
+          "tablet": "adaptive-two-column",
+          "desktop": "task-optimized",
+          "noTextOverflow": true
+        },
+        "accessibility": {
+          "standard": "WCAG 2.1 AA",
+          "keyboard": true,
+          "focus": true,
+          "errorSummary": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorCode": "MEMBER_USER",
+        "commandCode": "RECORD_DOWNLOAD",
+        "declaredContract": "GET /api/mypage/personal-data",
+        "serverAuthorization": true
+      },
+      {
+        "primary": true,
+        "actorCode": "MEMBER_USER",
+        "actorGuard": true,
+        "markerType": "PRIMARY_STEP_API",
+        "rowVersion": true,
+        "commandCode": "RECORD_DOWNLOAD",
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": [
+          "GET /api/mypage/personal-data"
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "code": "RECORD_DOWNLOAD",
+        "auditRequired": true,
+        "transactional": true,
+        "idempotencyRequired": true,
+        "commandCode": "RECORD_DOWNLOAD",
+        "actorCode": "MEMBER_USER",
+        "serverAuthorization": true,
+        "entryState": "EXPORT_READY",
+        "resultState": "COMPLETED"
+      },
+      {
+        "primary": true,
+        "actorCode": "MEMBER_USER",
+        "entryState": "EXPORT_READY",
+        "markerType": "PRIMARY_STEP_COMMAND",
+        "commandCode": "RECORD_DOWNLOAD",
+        "resultState": "COMPLETED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "idempotencyRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "MEMBER_USER",
+      "ownerActorCode": "MEMBER_USER",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [
+        {
+          "guard": {
+            "noRawPii": true,
+            "selfOnly": true
+          },
+          "scope": "RECORD",
+          "resource": {
+            "resource": "export-audit"
+          },
+          "permissionCode": "PERSONAL_DATA_EXPORT_AUDIT"
+        }
+      ],
+      "delegation": {},
+      "extensions": {
+        "useAt": "Y",
+        "purpose": "승인된 권한 범위에서 개인 업무와 프로젝트를 수행한다.",
+        "actorName": "일반 회원",
+        "actorType": "BUSINESS",
+        "competency": "",
+        "relatedActors": [
+          {
+            "useAt": "Y",
+            "purpose": "승인된 권한 범위에서 개인 업무와 프로젝트를 수행한다.",
+            "actorCode": "MEMBER_USER",
+            "actorName": "일반 회원",
+            "actorType": "BUSINESS",
+            "competency": "",
+            "actorNameEn": "Member User",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "PROFILE_EDIT",
+              "PROFILE_VIEW",
+              "WORK_EXECUTE"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": true,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          },
+          {
+            "useAt": "Y",
+            "purpose": "개인정보 접근·보유·파기와 침해 대응을 감독한다.",
+            "actorCode": "PRIVACY_OFFICER",
+            "actorName": "개인정보 보호책임자",
+            "actorType": "AUDIT",
+            "competency": "",
+            "actorNameEn": "Privacy Officer",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "ACCESS_REVIEW",
+              "ERASURE_APPROVE",
+              "PRIVACY_AUDIT"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": false,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          }
+        ],
+        "accountability": "",
+        "responsibility": "",
+        "capabilityCodes": [
+          "PROFILE_EDIT",
+          "PROFILE_VIEW",
+          "WORK_EXECUTE"
+        ],
+        "reviewCycleDays": 365,
+        "delegationAllowed": true,
+        "conflictActorCodes": [],
+        "escalationActorCode": "PRIVACY_OFFICER",
+        "segregationActorCodes": [
+          "PRIVACY_OFFICER"
+        ],
+        "maxConcurrentAssignments": 0
+      }
+    },
+    "handoffPolicy": {},
+    "handoffs": [
+      {
+        "toState": "COMPLETED",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "processCode",
+          "stepCode",
+          "actorCode",
+          "rowVersion"
+        ],
+        "handoffType": "TERMINAL"
+      }
+    ]
+  },
+  "database": {
+    "mappings": [],
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "caseCode": "PERSONAL_DATA_RIGHTS_PERSONAL_DATA_DOWNLOAD_AUDIT_HAPPY_PATH",
+      "name": "다운로드 완료·감사 확인 HAPPY_PATH",
+      "type": "HAPPY_PATH",
+      "status": "APPROVED",
+      "sourceRequirement": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "PERSONAL_DATA_RIGHTS",
+          "stepCode": "PERSONAL_DATA_DOWNLOAD_AUDIT",
+          "scenario": "HAPPY_PATH"
+        }
+      ],
+      "assertions": [
+        "HAPPY_PATH contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "PERSONAL_DATA_RIGHTS_PERSONAL_DATA_DOWNLOAD_AUDIT_EXCEPTION",
+      "name": "다운로드 완료·감사 확인 EXCEPTION",
+      "type": "EXCEPTION",
+      "status": "APPROVED",
+      "sourceRequirement": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "PERSONAL_DATA_RIGHTS",
+          "stepCode": "PERSONAL_DATA_DOWNLOAD_AUDIT",
+          "scenario": "EXCEPTION"
+        }
+      ],
+      "assertions": [
+        "EXCEPTION contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "PERSONAL_DATA_RIGHTS_PERSONAL_DATA_DOWNLOAD_AUDIT_AUTHORITY",
+      "name": "다운로드 완료·감사 확인 AUTHORITY",
+      "type": "AUTHORITY",
+      "status": "APPROVED",
+      "sourceRequirement": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "PERSONAL_DATA_RIGHTS",
+          "stepCode": "PERSONAL_DATA_DOWNLOAD_AUDIT",
+          "scenario": "AUTHORITY"
+        }
+      ],
+      "assertions": [
+        "AUTHORITY contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "PERSONAL_DATA_RIGHTS_PERSONAL_DATA_DOWNLOAD_AUDIT_ISOLATION",
+      "name": "다운로드 완료·감사 확인 ISOLATION",
+      "type": "ISOLATION",
+      "status": "APPROVED",
+      "sourceRequirement": "ISOLATION",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "PERSONAL_DATA_RIGHTS",
+          "stepCode": "PERSONAL_DATA_DOWNLOAD_AUDIT",
+          "scenario": "ISOLATION"
+        }
+      ],
+      "assertions": [
+        "ISOLATION contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "PERSONAL_DATA_RIGHTS_PERSONAL_DATA_DOWNLOAD_AUDIT_RECOVERY",
+      "name": "다운로드 완료·감사 확인 RECOVERY",
+      "type": "RECOVERY",
+      "status": "APPROVED",
+      "sourceRequirement": "RECOVERY",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "PERSONAL_DATA_RIGHTS",
+          "stepCode": "PERSONAL_DATA_DOWNLOAD_AUDIT",
+          "scenario": "RECOVERY"
+        }
+      ],
+      "assertions": [
+        "RECOVERY contract is enforced before live promotion"
+      ]
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
+    "security": {
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true,
+      "segregationOfDuties": true,
+      "rateLimitRequired": false,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "standard": "WCAG 2.1 AA",
+      "keyboard": true,
+      "focus": true,
+      "errorSummary": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": true,
+      "targetHours": 24,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
+  },
+  "sourceHash": "58f4f848387fb2737bd9ba92d945c3e8577231a0e8ed1e1fc35e866d58236619",
+  "approvalStatus": "APPROVED",
+  "packageHash": "dcdb4280a94285cd78756b52cd016e3643753c11ebe0c60da9e40cdbaf1da103"
+}

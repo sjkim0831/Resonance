@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 2,
+  "blueprintCode": "BP_ADOPT_F97CB2D0A4103C1787CE",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_F97CB2D0A4103C1787CE"
+  },
+  "route": "/admin/auth/group",
+  "pageName": "승인 권한",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1020306",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "9d627780f903da6ffc06dcd8b44d3d91a86ebce1d1e2b8af60b84b877bceb8f6",
+  "artifactHash": "b045c8b741e735afa5906dfe93901ec0e00ec91db92d15c4c86f7ce9ba41ec8d"
+}

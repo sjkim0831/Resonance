@@ -1,4 +1,6 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
+import layout from "./emissionProjectPortfolioLayout.json";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { fetchHomePayload } from "../../lib/api/appBootstrap";
@@ -138,7 +140,7 @@ export function EmissionProjectPortfolioPage() {
     let mounted = true;
     setTaskLoading(true);
     setTaskError("");
-    fetch(buildLocalizedPath("/home/api/emission-tasks", "/en/home/api/emission-tasks"), {
+    fetch(buildLocalizedPath("/home/api/emission-tasks?compact=false", "/en/home/api/emission-tasks?compact=false"), {
       credentials: "include", cache: "no-store", headers: { Accept: "application/json" },
     })
       .then((response) => {
@@ -161,16 +163,6 @@ export function EmissionProjectPortfolioPage() {
 
   const tasks = taskPayload?.items || [];
   const nextTask = tasks.find((task) => task.actionable && task.status !== "DONE") || tasks.find((task) => task.status !== "DONE") || null;
-  const checks = [
-    { label: en ? "Project selected" : "프로젝트 1개 선택", ok: Boolean(selected) },
-    { label: en ? "Access verified" : "접근 권한 확인", ok: Boolean(selected) },
-    { label: en ? "Current workflow loaded" : "현재 프로세스 상태 조회", ok: Boolean(selected && taskPayload) },
-    { label: en ? "Next task confirmed" : "실행 가능한 다음 업무 확정", ok: Boolean(nextTask?.actionable) },
-    { label: en ? "Guide start recorded" : "업무 길잡이 실행 기록", ok: nextTask?.status === "IN_PROGRESS" },
-  ];
-  const checkCount = checks.filter((item) => item.ok).length;
-  const active = actorScopedProjects.filter((project) => project.status !== "완료");
-  const average = active.length ? Math.round(active.reduce((sum, project) => sum + project.progress, 0) / active.length) : 0;
   const missingRequested = Boolean(requestedProjectId && !portfolio.loading && !projects.some((project) => project.id === requestedProjectId));
 
   async function startGuide() {
@@ -263,14 +255,6 @@ export function EmissionProjectPortfolioPage() {
     }
   }
 
-  const text = en ? {
-    title: "Emission Project Portfolio", desc: "Select a project, verify its current state, and start the next authorized task.",
-    list: "Project list", create: "New project", all: "Total", active: "Active", review: "Review", complete: "Complete", average: "Average progress",
-  } : {
-    title: "배출량 프로젝트 포트폴리오", desc: "담당 프로젝트를 선택하고 현재 상태와 권한을 확인한 뒤, 실행 가능한 다음 업무를 시작합니다.",
-    list: "프로젝트 목록", create: "새 프로젝트", all: "전체", active: "진행 중", review: "검증·승인", complete: "완료", average: "평균 진행률",
-  };
-
   return <><HomeInlineStyles en={en} /><div className="min-h-screen bg-[#f4f7fb] text-[var(--kr-gov-text-primary)]">
     <a className="skip-link" href="#portfolio-main">{content.skipLink}</a>
     <header className="fixed inset-x-0 top-0 z-50 border-b-2 border-[#001e40] bg-white">
@@ -292,36 +276,17 @@ export function EmissionProjectPortfolioPage() {
     </div>
 
     <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8" id="portfolio-main">
-      <section className="overflow-hidden rounded-3xl bg-[#052b57] px-6 py-8 text-white shadow-xl lg:px-10">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-sm font-bold text-blue-200">{en ? "Carbon Emission Management" : "탄소배출 관리"}</p><h1 className="mt-2 text-3xl font-black tracking-tight lg:text-4xl">{text.title}</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-blue-100 lg:text-base">{text.desc}</p></div><div className="flex flex-wrap gap-2"><a className="inline-flex min-h-11 items-center rounded-lg border border-white/40 px-4 font-bold hover:bg-white/10" href={buildLocalizedPath("/emission/project_list", "/en/emission/project_list")}>{text.list}</a><a className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 font-black text-[#052b57]" href={buildLocalizedPath("/emission/project/create", "/en/emission/project/create")}><span className="material-symbols-outlined">add</span>{text.create}</a></div></div>
-      </section>
+      <h1 className="text-3xl font-bold text-[#052b57]" data-layout-section="page-title">{layout.title[en ? "en" : "ko"]}</h1>
 
-      <section className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{[
-        [text.all, data.total || actorScopedProjects.length, "folder_open", ""], [text.active, active.length, "play_circle", "진행"], [text.review, actorScopedProjects.filter((project) => project.status === "검증").length, "fact_check", "검증"], [text.complete, actorScopedProjects.filter((project) => project.status === "완료").length, "workspace_premium", "완료"], [text.average, `${average}%`, "monitoring", "metric"],
-      ].map(([label, value, icon, filter]) => <button className="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-blue-300 disabled:cursor-default" disabled={filter === "metric"} key={String(label)} onClick={() => setStatus(String(filter))} type="button"><span className="material-symbols-outlined text-[#246beb]">{icon}</span><span className="ml-2 text-sm font-bold text-slate-500">{label}</span><strong className="mt-3 block text-3xl font-black text-[#052b57]">{value}</strong></button>)}</section>
-
-      <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="grid gap-3 lg:grid-cols-[1fr_190px_220px_auto]">
-        <label className="text-sm font-bold">{en ? "Search" : "검색"}<input className="mt-2 h-11 w-full rounded-lg border border-slate-300 px-3 font-normal" onChange={(event) => setKeyword(event.target.value)} placeholder={en ? "Project, site, owner" : "프로젝트명, 사업장, 담당자"} value={keyword} /></label>
-        <label className="text-sm font-bold">{en ? "Status" : "상태"}<select className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal" onChange={(event) => setStatus(event.target.value)} value={status}><option value="">{en ? "All" : "전체"}</option><option value="진행">{en ? "Active" : "진행"}</option><option value="검증">{en ? "Review" : "검증"}</option><option value="완료">{en ? "Complete" : "완료"}</option></select></label>
-        <label className="text-sm font-bold">{en ? "Site" : "사업장"}<select className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal" onChange={(event) => setSite(event.target.value)} value={site}><option value="">{en ? "All sites" : "전체 사업장"}</option>{(data.sites || []).map((item) => <option key={item}>{item}</option>)}</select></label>
-        <button className="mt-auto h-11 rounded-lg border border-slate-300 px-4 font-bold" onClick={() => { setKeyword(""); setStatus(""); setSite(""); }} type="button">{en ? "Reset" : "초기화"}</button>
-      </div></section>
-
-      <nav aria-label={en ? "Portfolio shortcuts" : "포트폴리오 빠른 메뉴"} className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          ["assignment", en ? "My tasks" : "내 업무", "/emission/my-tasks"],
-          ["event_busy", en ? "Deadlines and delays" : "마감·지연 현황", "/emission/deadline-status"],
-          ["group_add", en ? "Work assignment" : "업무 배정", "/emission/work-assignment"],
-          ["inventory_2", en ? "Completed projects" : "완료 프로젝트", "/emission/project-completion"],
-        ].map(([icon, label, path]) => <a className="flex min-h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 font-bold text-[#052b57] shadow-sm transition hover:border-blue-300 hover:bg-blue-50" href={buildLocalizedPath(path, `/en${path}`)} key={path}><span className="material-symbols-outlined text-[#246beb]">{icon}</span>{label}</a>)}
-      </nav>
+      <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><label className="text-sm font-bold">{en ? "Search" : "검색"}<input className="mt-2 h-11 w-full rounded-lg border border-slate-300 px-3 font-normal" onChange={(event) => setKeyword(event.target.value)} placeholder={en ? "Project, site, owner" : "프로젝트명, 사업장, 담당자"} value={keyword} /></label></div>
+<div className="ccus-search-field"><label className="text-sm font-bold">{en ? "Status" : "상태"}<select className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal" onChange={(event) => setStatus(event.target.value)} value={status}><option value="">{en ? "All" : "전체"}</option><option value="진행">{en ? "Active" : "진행"}</option><option value="검증">{en ? "Review" : "검증"}</option><option value="완료">{en ? "Complete" : "완료"}</option></select></label></div></>} advanced={<><div className="ccus-search-field"><label className="text-sm font-bold">{en ? "Site" : "사업장"}<select className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal" onChange={(event) => setSite(event.target.value)} value={site}><option value="">{en ? "All sites" : "전체 사업장"}</option>{(data.sites || []).map((item) => <option key={item}>{item}</option>)}</select></label></div></>} actions={<><button className="mt-auto h-11 rounded-lg border border-slate-300 px-4 font-bold" onClick={() => { setKeyword(""); setStatus(""); setSite(""); }} type="button">{en ? "Reset" : "초기화"}</button></>}></CommonSearchSection></div></section>
 
       {missingRequested ? <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 font-bold text-amber-900">{requestedProjectId} 프로젝트가 없거나 현재 계정에 조회 권한이 없습니다.</p> : null}
       {portfolio.error ? <div className="mt-5 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 text-red-800"><strong>{portfolio.error}</strong><button className="rounded-lg bg-red-700 px-4 py-2 font-bold text-white" onClick={() => void portfolio.reload()} type="button">{en ? "Retry" : "다시 시도"}</button></div> : null}
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[1.45fr_.75fr]">
+      <div className="mt-5">
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-2 border-b px-6 py-5 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-black text-[#052b57]">{en ? "Select a project" : "프로젝트 선택"}</h2><p className="mt-1 text-sm text-slate-500">{en ? "Only projects available to this account are listed." : "로그인 계정이 접근할 수 있는 프로젝트만 표시됩니다."}</p></div><strong className="text-sm text-slate-500">{projects.length}{en ? " projects" : "개"}</strong></div>
+          <div className="flex flex-col gap-2 border-b px-6 py-5 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-black text-[#052b57]">{en ? "Select a project" : "프로젝트 선택"}</h2><p className="mt-1 text-sm text-slate-500">{en ? "Only projects available to this account are listed." : "로그인 계정이 접근할 수 있는 프로젝트만 표시됩니다."}</p></div><div className="flex items-center gap-3"><strong className="text-sm text-slate-500">{projects.length}{en ? " projects" : "개"}</strong><a className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#246beb] px-4 font-bold text-white" data-layout-section="list-create" href={buildLocalizedPath(layout.createPath, `/en${layout.createPath}`)}>{layout.createLabel[en ? "en" : "ko"]}</a></div></div>
           <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead className="bg-slate-50 text-slate-600"><tr>{(en ? ["Select", "Project", "Site / period", "Owner", "Current step", "Progress", "Status"] : ["선택", "프로젝트", "사업장·기간", "담당자", "현재 단계", "진행률", "상태"]).map((label) => <th className="px-4 py-3" key={label}>{label}</th>)}</tr></thead><tbody>{projects.map((project) => {
             const isSelected = project.id === selectedId;
             return <tr className={`cursor-pointer border-t ${isSelected ? "bg-blue-50 ring-1 ring-inset ring-blue-300" : "hover:bg-slate-50"}`} key={project.id} onClick={() => setSelectedId(project.id)}><td className="px-4 py-4"><input aria-label={`${project.name} 선택`} checked={isSelected} onChange={() => setSelectedId(project.id)} type="radio" className="krds-control-native" /></td><td className="px-4 py-4"><strong className="block text-[#052b57]">{project.name}</strong><span className="mt-1 block text-xs text-slate-500">{project.id}</span></td><td className="px-4"><strong className="block">{project.site || "-"}</strong><span className="text-xs text-slate-500">{project.period || "-"}</span></td><td className="px-4">{project.owner || "-"}</td><td className="px-4 font-bold text-blue-700">{project.step || "-"}</td><td className="px-4"><strong>{project.progress}%</strong><div className="mt-2 h-1.5 w-20 rounded-full bg-slate-200"><div className="h-full rounded-full bg-[#246beb]" style={{ width: `${Math.max(0, Math.min(100, project.progress))}%` }} /></div></td><td className="px-4"><span className={`rounded-full px-2.5 py-1 text-xs font-black ${STATUS_STYLE[project.status] || "bg-slate-100 text-slate-700"}`}>{project.status}</span></td></tr>;
@@ -330,12 +295,8 @@ export function EmissionProjectPortfolioPage() {
           {!portfolio.loading && !portfolio.error && !projects.length ? <p className="p-10 text-center text-slate-500">{en ? "No accessible projects." : "조회 가능한 프로젝트가 없습니다."}</p> : null}
         </section>
 
-        <aside className="rounded-2xl border border-blue-200 bg-white p-6 shadow-sm">
-          <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black text-[#246beb]">STEP 1 COMPLETION</p><h2 className="mt-1 text-xl font-black text-[#052b57]">{en ? "Completion criteria" : "1단계 완료 기준"}</h2></div><strong className={`rounded-full px-3 py-1 text-sm ${checkCount === 5 ? "bg-emerald-100 text-emerald-800" : "bg-blue-100 text-blue-800"}`}>{checkCount}/5</strong></div>
-          <div className="mt-5 space-y-3">{checks.map((item) => <div className={`flex items-center gap-3 rounded-xl border p-3 ${item.ok ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}`} key={item.label}><span className={`material-symbols-outlined ${item.ok ? "text-emerald-600" : "text-slate-400"}`}>{item.ok ? "check_circle" : "radio_button_unchecked"}</span><span className="text-sm font-bold">{item.label}</span></div>)}</div>
           {taskLoading ? <p className="mt-4 text-sm font-bold text-blue-700">{en ? "Checking workflow..." : "업무 상태를 확인하는 중입니다."}</p> : null}
           {taskError ? <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-700">{taskError}</p> : null}
-        </aside>
       </div>
 
       {selected ? <section className="mt-5 overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-sm"><div className="grid xl:grid-cols-[1.25fr_.75fr]">

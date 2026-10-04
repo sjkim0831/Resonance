@@ -1,0 +1,18 @@
+{
+  "url": "http://172.16.1.232/projects/P006/assets/usd-coverage/index.html",
+  "loadMs": 868,
+  "totalMs": 5171,
+  "rows": 724,
+  "missingBaselineFilter": 548,
+  "waitFilter": 58,
+  "newConfigurations": 20,
+  "moduleFilter": 172,
+  "resolved": 196,
+  "unresolved": 528,
+  "ready": 10,
+  "jsErrors": [],
+  "zipBytes": 7221,
+  "businessWrites": 0,
+  "realConnections": 0,
+  "originalFactoryStudioDragDrop": "NOT_TESTED_THIS_SCOPE"
+}

@@ -1,0 +1,16 @@
+{
+  "scope": "CURRENT_BASE_HASH_MATCHED_EXISTING_RTX_CAPTURES",
+  "base": "p006-coverage666-v1/base-instrument.usda",
+  "assetCoverage": 68,
+  "variantsReviewed": 26,
+  "artifact": "instrument-review.jpg",
+  "observed": [
+    "스탠드/프로브/삼각대/갠트리 및 계측기 외함의 참조 형상이 보인다.",
+    "여러 구성은 외함과 노즐/프로브 수량 차이만으로 표현되어 있다.",
+    "현재 뷰만으로 서로 다른 계측 원리와 전용 핵심 구조가 해당 설비에 맞는지 입증할 수 없다."
+  ],
+  "decision": "REFERENCE_SHAPE_VISIBLE_TYPE_AND_MECHANISM_NOT_QUALIFIED",
+  "geometryPromotions": 0,
+  "notClaimed": ["새 실시간 RTX 렌더 실행", "실장비 사진 대조", "제조사 원형과의 동일성", "실측 또는 기능 검증"],
+  "nextRequirement": "설비별 필수 핵심 형상/작업물 인터페이스가 명시된 승인 설계와 Variant 역할 대조. 사진을 다시 보는 반복 검수는 하지 않음."
+}

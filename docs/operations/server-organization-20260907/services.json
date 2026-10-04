@@ -1,0 +1,56 @@
+{
+  "carbonet-production-direct": {
+    "ActiveState": "active",
+    "FragmentPath": "/etc/systemd/system/carbonet-production-direct.service",
+    "MainPID": "4106963",
+    "WorkingDirectory": "/opt/resonance-data/dev-runtime/certificate-verification/backend"
+  },
+  "ccus-postgresql-native": {
+    "ActiveState": "active",
+    "FragmentPath": "/etc/systemd/system/ccus-postgresql-native.service",
+    "MainPID": "3844583",
+    "WorkingDirectory": ""
+  },
+  "carbonet-frontend-fast-dev": {
+    "ActiveState": "active",
+    "FragmentPath": "/etc/systemd/system/carbonet-frontend-fast-dev.service",
+    "MainPID": "578645",
+    "WorkingDirectory": "/opt/Resonance/projects/carbonet-frontend/source"
+  },
+  "carbonet-dev-proxy": {
+    "ActiveState": "active",
+    "FragmentPath": "/etc/systemd/system/carbonet-dev-proxy.service",
+    "MainPID": "3168345",
+    "WorkingDirectory": "/opt/Resonance/ops/runtime"
+  },
+  "resonance-p006-web": {
+    "ActiveState": "active",
+    "FragmentPath": "/etc/systemd/system/resonance-p006-web.service",
+    "MainPID": "816329",
+    "WorkingDirectory": "/home/sjkim/web-viewer-sample"
+  },
+  "resonance-shadow-gemma4-e4b": {
+    "ActiveState": "active",
+    "FragmentPath": "/etc/systemd/system/resonance-shadow-gemma4-e4b.service",
+    "MainPID": "34799",
+    "WorkingDirectory": "/opt/util/ai/vLLM"
+  },
+  "resonance-shadow-qwen05": {
+    "ActiveState": "active",
+    "FragmentPath": "/etc/systemd/system/resonance-shadow-qwen05.service",
+    "MainPID": "2540",
+    "WorkingDirectory": "/opt/util/ai/vLLM"
+  },
+  "resonance-shadow-qwen15": {
+    "ActiveState": "active",
+    "FragmentPath": "/etc/systemd/system/resonance-shadow-qwen15.service",
+    "MainPID": "2541",
+    "WorkingDirectory": "/opt/util/ai/vLLM"
+  },
+  "resonance-shadow-qwen7": {
+    "ActiveState": "active",
+    "FragmentPath": "/etc/systemd/system/resonance-shadow-qwen7.service",
+    "MainPID": "2543",
+    "WorkingDirectory": "/opt/util/ai/vLLM"
+  }
+}

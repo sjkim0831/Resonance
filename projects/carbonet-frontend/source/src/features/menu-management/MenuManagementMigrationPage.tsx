@@ -1,4 +1,5 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { duplicateMenu, filterMenuTree, menuText } from "./menuRegistration";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { refreshAdminMenuTree } from "../../lib/api/adminShell";
 import { postFormUrlEncoded, postLocalizedValidatedJson } from "../../lib/api/core";
@@ -886,6 +887,8 @@ export function MenuManagementMigrationPage() {
   const [menuType, setMenuType] = useState(readMenuTypeFromLocation());
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
+  const createLock = useRef(false);
+  const [creating, setCreating] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [useAtFilter, setUseAtFilter] = useState<UseAtFilter>("");
   const [parentCodeValue, setParentCodeValue] = useState("");
@@ -904,7 +907,10 @@ export function MenuManagementMigrationPage() {
   const pageState = useAsyncValue<MenuManagementPagePayload>(() => fetchMenuManagementPage(menuType), [menuType]);
   const page = pageState.value;
 
-  const rows = useMemo(() => (page?.menuRows || []) as Array<Record<string, unknown>>, [page?.menuRows]);
+  const rows = useMemo(() => ((page?.menuRows || []) as Array<Record<string, unknown>>).map(row => ({
+    ...row, codeNm: menuText(row.codeNm), codeDc: menuText(row.codeDc),
+    ...(row.label != null ? { label: menuText(row.label) } : {})
+  })), [page?.menuRows]);
 
   const menuTypes = ((page?.menuTypes || []) as Array<Record<string, unknown>>);
   const allGroupMenuOptions = ((page?.groupMenuOptions || []) as Array<Record<string, string>>);
@@ -923,24 +929,7 @@ export function MenuManagementMigrationPage() {
   })), [rows]);
 
   const filteredTreeData = useMemo(() => {
-    const filter = (nodes: MenuNode[]): MenuNode[] => {
-      return nodes.reduce<MenuNode[]>((acc, node) => {
-        const filteredChildren = filter(node.children);
-        const matchesKeyword = !deferredSearchKeyword.trim() || [node.code, node.label, node.url, node.icon].join(" ").toLowerCase().includes(deferredSearchKeyword.toLowerCase());
-        const matchesUseAt = !useAtFilter || node.useAt === useAtFilter;
-        if (!matchesKeyword && filteredChildren.length === 0) {
-          return acc;
-        }
-        if (!matchesUseAt) {
-          return filteredChildren.length > 0 ? acc.concat({ ...node, children: filteredChildren }) : acc;
-        }
-        if (matchesKeyword) {
-          acc.push({ ...node, children: filteredChildren });
-        }
-        return acc;
-      }, []);
-    };
-    return filter(treeData);
+    return filterMenuTree(treeData, deferredSearchKeyword, useAtFilter);
   }, [treeData, deferredSearchKeyword, useAtFilter]);
 
   useEffect(() => {
@@ -1217,6 +1206,7 @@ export function MenuManagementMigrationPage() {
   };
 
   const handleCreatePage = async () => {
+    if (createLock.current) return;
     const error = validateCreateForm();
     if (error) {
       setActionError(error);
@@ -1224,6 +1214,8 @@ export function MenuManagementMigrationPage() {
     }
     setActionError("");
     setActionMessage("");
+    createLock.current = true;
+    setCreating(true);
     const body = new URLSearchParams();
     body.set("menuType", menuType);
     if (isTopMenu) {
@@ -1238,6 +1230,9 @@ export function MenuManagementMigrationPage() {
     body.set("menuIcon", menuIcon);
     body.set("useAt", useAt);
     try {
+      const before = await fetchMenuManagementPage(menuType);
+      const duplicate = duplicateMenu((before.menuRows || []) as Array<Record<string, unknown>>, parentCodeValue, codeNm, menuUrl);
+      if (duplicate) throw new Error(en ? `Menu already exists: ${duplicate.code}` : `이미 등록된 메뉴입니다: ${duplicate.code}. 기존 메뉴를 수정하세요.`);
       const result = await postFormUrlEncoded<{ success?: boolean; message?: string }>(
         buildLocalizedPath("/admin/system/menu/create-page", "/en/admin/system/menu/create-page"),
         body
@@ -1246,13 +1241,22 @@ export function MenuManagementMigrationPage() {
         throw new Error(result.message || "Failed");
       }
       refreshAdminMenuTree();
-      setActionMessage(result.message || (en ? "Menu created." : "메뉴가 생성되었습니다."));
+      setActionMessage(en ? "Menu saved. Checking the saved entry." : "메뉴 저장이 완료되었습니다. 저장된 항목을 확인합니다.");
+      const saved = await pageState.reload();
+      const entry = saved && duplicateMenu((saved.menuRows || []) as Array<Record<string, unknown>>, parentCodeValue, codeNm, menuUrl);
+      if (!entry) throw new Error(en ? "Save acknowledged, but verification failed. Refresh before retrying." : "서버가 저장을 승인했지만 재조회 확인에 실패했습니다. 중복 생성하지 말고 새로고침해 확인하세요.");
+      setSearchKeyword(String(entry.code));
+      setUseAtFilter("");
+      setExpandedCodes(new Set([parentCodeValue.slice(0, 4), parentCodeValue]));
+      setActionMessage(en ? `Saved and verified: ${entry.code}` : `저장·재조회 확인 완료: ${entry.code} · ${menuText(entry.codeNm ?? entry.label)} · ${entry.menuUrl ?? entry.url}`);
       setCodeNm("");
       setCodeDc("");
       setMenuUrl("");
-      window.location.reload();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to create menu.");
+    } finally {
+      createLock.current = false;
+      setCreating(false);
     }
   };
 
@@ -1538,7 +1542,7 @@ const handleSaveOrder = async () => {
                 ) : (
                   <MenuTree
                     nodes={filteredTreeData}
-                    expandedCodes={expandedCodes}
+                    expandedCodes={deferredSearchKeyword.trim() ? new Set(menuCodeRows.map(row => row.code)) : expandedCodes}
                     onToggle={handleToggle}
                     onUpdate={handleUpdateMenu}
                     onDelete={handleDeleteMenu}
@@ -1672,9 +1676,9 @@ const handleSaveOrder = async () => {
                   </select>
                 </div>
 
-                <button type="button" onClick={handleCreatePage} className="gov-btn gov-btn-primary w-full">
+                <button type="button" disabled={creating || pageState.loading} onClick={handleCreatePage} className="gov-btn gov-btn-primary w-full">
                   <span className="material-symbols-outlined text-[18px]">add</span>
-                  <span>{en ? "Create Menu" : "메뉴 생성"}</span>
+                  <span>{creating ? (en ? "Saving…" : "저장 확인 중…") : (en ? "Create Menu" : "메뉴 생성")}</span>
                 </button>
               </div>
             </div>

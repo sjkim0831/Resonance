@@ -12,8 +12,11 @@ public class ExternalAuthSession {
     private String providerCode;
     private String methodCode;
     private String txId;
+    private String storeId;
+    private String channelKey;
     private String linkedUserId;
     private String linkedUserSe;
+    private String linkHttpSessionId;
     private String requestClientIp;
     private String message;
     private String appScheme;

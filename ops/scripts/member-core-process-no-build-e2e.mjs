@@ -2,7 +2,7 @@
 import { createRequire } from "node:module";
 import path from "node:path";
 
-const root=path.resolve(process.env.MEMBER_CORE_PLAYWRIGHT_ROOT||"/opt/Resonance/var/deploy-worktrees/runtime-build");
+const root=path.resolve(process.env.MEMBER_CORE_PLAYWRIGHT_ROOT||"/opt/Resonance");
 const require=createRequire(path.join(root,"projects/carbonet-frontend/source/package.json"));
 const {chromium,request}=require("@playwright/test");
 const apiBase=String(process.env.MEMBER_CORE_API_BASE||"http://127.0.0.1:18080");

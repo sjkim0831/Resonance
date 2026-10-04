@@ -1,0 +1,17 @@
+# /etc/systemd/system/resonance-all-process-contract-audit.timer -> /opt/Resonance/ops/host-config/systemd/resonance-all-process-contract-audit.timer
+[Unit]
+Description=Run Resonance all-process contract audit hourly
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=5min
+AccuracySec=1min
+Persistent=true
+Unit=resonance-all-process-contract-audit.service
+
+[Install]
+WantedBy=timers.target
+
+# /run/systemd/system/resonance-all-process-contract-audit.timer.d/override.conf
+[Unit]
+ConditionPathExists=!/run/resonance-all-process-contract-audit-maintenance.hold

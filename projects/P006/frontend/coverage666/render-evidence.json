@@ -1,0 +1,1793 @@
+{
+  "images": [
+    "layout-packing.png",
+    "layout-machining.png",
+    "layout-joining.png",
+    "layout-separator.png",
+    "layout-transfer.png",
+    "layout-press.png",
+    "layout-safety.png",
+    "layout-instrument.png",
+    "layout-wetline.png",
+    "layout-fluidmodule.png",
+    "layout-fixture.png",
+    "layout-mixing.png",
+    "layout-polymer.png",
+    "layout-forming.png",
+    "layout-assembly.png",
+    "layout-robot.png",
+    "layout-phase1.png",
+    "layout-phase2.png",
+    "layout-all.png",
+    "variant-fixture-v000.png",
+    "variant-transfer-v000.png",
+    "variant-transfer-v001.png",
+    "variant-transfer-v002.png",
+    "variant-transfer-v003.png",
+    "variant-transfer-v004.png",
+    "variant-transfer-v005.png",
+    "variant-machining-v000.png",
+    "variant-machining-v001.png",
+    "variant-machining-v002.png",
+    "variant-machining-v003.png",
+    "variant-machining-v004.png",
+    "variant-machining-v005.png",
+    "variant-forming-v000.png",
+    "variant-forming-v001.png",
+    "variant-press-v000.png",
+    "variant-joining-v000.png",
+    "variant-joining-v001.png",
+    "variant-joining-v002.png",
+    "variant-joining-v003.png",
+    "variant-joining-v004.png",
+    "variant-joining-v005.png",
+    "variant-mixing-v000.png",
+    "variant-separator-v000.png",
+    "variant-wetline-v000.png",
+    "variant-separator-v001.png",
+    "variant-polymer-v000.png",
+    "variant-polymer-v001.png",
+    "variant-polymer-v002.png",
+    "variant-polymer-v003.png",
+    "variant-polymer-v004.png",
+    "variant-mixing-v001.png",
+    "variant-fluidmodule-v000.png",
+    "variant-instrument-v000.png",
+    "variant-instrument-v001.png",
+    "variant-instrument-v002.png",
+    "variant-instrument-v003.png",
+    "variant-instrument-v004.png",
+    "variant-packing-v000.png",
+    "variant-packing-v001.png",
+    "variant-robot-v000.png",
+    "variant-robot-v001.png",
+    "variant-robot-v002.png",
+    "variant-separator-v002.png",
+    "variant-separator-v003.png",
+    "variant-press-v001.png",
+    "variant-safety-v000.png",
+    "variant-fixture-v001.png",
+    "variant-packing-v002.png",
+    "variant-packing-v003.png",
+    "variant-fluidmodule-v001.png",
+    "variant-safety-v001.png",
+    "variant-fluidmodule-v002.png",
+    "variant-safety-v002.png",
+    "variant-packing-v004.png",
+    "variant-transfer-v006.png",
+    "variant-transfer-v007.png",
+    "variant-transfer-v008.png",
+    "variant-transfer-v009.png",
+    "variant-transfer-v010.png",
+    "variant-fixture-v002.png",
+    "variant-wetline-v001.png",
+    "variant-machining-v006.png",
+    "variant-wetline-v002.png",
+    "variant-machining-v007.png",
+    "variant-press-v002.png",
+    "variant-transfer-v011.png",
+    "variant-press-v003.png",
+    "variant-forming-v002.png",
+    "variant-forming-v003.png",
+    "variant-forming-v004.png",
+    "variant-forming-v005.png",
+    "variant-forming-v006.png",
+    "variant-press-v004.png",
+    "variant-forming-v007.png",
+    "variant-forming-v008.png",
+    "variant-mixing-v002.png",
+    "variant-fluidmodule-v003.png",
+    "variant-fluidmodule-v004.png",
+    "variant-press-v005.png",
+    "variant-robot-v003.png",
+    "variant-joining-v006.png",
+    "variant-joining-v007.png",
+    "variant-joining-v008.png",
+    "variant-joining-v009.png",
+    "variant-joining-v010.png",
+    "variant-joining-v011.png",
+    "variant-joining-v012.png",
+    "variant-joining-v013.png",
+    "variant-fluidmodule-v005.png",
+    "variant-wetline-v003.png",
+    "variant-wetline-v004.png",
+    "variant-wetline-v005.png",
+    "variant-wetline-v006.png",
+    "variant-polymer-v005.png",
+    "variant-polymer-v006.png",
+    "variant-mixing-v003.png",
+    "variant-polymer-v007.png",
+    "variant-polymer-v008.png",
+    "variant-separator-v004.png",
+    "variant-assembly-v000.png",
+    "variant-assembly-v001.png",
+    "variant-assembly-v002.png",
+    "variant-joining-v014.png",
+    "variant-joining-v015.png",
+    "variant-assembly-v003.png",
+    "variant-instrument-v005.png",
+    "variant-instrument-v006.png",
+    "variant-instrument-v007.png",
+    "variant-instrument-v008.png",
+    "variant-packing-v005.png",
+    "variant-packing-v006.png",
+    "variant-packing-v007.png",
+    "variant-packing-v008.png",
+    "variant-packing-v009.png",
+    "variant-packing-v010.png",
+    "variant-packing-v011.png",
+    "variant-transfer-v012.png",
+    "variant-instrument-v009.png",
+    "variant-fluidmodule-v006.png",
+    "variant-fixture-v003.png",
+    "variant-fluidmodule-v007.png",
+    "variant-fluidmodule-v008.png",
+    "variant-fixture-v004.png",
+    "variant-fixture-v005.png",
+    "variant-instrument-v010.png",
+    "variant-fixture-v006.png",
+    "variant-fixture-v007.png",
+    "variant-instrument-v011.png",
+    "variant-instrument-v012.png",
+    "variant-instrument-v013.png",
+    "variant-fixture-v008.png",
+    "variant-separator-v005.png",
+    "variant-press-v006.png",
+    "variant-instrument-v014.png",
+    "variant-safety-v003.png",
+    "variant-safety-v004.png",
+    "variant-safety-v005.png",
+    "variant-safety-v006.png",
+    "variant-safety-v007.png",
+    "variant-safety-v008.png",
+    "variant-safety-v009.png",
+    "variant-instrument-v015.png",
+    "variant-instrument-v016.png",
+    "variant-instrument-v017.png",
+    "variant-instrument-v018.png",
+    "variant-instrument-v019.png",
+    "variant-instrument-v020.png",
+    "variant-instrument-v021.png",
+    "variant-instrument-v022.png",
+    "variant-instrument-v023.png",
+    "variant-instrument-v024.png",
+    "variant-instrument-v025.png",
+    "variant-fixture-v009.png",
+    "variant-press-v007.png",
+    "variant-fixture-v010.png",
+    "variant-robot-v004.png",
+    "variant-joining-v016.png",
+    "variant-packing-v012.png",
+    "variant-mixing-v004.png",
+    "variant-packing-v013.png",
+    "variant-fixture-v011.png",
+    "variant-separator-v006.png",
+    "variant-assembly-v004.png",
+    "variant-wetline-v007.png",
+    "variant-wetline-v008.png",
+    "variant-wetline-v009.png",
+    "variant-mixing-v005.png",
+    "variant-mixing-v006.png",
+    "variant-wetline-v010.png",
+    "variant-packing-v014.png",
+    "variant-separator-v007.png",
+    "variant-assembly-v005.png",
+    "variant-packing-v015.png",
+    "variant-mixing-v007.png",
+    "variant-mixing-v008.png",
+    "variant-separator-v008.png",
+    "variant-assembly-v006.png"
+  ],
+  "seconds": 156.2100863456726,
+  "renderer": "RTX",
+  "isolated": true,
+  "liveStageChanged": false,
+  "variantImages": 178,
+  "layoutImages": 19,
+  "hashes": {
+    "layout-packing.png": "dc589a6604a7156cdb8542dff5b058675591f0a91e8f2418b1f47b37143f33c0",
+    "layout-machining.png": "11c94edeccd942d1dfcdcc16be1668ecbab7c8a7e799a1f3cb23a3f476cf7c09",
+    "layout-joining.png": "2289e6fac3317e9ec9af5012be66f4ed09a617f91ff256e83f691ce9cb061f4d",
+    "layout-separator.png": "8dfa1dfca78b0d2ee5adf1f437370d918d5d9ab0afa836eb1922d9443b40cc27",
+    "layout-transfer.png": "a181f231fec08212f552f02c49c47afb57e1a6da64a79d8e6c97aea2e386d44a",
+    "layout-press.png": "9e4677883049f2ab18050ceebf2c9d743b73254866458476a01e0aaac2cd9662",
+    "layout-safety.png": "2e347d63554b020c2215b49413875487e48b79d7ae39cc18928c6728f41fe2b1",
+    "layout-instrument.png": "7c51404224f666e9d5ec9269220a97157fb3e80770599cc837ca259334c9819a",
+    "layout-wetline.png": "230fc52feb1b71762eef3ac5057ecb37b3cc63be152b632bddecc244523ac465",
+    "layout-fluidmodule.png": "888f8bc7abe943f2131bbbcc39814771c6d30605487194e0756196b48b8f7369",
+    "layout-fixture.png": "1a99c9ba002de5b472cae329026cadf2f8eb19cfeeac028ba8ffc34e1185cb70",
+    "layout-mixing.png": "615a8e35a73236671999deab013c13feb773c01102529807ecf43edb33730450",
+    "layout-polymer.png": "dcfe30dd55c497289d02ff1ba8013220b4378256614ea5eeb237b9e057310f8f",
+    "layout-forming.png": "89013dd784df4a73fd6aac2e8870b0f9922643e82d0156b2160a62a5f7e7d177",
+    "layout-assembly.png": "93c06ea793a88351754348cbe6224038b8c3ad96c3594c508790233dbb455037",
+    "layout-robot.png": "bcd7e1d8962ad96d791a7e030d47a6d5777b7647b5259c5bdc1e9eff1e2e167a",
+    "layout-phase1.png": "376450efe2f09fb13a12b30ab7128848e969539aec87d6f655bea6d9fccd4804",
+    "layout-phase2.png": "26c225b4ba0ee19f92006d6539df6be4294e2f8d35f01359853800836e79b247",
+    "layout-all.png": "cbeba6160a20c8b38ec53d2567dc4566a4314e757785d586f7c41b464ebe2cd6",
+    "variant-fixture-v000.png": "b9e2866d62fd39cd2a626bed093af0c451c453055567fb7133549f90505a2a69",
+    "variant-transfer-v000.png": "5578a5eecc0894691eb729c178e653ac6084c30252b66ac54b4d6d522d926f19",
+    "variant-transfer-v001.png": "bb9f869a4805940dad2e6031913cfb4d29a15da8d68453d5fbe35c4942d29abf",
+    "variant-transfer-v002.png": "1707910b590f25ae4874c3ce1b821ef397263edcbcc75897ebc660e9b619b600",
+    "variant-transfer-v003.png": "8f6552b889ba2879f4b7c1d2ae0fb4c59054a5666981d21e9524c73c94630708",
+    "variant-transfer-v004.png": "ac16fd1e703aff00e1c7f243b7052f0f40acea7dee751f079c3d45cd4a078f58",
+    "variant-transfer-v005.png": "d93daba62ff05a410d6613cccfe17d8c83b9e6a3a98068595a72f5a6b508d2a4",
+    "variant-machining-v000.png": "494e9d552ed38508351436dac36bfa3e193c62dca6086c3526db386d4dae5ee4",
+    "variant-machining-v001.png": "aaa49e77cd9bb3f23a7786bd3bf69d88748a12c166ae3a53794f21d1ce8eb088",
+    "variant-machining-v002.png": "e989463225682143f52d1d322c9a171b6b15a4f8a567364eac2f0680881d414a",
+    "variant-machining-v003.png": "a2b76e400f13fc5e2694425765de0a42c918371aab69d0c1e305187ba6dfc627",
+    "variant-machining-v004.png": "2ae783dc5b8ee38a361948a2ed78ae81ec63c1029f5feeab0a43fd86b4d6d33f",
+    "variant-machining-v005.png": "09f4c0e394cc469873c42c589690fa49e2e2615dc91f977ae1ce8005726bbf5c",
+    "variant-forming-v000.png": "a0b56880e88462e30107d3de415f5beda2781a0de3f4615de10ee13c28b9af82",
+    "variant-forming-v001.png": "8784fbbf4c65a9c01c2836ab310eb6e09758aa9755d68bf652361c9950c3c8a7",
+    "variant-press-v000.png": "c9306a7f83c66fbeeb3b7d6d59fb044e8e67adc77af34b16fde18ba79a4cb1ad",
+    "variant-joining-v000.png": "38eab28f8666e6873b35b76cc688b1d130c247df46ee140cb18a46c7c2eb62d1",
+    "variant-joining-v001.png": "f3ad973f60305ce849f3f4a4a62c9396424626e343f854f3d081942b29b55443",
+    "variant-joining-v002.png": "46d55185d93810282deab88f8c9ee615f5d562f8002375096a74b43a7f91753e",
+    "variant-joining-v003.png": "e3aceff43fa421e7b97da29837ddd10d0bb77f69c02ca9432b74e59bbb3e9a70",
+    "variant-joining-v004.png": "ef20cba057d7c2805fa55859be6639f98912a346fd0af2b1bae18ae984a654b6",
+    "variant-joining-v005.png": "d74c293e4f2580b726a1abc5cbd446e16af4977bd59ed686a067b6801587f990",
+    "variant-mixing-v000.png": "23e7ecddb1c353ffbf8ac51812cd738bafb2d81c0423bef296f2a61bc50ff297",
+    "variant-separator-v000.png": "baa0390a3caa7a0cfd48b6d04add665a4d8ea6b73aeddbf47ba094e359252503",
+    "variant-wetline-v000.png": "9f43b789d86e0163f054d891c48ca9911dbcb260063eff39d4052a0b50afde6b",
+    "variant-separator-v001.png": "547f677a4bf25fb007090d0cf2845b237b51f0a4c722af5772da4c5a98d12dda",
+    "variant-polymer-v000.png": "d40186d11d32e7951ee31187a8ea8b250c2e5f0828ce60cbf7595792d8e106d9",
+    "variant-polymer-v001.png": "011dd641c7d05f4abc9d86855512a60adce44faacf3470e2d1edc79b4c18752e",
+    "variant-polymer-v002.png": "6bc6bef9bfeb4fb0904c50ee52cef814d29714f78817d28d3373424c2b1dbd91",
+    "variant-polymer-v003.png": "d973de8b487472b2740542b958df01de9988c750bfbb5c6b43361fb45cf24916",
+    "variant-polymer-v004.png": "b4da37fdbf2e76b63e33381824d8d1d6f10d76da70a4c315507eee41bb4459e3",
+    "variant-mixing-v001.png": "89f262daf02cc2c32718c11b8a8220c35eb48d5660738034b9bb594aeaa9810a",
+    "variant-fluidmodule-v000.png": "6f2938dc27d0ca73e69f2342bb3a0d1983e8f5a2bf6e67a1e2f7bdc9f51e053e",
+    "variant-instrument-v000.png": "50f026f29e38ede8fe4c3c3b11457d04f1b691bb1e74dc9ca47a058174968f20",
+    "variant-instrument-v001.png": "2a17e7a7731579f195eb797e174e524f9774fd27a6c53f0a51cb01dfa4198bf3",
+    "variant-instrument-v002.png": "0bf5ec1b916a00b948c24aab0d665168fc78de4af8e1914360527fc0ebc43b60",
+    "variant-instrument-v003.png": "722204491d2f4826aafc0ba35720ef126aa911362c371f7846ee06ab29aadb04",
+    "variant-instrument-v004.png": "e07ec7f4f9cf30e34eb4d499c44be0cdbcbfd95f132edc5709d366d646b2fb0e",
+    "variant-packing-v000.png": "beb2d4caed8104bc3c83918b8c0d30d103c7864ca99bf17d9e3c4666e0f8286a",
+    "variant-packing-v001.png": "be84a1ff3f33012fe3e1378d2a06589be0dd61b7f23887f038ac21a294c348c0",
+    "variant-robot-v000.png": "2ab4eae8782c41c67ae6c325ef898bf7c80552c9015ecb48f7072ed55009aed6",
+    "variant-robot-v001.png": "f15f80f262b6f729468a4ec7fc0138afddf4b11d7f825f0c7cf80b80e1f83c0e",
+    "variant-robot-v002.png": "1ccaf5028bac891dc8b5515bd35d007a8a6e628a2e0f8cae8eef5623af735508",
+    "variant-separator-v002.png": "643b2910eb8c0f06aeb4270a6abe5b986fee8d63d54898e48f7aa0e50b7d5f2e",
+    "variant-separator-v003.png": "061c6f9bc45f2988f2f3d15be696e7954d71be6e7c1e0989053cb847de8b9efa",
+    "variant-press-v001.png": "1f3837477866e8e9511fccc3bb938d37ad39422ef0ed25a4f857b502e9ce8646",
+    "variant-safety-v000.png": "dd9fbeae1e90e22e7ea0b9e67172f98bc61524698b4d4b68059ac3405ec48176",
+    "variant-fixture-v001.png": "d9b729ec062acde491aadb983fb3d7c7a287275167a08fd7f16100b85ff45e2b",
+    "variant-packing-v002.png": "cf0ca1372ee5936b1987e725e1198cf1bd05499c0abecfe14874bb83687ad2f1",
+    "variant-packing-v003.png": "a1f98b729e6ebc34ec501e5f2f1fc5107e9e24c00d6447c503f897e3dfc6d48f",
+    "variant-fluidmodule-v001.png": "3b772f247e2698ccbc53792ae26fa1a7b69308b8f8f4beeb19259374c4e7b307",
+    "variant-safety-v001.png": "31a77b5af25a323f8e3b941aa27afe0608dc54faf04cccc29473022bf6c8329b",
+    "variant-fluidmodule-v002.png": "0942ffee67328ea99bb929050455fb5a477d03b8c82dbb3f92e0675522dc4b89",
+    "variant-safety-v002.png": "12c5894242102eede99bfc37fdcff53a900a91a6030835b916d9026d2e957381",
+    "variant-packing-v004.png": "dbedddc54ecbc63a398861229b795a6d29ea74be2915afb12b61f2aabfb617c1",
+    "variant-transfer-v006.png": "2af8254df02a9b0d93fc6e1b9dba3956cb51ea1556597c8212461e8dd87c20ed",
+    "variant-transfer-v007.png": "a809c95c1efca3593084ad251eebc1b886652cddbaf3cbf541e3fbe30342ccf0",
+    "variant-transfer-v008.png": "5eab668342c1ad0174dff47884b19c4f8eab7a0f6094b0e39e07ae49ca539280",
+    "variant-transfer-v009.png": "0bdc0d401d32896bb4b528adea98260abd194419918ca2f85fb3357696fc55e4",
+    "variant-transfer-v010.png": "90072c04047f222c13f34bbd5e4f7b4e62bca765effb35e614fdfc1911e3f3b6",
+    "variant-fixture-v002.png": "3ba4b0fcc4f6d6e02199d2815af49431ac347f509e105e71f52424d3d8f8a262",
+    "variant-wetline-v001.png": "0ac01c297485cf049ee566df24b43739c8db35e6da922d89ce6d819f4f6fe031",
+    "variant-machining-v006.png": "b7eab2f4e25a2a5c142ca4a30764d0fe682dea179c1ed5657e75cc9130ba04f3",
+    "variant-wetline-v002.png": "7d9609b6948222afe1c5b423bae67f03fd4cb9aed3766d179a0e7dbe4719067d",
+    "variant-machining-v007.png": "681aab62367896c4aca9bcf53c8d19b05ef00a31f4737b747acf147cd937079f",
+    "variant-press-v002.png": "7535f9c143ed238307b9788a3c351a053b38c1c0b02559ce6eb4ff6f49fcd006",
+    "variant-transfer-v011.png": "10e97bcfd41e3c12c1cf69d16b032f4de3d3fb2e4d0355eb7316a93df6f5440d",
+    "variant-press-v003.png": "f69afcf1857365e640471e99d266f72fdd209a9594f4edeb8ab1d2dbf6e86004",
+    "variant-forming-v002.png": "7ffd70cc6b9f7834bb476e99266c82435ed99c49bfb58a1c459d28cdeb6c9e46",
+    "variant-forming-v003.png": "ac88c47670d250ecbd7e77b007ce3554709de2b9a71effd4ac75b6e880b0f7df",
+    "variant-forming-v004.png": "e8a8a0677c099e6b1d2cc7db9a4cbc590a05d48c4fb81fd216b44a040c5ac970",
+    "variant-forming-v005.png": "90baed5f25cebcbcb8b14e2a708104ff8cc25fa692bac76583181c184cc075f3",
+    "variant-forming-v006.png": "cad1752544dc7e7399a2dd058cf5d31085108f186906c9532fd217cbc76a2669",
+    "variant-press-v004.png": "95b46f58c45c6230da7c342175aa9719da2bbf3e34cca1bd3292ceee07638bd9",
+    "variant-forming-v007.png": "94fe9b8d9f3674f0d080aea109d4d41d35f6326d1351dfe5f43c22e71fb70d07",
+    "variant-forming-v008.png": "dafebf847200910e33634ad714ddaf1c8199c569c54a127197c704c146d4c8bc",
+    "variant-mixing-v002.png": "f90aa111e5dcba69d1d6f233d0bb9f81504538052ca3cbb426e121462645564e",
+    "variant-fluidmodule-v003.png": "2360aa9acb8954bbfeeb0bf99efee914bad428d12ce3c3561d31354c925f83ae",
+    "variant-fluidmodule-v004.png": "68ce927391c0b9d3c9e8a5fea6acbfc18306e67f9ae681f35a77b165bbf3da30",
+    "variant-press-v005.png": "103ad715ad16790726cff62e241c8ea1644531997f45804606437cedcd9d4770",
+    "variant-robot-v003.png": "80004a2198efc5b054ed2b37ffb7afe47d3ef21ef37fae6fda18ca6982acf778",
+    "variant-joining-v006.png": "c51637cc213b9dfe770fb344bfabc1fea45ae23ee42373379e1e08b421b8b547",
+    "variant-joining-v007.png": "0b0034019c9ad73bfcfaa056d4ba0d2cbd787c9adfe55e3b705a3a721cebe60d",
+    "variant-joining-v008.png": "82e03ed0424c0465e332a7f2d5938d5e8a72ed15fdc3921bf0ec68d7829cf945",
+    "variant-joining-v009.png": "c33669c7d1926694f6645c9cf050a5cc1d951eddc952e33cba3a9d0c96dda146",
+    "variant-joining-v010.png": "ff98b2e7428647cddc122ed4d01e60c59bedfbb504fa56b0d269bc4457b5945c",
+    "variant-joining-v011.png": "e1c8c96281b90e0a2250d55a796de824ba99817cb8e2a8450d30bb996b84e65c",
+    "variant-joining-v012.png": "d0701581d90c2afe5f49094a88953f10eca95e9958bb24de3a770b05bcc52600",
+    "variant-joining-v013.png": "126927815147905e0d31e8abbcaa3240c6cd444a24bc968264b51cde5959c045",
+    "variant-fluidmodule-v005.png": "259150609313e44e28f3a177aad3d19769a3320567febc466320a650b5d5c4b5",
+    "variant-wetline-v003.png": "e3bafd2bfe8158fb3e3cb6af5d6b5d173a0e241bfd5406194ff9f2fa020d2b83",
+    "variant-wetline-v004.png": "c614d041e7c6c4b7a4e264067f0cc4da1431419d4b3f30da472d4951adc55f03",
+    "variant-wetline-v005.png": "358bb14c70aad61d8f78c407a7ac385b3b9e203e211b55d6778da43807bee90f",
+    "variant-wetline-v006.png": "c8d758a92a31f3188200087e48bb159c739d56dec63bb0f93d71838ad9cfd4b0",
+    "variant-polymer-v005.png": "1f0c0c49f632972da25e8fdaeaab65df6f63bb0cf3a33903feff4f30e3ed57d2",
+    "variant-polymer-v006.png": "b6b03e28080424abb80a2850600003d7216d89fef6c39c7b188cb58bd3e9f488",
+    "variant-mixing-v003.png": "a60817286745ea85811e583e1c16a176a997e74de6ccb9d416f94969b56352ec",
+    "variant-polymer-v007.png": "4c0f23cb72eaebcbade9d4ae819472cbb55321c16e58109738c3232e56111bb4",
+    "variant-polymer-v008.png": "dc7056c56fd908eb9e087701103180e57cafc6afcd34fa34b53505314eaea0c1",
+    "variant-separator-v004.png": "bd9cd10cac5dde76cfd271fdf3a6047fd5abf44d7882dfb2d62c7ccfe989fe0d",
+    "variant-assembly-v000.png": "40bb6f9a85493b3cd12f92133c7eee58061fc38d15fa4a4184c08fd89ce030af",
+    "variant-assembly-v001.png": "cffe8d106dfa1b66ddfa59edaabf6acc77ab5aa6a8fe9bc98b9b9b033860a9a3",
+    "variant-assembly-v002.png": "d1eb77638625ea0a9378541d3b612e724f43a13b76d1cc7d17194ab553e798f0",
+    "variant-joining-v014.png": "af178e2cbb605c2044637a8e3f39a4ecfbb72acf9e4c79e93561ecc2b22a7903",
+    "variant-joining-v015.png": "d86772b407861d4b47daf5e278f91628bd6a54a407a2e565d67b75c9953e1b74",
+    "variant-assembly-v003.png": "2c1c71d9c388d1d91bf03344a64df97bd08c8c884dbf0da9b35db0300b16f8f2",
+    "variant-instrument-v005.png": "ac6da22a3849513c921f184eebc5d8142cf5c5aa4b6a7da8141a13c628872a69",
+    "variant-instrument-v006.png": "dfd9e075460731ca6302c61573955df46cc8670acd4887cdb7246c804a8ba9d2",
+    "variant-instrument-v007.png": "6438f2bc00a6a84b38bd029889bb430bad425a9dbb1f9750fac0dfa48f87515e",
+    "variant-instrument-v008.png": "962a1584522db382f7165bd34a3b7d51ff979fea8ddc700ab661eb92482e0e63",
+    "variant-packing-v005.png": "f7421bdb49d462393b7a0c652977c70eecf85551250b64a41fee964080c46065",
+    "variant-packing-v006.png": "d40103b389d3b50c59b17db9b13b983f5864060912a1b4bcb18858f0d8dcf76b",
+    "variant-packing-v007.png": "bf870578ea37a7f25939b011ef6e0665493214ccdb1c07ce0cd4a4722a884289",
+    "variant-packing-v008.png": "187ca0e1b344f37e8ce2668678d4248fd96247e93b0e36799ec2d585fadb572d",
+    "variant-packing-v009.png": "fee960fd3e39efef3460f6207a3e261ab24094448c2ae5796fc490d4fc3d206b",
+    "variant-packing-v010.png": "96ed61a07b3ce9ff3a7ee56ec94dc6e7986a89a15e333a6accf734d09db767c1",
+    "variant-packing-v011.png": "1969ba0ba317c60a2df4df31630298e8f3356c20da57a9939ad979e2802b3cdc",
+    "variant-transfer-v012.png": "40d90742c6fa56e92aa68c232798e0c9fec5da88a1afce22b029b0d1a737464d",
+    "variant-instrument-v009.png": "aff25330151ddd82adb3c5daf224f21b515f41efb60e470a53a263b875342ef2",
+    "variant-fluidmodule-v006.png": "8d3a3db17c0532e03f3928e42758cf3ae6488aa52a551a78d725a0ca723859e6",
+    "variant-fixture-v003.png": "c88f28c3667044deb8dd18378b28c42fdcb87ef8ffc6b2f14f9df59c09fa9fde",
+    "variant-fluidmodule-v007.png": "91f04f6027de20db3f2b9c25844c6b0f59054b49fc2b5b26aed7032aa3b1c41c",
+    "variant-fluidmodule-v008.png": "2c936469d88b78314837d857eb738341a246e61398d2afa90be46744b62a624e",
+    "variant-fixture-v004.png": "c8694d52bf093c9821c09c45650fbcdec83da1d09d64217fdee4953d7c8edd1d",
+    "variant-fixture-v005.png": "104cbb4355ee5012ccaf7d1a49923aa1bc97dc3daa9b3679392e8746e05faefc",
+    "variant-instrument-v010.png": "5cabac027f5d5f8a525df61819cf88bfb5547621d19a7ccc6562f216badc7acc",
+    "variant-fixture-v006.png": "4b456ee14c116925535cc4bfe35f70da761a4caba7ef525276451fa5648334f1",
+    "variant-fixture-v007.png": "d288b56bbf628548ebf631f6a134314ad2ec9fe8f8de59bdc01c2a2807ba945d",
+    "variant-instrument-v011.png": "7d6b6a064cc13c7d6c74df8e82e90f757a7b1092d77d622d935e4d1a00fcfe74",
+    "variant-instrument-v012.png": "8dd781f80451e9805573ea102fde6930fcc0a2343432145685b346ac3b1ecfd8",
+    "variant-instrument-v013.png": "7e5e5a1e7781beb628492cb4eebb94aab99b82d270ff6b0e04a3d38a7efef7a1",
+    "variant-fixture-v008.png": "8feeb2b17966697adb64ca1b5e055baa55101c70b7a41819d988c4f244115083",
+    "variant-separator-v005.png": "41ba5d3e20999a59ceccd33c15720efc78399bf9999ea2e24df6d1911112a2fb",
+    "variant-press-v006.png": "8914d05c9496e505b75069c908056aeba4d473e3b9d99263d61d638f90048544",
+    "variant-instrument-v014.png": "a07b3879a76eb61234b2b76ac8c8ed38b88170aa28332458e56134a1cc444588",
+    "variant-safety-v003.png": "af15cd77e696e19ddf7768f1bf30817dd8f7c29f3a1eb37401c9dcefa3e601b3",
+    "variant-safety-v004.png": "438688b5de6944840a05cd4ea459b47d8f4464459240edc3352daa2b9e08e1da",
+    "variant-safety-v005.png": "a0a515f3622efe46fa7c4b821e0d3170b76a298fd22aa5a6d02cc9d1f2e9834b",
+    "variant-safety-v006.png": "5ad1162c826e25d6f4441ffd74cfec52428399fa77ccb733ba4e717cb377c2a7",
+    "variant-safety-v007.png": "b6b1e270ac185e014e9b8c25346fc54d7faa44de3156686e6d6f5540cd830b6f",
+    "variant-safety-v008.png": "d7be27795c0c5890b9f27489eea845920c3b779ab5e73f36567427759a6709dc",
+    "variant-safety-v009.png": "0625ecab4320e4230030a5eb41433a92257878e4595499ee1ff526a9997f2c82",
+    "variant-instrument-v015.png": "da9546b9ce212dd2887da28c8ba5589f305bc963ecef34fa2fc066e13afd5647",
+    "variant-instrument-v016.png": "e2f43857a271dc606afd6aed33ca91e70744cf3139e687ccf8e9cd07aa79d1bf",
+    "variant-instrument-v017.png": "bd1ba0dc5d2cfe276824f6f95a180255550312c46e2d66c75ef61f226bd346cd",
+    "variant-instrument-v018.png": "1448d3d21bae0dcb2269986bdf465841cab5daf515d9965db0de940a0acacf44",
+    "variant-instrument-v019.png": "bc2a0ff6db00fe940d183fbe1c6969f5af19f9438a63bbaf2545a281202ffbae",
+    "variant-instrument-v020.png": "5b97e6dc65de5b41d0ce4ee608ce5b913f470c72192ee5a7b493f6f44cdad1b3",
+    "variant-instrument-v021.png": "2ab603380fb3ea5455680bfc5c71935951cfa98a686bae3d9993a301f731d65f",
+    "variant-instrument-v022.png": "df56efc606bced4066411f862d23544681506ab715675defd86830497a04ea03",
+    "variant-instrument-v023.png": "afba05a57daab4f9c1d1a691c291e3ce5d9bec58602f56d8310ebaa55271d55a",
+    "variant-instrument-v024.png": "83ef65ecb0ffd5a04444237d828ee9c5097255f2b4a390993b29f429f333d5d6",
+    "variant-instrument-v025.png": "9d947ffadc4573ddcb583e30ee2789f14764285c005f9375a15685a6f0c71454",
+    "variant-fixture-v009.png": "5734950e3a65b7bf2d91c88e12edf29e0d5a853710030598004045dcdc06e8a6",
+    "variant-press-v007.png": "41fbe75ead4e4ab5580e545cb91effc979829b918e3c9cfb2beb6cf64315d94e",
+    "variant-fixture-v010.png": "377d2ed36ccc0154dd7df203794d817e1ff20db9b71767bc2406a85a1c5f4947",
+    "variant-robot-v004.png": "16454c04f3be00f6aee4261f22e95f081e1eff59bc9745a7298542efaa7f463f",
+    "variant-joining-v016.png": "57ccd5f401cc066a0cb739af24233990572a1435b754e00d21b7834a475d1cfc",
+    "variant-packing-v012.png": "e3f898b031c47d7cd919d6405a0fdbb989958068c75c40ae344c30a9e0bb8702",
+    "variant-mixing-v004.png": "acc24369a65b316fce3f5f79849490c5979f322f136b0ced955529023e867474",
+    "variant-packing-v013.png": "c86cf667d8b9d5c8445d5208266f2995ea1e0349b01a9bd38db4edac226dee74",
+    "variant-fixture-v011.png": "96cf4f749e4c4489c09a5bffa6756307bd2413b28d8ed732a00491f422336066",
+    "variant-separator-v006.png": "bdbd018c7c2c66344dac5c25e3e0f2cb9e46789911ccdb4a2d0ea4640189483c",
+    "variant-assembly-v004.png": "24b7c0740fc1e6321ba7667cba0f3b2e446ac470affe03a5e1c23b7bb17e59a2",
+    "variant-wetline-v007.png": "437c5c7d3c44bd622b3ceaf34323aa36fd9144bf9676e3654b5f82fb2b3f4863",
+    "variant-wetline-v008.png": "934bf41dd2bc72776c398f114ca9f9231dea7a7638f0ffdb72fee5e1cd55409c",
+    "variant-wetline-v009.png": "7f8ca675e47c442783fc8f4cd45f8ff98af462d5dc134ec2db4303d0d81b247b",
+    "variant-mixing-v005.png": "98800fdc04cda55d77c49628aafab9abcd5a3dd362268e328f8798e0dd190b07",
+    "variant-mixing-v006.png": "1c128d975030a0eb30042c11e3bc82b22da6e9046fbb6de39d712b4e70f08235",
+    "variant-wetline-v010.png": "c740fe8ed27450250f9bac7efcc09934cc301d92c9a347086ee164b5d07a43b2",
+    "variant-packing-v014.png": "4b239ccf0b36aa0ab0a8329208ec83be5c2f6fa1dbb1cf9a3d3a71b9c6510a11",
+    "variant-separator-v007.png": "f77ba600550da0559c8790ccff01988834de3db526514e7501b082f232ac5cf0",
+    "variant-assembly-v005.png": "f87b3233f619f86c718405d4e057325322ef40731c24d9e86fc05f2300e9ee05",
+    "variant-packing-v015.png": "b5c8dc45ae0d8d5d351d5c998c87502fdb52cfee6186bfabf1187cd2f572f1ea",
+    "variant-mixing-v007.png": "5b0a3b7e8390c3f1642d0c640f67aa2e18d0669594ac6250b47b89f40b3544c3",
+    "variant-mixing-v008.png": "b170d0aadbdb6d86fad9fe1f2866b706e8341da7d5f06345d0baac41b6b29da6",
+    "variant-separator-v008.png": "6657835e5083fab04fedc241fd0b5b4a1828ba883067189057d42fa0fa46c084",
+    "variant-assembly-v006.png": "41235bb6ad6fc9d452deb8fe403d662d1c35e4e1b73211ed4349cdd9583fc588"
+  },
+  "postExitVerification": {
+    "verifiedAt": 1789014077.8641257,
+    "files": [
+      {
+        "file": "layout-packing.png",
+        "sha256": "dc589a6604a7156cdb8542dff5b058675591f0a91e8f2418b1f47b37143f33c0",
+        "bytes": 607569,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-machining.png",
+        "sha256": "11c94edeccd942d1dfcdcc16be1668ecbab7c8a7e799a1f3cb23a3f476cf7c09",
+        "bytes": 482449,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-joining.png",
+        "sha256": "2289e6fac3317e9ec9af5012be66f4ed09a617f91ff256e83f691ce9cb061f4d",
+        "bytes": 470953,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-separator.png",
+        "sha256": "8dfa1dfca78b0d2ee5adf1f437370d918d5d9ab0afa836eb1922d9443b40cc27",
+        "bytes": 525545,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-transfer.png",
+        "sha256": "a181f231fec08212f552f02c49c47afb57e1a6da64a79d8e6c97aea2e386d44a",
+        "bytes": 359436,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-press.png",
+        "sha256": "9e4677883049f2ab18050ceebf2c9d743b73254866458476a01e0aaac2cd9662",
+        "bytes": 634141,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-safety.png",
+        "sha256": "2e347d63554b020c2215b49413875487e48b79d7ae39cc18928c6728f41fe2b1",
+        "bytes": 129906,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-instrument.png",
+        "sha256": "7c51404224f666e9d5ec9269220a97157fb3e80770599cc837ca259334c9819a",
+        "bytes": 369702,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-wetline.png",
+        "sha256": "230fc52feb1b71762eef3ac5057ecb37b3cc63be152b632bddecc244523ac465",
+        "bytes": 364015,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-fluidmodule.png",
+        "sha256": "888f8bc7abe943f2131bbbcc39814771c6d30605487194e0756196b48b8f7369",
+        "bytes": 581518,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-fixture.png",
+        "sha256": "1a99c9ba002de5b472cae329026cadf2f8eb19cfeeac028ba8ffc34e1185cb70",
+        "bytes": 433436,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-mixing.png",
+        "sha256": "615a8e35a73236671999deab013c13feb773c01102529807ecf43edb33730450",
+        "bytes": 491960,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-polymer.png",
+        "sha256": "dcfe30dd55c497289d02ff1ba8013220b4378256614ea5eeb237b9e057310f8f",
+        "bytes": 423511,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-forming.png",
+        "sha256": "89013dd784df4a73fd6aac2e8870b0f9922643e82d0156b2160a62a5f7e7d177",
+        "bytes": 316128,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-assembly.png",
+        "sha256": "93c06ea793a88351754348cbe6224038b8c3ad96c3594c508790233dbb455037",
+        "bytes": 354495,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-robot.png",
+        "sha256": "bcd7e1d8962ad96d791a7e030d47a6d5777b7647b5259c5bdc1e9eff1e2e167a",
+        "bytes": 332826,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-phase1.png",
+        "sha256": "376450efe2f09fb13a12b30ab7128848e969539aec87d6f655bea6d9fccd4804",
+        "bytes": 528366,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-phase2.png",
+        "sha256": "26c225b4ba0ee19f92006d6539df6be4294e2f8d35f01359853800836e79b247",
+        "bytes": 292237,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "layout-all.png",
+        "sha256": "cbeba6160a20c8b38ec53d2567dc4566a4314e757785d586f7c41b464ebe2cd6",
+        "bytes": 332220,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fixture-v000.png",
+        "sha256": "b9e2866d62fd39cd2a626bed093af0c451c453055567fb7133549f90505a2a69",
+        "bytes": 189806,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-transfer-v000.png",
+        "sha256": "5578a5eecc0894691eb729c178e653ac6084c30252b66ac54b4d6d522d926f19",
+        "bytes": 275576,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-transfer-v001.png",
+        "sha256": "bb9f869a4805940dad2e6031913cfb4d29a15da8d68453d5fbe35c4942d29abf",
+        "bytes": 147014,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-transfer-v002.png",
+        "sha256": "1707910b590f25ae4874c3ce1b821ef397263edcbcc75897ebc660e9b619b600",
+        "bytes": 274915,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-transfer-v003.png",
+        "sha256": "8f6552b889ba2879f4b7c1d2ae0fb4c59054a5666981d21e9524c73c94630708",
+        "bytes": 186769,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-transfer-v004.png",
+        "sha256": "ac16fd1e703aff00e1c7f243b7052f0f40acea7dee751f079c3d45cd4a078f58",
+        "bytes": 169164,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-transfer-v005.png",
+        "sha256": "d93daba62ff05a410d6613cccfe17d8c83b9e6a3a98068595a72f5a6b508d2a4",
+        "bytes": 157960,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-machining-v000.png",
+        "sha256": "494e9d552ed38508351436dac36bfa3e193c62dca6086c3526db386d4dae5ee4",
+        "bytes": 156485,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-machining-v001.png",
+        "sha256": "aaa49e77cd9bb3f23a7786bd3bf69d88748a12c166ae3a53794f21d1ce8eb088",
+        "bytes": 167606,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-machining-v002.png",
+        "sha256": "e989463225682143f52d1d322c9a171b6b15a4f8a567364eac2f0680881d414a",
+        "bytes": 204083,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-machining-v003.png",
+        "sha256": "a2b76e400f13fc5e2694425765de0a42c918371aab69d0c1e305187ba6dfc627",
+        "bytes": 185442,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-machining-v004.png",
+        "sha256": "2ae783dc5b8ee38a361948a2ed78ae81ec63c1029f5feeab0a43fd86b4d6d33f",
+        "bytes": 204981,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-machining-v005.png",
+        "sha256": "09f4c0e394cc469873c42c589690fa49e2e2615dc91f977ae1ce8005726bbf5c",
+        "bytes": 220725,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-forming-v000.png",
+        "sha256": "a0b56880e88462e30107d3de415f5beda2781a0de3f4615de10ee13c28b9af82",
+        "bytes": 183012,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-forming-v001.png",
+        "sha256": "8784fbbf4c65a9c01c2836ab310eb6e09758aa9755d68bf652361c9950c3c8a7",
+        "bytes": 173094,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-press-v000.png",
+        "sha256": "c9306a7f83c66fbeeb3b7d6d59fb044e8e67adc77af34b16fde18ba79a4cb1ad",
+        "bytes": 269448,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v000.png",
+        "sha256": "38eab28f8666e6873b35b76cc688b1d130c247df46ee140cb18a46c7c2eb62d1",
+        "bytes": 233441,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v001.png",
+        "sha256": "f3ad973f60305ce849f3f4a4a62c9396424626e343f854f3d081942b29b55443",
+        "bytes": 200478,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v002.png",
+        "sha256": "46d55185d93810282deab88f8c9ee615f5d562f8002375096a74b43a7f91753e",
+        "bytes": 199110,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v003.png",
+        "sha256": "e3aceff43fa421e7b97da29837ddd10d0bb77f69c02ca9432b74e59bbb3e9a70",
+        "bytes": 198867,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v004.png",
+        "sha256": "ef20cba057d7c2805fa55859be6639f98912a346fd0af2b1bae18ae984a654b6",
+        "bytes": 166540,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v005.png",
+        "sha256": "d74c293e4f2580b726a1abc5cbd446e16af4977bd59ed686a067b6801587f990",
+        "bytes": 201109,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-mixing-v000.png",
+        "sha256": "23e7ecddb1c353ffbf8ac51812cd738bafb2d81c0423bef296f2a61bc50ff297",
+        "bytes": 198598,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-separator-v000.png",
+        "sha256": "baa0390a3caa7a0cfd48b6d04add665a4d8ea6b73aeddbf47ba094e359252503",
+        "bytes": 305380,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-wetline-v000.png",
+        "sha256": "9f43b789d86e0163f054d891c48ca9911dbcb260063eff39d4052a0b50afde6b",
+        "bytes": 160058,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-separator-v001.png",
+        "sha256": "547f677a4bf25fb007090d0cf2845b237b51f0a4c722af5772da4c5a98d12dda",
+        "bytes": 290643,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-polymer-v000.png",
+        "sha256": "d40186d11d32e7951ee31187a8ea8b250c2e5f0828ce60cbf7595792d8e106d9",
+        "bytes": 215723,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-polymer-v001.png",
+        "sha256": "011dd641c7d05f4abc9d86855512a60adce44faacf3470e2d1edc79b4c18752e",
+        "bytes": 214455,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-polymer-v002.png",
+        "sha256": "6bc6bef9bfeb4fb0904c50ee52cef814d29714f78817d28d3373424c2b1dbd91",
+        "bytes": 218304,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-polymer-v003.png",
+        "sha256": "d973de8b487472b2740542b958df01de9988c750bfbb5c6b43361fb45cf24916",
+        "bytes": 214560,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-polymer-v004.png",
+        "sha256": "b4da37fdbf2e76b63e33381824d8d1d6f10d76da70a4c315507eee41bb4459e3",
+        "bytes": 162633,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-mixing-v001.png",
+        "sha256": "89f262daf02cc2c32718c11b8a8220c35eb48d5660738034b9bb594aeaa9810a",
+        "bytes": 268017,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fluidmodule-v000.png",
+        "sha256": "6f2938dc27d0ca73e69f2342bb3a0d1983e8f5a2bf6e67a1e2f7bdc9f51e053e",
+        "bytes": 353327,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v000.png",
+        "sha256": "50f026f29e38ede8fe4c3c3b11457d04f1b691bb1e74dc9ca47a058174968f20",
+        "bytes": 178861,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v001.png",
+        "sha256": "2a17e7a7731579f195eb797e174e524f9774fd27a6c53f0a51cb01dfa4198bf3",
+        "bytes": 179826,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v002.png",
+        "sha256": "0bf5ec1b916a00b948c24aab0d665168fc78de4af8e1914360527fc0ebc43b60",
+        "bytes": 325994,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v003.png",
+        "sha256": "722204491d2f4826aafc0ba35720ef126aa911362c371f7846ee06ab29aadb04",
+        "bytes": 197570,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v004.png",
+        "sha256": "e07ec7f4f9cf30e34eb4d499c44be0cdbcbfd95f132edc5709d366d646b2fb0e",
+        "bytes": 392309,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-packing-v000.png",
+        "sha256": "beb2d4caed8104bc3c83918b8c0d30d103c7864ca99bf17d9e3c4666e0f8286a",
+        "bytes": 252801,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-packing-v001.png",
+        "sha256": "be84a1ff3f33012fe3e1378d2a06589be0dd61b7f23887f038ac21a294c348c0",
+        "bytes": 243516,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-robot-v000.png",
+        "sha256": "2ab4eae8782c41c67ae6c325ef898bf7c80552c9015ecb48f7072ed55009aed6",
+        "bytes": 207264,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-robot-v001.png",
+        "sha256": "f15f80f262b6f729468a4ec7fc0138afddf4b11d7f825f0c7cf80b80e1f83c0e",
+        "bytes": 207683,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-robot-v002.png",
+        "sha256": "1ccaf5028bac891dc8b5515bd35d007a8a6e628a2e0f8cae8eef5623af735508",
+        "bytes": 199102,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-separator-v002.png",
+        "sha256": "643b2910eb8c0f06aeb4270a6abe5b986fee8d63d54898e48f7aa0e50b7d5f2e",
+        "bytes": 219369,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-separator-v003.png",
+        "sha256": "061c6f9bc45f2988f2f3d15be696e7954d71be6e7c1e0989053cb847de8b9efa",
+        "bytes": 206954,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-press-v001.png",
+        "sha256": "1f3837477866e8e9511fccc3bb938d37ad39422ef0ed25a4f857b502e9ce8646",
+        "bytes": 305485,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-safety-v000.png",
+        "sha256": "dd9fbeae1e90e22e7ea0b9e67172f98bc61524698b4d4b68059ac3405ec48176",
+        "bytes": 283244,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fixture-v001.png",
+        "sha256": "d9b729ec062acde491aadb983fb3d7c7a287275167a08fd7f16100b85ff45e2b",
+        "bytes": 157403,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-packing-v002.png",
+        "sha256": "cf0ca1372ee5936b1987e725e1198cf1bd05499c0abecfe14874bb83687ad2f1",
+        "bytes": 225668,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-packing-v003.png",
+        "sha256": "a1f98b729e6ebc34ec501e5f2f1fc5107e9e24c00d6447c503f897e3dfc6d48f",
+        "bytes": 224807,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fluidmodule-v001.png",
+        "sha256": "3b772f247e2698ccbc53792ae26fa1a7b69308b8f8f4beeb19259374c4e7b307",
+        "bytes": 353616,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-safety-v001.png",
+        "sha256": "31a77b5af25a323f8e3b941aa27afe0608dc54faf04cccc29473022bf6c8329b",
+        "bytes": 210601,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fluidmodule-v002.png",
+        "sha256": "0942ffee67328ea99bb929050455fb5a477d03b8c82dbb3f92e0675522dc4b89",
+        "bytes": 135466,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-safety-v002.png",
+        "sha256": "12c5894242102eede99bfc37fdcff53a900a91a6030835b916d9026d2e957381",
+        "bytes": 166654,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-packing-v004.png",
+        "sha256": "dbedddc54ecbc63a398861229b795a6d29ea74be2915afb12b61f2aabfb617c1",
+        "bytes": 243574,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-transfer-v006.png",
+        "sha256": "2af8254df02a9b0d93fc6e1b9dba3956cb51ea1556597c8212461e8dd87c20ed",
+        "bytes": 230957,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-transfer-v007.png",
+        "sha256": "a809c95c1efca3593084ad251eebc1b886652cddbaf3cbf541e3fbe30342ccf0",
+        "bytes": 128575,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-transfer-v008.png",
+        "sha256": "5eab668342c1ad0174dff47884b19c4f8eab7a0f6094b0e39e07ae49ca539280",
+        "bytes": 230534,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-transfer-v009.png",
+        "sha256": "0bdc0d401d32896bb4b528adea98260abd194419918ca2f85fb3357696fc55e4",
+        "bytes": 183367,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-transfer-v010.png",
+        "sha256": "90072c04047f222c13f34bbd5e4f7b4e62bca765effb35e614fdfc1911e3f3b6",
+        "bytes": 167445,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fixture-v002.png",
+        "sha256": "3ba4b0fcc4f6d6e02199d2815af49431ac347f509e105e71f52424d3d8f8a262",
+        "bytes": 243001,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-wetline-v001.png",
+        "sha256": "0ac01c297485cf049ee566df24b43739c8db35e6da922d89ce6d819f4f6fe031",
+        "bytes": 158382,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-machining-v006.png",
+        "sha256": "b7eab2f4e25a2a5c142ca4a30764d0fe682dea179c1ed5657e75cc9130ba04f3",
+        "bytes": 201788,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-wetline-v002.png",
+        "sha256": "7d9609b6948222afe1c5b423bae67f03fd4cb9aed3766d179a0e7dbe4719067d",
+        "bytes": 148654,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-machining-v007.png",
+        "sha256": "681aab62367896c4aca9bcf53c8d19b05ef00a31f4737b747acf147cd937079f",
+        "bytes": 184439,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-press-v002.png",
+        "sha256": "7535f9c143ed238307b9788a3c351a053b38c1c0b02559ce6eb4ff6f49fcd006",
+        "bytes": 208846,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-transfer-v011.png",
+        "sha256": "10e97bcfd41e3c12c1cf69d16b032f4de3d3fb2e4d0355eb7316a93df6f5440d",
+        "bytes": 168044,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-press-v003.png",
+        "sha256": "f69afcf1857365e640471e99d266f72fdd209a9594f4edeb8ab1d2dbf6e86004",
+        "bytes": 227377,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-forming-v002.png",
+        "sha256": "7ffd70cc6b9f7834bb476e99266c82435ed99c49bfb58a1c459d28cdeb6c9e46",
+        "bytes": 183597,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-forming-v003.png",
+        "sha256": "ac88c47670d250ecbd7e77b007ce3554709de2b9a71effd4ac75b6e880b0f7df",
+        "bytes": 183341,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-forming-v004.png",
+        "sha256": "e8a8a0677c099e6b1d2cc7db9a4cbc590a05d48c4fb81fd216b44a040c5ac970",
+        "bytes": 161832,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-forming-v005.png",
+        "sha256": "90baed5f25cebcbcb8b14e2a708104ff8cc25fa692bac76583181c184cc075f3",
+        "bytes": 188344,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-forming-v006.png",
+        "sha256": "cad1752544dc7e7399a2dd058cf5d31085108f186906c9532fd217cbc76a2669",
+        "bytes": 161216,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-press-v004.png",
+        "sha256": "95b46f58c45c6230da7c342175aa9719da2bbf3e34cca1bd3292ceee07638bd9",
+        "bytes": 210410,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-forming-v007.png",
+        "sha256": "94fe9b8d9f3674f0d080aea109d4d41d35f6326d1351dfe5f43c22e71fb70d07",
+        "bytes": 187630,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-forming-v008.png",
+        "sha256": "dafebf847200910e33634ad714ddaf1c8199c569c54a127197c704c146d4c8bc",
+        "bytes": 188181,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-mixing-v002.png",
+        "sha256": "f90aa111e5dcba69d1d6f233d0bb9f81504538052ca3cbb426e121462645564e",
+        "bytes": 199969,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fluidmodule-v003.png",
+        "sha256": "2360aa9acb8954bbfeeb0bf99efee914bad428d12ce3c3561d31354c925f83ae",
+        "bytes": 163865,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fluidmodule-v004.png",
+        "sha256": "68ce927391c0b9d3c9e8a5fea6acbfc18306e67f9ae681f35a77b165bbf3da30",
+        "bytes": 186733,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-press-v005.png",
+        "sha256": "103ad715ad16790726cff62e241c8ea1644531997f45804606437cedcd9d4770",
+        "bytes": 267889,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-robot-v003.png",
+        "sha256": "80004a2198efc5b054ed2b37ffb7afe47d3ef21ef37fae6fda18ca6982acf778",
+        "bytes": 205631,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v006.png",
+        "sha256": "c51637cc213b9dfe770fb344bfabc1fea45ae23ee42373379e1e08b421b8b547",
+        "bytes": 236474,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v007.png",
+        "sha256": "0b0034019c9ad73bfcfaa056d4ba0d2cbd787c9adfe55e3b705a3a721cebe60d",
+        "bytes": 191375,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v008.png",
+        "sha256": "82e03ed0424c0465e332a7f2d5938d5e8a72ed15fdc3921bf0ec68d7829cf945",
+        "bytes": 199210,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v009.png",
+        "sha256": "c33669c7d1926694f6645c9cf050a5cc1d951eddc952e33cba3a9d0c96dda146",
+        "bytes": 193502,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v010.png",
+        "sha256": "ff98b2e7428647cddc122ed4d01e60c59bedfbb504fa56b0d269bc4457b5945c",
+        "bytes": 192521,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v011.png",
+        "sha256": "e1c8c96281b90e0a2250d55a796de824ba99817cb8e2a8450d30bb996b84e65c",
+        "bytes": 153954,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v012.png",
+        "sha256": "d0701581d90c2afe5f49094a88953f10eca95e9958bb24de3a770b05bcc52600",
+        "bytes": 172108,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v013.png",
+        "sha256": "126927815147905e0d31e8abbcaa3240c6cd444a24bc968264b51cde5959c045",
+        "bytes": 244020,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fluidmodule-v005.png",
+        "sha256": "259150609313e44e28f3a177aad3d19769a3320567febc466320a650b5d5c4b5",
+        "bytes": 351898,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-wetline-v003.png",
+        "sha256": "e3bafd2bfe8158fb3e3cb6af5d6b5d173a0e241bfd5406194ff9f2fa020d2b83",
+        "bytes": 163387,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-wetline-v004.png",
+        "sha256": "c614d041e7c6c4b7a4e264067f0cc4da1431419d4b3f30da472d4951adc55f03",
+        "bytes": 147979,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-wetline-v005.png",
+        "sha256": "358bb14c70aad61d8f78c407a7ac385b3b9e203e211b55d6778da43807bee90f",
+        "bytes": 159626,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-wetline-v006.png",
+        "sha256": "c8d758a92a31f3188200087e48bb159c739d56dec63bb0f93d71838ad9cfd4b0",
+        "bytes": 159529,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-polymer-v005.png",
+        "sha256": "1f0c0c49f632972da25e8fdaeaab65df6f63bb0cf3a33903feff4f30e3ed57d2",
+        "bytes": 160978,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-polymer-v006.png",
+        "sha256": "b6b03e28080424abb80a2850600003d7216d89fef6c39c7b188cb58bd3e9f488",
+        "bytes": 217624,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-mixing-v003.png",
+        "sha256": "a60817286745ea85811e583e1c16a176a997e74de6ccb9d416f94969b56352ec",
+        "bytes": 266085,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-polymer-v007.png",
+        "sha256": "4c0f23cb72eaebcbade9d4ae819472cbb55321c16e58109738c3232e56111bb4",
+        "bytes": 159801,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-polymer-v008.png",
+        "sha256": "dc7056c56fd908eb9e087701103180e57cafc6afcd34fa34b53505314eaea0c1",
+        "bytes": 214288,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-separator-v004.png",
+        "sha256": "bd9cd10cac5dde76cfd271fdf3a6047fd5abf44d7882dfb2d62c7ccfe989fe0d",
+        "bytes": 347849,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-assembly-v000.png",
+        "sha256": "40bb6f9a85493b3cd12f92133c7eee58061fc38d15fa4a4184c08fd89ce030af",
+        "bytes": 201888,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-assembly-v001.png",
+        "sha256": "cffe8d106dfa1b66ddfa59edaabf6acc77ab5aa6a8fe9bc98b9b9b033860a9a3",
+        "bytes": 223515,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-assembly-v002.png",
+        "sha256": "d1eb77638625ea0a9378541d3b612e724f43a13b76d1cc7d17194ab553e798f0",
+        "bytes": 199161,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v014.png",
+        "sha256": "af178e2cbb605c2044637a8e3f39a4ecfbb72acf9e4c79e93561ecc2b22a7903",
+        "bytes": 244715,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v015.png",
+        "sha256": "d86772b407861d4b47daf5e278f91628bd6a54a407a2e565d67b75c9953e1b74",
+        "bytes": 199716,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-assembly-v003.png",
+        "sha256": "2c1c71d9c388d1d91bf03344a64df97bd08c8c884dbf0da9b35db0300b16f8f2",
+        "bytes": 192171,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v005.png",
+        "sha256": "ac6da22a3849513c921f184eebc5d8142cf5c5aa4b6a7da8141a13c628872a69",
+        "bytes": 117926,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v006.png",
+        "sha256": "dfd9e075460731ca6302c61573955df46cc8670acd4887cdb7246c804a8ba9d2",
+        "bytes": 393038,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v007.png",
+        "sha256": "6438f2bc00a6a84b38bd029889bb430bad425a9dbb1f9750fac0dfa48f87515e",
+        "bytes": 367057,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v008.png",
+        "sha256": "962a1584522db382f7165bd34a3b7d51ff979fea8ddc700ab661eb92482e0e63",
+        "bytes": 196700,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-packing-v005.png",
+        "sha256": "f7421bdb49d462393b7a0c652977c70eecf85551250b64a41fee964080c46065",
+        "bytes": 207004,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-packing-v006.png",
+        "sha256": "d40103b389d3b50c59b17db9b13b983f5864060912a1b4bcb18858f0d8dcf76b",
+        "bytes": 218941,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-packing-v007.png",
+        "sha256": "bf870578ea37a7f25939b011ef6e0665493214ccdb1c07ce0cd4a4722a884289",
+        "bytes": 219410,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-packing-v008.png",
+        "sha256": "187ca0e1b344f37e8ce2668678d4248fd96247e93b0e36799ec2d585fadb572d",
+        "bytes": 224235,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-packing-v009.png",
+        "sha256": "fee960fd3e39efef3460f6207a3e261ab24094448c2ae5796fc490d4fc3d206b",
+        "bytes": 251996,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-packing-v010.png",
+        "sha256": "96ed61a07b3ce9ff3a7ee56ec94dc6e7986a89a15e333a6accf734d09db767c1",
+        "bytes": 219450,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-packing-v011.png",
+        "sha256": "1969ba0ba317c60a2df4df31630298e8f3356c20da57a9939ad979e2802b3cdc",
+        "bytes": 224589,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-transfer-v012.png",
+        "sha256": "40d90742c6fa56e92aa68c232798e0c9fec5da88a1afce22b029b0d1a737464d",
+        "bytes": 158153,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v009.png",
+        "sha256": "aff25330151ddd82adb3c5daf224f21b515f41efb60e470a53a263b875342ef2",
+        "bytes": 163848,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fluidmodule-v006.png",
+        "sha256": "8d3a3db17c0532e03f3928e42758cf3ae6488aa52a551a78d725a0ca723859e6",
+        "bytes": 353853,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fixture-v003.png",
+        "sha256": "c88f28c3667044deb8dd18378b28c42fdcb87ef8ffc6b2f14f9df59c09fa9fde",
+        "bytes": 162725,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fluidmodule-v007.png",
+        "sha256": "91f04f6027de20db3f2b9c25844c6b0f59054b49fc2b5b26aed7032aa3b1c41c",
+        "bytes": 287262,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fluidmodule-v008.png",
+        "sha256": "2c936469d88b78314837d857eb738341a246e61398d2afa90be46744b62a624e",
+        "bytes": 176297,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fixture-v004.png",
+        "sha256": "c8694d52bf093c9821c09c45650fbcdec83da1d09d64217fdee4953d7c8edd1d",
+        "bytes": 176595,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fixture-v005.png",
+        "sha256": "104cbb4355ee5012ccaf7d1a49923aa1bc97dc3daa9b3679392e8746e05faefc",
+        "bytes": 219684,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v010.png",
+        "sha256": "5cabac027f5d5f8a525df61819cf88bfb5547621d19a7ccc6562f216badc7acc",
+        "bytes": 404361,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fixture-v006.png",
+        "sha256": "4b456ee14c116925535cc4bfe35f70da761a4caba7ef525276451fa5648334f1",
+        "bytes": 412489,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fixture-v007.png",
+        "sha256": "d288b56bbf628548ebf631f6a134314ad2ec9fe8f8de59bdc01c2a2807ba945d",
+        "bytes": 412851,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v011.png",
+        "sha256": "7d6b6a064cc13c7d6c74df8e82e90f757a7b1092d77d622d935e4d1a00fcfe74",
+        "bytes": 281667,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v012.png",
+        "sha256": "8dd781f80451e9805573ea102fde6930fcc0a2343432145685b346ac3b1ecfd8",
+        "bytes": 280485,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v013.png",
+        "sha256": "7e5e5a1e7781beb628492cb4eebb94aab99b82d270ff6b0e04a3d38a7efef7a1",
+        "bytes": 391111,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fixture-v008.png",
+        "sha256": "8feeb2b17966697adb64ca1b5e055baa55101c70b7a41819d988c4f244115083",
+        "bytes": 110106,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-separator-v005.png",
+        "sha256": "41ba5d3e20999a59ceccd33c15720efc78399bf9999ea2e24df6d1911112a2fb",
+        "bytes": 218431,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-press-v006.png",
+        "sha256": "8914d05c9496e505b75069c908056aeba4d473e3b9d99263d61d638f90048544",
+        "bytes": 207513,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v014.png",
+        "sha256": "a07b3879a76eb61234b2b76ac8c8ed38b88170aa28332458e56134a1cc444588",
+        "bytes": 401374,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-safety-v003.png",
+        "sha256": "af15cd77e696e19ddf7768f1bf30817dd8f7c29f3a1eb37401c9dcefa3e601b3",
+        "bytes": 271987,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-safety-v004.png",
+        "sha256": "438688b5de6944840a05cd4ea459b47d8f4464459240edc3352daa2b9e08e1da",
+        "bytes": 270034,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-safety-v005.png",
+        "sha256": "a0a515f3622efe46fa7c4b821e0d3170b76a298fd22aa5a6d02cc9d1f2e9834b",
+        "bytes": 167959,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-safety-v006.png",
+        "sha256": "5ad1162c826e25d6f4441ffd74cfec52428399fa77ccb733ba4e717cb377c2a7",
+        "bytes": 151341,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-safety-v007.png",
+        "sha256": "b6b1e270ac185e014e9b8c25346fc54d7faa44de3156686e6d6f5540cd830b6f",
+        "bytes": 134729,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-safety-v008.png",
+        "sha256": "d7be27795c0c5890b9f27489eea845920c3b779ab5e73f36567427759a6709dc",
+        "bytes": 107652,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-safety-v009.png",
+        "sha256": "0625ecab4320e4230030a5eb41433a92257878e4595499ee1ff526a9997f2c82",
+        "bytes": 168016,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v015.png",
+        "sha256": "da9546b9ce212dd2887da28c8ba5589f305bc963ecef34fa2fc066e13afd5647",
+        "bytes": 394650,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v016.png",
+        "sha256": "e2f43857a271dc606afd6aed33ca91e70744cf3139e687ccf8e9cd07aa79d1bf",
+        "bytes": 183864,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v017.png",
+        "sha256": "bd1ba0dc5d2cfe276824f6f95a180255550312c46e2d66c75ef61f226bd346cd",
+        "bytes": 195362,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v018.png",
+        "sha256": "1448d3d21bae0dcb2269986bdf465841cab5daf515d9965db0de940a0acacf44",
+        "bytes": 183983,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v019.png",
+        "sha256": "bc2a0ff6db00fe940d183fbe1c6969f5af19f9438a63bbaf2545a281202ffbae",
+        "bytes": 197834,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v020.png",
+        "sha256": "5b97e6dc65de5b41d0ce4ee608ce5b913f470c72192ee5a7b493f6f44cdad1b3",
+        "bytes": 394804,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v021.png",
+        "sha256": "2ab603380fb3ea5455680bfc5c71935951cfa98a686bae3d9993a301f731d65f",
+        "bytes": 392676,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v022.png",
+        "sha256": "df56efc606bced4066411f862d23544681506ab715675defd86830497a04ea03",
+        "bytes": 397585,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v023.png",
+        "sha256": "afba05a57daab4f9c1d1a691c291e3ce5d9bec58602f56d8310ebaa55271d55a",
+        "bytes": 280828,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v024.png",
+        "sha256": "83ef65ecb0ffd5a04444237d828ee9c5097255f2b4a390993b29f429f333d5d6",
+        "bytes": 391655,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-instrument-v025.png",
+        "sha256": "9d947ffadc4573ddcb583e30ee2789f14764285c005f9375a15685a6f0c71454",
+        "bytes": 135558,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fixture-v009.png",
+        "sha256": "5734950e3a65b7bf2d91c88e12edf29e0d5a853710030598004045dcdc06e8a6",
+        "bytes": 163766,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-press-v007.png",
+        "sha256": "41fbe75ead4e4ab5580e545cb91effc979829b918e3c9cfb2beb6cf64315d94e",
+        "bytes": 178450,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fixture-v010.png",
+        "sha256": "377d2ed36ccc0154dd7df203794d817e1ff20db9b71767bc2406a85a1c5f4947",
+        "bytes": 184729,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-robot-v004.png",
+        "sha256": "16454c04f3be00f6aee4261f22e95f081e1eff59bc9745a7298542efaa7f463f",
+        "bytes": 165867,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-joining-v016.png",
+        "sha256": "57ccd5f401cc066a0cb739af24233990572a1435b754e00d21b7834a475d1cfc",
+        "bytes": 242474,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-packing-v012.png",
+        "sha256": "e3f898b031c47d7cd919d6405a0fdbb989958068c75c40ae344c30a9e0bb8702",
+        "bytes": 207510,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-mixing-v004.png",
+        "sha256": "acc24369a65b316fce3f5f79849490c5979f322f136b0ced955529023e867474",
+        "bytes": 199513,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-packing-v013.png",
+        "sha256": "c86cf667d8b9d5c8445d5208266f2995ea1e0349b01a9bd38db4edac226dee74",
+        "bytes": 253015,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-fixture-v011.png",
+        "sha256": "96cf4f749e4c4489c09a5bffa6756307bd2413b28d8ed732a00491f422336066",
+        "bytes": 210636,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-separator-v006.png",
+        "sha256": "bdbd018c7c2c66344dac5c25e3e0f2cb9e46789911ccdb4a2d0ea4640189483c",
+        "bytes": 314498,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-assembly-v004.png",
+        "sha256": "24b7c0740fc1e6321ba7667cba0f3b2e446ac470affe03a5e1c23b7bb17e59a2",
+        "bytes": 200235,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-wetline-v007.png",
+        "sha256": "437c5c7d3c44bd622b3ceaf34323aa36fd9144bf9676e3654b5f82fb2b3f4863",
+        "bytes": 159228,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-wetline-v008.png",
+        "sha256": "934bf41dd2bc72776c398f114ca9f9231dea7a7638f0ffdb72fee5e1cd55409c",
+        "bytes": 111664,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-wetline-v009.png",
+        "sha256": "7f8ca675e47c442783fc8f4cd45f8ff98af462d5dc134ec2db4303d0d81b247b",
+        "bytes": 139009,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-mixing-v005.png",
+        "sha256": "98800fdc04cda55d77c49628aafab9abcd5a3dd362268e328f8798e0dd190b07",
+        "bytes": 266689,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-mixing-v006.png",
+        "sha256": "1c128d975030a0eb30042c11e3bc82b22da6e9046fbb6de39d712b4e70f08235",
+        "bytes": 268441,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-wetline-v010.png",
+        "sha256": "c740fe8ed27450250f9bac7efcc09934cc301d92c9a347086ee164b5d07a43b2",
+        "bytes": 153041,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-packing-v014.png",
+        "sha256": "4b239ccf0b36aa0ab0a8329208ec83be5c2f6fa1dbb1cf9a3d3a71b9c6510a11",
+        "bytes": 219855,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-separator-v007.png",
+        "sha256": "f77ba600550da0559c8790ccff01988834de3db526514e7501b082f232ac5cf0",
+        "bytes": 290550,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-assembly-v005.png",
+        "sha256": "f87b3233f619f86c718405d4e057325322ef40731c24d9e86fc05f2300e9ee05",
+        "bytes": 201195,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-packing-v015.png",
+        "sha256": "b5c8dc45ae0d8d5d351d5c998c87502fdb52cfee6186bfabf1187cd2f572f1ea",
+        "bytes": 225377,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-mixing-v007.png",
+        "sha256": "5b0a3b7e8390c3f1642d0c640f67aa2e18d0669594ac6250b47b89f40b3544c3",
+        "bytes": 266561,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-mixing-v008.png",
+        "sha256": "b170d0aadbdb6d86fad9fe1f2866b706e8341da7d5f06345d0baac41b6b29da6",
+        "bytes": 267087,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-separator-v008.png",
+        "sha256": "6657835e5083fab04fedc241fd0b5b4a1828ba883067189057d42fa0fa46c084",
+        "bytes": 274332,
+        "width": 1280,
+        "height": 960
+      },
+      {
+        "file": "variant-assembly-v006.png",
+        "sha256": "41235bb6ad6fc9d452deb8fe403d662d1c35e4e1b73211ed4349cdd9583fc588",
+        "bytes": 211480,
+        "width": 1280,
+        "height": 960
+      }
+    ],
+    "hashesFinalizedAfterAsyncWrite": [
+      "variant-assembly-v006.png"
+    ]
+  }
+}

@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
@@ -898,28 +899,25 @@ export function NotificationCenterMigrationPage() {
                       ))}
                     </div>
                   ) : null}
-                  <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-                    <label>
-                      <span className="mb-2 block text-[12px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Channel" : "채널"}</span>
-                      <AdminSelect value={deliveryChannelFilter} onChange={(event) => setDeliveryChannelFilter(event.target.value)}>
-                        {deliveryChannelOptions.map((option) => (
-                          <option key={option} value={option}>{option === "ALL" ? (en ? "All" : "전체") : option}</option>
-                        ))}
-                      </AdminSelect>
-                    </label>
-                    <label>
+                  <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><label>
+                      <span className="mb-2 block text-[12px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Keyword" : "검색어"}</span>
+                      <AdminInput placeholder={en ? "subject, target, message" : "제목, 대상, 메시지"} value={deliveryKeyword} onChange={(event) => setDeliveryKeyword(event.target.value)} />
+                    </label></div>
+<div className="ccus-search-field"><label>
                       <span className="mb-2 block text-[12px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Status" : "상태"}</span>
                       <AdminSelect value={deliveryStatusFilter} onChange={(event) => setDeliveryStatusFilter(event.target.value)}>
                         {deliveryStatusOptions.map((option) => (
                           <option key={option} value={option}>{option === "ALL" ? (en ? "All" : "전체") : option}</option>
                         ))}
                       </AdminSelect>
-                    </label>
-                    <label>
-                      <span className="mb-2 block text-[12px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Keyword" : "검색어"}</span>
-                      <AdminInput placeholder={en ? "subject, target, message" : "제목, 대상, 메시지"} value={deliveryKeyword} onChange={(event) => setDeliveryKeyword(event.target.value)} />
-                    </label>
-                  </div>
+                    </label></div></>} advanced={<><div className="ccus-search-field"><label>
+                      <span className="mb-2 block text-[12px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Channel" : "채널"}</span>
+                      <AdminSelect value={deliveryChannelFilter} onChange={(event) => setDeliveryChannelFilter(event.target.value)}>
+                        {deliveryChannelOptions.map((option) => (
+                          <option key={option} value={option}>{option === "ALL" ? (en ? "All" : "전체") : option}</option>
+                        ))}
+                      </AdminSelect>
+                    </label></div></>} actions={<></>}></CommonSearchSection></div>
                   <MemberButtonGroup className="mt-3 justify-end">
                     <MemberButton onClick={resetDeliveryFilters} type="button" variant="secondary">
                       {en ? "Reset" : "초기화"}

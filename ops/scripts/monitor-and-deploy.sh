@@ -20,7 +20,7 @@ while true; do
         echo "Training process not running"
 
         # Check final adapter exists
-        FINAL_ADAPTER="/opt/util/ai/fine-tuning/hermes-framework-40b-qlora/outputs/hermes-framework-40b-qlora/final"
+        FINAL_ADAPTER="/opt/Resonance/runtime/tools/ai/fine-tuning/hermes-framework-40b-qlora/outputs/hermes-framework-40b-qlora/final"
         if [ -f "$FINAL_ADAPTER/adapter_model.safetensors" ]; then
             echo "Training completed! Final adapter exists."
             echo ""

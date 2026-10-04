@@ -1,0 +1,11 @@
+{
+  "status": "현재 공정에 적용 완료 · v3 · 미검토 수정본 · 3D로 돌아가세요.",
+  "beforePlans": 1,
+  "afterPlans": 1,
+  "sameId": true,
+  "changedProcesses": 1,
+  "restoredClock": "12.0 / 255분",
+  "selected": "QA 공정 전용 프레스 · 차체 패널 성형\n설비 수정",
+  "counts": "부지 3 · 공장 3 · 설비 GLB 13/13 · 실패 0 · 미연결 0 · 완제품 0/1",
+  "errors": []
+}

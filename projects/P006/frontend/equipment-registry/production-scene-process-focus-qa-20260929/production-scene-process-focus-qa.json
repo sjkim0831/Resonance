@@ -1,0 +1,28 @@
+{
+  "result": "PASS",
+  "elapsedSeconds": 3.2,
+  "routeHttp": 200,
+  "initialCards": "차체 패널 성형\n설비 유압 딥드로잉 프레스 · N076\n대상 제품: 차체·도어 패널 세트\n진행 중 · 0.0–25.0분 · 참고 모델작업 셀 확대\n구동 모듈 제작\n설비 머시닝센터 · E121\n대상 제품: 구동 모터·감속기 모듈\n진행 중 · 0.0–35.0분 · 참고 모델작업 셀 확대\n섀시 모듈 제작\n설비 머시닝센터 · E121\n대상 제품: 서스펜션·조향·제동 모듈\n진행 중 · 0.0–40.0분 · 참고 모델작업 셀 확대",
+  "time26Cards": "구동 모듈 제작\n설비 머시닝센터 · E121\n대상 제품: 구동 모터·감속기 모듈\n진행 중 · 0.0–35.0분 · 참고 모델작업 셀 확대\n섀시 모듈 제작\n설비 머시닝센터 · E121\n대상 제품: 서스펜션·조향·제동 모듈\n진행 중 · 0.0–40.0분 · 참고 모델작업 셀 확대\n차체 접합\n설비 스폿 용접기 · E148\n대상 제품: 차체·도어 패널 세트\n진행 중 · 25.0–60.0분 · 참고 모델작업 셀 확대",
+  "weldScreenshotMinute": 42,
+  "workpieceRoute": {
+    "result": "PASS",
+    "handoffMinute": 25,
+    "jumpMeters": 0.0003,
+    "weldMidpoint": {
+      "x": 11.76,
+      "z": 1.8
+    },
+    "activeOperation": "차체 접합 시연 작업점 진행"
+  },
+  "playbackClock": "0.2 / 255분",
+  "finalCards": "완제품 기능 검사\n설비 검사 작업대 · E053\n대상 제품: 전기차 주요 모듈 조립 계획\n완료 · 230.0–250.0분 · 참고 모델작업 셀 확대",
+  "counts": "부지 3 · 공장 3 · 설비 GLB 13/13 · 실패 0 · 미연결 0 · 완제품 1/1",
+  "pageErrors": [],
+  "screenshots": [
+    "production-scene-focus-running.png",
+    "production-scene-focus-cell.png",
+    "production-scene-focus-weld.png",
+    "production-scene-focus-complete.png"
+  ]
+}

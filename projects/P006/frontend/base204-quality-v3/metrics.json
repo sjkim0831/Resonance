@@ -1,0 +1,37 @@
+{
+  "baseTotal": 204,
+  "baseOutcomes": {
+    "PARTIAL_VERIFICATION": 33,
+    "VERIFIED": 5,
+    "EXTERNAL_EVIDENCE_REQUIRED": 6,
+    "INTERNAL_EVIDENCE_INSUFFICIENT": 160
+  },
+  "baseClassifications": {
+    "3": 32,
+    "2": 1,
+    "1": 5,
+    "5": 6,
+    "4": 160
+  },
+  "assetsTotal": 666,
+  "GEOMETRY_VERIFIED": 10,
+  "geometryUnverified": 656,
+  "nextVerificationPossibleNow": 0,
+  "externalEvidenceRequired": 6,
+  "internalDesignNeeded": 650,
+  "newPromotions": 0,
+  "preservedPromotions": 10,
+  "allConfigurationsChecked": 447,
+  "category2AssetsCompared": 20,
+  "technicalReuseOnly": 219,
+  "PHYSICAL_VERIFIED": 0,
+  "FUNCTION_VERIFIED": 0,
+  "PORT_VERIFIED": 0,
+  "ASSET_READY": 0,
+  "REAL_VERIFIED": 0,
+  "seconds": 0.485,
+  "trackABlocked": 58,
+  "totalCatalog": 724,
+  "connected": 666,
+  "commonBottleneck": "자산 종류별 핵심 구성·기준 치수·받침면을 USD 구성에 대응시키는 추적 가능한 기준 설계가 부족함. 모델 생성 파라미터와 외피 유사성은 그 증거를 대체하지 않음."
+}

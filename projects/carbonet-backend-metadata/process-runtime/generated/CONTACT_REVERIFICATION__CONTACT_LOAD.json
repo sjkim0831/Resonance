@@ -1,0 +1,643 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "CONTACT_REVERIFICATION",
+    "name": "이메일·휴대전화 변경·재인증",
+    "domain": "MEMBER",
+    "workType": "MEMBER",
+    "goal": "로그인 회원이 신규 연락처의 소유권을 10분 OTP로 증명한 뒤에만 연락처를 변경한다."
+  },
+  "step": {
+    "code": "CONTACT_LOAD",
+    "version": 1,
+    "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "MEMBER_USER",
+      "ownerActorCode": "MEMBER_USER",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [
+        {
+          "guard": {
+            "selfOnly": true,
+            "sessionRequired": true
+          },
+          "scope": "RECORD",
+          "resource": {
+            "resource": "member-contact"
+          },
+          "permissionCode": "CONTACT_SELF_READ"
+        }
+      ],
+      "delegation": {},
+      "extensions": {
+        "useAt": "Y",
+        "purpose": "승인된 권한 범위에서 개인 업무와 프로젝트를 수행한다.",
+        "actorName": "일반 회원",
+        "actorType": "BUSINESS",
+        "competency": "",
+        "relatedActors": [
+          {
+            "useAt": "Y",
+            "purpose": "회원 가입·상태·잠금·탈퇴와 로그인 이력을 관리한다.",
+            "actorCode": "MEMBER_ADMIN",
+            "actorName": "회원 관리자",
+            "actorType": "OPERATION",
+            "competency": "",
+            "actorNameEn": "Member Administrator",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "MEMBER_APPROVE",
+              "MEMBER_REVIEW",
+              "MEMBER_SUSPEND"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": true,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          },
+          {
+            "useAt": "Y",
+            "purpose": "승인된 권한 범위에서 개인 업무와 프로젝트를 수행한다.",
+            "actorCode": "MEMBER_USER",
+            "actorName": "일반 회원",
+            "actorType": "BUSINESS",
+            "competency": "",
+            "actorNameEn": "Member User",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "PROFILE_EDIT",
+              "PROFILE_VIEW",
+              "WORK_EXECUTE"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": true,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          }
+        ],
+        "accountability": "",
+        "responsibility": "",
+        "capabilityCodes": [
+          "PROFILE_EDIT",
+          "PROFILE_VIEW",
+          "WORK_EXECUTE"
+        ],
+        "reviewCycleDays": 365,
+        "delegationAllowed": true,
+        "conflictActorCodes": [],
+        "escalationActorCode": "MEMBER_ADMIN",
+        "segregationActorCodes": [
+          "MEMBER_ADMIN"
+        ],
+        "maxConcurrentAssignments": 0
+      }
+    },
+    "business": {
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
+      "domainCode": "MEMBER",
+      "processName": "이메일·휴대전화 변경·재인증",
+      "stepName": "현재 연락처와 권한 조회",
+      "goal": "로그인 회원이 신규 연락처의 소유권을 10분 OTP로 증명한 뒤에만 연락처를 변경한다.",
+      "requirement": "현재 연락처를 불러오고 변경 대상을 선택한다.",
+      "completionRule": "세션 사용자 자신의 현재 이메일·휴대전화만 반환한다.",
+      "riskLevel": "HIGH",
+      "slaHours": 1,
+      "regulationRefs": "개인정보 보호법 제29조; OWASP ASVS V2,V3,V4",
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {},
+      "extensions": {}
+    },
+    "transition": {
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
+      "commandCode": "LOAD_CONTACT",
+      "fromState": "READY",
+      "toState": "LOADED",
+      "stepOrder": 1,
+      "stepType": "TASK",
+      "parentStepCode": null,
+      "completionRule": "세션 사용자 자신의 현재 이메일·휴대전화만 반환한다.",
+      "policy": {
+        "auditRequired": true,
+        "optimisticLock": true,
+        "idempotencyRequired": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
+    },
+    "input": {
+      "session": "required"
+    },
+    "output": {
+      "email": "masked",
+      "phone": "masked"
+    },
+    "guide": {
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
+      "processCode": "CONTACT_REVERIFICATION",
+      "stepCode": "CONTACT_LOAD",
+      "stepOrder": 1,
+      "workTypeCode": "MEMBER",
+      "actorCode": "MEMBER_USER",
+      "title": "현재 연락처와 권한 조회",
+      "purpose": "현재 연락처를 불러오고 변경 대상을 선택한다.",
+      "entryCondition": "READY",
+      "completionCondition": "세션 사용자 자신의 현재 이메일·휴대전화만 반환한다.",
+      "userPath": "/mypage/email",
+      "adminPath": "/mypage/email",
+      "relatedBusinessRoute": null,
+      "nextStepCode": "OTP_REQUEST",
+      "nextAction": "LOADED",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "CONTACT_REVERIFICATION_CONTACT_LOAD_USER",
+        "route": "/mypage/email",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "USER",
+        "screenType": "WORKSPACE",
+        "title": "현재 연락처와 권한 조회",
+        "purpose": "현재 연락처를 불러오고 변경 대상을 선택한다.",
+        "layout": "RESPONSIVE_WORKSPACE",
+        "theme": "KRDS_GOV_DEFAULT",
+        "designAuthority": {
+          "source": "LEGACY_REGISTERED_DEFAULT",
+          "layout": "RESPONSIVE_WORKSPACE",
+          "theme": "KRDS_GOV_DEFAULT",
+          "defaulted": [
+            "layout",
+            "theme"
+          ]
+        },
+        "sections": [
+          {
+            "code": "TASK_CONTEXT",
+            "label": "업무 문맥"
+          },
+          {
+            "code": "WORKSPACE",
+            "label": "업무 처리"
+          },
+          {
+            "code": "EVIDENCE_HISTORY",
+            "label": "증적·이력"
+          },
+          {
+            "code": "NEXT_TASK",
+            "label": "다음 업무"
+          }
+        ],
+        "fields": [
+          {
+            "route": "/mypage/email",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "CONTACT_REVERIFICATION_CONTACT_LOAD_USER",
+            "required": true,
+            "fieldCode": "session",
+            "fieldName": "session",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 10,
+            "validation": {
+              "required": true
+            },
+            "apiProperty": "session",
+            "controlType": "TEXT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "MEMBER_USER:USER",
+            "evidenceRequired": false,
+            "code": "session"
+          }
+        ],
+        "commands": [
+          {
+            "code": "LOAD_CONTACT",
+            "auditRequired": true,
+            "transactional": true,
+            "idempotencyRequired": true,
+            "commandCode": "LOAD_CONTACT",
+            "actorCode": "MEMBER_USER",
+            "serverAuthorization": true,
+            "entryState": "READY",
+            "resultState": "LOADED"
+          },
+          {
+            "primary": true,
+            "actorCode": "MEMBER_USER",
+            "entryState": "READY",
+            "markerType": "PRIMARY_STEP_COMMAND",
+            "commandCode": "LOAD_CONTACT",
+            "resultState": "LOADED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": [
+          "READY",
+          "LOADED",
+          "LOADING",
+          "ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "RECOVERY"
+        ],
+        "responsive": {
+          "mobile": "single-column",
+          "tablet": "adaptive-two-column",
+          "desktop": "task-optimized",
+          "noTextOverflow": true
+        },
+        "accessibility": {
+          "standard": "WCAG 2.1 AA",
+          "keyboard": true,
+          "focus": true,
+          "errorSummary": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorCode": "MEMBER_USER",
+        "commandCode": "LOAD_CONTACT",
+        "declaredContract": "GET /api/mypage/section/email",
+        "serverAuthorization": true
+      },
+      {
+        "primary": true,
+        "actorCode": "MEMBER_USER",
+        "actorGuard": true,
+        "markerType": "PRIMARY_STEP_API",
+        "rowVersion": true,
+        "commandCode": "LOAD_CONTACT",
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": [
+          "GET /api/mypage/section/email"
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "code": "LOAD_CONTACT",
+        "auditRequired": true,
+        "transactional": true,
+        "idempotencyRequired": true,
+        "commandCode": "LOAD_CONTACT",
+        "actorCode": "MEMBER_USER",
+        "serverAuthorization": true,
+        "entryState": "READY",
+        "resultState": "LOADED"
+      },
+      {
+        "primary": true,
+        "actorCode": "MEMBER_USER",
+        "entryState": "READY",
+        "markerType": "PRIMARY_STEP_COMMAND",
+        "commandCode": "LOAD_CONTACT",
+        "resultState": "LOADED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "idempotencyRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "MEMBER_USER",
+      "ownerActorCode": "MEMBER_USER",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [
+        {
+          "guard": {
+            "selfOnly": true,
+            "sessionRequired": true
+          },
+          "scope": "RECORD",
+          "resource": {
+            "resource": "member-contact"
+          },
+          "permissionCode": "CONTACT_SELF_READ"
+        }
+      ],
+      "delegation": {},
+      "extensions": {
+        "useAt": "Y",
+        "purpose": "승인된 권한 범위에서 개인 업무와 프로젝트를 수행한다.",
+        "actorName": "일반 회원",
+        "actorType": "BUSINESS",
+        "competency": "",
+        "relatedActors": [
+          {
+            "useAt": "Y",
+            "purpose": "회원 가입·상태·잠금·탈퇴와 로그인 이력을 관리한다.",
+            "actorCode": "MEMBER_ADMIN",
+            "actorName": "회원 관리자",
+            "actorType": "OPERATION",
+            "competency": "",
+            "actorNameEn": "Member Administrator",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "MEMBER_APPROVE",
+              "MEMBER_REVIEW",
+              "MEMBER_SUSPEND"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": true,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          },
+          {
+            "useAt": "Y",
+            "purpose": "승인된 권한 범위에서 개인 업무와 프로젝트를 수행한다.",
+            "actorCode": "MEMBER_USER",
+            "actorName": "일반 회원",
+            "actorType": "BUSINESS",
+            "competency": "",
+            "actorNameEn": "Member User",
+            "accountability": "",
+            "responsibility": "",
+            "capabilityCodes": [
+              "PROFILE_EDIT",
+              "PROFILE_VIEW",
+              "WORK_EXECUTE"
+            ],
+            "reviewCycleDays": 365,
+            "delegationAllowed": true,
+            "conflictActorCodes": [],
+            "maxConcurrentAssignments": 0
+          }
+        ],
+        "accountability": "",
+        "responsibility": "",
+        "capabilityCodes": [
+          "PROFILE_EDIT",
+          "PROFILE_VIEW",
+          "WORK_EXECUTE"
+        ],
+        "reviewCycleDays": 365,
+        "delegationAllowed": true,
+        "conflictActorCodes": [],
+        "escalationActorCode": "MEMBER_ADMIN",
+        "segregationActorCodes": [
+          "MEMBER_ADMIN"
+        ],
+        "maxConcurrentAssignments": 0
+      }
+    },
+    "handoffPolicy": {},
+    "handoffs": [
+      {
+        "failure": {
+          "retry": "idempotent",
+          "onFailure": "retain current verified state"
+        },
+        "payload": {
+          "toState": "LOADED",
+          "recordId": "required",
+          "fromState": "LOADED"
+        },
+        "integrity": {
+          "hashRequired": true,
+          "rowVersionRequired": true
+        },
+        "toStepCode": "OTP_REQUEST",
+        "contextKeys": [
+          "tenantId",
+          "processCode",
+          "stepCode",
+          "actorCode",
+          "rowVersion"
+        ],
+        "handoffType": "STEP",
+        "authorization": {
+          "toActor": "MEMBER_USER",
+          "fromActor": "MEMBER_USER",
+          "serverAuthorization": true
+        },
+        "toProcessCode": "CONTACT_REVERIFICATION"
+      }
+    ]
+  },
+  "database": {
+    "mappings": [],
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "caseCode": "CONTACT_REVERIFICATION_CONTACT_LOAD_HAPPY_PATH",
+      "name": "현재 연락처와 권한 조회 HAPPY_PATH",
+      "type": "HAPPY_PATH",
+      "status": "APPROVED",
+      "sourceRequirement": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "CONTACT_REVERIFICATION",
+          "stepCode": "CONTACT_LOAD",
+          "scenario": "HAPPY_PATH"
+        }
+      ],
+      "assertions": [
+        "HAPPY_PATH contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "CONTACT_REVERIFICATION_CONTACT_LOAD_EXCEPTION",
+      "name": "현재 연락처와 권한 조회 EXCEPTION",
+      "type": "EXCEPTION",
+      "status": "APPROVED",
+      "sourceRequirement": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "CONTACT_REVERIFICATION",
+          "stepCode": "CONTACT_LOAD",
+          "scenario": "EXCEPTION"
+        }
+      ],
+      "assertions": [
+        "EXCEPTION contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "CONTACT_REVERIFICATION_CONTACT_LOAD_AUTHORITY",
+      "name": "현재 연락처와 권한 조회 AUTHORITY",
+      "type": "AUTHORITY",
+      "status": "APPROVED",
+      "sourceRequirement": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "CONTACT_REVERIFICATION",
+          "stepCode": "CONTACT_LOAD",
+          "scenario": "AUTHORITY"
+        }
+      ],
+      "assertions": [
+        "AUTHORITY contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "CONTACT_REVERIFICATION_CONTACT_LOAD_ISOLATION",
+      "name": "현재 연락처와 권한 조회 ISOLATION",
+      "type": "ISOLATION",
+      "status": "APPROVED",
+      "sourceRequirement": "ISOLATION",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "CONTACT_REVERIFICATION",
+          "stepCode": "CONTACT_LOAD",
+          "scenario": "ISOLATION"
+        }
+      ],
+      "assertions": [
+        "ISOLATION contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "CONTACT_REVERIFICATION_CONTACT_LOAD_RECOVERY",
+      "name": "현재 연락처와 권한 조회 RECOVERY",
+      "type": "RECOVERY",
+      "status": "APPROVED",
+      "sourceRequirement": "RECOVERY",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "CONTACT_REVERIFICATION",
+          "stepCode": "CONTACT_LOAD",
+          "scenario": "RECOVERY"
+        }
+      ],
+      "assertions": [
+        "RECOVERY contract is enforced before live promotion"
+      ]
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
+    "security": {
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true,
+      "segregationOfDuties": true,
+      "rateLimitRequired": false,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "standard": "WCAG 2.1 AA",
+      "keyboard": true,
+      "focus": true,
+      "errorSummary": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": true,
+      "targetHours": 1,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
+  },
+  "sourceHash": "7468c50777996583214c0da8d53330026063af842250a64fc0d38be3d28e123c",
+  "approvalStatus": "APPROVED",
+  "packageHash": "1943982473816018d1ccf2ebf051e62c7905f2c75b9d85329e59c131fb685476"
+}

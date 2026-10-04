@@ -1,6 +1,8 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
+import { EmissionPageIntro } from "../emission-common/EmissionPageIntro";
 import { currentAdminMenuCode, resolveAdminMenuWorkspace } from "../emission-common/adminMenuWorkspaceContracts";
 
 type Project = {
@@ -105,17 +107,9 @@ export function AdminEmissionProjectOperationsPage() {
       title={en ? workspace.titleEn : workspace.title}
     >
       <div className="space-y-5" data-testid="admin-emission-project-operations" data-active-menu-code={workspace.menuCode}>
-        <section className="rounded-2xl bg-gradient-to-r from-[#052b57] to-[#174ea6] p-6 text-white">
-          <p className="text-sm font-bold text-blue-200">EMISSION PROJECT CONTROL</p>
-          <h2 className="mt-1 text-2xl font-black">
-            {en ? workspace.objectiveEn : workspace.objective}
-          </h2>
-          <p className="mt-2 text-sm text-blue-50">
-            {en
-              ? "Open the project workspace to review task evidence and the next required action."
-              : "프로젝트 작업공간에서 단계별 완료 증적과 다음 필수 업무를 검토할 수 있습니다."}
-          </p>
-        </section>
+        <EmissionPageIntro level={2} category={en ? "Emission Operations" : "탄소배출 운영"}
+          title={en ? workspace.objectiveEn : workspace.objective}
+          description={en ? "Open the project workspace to review task evidence and the next required action." : "프로젝트 작업공간에서 단계별 완료 증적과 다음 필수 업무를 검토할 수 있습니다."} />
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
@@ -132,10 +126,9 @@ export function AdminEmissionProjectOperationsPage() {
         </section>
 
         <form
-          className="grid gap-3 rounded-2xl border bg-white p-5 lg:grid-cols-[1fr_220px_220px_auto]"
+          className="ccus-search-host"
           onSubmit={search}
-        >
-          <label className="text-sm font-bold">
+        ><CommonSearchSection basic={<><div className="ccus-search-field"><label className="text-sm font-bold">
             {en ? "Keyword" : "검색어"}
             <input
               className="mt-2 h-11 w-full rounded-lg border px-3"
@@ -143,8 +136,8 @@ export function AdminEmissionProjectOperationsPage() {
               onChange={(event) => setKeyword(event.target.value)}
               placeholder={en ? "Project, site, owner" : "프로젝트·사업장·담당자"}
             />
-          </label>
-          <label className="text-sm font-bold">
+          </label></div>
+<div className="ccus-search-field"><label className="text-sm font-bold">
             {en ? "Status" : "상태"}
             <select
               className="mt-2 h-11 w-full rounded-lg border px-3"
@@ -156,8 +149,7 @@ export function AdminEmissionProjectOperationsPage() {
                 <option key={row.status}>{row.status}</option>
               ))}
             </select>
-          </label>
-          <label className="text-sm font-bold">
+          </label></div></>} advanced={<><div className="ccus-search-field"><label className="text-sm font-bold">
             {en ? "Site" : "사업장"}
             <select
               className="mt-2 h-11 w-full rounded-lg border px-3"
@@ -169,11 +161,9 @@ export function AdminEmissionProjectOperationsPage() {
                 <option key={value}>{value}</option>
               ))}
             </select>
-          </label>
-          <button className="h-11 self-end rounded-lg bg-[#246beb] px-5 font-black text-white" type="submit">
+          </label></div></>} actions={<><button className="h-11 self-end rounded-lg bg-[#246beb] px-5 font-black text-white" type="submit">
             {en ? "Search" : "조회"}
-          </button>
-        </form>
+          </button></>}></CommonSearchSection></form>
 
         {loading && (
           <p className="rounded-xl border bg-white p-8 text-center font-bold text-slate-600" role="status">

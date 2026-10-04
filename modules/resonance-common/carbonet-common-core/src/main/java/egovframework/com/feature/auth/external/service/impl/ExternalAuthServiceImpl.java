@@ -63,8 +63,20 @@ public class ExternalAuthServiceImpl implements ExternalAuthService {
     @Override
     public ExternalAuthStartResponse start(ExternalAuthStartRequest request, HttpServletRequest servletRequest) {
         cleanupExpiredSessions();
+        LoginResponseDTO linkAccount = null;
+        if ("ACCOUNT_LINK".equals(request.getPurpose())) {
+            linkAccount = currentAccount();
+            if (linkAccount == null) throw new IllegalArgumentException("기존 계정으로 로그인한 후 인증을 연결해 주세요.");
+            if (!"PORTONE_UNIFIED".equals(request.getMethodCode())) throw new IllegalArgumentException("실 연동 통합인증을 선택해 주세요.");
+        }
+        // User/account selectors are not an authorization source.
+        request.setUserId(null);
+        request.setUserSe(null);
         ExternalAuthProvider provider = findProvider(request.getMethodCode());
         ExternalAuthSession session = provider.start(request, servletRequest);
+        session.setLinkedUserId(linkAccount == null ? null : linkAccount.getUserId());
+        session.setLinkedUserSe(linkAccount == null ? null : linkAccount.getUserSe());
+        session.setLinkHttpSessionId(linkAccount == null ? null : servletRequest.getSession(true).getId());
         sessions.put(session.getTxId(), session);
 
         ExternalAuthStartResponse response = new ExternalAuthStartResponse();
@@ -72,6 +84,8 @@ public class ExternalAuthServiceImpl implements ExternalAuthService {
         response.setProviderCode(session.getProviderCode());
         response.setMethodCode(session.getMethodCode());
         response.setTxId(session.getTxId());
+        response.setStoreId(session.getStoreId());
+        response.setChannelKey(session.getChannelKey());
         response.setAppScheme(session.getAppScheme());
         response.setQrScheme(session.getQrScheme());
         response.setUrlScheme(session.getUrlScheme());
@@ -80,7 +94,9 @@ public class ExternalAuthServiceImpl implements ExternalAuthService {
         boolean hasExternalRoute = !ObjectUtils.isEmpty(session.getAppScheme())
                 || !ObjectUtils.isEmpty(session.getQrScheme())
                 || !ObjectUtils.isEmpty(session.getUrlScheme());
-        response.setNextAction(response.isMock() ? "COMPLETE" : (hasExternalRoute ? "REDIRECT" : "CONFIGURE"));
+        response.setNextAction("PORTONE_UNIFIED".equals(session.getMethodCode())
+                ? "PORTONE_SDK"
+                : response.isMock() ? "COMPLETE" : (hasExternalRoute ? "REDIRECT" : "CONFIGURE"));
         return response;
     }
 
@@ -104,41 +120,61 @@ public class ExternalAuthServiceImpl implements ExternalAuthService {
             return failure("AUTH_SESSION_CLIENT_MISMATCH", "인증을 시작한 브라우저에서 다시 진행해 주세요.");
         }
 
+        // Consume before contacting the provider so concurrent completion cannot issue two sessions.
+        if (!sessions.remove(request.getTxId(), session)) {
+            return failure("AUTH_SESSION_USED", "이미 처리한 인증 요청입니다.");
+        }
         ExternalAuthProvider provider = findProvider(request.getMethodCode());
         ExternalAuthIdentity identity = provider.complete(session, request, servletRequest);
-        sessions.remove(request.getTxId());
 
-        Map<String, Object> joinResult = completePendingJoinIdentity(servletRequest, identity);
+        Map<String, Object> joinResult = session.getLinkHttpSessionId() == null
+                ? completePendingJoinIdentity(servletRequest, identity) : null;
         if (joinResult != null) {
             return joinResult;
         }
 
-        String linkUserId = firstNonBlank(request.getUserId(), session.getLinkedUserId());
-        String linkUserSe = firstNonBlank(request.getUserSe(), session.getLinkedUserSe());
-
-        if (!ObjectUtils.isEmpty(linkUserId) && !ObjectUtils.isEmpty(linkUserSe)) {
-            authService.updateAuthInfo(linkUserId, linkUserSe, identity.getAuthTy(), identity.getAuthDn(),
-                    identity.getAuthCi(), identity.getAuthDi());
-            LoginResponseDTO loginResult = authService.selectLoginUser(linkUserSe, linkUserId);
-            if (loginResult == null) {
-                return failure("ACCOUNT_NOT_FOUND", "인증 대상 계정을 찾을 수 없습니다.");
+        if (!ObjectUtils.isEmpty(request.getUserId()) || !ObjectUtils.isEmpty(request.getUserSe())) {
+            return failure("ACCOUNT_LINK_LOGIN_REQUIRED", "계정 연결은 해당 계정으로 로그인한 후 진행해 주세요.");
+        }
+        if (session.getLinkHttpSessionId() != null) {
+            LoginResponseDTO current = currentAccount();
+            HttpSession http = servletRequest.getSession(false);
+            if (current == null || http == null || !session.getLinkHttpSessionId().equals(http.getId())
+                    || !session.getLinkedUserId().equals(current.getUserId())
+                    || !session.getLinkedUserSe().equals(current.getUserSe())) {
+                return failure("ACCOUNT_LINK_SESSION_CHANGED", "인증을 시작한 로그인 계정과 세션이 달라졌습니다. 다시 진행해 주세요.");
             }
-            return withExternalIdentity(authTokenLoginService.issueLogin(loginResult, false, servletRequest, servletResponse),
-                    identity, false);
+            authService.linkExternalIdentity(current.getUserId(), current.getUserSe(), identity.getAuthTy(),
+                    identity.getAuthDn(), identity.getAuthCi(), identity.getAuthDi());
+            // Linking never issues tokens, bypasses MFA, or changes roles.
+            Map<String, Object> linked = new java.util.HashMap<>();
+            linked.put("status", "accountLinkSuccess");
+            linked.put("message", "통합인증을 현재 계정에 연결했습니다. 다음 로그인부터 이용할 수 있습니다.");
+            return linked;
         }
 
         LoginResponseDTO loginResult = authService.findLoginUserByExternalIdentity(identity.getAuthCi(), identity.getAuthDi());
         if (loginResult == null) {
+            if (authService.countExternalIdentityMatches(identity.getAuthCi()) > 0) {
+                return failure("ACCOUNT_LINK_AMBIGUOUS", "인증은 완료됐지만 계정 연결을 확정할 수 없습니다. 관리자에게 중복 연결 또는 계정 상태 확인을 요청해 주세요.");
+            }
             Map<String, Object> pending = failure("LINK_REQUIRED", "인증 성공 후 연결된 계정을 찾지 못했습니다. 기존 계정으로 로그인해 인증을 연결해 주세요.");
             pending.put("linkRequired", true);
-            pending.put("authTy", identity.getAuthTy());
-            pending.put("providerCode", identity.getProviderCode());
-            pending.put("methodCode", identity.getMethodCode());
+            putIfPresent(pending, "authTy", identity.getAuthTy());
+            putIfPresent(pending, "providerCode", identity.getProviderCode());
+            putIfPresent(pending, "methodCode", identity.getMethodCode());
             return pending;
         }
 
         return withExternalIdentity(authTokenLoginService.issueLogin(loginResult, false, servletRequest, servletResponse),
                 identity, false);
+    }
+
+    private LoginResponseDTO currentAccount() {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()
+                || auth instanceof org.springframework.security.authentication.AnonymousAuthenticationToken) return null;
+        return authService.resolveAuthenticatedLoginUser(auth.getName());
     }
 
     /**
@@ -181,12 +217,21 @@ public class ExternalAuthServiceImpl implements ExternalAuthService {
     private Map<String, Object> withExternalIdentity(Map<String, Object> payload, ExternalAuthIdentity identity,
             boolean linkRequired) {
         payload.put("linkRequired", linkRequired);
-        payload.put("providerCode", identity.getProviderCode());
-        payload.put("methodCode", identity.getMethodCode());
-        payload.put("authTy", identity.getAuthTy());
-        payload.put("authCi", identity.getAuthCi());
-        payload.put("authDi", identity.getAuthDi());
+        putIfPresent(payload, "providerCode", identity.getProviderCode());
+        putIfPresent(payload, "methodCode", identity.getMethodCode());
+        putIfPresent(payload, "authTy", identity.getAuthTy());
+        // PortOne identity claims stay on the server; browser responses need no CI/DI.
+        if (!"PORTONE_UNIFIED".equals(identity.getMethodCode())) {
+            putIfPresent(payload, "authCi", identity.getAuthCi());
+            putIfPresent(payload, "authDi", identity.getAuthDi());
+        }
         return payload;
+    }
+
+    private void putIfPresent(Map<String, Object> payload, String key, String value) {
+        if (value != null) {
+            payload.put(key, value);
+        }
     }
 
     private ExternalAuthProvider findProvider(String methodCode) {

@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { readBootstrappedCertificateReviewPageData } from "../../lib/api/bootstrap";
 import { fetchCertificateReviewPage } from "../../lib/api/member";
@@ -152,26 +153,15 @@ export function CertificateReviewMigrationPage() {
           ))}
         </AdminSummaryStrip>
 
-        <section className="gov-card overflow-hidden" data-help-id="certificate-review-search">
-          <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="text-sm font-bold">{en ? "Search Conditions" : "검색 조건"}</h3>
-                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">
-                  {en
-                    ? "Filter issuance review work by status, certificate type, request id, or company keyword."
-                    : "상태, 인증 유형, 요청번호, 회원사 키워드 기준으로 발급 검토 대상을 좁힙니다."}
-                </p>
-              </div>
-              <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
-                {en
-                  ? `Page ${Number(result?.pageIndex || 1)} / ${Number(result?.totalPages || 1)}`
-                  : `현재 페이지 ${Number(result?.pageIndex || 1)} / ${Number(result?.totalPages || 1)}`}
-              </span>
-            </div>
-          </div>
-          <div className="grid gap-4 px-6 py-6 lg:grid-cols-[220px_220px_minmax(0,1fr)_220px]">
-            <label>
+        <section className="ccus-search-host" data-help-id="certificate-review-search"><CommonSearchSection basic={<><div className="ccus-search-field"><label>
+              <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Keyword" : "검색어"}</span>
+              <AdminInput
+                placeholder={en ? "Request id, company, applicant, reviewer" : "요청번호, 회원사명, 신청자, 검토자 검색"}
+                value={draft.searchKeyword}
+                onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))}
+              />
+            </label></div>
+<div className="ccus-search-field"><label>
               <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Status" : "상태"}</span>
               <AdminSelect value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -180,8 +170,7 @@ export function CertificateReviewMigrationPage() {
                 <option value="REJECTED">{en ? "Revision Requested" : "보완 요청"}</option>
                 <option value="READY">{en ? "Ready to Issue" : "발급 가능"}</option>
               </AdminSelect>
-            </label>
-            <label>
+            </label></div></>} advanced={<><div className="ccus-search-field"><label>
               <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Certificate Type" : "인증 유형"}</span>
               <AdminSelect value={draft.certificateType} onChange={(event) => setDraft((current) => ({ ...current, certificateType: event.target.value }))}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -189,33 +178,15 @@ export function CertificateReviewMigrationPage() {
                 <option value="REPORT">{en ? "Emission Report" : "배출량 보고서"}</option>
                 <option value="REC">{en ? "REC Duplicate Check" : "REC 중복 확인"}</option>
               </AdminSelect>
-            </label>
-            <label>
-              <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Keyword" : "검색어"}</span>
-              <AdminInput
-                placeholder={en ? "Request id, company, applicant, reviewer" : "요청번호, 회원사명, 신청자, 검토자 검색"}
-                value={draft.searchKeyword}
-                onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))}
-              />
-            </label>
-            <label>
+            </label></div>
+<div className="ccus-search-field"><label>
               <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Focused Request" : "선택 요청번호"}</span>
               <AdminInput
                 placeholder={en ? "Request id" : "요청번호"}
                 value={draft.applicationId}
                 onChange={(event) => setDraft((current) => ({ ...current, applicationId: event.target.value }))}
               />
-            </label>
-          </div>
-          <div className="border-t border-[var(--kr-gov-border-light)] px-6 py-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-[var(--kr-gov-text-secondary)]">
-                {selectedRequestId
-                  ? (en ? `Current focus: ${selectedRequestId}` : `현재 선택 요청번호: ${selectedRequestId}`)
-                  : (en ? "Select a request id to align follow-up review work." : "후속 검토 기준을 맞추기 위해 요청번호를 선택해 둘 수 있습니다.")}
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <MemberButton
+            </label></div></>} actions={<><MemberButton
                   type="button"
                   variant="secondary"
                   onClick={() => {
@@ -225,17 +196,13 @@ export function CertificateReviewMigrationPage() {
                 >
                   {en ? "Reset" : "초기화"}
                 </MemberButton>
-                <MemberButton
+<MemberButton
                   type="button"
                   variant="primary"
                   onClick={() => setFilters({ ...draft, pageIndex: 1 })}
                 >
                   {en ? "Search" : "조회"}
-                </MemberButton>
-              </div>
-            </div>
-          </div>
-        </section>
+                </MemberButton></>}></CommonSearchSection></section>
 
         <section className="gov-card overflow-hidden" data-help-id="certificate-review-table">
           <div className="border-b border-[var(--kr-gov-border-light)] bg-gray-50 px-6 py-4">

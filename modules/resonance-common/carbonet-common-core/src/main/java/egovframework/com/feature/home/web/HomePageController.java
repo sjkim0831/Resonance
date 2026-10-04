@@ -4,6 +4,7 @@ import egovframework.com.platform.bootstrap.service.AdminShellBootstrapPageServi
 import egovframework.com.feature.home.service.HomeMenuService;
 import egovframework.com.feature.home.service.HomeMypageService;
 import egovframework.com.feature.auth.service.CurrentUserContextService;
+import egovframework.com.feature.home.service.EmissionProjectRegistryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -31,6 +32,7 @@ public class HomePageController {
     private final HomeMypageService homeMypageService;
     private final ReactAppViewSupport reactAppViewSupport;
     private final CurrentUserContextService currentUserContextService;
+    private final EmissionProjectRegistryService emissionProjectRegistryService;
 
     @RequestMapping(value = { "/" }, method = { RequestMethod.GET, RequestMethod.POST })
     public String root() {
@@ -68,10 +70,13 @@ public class HomePageController {
             HttpServletRequest request) {
         boolean english = isEnglishRequest(request);
         boolean authenticated = currentUserContextService.resolve(request).isAuthenticated();
-        return ResponseEntity.ok(Map.of(
-                "isLoggedIn", authenticated,
-                "isEn", english,
-                "homeMenu", homeMenuService.getHomeMenu(english)));
+        Map<String,Object> response = new java.util.LinkedHashMap<>();
+        response.put("isLoggedIn", authenticated);
+        response.put("isEn", english);
+        response.put("homeMenu", homeMenuService.getHomeMenu(english));
+        try { response.put("publicProcessCatalog", emissionProjectRegistryService.publicDefinitionCatalog()); }
+        catch (Exception ignored) { response.put("publicProcessCatalog", Map.of("catalogVisibility", "PUBLIC_DEFINITION_ONLY", "available", false)); }
+        return ResponseEntity.ok(response);
     }
 
     @RequestMapping(value = { "/mypage" }, method = { RequestMethod.GET, RequestMethod.POST })

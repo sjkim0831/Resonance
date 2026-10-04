@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 44,
+  "blueprintCode": "BP_ADOPT_5A56746DB6C735FDB0B1",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_5A56746DB6C735FDB0B1"
+  },
+  "route": "/admin/emission/validation-rule",
+  "pageName": "검증 규칙",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1030307",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "33bed12f8f7bfc8541c33fa216ad9e2be906e38c1273376882ba16759b681eb1",
+  "artifactHash": "231debdf4cfba655449abc8f46ba0d4329b927bbb8c83db53f42dece37298b9e"
+}

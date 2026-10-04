@@ -1,0 +1,470 @@
+{
+  "representationClass": "CONVERTED_FROM_GLB",
+  "sourceNote": "Not original USD; generated from Production GLB for Omniverse inspection",
+  "entries": [
+    {
+      "assetId": "A112",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A112.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A112.usda",
+      "usdSHA256": "7d04c33b81f38901555df2c683ecf18014d2123893a37441cdc808ac8843c00c",
+      "objectCount": 28,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A113",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A113.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A113.usda",
+      "usdSHA256": "7acfeb1590e7f54be01dcb552de30f9e45c9366b40364e07e4bdb37f243cf921",
+      "objectCount": 9,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A114",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A114.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A114.usda",
+      "usdSHA256": "4b5b934136febaffeabb5925749bf27608bdf67bc0b69e714c56f86f4c556275",
+      "objectCount": 8,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A117",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A117.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A117.usda",
+      "usdSHA256": "f7d3609b126adaa0436f6a7ef1b86af84dea0ab3135bb1f5e1ded99f5345f50b",
+      "objectCount": 30,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A133",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A133.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A133.usda",
+      "usdSHA256": "696a6c7808e1890af8efab491fbe27db63b4f382232c8f14e1c6beef5b52f06a",
+      "objectCount": 13,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A135",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A135.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A135.usda",
+      "usdSHA256": "1fb5ceb0fe62829135fdd734f21b3f63291afa39023c05bb25100581901ee79c",
+      "objectCount": 20,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A136",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A136.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A136.usda",
+      "usdSHA256": "45e3e2826c54ecaec2cbf12220413a508180b376b542f88a74f61944c7090ab3",
+      "objectCount": 15,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A143",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A143.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A143.usda",
+      "usdSHA256": "3ff244bf97a7eaf374e82e7d6dec8aa8b83586ccea42672d88090107d914e3df",
+      "objectCount": 9,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A344",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A344.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A344.usda",
+      "usdSHA256": "9854814b688ca811ebbef3176a6c1721bcd7695f7cc1322233ead2e161e7e3f8",
+      "objectCount": 14,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A346",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A346.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A346.usda",
+      "usdSHA256": "e90c1d4fc9cc30de3113c5245f67f1d39b3d801278cc15b7ae4041f7a26a99ef",
+      "objectCount": 20,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A355",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A355.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A355.usda",
+      "usdSHA256": "c3d7532808653b705eea17718d39545abc255165942706768facfe50d5c64dcc",
+      "objectCount": 26,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A360",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A360.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A360.usda",
+      "usdSHA256": "e0241f42659fbc568f71f46dc8cab8bc698d62834ca03b8f5b85ddeb399f2483",
+      "objectCount": 9,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A365",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A365.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A365.usda",
+      "usdSHA256": "b120766c5375be30a7607313b391a6554289873035a5eeb4201d9e63ae092427",
+      "objectCount": 15,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A393",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A393.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A393.usda",
+      "usdSHA256": "f436ef9c4f21cf789ac10aa9b2df55f08a69dad2e823db964dcf3af6e3e3b989",
+      "objectCount": 6,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A472",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A472.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A472.usda",
+      "usdSHA256": "8eb59d4a2d782b5161f3a08160c7e70040a4ae5d78d5f880f3777bae5a97311a",
+      "objectCount": 21,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A473",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A473.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A473.usda",
+      "usdSHA256": "bb8857e5a66028da5559841ec37980cc270cf995dbf6c7ed6f3744c065ba7910",
+      "objectCount": 18,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A474",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A474.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A474.usda",
+      "usdSHA256": "5b84c88c47f5aa029b8b9ee014ff682d881d974206749dcd3c5d5151ced6de10",
+      "objectCount": 10,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A475",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A475.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A475.usda",
+      "usdSHA256": "e41ed8f84ce59b1115954d767bff69144759bc38390bb3350fc9292e51091b29",
+      "objectCount": 11,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A476",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A476.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A476.usda",
+      "usdSHA256": "ef3aaa6b0da16886226f49a9e27f45fb87979e3c55256ad25f0700c2106af3b2",
+      "objectCount": 16,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A477",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A477.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A477.usda",
+      "usdSHA256": "ee2f569926cde271425b456262db4fd41dadcab105a5e31df1198d2cc94fcaa7",
+      "objectCount": 8,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A478",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A478.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A478.usda",
+      "usdSHA256": "f295127b761c5a4467d8b7ee34173bdf8d9e10dafc54f2cbfe56eb5eddf1f20e",
+      "objectCount": 13,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A479",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A479.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A479.usda",
+      "usdSHA256": "b281b2429482e8bd3c2ff2ee8bdda438716eb08752b8cf9965d49e3f2dae6343",
+      "objectCount": 19,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A480",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A480.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A480.usda",
+      "usdSHA256": "0980c1badea118de55b3c1d0311f749d491654c56cf1152a6ecf981190cbd944",
+      "objectCount": 13,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A481",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A481.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A481.usda",
+      "usdSHA256": "acab429d27ad8ceeeababfe431bdee243ab4e7520f3b0199bf7baab70db03610",
+      "objectCount": 14,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A482",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A482.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A482.usda",
+      "usdSHA256": "97d80ad2547fb191daec353adc35966b33c630553962a3eeb0deda928abd2258",
+      "objectCount": 14,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A483",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A483.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A483.usda",
+      "usdSHA256": "faa9df0ce795d17f6cf9c1db4f33a485a82339c0ce92880ea727e29976aa9954",
+      "objectCount": 12,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A484",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A484.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A484.usda",
+      "usdSHA256": "32a72a06e820ab6048dd44847a5fa028beab6c5f6e339d106522d0f760c7b68c",
+      "objectCount": 18,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A485",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A485.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A485.usda",
+      "usdSHA256": "7e910e2e711bcd9dea4ac37e89d45b3b0f502e862c6a0f38cbf743fdfa5914ea",
+      "objectCount": 18,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A487",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A487.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A487.usda",
+      "usdSHA256": "bf49d093fb1ee8c3c04931185936f95c4c0677c486c57a5f857aef298ea49553",
+      "objectCount": 16,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A488",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A488.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A488.usda",
+      "usdSHA256": "530811a3a25c0a475ea82412d5d47051181e995be1f87f5941922c9ef89787b7",
+      "objectCount": 12,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A489",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A489.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A489.usda",
+      "usdSHA256": "38ffac5b1423f8db59947959d4346286850878300451d44dd5708a2be4acc756",
+      "objectCount": 16,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A490",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A490.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A490.usda",
+      "usdSHA256": "aefdeaa32359b6f562902e03ca14b8eb123010c7a36cbe8a7180d0b3200f8bf1",
+      "objectCount": 10,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A492",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A492.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A492.usda",
+      "usdSHA256": "978d438c1f73ab754fe6fa5c50db15c69726ebeccdc13ba4e1c31e28bf6f6c45",
+      "objectCount": 18,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A493",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A493.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A493.usda",
+      "usdSHA256": "513bf3084dd476812ce370a90fb175e6f56cc7caeb446a22398027140b18cede",
+      "objectCount": 11,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A494",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A494.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A494.usda",
+      "usdSHA256": "65a30223f3de95cbf818533669de1f10523a34a822cb7beec6e97c90083b02a5",
+      "objectCount": 11,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A495",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A495.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A495.usda",
+      "usdSHA256": "e3cd1b7cbf5e98792359717aea704411e75932080933c9e0cfd9a5e36a1a0222",
+      "objectCount": 24,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A496",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A496.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A496.usda",
+      "usdSHA256": "3a48d1955a337b7974ee5d662c6aff9f07c956821a8c54218d800c105d77a6b0",
+      "objectCount": 20,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A498",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A498.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A498.usda",
+      "usdSHA256": "01816fd43c12871e2304c1c4217e32633172b0b1cf9a5c0b72350914f805169a",
+      "objectCount": 23,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A499",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A499.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A499.usda",
+      "usdSHA256": "2e3235b814f8f1e5a1452e6515ac28d3e42b56d61eedfd4db966c1a0aaeba055",
+      "objectCount": 23,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A500",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A500.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A500.usda",
+      "usdSHA256": "d18a2bbea1f392e9e6a281c7c738dbebbbbda4f153fdacb1bc5400a6cb5493f1",
+      "objectCount": 29,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A504",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A504.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A504.usda",
+      "usdSHA256": "245ace8c88ca92a283889fe1589f8d4e4e1243f7910ae6850489d3f1c82f1c73",
+      "objectCount": 19,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A506",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A506.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A506.usda",
+      "usdSHA256": "7171e8ded28e7f3f8c5e0c82b81e1faec10015222f82db99a78513bce547f1a1",
+      "objectCount": 19,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A517",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A517.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A517.usda",
+      "usdSHA256": "9b7ad658308f41028bce438dd8cee6d60da6a3da41d3085d6cef24eb8b2e4ed6",
+      "objectCount": 14,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A519",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A519.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A519.usda",
+      "usdSHA256": "139eb78e7341bd2df65a69011b7afffaa294bbe6e1a537ce0839a06c206905a8",
+      "objectCount": 22,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A521",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A521.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A521.usda",
+      "usdSHA256": "345034ebe3d590b2cdd35688db89008c4842b91757802313d031ce53be71cdc0",
+      "objectCount": 18,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A522",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A522.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A522.usda",
+      "usdSHA256": "07e3213036d58ec1a924621446d7dfec9e6bc5986d0704dc9f790d172870db02",
+      "objectCount": 14,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A524",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A524.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A524.usda",
+      "usdSHA256": "5e161fa90d5bcc24b67fd4b2971e2f44fca205b661dd4dbedcbb4c62fb82ca01",
+      "objectCount": 28,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A531",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A531.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A531.usda",
+      "usdSHA256": "49f091840d6d04f168b87b538b02fddea1c06cb24d41dad12ae5ccb0ab3f7659",
+      "objectCount": 10,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A532",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A532.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A532.usda",
+      "usdSHA256": "4cded96d5294bc1cfff9e809ef8428c373c38cf6c56e28f10de64610316892ce",
+      "objectCount": 14,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A533",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A533.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A533.usda",
+      "usdSHA256": "ab3ed114e5920745c1b08fb741a7b0964790d9b03e68d43a34849e22faa7366b",
+      "objectCount": 21,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A534",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A534.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A534.usda",
+      "usdSHA256": "5a52ba331562909895ef690d8024fab4fce0fb316b46ea0bed6dbe4aded75a91",
+      "objectCount": 24,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A536",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A536.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A536.usda",
+      "usdSHA256": "4794030e284f09a27e90957414d8e2c67b95f7f7b5368e63a516a300f13e4f8d",
+      "objectCount": 24,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A558",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A558.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A558.usda",
+      "usdSHA256": "cbbda65ddfe9061837ef9b09879cc685de4a4aeaf0cb9d5ebdc91c871b06742c",
+      "objectCount": 14,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A579",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A579.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A579.usda",
+      "usdSHA256": "2986230440326c9977f72e91e3d52b4987bcd95488de87bd9c0402ffd0934fc7",
+      "objectCount": 11,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A582",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A582.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A582.usda",
+      "usdSHA256": "b819a1a9cdcd4b7707e5c25ccf79b3db1751876574c1c5f838c49bab1e89b7c9",
+      "objectCount": 22,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A583",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A583.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A583.usda",
+      "usdSHA256": "9df9c41efd7d5d63d96a74dc2c8d7f06582289c7d719b1f224a77d2f91cc1583",
+      "objectCount": 16,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A584",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A584.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A584.usda",
+      "usdSHA256": "c4ac6323d63638a0e96ff6aa1e4c6b1bb2a07ee756cd0a998802c5d709bfcce9",
+      "objectCount": 20,
+      "status": "CONVERTED_FROM_GLB"
+    },
+    {
+      "assetId": "A587",
+      "sourceGLB": "/opt/Resonance/projects/P006/frontend/3d-derived/A587.glb",
+      "convertedUSD": "/opt/Resonance/projects/P006/work/converted-from-glb/A587.usda",
+      "usdSHA256": "692a4a620a296616c832a369d6b88747439812302e0a5c003f2cc591fd4995b2",
+      "objectCount": 19,
+      "status": "CONVERTED_FROM_GLB"
+    }
+  ]
+}

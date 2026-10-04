@@ -1,0 +1,34 @@
+{
+  "started": "2026-09-07T11:28:15+0900",
+  "cache_cleaned": [
+    {
+      "path": "/opt/resonance-data/cache/gradle/java-fast-dev/caches",
+      "logical_bytes_before": 561883653
+    },
+    {
+      "path": "/opt/resonance-data/cache/gradle/java-fast-dev/.tmp",
+      "logical_bytes_before": 1097728
+    }
+  ],
+  "backup_samples": [
+    {
+      "first": "/opt/resonance-data/backups/postgres/base/carbonet_base_20260906_022700.tar.gz",
+      "second": "/opt/resonance-data/backups/postgres/base-mirror/carbonet_base_20260906_022700.tar.gz",
+      "equal": true,
+      "sha256": [
+        "273ff6cd065a3a8d0cb7d263c7a623000baecab07b78df7c15e8385fe63bba5c",
+        "273ff6cd065a3a8d0cb7d263c7a623000baecab07b78df7c15e8385fe63bba5c"
+      ]
+    },
+    {
+      "first": "/opt/resonance-data/backups/postgres/primary/daily/carbonet_20260906_031700.dump",
+      "second": "/opt/resonance-data/backups/postgres/mirror/daily/carbonet_20260906_031700.dump",
+      "equal": true,
+      "sha256": [
+        "760ba2a783632138b96e781ef5ac8e134d3b9c796e52e5ddb7ca32219379042a",
+        "760ba2a783632138b96e781ef5ac8e134d3b9c796e52e5ddb7ca32219379042a"
+      ]
+    }
+  ],
+  "completed": "2026-09-07T11:28:34+0900"
+}

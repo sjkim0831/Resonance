@@ -1,0 +1,1028 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "REQ_43BDB0EC53F8",
+    "name": "REQ_43BDB0EC53F8 요구분석 실행",
+    "domain": "DATA_GOVERNANCE",
+    "workType": "DATA_GOVERNANCE",
+    "goal": "업로드된 요구분석서를 실행 가능한 화면·API·데이터 계약으로 완성"
+  },
+  "step": {
+    "code": "REQ_43BDB0EC53F8_S005",
+    "version": 1,
+    "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "VERIFIER",
+      "ownerActorCode": "PLATFORM_ADMIN",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
+    },
+    "business": {
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
+      "domainCode": "DATA_GOVERNANCE",
+      "processName": "REQ_43BDB0EC53F8 요구분석 실행",
+      "stepName": "검증자는 계산 근거와 증빙을 대조하고 보완 또는 통과를 결정한다.",
+      "goal": "업로드된 요구분석서를 실행 가능한 화면·API·데이터 계약으로 완성",
+      "requirement": "검증자는 계산 근거와 증빙을 대조하고 보완 또는 통과를 결정한다.",
+      "completionRule": "필수 필드, 권한, DB 재조회, 증적 검증을 통과한다.",
+      "riskLevel": "MEDIUM",
+      "slaHours": 0,
+      "regulationRefs": "",
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {},
+      "extensions": {}
+    },
+    "transition": {
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
+      "commandCode": "EXECUTE_REQ_43BDB0EC53F8_S005",
+      "fromState": "STEP_4_COMPLETED",
+      "toState": "STEP_5_COMPLETED",
+      "stepOrder": 5,
+      "stepType": "TASK",
+      "parentStepCode": null,
+      "completionRule": "필수 필드, 권한, DB 재조회, 증적 검증을 통과한다.",
+      "policy": {
+        "auditRequired": true,
+        "optimisticLock": true,
+        "idempotencyRequired": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
+    },
+    "input": {
+      "fields": [
+        {
+          "type": "string",
+          "label": "프로젝트 ID",
+          "required": true,
+          "fieldCode": "projectId"
+        },
+        {
+          "type": "string",
+          "label": "수행 액터",
+          "required": true,
+          "fieldCode": "actorCode"
+        },
+        {
+          "type": "string",
+          "label": "업무 상태",
+          "required": true,
+          "fieldCode": "statusCode"
+        },
+        {
+          "type": "PATCH",
+          "label": "업무 명령",
+          "required": true,
+          "fieldCode": "commandCode"
+        },
+        {
+          "type": "object",
+          "label": "업무 입력 데이터",
+          "required": true,
+          "fieldCode": "payload"
+        },
+        {
+          "type": "integer",
+          "label": "동시성 버전",
+          "required": true,
+          "fieldCode": "rowVersion"
+        }
+      ]
+    },
+    "output": {
+      "toState": "STEP_5_COMPLETED",
+      "stepCode": "REQ_43BDB0EC53F8_S005",
+      "projectId": "string",
+      "rowVersion": "integer",
+      "statusCode": "STEP_5_COMPLETED",
+      "processCode": "REQ_43BDB0EC53F8"
+    },
+    "guide": {
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
+      "processCode": "REQ_43BDB0EC53F8",
+      "stepCode": "REQ_43BDB0EC53F8_S005",
+      "stepOrder": 5,
+      "workTypeCode": "DATA_GOVERNANCE",
+      "actorCode": "VERIFIER",
+      "title": "검증자는 계산 근거와 증빙을 대조하고 보완 또는 통과를 결정한다.",
+      "purpose": "검증자는 계산 근거와 증빙을 대조하고 보완 또는 통과를 결정한다.",
+      "entryCondition": "STEP_4_COMPLETED",
+      "completionCondition": "필수 필드, 권한, DB 재조회, 증적 검증을 통과한다.",
+      "userPath": "/generated/ccus-platform/req_43bdb0ec53f8/s005",
+      "adminPath": "",
+      "relatedBusinessRoute": null,
+      "nextStepCode": "REQ_43BDB0EC53F8_S006",
+      "nextAction": "STEP_5_COMPLETED",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "REQ_43BDB0EC53F8_REQ_43BDB0EC53F8_S005_USER",
+        "route": "/generated/ccus-platform/req_43bdb0ec53f8/s005",
+        "routeStatus": "DESIGN_ONLY",
+        "audience": "USER",
+        "screenType": "WORKSPACE",
+        "title": "검증자는 계산 근거와 증빙을 대조하고 보완 또는 통과를 결정한다.",
+        "purpose": "검증자는 계산 근거와 증빙을 대조하고 보완 또는 통과를 결정한다.",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/generated/ccus-platform/req_43bdb0ec53f8/s005",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REQ_43BDB0EC53F8_REQ_43BDB0EC53F8_S005_USER",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 1,
+            "validation": {},
+            "apiProperty": "tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "tenantId"
+          },
+          {
+            "route": "/generated/ccus-platform/req_43bdb0ec53f8/s005",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REQ_43BDB0EC53F8_REQ_43BDB0EC53F8_S005_USER",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 2,
+            "validation": {},
+            "apiProperty": "projectId",
+            "controlType": "PROJECT_SELECTOR",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "projectId"
+          },
+          {
+            "route": "/generated/ccus-platform/req_43bdb0ec53f8/s005",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REQ_43BDB0EC53F8_REQ_43BDB0EC53F8_S005_USER",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 3,
+            "validation": {},
+            "apiProperty": "processCode",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "processCode"
+          },
+          {
+            "route": "/generated/ccus-platform/req_43bdb0ec53f8/s005",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REQ_43BDB0EC53F8_REQ_43BDB0EC53F8_S005_USER",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "업무 단계",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 4,
+            "validation": {},
+            "apiProperty": "stepCode",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "stepCode"
+          },
+          {
+            "route": "/generated/ccus-platform/req_43bdb0ec53f8/s005",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REQ_43BDB0EC53F8_REQ_43BDB0EC53F8_S005_USER",
+            "required": true,
+            "fieldCode": "actorCode",
+            "fieldName": "담당 액터",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 5,
+            "validation": {},
+            "apiProperty": "actorCode",
+            "controlType": "ACTOR_SELECTOR",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "actorCode"
+          },
+          {
+            "route": "/generated/ccus-platform/req_43bdb0ec53f8/s005",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REQ_43BDB0EC53F8_REQ_43BDB0EC53F8_S005_USER",
+            "required": false,
+            "fieldCode": "statusCode",
+            "fieldName": "처리 상태",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 6,
+            "validation": {},
+            "apiProperty": "statusCode",
+            "controlType": "STATUS",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "statusCode"
+          },
+          {
+            "route": "/generated/ccus-platform/req_43bdb0ec53f8/s005",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "REQ_43BDB0EC53F8_REQ_43BDB0EC53F8_S005_USER",
+            "required": false,
+            "fieldCode": "rowVersion",
+            "fieldName": "데이터 버전",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 7,
+            "validation": {},
+            "apiProperty": "rowVersion",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": false,
+            "code": "rowVersion"
+          },
+          {
+            "route": "/generated/ccus-platform/req_43bdb0ec53f8/s005",
+            "audience": "USER",
+            "dataType": "JSON",
+            "editable": true,
+            "pageCode": "REQ_43BDB0EC53F8_REQ_43BDB0EC53F8_S005_USER",
+            "required": false,
+            "fieldCode": "businessData",
+            "fieldName": "업무 입력",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 8,
+            "validation": {},
+            "apiProperty": "businessData",
+            "controlType": "DYNAMIC_FORM",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": true,
+            "code": "businessData"
+          },
+          {
+            "route": "/generated/ccus-platform/req_43bdb0ec53f8/s005",
+            "audience": "USER",
+            "dataType": "FILE_LIST",
+            "editable": true,
+            "pageCode": "REQ_43BDB0EC53F8_REQ_43BDB0EC53F8_S005_USER",
+            "required": false,
+            "fieldCode": "evidenceFiles",
+            "fieldName": "증적 파일",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 9,
+            "validation": {},
+            "apiProperty": "evidenceFiles",
+            "controlType": "FILE_UPLOAD",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": true,
+            "code": "evidenceFiles"
+          },
+          {
+            "route": "/generated/ccus-platform/req_43bdb0ec53f8/s005",
+            "audience": "USER",
+            "dataType": "JSON",
+            "editable": false,
+            "pageCode": "REQ_43BDB0EC53F8_REQ_43BDB0EC53F8_S005_USER",
+            "required": false,
+            "fieldCode": "auditHistory",
+            "fieldName": "변경 이력",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 10,
+            "validation": {},
+            "apiProperty": "auditHistory",
+            "controlType": "AUDIT_TIMELINE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:USER",
+            "evidenceRequired": true,
+            "code": "auditHistory"
+          },
+          {
+            "fieldCode": "payload",
+            "code": "payload",
+            "fieldName": "payload",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 11,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "USER"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "VERIFIER",
+            "entryState": "STEP_4_COMPLETED",
+            "commandCode": "EXECUTE_REQ_43BDB0EC53F8_S005",
+            "resultState": "STEP_5_COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "serverAuthorization": true,
+            "idempotencyRequired": true
+          }
+        ],
+        "states": {
+          "retry": "idempotent-only",
+          "states": [
+            "loading",
+            "empty",
+            "validation-error",
+            "forbidden",
+            "conflict",
+            "server-error",
+            "recovery"
+          ]
+        },
+        "responsive": {
+          "mobile": "single-column",
+          "tablet": "adaptive-two-column",
+          "desktop": "task-grid",
+          "overflow": "wrap-or-scroll"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "focusManagement": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorGuard": true,
+        "rowVersion": true,
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": "{\"method\":\"POST\",\"path\":\"/admin/api/system/actor-process/executions/{executionId}/commands\"}"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "VERIFIER",
+        "entryState": "STEP_4_COMPLETED",
+        "commandCode": "EXECUTE_REQ_43BDB0EC53F8_S005",
+        "resultState": "STEP_5_COMPLETED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "serverAuthorization": true,
+        "idempotencyRequired": true
+      }
+    ],
+    "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "VERIFIER",
+      "ownerActorCode": "PLATFORM_ADMIN",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
+    },
+    "handoffPolicy": {},
+    "handoffs": [
+      {
+        "failure": {
+          "onMissing": "BLOCK_AND_NOTIFY",
+          "onConflict": "RELOAD_AND_RETRY",
+          "onUnauthorized": "DENY_AND_AUDIT"
+        },
+        "payload": {
+          "source": "{\"toState\": \"STEP_5_COMPLETED\", \"stepCode\": \"REQ_43BDB0EC53F8_S005\", \"projectId\": \"string\", \"rowVersion\": \"integer\", \"statusCode\": \"STEP_5_COMPLETED\", \"processCode\": \"REQ_43BDB0EC53F8\"}",
+          "targetStep": "REQ_43BDB0EC53F8_S006"
+        },
+        "integrity": {
+          "auditRequired": true,
+          "versionRequired": true,
+          "checksumRequired": true
+        },
+        "toStepCode": "REQ_43BDB0EC53F8_S006",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "processCode",
+          "stepCode",
+          "actorCode",
+          "rowVersion"
+        ],
+        "handoffType": "STEP",
+        "authorization": {
+          "fromActor": "VERIFIER",
+          "tenantIsolation": true,
+          "projectIsolation": true
+        },
+        "toProcessCode": "REQ_43BDB0EC53F8"
+      }
+    ]
+  },
+  "database": {
+    "transactional": true,
+    "migrationRequired": true,
+    "mappings": [
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "tenantId",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "projectId",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processCode",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "stepCode",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "actorCode",
+            "apiProperty": "actorCode",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": false,
+            "fieldCode": "statusCode",
+            "apiProperty": "statusCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "rowVersion",
+            "apiProperty": "rowVersion",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "businessData",
+            "apiProperty": "businessData",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "evidenceFiles",
+            "apiProperty": "evidenceFiles",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "auditHistory",
+            "apiProperty": "auditHistory",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          }
+        ],
+        "audience": "USER",
+        "pageCode": "REQ_43BDB0EC53F8_REQ_43BDB0EC53F8_S005_USER",
+        "primaryEntity": "framework_business_record"
+      }
+    ],
+    "schemaSetVersion": 5,
+    "primaryEntities": [
+      "framework_business_record"
+    ],
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "권한 없는 액션 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "order": 1,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S001",
+          "toState": "STEP_1_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S001",
+          "actorCode": "PLATFORM_ADMIN",
+          "fromState": "DRAFT"
+        },
+        {
+          "order": 2,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S002",
+          "toState": "STEP_2_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S002",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_1_COMPLETED"
+        },
+        {
+          "order": 3,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S003",
+          "toState": "STEP_3_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S003",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_2_COMPLETED"
+        },
+        {
+          "order": 4,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S004",
+          "toState": "STEP_4_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S004",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_3_COMPLETED"
+        },
+        {
+          "order": 5,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S005",
+          "toState": "STEP_5_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S005",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_4_COMPLETED"
+        },
+        {
+          "order": 6,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S006",
+          "toState": "STEP_6_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S006",
+          "actorCode": "PLATFORM_ADMIN",
+          "fromState": "STEP_5_COMPLETED"
+        },
+        {
+          "order": 7,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S007",
+          "toState": "COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S007",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_6_COMPLETED"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REQ_43BDB0EC53F8_AUTH",
+      "assertions": [
+        "every step actor exists",
+        "unauthorized commands are denied",
+        "denials are audit logged"
+      ],
+      "preconditions": "A tenant, project, assigned actor, current process version, and isolated test data are available for deterministic contract validation."
+    },
+    {
+      "name": "필수 데이터 누락과 보완",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "order": 1,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S001",
+          "toState": "STEP_1_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S001",
+          "actorCode": "PLATFORM_ADMIN",
+          "fromState": "DRAFT"
+        },
+        {
+          "order": 2,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S002",
+          "toState": "STEP_2_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S002",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_1_COMPLETED"
+        },
+        {
+          "order": 3,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S003",
+          "toState": "STEP_3_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S003",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_2_COMPLETED"
+        },
+        {
+          "order": 4,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S004",
+          "toState": "STEP_4_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S004",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_3_COMPLETED"
+        },
+        {
+          "order": 5,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S005",
+          "toState": "STEP_5_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S005",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_4_COMPLETED"
+        },
+        {
+          "order": 6,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S006",
+          "toState": "STEP_6_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S006",
+          "actorCode": "PLATFORM_ADMIN",
+          "fromState": "STEP_5_COMPLETED"
+        },
+        {
+          "order": 7,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S007",
+          "toState": "COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S007",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_6_COMPLETED"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REQ_43BDB0EC53F8_EXCEPTION",
+      "assertions": [
+        "required input contracts exist",
+        "validation failure preserves prior state",
+        "correction path retains evidence"
+      ],
+      "preconditions": "A tenant, project, assigned actor, current process version, and isolated test data are available for deterministic contract validation."
+    },
+    {
+      "name": "정상 완료",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "order": 1,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S001",
+          "toState": "STEP_1_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S001",
+          "actorCode": "PLATFORM_ADMIN",
+          "fromState": "DRAFT"
+        },
+        {
+          "order": 2,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S002",
+          "toState": "STEP_2_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S002",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_1_COMPLETED"
+        },
+        {
+          "order": 3,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S003",
+          "toState": "STEP_3_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S003",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_2_COMPLETED"
+        },
+        {
+          "order": 4,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S004",
+          "toState": "STEP_4_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S004",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_3_COMPLETED"
+        },
+        {
+          "order": 5,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S005",
+          "toState": "STEP_5_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S005",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_4_COMPLETED"
+        },
+        {
+          "order": 6,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S006",
+          "toState": "STEP_6_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S006",
+          "actorCode": "PLATFORM_ADMIN",
+          "fromState": "STEP_5_COMPLETED"
+        },
+        {
+          "order": 7,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S007",
+          "toState": "COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S007",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_6_COMPLETED"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REQ_43BDB0EC53F8_HAPPY",
+      "assertions": [
+        "all ordered transitions are reachable",
+        "every command has an actor",
+        "terminal completion state exists"
+      ],
+      "preconditions": "A tenant, project, assigned actor, current process version, and isolated test data are available for deterministic contract validation."
+    },
+    {
+      "name": "테넌트·프로젝트 데이터 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "order": 1,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S001",
+          "toState": "STEP_1_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S001",
+          "actorCode": "PLATFORM_ADMIN",
+          "fromState": "DRAFT"
+        },
+        {
+          "order": 2,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S002",
+          "toState": "STEP_2_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S002",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_1_COMPLETED"
+        },
+        {
+          "order": 3,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S003",
+          "toState": "STEP_3_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S003",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_2_COMPLETED"
+        },
+        {
+          "order": 4,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S004",
+          "toState": "STEP_4_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S004",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_3_COMPLETED"
+        },
+        {
+          "order": 5,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S005",
+          "toState": "STEP_5_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S005",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_4_COMPLETED"
+        },
+        {
+          "order": 6,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S006",
+          "toState": "STEP_6_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S006",
+          "actorCode": "PLATFORM_ADMIN",
+          "fromState": "STEP_5_COMPLETED"
+        },
+        {
+          "order": 7,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S007",
+          "toState": "COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S007",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_6_COMPLETED"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REQ_43BDB0EC53F8_ISOLATION",
+      "assertions": [
+        "tenant context is required",
+        "project context is required",
+        "cross-context access is denied"
+      ],
+      "preconditions": "A tenant, project, assigned actor, current process version, and isolated test data are available for deterministic contract validation."
+    },
+    {
+      "name": "실패 후 재처리·복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "order": 1,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S001",
+          "toState": "STEP_1_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S001",
+          "actorCode": "PLATFORM_ADMIN",
+          "fromState": "DRAFT"
+        },
+        {
+          "order": 2,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S002",
+          "toState": "STEP_2_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S002",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_1_COMPLETED"
+        },
+        {
+          "order": 3,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S003",
+          "toState": "STEP_3_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S003",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_2_COMPLETED"
+        },
+        {
+          "order": 4,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S004",
+          "toState": "STEP_4_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S004",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_3_COMPLETED"
+        },
+        {
+          "order": 5,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S005",
+          "toState": "STEP_5_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S005",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_4_COMPLETED"
+        },
+        {
+          "order": 6,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S006",
+          "toState": "STEP_6_COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S006",
+          "actorCode": "PLATFORM_ADMIN",
+          "fromState": "STEP_5_COMPLETED"
+        },
+        {
+          "order": 7,
+          "command": "EXECUTE_REQ_43BDB0EC53F8_S007",
+          "toState": "COMPLETED",
+          "stepCode": "REQ_43BDB0EC53F8_S007",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_6_COMPLETED"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REQ_43BDB0EC53F8_RECOVERY",
+      "assertions": [
+        "every step has rollback semantics",
+        "commands are idempotent",
+        "retry preserves audit history"
+      ],
+      "preconditions": "A tenant, project, assigned actor, current process version, and isolated test data are available for deterministic contract validation."
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
+    "security": {
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true,
+      "segregationOfDuties": true,
+      "rateLimitRequired": false,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "standard": "WCAG 2.1 AA",
+      "keyboard": true,
+      "focus": true,
+      "errorSummary": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": true,
+      "targetHours": 0,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
+  },
+  "sourceHash": "e221514896880adf61469031a50304e4",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "GENERATED",
+  "packageHash": "c58c287ef3e3ac4c2ab04d931127a752c74c4d95b72a12d0f7ab6f3b5d5bfd66"
+}

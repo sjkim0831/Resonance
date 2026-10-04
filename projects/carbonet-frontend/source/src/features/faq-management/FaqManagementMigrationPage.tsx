@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -189,21 +190,36 @@ export function FaqManagementMigrationPage() {
           title={en ? "FAQ Filters" : "FAQ 조회 조건"}
         >
           <form
-            className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_auto]"
+            className="ccus-search-host"
             onSubmit={(event) => {
               event.preventDefault();
               setFilters((current) => ({ ...current, page: 1 }));
             }}
-          >
-            <label className="block">
+          ><CommonSearchSection basic={<><div className="ccus-search-field"><label className="block">
               <span className="mb-1 block text-sm font-bold">{en ? "Keyword" : "검색어"}</span>
               <AdminInput
                 placeholder={en ? "Question, answer scope, owner, or FAQ ID" : "질문, 답변 범위, 담당 조직, FAQ ID"}
                 value={filters.searchKeyword}
                 onChange={(event) => setFilters((current) => ({ ...current, searchKeyword: event.target.value }))}
               />
-            </label>
-            <label className="block">
+            </label></div>
+<div className="ccus-search-field"><label className="block">
+              <span className="mb-1 block text-sm font-bold">{en ? "Exposure" : "노출 상태"}</span>
+              <AdminSelect value={filters.exposure} onChange={(event) => setFilters((current) => ({ ...current, exposure: event.target.value, page: 1 }))}>
+                <option value="ALL">{en ? "All" : "전체"}</option>
+                <option value="PUBLIC">{en ? "Public" : "공개"}</option>
+                <option value="PRIVATE">{en ? "Private" : "비공개"}</option>
+              </AdminSelect>
+            </label></div></>} advanced={<><div className="ccus-search-field"><label className="block">
+              <span className="mb-1 block text-sm font-bold">{en ? "Status" : "게시 상태"}</span>
+              <AdminSelect value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value, page: 1 }))}>
+                <option value="ALL">{en ? "All" : "전체"}</option>
+                <option value="PUBLISHED">{en ? "Published" : "게시"}</option>
+                <option value="REVIEW">{en ? "Review" : "검토"}</option>
+                <option value="DRAFT">{en ? "Draft" : "초안"}</option>
+              </AdminSelect>
+            </label></div>
+<div className="ccus-search-field"><label className="block">
               <span className="mb-1 block text-sm font-bold">{en ? "Category" : "분류"}</span>
               <AdminSelect value={filters.category} onChange={(event) => setFilters((current) => ({ ...current, category: event.target.value, page: 1 }))}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -212,35 +228,14 @@ export function FaqManagementMigrationPage() {
                 <option value="DATA">{en ? "Data" : "데이터"}</option>
                 <option value="POLICY">{en ? "Policy" : "정책"}</option>
               </AdminSelect>
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-sm font-bold">{en ? "Exposure" : "노출 상태"}</span>
-              <AdminSelect value={filters.exposure} onChange={(event) => setFilters((current) => ({ ...current, exposure: event.target.value, page: 1 }))}>
-                <option value="ALL">{en ? "All" : "전체"}</option>
-                <option value="PUBLIC">{en ? "Public" : "공개"}</option>
-                <option value="PRIVATE">{en ? "Private" : "비공개"}</option>
-              </AdminSelect>
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-sm font-bold">{en ? "Status" : "게시 상태"}</span>
-              <AdminSelect value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value, page: 1 }))}>
-                <option value="ALL">{en ? "All" : "전체"}</option>
-                <option value="PUBLISHED">{en ? "Published" : "게시"}</option>
-                <option value="REVIEW">{en ? "Review" : "검토"}</option>
-                <option value="DRAFT">{en ? "Draft" : "초안"}</option>
-              </AdminSelect>
-            </label>
-            <div className="flex items-end gap-2">
-              <MemberButton type="submit" variant="primary">{en ? "Search" : "조회"}</MemberButton>
-              <MemberButton
+            </label></div></>} actions={<><MemberButton type="submit" variant="primary">{en ? "Search" : "조회"}</MemberButton>
+<MemberButton
                 onClick={() => setFilters({ searchKeyword: "", status: "ALL", exposure: "ALL", category: "ALL", selectedId: "", page: 1 })}
                 type="button"
                 variant="secondary"
               >
                 {en ? "Reset" : "초기화"}
-              </MemberButton>
-            </div>
-          </form>
+              </MemberButton></>}></CommonSearchSection></form>
         </CollectionResultPanel>
 
         <section className="gov-card overflow-hidden p-0" data-help-id="faq-management-table">

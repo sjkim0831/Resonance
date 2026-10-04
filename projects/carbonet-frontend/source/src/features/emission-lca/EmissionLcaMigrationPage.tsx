@@ -1,282 +1,440 @@
-import { useEffect, useMemo } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { logGovernanceScope } from "../../app/policy/debug";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
-import type { HomePayload } from "../home-entry/homeEntryTypes";
-import { CommonWorkflowWorkspace } from "../../components/workflow/CommonWorkflowWorkspace";
-import { CommonActionBar, CommonContentCard, CommonDataTable, CommonStatusBadge, CommonTimeline } from "../../components/common-design/CommonDesignPrimitives";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { isEnglish } from "../../lib/navigation/runtime";
+import { buildResilientCsrfHeaders } from "../../lib/api/core";
 
-
-type QueueAlert = { label: string; labelClass: string; title: string; due: string };
-type ComplianceRow = {
-  site: string;
-  siteId: string;
-  standards: Array<{ label: string; className: string }>;
-  status: string;
-  statusClass: string;
-  dotClass: string;
-  intensity: string;
-  unit: string;
-  action: string;
-  actionClass: string;
-  actionIcon: string;
-};
-type Milestone = { date: string; statusClass: string; dotClass: string; title: string; body: string; progress?: string };
-type SiteHubCard = {
-  icon: string;
-  iconWrapClass: string;
-  badge: string;
-  badgeClass: string;
-  title: string;
-  subtitle: string;
-  metrics: Array<{ label: string; value: string; tone: string }>;
-  primaryLabel: string;
-  primaryClass: string;
-  primaryIcon: string;
-  secondaryLabel: string;
-};
-type LcaWorkflowItem = { code: string; label: string; url: string };
-type LcaWorkflowSection = { code: string; label: string; items: LcaWorkflowItem[] };
-type LcaWorkflowDomain = { code: string; sections: LcaWorkflowSection[] };
-type LocalizedLcaContent = {
-  skipLink: string;
-  govAlt: string;
-  govText: string;
-  govNotice: string;
-  title: string;
-  subtitle: string;
-  roleLabel: string;
-  userName: string;
-  logout: string;
-  navItems: string[];
-  queueTitle: string;
-  queueSubtitle: string;
-  queueAlerts: QueueAlert[];
-  statusTitle: string;
-  statusSubtitle: string;
-  filterLabel: string;
-  reportLabel: string;
-  tableHeaders: string[];
-  complianceRows: ComplianceRow[];
-  milestonesTitle: string;
-  milestones: Milestone[];
-  watchTitle: string;
-  watchLabel: string;
-  watchHeadline: string;
-  watchBody: string;
-  watchLink: string;
-  watchButton: string;
-  siteHubTitle: string;
-  siteHubSubtitle: string;
-  siteCards: SiteHubCard[];
-  footerTitle: string;
-  footerAddress: string;
-  footerPolicy: string;
-  footerTerms: string;
-  footerManual: string;
-  footerCopy: string;
+type WorkspaceRecord = {
+  workspaceId?: string;
+  businessKey?: string;
+  workflowStatus?: string;
+  assignedActor?: string;
+  version?: number;
+  updatedAt?: string;
+  payload?: Record<string, unknown> | string;
 };
 
-const CONTENT: Record<"ko" | "en", LocalizedLcaContent> = {
-  ko: {
-    skipLink: "본문 바로가기",
-    govAlt: "대한민국 정부 상징",
-    govText: "대한민국 정부 공식 서비스 | 규제 대응 지능형 LCA 관리 시스템",
-    govNotice: "규제 업데이트 탐지: 2시간 전 (CBAM 신규 요건)",
-    title: "LCA 분석 & 규제 준수 센터",
-    subtitle: "Regulatory Compliance & Reporting Hub",
-    roleLabel: "환경 규제 총괄",
-    userName: "이현장 관리자님",
-    logout: "로그아웃",
-    navItems: ["전체 모니터링", "LCA 분석", "규제 대응 보고서", "검증 이력 관리"],
-    queueTitle: "Your Update Queue",
-    queueSubtitle: "실시간 규제 업데이트 알림",
-    queueAlerts: [
-      { label: "Critical", labelClass: "bg-red-500 text-white", title: "울산 제3: CBAM 보고서 누락", due: "마감: D-2" },
-      { label: "Required", labelClass: "bg-amber-500 text-white", title: "포항 제1: ISO 14067 갱신", due: "마감: D-15" },
-      { label: "Task", labelClass: "bg-blue-500 text-white", title: "광양 제2: 검증 증빙 업로드", due: "마감: D-7" }
-    ],
-    statusTitle: "LCA Compliance Status",
-    statusSubtitle: "관리 사이트별 산업 표준 및 규제 준수 현황",
-    filterLabel: "필터",
-    reportLabel: "통합 리포트",
-    tableHeaders: ["배출지 / 시설 ID", "적용 표준", "인증 현황", "배출 집약도", "준수 보고서"],
-    complianceRows: [
-      { site: "포항 제1 열연공장", siteId: "PH-001", standards: [{ label: "ISO 14067", className: "bg-blue-50 text-blue-600 border border-blue-100" }, { label: "WBCSD", className: "bg-slate-50 text-slate-600 border border-slate-200" }], status: "인증 유효", statusClass: "text-emerald-600", dotClass: "bg-emerald-500", intensity: "1.84", unit: "kgCO2e/kg", action: "생성", actionClass: "text-[var(--kr-gov-blue)]", actionIcon: "picture_as_pdf" },
-      { site: "울산 제3 화학기지", siteId: "US-042", standards: [{ label: "EU CBAM", className: "bg-indigo-50 text-indigo-600 border border-indigo-100" }, { label: "ISO 14044", className: "bg-slate-50 text-slate-600 border border-slate-200" }], status: "갱신 지연", statusClass: "text-red-600", dotClass: "bg-red-500", intensity: "3.12", unit: "kgCO2e/kg", action: "보완 필요", actionClass: "text-red-500", actionIcon: "priority_high" },
-      { site: "광양 제2 에너지센터", siteId: "GN-112", standards: [{ label: "ISO 14067", className: "bg-blue-50 text-blue-600 border border-blue-100" }], status: "검증 진행중", statusClass: "text-blue-600", dotClass: "bg-blue-500", intensity: "0.45", unit: "kgCO2e/MJ", action: "대기", actionClass: "text-slate-400", actionIcon: "lock" }
-    ],
-    milestonesTitle: "Verification Milestones",
-    milestones: [
-      { date: "2025.08.01 - Completed", statusClass: "text-emerald-600", dotClass: "bg-emerald-500", title: "내부 LCA 데이터 전수 조사", body: "포항/인천 전 사이트 데이터 확정 완료" },
-      { date: "2025.08.14 - In Progress", statusClass: "text-blue-600", dotClass: "bg-blue-500", title: "외부 3자 검증 개시", body: "한국표준협회(KSA) 현장 심사 진행 중", progress: "65%" },
-      { date: "2025.09.10 - Scheduled", statusClass: "text-slate-400", dotClass: "bg-slate-300", title: "ISO 14067 인증서 발급", body: "최종 심의 및 인증 등록 예정" }
-    ],
-    watchTitle: "Compliance Watch",
-    watchLabel: "New Regulation Alert",
-    watchHeadline: "EU CBAM 4차 보고 의무화",
-    watchBody: "간접 배출량 산정 방식 변경 적용 필요",
-    watchLink: "지침 확인하기",
-    watchButton: "규제 대응 매뉴얼 다운로드",
-    siteHubTitle: "Site-Specific Reporting Hub",
-    siteHubSubtitle: "각 사이트별 LCA 상세 분석 및 공식 보고서 생성",
-    siteCards: [
-      { icon: "factory", iconWrapClass: "bg-blue-50 text-[var(--kr-gov-blue)]", badge: "Audit Ready", badgeClass: "bg-emerald-100 text-emerald-700", title: "포항 제1 열연공장", subtitle: "마지막 검증: 2025.07.20", metrics: [{ label: "GWP Total", value: "4,120 t", tone: "text-slate-800" }, { label: "Data Quality", value: "High (98%)", tone: "text-emerald-600" }], primaryLabel: "LCA 보고서 생성", primaryClass: "bg-[var(--kr-gov-blue)] text-white", primaryIcon: "post_add", secondaryLabel: "상세 산정 로직 확인" },
-      { icon: "science", iconWrapClass: "bg-orange-50 text-orange-600", badge: "Action Required", badgeClass: "bg-orange-100 text-orange-700", title: "울산 제3 화학기지", subtitle: "규제 보완 요청: 3시간 전", metrics: [{ label: "GWP Total", value: "8,540 t", tone: "text-slate-800" }, { label: "Data Quality", value: "Medium (72%)", tone: "text-orange-600" }], primaryLabel: "데이터 보완하기", primaryClass: "bg-orange-600 text-white", primaryIcon: "upload_file", secondaryLabel: "검증관 코멘트 (2)" },
-      { icon: "energy_savings_leaf", iconWrapClass: "bg-blue-50 text-blue-600", badge: "Verifying", badgeClass: "bg-blue-100 text-blue-700", title: "광양 제2 에너지센터", subtitle: "검증 종료 예정: D-10", metrics: [{ label: "GWP Total", value: "12,890 t", tone: "text-slate-800" }, { label: "Compliance", value: "In Progress", tone: "text-blue-600" }], primaryLabel: "실시간 검증 현황", primaryClass: "bg-blue-600 text-white", primaryIcon: "visibility", secondaryLabel: "이전 인증 이력 보기" }
-    ],
-    footerTitle: "CCUS Integrated HO",
-    footerAddress: "(04551) 110 Sejong-daero, Jung-gu, Seoul | Compliance Support: 02-1234-5678\nThis platform supports corporate LCA analysis and regulatory optimization.",
-    footerPolicy: "Privacy Policy",
-    footerTerms: "Terms of Service",
-    footerManual: "Regulatory Manual",
-    footerCopy: "© 2025 CCUS LCA Compliance Portal. Regulatory-Minded Site Management."
-  },
-  en: {
-    skipLink: "Skip to content",
-    govAlt: "Government Symbol",
-    govText: "Republic of Korea Official Service | Regulatory-Minded Intelligent LCA Management System",
-    govNotice: "Regulatory Update: 2 hours ago (New CBAM Requirements)",
-    title: "LCA Analysis & Compliance Center",
-    subtitle: "Regulatory Compliance & Reporting Hub",
-    roleLabel: "Environmental Regulatory Lead",
-    userName: "Admin Hyunjang Lee",
-    logout: "Logout",
-    navItems: ["Full Monitoring", "LCA Analysis", "Compliance Reports", "Verification History"],
-    queueTitle: "Your Update Queue",
-    queueSubtitle: "Real-time Regulatory Alerts",
-    queueAlerts: [
-      { label: "Critical", labelClass: "bg-red-500 text-white", title: "Ulsan #3: CBAM Report Missing", due: "Due: D-2" },
-      { label: "Required", labelClass: "bg-amber-500 text-white", title: "Pohang #1: ISO 14067 Renewal", due: "Due: D-15" },
-      { label: "Task", labelClass: "bg-blue-500 text-white", title: "Gwangyang #2: Upload Evidence", due: "Due: D-7" }
-    ],
-    statusTitle: "LCA Compliance Status",
-    statusSubtitle: "Compliance status by managed site against industry standards",
-    filterLabel: "Filter",
-    reportLabel: "Consolidated Report",
-    tableHeaders: ["Site / Facility ID", "Applied Standards", "Certification Status", "Emission Intensity", "Compliance Report"],
-    complianceRows: [
-      { site: "Pohang #1 Hot Rolling Mill", siteId: "PH-001", standards: [{ label: "ISO 14067", className: "bg-blue-50 text-blue-600 border border-blue-100" }, { label: "WBCSD", className: "bg-slate-50 text-slate-600 border border-slate-200" }], status: "Certified", statusClass: "text-emerald-600", dotClass: "bg-emerald-500", intensity: "1.84", unit: "kgCO2e/kg", action: "Generate", actionClass: "text-[var(--kr-gov-blue)]", actionIcon: "picture_as_pdf" },
-      { site: "Ulsan #3 Chemical Base", siteId: "US-042", standards: [{ label: "EU CBAM", className: "bg-indigo-50 text-indigo-600 border border-indigo-100" }, { label: "ISO 14044", className: "bg-slate-50 text-slate-600 border border-slate-200" }], status: "Renewal Overdue", statusClass: "text-red-600", dotClass: "bg-red-500", intensity: "3.12", unit: "kgCO2e/kg", action: "Action Required", actionClass: "text-red-500", actionIcon: "priority_high" },
-      { site: "Gwangyang #2 Energy Center", siteId: "GN-112", standards: [{ label: "ISO 14067", className: "bg-blue-50 text-blue-600 border border-blue-100" }], status: "Verifying", statusClass: "text-blue-600", dotClass: "bg-blue-500", intensity: "0.45", unit: "kgCO2e/MJ", action: "Pending", actionClass: "text-slate-400", actionIcon: "lock" }
-    ],
-    milestonesTitle: "Verification Milestones",
-    milestones: [
-      { date: "2025.08.01 - Completed", statusClass: "text-emerald-600", dotClass: "bg-emerald-500", title: "Internal LCA Data Census", body: "Data finalized for all Pohang/Incheon sites" },
-      { date: "2025.08.14 - In Progress", statusClass: "text-blue-600", dotClass: "bg-blue-500", title: "3rd-Party Verification Start", body: "KSA on-site audit now in progress", progress: "65%" },
-      { date: "2025.09.10 - Scheduled", statusClass: "text-slate-400", dotClass: "bg-slate-300", title: "ISO 14067 Certificate Issuance", body: "Final review and certification registration pending" }
-    ],
-    watchTitle: "Compliance Watch",
-    watchLabel: "New Regulation Alert",
-    watchHeadline: "EU CBAM 4th Phase Reporting Mandate",
-    watchBody: "Indirect emission calculation method update required",
-    watchLink: "View Guidelines",
-    watchButton: "Download Compliance Manual",
-    siteHubTitle: "Site-Specific Reporting Hub",
-    siteHubSubtitle: "Detailed LCA analysis and official report generation for each site",
-    siteCards: [
-      { icon: "factory", iconWrapClass: "bg-blue-50 text-[var(--kr-gov-blue)]", badge: "Audit Ready", badgeClass: "bg-emerald-100 text-emerald-700", title: "Pohang #1 Hot Rolling Mill", subtitle: "Last verification: 2025.07.20", metrics: [{ label: "GWP Total", value: "4,120 t", tone: "text-slate-800" }, { label: "Data Quality", value: "High (98%)", tone: "text-emerald-600" }], primaryLabel: "Generate LCA Report", primaryClass: "bg-[var(--kr-gov-blue)] text-white", primaryIcon: "post_add", secondaryLabel: "View Calculation Logic" },
-      { icon: "science", iconWrapClass: "bg-orange-50 text-orange-600", badge: "Action Required", badgeClass: "bg-orange-100 text-orange-700", title: "Ulsan #3 Chemical Base", subtitle: "Regulatory supplement requested: 3 hours ago", metrics: [{ label: "GWP Total", value: "8,540 t", tone: "text-slate-800" }, { label: "Data Quality", value: "Medium (72%)", tone: "text-orange-600" }], primaryLabel: "Update Data", primaryClass: "bg-orange-600 text-white", primaryIcon: "upload_file", secondaryLabel: "Auditor Comments (2)" },
-      { icon: "energy_savings_leaf", iconWrapClass: "bg-blue-50 text-blue-600", badge: "Verifying", badgeClass: "bg-blue-100 text-blue-700", title: "Gwangyang #2 Energy Center", subtitle: "Verification ends in D-10", metrics: [{ label: "GWP Total", value: "12,890 t", tone: "text-slate-800" }, { label: "Compliance", value: "In Progress", tone: "text-blue-600" }], primaryLabel: "Live Status", primaryClass: "bg-blue-600 text-white", primaryIcon: "visibility", secondaryLabel: "View Past Certifications" }
-    ],
-    footerTitle: "CCUS Integrated HO",
-    footerAddress: "(04551) 110 Sejong-daero, Jung-gu, Seoul | Compliance Support: 02-1234-5678\nThis platform supports corporate LCA analysis and regulatory optimization.",
-    footerPolicy: "Privacy Policy",
-    footerTerms: "Terms of Service",
-    footerManual: "Regulatory Manual",
-    footerCopy: "© 2025 CCUS LCA Compliance Portal. Regulatory-Minded Site Management."
+const ENDPOINT = "/admin/api/admin/lca-workspaces/LCA_PROJECT";
+const STANDARDS = ["ISO 14040/14044", "ISO 14067", "GHG Protocol Product Standard", "기타"];
+const statusLabels: Record<string, string> = {
+  DRAFT: "작성 중", VALIDATED: "검증 완료", SUBMITTED: "검토 요청", APPROVED: "승인", REJECTED: "보완 요청"
+};
+
+function payloadOf(record: WorkspaceRecord): Record<string, unknown> {
+  if (record.payload && typeof record.payload === "object") return record.payload;
+  if (typeof record.payload === "string") {
+    try { return JSON.parse(record.payload) as Record<string, unknown>; } catch { return {}; }
   }
-};
+  return {};
+}
+
+function recordCommands(status: string): string[] {
+  if (status === "DRAFT") return ["VALIDATE"];
+  if (status === "VALIDATED") return ["SUBMIT", "REOPEN"];
+  if (status === "SUBMITTED") return ["APPROVE", "REJECT"];
+  if (status === "REJECTED") return ["REOPEN"];
+  return [];
+}
+
+function localizedStatus(status: string, en: boolean) {
+  if (!en) return statusLabels[status] || status || "상태 미지정";
+  return ({ DRAFT: "Draft", VALIDATED: "Validated", SUBMITTED: "Review requested", APPROVED: "Approved", REJECTED: "Changes requested" } as Record<string, string>)[status] || status || "Not set";
+}
 
 export function EmissionLcaMigrationPage() {
   const en = isEnglish();
-  const content = CONTENT[en ? "en" : "ko"];
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const payloadState = useAsyncValue<HomePayload>(() => fetchHomePayload(), [en], {
-    initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-    onError: () => undefined
-  });
-
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
-  const activeMenuCode = new URLSearchParams(window.location.search).get("menu") || "H1030101";
-  const lcaMenu = (homeMenu as unknown as LcaWorkflowDomain[]).find((menu) => menu.code === "H103");
-  const lcaSections: LcaWorkflowSection[] = lcaMenu?.sections || [];
-  const activeSection = lcaSections.find((section) => section.items.some((item) => item.code === activeMenuCode)) || lcaSections[0];
-  const activeItem = activeSection?.items.find((item) => item.code === activeMenuCode) || activeSection?.items[0];
-  const orderedLcaItems = lcaSections.flatMap((section) => section.items);
-  const activeItemIndex = Math.max(0, orderedLcaItems.findIndex((item) => item.code === activeItem?.code));
-  const nextItem = orderedLcaItems[activeItemIndex + 1];
-  const workspaceCopy = activeSection?.code === "H10302"
-    ? { objective: en ? "Build a complete, traceable life-cycle inventory." : "추적 가능한 전과정 인벤토리를 완성합니다.", input: en ? "Activity data, units, evidence and LCI mappings" : "활동자료·단위·증빙·LCI 매핑", output: en ? "Quality-checked normalized inventory" : "품질검사를 통과한 정규화 인벤토리", action: "/emission/activity-data" }
-    : activeSection?.code === "H10303"
-      ? { objective: en ? "Calculate impacts and explain material/process contribution." : "환경영향을 산정하고 물질·공정별 기여도를 설명합니다.", input: en ? "Approved inventory, factors and allocation rules" : "승인 인벤토리·배출계수·할당 규칙", output: en ? "Reproducible LCIA and sensitivity evidence" : "재현 가능한 LCIA·민감도 근거", action: "/emission/simulate" }
-      : activeSection?.code === "H10304"
-        ? { objective: en ? "Review, approve and publish defensible LCA results." : "검토 가능한 LCA 결과를 승인하고 보고합니다.", input: en ? "Calculation snapshot, limitations and review evidence" : "산정 스냅샷·한계·검토 증빙", output: en ? "Approved report and product carbon footprint" : "승인 보고서·제품 탄소발자국", action: "/emission/report-write" }
-        : { objective: en ? "Define a governed LCA project before data collection." : "자료 수집 전에 통제 가능한 LCA 프로젝트를 정의합니다.", input: en ? "Product, process, functional unit and system boundary" : "제품·공정·기능단위·시스템 경계", output: en ? "Approved project scope and responsibility" : "승인된 프로젝트 범위·책임", action: "/emission/project_list" };
+  const menuCode = new URLSearchParams(window.location.search).get("menu") || "H1030101";
+  const isProductProcessMenu = menuCode === "H1030103";
+    const isSystemBoundaryMenu = menuCode === "H1030104";
+    const isFunctionalUnitMenu = menuCode === "H1030105";
+    const isMaterialsMenu = menuCode === "H1030201";
+    const isEnergySteamMenu = menuCode === "H1030202";
+    const isTransportMenu = menuCode === "H1030203";
+    const isProductsByproductsMenu = menuCode === "H1030204";
+    const isWasteEmissionsMenu = menuCode === "H1030205";
+    const isLciDataMappingMenu = menuCode === "H1030206";
+    const isLciCalculationMenu = menuCode === "H1030301";
+  const isLciaImpactAssessmentMenu = menuCode === "H1030302";
+  const isProcessContributionMenu = menuCode === "H1030303";
+  const isMaterialContributionMenu = menuCode === "H1030304";
+  const isSensitivityAnalysisMenu = menuCode === "H1030305";
+  const showStatusView = menuCode === "H1030101";
+  const [records, setRecords] = useState<WorkspaceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [query, setQuery] = useState(() => new URLSearchParams(window.location.search).get("workspaceId") || "");
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [businessKey, setBusinessKey] = useState("");
+  const [projectName, setProjectName] = useState("");
+  const [productFamily, setProductFamily] = useState("");
+  const [standard, setStandard] = useState(STANDARDS[0]);
+  const [targetDate, setTargetDate] = useState("");
 
   useEffect(() => {
-    logGovernanceScope("PAGE", "emission-lca", { language: en ? "en" : "ko", queueCount: content.queueAlerts.length, complianceRowCount: content.complianceRows.length, siteCardCount: content.siteCards.length });
-    logGovernanceScope("COMPONENT", "emission-lca-dashboard", { milestoneCount: content.milestones.length, isLoggedIn: Boolean(payload.isLoggedIn), menuCount: homeMenu.length });
-  }, [content.complianceRows.length, content.milestones.length, content.queueAlerts.length, content.siteCards.length, en, homeMenu.length, payload.isLoggedIn]);
+    if (!isProductProcessMenu) return;
+    const params = new URLSearchParams(window.location.search);
+    const target = new URL(`${window.location.pathname.startsWith("/en/") ? "/en" : ""}/lca/product-process`, window.location.origin);
+    const projectId = params.get("projectId");
+    if (projectId) target.searchParams.set("projectId", projectId);
+    window.location.replace(`${target.pathname}${target.search}`);
+  }, [isProductProcessMenu]);
+
+  useEffect(() => {
+    if (!isSystemBoundaryMenu) return;
+    const params = new URLSearchParams(window.location.search);
+    const target = new URL(`${window.location.pathname.startsWith("/en/") ? "/en" : ""}/lca/system-boundary`, window.location.origin);
+    const projectId = params.get("projectId");
+    if (projectId) target.searchParams.set("projectId", projectId);
+    window.location.replace(`${target.pathname}${target.search}`);
+  }, [isSystemBoundaryMenu]);
+
+  useEffect(() => {
+    if (!isFunctionalUnitMenu) return;
+    const params = new URLSearchParams(window.location.search);
+    const target = new URL(`${window.location.pathname.startsWith("/en/") ? "/en" : ""}/lca/functional-unit`, window.location.origin);
+    const projectId = params.get("projectId");
+    if (projectId) target.searchParams.set("projectId", projectId);
+    window.location.replace(`${target.pathname}${target.search}`);
+  }, [isFunctionalUnitMenu]);
+
+  useEffect(() => {
+    if (!isMaterialsMenu) return;
+    const params = new URLSearchParams(window.location.search);
+    const target = new URL(`${window.location.pathname.startsWith("/en/") ? "/en" : ""}/lca/materials`, window.location.origin);
+    const projectId = params.get("projectId");
+    if (projectId) target.searchParams.set("projectId", projectId);
+    window.location.replace(`${target.pathname}${target.search}`);
+  }, [isMaterialsMenu]);
+
+  useEffect(() => {
+    if (!isEnergySteamMenu) return;
+    const params = new URLSearchParams(window.location.search);
+    const target = new URL(`${window.location.pathname.startsWith("/en/") ? "/en" : ""}/lca/energy-steam`, window.location.origin);
+    const projectId = params.get("projectId");
+    if (projectId) target.searchParams.set("projectId", projectId);
+    window.location.replace(`${target.pathname}${target.search}`);
+  }, [isEnergySteamMenu]);
+
+  useEffect(() => {
+    if (!isTransportMenu) return;
+    const params = new URLSearchParams(window.location.search);
+    const target = new URL(`${window.location.pathname.startsWith("/en/") ? "/en" : ""}/lca/transport`, window.location.origin);
+    const projectId = params.get("projectId");
+    if (projectId) target.searchParams.set("projectId", projectId);
+    window.location.replace(`${target.pathname}${target.search}`);
+  }, [isTransportMenu]);
+
+  useEffect(() => {
+    if (!isProductsByproductsMenu) return;
+    const params = new URLSearchParams(window.location.search);
+    const target = new URL(`${window.location.pathname.startsWith("/en/") ? "/en" : ""}/lca/products-byproducts`, window.location.origin);
+    const projectId = params.get("projectId");
+    if (projectId) target.searchParams.set("projectId", projectId);
+    window.location.replace(`${target.pathname}${target.search}`);
+  }, [isProductsByproductsMenu]);
+
+  useEffect(() => {
+    if (!isWasteEmissionsMenu) return;
+    const params = new URLSearchParams(window.location.search);
+    const target = new URL(`${window.location.pathname.startsWith("/en/") ? "/en" : ""}/lca/waste-emissions`, window.location.origin);
+    const projectId = params.get("projectId");
+    if (projectId) target.searchParams.set("projectId", projectId);
+    window.location.replace(`${target.pathname}${target.search}`);
+  }, [isWasteEmissionsMenu]);
+
+  useEffect(() => {
+    if (!isLciDataMappingMenu) return;
+    const params = new URLSearchParams(window.location.search);
+    const target = new URL(`${window.location.pathname.startsWith("/en/") ? "/en" : ""}/lca/data-mapping`, window.location.origin);
+    const projectId = params.get("projectId");
+    if (projectId) target.searchParams.set("projectId", projectId);
+    window.location.replace(`${target.pathname}${target.search}`);
+  }, [isLciDataMappingMenu]);
+
+  useEffect(() => {
+    if (!isLciCalculationMenu) return;
+    const params = new URLSearchParams(window.location.search);
+    const target = new URL(`${window.location.pathname.startsWith("/en/") ? "/en" : ""}/lca/calculation`, window.location.origin);
+    const projectId = params.get("projectId");
+    if (projectId) target.searchParams.set("projectId", projectId);
+    window.location.replace(`${target.pathname}${target.search}`);
+  }, [isLciCalculationMenu]);
+
+  useEffect(() => {
+    if (!isLciaImpactAssessmentMenu) return;
+    const params = new URLSearchParams(window.location.search);
+    const target = new URL(`${window.location.pathname.startsWith("/en/") ? "/en" : ""}/lca/impact-assessment`, window.location.origin);
+    const projectId = params.get("projectId");
+    if (projectId) target.searchParams.set("projectId", projectId);
+    window.location.replace(`${target.pathname}${target.search}`);
+  }, [isLciaImpactAssessmentMenu]);
+
+  useEffect(() => {
+    if (!isProcessContributionMenu) return;
+    const params = new URLSearchParams(window.location.search);
+    const target = new URL(`${window.location.pathname.startsWith("/en/") ? "/en" : ""}/lca/process-contribution-analysis`, window.location.origin);
+    const projectId = params.get("projectId");
+    if (projectId) target.searchParams.set("projectId", projectId);
+    window.location.replace(`${target.pathname}${target.search}`);
+  }, [isProcessContributionMenu]);
+
+  useEffect(() => {
+    if (!isMaterialContributionMenu) return;
+    const params = new URLSearchParams(window.location.search);
+    const target = new URL(`${window.location.pathname.startsWith("/en/") ? "/en" : ""}/lca/material-contribution-analysis`, window.location.origin);
+    const projectId = params.get("projectId");
+    if (projectId) target.searchParams.set("projectId", projectId);
+    window.location.replace(`${target.pathname}${target.search}`);
+  }, [isMaterialContributionMenu]);
+
+  useEffect(() => {
+    if (!isSensitivityAnalysisMenu) return;
+    const params = new URLSearchParams(window.location.search);
+    const target = new URL(`${window.location.pathname.startsWith("/en/") ? "/en" : ""}/lca/sensitivity-analysis`, window.location.origin);
+    const projectId = params.get("projectId");
+    if (projectId) target.searchParams.set("projectId", projectId);
+    window.location.replace(`${target.pathname}${target.search}`);
+  }, [isSensitivityAnalysisMenu]);
+
+  const loadRecords = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(ENDPOINT, {
+        credentials: "include", cache: "no-store",
+        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" }
+      });
+      const body = await response.json().catch(() => ({})) as { records?: WorkspaceRecord[]; message?: string };
+      if (!response.ok) throw new Error(body.message || `LCA 프로젝트 조회 실패 (${response.status})`);
+      setRecords(Array.isArray(body.records) ? body.records : []);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : (en ? "Could not load LCA projects." : "LCA 프로젝트를 불러오지 못했습니다."));
+    } finally { setLoading(false); }
+  }, [en]);
+
+  useEffect(() => { void loadRecords(); }, [loadRecords]);
+
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase();
+    return records.filter((record) => {
+      const payload = payloadOf(record);
+      const haystack = [record.workspaceId, record.businessKey, record.workflowStatus, payload.projectName, payload.productFamily, payload.standard]
+        .map((value) => String(value || "").toLocaleLowerCase()).join(" ");
+      return !needle || haystack.includes(needle);
+    });
+  }, [query, records]);
+
+  const openForm = () => {
+    const suffix = globalThis.crypto?.randomUUID?.().slice(0, 8).toUpperCase() || Date.now().toString(36).toUpperCase();
+    setBusinessKey(`LCA-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${suffix}`);
+    setProjectName(""); setProductFamily(""); setTargetDate(""); setStandard(STANDARDS[0]);
+    setNotice(""); setError(""); setFormOpen(true);
+  };
+
+  const createProject = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!businessKey.trim() || !projectName.trim() || !productFamily.trim() || !standard || !targetDate) {
+      setError(en ? "Complete all required fields." : "필수 항목을 모두 입력해 주세요."); return;
+    }
+    setSaving(true); setError(""); setNotice("");
+    try {
+      const response = await fetch(ENDPOINT, {
+        method: "POST", credentials: "include",
+        headers: await buildResilientCsrfHeaders({ "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" }),
+        body: JSON.stringify({
+          businessKey: businessKey.trim(), assignedActor: "LCA_PROJECT_OWNER",
+          payload: { projectName: projectName.trim(), productFamily: productFamily.trim(), standard, targetDate }
+        })
+      });
+      const body = await response.json().catch(() => ({})) as { message?: string };
+      if (!response.ok) throw new Error(body.message || `LCA 프로젝트 저장 실패 (${response.status})`);
+      setFormOpen(false); setNotice(en ? "LCA project saved. The server created the initial workflow version." : "LCA 프로젝트를 저장했습니다. 서버에 최초 업무 버전이 생성되었습니다.");
+      await loadRecords();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : (en ? "Save failed." : "저장하지 못했습니다."));
+    } finally { setSaving(false); }
+  };
+
+  const executeCommand = async (record: WorkspaceRecord, command: string) => {
+    if (!record.workspaceId) return;
+    setError(""); setNotice("");
+    try {
+      const response = await fetch(`${ENDPOINT}/${encodeURIComponent(record.workspaceId)}/commands`, {
+        method: "POST", credentials: "include",
+        headers: await buildResilientCsrfHeaders({ "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" }),
+        body: JSON.stringify({ command, evidence: { screen: "emission-lca-project-hub", businessKey: record.businessKey || "" } })
+      });
+      const body = await response.json().catch(() => ({})) as { message?: string };
+      if (!response.ok) throw new Error(body.message || `상태 전이 실패 (${response.status})`);
+      setNotice(en ? `Workflow action ${command} completed.` : `${command} 상태 전이를 요청했습니다.`);
+      await loadRecords();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : (en ? "Workflow action failed." : "상태 전이에 실패했습니다."));
+    }
+  };
+
+  const count = (status: string) => records.filter((item) => item.workflowStatus === status).length;
+  const tr = (ko: string, english: string) => en ? english : ko;
+  const statusText = (status: string) => ({
+    DRAFT: tr("프로젝트 정보 작성", "Project setup"),
+    VALIDATED: tr("검토 요청 가능", "Ready for review"),
+    SUBMITTED: tr("검토·승인 대기", "Review and approval"),
+    APPROVED: tr("프로젝트 등록 승인", "Project approved"),
+    REJECTED: tr("보완 후 재검토", "Changes requested")
+  } as Record<string, string>)[status] || tr("상태 확인 필요", "Status needs review");
+
+  if (isProductProcessMenu) return (
+    <main className="mx-auto max-w-3xl px-4 py-16 text-center" role="status">
+      <h1 className="text-xl font-black text-[#052b57]">{tr("제품·공정 정보 화면으로 이동합니다.", "Opening product and process information.")}</h1>
+      <p className="mt-2 text-sm text-slate-600">{tr("잠시만 기다려 주세요.", "Please wait.")}</p>
+    </main>
+  );
+    if (isSystemBoundaryMenu) return (
+    <main className="mx-auto max-w-3xl px-4 py-16 text-center" role="status">
+      <h1 className="text-xl font-black text-[#052b57]">{tr("시스템 경계 화면으로 이동합니다.", "Opening system boundary definition.")}</h1>
+      <p className="mt-2 text-sm text-slate-600">{tr("잠시만 기다려 주세요.", "Please wait.")}</p>
+    </main>
+    );
+  if (isFunctionalUnitMenu) return (
+    <main className="mx-auto max-w-3xl px-4 py-16 text-center" role="status">
+      <h1 className="text-xl font-black text-[#052b57]">{tr("기능 단위 화면으로 이동합니다.", "Opening functional unit definition.")}</h1>
+      <p className="mt-2 text-sm text-slate-600">{tr("잠시만 기다려 주세요.", "Please wait.")}</p>
+    </main>
+  );
+  if (isMaterialsMenu) return (
+    <main className="mx-auto max-w-3xl px-4 py-16 text-center" role="status">
+      <h1 className="text-xl font-black text-[#052b57]">{tr("원료·보조재 화면으로 이동합니다.", "Opening materials inventory.")}</h1>
+      <p className="mt-2 text-sm text-slate-600">{tr("잠시만 기다려 주세요.", "Please wait.")}</p>
+    </main>
+  );
+  if (isEnergySteamMenu) return (
+    <main className="mx-auto max-w-3xl px-4 py-16 text-center" role="status">
+      <h1 className="text-xl font-black text-[#052b57]">{tr("에너지·스팀 화면으로 이동합니다.", "Opening energy and steam inventory.")}</h1>
+      <p className="mt-2 text-sm text-slate-600">{tr("잠시만 기다려 주세요.", "Please wait.")}</p>
+    </main>
+  );
 
   return (
-    <main id="main-content" className="min-h-screen bg-[#f4f7fa] text-[var(--kr-gov-text-primary)]">
-          <CommonWorkflowWorkspace eyebrow={activeSection?.label || (en ? "LCA project" : "LCA 프로젝트")} positionLabel={`${activeItemIndex + 1}/${orderedLcaItems.length || 22}`} title={activeItem?.label || (en ? "LCA overview" : "LCA 현황")} objective={workspaceCopy.objective} requiredInputLabel={en ? "Required inputs" : "필수 입력"} requiredInput={workspaceCopy.input} completionEvidenceLabel={en ? "Completion evidence" : "완료 산출물"} completionEvidence={workspaceCopy.output} actionHref={buildLocalizedPath(workspaceCopy.action, `/en${workspaceCopy.action}`)} actionLabel={en ? "Open work screen" : "업무 화면 열기"} nextHref={nextItem?.url} nextLabel={en ? "Next task" : "다음 업무"} workflowLabel={en ? "Product LCA workflow" : "제품 LCA 업무 순서"} steps={orderedLcaItems.map((item) => ({ id: item.code, label: item.label, href: item.url }))} activeStepId={activeItem?.code} />
-          <section className="bg-slate-800 border-b border-slate-700 py-6" data-help-id="emission-lca-queue">
-            <div className="max-w-[1440px] mx-auto px-4 lg:px-8">
-              <div className="flex flex-col lg:flex-row gap-6 items-center">
-                <div className="flex items-center gap-4 shrink-0">
-                  <div className="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20"><span className="material-symbols-outlined text-[28px]">smart_toy</span></div>
-                  <div><h2 className="text-white font-black text-lg">{content.queueTitle}</h2><p className="text-indigo-300 text-xs font-bold uppercase tracking-widest">{content.queueSubtitle}</p></div>
-                </div>
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
-                  {content.queueAlerts.map((alert) => <CommonContentCard className="group flex cursor-pointer items-center justify-between border-white/10 bg-white/5 p-3 shadow-none transition-colors hover:bg-white/10" key={alert.title}><div className="flex items-center gap-3"><CommonStatusBadge className={alert.labelClass}>{alert.label}</CommonStatusBadge><div className="text-xs"><p className="font-bold text-white">{alert.title}</p><p className="text-slate-400">{alert.due}</p></div></div><span className="material-symbols-outlined text-indigo-400 transition-transform group-hover:translate-x-1">arrow_forward</span></CommonContentCard>)}
-                </div>
+    <main id="main-content" className="min-h-[calc(100vh-15rem)] bg-[#f4f7fa] px-4 py-7 text-[var(--kr-gov-text-primary)] sm:px-6 lg:px-8" data-ui-page="lca-project-hub" data-testid="lca-project-hub">
+      <div className="mx-auto max-w-7xl space-y-5">
+        {showStatusView ? <>
+          <header className="rounded-xl border border-[var(--kr-gov-border-light)] bg-white p-5 shadow-sm sm:p-7">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-bold text-[var(--kr-gov-blue)]">{tr("제품 LCA", "Product LCA")}</p>
+                <h1 className="mt-1 text-2xl font-black tracking-tight text-[#052b57] sm:text-3xl">{tr("LCA 현황", "LCA status")}</h1>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{tr("등록된 LCA 프로젝트의 업무 상태와 담당 액터를 확인합니다. 프로젝트 기본정보 등록과 상태 변경은 LCA 프로젝트 메뉴에서 진행합니다.", "Review workflow status and assigned actors for registered LCA projects. Create or update project records in LCA Projects.")}</p>
               </div>
+              <a className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--kr-gov-blue)] px-4 py-2 text-sm font-bold text-white hover:bg-[var(--kr-gov-blue-hover)]" href="/emission/lca?menu=H1030102">
+                <span className="material-symbols-outlined text-lg" aria-hidden="true">folder_open</span>{tr("LCA 프로젝트 관리", "Manage LCA projects")}
+              </a>
             </div>
+            <ol className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4" aria-label={tr("LCA 업무 흐름", "LCA workflow")}>
+              {[tr("프로젝트 등록", "Project setup"), tr("범위·기능단위 정의", "Define scope and unit"), tr("담당자 검토·승인", "Review and approval"), tr("제품·공정 자료 수집", "Collect product and process data")].map((step, index) => <li className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3" key={step}><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-black text-slate-700">{index + 1}</span><span className="text-sm font-bold text-slate-700">{step}</span></li>)}
+            </ol>
+          </header>
+
+          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" aria-label={tr("LCA 프로젝트 상태 집계", "LCA project status totals")}>
+            {[[tr("전체", "All"), records.length], [tr("작성 중", "Draft"), count("DRAFT")], [tr("검토 가능", "Ready for review"), count("VALIDATED")], [tr("검토 대기", "In review"), count("SUBMITTED")], [tr("승인", "Approved"), count("APPROVED")]].map(([label, value]) => <article className="rounded-xl border border-[var(--kr-gov-border-light)] bg-white p-4 shadow-sm" key={String(label)}><p className="text-sm font-semibold text-slate-600">{label}</p><p className="mt-1 text-2xl font-black text-[#052b57]">{loading ? "—" : value}</p></article>)}
           </section>
-          <section className="max-w-[1440px] mx-auto px-4 lg:px-8 py-10" data-help-id="emission-lca-status">
-            <div className="flex flex-col lg:flex-row gap-8">
-              <div className="lg:w-2/3">
-                <div className="bg-white border border-[var(--kr-gov-border-light)] rounded-xl shadow-sm overflow-hidden">
-                  <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white">
-                    <div><h2 className="text-xl font-black text-slate-800">{content.statusTitle}</h2><p className="text-sm text-slate-500 font-medium">{content.statusSubtitle}</p></div>
-                    <CommonActionBar><button className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100" type="button"><span className="material-symbols-outlined text-[18px]">filter_list</span>{content.filterLabel}</button><button className="flex items-center gap-2 rounded-md bg-[var(--kr-gov-blue)] px-4 py-2 text-sm font-bold text-white hover:bg-[var(--kr-gov-blue-hover)]" type="button"><span className="material-symbols-outlined text-[18px]">download</span>{content.reportLabel}</button></CommonActionBar>
-                  </div>
-                  <CommonDataTable label={content.statusTitle}>
-                      <thead><tr className="bg-slate-50 text-[11px] font-black text-slate-500 uppercase tracking-widest border-b border-gray-200">{content.tableHeaders.map((header) => <th className="px-6 py-4" key={header}>{header}</th>)}</tr></thead>
-                      <tbody className="text-sm">
-                        {content.complianceRows.map((row) => <tr className="border-b border-slate-100 transition-colors hover:bg-slate-50" key={row.siteId}><td className="px-6 py-5"><div className="flex flex-col"><span className="font-bold text-slate-800">{row.site}</span><span className="text-[10px] text-slate-400">{row.siteId}</span></div></td><td className="px-6 py-5"><div className="flex flex-wrap gap-1">{row.standards.map((standard) => <CommonStatusBadge className={standard.className} key={standard.label}>{standard.label}</CommonStatusBadge>)}</div></td><td className="px-6 py-5"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${row.dotClass}`} /><span className={`font-bold ${row.statusClass}`}>{row.status}</span></div></td><td className="px-6 py-5"><div className="flex items-baseline gap-1"><span className="font-black text-slate-800">{row.intensity}</span><span className="text-[10px] font-bold text-slate-400">{row.unit}</span></div></td><td className="px-6 py-5"><button className={`${row.actionClass} flex items-center gap-1 font-bold hover:underline`} type="button"><span className="material-symbols-outlined text-[16px]">{row.actionIcon}</span>{row.action}</button></td></tr>)}
-                      </tbody>
-                  </CommonDataTable>
-                </div>
-              </div>
-              <div className="lg:w-1/3 space-y-6">
-                <div data-help-id="emission-lca-milestones"><CommonTimeline title={<><span className="material-symbols-outlined text-[20px] text-[var(--kr-gov-blue)]">event_repeat</span>{content.milestonesTitle}</>}>
-                  {content.milestones.map((milestone) => <div className="relative pl-6" key={milestone.title}><span className={`absolute -left-[5px] top-1 h-2.5 w-2.5 rounded-full border-2 border-white ${milestone.dotClass}`} /><p className={`text-[10px] font-bold uppercase ${milestone.statusClass}`}>{milestone.date}</p><h4 className="text-xs font-bold text-slate-800">{milestone.title}</h4><p className="text-[11px] text-slate-500">{milestone.body}</p>{milestone.progress ? <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-blue-500" style={{ width: milestone.progress }} /></div> : null}</div>)}
-                </CommonTimeline></div>
-                <CommonContentCard className="relative overflow-hidden border-indigo-900 bg-indigo-900 p-6 text-white shadow-lg shadow-indigo-900/20" data-help-id="emission-lca-watch">
-                  <div className="absolute top-0 right-0 p-4 opacity-10"><span className="material-symbols-outlined text-[80px]">gavel</span></div>
-                  <h3 className="text-xs font-black text-indigo-300 uppercase tracking-widest mb-4">{content.watchTitle}</h3>
-                  <div className="space-y-4">
-                    <div className="p-3 bg-white/10 rounded-lg border border-white/10"><p className="text-[11px] font-bold text-indigo-200">{content.watchLabel}</p><h4 className="text-sm font-bold">{content.watchHeadline}</h4><p className="text-[11px] text-indigo-100/70 mt-1">{content.watchBody}</p><a className="inline-flex items-center gap-1 text-[10px] font-black text-white mt-3 underline" href="#">{content.watchLink}</a></div>
-                    <button className="w-full py-2.5 bg-indigo-500 hover:bg-indigo-400 rounded-lg text-xs font-black transition-colors" type="button">{content.watchButton}</button>
-                  </div>
-                </CommonContentCard>
-              </div>
+
+          {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800" role="alert">{error}</div> : null}
+          {notice ? <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800" role="status">{notice}</div> : null}
+
+          <section className="overflow-hidden rounded-xl border border-[var(--kr-gov-border-light)] bg-white shadow-sm" aria-labelledby="lca-status-list-title">
+            <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 p-5">
+              <div><h2 className="text-lg font-black text-[#052b57]" id="lca-status-list-title">{tr("프로젝트별 업무 현황", "Workflow status by project")}</h2><p className="mt-1 text-sm text-slate-600">{loading ? tr("서버 현황을 조회하고 있습니다.", "Loading workflow status from server.") : tr(`${records.length}건 · 서버 저장 업무 레코드`, `${records.length} persisted workflow records`)}</p></div>
+              <button className="inline-flex min-h-10 items-center gap-2 rounded-md border border-blue-200 bg-white px-3 text-sm font-bold text-[var(--kr-gov-blue)] hover:bg-blue-50" onClick={() => void loadRecords()} type="button" disabled={loading}><span className="material-symbols-outlined text-lg" aria-hidden="true">refresh</span>{tr("현황 새로고침", "Refresh status")}</button>
             </div>
+            <div className="overflow-x-auto"><table className="min-w-[700px] w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs font-black text-slate-600"><tr>{[tr("프로젝트", "Project"), tr("현재 업무 상태", "Current workflow status"), tr("담당 액터", "Assigned actor"), tr("버전·갱신일", "Version · updated"), tr("이동", "Open")].map((head) => <th className="px-4 py-3" key={String(head)}>{head}</th>)}</tr></thead>
+              <tbody>{filtered.map((record) => {
+                const payload = payloadOf(record);
+                const status = String(record.workflowStatus || "");
+                const target = `/emission/lca?menu=H1030102${record.workspaceId ? `&workspaceId=${encodeURIComponent(record.workspaceId)}` : ""}`;
+                return <tr className="border-t border-slate-200" key={record.workspaceId || record.businessKey}>
+                  <td className="px-4 py-4"><strong className="block text-[#052b57]">{String(payload.projectName || record.businessKey || "—")}</strong><span className="mt-1 block text-xs text-slate-500">{record.businessKey || "—"}</span></td>
+                  <td className="px-4 py-4"><span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-800">{localizedStatus(status, en)}</span><span className="mt-1 block text-xs text-slate-500">{statusText(status)}</span></td>
+                  <td className="px-4 py-4">{record.assignedActor || "—"}</td>
+                  <td className="px-4 py-4">v{record.version ?? "—"}<span className="mt-1 block text-xs text-slate-500">{record.updatedAt || "—"}</span></td>
+                  <td className="px-4 py-4"><a className="inline-flex min-h-9 items-center rounded-md border border-blue-200 px-3 text-xs font-bold text-[var(--kr-gov-blue)] hover:bg-blue-50" href={target}>{tr("프로젝트 관리", "Project details")}</a></td>
+                </tr>;
+              })}
+              {!loading && filtered.length === 0 ? <tr><td className="px-4 py-12 text-center" colSpan={5}><p className="font-bold text-slate-700">{error ? tr("현황을 불러오지 못했습니다.", "Could not load status.") : tr("표시할 LCA 프로젝트가 없습니다.", "No LCA projects to display.")}</p><p className="mt-2 text-sm text-slate-500">{tr("프로젝트를 등록하면 서버에 저장된 업무 상태가 여기에 표시됩니다.", "Workflow status appears here after a project is registered.")}</p><a className="mt-4 inline-flex min-h-10 items-center rounded-md bg-[var(--kr-gov-blue)] px-4 text-sm font-bold text-white" href="/emission/lca?menu=H1030102">{tr("LCA 프로젝트 메뉴 열기", "Open LCA Projects")}</a></td></tr> : null}
+              </tbody>
+            </table></div>
           </section>
-          <section className="bg-white border-t border-gray-200 py-12" data-help-id="emission-lca-site-hub">
-            <div className="max-w-[1440px] mx-auto px-4 lg:px-8">
-              <div className="mb-8"><h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><span className="material-symbols-outlined text-[var(--kr-gov-blue)]">description</span>{content.siteHubTitle}</h2><p className="text-slate-500 text-sm">{content.siteHubSubtitle}</p></div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {content.siteCards.map((card) => <CommonContentCard className="p-6 transition-colors hover:border-[var(--kr-gov-blue)]" key={card.title}><div className="mb-6 flex items-start justify-between"><div className={`flex h-12 w-12 items-center justify-center rounded-lg ${card.iconWrapClass}`}><span className="material-symbols-outlined">{card.icon}</span></div><CommonStatusBadge className={card.badgeClass}>{card.badge}</CommonStatusBadge></div><h3 className="mb-1 text-lg font-black text-slate-800">{card.title}</h3><p className="mb-6 text-xs font-medium tracking-tight text-slate-400">{card.subtitle}</p><div className="mb-6 grid grid-cols-2 gap-3">{card.metrics.map((metric) => <CommonContentCard className="rounded-lg border-slate-100 bg-slate-50 p-3 shadow-none" key={metric.label}><p className="text-[10px] font-bold uppercase text-slate-400">{metric.label}</p><p className={`text-lg font-black tracking-tighter ${metric.tone}`}>{metric.value}</p></CommonContentCard>)}</div><CommonActionBar className="grid grid-cols-1"><button className={`flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-[12px] font-black ${card.primaryClass}`} type="button"><span className="material-symbols-outlined text-[18px]">{card.primaryIcon}</span>{card.primaryLabel}</button><button className="w-full rounded-lg border border-gray-200 bg-white py-2.5 text-[12px] font-bold text-slate-600 transition-colors hover:bg-slate-50" type="button">{card.secondaryLabel}</button></CommonActionBar></CommonContentCard>)}
-              </div>
+        </> : <>
+        <header className="rounded-xl border border-[var(--kr-gov-border-light)] bg-white p-5 shadow-sm sm:p-7">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold text-[var(--kr-gov-blue)]">{tr("제품 LCA · 프로젝트 시작", "Product LCA · Project setup")}</p>
+                <h1 className="mt-1 text-2xl font-black tracking-tight text-[#052b57] sm:text-3xl">{tr("LCA 프로젝트 관리", "LCA project management")}</h1>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{tr("제품 LCA 프로젝트의 기본정보를 등록하고, 프로젝트별 담당 액터와 업무 상태를 관리합니다.", "Register product LCA project details and manage assigned actors and workflow state.")}</p>
             </div>
-          </section>
+            <div className="flex flex-wrap gap-2">
+              <button className="inline-flex min-h-11 items-center gap-2 rounded-md border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-[var(--kr-gov-blue)] hover:bg-blue-50" onClick={() => void loadRecords()} type="button" disabled={loading}>
+                <span className="material-symbols-outlined text-lg" aria-hidden="true">refresh</span>{tr("새로고침", "Refresh")}
+              </button>
+              <button className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--kr-gov-blue)] px-4 py-2 text-sm font-bold text-white hover:bg-[var(--kr-gov-blue-hover)]" onClick={openForm} type="button">
+                <span className="material-symbols-outlined text-lg" aria-hidden="true">add</span>{tr("LCA 프로젝트 등록", "Register LCA project")}
+              </button>
+            </div>
+          </div>
+          <ol className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4" aria-label={tr("LCA 프로젝트 진행 절차", "LCA project workflow")}>
+            {["프로젝트 등록", "범위·기능단위 정의", "담당자 검토·승인", "제품·공정 자료 수집"].map((step, index) => (
+              <li className={`flex items-center gap-3 rounded-lg border p-3 ${index === 0 ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-slate-50"}`} key={step}>
+                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black ${index === 0 ? "bg-[var(--kr-gov-blue)] text-white" : "bg-white text-slate-600"}`}>{index + 1}</span>
+                <span className="text-sm font-bold text-slate-700">{tr(step, ["Register project", "Define scope & functional unit", "Review & approve", "Collect product/process data"][index])}</span>
+              </li>
+            ))}
+          </ol>
+        </header>
+
+        {formOpen ? <section className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm" aria-labelledby="lca-project-form-title">
+          <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-lg font-black text-[#052b57]" id="lca-project-form-title">{tr("새 LCA 프로젝트 기본정보", "New LCA project")}</h2><p className="mt-1 text-sm text-slate-600">{tr("저장 후 검증·검토 요청을 통해 업무 상태를 관리합니다.", "Save a draft, then validate it and request review through the workflow.")}</p></div><button className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-bold text-slate-700" onClick={() => setFormOpen(false)} type="button">{tr("닫기", "Close")}</button></div>
+          <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" onSubmit={(event) => void createProject(event)}>
+            <label className="text-sm font-bold text-slate-700">{tr("프로젝트 ID", "Project ID")}<input className="mt-1 block min-h-11 w-full rounded-md border border-slate-300 px-3 font-medium" required value={businessKey} onChange={(event) => setBusinessKey(event.target.value)} /></label>
+            <label className="text-sm font-bold text-slate-700">{tr("프로젝트명", "Project name")}<input className="mt-1 block min-h-11 w-full rounded-md border border-slate-300 px-3 font-medium" required value={projectName} onChange={(event) => setProjectName(event.target.value)} /></label>
+            <label className="text-sm font-bold text-slate-700">{tr("제품군", "Product family")}<input className="mt-1 block min-h-11 w-full rounded-md border border-slate-300 px-3 font-medium" required value={productFamily} onChange={(event) => setProductFamily(event.target.value)} /></label>
+            <label className="text-sm font-bold text-slate-700">{tr("적용 표준", "Applicable standard")}<select className="mt-1 block min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 font-medium" required value={standard} onChange={(event) => setStandard(event.target.value)}>{STANDARDS.map((option) => <option key={option}>{option}</option>)}</select></label>
+            <label className="text-sm font-bold text-slate-700">{tr("목표 완료일", "Target date")}<input className="mt-1 block min-h-11 w-full rounded-md border border-slate-300 px-3 font-medium" required type="date" value={targetDate} onChange={(event) => setTargetDate(event.target.value)} /></label>
+            <div className="flex items-end gap-2"><button className="min-h-11 rounded-md bg-[var(--kr-gov-blue)] px-5 text-sm font-bold text-white disabled:opacity-50" disabled={saving} type="submit">{saving ? tr("저장 중…", "Saving…") : tr("초안 저장", "Save draft")}</button><span className="pb-2 text-xs text-slate-500">{tr("담당 액터: LCA 프로젝트 책임자", "Actor: LCA project owner")}</span></div>
+          </form>
+        </section> : null}
+
+        {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800" role="alert">{error}{/401|403/.test(error) ? <p className="mt-1 font-normal">{tr("현재 계정에 LCA 프로젝트 업무 권한이 있는지 확인하세요. 서버가 권한을 최종 검사합니다.", "Check that your account has LCA project permissions. The server remains authoritative for access checks.")}</p> : null}</div> : null}
+        {notice ? <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800" role="status">{notice}</div> : null}
+
+        <section className="overflow-hidden rounded-xl border border-[var(--kr-gov-border-light)] bg-white shadow-sm" aria-labelledby="lca-project-list-title">
+          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 p-5">
+            <div><h2 className="text-lg font-black text-[#052b57]" id="lca-project-list-title">{tr("등록된 LCA 프로젝트", "Registered LCA projects")}</h2><p className="mt-1 text-sm text-slate-600">{loading ? tr("서버 데이터를 조회하고 있습니다.", "Loading server records.") : tr(`조회 ${filtered.length}건 · 실제 저장 레코드`, `${filtered.length} records · persisted server data`)}</p></div>
+            <label className="w-full max-w-sm text-sm font-bold text-slate-700">{tr("프로젝트 검색", "Search projects")}<input className="mt-1 block min-h-11 w-full rounded-md border border-slate-300 px-3 font-medium" placeholder={tr("프로젝트명, ID, 제품군", "Name, ID, or product family")} value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-[760px] w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs font-black text-slate-600"><tr>{[tr("프로젝트", "Project"), tr("제품군 · 표준", "Product · standard"), tr("담당 액터", "Owner actor"), tr("상태 · 버전", "Status · version"), tr("목표 완료일", "Target date"), tr("업무", "Workflow")].map((head) => <th className="px-4 py-3" key={String(head)}>{head}</th>)}</tr></thead>
+              <tbody>
+                {filtered.map((record) => {
+                  const payload = payloadOf(record);
+                  const status = String(record.workflowStatus || "");
+                  return <tr className="border-t border-slate-200 align-top" key={record.workspaceId || record.businessKey}>
+                    <td className="px-4 py-4"><strong className="block text-[#052b57]">{String(payload.projectName || record.businessKey || "—")}</strong><span className="mt-1 block text-xs text-slate-500">{record.businessKey || "—"}</span></td>
+                    <td className="px-4 py-4"><span className="block font-semibold">{String(payload.productFamily || "—")}</span><span className="mt-1 block text-xs text-slate-500">{String(payload.standard || "—")}</span></td>
+                    <td className="px-4 py-4">{record.assignedActor || "—"}</td>
+                    <td className="px-4 py-4"><span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-800">{localizedStatus(status, en)}</span><span className="mt-1 block text-xs text-slate-500">v{record.version ?? "—"}</span></td>
+                    <td className="px-4 py-4">{String(payload.targetDate || "—")}</td>
+                    <td className="px-4 py-4"><div className="flex flex-wrap gap-1.5">{recordCommands(status).map((command) => <button className="min-h-8 rounded border border-blue-200 px-2.5 text-xs font-bold text-blue-800 hover:bg-blue-50" key={command} onClick={() => void executeCommand(record, command)} type="button">{{ VALIDATE: tr("검증", "Validate"), SUBMIT: tr("검토 요청", "Request review"), APPROVE: tr("승인", "Approve"), REJECT: tr("보완 요청", "Request changes"), REOPEN: tr("다시 열기", "Reopen") }[command]}</button>)}</div></td>
+                  </tr>;
+                })}
+                {!loading && filtered.length === 0 ? <tr><td className="px-4 py-12 text-center" colSpan={6}><p className="font-bold text-slate-700">{query ? tr("검색 결과가 없습니다.", "No matching projects.") : tr("저장된 LCA 프로젝트가 없습니다.", "No LCA projects have been registered.")}</p><p className="mt-2 text-sm text-slate-500">{tr("프로젝트 등록 후 실제 저장 레코드가 이 목록에 표시됩니다.", "Register a project to create a server-backed record shown here.")}</p>{!query ? <button className="mt-4 min-h-10 rounded-md bg-[var(--kr-gov-blue)] px-4 text-sm font-bold text-white" onClick={openForm} type="button">{tr("첫 프로젝트 등록", "Register the first project")}</button> : null}</td></tr> : null}
+              </tbody>
+            </table>
+          </div>
+          <div className="border-t border-slate-200 bg-slate-50 px-5 py-3 text-xs leading-5 text-slate-600">{tr("이 화면은 LCA_PROJECT 업무 API에서 조회한 실제 레코드만 표시합니다. 계산 결과·인증 지표·규제 일정은 해당 원장/API 연결이 확인되기 전까지 생성하지 않습니다.", "Only records returned by the LCA_PROJECT workflow API are shown. Calculation, certification, and regulatory metrics are omitted until their source APIs are verified.")}</div>
+        </section>
+        </>}
+      </div>
     </main>
   );
 }

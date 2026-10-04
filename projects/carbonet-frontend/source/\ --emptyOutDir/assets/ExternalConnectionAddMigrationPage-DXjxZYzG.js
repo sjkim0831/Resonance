@@ -1,1 +1,0 @@
-import{s as e}from"./rolldown-runtime-B6ubh40S.js";import{an as t}from"./environmentManagementHub-n6ko3Bmi.js";import{ExternalConnectionFormMigrationPage as n}from"./ExternalConnectionEditMigrationPage-Nypmc2qg.js";var r=e(t(),1);function i(){return(0,r.jsx)(n,{mode:`add`})}export{i as ExternalConnectionAddMigrationPage};

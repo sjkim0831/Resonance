@@ -1,0 +1,25 @@
+import { describe, expect, it } from "vitest";
+import { inspectChangedFiles, inspectWorkstreams, normalizeRoute, type Workstream, type Policy } from "./inspectWorkstreams.mjs";
+const policy: Policy = { protectedPaths: ["src/shared", "db/migration"], requiredChecks: ["businessFlow"], sharedPermissions: [], contracts: [{ id: "context", version: "1", status: "CONFIRMED" }] };
+const make = (id = "a"): Workstream => ({ id, name: id, goal: "fixture", model: "gpt-6-luna", assignee: "fixture", state: "REVIEW", ownedPaths: ["src/" + id], steps: [{ processCode: "P", stepCode: id, expectedVersion: "1", pageIds: [id] }], pages: [{ pageId: id, route: "/" + id, sourcePath: "src/" + id + "/Page.tsx", permissionCodes: [id + "_VIEW"] }], permissions: [{ code: id + "_VIEW" }], apis: [{ method: "GET", path: "/api/" + id }], dependencies: [{ contractId: "context", version: "1" }], migrationVersions: [], evidence: { businessFlow: { status: "PASS", commit: "abc", artifact: "result.json" } } });
+const codes = (a: Workstream[], options = {}) => inspectWorkstreams(a, policy, options).findings.map(f => f.code);
+describe("workstream integration guard", () => {
+  it("allows independent ownership with matching definition and current evidence", () => expect(inspectWorkstreams([make(), make("b")], policy, { head: "abc", catalog: [{ processCode: "P", processVersion: "1", steps: [{ stepCode: "a" }, { stepCode: "b" }] }] }).integrationReady).toBe(true));
+  it("rejects parent/child ownership overlap", () => { const b = make("b"); b.ownedPaths = ["src/a/nested"]; expect(codes([make(), b])).toContain("OWNERSHIP_OVERLAP"); });
+  it("does not confuse sibling prefixes", () => expect(codes([make("a"), make("ab")])).not.toContain("OWNERSHIP_OVERLAP"));
+  it("blocks protected path ownership including an ancestor directory", () => { const a = make(); a.ownedPaths = ["src"]; expect(codes([a])).toContain("PROTECTED_PATH"); });
+  it("normalizes route parameter names and query before detecting duplicates", () => { const a = make(), b = make("b"); a.pages[0].route = "/sites/{id}?tab=a"; b.pages[0].route = "/sites/:siteId"; expect(codes([a,b])).toContain("DUPLICATE_ROUTE"); expect(normalizeRoute("/sites/:id/")).toBe("/sites/:param"); });
+  it("blocks duplicate API method and path across agents", () => { const a = make(), b = make("b"); b.apis = a.apis; expect(codes([a,b])).toContain("DUPLICATE_API"); });
+  it("allows GET and PUT on the same path with different ownership", () => { const a = make(), b = make("b"); b.apis = [{ method: "PUT", path: a.apis[0].path }]; expect(codes([a,b])).not.toContain("DUPLICATE_API"); });
+  it("blocks duplicate step responsibility", () => { const a = make(), b = make("b"); b.steps[0].stepCode = a.steps[0].stepCode; expect(codes([a,b])).toContain("DUPLICATE_STEP"); });
+  it("blocks duplicate migration reservations", () => { const a = make(), b = make("b"); a.migrationVersions = b.migrationVersions = ["202609270001"]; expect(codes([a,b])).toContain("DUPLICATE_MIGRATION"); });
+  it("blocks unresolved permission and missing declared permission", () => { const a = make(); a.pages[0].permissionCodes = []; expect(codes([a])).toContain("PERMISSION_UNRESOLVED"); a.pages[0].permissionCodes = ["UNKNOWN"]; expect(codes([a])).toContain("MISSING_PERMISSION"); });
+  it("detects missing screen source", () => expect(codes([make()], { existingPaths: [] })).toContain("SOURCE_MISSING"));
+  it("detects a missing page referenced by a step", () => { const a = make(); a.steps[0].pageIds = ["missing"]; expect(codes([a])).toContain("MISSING_PAGE"); });
+  it("blocks contract version drift", () => { const a = make(); a.dependencies[0].version = "2"; expect(codes([a])).toContain("CONTRACT_MISMATCH"); });
+  it("blocks evidence from an older commit", () => expect(codes([make()], { head: "new" })).toContain("STALE_EVIDENCE"));
+  it("does not treat source inspection as business runtime evidence", () => { const a = make(); a.evidence = {}; expect(inspectWorkstreams([a], policy).integrationReady).toBe(false); expect(codes([a])).toContain("EVIDENCE_PENDING"); });
+  it("detects live definition version and step drift", () => { expect(codes([make()], { catalog: [{ processCode: "P", processVersion: "2", steps: [{ stepCode: "a" }] }] })).toContain("DEFINITION_VERSION_CHANGED"); expect(codes([make()], { catalog: [] })).toContain("CANONICAL_STEP_MISSING"); });
+  it("blocks files outside ownership, protected files and traversal", () => expect(inspectChangedFiles(make(), policy, ["src/a/Page.tsx","src/b/Page.tsx","src/shared/api.ts","../secret"])).toEqual([{ code: "OUTSIDE_OWNER", path: "src/b/Page.tsx" }, { code: "PROTECTED_PATH", path: "src/shared/api.ts" }, { code: "INVALID_PATH", path: "../secret" }]));
+  it("rejects malformed manifest", () => expect(codes([{} as Workstream])).toContain("INVALID_MANIFEST"));
+});

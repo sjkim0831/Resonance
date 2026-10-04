@@ -36,6 +36,7 @@ function runAsync(command, args, { cwd } = {}) {
 
 // Local builds and official deployment builds consume the same immutable
 // catalog/definition/type closure before any TypeScript or Vite process starts.
+run(process.execPath, [path.join(scriptRoot, "check-workstreams.mjs"), "--mode", "plan"]);
 run(process.execPath, ["scripts/ensure-shared-generated-screen-assets.mjs"]);
 
 if (!process.argv.includes("--build")) {

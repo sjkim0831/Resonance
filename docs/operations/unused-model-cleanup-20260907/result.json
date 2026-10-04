@@ -1,0 +1,21 @@
+{
+  "items": [
+    {
+      "path": "/opt/ollama/models/models",
+      "status": "CLEANED",
+      "logical_bytes_before": 11845495014
+    },
+    {
+      "path": "/opt/util/ai/huggingface-laguna/hub/models--poolside--Laguna-XS-2.1-GGUF",
+      "status": "CLEANED",
+      "logical_bytes_before": 20274300148
+    },
+    {
+      "path": "/opt/util/ai/models/Qwen2.5-7B-Instruct",
+      "status": "CLEANED",
+      "logical_bytes_before": 15242808966
+    }
+  ],
+  "elapsed_seconds": 1.46,
+  "completed": "2026-09-07T11:50:37+0900"
+}

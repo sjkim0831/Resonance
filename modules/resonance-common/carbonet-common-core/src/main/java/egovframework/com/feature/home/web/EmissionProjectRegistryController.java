@@ -1,7 +1,6 @@
 package egovframework.com.feature.home.web;
 
 import egovframework.com.feature.home.service.EmissionProjectRegistryService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -18,12 +17,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.Set;
 
 @RestController
-@RequiredArgsConstructor
 public class EmissionProjectRegistryController {
     private static final Set<String> QA_CATALOG_ACCOUNTS=Set.of(
             "qaowner26","qadata26","qacalc26","qaverify26","qaapprove26","qaassign26");
     private final EmissionProjectRegistryService service;
     private final CurrentUserContextService currentUserContextService;
+    public EmissionProjectRegistryController(EmissionProjectRegistryService service,CurrentUserContextService currentUserContextService) {
+        this.service=service;this.currentUserContextService=currentUserContextService;
+    }
 
     @GetMapping({"/home/api/emission-projects", "/en/home/api/emission-projects"})
     public ResponseEntity<?> list(@RequestParam(defaultValue = "") String keyword,
@@ -118,7 +119,10 @@ public class EmissionProjectRegistryController {
     }
 
     @PostMapping({"/home/api/emission-projects/{id}/activities/upload","/en/home/api/emission-projects/{id}/activities/upload"})
-    public ResponseEntity<?> uploadActivities(@PathVariable String id,@RequestParam("file") MultipartFile file,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(Map.of("success",true,"count",service.uploadActivities(id,tenant(c),c.getUserId(),c.isWebmaster(),file)));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
+    public ResponseEntity<?> uploadActivities(@PathVariable String id,@RequestParam("file") MultipartFile file,@RequestParam(required=false) String siteId,@RequestParam(defaultValue="[0,1,2,3,4,5]") String mapping,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(Map.of("success",true,"count",service.uploadMappedActivities(id,tenant(c),c.getUserId(),c.isWebmaster(),file,siteId,mapping)));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
+
+    @PostMapping({"/home/api/emission-projects/{id}/activities/upload-preview","/en/home/api/emission-projects/{id}/activities/upload-preview"})
+    public ResponseEntity<?> previewActivities(@PathVariable String id,@RequestParam("file") MultipartFile file,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.previewActivityFile(id,tenant(c),c.getUserId(),c.isWebmaster(),file));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
 
     @GetMapping({"/home/api/emission-projects/{id}/activities/{activityId}/evidence","/en/home/api/emission-projects/{id}/activities/{activityId}/evidence"})
     public ResponseEntity<?> activityEvidence(@PathVariable String id,@PathVariable long activityId,HttpServletRequest request) {var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(service.activityEvidence(id,activityId,tenant(c),c.getUserId(),c.isWebmaster()));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
@@ -173,6 +177,12 @@ public class EmissionProjectRegistryController {
 
     @PostMapping({"/home/api/emission-projects/{id}/submissions/{submissionId}/verification/decision","/en/home/api/emission-projects/{id}/submissions/{submissionId}/verification/decision"})
     public ResponseEntity<?> decideVerification(@PathVariable String id,@PathVariable long submissionId,@RequestBody Map<String,Object> body,HttpServletRequest request) {var context=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.decideVerification(id,submissionId,tenant(context),context.getUserId(),context.isWebmaster(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @PostMapping({"/home/api/emission-projects/{id}/setup/confirm","/en/home/api/emission-projects/{id}/setup/confirm"})
+    public ResponseEntity<?> confirmSetup(@PathVariable String id,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.confirmProjectSetup(id,tenant(c),c.getUserId(),c.isWebmaster()));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}}
+
+    @PostMapping({"/home/api/emission-projects/{id}/submissions/{submissionId}/approval/request","/en/home/api/emission-projects/{id}/submissions/{submissionId}/approval/request"})
+    public ResponseEntity<?> requestApproval(@PathVariable String id,@PathVariable long submissionId,@RequestBody Map<String,Object> body,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.requestApproval(id,submissionId,tenant(c),c.getUserId(),c.isWebmaster(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
 
     @PostMapping({"/home/api/emission-projects/{id}/submissions/{submissionId}/approval/decision","/en/home/api/emission-projects/{id}/submissions/{submissionId}/approval/decision"})
     public ResponseEntity<?> decideApproval(@PathVariable String id,@PathVariable long submissionId,@RequestBody Map<String,Object> body,HttpServletRequest request) {var context=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.decideApproval(id,submissionId,tenant(context),context.getUserId(),context.isWebmaster(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
@@ -282,8 +292,15 @@ public class EmissionProjectRegistryController {
     @PutMapping({"/home/api/emission-projects/{id}/step-applicability/{processCode}/{stepCode}","/en/home/api/emission-projects/{id}/step-applicability/{processCode}/{stepCode}"})
     public ResponseEntity<?> decideStepApplicability(@PathVariable String id,@PathVariable String processCode,@PathVariable String stepCode,@RequestBody Map<String,Object> body,HttpServletRequest request){var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","LOGIN_REQUIRED"));try{return ResponseEntity.ok(service.decideStepApplicability(tenant(c),c.getUserId(),c.isWebmaster(),id,processCode,stepCode,body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
 
+    /** Public, read-only definition catalog. Personal task/runtime data remains protected by myTasks. */
+    @GetMapping({"/home/api/public-process-catalog","/en/home/api/public-process-catalog","/api/public/process-catalog","/api/en/public/process-catalog","/api/public/report-certificates/process-catalog","/api/en/public/report-certificates/process-catalog"})
+    public ResponseEntity<?> publicProcessCatalog() {
+        try { return ResponseEntity.ok(service.publicDefinitionCatalog()); }
+        catch (Exception e) { return ResponseEntity.internalServerError().body(Map.of("message", "PUBLIC_CATALOG_UNAVAILABLE")); }
+    }
+
     @GetMapping({"/home/api/emission-tasks","/en/home/api/emission-tasks"})
-    public ResponseEntity<?> myTasks(@RequestParam(defaultValue="") String status,@RequestParam(defaultValue="") String period,@RequestParam(defaultValue="false") boolean compact,@RequestParam(defaultValue="") String qaCatalog,@RequestHeader(value="X-Carbonet-Test-Mode",required=false) String testMode,HttpServletRequest request) { var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));String authority=context.getAuthorCode()==null?"":context.getAuthorCode().toUpperCase();boolean showAll=context.isWebmaster()||"ROLE_SYSTEM_MASTER".equals(authority)||"ROLE_OPERATION_ADMIN".equals(authority);String userId=context.getUserId()==null?"":context.getUserId().toLowerCase();boolean qaCatalogRequested="true".equalsIgnoreCase(qaCatalog);boolean includeFullCatalog=qaCatalogRequested&&"1".equals(testMode)&&(showAll||QA_CATALOG_ACCOUNTS.contains(userId));if(qaCatalogRequested&&!includeFullCatalog)return ResponseEntity.status(403).body(Map.of("message","QA_FULL_CATALOG_FORBIDDEN"));return ResponseEntity.ok(service.myTasks(tenant(context),context.getUserId(),showAll,includeFullCatalog,status,period,compact)); }
+    public ResponseEntity<?> myTasks(@RequestParam(defaultValue="") String status,@RequestParam(defaultValue="") String period,@RequestParam(defaultValue="false") boolean compact,@RequestParam(defaultValue="all") String scope,@RequestParam(defaultValue="") String qaCatalog,@RequestHeader(value="X-Carbonet-Test-Mode",required=false) String testMode,HttpServletRequest request) { var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));String authority=context.getAuthorCode()==null?"":context.getAuthorCode().toUpperCase();boolean privileged=context.isWebmaster()||"ROLE_SYSTEM_MASTER".equals(authority)||"ROLE_OPERATION_ADMIN".equals(authority);boolean showAll=privileged&&"all".equalsIgnoreCase(scope);String userId=context.getUserId()==null?"":context.getUserId().toLowerCase();boolean qaCatalogRequested="true".equalsIgnoreCase(qaCatalog);boolean includeFullCatalog=qaCatalogRequested&&"1".equals(testMode)&&(showAll||QA_CATALOG_ACCOUNTS.contains(userId));if(qaCatalogRequested&&!includeFullCatalog)return ResponseEntity.status(403).body(Map.of("message","QA_FULL_CATALOG_FORBIDDEN"));return ResponseEntity.ok(service.myTasks(tenant(context),context.getUserId(),showAll,includeFullCatalog,status,period,compact)); }
 
     @PostMapping({"/home/api/emission-tasks/{taskId}/status","/en/home/api/emission-tasks/{taskId}/status"})
     public ResponseEntity<?> updateTask(@PathVariable long taskId,@RequestBody Map<String,Object> body,HttpServletRequest request) {var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(Map.of("success",service.updateTask(taskId,tenant(context),String.valueOf(body.get("status")),context.getUserId(),context.isWebmaster())>0));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}

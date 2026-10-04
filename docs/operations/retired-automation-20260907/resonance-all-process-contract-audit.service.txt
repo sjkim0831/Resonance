@@ -1,0 +1,34 @@
+# /etc/systemd/system/resonance-all-process-contract-audit.service -> /opt/Resonance/ops/host-config/systemd/resonance-all-process-contract-audit.service
+[Unit]
+Description=Resonance paged all-process contract evidence audit
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+Group=sjkim
+WorkingDirectory=/opt/Resonance/var/deploy-worktrees/runtime-build
+Environment=HOME=/home/sjkim
+Environment=RESONANCE_ROOT=/opt/Resonance/var/deploy-worktrees/runtime-build
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=KUBECONFIG=/home/sjkim/.kube/config
+Environment=CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS=300
+UMask=0077
+ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/bin/run-all-process-contract-audit-hourly.sh
+SuccessExitStatus=3
+TimeoutStartSec=930s
+KillMode=control-group
+KillSignal=SIGTERM
+SendSIGKILL=yes
+Nice=15
+IOSchedulingClass=idle
+CPUQuota=100%
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target
+
+# /run/systemd/system/resonance-all-process-contract-audit.service.d/override.conf
+[Unit]
+ConditionPathExists=!/run/resonance-all-process-contract-audit-maintenance.hold

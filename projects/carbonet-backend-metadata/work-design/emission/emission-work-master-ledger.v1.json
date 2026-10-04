@@ -1,0 +1,84 @@
+{
+  "schema": "carbonet.work-master-ledger/v1",
+  "ledgerCode": "EMISSION_WORK_MASTER",
+  "version": "1.0.0-draft",
+  "status": "REVIEW_REQUIRED",
+  "domain": {"code": "EMISSION", "name": "탄소배출 관리"},
+  "designPolicy": {
+    "sourceOfTruth": true,
+    "implementationGeneratedFromLedger": true,
+    "headerFooterImmutable": true,
+    "designSystem": "KRDS",
+    "runtime": "SDUI_JSON_FORM",
+    "accountRelayRequired": true,
+    "pageAndProcessTestsRequired": true
+  },
+  "processes": [
+    {"code":"EMISSION_PROJECT_PORTFOLIO","name":"배출량 프로젝트 포트폴리오 관리","kind":"MANAGEMENT","parent":null,"purpose":"회사의 보고기간별 배출 프로젝트를 생성·검색·우선순위화하고 담당자를 배정한다.","start":"회사와 보고기간이 확정됨","complete":"프로젝트가 생성되고 책임자가 배정됨","steps":["PORTFOLIO_MANAGE"]},
+    {"code":"EMISSION_PROJECT","name":"탄소배출 프로젝트 수행","kind":"EXECUTION","parent":null,"purpose":"경계 설정부터 활동자료, 산정, 검증, 보완, 승인, 보고까지 한 프로젝트를 완결한다.","start":"배정된 프로젝트가 READY 상태임","complete":"승인된 보고서와 인증서가 발급되고 원장에 기록됨","steps":["PROJECT_SETUP","ACTIVITY_COLLECT","EMISSION_CALCULATE","INDEPENDENT_VALIDATE","CORRECT_RECALCULATE","APPROVE_LOCK","REPORT_ISSUE"]},
+    {"code":"ORGANIZATIONAL_BOUNDARY","name":"조직·운영 경계 설정","kind":"SUBPROCESS","parent":"EMISSION_PROJECT","purpose":"조직경계, 운영경계, Scope 및 산정기간을 확정한다.","start":"PROJECT_SETUP 진입","complete":"경계 버전이 잠기고 활동자료 수집 기준이 생성됨","steps":["PROJECT_SETUP"]},
+    {"code":"ACTIVITY_DATA","name":"활동자료 수집·품질관리","kind":"SUBPROCESS","parent":"EMISSION_PROJECT","purpose":"시설·배출원별 활동자료와 증빙을 수집하고 품질을 점검한다.","start":"경계 버전 확정","complete":"필수 자료와 증빙이 제출됨","steps":["ACTIVITY_COLLECT","CORRECT_RECALCULATE"]},
+    {"code":"EMISSION_CALCULATION","name":"배출량 산정·검증·승인","kind":"SUBPROCESS","parent":"EMISSION_PROJECT","purpose":"계수 매핑, 산정, 독립검증, 승인, 보고서 발급을 수행한다.","start":"활동자료 제출 완료","complete":"승인·잠금된 결과와 발급 원장이 생성됨","steps":["EMISSION_CALCULATE","INDEPENDENT_VALIDATE","APPROVE_LOCK","REPORT_ISSUE"]}
+  ],
+  "actors": [
+    {"code":"COMPANY_MASTER","name":"회사 마스터 관리자","responsibility":"계정·액터·프로젝트 책임자 배정","conflictsWith":["VERIFIER"]},
+    {"code":"COMPANY_MANAGER","name":"기업 관리자","responsibility":"프로젝트 개설·경계 확정·보고 발급","conflictsWith":["VERIFIER"]},
+    {"code":"SITE_DATA_OWNER","name":"자료 담당자","responsibility":"활동자료·증빙 제출과 보완"},
+    {"code":"CALCULATOR","name":"산정 담당자","responsibility":"계수 매핑·산정·재산정","conflictsWith":["VERIFIER"]},
+    {"code":"VERIFIER","name":"독립 검증자","responsibility":"독립 검증·보완 판정","conflictsWith":["CALCULATOR","COMPANY_MANAGER"]},
+    {"code":"APPROVER","name":"최종 승인자","responsibility":"승인·결과 잠금","conflictsWith":["CALCULATOR"]}
+  ],
+  "accountPolicy": {
+    "assignmentOwner":"COMPANY_MASTER",
+    "multipleActorsPerAccount":true,
+    "permissionUnionAllowed":true,
+    "segregationOfDutiesEnforced":true,
+    "qaRelayAccounts":[
+      {"account":"qaowner26","actor":"COMPANY_MANAGER"},
+      {"account":"qadata26","actor":"SITE_DATA_OWNER"},
+      {"account":"qacalc26","actor":"CALCULATOR"},
+      {"account":"qaverify26","actor":"VERIFIER"},
+      {"account":"qaapprove26","actor":"APPROVER"}
+    ]
+  },
+  "steps": [
+    {"code":"PORTFOLIO_MANAGE","process":"EMISSION_PROJECT_PORTFOLIO","order":1,"name":"프로젝트 생성·검색·배정","actor":"COMPANY_MASTER","from":"NONE","to":"READY","completion":"보고기간 중복 없음, 책임자 배정, 경계 템플릿 선택","inputs":["companyId","reportingPeriod","projectType"],"outputs":["projectId","managerAccountId","boundaryTemplateId"],"page":"PG_EMISSION_PORTFOLIO","permissions":["EMISSION_PROJECT_CREATE","EMISSION_PROJECT_ASSIGN","EMISSION_PROJECT_READ"],"next":"PROJECT_SETUP"},
+    {"code":"PROJECT_SETUP","process":"EMISSION_PROJECT","order":1,"name":"프로젝트·조직경계 설정","actor":"COMPANY_MANAGER","from":"READY","to":"BOUNDARY_LOCKED","completion":"조직·운영경계, Scope, 산정기간의 버전 잠금","inputs":["projectId","boundaryTemplateId"],"outputs":["boundaryVersion","scopeSet","facilitySet"],"page":"PG_EMISSION_BOUNDARY","permissions":["EMISSION_BOUNDARY_READ","EMISSION_BOUNDARY_WRITE","EMISSION_BOUNDARY_LOCK"],"next":"ACTIVITY_COLLECT"},
+    {"code":"ACTIVITY_COLLECT","process":"EMISSION_PROJECT","order":2,"name":"활동자료 수집·품질검사","actor":"SITE_DATA_OWNER","from":"BOUNDARY_LOCKED","to":"DATA_SUBMITTED","completion":"필수 배출원 100%, 증빙 연결, 품질규칙 통과","inputs":["boundaryVersion","facilitySet"],"outputs":["activityDatasetVersion","evidenceSet","qualityResult"],"page":"PG_EMISSION_ACTIVITY","permissions":["EMISSION_ACTIVITY_READ","EMISSION_ACTIVITY_WRITE","EMISSION_ACTIVITY_SUBMIT"],"next":"EMISSION_CALCULATE"},
+    {"code":"EMISSION_CALCULATE","process":"EMISSION_PROJECT","order":3,"name":"계수 매핑·Scope 배출량 산정","actor":"CALCULATOR","from":"DATA_SUBMITTED","to":"CALCULATED","completion":"계수 출처·버전 존재, 재현 계산 해시 생성, 합계 검산","inputs":["activityDatasetVersion","boundaryVersion"],"outputs":["calculationVersion","calculationHash","scopeTotals"],"page":"PG_EMISSION_CALCULATION","permissions":["EMISSION_CALC_READ","EMISSION_CALC_EXECUTE","EMISSION_CALC_SUBMIT"],"next":"INDEPENDENT_VALIDATE"},
+    {"code":"INDEPENDENT_VALIDATE","process":"EMISSION_PROJECT","order":4,"name":"독립 검증·보완 판정","actor":"VERIFIER","from":"CALCULATED","to":"VALIDATED_OR_RETURNED","completion":"표본·증빙·계산 재현 후 PASS 또는 보완사유 확정","inputs":["calculationVersion","calculationHash","evidenceSet"],"outputs":["verificationResult","findings","verificationEvidence"],"page":"PG_EMISSION_VALIDATION","permissions":["EMISSION_VERIFY_READ","EMISSION_VERIFY_DECIDE"],"next":{"PASS":"APPROVE_LOCK","RETURN":"CORRECT_RECALCULATE"}},
+    {"code":"CORRECT_RECALCULATE","process":"EMISSION_PROJECT","order":5,"name":"보완·재산정","actor":"SITE_DATA_OWNER","from":"VALIDATED_OR_RETURNED","to":"CALCULATED","completion":"모든 보완요청 해소, 새 데이터·계산 버전 생성","inputs":["findings","activityDatasetVersion","calculationVersion"],"outputs":["activityDatasetVersion","calculationVersion","findingResolutions"],"page":"PG_EMISSION_CORRECTION","permissions":["EMISSION_CORRECTION_READ","EMISSION_CORRECTION_WRITE","EMISSION_CORRECTION_RESUBMIT"],"next":"INDEPENDENT_VALIDATE"},
+    {"code":"APPROVE_LOCK","process":"EMISSION_PROJECT","order":6,"name":"검토·승인·결과 잠금","actor":"APPROVER","from":"VALIDATED_OR_RETURNED","to":"APPROVED","completion":"검증 PASS, 승인 전자기록, 승인 버전 불변 잠금","inputs":["verificationResult","calculationVersion"],"outputs":["approvalId","lockedResultVersion","approvalAudit"],"page":"PG_EMISSION_APPROVAL","permissions":["EMISSION_APPROVAL_READ","EMISSION_APPROVAL_DECIDE","EMISSION_RESULT_LOCK"],"next":"REPORT_ISSUE"},
+    {"code":"REPORT_ISSUE","process":"EMISSION_PROJECT","order":7,"name":"보고·제출·인증서 발급","actor":"COMPANY_MANAGER","from":"APPROVED","to":"COMPLETED","completion":"PDF·SHA-256·인증서 ID·발급이력 저장 및 다음 주기 생성 가능","inputs":["lockedResultVersion","approvalId"],"outputs":["reportId","certificateId","pdfSha256","issueLedgerId"],"page":"PG_EMISSION_REPORT","permissions":["EMISSION_REPORT_READ","EMISSION_REPORT_ISSUE","EMISSION_REPORT_DOWNLOAD"],"next":null}
+  ],
+  "pages": [
+    {"code":"PG_EMISSION_MY_TASKS","audience":"USER","route":"/emission/my-tasks","actors":["COMPANY_MANAGER","SITE_DATA_OWNER","CALCULATOR","VERIFIER","APPROVER"],"purpose":"로그인 계정의 진행·대기·마감 업무와 다음 액터 인계 상태 조회","functions":["TASK_SEARCH","TASK_OPEN","TASK_FILTER_STATUS","TASK_VIEW_HANDOFF"]},
+    {"code":"PG_EMISSION_PORTFOLIO","audience":"USER","route":"/emission/portfolio","actors":["COMPANY_MASTER"],"purpose":"보고기간별 프로젝트 생성·검색·배정","functions":["PROJECT_SEARCH","PROJECT_CREATE","PROJECT_ASSIGN","PROJECT_OPEN"]},
+    {"code":"PG_EMISSION_BOUNDARY","audience":"USER","route":"/emission/organizational-boundary","actors":["COMPANY_MANAGER"],"purpose":"조직·운영경계와 Scope 확정","functions":["BOUNDARY_LOAD","BOUNDARY_EDIT","BOUNDARY_VALIDATE","BOUNDARY_LOCK"]},
+    {"code":"PG_EMISSION_ACTIVITY","audience":"USER","route":"/emission/activity-data","actors":["SITE_DATA_OWNER"],"purpose":"활동자료·증빙 수집 및 제출","functions":["ACTIVITY_LOAD","ACTIVITY_EDIT","EVIDENCE_ATTACH","QUALITY_CHECK","ACTIVITY_SUBMIT"]},
+    {"code":"PG_EMISSION_CALCULATION","audience":"USER","route":"/emission/calculation","actors":["CALCULATOR"],"purpose":"배출계수 매핑과 배출량 산정","functions":["FACTOR_MAP","CALC_EXECUTE","CALC_RECONCILE","CALC_SUBMIT"]},
+    {"code":"PG_EMISSION_VALIDATION","audience":"USER","route":"/emission/validate","actors":["VERIFIER"],"purpose":"독립검증·PASS·보완 판정","functions":["VERIFY_SAMPLE","VERIFY_REPLAY","VERIFY_PASS","VERIFY_RETURN"]},
+    {"code":"PG_EMISSION_CORRECTION","audience":"USER","route":"/emission/activity-data?mode=correction","actors":["SITE_DATA_OWNER"],"purpose":"검증 지적사항 보완 및 재제출","functions":["FINDING_LOAD","FINDING_RESOLVE","CORRECTION_RECALCULATE","CORRECTION_RESUBMIT"]},
+    {"code":"PG_EMISSION_APPROVAL","audience":"USER","route":"/emission/validate?tab=approval","actors":["APPROVER"],"purpose":"검증 결과 승인과 결과 잠금","functions":["APPROVAL_REVIEW","APPROVAL_DECIDE","RESULT_LOCK"]},
+    {"code":"PG_EMISSION_REPORT","audience":"USER","route":"/emission/report_submit","actors":["COMPANY_MANAGER"],"purpose":"보고서·인증서 발급과 제출","functions":["REPORT_PREVIEW","REPORT_ISSUE","REPORT_DOWNLOAD","ISSUE_HISTORY"]},
+    {"code":"PG_ACTOR_ASSIGNMENT_ADMIN","audience":"ADMIN","route":"/admin/member/actor-assignment","actors":["COMPANY_MASTER"],"purpose":"회사 계정에 액터와 프로젝트 범위 권한 배정","functions":["ACCOUNT_SEARCH","ACTOR_ASSIGN","SOD_VALIDATE","PERMISSION_PREVIEW"]}
+  ],
+  "functionContracts": {
+    "readModel":"각 기능은 page, actor, permission, input, output, endpoint, tables, testId를 구현 전 등록한다.",
+    "writeModel":"상태 변경 기능은 idempotencyKey, optimisticLock, auditEvent, nextTaskCreation을 필수로 한다.",
+    "helpCards":["HELP","SCREEN_DESIGN","QA","WORK_GUIDE","ALL_WORK_VIEW"],
+    "synchronization":"원장 변경 시 SDUI, JSON Form, 메뉴, API 계약, Flyway, 도움말 카드, 페이지 테스트, 릴레이 테스트를 증분 생성한다."
+  },
+  "testSuites": [
+    {"id":"T-PAGE-ACCESS","kind":"PAGE","assert":"각 페이지가 허용 액터에는 200, 비허용 액터에는 403이고 필수 기능이 렌더링됨"},
+    {"id":"T-PERMISSION-MATRIX","kind":"AUTHORIZATION","assert":"모든 단계 권한이 명시적으로 존재하고 SoD 충돌 계정은 차단됨"},
+    {"id":"T-EMISSION-RELAY-HAPPY","kind":"PROCESS","assert":"5개 QA 계정 릴레이로 READY부터 COMPLETED까지 입력·출력·다음업무가 연결됨"},
+    {"id":"T-EMISSION-RELAY-RETURN","kind":"PROCESS","assert":"검증 RETURN 후 보완·재산정·재검증·승인으로 순환 가능"},
+    {"id":"T-IDEMPOTENCY","kind":"RECOVERY","assert":"중복 제출·승인·발급 요청에도 실행과 발급 원장이 중복 생성되지 않음"},
+    {"id":"T-HELP-SYNC","kind":"DESIGN","assert":"도움말·화면설계·QA·업무길잡이·전체업무보기가 현재 단계와 동일함"}
+  ],
+  "implementationGate": {
+    "requiredBeforeGeneration":["processReviewApproved","actorReviewApproved","permissionCodesRegistered","pageFunctionsCompleted","apiDbLineageCompleted","testFixturesReady"],
+    "current":{"processReviewApproved":false,"actorReviewApproved":false,"permissionCodesRegistered":false,"pageFunctionsCompleted":false,"apiDbLineageCompleted":false,"testFixturesReady":false}
+  }
+}

@@ -1,0 +1,519 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 3591,
+  "blueprintCode": "BP_AUTO_33A9A63B147BC707370AC825",
+  "identity": {
+    "processCode": "SCHEDULED_STATISTICS_REPORTING",
+    "stepCode": "SSR_DEFINE",
+    "actorCode": "DATA_ANALYST",
+    "audience": "USER",
+    "pageId": "AUTO_33A9A63B147BC707370A"
+  },
+  "route": "/work/scheduled-statistics-reporting",
+  "pageName": "지표·주기·기준시점 확정 사용자 업무 화면",
+  "screenType": "REPORT",
+  "templateCode": "KRDS_REPORT",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "kpis": [
+      "진행률",
+      "기한",
+      "차단건",
+      "미결 증적",
+      "후속업무"
+    ],
+    "errors": [
+      {
+        "code": "FORBIDDEN",
+        "recovery": "권한·업무분리 확인"
+      },
+      {
+        "code": "CONFLICT",
+        "recovery": "최신 버전 재조회"
+      },
+      {
+        "code": "DEPENDENCY_FAILURE",
+        "recovery": "멱등키로 안전 재시도"
+      }
+    ],
+    "fields": [
+      {
+        "route": "/work/scheduled-statistics-reporting?step=ssr_define",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "SCHEDULED_STATISTICS_REPORTING_SSR_DEFINE_USER",
+        "required": true,
+        "fieldCode": "projectId",
+        "fieldName": "프로젝트",
+        "fieldGroup": "업무 범위",
+        "fieldOrder": 10,
+        "validation": {
+          "type": "code",
+          "nullable": false,
+          "required": true,
+          "allowUnknown": false
+        },
+        "apiProperty": "projectId",
+        "controlType": "PROJECT_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "DATA_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/scheduled-statistics-reporting?step=ssr_define",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "SCHEDULED_STATISTICS_REPORTING_SSR_DEFINE_USER",
+        "required": true,
+        "fieldCode": "businessId",
+        "fieldName": "업무 대상 ID",
+        "fieldGroup": "업무 범위",
+        "fieldOrder": 20,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "businessId",
+        "controlType": "ENTITY_SELECT",
+        "sourceTable": null,
+        "privacyClass": "CONFIDENTIAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "DATA_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/scheduled-statistics-reporting?step=ssr_define",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "SCHEDULED_STATISTICS_REPORTING_SSR_DEFINE_USER",
+        "required": true,
+        "fieldCode": "referenceCode",
+        "fieldName": "참조·로트·신청 번호",
+        "fieldGroup": "업무 범위",
+        "fieldOrder": 30,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "referenceCode",
+        "controlType": "TEXT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "DATA_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/scheduled-statistics-reporting?step=ssr_define",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "SCHEDULED_STATISTICS_REPORTING_SSR_DEFINE_USER",
+        "required": true,
+        "fieldCode": "statusCode",
+        "fieldName": "업무 상태",
+        "fieldGroup": "상태",
+        "fieldOrder": 40,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "statusCode",
+        "controlType": "STATUS_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "DATA_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/scheduled-statistics-reporting?step=ssr_define",
+        "audience": "USER",
+        "dataType": "DATETIME",
+        "editable": true,
+        "pageCode": "SCHEDULED_STATISTICS_REPORTING_SSR_DEFINE_USER",
+        "required": true,
+        "fieldCode": "effectiveAt",
+        "fieldName": "발생·적용 일시",
+        "fieldGroup": "기준",
+        "fieldOrder": 50,
+        "validation": {
+          "type": "date-time",
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "effectiveAt",
+        "controlType": "DATETIME",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "DATA_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/scheduled-statistics-reporting?step=ssr_define",
+        "audience": "USER",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "pageCode": "SCHEDULED_STATISTICS_REPORTING_SSR_DEFINE_USER",
+        "required": false,
+        "fieldCode": "quantityValue",
+        "fieldName": "수량·측정·금액 값",
+        "fieldGroup": "전문값",
+        "fieldOrder": 60,
+        "validation": {
+          "numeric": true,
+          "unitRequiredWhenPresent": true
+        },
+        "apiProperty": "quantityValue",
+        "controlType": "NUMBER",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "DATA_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/scheduled-statistics-reporting?step=ssr_define",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "SCHEDULED_STATISTICS_REPORTING_SSR_DEFINE_USER",
+        "required": false,
+        "fieldCode": "unitCode",
+        "fieldName": "단위·통화",
+        "fieldGroup": "전문값",
+        "fieldOrder": 70,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "unitCode",
+        "controlType": "UNIT_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "DATA_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/scheduled-statistics-reporting?step=ssr_define",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "SCHEDULED_STATISTICS_REPORTING_SSR_DEFINE_USER",
+        "required": false,
+        "fieldCode": "qualityCode",
+        "fieldName": "품질·적합 등급",
+        "fieldGroup": "품질·외부검증",
+        "fieldOrder": 80,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "qualityCode",
+        "controlType": "QUALITY_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "DATA_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/scheduled-statistics-reporting?step=ssr_define",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "SCHEDULED_STATISTICS_REPORTING_SSR_DEFINE_USER",
+        "required": false,
+        "fieldCode": "externalCheckStatus",
+        "fieldName": "외부검증 상태",
+        "fieldGroup": "품질·외부검증",
+        "fieldOrder": 90,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "externalCheckStatus",
+        "controlType": "STATUS_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "DATA_ANALYST:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/work/scheduled-statistics-reporting?step=ssr_define",
+        "audience": "USER",
+        "dataType": "ARRAY",
+        "editable": true,
+        "pageCode": "SCHEDULED_STATISTICS_REPORTING_SSR_DEFINE_USER",
+        "required": true,
+        "fieldCode": "evidenceIds",
+        "fieldName": "원본·결정 증빙",
+        "fieldGroup": "증적",
+        "fieldOrder": 100,
+        "validation": {
+          "minItems": 1,
+          "hashRequired": true
+        },
+        "apiProperty": "evidenceIds",
+        "controlType": "FILE_UPLOAD",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "DATA_ANALYST:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/work/scheduled-statistics-reporting?step=ssr_define",
+        "audience": "USER",
+        "dataType": "CODE",
+        "editable": true,
+        "pageCode": "SCHEDULED_STATISTICS_REPORTING_SSR_DEFINE_USER",
+        "required": false,
+        "fieldCode": "decisionCode",
+        "fieldName": "판정·승인 결과",
+        "fieldGroup": "결정",
+        "fieldOrder": 110,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "decisionCode",
+        "controlType": "DECISION_SELECT",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "DATA_ANALYST:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/work/scheduled-statistics-reporting?step=ssr_define",
+        "audience": "USER",
+        "dataType": "TEXT",
+        "editable": true,
+        "pageCode": "SCHEDULED_STATISTICS_REPORTING_SSR_DEFINE_USER",
+        "required": false,
+        "fieldCode": "decisionComment",
+        "fieldName": "판정·보완·반려 사유",
+        "fieldGroup": "결정",
+        "fieldOrder": 120,
+        "validation": {
+          "requiredWhen": [
+            "CORRECTION",
+            "REJECTED"
+          ]
+        },
+        "apiProperty": "decisionComment",
+        "controlType": "TEXTAREA",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "DATA_ANALYST:USER",
+        "evidenceRequired": true
+      },
+      {
+        "route": "/work/scheduled-statistics-reporting?step=ssr_define",
+        "audience": "USER",
+        "dataType": "INTEGER",
+        "editable": true,
+        "pageCode": "SCHEDULED_STATISTICS_REPORTING_SSR_DEFINE_USER",
+        "required": true,
+        "fieldCode": "rowVersion",
+        "fieldName": "데이터 버전",
+        "fieldGroup": "무결성",
+        "fieldOrder": 130,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "rowVersion",
+        "controlType": "VERSION",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "DATA_ANALYST:USER",
+        "evidenceRequired": false
+      },
+      {
+        "route": "/work/scheduled-statistics-reporting?step=ssr_define",
+        "audience": "USER",
+        "dataType": "STRING",
+        "editable": true,
+        "pageCode": "SCHEDULED_STATISTICS_REPORTING_SSR_DEFINE_USER",
+        "required": false,
+        "fieldCode": "nextTaskId",
+        "fieldName": "다음 업무",
+        "fieldGroup": "후속업무",
+        "fieldOrder": 140,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "nextTaskId",
+        "controlType": "TASK_LINK",
+        "sourceTable": null,
+        "privacyClass": "INTERNAL",
+        "sourceColumn": null,
+        "mappingStatus": "LOGICAL_CONTRACT",
+        "permissionCode": "DATA_ANALYST:USER",
+        "evidenceRequired": false
+      }
+    ],
+    "states": [
+      "LOADING",
+      "EMPTY",
+      "ERROR",
+      "FORBIDDEN",
+      "READY",
+      "BLOCKED",
+      "CONFLICT",
+      "COMPLETED"
+    ],
+    "actions": [
+      "DEFINE_STATISTICS_JOB",
+      "SAVE_DRAFT",
+      "REQUEST_CORRECTION"
+    ],
+    "sections": [
+      "업무요약",
+      "선행조건",
+      "전문 데이터",
+      "검증·증적",
+      "결정·이력",
+      "다음업무"
+    ],
+    "extensions": {
+      "contractId": 484,
+      "sharedRuntime": true
+    },
+    "responsive": {
+      "mobile": "single-column-actions-bottom",
+      "tablet": "adaptive-grid",
+      "desktop": "list-detail-workspace"
+    },
+    "permissions": [
+      {
+        "code": "DATA_ANALYST",
+        "scope": "TENANT_PROJECT",
+        "segregationOfDuties": true,
+        "serverAuthorization": true
+      }
+    ],
+    "validations": [
+      {
+        "code": "ENTRY_AND_REQUIRED_FIELDS",
+        "type": "CONTRACT"
+      },
+      {
+        "code": "STATE_AND_VERSION",
+        "type": "CONCURRENCY"
+      }
+    ],
+    "apiContracts": [
+      "/api/work/scheduled-statistics-reporting/ssr_define"
+    ],
+    "designSystem": "KRDS_GOV",
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG_2_1_AA",
+      "nonColorStatus": true,
+      "focusManagement": true
+    },
+    "dataContracts": [
+      "tenantId",
+      "projectId",
+      "businessId",
+      "recordId",
+      "statusCode",
+      "rowVersion",
+      "evidenceHash",
+      "nextTaskId"
+    ],
+    "schemaVersion": "2.0.0",
+    "completionRule": "버전 잠긴 지표·집계·배포 계약이 승인됨",
+    "exitConditions": [
+      "버전 잠긴 지표·집계·배포 계약이 승인됨"
+    ],
+    "businessPurpose": "설비·시장·배출·인증·수수료 지표와 집계식·일정·수신처를 정의한다.",
+    "entryConditions": [
+      "다음 프로세스 시작 조건을 충족한다: 지표 정의·집계 기준·데이터 기준시점·수신기관·일정이 승인되어 있다. 현재 상태는 READY이며 서버가 테넌트·프로젝트·액터 권한을 확인한 경우에만 진입한다."
+    ],
+    "actorResponsibilities": [
+      "DATA_ANALYST 액터가 권한·업무분리 정책에 따라 지표·주기·기준시점 확정 사용자 업무 화면 업무를 수행한다."
+    ]
+  },
+  "traceability": {
+    "contractId": 484,
+    "requirementIds": [
+      "SCHEDULED_STATISTICS_REPORTING:SSR_DEFINE:USER"
+    ],
+    "generationBatchId": 183,
+    "designReadinessScore": 100,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "07172a81d850a78b57ae6f4f91ced2e7403ec506fb50983708d31c32f742fdaf",
+  "artifactHash": "8b3a39ffe3ecfac60eb3dda43f47dc263a1dddeb688ebc3229ec3debf30d647c"
+}

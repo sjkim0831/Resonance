@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "lifecycle": "FORMAL_VALIDATION_RULE",
+  "gatePolicy": "all_eight_evidence_families_required_fail_closed",
+  "validator": "common-workflow-validators.cjs",
+  "reference": {
+    "processId": "EMISSION_PROJECT",
+    "projectId": "PRJ-2026-F024B4",
+    "identity": {
+      "tenant_id": "TEST_COMPANY_001",
+      "project_id": "PRJ-2026-F024B4",
+      "approver_id": "qaapprove26",
+      "data_revision": 9,
+      "submission_id": 538,
+      "calculation_id": 458,
+      "input_revision": 13,
+      "request_status": "APPROVED",
+      "approval_current": true,
+      "submission_state": "APPROVED",
+      "calculation_status": "LOCKED",
+      "submission_version": 7,
+      "approval_request_id": 15,
+      "calculation_current": true,
+      "calculation_version": 7,
+      "input_snapshot_hash": "a8c3c4bc76f1dc802ea56772e2f55343ba86ff2f7253d213b74ffcb606bef65d"
+    },
+    "evidence": "final-e2e-acceptance.json"
+  },
+  "rules": [
+    {
+      "id": "CC-01",
+      "status": "REGISTERED",
+      "otherProcessAdoption": "UNKNOWN"
+    },
+    {
+      "id": "CC-02",
+      "status": "REGISTERED",
+      "otherProcessAdoption": "UNKNOWN"
+    },
+    {
+      "id": "CC-03",
+      "status": "REGISTERED",
+      "otherProcessAdoption": "UNKNOWN"
+    },
+    {
+      "id": "CC-04",
+      "status": "REGISTERED",
+      "otherProcessAdoption": "UNKNOWN"
+    },
+    {
+      "id": "CC-05",
+      "status": "REGISTERED",
+      "otherProcessAdoption": "UNKNOWN"
+    },
+    {
+      "id": "CC-06",
+      "status": "REGISTERED",
+      "otherProcessAdoption": "UNKNOWN"
+    },
+    {
+      "id": "CC-07",
+      "status": "REGISTERED",
+      "otherProcessAdoption": "UNKNOWN"
+    },
+    {
+      "id": "CC-08",
+      "status": "REGISTERED",
+      "otherProcessAdoption": "UNKNOWN"
+    }
+  ],
+  "selfTests": 17
+}

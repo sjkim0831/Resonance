@@ -1,0 +1,394 @@
+[
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/util/UrlDecoder.class",
+    "size": 3506
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/Handlers.class",
+    "size": 1676
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/nested/NestedUrlConnection.class",
+    "size": 7567
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/nested/NestedUrlConnectionResources.class",
+    "size": 3928
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/nested/Handler.class",
+    "size": 1468
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/nested/NestedLocation.class",
+    "size": 5775
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/nested/NestedUrlConnection$ConnectionInputStream.class",
+    "size": 1590
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/UrlNestedJarFile.class",
+    "size": 3181
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/UrlJarFiles$Cache.class",
+    "size": 2467
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/Optimizations.class",
+    "size": 1168
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/UrlJarFile.class",
+    "size": 3261
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/Canonicalizer.class",
+    "size": 2604
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/JarUrlConnection$ConnectionInputStream.class",
+    "size": 1469
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/Handler.class",
+    "size": 6492
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/JarUrlConnection.class",
+    "size": 12232
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/UrlJarFiles.class",
+    "size": 3857
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/JarFileUrlKey.class",
+    "size": 3156
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/UrlJarManifest.class",
+    "size": 3388
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/JarUrlClassLoader$OptimizedEnumeration.class",
+    "size": 1542
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/JarUrl.class",
+    "size": 2774
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/JarUrlClassLoader.class",
+    "size": 8455
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/JarUrlConnection$EmptyUrlStreamHandler.class",
+    "size": 750
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/LazyDelegatingInputStream.class",
+    "size": 2075
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/UrlJarManifest$ManifestSupplier.class",
+    "size": 486
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/UrlJarEntry.class",
+    "size": 1325
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/net/protocol/jar/UrlJarFileFactory.class",
+    "size": 5756
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/jarmode/JarMode.class",
+    "size": 383
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/jarmode/JarModeErrorException.class",
+    "size": 661
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/ZipEndOfCentralDirectoryRecord$Located.class",
+    "size": 2105
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/DataBlock.class",
+    "size": 1042
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/ZipString.class",
+    "size": 7973
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/ZipCentralDirectoryFileHeaderRecord.class",
+    "size": 9832
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/ByteArrayDataBlock.class",
+    "size": 1459
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/ZipEndOfCentralDirectoryRecord.class",
+    "size": 6496
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/ZipDataDescriptorRecord.class",
+    "size": 4841
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/Zip64EndOfCentralDirectoryLocator.class",
+    "size": 4033
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/FileDataBlock.class",
+    "size": 4527
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/DataBlockInputStream.class",
+    "size": 2444
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/CloseableDataBlock.class",
+    "size": 231
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/VirtualZipDataBlock.class",
+    "size": 6546
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/ZipContent.class",
+    "size": 12611
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/FileDataBlock$Tracker$1.class",
+    "size": 843
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/ZipString$CompareType.class",
+    "size": 1474
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/ZipContent$Kind.class",
+    "size": 1432
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/NameOffsetLookups.class",
+    "size": 1678
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/VirtualDataBlock.class",
+    "size": 3114
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/Zip64EndOfCentralDirectoryRecord.class",
+    "size": 5724
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/ZipContent$Source.class",
+    "size": 2357
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/ZipContent$Loader.class",
+    "size": 12995
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/VirtualZipDataBlock$DataPart.class",
+    "size": 1631
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/FileDataBlock$FileAccess.class",
+    "size": 6006
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/ZipLocalFileHeaderRecord.class",
+    "size": 5545
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/ZipContent$Entry.class",
+    "size": 6416
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/zip/FileDataBlock$Tracker.class",
+    "size": 666
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/WarLauncher.class",
+    "size": 1707
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/ClassPathIndexFile.class",
+    "size": 4781
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/JarFileArchive.class",
+    "size": 10072
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/JarFileArchive$JarArchiveEntry.class",
+    "size": 2088
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/JarModeRunner.class",
+    "size": 3323
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/Launcher.class",
+    "size": 6693
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/LaunchedClassLoader$DefinePackageCallType.class",
+    "size": 1586
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/LaunchedClassLoader.class",
+    "size": 8388
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/PropertiesLauncher.class",
+    "size": 21967
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/ExplodedArchive.class",
+    "size": 5899
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/PropertiesLauncher$Instantiator.class",
+    "size": 3650
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/ExecutableArchiveLauncher.class",
+    "size": 4386
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/JarLauncher.class",
+    "size": 855
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/Archive$Entry.class",
+    "size": 316
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/Archive.class",
+    "size": 4651
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/PropertiesLauncher$Instantiator$Using.class",
+    "size": 3688
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/SystemPropertyUtils.class",
+    "size": 5261
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/launch/ExplodedArchive$FileArchiveEntry.class",
+    "size": 2134
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/log/DebugLogger$SystemErrDebugLogger.class",
+    "size": 2675
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/log/DebugLogger.class",
+    "size": 1823
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/log/DebugLogger$DisabledDebugLogger.class",
+    "size": 1408
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/jar/SecurityInfo.class",
+    "size": 4916
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/jar/NestedJarFile$JarEntriesEnumeration.class",
+    "size": 2025
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/jar/NestedJarFile$JarEntryInputStream.class",
+    "size": 3611
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/jar/JarEntriesStream$InputStreamSupplier.class",
+    "size": 461
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/jar/MetaInfVersionsInfo.class",
+    "size": 5125
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/jar/JarEntriesStream.class",
+    "size": 3757
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/jar/NestedJarFile$NestedJarEntry.class",
+    "size": 7108
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/jar/ManifestInfo.class",
+    "size": 1617
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/jar/NestedJarFileResources.class",
+    "size": 6568
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/jar/NestedJarFile$RawZipDataInputStream.class",
+    "size": 1197
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/jar/ZipInflaterInputStream.class",
+    "size": 1659
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/jar/NestedJarFile.class",
+    "size": 15710
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/jar/NestedJarFile$JarEntryInflaterInputStream.class",
+    "size": 2584
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/jar/NestedJarFile$ZipContentEntriesSpliterator.class",
+    "size": 2138
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/nio/file/NestedFileSystem.class",
+    "size": 8438
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/nio/file/NestedPath.class",
+    "size": 7441
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/nio/file/NestedByteChannel$Resources.class",
+    "size": 1918
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/nio/file/UriPathEncoder.class",
+    "size": 2016
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/nio/file/NestedByteChannel.class",
+    "size": 3487
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/nio/file/NestedFileSystemProvider.class",
+    "size": 9693
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/nio/file/NestedFileStore.class",
+    "size": 2797
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/ref/DefaultCleaner.class",
+    "size": 1375
+  },
+  {
+    "path": "/home/sjkim/spring-boot-loader/org/springframework/boot/loader/ref/Cleaner.class",
+    "size": 667
+  }
+]

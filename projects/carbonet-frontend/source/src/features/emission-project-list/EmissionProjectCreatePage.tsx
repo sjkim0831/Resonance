@@ -1,328 +1,45 @@
-import { FormEvent, useEffect, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import {
-  buildLocalizedPath,
-  isEnglish,
-  navigate,
-} from "../../lib/navigation/runtime";
-import {
-  HeaderBrand,
-  HeaderDesktopNav,
-  HomeInlineStyles,
-} from "../home-entry/HomeEntrySections";
-import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
-import { FiveLayerFormRenderer } from "../contract-runtime/FiveLayerFormRenderer";
-import { useRuntimeScreenContract } from "../contract-runtime/useRuntimeScreenContract";
-import { EMISSION_PROJECT_CREATE_CONTRACT } from "./emissionProjectCreateContract";
-
-type Readiness = { ready: boolean; sandbox?: boolean; companyApproved: boolean; activeSiteCount: number; actorCoverage: Record<string, number>; segregationOfDuties?: boolean; segregatedDutyAccountCount?: number; conflictingDutyAccountCount?: number; missing: string[]; siteManagementUrl: string; actorManagementUrl: string };
-type AccountOption = {
-  id: string;
-  displayName: string;
-  department: string;
-  companyId: string;
-  companyName: string;
-  actors: string;
-  dataScopes: string;
-};
-type Options = { sites: string[]; owners: string[]; accounts: AccountOption[]; currentUser: string; readiness: Readiness };
-const EMPTY_READINESS:Readiness={ready:false,companyApproved:false,activeSiteCount:0,actorCoverage:{},missing:[],siteManagementUrl:"/admin/emission/site-management",actorManagementUrl:"/admin/system/actor-process"};
-const readinessMessage=(code:string,en:boolean)=>{
-  if(code==="COMPANY_NOT_APPROVED")return en?"Company approval is required.":"승인된 기업 정보가 필요합니다.";
-  if(code==="ACTIVE_SITE_REQUIRED")return en?"At least one active site is required.":"활성 사업장이 1개 이상 필요합니다.";
-  if(code.startsWith("REQUIRED_ACTOR_MISSING:"))return en?`Required actor is missing: ${code.split(":")[1]}`:`필수 담당자가 없습니다: ${code.split(":")[1]}`;
-  if(code.startsWith("SEGREGATION_OF_DUTIES_REQUIRED:"))return en?"Calculator, verifier, and approver must be three separate accounts.":"산정·검증·승인은 서로 다른 3개 계정에 배정해야 합니다.";
-  return code;
-};
-const year = new Date().getFullYear();
-const createRequestId = () => globalThis.crypto?.randomUUID?.() ?? `project-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-const EMPTY = {
-  clientRequestId: createRequestId(),
-  name: "",
-  site: "",
-  owner: "",
-  dataOwner: "",
-  calculator: "",
-  verifier: "",
-  approver: "",
-  reportingYear: String(year),
-  periodStart: `${year}-01-01`,
-  periodEnd: `${year}-12-31`,
-  dueDate: `${year}-12-31`,
-  scopes: ["Scope 1", "Scope 2"],
-  organizationBoundary: "OPERATIONAL_CONTROL",
-  emissionStandard: "ISO_14064_1",
-  methodologyVersion: "2018",
-  verificationLevel: "LIMITED",
-  collectionCycle: "MONTHLY",
-  materialityThreshold: "5",
-};
-
-export function EmissionProjectCreatePage() {
-  const en = isEnglish(),
-    content = LOCALIZED_CONTENT[en ? "en" : "ko"],
-    homeState = useAsyncValue(() => fetchHomePayload(), [en]);
-  const runtimeContract = useRuntimeScreenContract("EMISSION_PROJECT_CREATE_V1", EMISSION_PROJECT_CREATE_CONTRACT);
-  const [form, setForm] = useState(EMPTY),
-    [options, setOptions] = useState<Options>({ sites: [], owners: [], accounts: [], currentUser: "", readiness: EMPTY_READINESS }),
-    [saving, setSaving] = useState(false),
-    [message, setMessage] = useState(""),
-    [optionsLoading, setOptionsLoading] = useState(true),
-    [optionsError, setOptionsError] = useState(""),
-    [nameState, setNameState] = useState<"" | "ok" | "duplicate">("");
-  const api = (path: string) =>
-    buildLocalizedPath(
-      `/home/api/emission-projects${path}`,
-      `/en/home/api/emission-projects${path}`,
-    );
-  useEffect(() => {
-    fetch(api("/options"), { credentials: "include" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-      })
-      .then((value:Partial<Options>)=>{
-        const normalized:Options={
-          sites:Array.isArray(value.sites)?value.sites:[],
-          owners:Array.isArray(value.owners)?value.owners:[],
-          accounts:Array.isArray(value.accounts)?value.accounts:[],
-          currentUser:typeof value.currentUser==="string"?value.currentUser:"",
-          readiness:value.readiness&&typeof value.readiness==="object"?{...EMPTY_READINESS,...value.readiness}:EMPTY_READINESS,
-        };
-        setOptions(normalized);
-        const managers = normalized.accounts.filter((account) => account.actors.split(",").map((actor) => actor.trim()).includes("COMPANY_MANAGER"));
-        const eligibleCurrentUser = managers.some((account) => account.id.toLowerCase() === normalized.currentUser.toLowerCase());
-        setForm(current=>({...current,owner:current.owner||(eligibleCurrentUser?normalized.currentUser:(managers[0]?.id??""))}));
-        setOptionsError("");
-      })
-      .catch(() => {
-        setOptions({ sites: [], owners: [], accounts: [], currentUser: "", readiness: EMPTY_READINESS });
-        setOptionsError(en ? "Project readiness could not be verified. Creation is blocked for safety." : "프로젝트 착수 준비 상태를 확인하지 못했습니다. 안전을 위해 생성을 차단합니다.");
-      })
-      .finally(()=>setOptionsLoading(false));
-  }, []);
-
-  async function checkName() {
-    if (!form.name.trim()) return setNameState("");
-    const r = await fetch(
-      `${api("/name-availability")}?name=${encodeURIComponent(form.name)}`,
-      { credentials: "include" },
-    );
-    const body = await r.json();
-    setNameState(body.available ? "ok" : "duplicate");
-  }
-  const accountsFor = (actorCode: string) =>
-    options.accounts.filter((account) =>
-      account.actors.split(",").map((actor) => actor.trim()).includes(actorCode),
-    );
-  const accountLabel = (account: AccountOption) => {
-    const rawCompany = account.companyName || account.companyId;
-    const company = rawCompany === "DEFAULT" ? (en ? "Shared QA tenant" : "공통 테스트 회사") : rawCompany || (en ? "Company not identified" : "회사 미확인");
-    const department = account.department || (en ? "Department not set" : "부서 미설정");
-    const scopeLabel = account.dataScopes && account.dataScopes !== "*" ? ` · ${account.dataScopes}` : "";
-    return `${account.displayName || account.id} · ${department} · ${company} · ${account.id}${scopeLabel}`;
-  };
-  const contractOptionSources = {
-    ACTIVE_SITES: options.sites.map((site) => ({ value: site, label: site })),
-    ...Object.fromEntries(
-      ["COMPANY_MANAGER", "SITE_DATA_OWNER", "CALCULATOR", "VERIFIER", "APPROVER"].map((actorCode) => [
-        `${actorCode}_ACCOUNTS`,
-        accountsFor(actorCode).map((account) => ({ value: account.id, label: accountLabel(account) })),
-      ]),
-    ),
-  };
-  const updateContractField = (fieldCode: string, value: unknown) => {
-    setForm((current) => ({
-      ...current,
-      [fieldCode]: fieldCode === "scopes" && Array.isArray(value) ? value.map(String) : String(value ?? ""),
-    } as typeof EMPTY));
-    if (fieldCode === "name") setNameState("");
-  };
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setMessage("");
-    if (!options.readiness.ready)
-      return setMessage(en ? "Complete company, site, and actor onboarding before creating a project." : "기업 승인, 사업장 등록, 필수 액터 배정을 완료한 후 프로젝트를 생성해 주세요.");
-    if (nameState === "duplicate")
-      return setMessage(
-        en
-          ? "This project name is already in use."
-          : "이미 사용 중인 프로젝트명입니다.",
-      );
-    if (
-      !form.name ||
-      !form.site ||
-      !form.owner ||
-      !form.dataOwner ||
-      !form.calculator ||
-      !form.verifier ||
-      !form.approver ||
-      !form.periodStart ||
-      !form.periodEnd ||
-      !form.dueDate ||
-      !form.organizationBoundary ||
-      !form.emissionStandard ||
-      !form.methodologyVersion ||
-      !form.verificationLevel ||
-      !form.collectionCycle ||
-      !form.scopes.length
-    )
-      return setMessage(
-        en
-          ? "Complete all required fields."
-          : "필수 항목을 모두 입력해 주세요.",
-      );
-    if (form.periodEnd < form.periodStart)
-      return setMessage(
-        en
-          ? "The end date must be after the start date."
-          : "산정 종료일은 시작일보다 빠를 수 없습니다.",
-      );
-    if (form.periodStart.slice(0, 4) !== form.reportingYear || form.periodEnd.slice(0, 4) !== form.reportingYear)
-      return setMessage(en ? "The inventory period must be within the reporting year." : "산정기간은 보고연도 안에 있어야 합니다.");
-    if (form.dueDate < form.periodEnd)
-      return setMessage(en ? "The due date must be on or after the inventory period end date." : "마감일은 산정기간 종료일 이후여야 합니다.");
-    const materiality = Number(form.materialityThreshold);
-    if (!Number.isInteger(materiality) || materiality < 0 || materiality > 100)
-      return setMessage(en ? "Materiality must be a whole percentage from 0 to 100." : "중요성 기준은 0~100 사이의 정수 비율이어야 합니다.");
-    if (form.calculator === form.verifier || form.calculator === form.approver || form.verifier === form.approver)
-      return setMessage(en ? "Calculator, verifier, and approver must be different accounts." : "산정자·검증자·승인자는 서로 다른 계정이어야 합니다.");
-    setSaving(true);
-    try {
-      const response = await fetch(api(""), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.message || "저장하지 못했습니다.");
-      navigate(
-        buildLocalizedPath(
-          `/emission/project/detail?id=${body.id}`,
-          `/en/emission/project/detail?id=${body.id}`,
-        ),
-      );
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSaving(false);
-    }
-  }
-  return (
-    <>
-      <HomeInlineStyles en={en} />
-      <div className="min-h-screen bg-[#f6f8fb] text-[var(--kr-gov-text-primary)]">
-        <header className="border-b-2 border-[#001e40] bg-white">
-          <div className="mx-auto flex h-16 max-w-7xl items-center px-4 lg:px-8">
-            <HeaderBrand content={content} en={en} />
-            <HeaderDesktopNav
-              en={en}
-              homeMenu={homeState.value?.homeMenu || []}
-            />
-          </div>
-        </header>
-        <main className="mx-auto max-w-5xl px-4 py-8 lg:px-8">
-          <nav className="mb-5 text-sm text-slate-500">
-            <a
-              href={buildLocalizedPath(
-                "/emission/project_list",
-                "/en/emission/project_list",
-              )}
-            >
-              {en ? "Emission projects" : "배출량 프로젝트"}
-            </a>
-            <span className="mx-2">/</span>
-            <strong>{en ? "New project" : "새 프로젝트 등록"}</strong>
-          </nav>
-          <p className="text-sm font-bold text-[#246beb]">
-            {en ? "Carbon Emission Management" : "탄소배출 관리"}
-          </p>
-          <h1 className="mt-1 text-3xl font-black text-[#052b57]">
-            {en ? "New Emission Project" : "새 배출량 프로젝트 등록"}
-          </h1>
-          <p className="mt-2 text-sm text-slate-600">
-            {en
-              ? "Set the project scope, owner, and working period."
-              : "업무를 시작하는 데 필요한 범위, 담당자, 일정을 설정합니다."}
-          </p>
-          {optionsLoading&&<p className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-900" role="status">{en?"Loading project reference data...":"프로젝트 기준정보를 불러오는 중입니다."}</p>}
-          {optionsError&&<p className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900" role="alert">{optionsError}</p>}
-          {!optionsLoading&&!optionsError?<section className={`mt-5 rounded-xl border p-5 ${options.readiness.ready?"border-emerald-200 bg-emerald-50":"border-amber-300 bg-amber-50"}`} aria-label={en?"Project readiness":"프로젝트 착수 준비 진단"}>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-sm font-black text-[#052b57]">{en?"Project readiness":"프로젝트 착수 준비 진단"}</p><p className="mt-1 text-sm text-slate-700">{options.readiness.ready?(en?"Company, site, and required actor checks passed.":"기업·사업장·필수 액터 검사를 모두 통과했습니다."):(en?"Resolve the blocking items before starting a governed project.":"아래 차단 항목을 해결해야 감사 가능한 프로젝트를 시작할 수 있습니다.")}</p></div><span className={`w-fit rounded-full px-3 py-1 text-xs font-black ${options.readiness.ready?"bg-emerald-700 text-white":"bg-amber-700 text-white"}`}>{options.readiness.ready?(en?"READY":"착수 가능"):(en?"ACTION REQUIRED":"조치 필요")}</span></div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><div className="rounded-lg bg-white p-3"><b>{en?"Company approval":"기업 승인"}</b><p className="mt-1 text-sm">{options.readiness.companyApproved?(en?"Completed":"완료"):(en?"Required":"필요")}</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Active sites":"활성 사업장"}</b><p className="mt-1 text-sm">{options.readiness.activeSiteCount}</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Required actors":"필수 액터"}</b><p className="mt-1 text-sm">{Object.values(options.readiness.actorCoverage).filter(value=>value>0).length}/5</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Segregation of duties":"업무분리"}</b><p className="mt-1 text-sm">{options.readiness.segregationOfDuties?(en?"Passed":"충족"):(en?"Separate accounts required":"계정 분리 필요")}</p></div></div>
-            {!options.readiness.ready?<div className="mt-4"><ul className="space-y-1 text-sm font-bold text-amber-950">{options.readiness.missing.map(item=><li key={item}>• {readinessMessage(item,en)}</li>)}</ul><div className="mt-4 flex flex-wrap gap-2"><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.siteManagementUrl}>{en?"Manage sites":"사업장 관리"}</a><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.actorManagementUrl}>{en?"Manage actors":"액터·권한 관리"}</a></div></div>:null}
-          </section>:null}
-          <form className="mt-7 space-y-5" data-contract-version={runtimeContract.contract.version} data-contract-source={runtimeContract.source} data-process-code={runtimeContract.contract.processSchema.processCode} data-step-code={runtimeContract.contract.processSchema.stepCode} data-testid="emission-project-create-form" onSubmit={submit} noValidate>
-            <FiveLayerFormRenderer
-              contract={runtimeContract.contract}
-              fieldMessages={{
-                name: nameState
-                  ? {
-                      text: nameState === "ok"
-                        ? (en ? "Available name" : "사용 가능한 이름입니다.")
-                        : (en ? "Name already exists" : "이미 등록된 이름입니다."),
-                      tone: nameState === "ok" ? "success" : "error",
-                    }
-                  : undefined,
-              }}
-              onChange={updateContractField}
-              onFieldBlur={(fieldCode) => {
-                if (fieldCode === "name") void checkName();
-              }}
-              optionSources={contractOptionSources}
-              sectionCodes={["basic", "scope"]}
-              values={form}
-            />
-            <div className="five-layer-methodology">
-              <FiveLayerFormRenderer
-                contract={runtimeContract.contract}
-                onChange={updateContractField}
-                sectionCodes={["methodology"]}
-                values={form}
-              />
-            </div>
-            <FiveLayerFormRenderer
-              contract={runtimeContract.contract}
-              onChange={updateContractField}
-              optionSources={contractOptionSources}
-              sectionCodes={["ownership", "actors"]}
-              values={form}
-            />
-            {form.calculator&&form.verifier&&form.approver&&(form.calculator===form.verifier||form.calculator===form.approver||form.verifier===form.approver)?<p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800" role="alert">{en ? "Calculator, verifier, and approver must be different accounts. The server will reject this assignment." : "산정자·검증자·승인자는 서로 다른 계정이어야 합니다. 이 배정은 저장할 수 없습니다."}</p>:null}
-            {message && (
-              <p aria-live="assertive" className="rounded-lg bg-red-50 p-4 text-sm font-bold text-red-700" role="alert">
-                {message}
-              </p>
-            )}
-            <footer className="flex justify-end gap-3">
-              <a
-                className="inline-flex min-h-12 items-center rounded-lg border border-slate-300 bg-white px-6 font-bold"
-                href={buildLocalizedPath(
-                  "/emission/project_list",
-                  "/en/emission/project_list",
-                )}
-              >
-                {en ? "Cancel" : "취소"}
-              </a>
-              <button
-                className="min-h-12 rounded-lg bg-[#246beb] px-7 font-black text-white disabled:opacity-50"
-                disabled={saving||optionsLoading||!options.readiness.ready}
-                type="submit"
-              >
-                {saving
-                  ? en
-                    ? "Saving..."
-                    : "저장 중..."
-                  : en
-                    ? "Create project"
-                    : "프로젝트 등록"}
-              </button>
-            </footer>
-          </form>
-        </main>
-      </div>
-    </>
-  );
+import {CommonBreadcrumb} from '../../components/common-design/CommonBreadcrumb';
+import {FormEvent,useEffect,useRef,useState} from 'react';
+import {useAsyncValue} from '../../app/hooks/useAsyncValue';
+import {fetchHomePayload} from '../../lib/api/appBootstrap';
+import {HeaderBrand,HeaderDesktopNav,HomeInlineStyles} from '../home-entry/HomeEntrySections';
+import {LOCALIZED_CONTENT} from '../home-entry/homeEntryContent';
+import {isEnglish,buildLocalizedPath,navigate} from '../../lib/navigation/runtime';
+import './emissionProjectListV1.css';
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
+import './emissionProjectCreateCommon.css';
+import {useProjectOverlap} from './useProjectOverlap';
+type Site={id:string;code:string;name:string;address:string};
+export function EmissionProjectCreatePage(){
+ const en=isEnglish(),t=(ko:string,eng:string)=>en?eng:ko,content=LOCALIZED_CONTENT[en?'en':'ko'],home=useAsyncValue(()=>fetchHomePayload(),[en]);
+ const [name,setName]=useState(''),[start,setStart]=useState(''),[end,setEnd]=useState(''),[dueDate,setDueDate]=useState(''),[reportingYear,setReportingYear]=useState(''),[boundary,setBoundary]=useState(''),[standard,setStandard]=useState(''),[methodology,setMethodology]=useState(''),[verification,setVerification]=useState(''),[cycle,setCycle]=useState(''),[materiality,setMateriality]=useState(''),[scopes,setScopes]=useState<string[]>([]),[description,setDescription]=useState(''),[selected,setSelected]=useState<string[]>([]),[sites,setSites]=useState<Site[]>([]),[keyword,setKeyword]=useState(''),[loading,setLoading]=useState(true),[loadError,setLoadError]=useState(''),[message,setMessage]=useState(''),[saving,setSaving]=useState(false),[reload,setReload]=useState(0);
+ const lock=useRef(false),request=useRef({payload:'',id:''});
+ const api=buildLocalizedPath('/home/api/emission-project-drafts','/en/home/api/emission-project-drafts');
+ useEffect(()=>{const c=new AbortController();setLoading(true);setLoadError('');fetch(api+'/options',{credentials:'include',signal:c.signal}).then(async r=>{const b=await r.json();if(!r.ok)throw Error(b.message||'사업장을 불러오지 못했습니다.');if(b.projectSetupContractVersion!==2)throw Error('프로젝트 준비 저장 API가 구버전입니다. 개발 서버 반영 후 다시 시도해 주세요. 입력값을 저장하지 않았습니다.');if(!Array.isArray(b.sites))throw Error('사업장 응답 형식을 확인해 주세요.');setSites(b.sites);}).catch(e=>{if(e.name!=='AbortError')setLoadError(e.message);}).finally(()=>{if(!c.signal.aborted)setLoading(false);});return()=>c.abort();},[api,reload]);
+ const dirty=Boolean(name||start||end||dueDate||reportingYear||boundary||standard||methodology||verification||cycle||materiality||scopes.length||description||selected.length);
+ const overlap=useProjectOverlap(start,end,selected);
+ const selectedSites=selected.map(id=>sites.find(site=>site.id===id)).filter((site):site is Site=>Boolean(site));
+ const optionLabel=(value:string,options:Record<string,string>)=>options[value]||value;
+ const isTestSite=(site:Site)=>/^QA(?:[-_\s]|$)/i.test(site.name)||/^QA(?:[-_\s]|$)/i.test(site.code)||/실사업장 아님|테스트 주소/i.test(site.address);
+ const boundaryText=optionLabel(boundary,{'OPERATIONAL_CONTROL':t('운영 통제','Operational control'),'FINANCIAL_CONTROL':t('재무 통제','Financial control'),'EQUITY_SHARE':t('지분 할당','Equity share')});
+ const standardText=optionLabel(standard,{'ISO_14064_1':'ISO 14064-1','GHG_PROTOCOL':'GHG Protocol','K_ETS':t('배출권거래제 명세서 기준','K-ETS')});
+ const verificationText=optionLabel(verification,{'LIMITED':t('제한적 보증','Limited assurance'),'REASONABLE':t('합리적 보증','Reasonable assurance')});
+ const cycleText=optionLabel(cycle,{'MONTHLY':t('월간','Monthly'),'QUARTERLY':t('분기','Quarterly'),'ANNUAL':t('연간','Annual')});
+ useEffect(()=>{const fn=(e:BeforeUnloadEvent)=>{if(dirty&&!lock.current){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',fn);return()=>window.removeEventListener('beforeunload',fn);},[dirty]);
+ async function submit(e:FormEvent){e.preventDefault();if(lock.current)return;setMessage('');if(loading||loadError)return setMessage(t('사업장 목록을 정상적으로 불러온 뒤 저장해 주세요.','Reload sites before saving.'));if(!name.trim()||!start||!end||!dueDate||!reportingYear||!boundary||!standard||!methodology.trim()||!verification||!cycle||materiality===''||!scopes.length||!selected.length)return setMessage(t('프로젝트·기간·사업장·산정 기준의 필수 항목을 입력해 주세요.','Complete all required project, period, site and methodology fields.'));if(start>end)return setMessage(t('시작일은 종료일보다 늦을 수 없습니다.','Start must not be after end.'));if(dueDate<start)return setMessage(t('마감일은 산정 시작일보다 빠를 수 없습니다.','Due date cannot precede the period start.'));if(Number(reportingYear)<2000||Number(reportingYear)>2100)return setMessage(t('보고연도를 확인해 주세요.','Check the reporting year.'));if(Number(materiality)<0||Number(materiality)>100)return setMessage(t('중요성 기준은 0~100이어야 합니다.','Materiality must be 0–100.'));if(selected.some(id=>!sites.some(s=>s.id===id)))return setMessage(t('선택한 사업장을 다시 확인해 주세요.','Check selected sites.'));
+ const body={name:name.trim(),periodStart:start,periodEnd:end,dueDate,reportingYear:Number(reportingYear),siteIds:[...selected].sort(),scopes:[...scopes].sort(),organizationBoundary:boundary,emissionStandard:standard,methodologyVersion:methodology.trim(),verificationLevel:verification,collectionCycle:cycle,materialityThreshold:Number(materiality),description:description.trim()},payload=JSON.stringify(body);if(request.current.payload!==payload)request.current={payload,id:globalThis.crypto?.randomUUID?.()||`request_${Date.now()}_${Math.random().toString(36).slice(2)}`};lock.current=true;setSaving(true);
+ try{const r=await fetch(api,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,clientRequestId:request.current.id})});const b=await r.json();if(!r.ok)throw Error(b.message||'저장 실패');if(!b.id)throw Error('저장된 프로젝트 ID가 없습니다.');navigate(buildLocalizedPath(`/emission/project/detail?projectId=${encodeURIComponent(b.id)}`,`/en/emission/project/detail?projectId=${encodeURIComponent(b.id)}`));}catch(e){setMessage(e instanceof Error?e.message:'저장 실패');lock.current=false;}finally{setSaving(false);}
+ }
+ return <><HomeInlineStyles en={en}/><div className="ccus-project-create-page min-h-screen bg-white text-slate-900"><header className="border-b-2 border-[#001e40]"><div className="mx-auto flex h-20 max-w-7xl items-center px-4"><HeaderBrand content={content} en={en}/><HeaderDesktopNav en={en} homeMenu={home.value?.homeMenu||[]}/></div></header><main className="mx-auto max-w-[1280px] px-4 py-7">
+ <CommonBreadcrumb/>
+ <div className="ccus-create-heading"><div><span className="ccus-create-eyebrow">{t('탄소배출 관리 · 프로젝트 설정','EMISSION MANAGEMENT · PROJECT SETUP')}</span><h1>{t('배출량 프로젝트 등록','New emission project')}</h1><p>{t('관리 대상 사업장과 산정 기준을 정하고 배출량 관리 업무를 시작하세요.','Define the sites and calculation criteria for this emissions project.')}</p></div><a className="ccus-create-back" href={buildLocalizedPath('/emission/project_list','/en/emission/project_list')}>{t('프로젝트 목록','Project list')}</a></div>
+ <form onSubmit={submit} className="ccus-project-create-form"><div className="ccus-create-layout"><div className="ccus-create-main"><fieldset disabled={saving} className="ccus-create-fields"><legend className="sr-only">{t('프로젝트 등록 정보','Project registration')}</legend>
+ <section className="ccus-create-section"><div className="ccus-create-section-title"><span className="ccus-create-number">1</span><div><h2>{t('프로젝트 기본정보','Project information')}</h2><p>{t('프로젝트 이름과 산정 기간을 입력하세요.','Enter a project name and reporting period.')}</p></div><small><b>*</b> {t('필수 입력','Required')}</small></div><div className="ccus-create-section-body"><div className="ccus-create-grid"><label className="ccus-create-field ccus-create-span">{t('프로젝트명','Project name')} <b>*</b><input required maxLength={200} value={name} onChange={e=>setName(e.target.value)} placeholder={t('예: 2026년 사업장 온실가스 배출량 산정','e.g. 2026 site emissions inventory')}/><small>{t('목적과 기간을 알 수 있는 이름으로 입력하세요.','Use a name that identifies its purpose and period.')}</small></label><label className="ccus-create-field">{t('보고연도','Reporting year')} <b>*</b><input type="number" required min="2000" max="2100" step="1" value={reportingYear} onChange={e=>setReportingYear(e.target.value)} placeholder="2026"/></label><label className="ccus-create-field">{t('업무 마감일','Due date')} <b>*</b><input type="date" required min={start||'2000-01-01'} value={dueDate} onChange={e=>setDueDate(e.target.value)}/><small>{t('프로젝트 시작일 이후로 설정합니다.','Must be on or after the project start date.')}</small></label><div className="ccus-create-field ccus-create-span"><span className="ccus-create-label">{t('산정 기간','Reporting period')} <b>*</b></span><div className="ccus-create-date-range"><input aria-label={t('산정 시작일','Period start')} type="date" required min="2000-01-01" max="2100-12-31" value={start} onChange={e=>setStart(e.target.value)}/><span>~</span><input aria-label={t('산정 종료일','Period end')} type="date" required min={start||'2000-01-01'} max="2100-12-31" value={end} onChange={e=>setEnd(e.target.value)}/></div></div><label className="ccus-create-field ccus-create-span">{t('설명','Description')} <span>{t('(선택)','(optional)')}</span><textarea maxLength={2000} rows={3} value={description} onChange={e=>setDescription(e.target.value)} placeholder={t('프로젝트 목적이나 관리 시 유의사항을 입력하세요.','Add the project purpose or notes for this inventory.')}/></label></div></div></section>
+ <section className="ccus-create-section"><div className="ccus-create-section-title"><span className="ccus-create-number">2</span><div><h2>{t('조직·사업장','Organization and sites')}</h2><p>{t('같은 회사의 활성 사업장 중 관리 대상을 지정합니다.','Choose active sites available to your company.')}</p></div><small>{t('선택','Selected')} <strong>{selected.length}</strong></small></div><div className="ccus-create-section-body"><div className="ccus-create-site-head"><div><span className="ccus-create-label">{t('대상 사업장','Participating sites')} <b>*</b></span><p>{t('사업장별 자료 범위는 프로젝트 상세에서 확인할 수 있습니다.','Review site data scope in the project details.')}</p></div><div className="ccus-create-inline-actions"><a target="_blank" rel="noopener" href={buildLocalizedPath('/admin/emission/site-management','/en/admin/emission/site-management')}>{t('사업장 관리','Manage sites')} ↗</a><button type="button" onClick={()=>setReload(x=>x+1)}>{t('새로고침','Refresh')}</button></div></div>{selectedSites.length>0&&<div className="ccus-create-chips" aria-label={t('선택된 사업장','Selected sites')}>{selectedSites.map(site=><span key={site.id}>{site.name}<button type="button" aria-label={`${site.name} ${t('선택 해제','remove')}`} onClick={()=>setSelected(ids=>ids.filter(id=>id!==site.id))}>×</button></span>)}</div>}<div className="ccus-create-search"><CommonSearchSection basic={<label>{t('사업장 검색','Search sites')}<input aria-label={t('사업장 검색','Search sites')} placeholder={t('사업장명·코드·주소 검색','Search name, code, or address')} value={keyword} onChange={e=>setKeyword(e.target.value)}/></label>} actions={<button type="button" onClick={()=>setKeyword('')}>{t('초기화','Clear')}</button>}/></div>{loading?<p role="status" className="ccus-create-state">{t('사업장 불러오는 중…','Loading available sites…')}</p>:loadError?<p role="alert" className="ccus-create-error">{loadError}</p>:<div className="ccus-create-table-wrap"><table><thead><tr>{[t('선택','Select'),t('사업장명','Site'),t('코드','Code'),t('주소','Address')].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{sites.filter(s=>`${s.name} ${s.code} ${s.address}`.toLowerCase().includes(keyword.toLowerCase())).map(s=><tr key={s.id} className={selected.includes(s.id)?'is-selected':''}><td><input type="checkbox" aria-label={s.name} checked={selected.includes(s.id)} onChange={e=>setSelected(ids=>e.target.checked?[...ids,s.id]:ids.filter(id=>id!==s.id))}/></td><td>{s.name} {isTestSite(s)&&<span className="ccus-create-test-badge">{t('테스트 데이터','TEST DATA')}</span>}</td><td>{s.code}</td><td>{s.address||'—'}</td></tr>)}</tbody></table>{sites.length===0&&<p className="ccus-create-state">{t('등록 가능한 사업장이 없습니다. 사업장 관리 후 다시 불러오세요.','No available sites. Add a site and reload.')}</p>}</div>}</div></section>
+ <section className="ccus-create-section"><div className="ccus-create-section-title"><span className="ccus-create-number">3</span><div><h2>{t('산정 범위·기준','Calculation scope and criteria')}</h2><p>{t('프로젝트 적용 기준은 생성 시점의 값으로 저장됩니다.','The selected criteria are saved with this project.')}</p></div></div><div className="ccus-create-section-body"><fieldset className="ccus-create-scope-fieldset"><legend className="ccus-create-label">{t('산정 범위','Emission scopes')} <b>*</b></legend><div className="ccus-create-scopes">{['Scope 1','Scope 2','Scope 3'].map(scope=><label key={scope} className={scopes.includes(scope)?'is-selected':''}><input type="checkbox" checked={scopes.includes(scope)} onChange={e=>setScopes(xs=>e.target.checked?[...xs,scope]:xs.filter(x=>x!==scope))}/><span>{scope}</span><small>{scope==='Scope 1'?t('직접 배출','Direct emissions'):scope==='Scope 2'?t('에너지 간접 배출','Energy indirect emissions'):t('기타 간접 배출','Other indirect emissions')}</small></label>)}</div></fieldset><div className="ccus-create-grid ccus-create-method-grid"><label className="ccus-create-field">{t('조직 경계','Organizational boundary')} <b>*</b><select required value={boundary} onChange={e=>setBoundary(e.target.value)}><option value="">{t('선택','Select')}</option><option value="OPERATIONAL_CONTROL">{t('운영 통제','Operational control')}</option><option value="FINANCIAL_CONTROL">{t('재무 통제','Financial control')}</option><option value="EQUITY_SHARE">{t('지분 할당','Equity share')}</option></select></label><label className="ccus-create-field">{t('적용 표준','Emission standard')} <b>*</b><select required value={standard} onChange={e=>setStandard(e.target.value)}><option value="">{t('선택','Select')}</option><option value="ISO_14064_1">ISO 14064-1</option><option value="GHG_PROTOCOL">GHG Protocol</option><option value="K_ETS">{t('배출권거래제 명세서 기준','K-ETS')}</option></select></label><label className="ccus-create-field">{t('방법론 버전','Methodology version')} <b>*</b><input required maxLength={40} value={methodology} onChange={e=>setMethodology(e.target.value)} placeholder={t('예: 2026.1','e.g. 2026.1')}/></label><label className="ccus-create-field">{t('검증 수준','Verification level')} <b>*</b><select required value={verification} onChange={e=>setVerification(e.target.value)}><option value="">{t('선택','Select')}</option><option value="LIMITED">{t('제한적 보증','Limited assurance')}</option><option value="REASONABLE">{t('합리적 보증','Reasonable assurance')}</option></select></label><label className="ccus-create-field">{t('자료 수집 주기','Collection cycle')} <b>*</b><select required value={cycle} onChange={e=>setCycle(e.target.value)}><option value="">{t('선택','Select')}</option><option value="MONTHLY">{t('월간','Monthly')}</option><option value="QUARTERLY">{t('분기','Quarterly')}</option><option value="ANNUAL">{t('연간','Annual')}</option></select></label><label className="ccus-create-field">{t('중요성 기준 (%)','Materiality threshold (%)')} <b>*</b><input type="number" required min="0" max="100" step="1" value={materiality} onChange={e=>setMateriality(e.target.value)} placeholder="5"/><small>{t('누락·검증 발견사항의 중요도를 판단하는 기준입니다.','Threshold for material omissions and verification findings.')}</small></label></div><div className="ccus-create-note">{t('총괄 책임자는 인증된 기업 관리자 계정으로 기록됩니다. 세부 업무 담당자는 해당 업무의 담당자 선택에서 지정합니다.','The authenticated company manager is recorded as accountable owner. Assign task owners in each work item.')}</div></div></section>
+ <section className="ccus-create-section"><div className="ccus-create-section-title"><span className="ccus-create-number">4</span><div><h2>{t('자료 제출 일정','Data collection schedule')}</h2><p>{t('사업장 자료 제출 기한을 설정합니다.','Set the due date for site data collection.')}</p></div><small>{t('마감','Due')} <strong>{dueDate||'—'}</strong></small></div><div className="ccus-create-section-body ccus-create-overlap" aria-live="polite">{overlap.loading&&<p role="status">{t('같은 사업장·기간의 프로젝트를 확인하고 있습니다.','Checking for projects with overlapping sites and dates.')}</p>}{overlap.error&&<p className="ccus-create-warning">{t('기간 중복을 확인하지 못했습니다. 프로젝트 목록에서도 확인할 수 있습니다.','Could not check for date overlap. Review the project list as well.')}</p>}{overlap.matches.length>0&&<div className="ccus-create-warning"><strong>{t('같은 사업장에 기간이 겹치는 프로젝트가 있습니다.','Projects overlap for one or more selected sites.')}</strong><p>{t('별도 목적이면 등록할 수 있습니다. 활동자료 중복 여부를 확인해 주세요.','You may continue for a separate purpose. Check for duplicated activity data.')}</p><ul>{overlap.matches.slice(0,10).map(p=><li key={p.id}><a target="_blank" rel="noopener" href={buildLocalizedPath(`/emission/project/detail?projectId=${encodeURIComponent(p.id)}`,`/en/emission/project/detail?projectId=${encodeURIComponent(p.id)}`)}>{p.name} ↗</a></li>)}</ul></div>}{!overlap.loading&&!overlap.error&&overlap.matches.length===0&&start&&end&&selected.length>0&&<p className="ccus-create-clear">✓ {t('조회 가능한 범위에서 기간이 겹치는 프로젝트를 찾지 못했습니다.','No overlapping project was found in your accessible scope.')}</p>}</div></section>
+ </fieldset>{message&&<p role="alert" className="ccus-create-error ccus-create-submit-error">{message}</p>}<div className="ccus-create-submit"><p>{t('필수 항목을 확인한 뒤 프로젝트를 생성하세요.','Review required fields before creating the project.')}</p><div><a href={buildLocalizedPath('/emission/project_list','/en/emission/project_list')}>{t('취소','Cancel')}</a><button type="submit" disabled={saving||loading||!!loadError} className="ccus-create-primary">{saving?t('저장 중…','Saving…'):t('프로젝트 생성','Create project')}</button></div></div></div>
+ <aside className="ccus-create-summary"><span className="ccus-create-eyebrow">{t('실시간 요약','LIVE SUMMARY')}</span><h2>{t('등록 내용 확인','Review project')}</h2><p className="ccus-create-summary-name">{name||t('프로젝트명을 입력하세요','Enter a project name')}</p><dl><dt>{t('보고연도','Reporting year')}</dt><dd>{reportingYear||'—'}</dd><dt>{t('대상 사업장','Participating sites')}</dt><dd>{selectedSites.length?`${selectedSites.length}${t('개','')}${selectedSites.length<=3?` · ${selectedSites.map(s=>s.name).join(', ')}`:''}`:t('사업장을 선택하세요','Select sites')}</dd><dt>{t('산정 기간','Reporting period')}</dt><dd>{start||'—'} ~ {end||'—'}</dd><dt>{t('산정 범위','Scopes')}</dt><dd>{scopes.length?scopes.join(' · '):'—'}</dd><dt>{t('조직 경계','Organizational boundary')}</dt><dd>{boundaryText||'—'}</dd><dt>{t('적용 기준','Applied standard')}</dt><dd>{standardText||'—'}{methodology?` · ${methodology}`:''}</dd><dt>{t('검증·수집','Verification · collection')}</dt><dd>{verificationText||'—'} · {cycleText||'—'}</dd><dt>{t('마감일','Due date')}</dt><dd>{dueDate||'—'}</dd><dt>{t('중요성 기준','Materiality threshold')}</dt><dd>{materiality?`${materiality}%`:'—'}</dd><dt>{t('책임 계정','Accountable account')}</dt><dd>{t('인증된 기업 관리자','Authenticated company manager')}</dd></dl><div className="ccus-create-summary-next"><strong>{t('생성 후 다음 업무','Next after creation')}</strong><ol><li>{t('프로젝트 상세에서 범위 확인','Review scope in project details')}</li><li>{t('업무별 담당자 지정','Assign owners in each work item')}</li><li>{t('활동자료 수집 시작','Start activity data collection')}</li></ol></div></aside></div></form>
+ <details className="ccus-create-help"><summary>{t('프로젝트 등록 도움말','Project registration help')}</summary><p>{t('프로젝트와 사업장·산정 기준·마감일을 저장합니다. 단계별 담당자는 해당 업무에서 지정합니다. 중복 기간 경고는 확인을 돕는 정보이며, 별도 목적의 프로젝트 등록을 막지 않습니다. 저장 성공 후 프로젝트 상세로 이동합니다.','This saves project sites, scope, criteria, and due date. Assign work owners inside each work item. Date overlap warnings help review duplicates but do not prevent a separate project. On success, the project details open.')}</p></details>
+ </main></div></>;
 }

@@ -3,6 +3,7 @@ package egovframework.com.feature.home.web;
 import egovframework.com.feature.auth.service.CurrentUserContextService;
 import egovframework.com.feature.home.service.HomeMenuService;
 import egovframework.com.feature.home.service.HomeMypageService;
+import egovframework.com.feature.home.service.EmissionProjectRegistryService;
 import egovframework.com.platform.bootstrap.service.AdminShellBootstrapPageService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,6 +37,7 @@ class HomePageControllerAuthenticationTest {
         HomeMypageService mypage = mock(HomeMypageService.class);
         ReactAppViewSupport react = mock(ReactAppViewSupport.class);
         CurrentUserContextService users = mock(CurrentUserContextService.class);
+        EmissionProjectRegistryService projects = mock(EmissionProjectRegistryService.class);
         HttpServletRequest request = mock(HttpServletRequest.class);
         CurrentUserContextService.CurrentUserContext context = new CurrentUserContextService.CurrentUserContext();
         context.setAuthenticated(authenticated);
@@ -43,7 +45,7 @@ class HomePageControllerAuthenticationTest {
         when(request.getCookies()).thenReturn(cookie == null ? null : new Cookie[]{cookie});
         when(users.resolve(request)).thenReturn(context);
         when(menus.getHomeMenu(false)).thenReturn(List.of());
-        return new Fixture(new HomePageController(bootstrap, menus, mypage, react, users), request);
+        return new Fixture(new HomePageController(bootstrap, menus, mypage, react, users, projects), request);
     }
 
     private record Fixture(HomePageController controller, HttpServletRequest request) { }

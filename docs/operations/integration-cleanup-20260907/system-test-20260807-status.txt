@@ -1,0 +1,1 @@
+ M projects/carbonet-frontend/source/.cache/screen-generator-verification/generation-report.json

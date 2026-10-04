@@ -2,44 +2,66 @@
   "schemaVersion": "2.0.0",
   "process": {
     "code": "GOVERNANCE_CHANGE",
-    "name": "기준·워크플로 변경",
+    "name": "기준·워크플로 변경관리",
     "domain": "SYSTEM",
     "workType": "SYSTEM",
-    "goal": "기준정보 변경을 검토·승인·배포하고 추적한다."
+    "goal": "메뉴·화면·API·DB 변경을 근거, 영향, 검증, 승인, 배포 및 복구 증적과 함께 통제한다."
   },
   "step": {
     "code": "GOV_SIMULATE",
     "version": 1,
     "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
       "actorCode": "VERIFIER",
       "ownerActorCode": "PLATFORM_OPERATOR",
-      "tenantIsolation": true,
-      "projectIsolation": true,
-      "delegationChecked": true,
-      "segregationOfDuties": true
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
     },
     "business": {
-      "goal": "기준정보 변경을 검토·승인·배포하고 추적한다.",
-      "slaHours": 720,
-      "stepName": "정상·안전 시나리오 검증",
-      "riskLevel": "MEDIUM",
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
       "domainCode": "SYSTEM",
       "processName": "기준·워크플로 변경",
-      "requirement": "",
-      "completionRule": "정상·예외·권한·격리·복구 테스트가 모두 승인됨",
-      "regulationRefs": "조직 적용 방법론·내부통제 기준·관련 법규"
+      "stepName": "정상·안전 시나리오 검증",
+      "goal": "기준정보 변경을 검토·승인·배포하고 추적한다.",
+      "requirement": "검증자는 운영과 분리된 환경에서 정상, 예외, 권한, 테넌트·프로젝트 격리, 중복 실행과 복구 시나리오를 실제 계약과 데이터로 실행한다.",
+      "completionRule": "5종 시나리오, 모바일·접근성, 성능과 데이터 무결성 검증이 통과하고 실패 증적과 재검증 결과가 보존된다.",
+      "riskLevel": "MEDIUM",
+      "slaHours": 720,
+      "regulationRefs": "조직 적용 방법론·내부통제 기준·관련 법규",
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {},
+      "extensions": {}
     },
     "transition": {
-      "toState": "APPROVAL_READY",
-      "stepType": "TASK",
-      "fromState": "SIMULATION_READY",
-      "stepOrder": 4,
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
       "commandCode": "RUN_SIMULATION",
-      "auditRequired": true,
-      "completionRule": "정상·예외·권한·격리·복구 테스트가 모두 승인됨",
-      "optimisticLock": true,
+      "fromState": "SIMULATION_READY",
+      "toState": "APPROVAL_READY",
+      "stepOrder": 4,
+      "stepType": "TASK",
       "parentStepCode": null,
-      "idempotencyRequired": true
+      "completionRule": "정상·예외·권한·격리·복구 테스트가 모두 승인됨",
+      "policy": {
+        "auditRequired": true,
+        "optimisticLock": true,
+        "idempotencyRequired": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
     },
     "input": {
       "stepCode": "GOV_SIMULATE",
@@ -53,23 +75,1564 @@
       "evidenceRequired": true
     },
     "guide": {
-      "title": "정상·안전 시나리오 검증",
-      "purpose": "",
-      "stepCode": "GOV_SIMULATE",
-      "userPath": "/admin/system/actor-process?process=GOVERNANCE_CHANGE",
-      "actorCode": "VERIFIER",
-      "adminPath": "/admin/system/verification-center",
-      "stepOrder": 4,
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
       "processCode": "GOVERNANCE_CHANGE",
-      "nextStepCode": "GOV_APPROVE",
+      "stepCode": "GOV_SIMULATE",
+      "stepOrder": 4,
       "workTypeCode": "SYSTEM",
+      "actorCode": "VERIFIER",
+      "title": "정상·안전 시나리오 검증",
+      "purpose": "검증자는 운영과 분리된 환경에서 정상, 예외, 권한, 테넌트·프로젝트 격리, 중복 실행과 복구 시나리오를 실제 계약과 데이터로 실행한다.",
       "entryCondition": "SIMULATION_READY",
-      "completionCondition": "정상·예외·권한·격리·복구 테스트가 모두 승인됨"
+      "completionCondition": "5종 시나리오, 모바일·접근성, 성능과 데이터 무결성 검증이 통과하고 실패 증적과 재검증 결과가 보존된다.",
+      "userPath": "/admin/system/actor-process?process=GOVERNANCE_CHANGE",
+      "adminPath": "/admin/system/verification-center",
+      "relatedBusinessRoute": null,
+      "nextStepCode": "GOV_APPROVE",
+      "nextAction": "APPROVAL_READY",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
     }
   },
   "frontend": {
     "renderer": "COMMON_SDUI_RUNTIME",
-    "pages": []
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "GOV_SIMULATE_ADMIN_WORKSPACE",
+        "route": "/admin/system/verification-center",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "ADMIN",
+        "screenType": "WORKSPACE",
+        "title": "정상·안전 시나리오 검증",
+        "purpose": "검증자는 운영과 분리된 환경에서 정상, 예외, 권한, 테넌트·프로젝트 격리, 중복 실행과 복구 시나리오를 실제 계약과 데이터로 실행한다.",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스 코드",
+            "fieldGroup": "PROCESS",
+            "fieldOrder": 1,
+            "validation": {
+              "type": "code",
+              "nullable": false,
+              "required": true,
+              "allowUnknown": false
+            },
+            "apiProperty": "processes[].processCode",
+            "controlType": "SELECT",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_code",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "processCode"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "processName",
+            "fieldName": "프로세스명",
+            "fieldGroup": "PROCESS",
+            "fieldOrder": 2,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "processes[].processName",
+            "controlType": "TEXT",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "processName"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "domainCode",
+            "fieldName": "업무 종류",
+            "fieldGroup": "PROCESS",
+            "fieldOrder": 3,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "processes[].domainCode",
+            "controlType": "BADGE",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "domain_code",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "domainCode"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "processVersion",
+            "fieldName": "프로세스 버전",
+            "fieldGroup": "PROCESS",
+            "fieldOrder": 4,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "processes[].version",
+            "controlType": "TEXT",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_version",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": true,
+            "code": "processVersion"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "processGoal",
+            "fieldName": "업무 목표",
+            "fieldGroup": "PROCESS",
+            "fieldOrder": 5,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "processes[].goal",
+            "controlType": "TEXT",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "goal",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "processGoal"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "startCondition",
+            "fieldName": "시작 조건",
+            "fieldGroup": "PROCESS",
+            "fieldOrder": 6,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "processes[].startCondition",
+            "controlType": "TEXT",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "start_condition",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "startCondition"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "completionCondition",
+            "fieldName": "완료 조건",
+            "fieldGroup": "PROCESS",
+            "fieldOrder": 7,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "processes[].completionCondition",
+            "controlType": "TEXT",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "completion_condition",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "completionCondition"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "fieldName": "책임 액터",
+            "fieldGroup": "PROCESS",
+            "fieldOrder": 8,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "processes[].ownerActorCode",
+            "controlType": "BADGE",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "owner_actor_code",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "riskLevel",
+            "fieldName": "위험도",
+            "fieldGroup": "PROCESS",
+            "fieldOrder": 9,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "processes[].riskLevel",
+            "controlType": "STATUS",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "risk_level",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "riskLevel"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": false,
+            "fieldCode": "slaHours",
+            "fieldName": "업무 SLA",
+            "fieldGroup": "PROCESS",
+            "fieldOrder": 10,
+            "validation": {
+              "minimum": 0
+            },
+            "apiProperty": "processes[].slaHours",
+            "controlType": "METRIC",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "sla_hours",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "slaHours"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": false,
+            "fieldCode": "reviewCycleDays",
+            "fieldName": "검토 주기",
+            "fieldGroup": "PROCESS",
+            "fieldOrder": 11,
+            "validation": {
+              "minimum": 0
+            },
+            "apiProperty": "processes[].reviewCycleDays",
+            "controlType": "METRIC",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "review_cycle_days",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "reviewCycleDays"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "processStatus",
+            "fieldName": "개발 상태",
+            "fieldGroup": "PROCESS",
+            "fieldOrder": 12,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "processes[].status",
+            "controlType": "STATUS",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "processStatus"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "lifecycleStatus",
+            "fieldName": "생명주기 상태",
+            "fieldGroup": "PROCESS",
+            "fieldOrder": 13,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "processes[].lifecycleStatus",
+            "controlType": "STATUS",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "lifecycle_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "lifecycleStatus"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "stepOrder",
+            "fieldName": "단계 순서",
+            "fieldGroup": "STEP",
+            "fieldOrder": 14,
+            "validation": {
+              "minimum": 1
+            },
+            "apiProperty": "steps[].stepOrder",
+            "controlType": "SEQUENCE",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_order",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "stepOrder"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "단계 코드",
+            "fieldGroup": "STEP",
+            "fieldOrder": 15,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "steps[].stepCode",
+            "controlType": "LINK",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_code",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "stepCode"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "stepName",
+            "fieldName": "단계명",
+            "fieldGroup": "STEP",
+            "fieldOrder": 16,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "steps[].stepName",
+            "controlType": "TEXT",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "stepName"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "stepActorCode",
+            "fieldName": "수행 액터",
+            "fieldGroup": "STEP",
+            "fieldOrder": 17,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "steps[].actorCode",
+            "controlType": "BADGE",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "actor_code",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "stepActorCode"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "fromState",
+            "fieldName": "진입 상태",
+            "fieldGroup": "STEP",
+            "fieldOrder": 18,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "steps[].fromState",
+            "controlType": "STATUS",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "from_state",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": true,
+            "code": "fromState"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "commandCode",
+            "fieldName": "실행 명령",
+            "fieldGroup": "STEP",
+            "fieldOrder": 19,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "steps[].commandCode",
+            "controlType": "ACTION",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "command_code",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "commandCode"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "toState",
+            "fieldName": "완료 상태",
+            "fieldGroup": "STEP",
+            "fieldOrder": 20,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "steps[].toState",
+            "controlType": "STATUS",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "to_state",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": true,
+            "code": "toState"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "completionRule",
+            "fieldName": "단계 완료 기준",
+            "fieldGroup": "STEP",
+            "fieldOrder": 21,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "steps[].completionRule",
+            "controlType": "TEXT",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "completion_rule",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": true,
+            "code": "completionRule"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "requirementText",
+            "fieldName": "단계 요구사항",
+            "fieldGroup": "STEP",
+            "fieldOrder": 22,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "steps[].requirementText",
+            "controlType": "TEXT",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "requirement_text",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "requirementText"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "JSON",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "inputContract",
+            "fieldName": "입력 계약",
+            "fieldGroup": "STEP",
+            "fieldOrder": 23,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "steps[].inputContract",
+            "controlType": "JSON_VIEW",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "input_contract",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "inputContract"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "JSON",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "outputContract",
+            "fieldName": "출력 계약",
+            "fieldGroup": "STEP",
+            "fieldOrder": 24,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "steps[].outputContract",
+            "controlType": "JSON_VIEW",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "output_contract",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "outputContract"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": false,
+            "fieldCode": "userPath",
+            "fieldName": "사용자 화면",
+            "fieldGroup": "STEP",
+            "fieldOrder": 25,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "steps[].userPath",
+            "controlType": "LINK",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "user_path",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "userPath"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": false,
+            "fieldCode": "adminPath",
+            "fieldName": "관리자 화면",
+            "fieldGroup": "STEP",
+            "fieldOrder": 26,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "steps[].adminPath",
+            "controlType": "LINK",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "admin_path",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "adminPath"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": false,
+            "fieldCode": "apiContract",
+            "fieldName": "API 계약",
+            "fieldGroup": "STEP",
+            "fieldOrder": 27,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "steps[].apiContract",
+            "controlType": "CODE_VIEW",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "api_contract",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "apiContract"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "automationStatus",
+            "fieldName": "자동화 상태",
+            "fieldGroup": "STEP",
+            "fieldOrder": 28,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "steps[].automationStatus",
+            "controlType": "STATUS",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "automation_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "automationStatus"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "caseCode",
+            "fieldName": "테스트 코드",
+            "fieldGroup": "TEST",
+            "fieldOrder": 29,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "cases[].caseCode",
+            "controlType": "LINK",
+            "sourceTable": "framework_simulation_case",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "case_code",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "caseCode"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "caseName",
+            "fieldName": "테스트명",
+            "fieldGroup": "TEST",
+            "fieldOrder": 30,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "cases[].caseName",
+            "controlType": "TEXT",
+            "sourceTable": "framework_simulation_case",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "case_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "caseName"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "caseType",
+            "fieldName": "테스트 유형",
+            "fieldGroup": "TEST",
+            "fieldOrder": 31,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "cases[].caseType",
+            "controlType": "BADGE",
+            "sourceTable": "framework_simulation_case",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "case_type",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "caseType"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "caseStatus",
+            "fieldName": "테스트 상태",
+            "fieldGroup": "TEST",
+            "fieldOrder": 32,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "cases[].status",
+            "controlType": "STATUS",
+            "sourceTable": "framework_simulation_case",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "case_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "caseStatus"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "JSON",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "caseAssertions",
+            "fieldName": "기대 결과",
+            "fieldGroup": "TEST",
+            "fieldOrder": 33,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "cases[].assertionsJson",
+            "controlType": "JSON_VIEW",
+            "sourceTable": "framework_simulation_case",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "assertions_json",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": true,
+            "code": "caseAssertions"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "LONG",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "jobId",
+            "fieldName": "개발 작업 ID",
+            "fieldGroup": "DEVELOPMENT",
+            "fieldOrder": 34,
+            "validation": {
+              "minimum": 1
+            },
+            "apiProperty": "developmentJobs[].jobId",
+            "controlType": "LINK",
+            "sourceTable": "framework_development_job",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "job_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "jobId"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "jobType",
+            "fieldName": "개발 작업 유형",
+            "fieldGroup": "DEVELOPMENT",
+            "fieldOrder": 35,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "developmentJobs[].jobType",
+            "controlType": "BADGE",
+            "sourceTable": "framework_development_job",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "job_type",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "jobType"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "jobName",
+            "fieldName": "개발 작업명",
+            "fieldGroup": "DEVELOPMENT",
+            "fieldOrder": 36,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "developmentJobs[].jobName",
+            "controlType": "TEXT",
+            "sourceTable": "framework_development_job",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "job_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "jobName"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": false,
+            "fieldCode": "targetPath",
+            "fieldName": "대상 경로",
+            "fieldGroup": "DEVELOPMENT",
+            "fieldOrder": 37,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "developmentJobs[].targetPath",
+            "controlType": "LINK",
+            "sourceTable": "framework_development_job",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "target_path",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "targetPath"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "jobStatus",
+            "fieldName": "개발 진행 상태",
+            "fieldGroup": "DEVELOPMENT",
+            "fieldOrder": 38,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "developmentJobs[].jobStatus",
+            "controlType": "STATUS",
+            "sourceTable": "framework_development_job",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "job_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "jobStatus"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "fieldName": "품질 상태",
+            "fieldGroup": "DEVELOPMENT",
+            "fieldOrder": 39,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "developmentJobs[].qualityStatus",
+            "controlType": "STATUS",
+            "sourceTable": "framework_development_job",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "quality_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "qualityStatus"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": false,
+            "fieldCode": "jobEvidenceRef",
+            "fieldName": "개발 증빙",
+            "fieldGroup": "DEVELOPMENT",
+            "fieldOrder": 40,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "developmentJobs[].evidenceRef",
+            "controlType": "LINK",
+            "sourceTable": "framework_development_job",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "evidence_ref",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": true,
+            "code": "jobEvidenceRef"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "requiredJobs",
+            "fieldName": "필수 작업 수",
+            "fieldGroup": "PROGRESS",
+            "fieldOrder": 41,
+            "validation": {
+              "minimum": 0
+            },
+            "apiProperty": "processDevelopmentProgress[].requiredJobs",
+            "controlType": "METRIC",
+            "sourceTable": "framework_process_development_progress",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "required_jobs",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "requiredJobs"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "verifiedJobs",
+            "fieldName": "검증 완료 작업 수",
+            "fieldGroup": "PROGRESS",
+            "fieldOrder": 42,
+            "validation": {
+              "minimum": 0
+            },
+            "apiProperty": "processDevelopmentProgress[].verifiedJobs",
+            "controlType": "METRIC",
+            "sourceTable": "framework_process_development_progress",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "verified_jobs",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "verifiedJobs"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "failedJobs",
+            "fieldName": "실패 작업 수",
+            "fieldGroup": "PROGRESS",
+            "fieldOrder": 43,
+            "validation": {
+              "minimum": 0
+            },
+            "apiProperty": "processDevelopmentProgress[].failedJobs",
+            "controlType": "METRIC",
+            "sourceTable": "framework_process_development_progress",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "failed_jobs",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "failedJobs"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "DECIMAL",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "completionPercent",
+            "fieldName": "개발 완료율",
+            "fieldGroup": "PROGRESS",
+            "fieldOrder": 44,
+            "validation": {
+              "maximum": 100,
+              "minimum": 0
+            },
+            "apiProperty": "processDevelopmentProgress[].completionPercent",
+            "controlType": "METRIC",
+            "sourceTable": "framework_process_development_progress",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "completion_percent",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "completionPercent"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "assuranceStatus",
+            "fieldName": "설계 보증 상태",
+            "fieldGroup": "ASSURANCE",
+            "fieldOrder": 45,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "designAssurance[].assuranceStatus",
+            "controlType": "STATUS",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "assurance_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "assuranceStatus"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "DECIMAL",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "designAccuracyScore",
+            "fieldName": "설계 정확도",
+            "fieldGroup": "ASSURANCE",
+            "fieldOrder": 46,
+            "validation": {
+              "maximum": 100,
+              "minimum": 0
+            },
+            "apiProperty": "designAssurance[].designAccuracyScore",
+            "controlType": "METRIC",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "design_accuracy_score",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "designAccuracyScore"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "designBlockerCount",
+            "fieldName": "설계 차단 수",
+            "fieldGroup": "ASSURANCE",
+            "fieldOrder": 47,
+            "validation": {
+              "minimum": 0
+            },
+            "apiProperty": "designAssurance[].designBlockerCount",
+            "controlType": "METRIC",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "design_blocker_count",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "designBlockerCount"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "actorContractGaps",
+            "fieldName": "액터 계약 누락",
+            "fieldGroup": "ASSURANCE",
+            "fieldOrder": 48,
+            "validation": {
+              "minimum": 0
+            },
+            "apiProperty": "designAssurance[].actorContractGaps",
+            "controlType": "METRIC",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "missing_actor_binding_count",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "actorContractGaps"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "stateFlowGaps",
+            "fieldName": "상태 전이 누락",
+            "fieldGroup": "ASSURANCE",
+            "fieldOrder": 49,
+            "validation": {
+              "minimum": 0
+            },
+            "apiProperty": "designAssurance[].stateFlowGaps",
+            "controlType": "METRIC",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "incomplete_transition_count",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "stateFlowGaps"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "dataContractGaps",
+            "fieldName": "데이터 계약 누락",
+            "fieldGroup": "ASSURANCE",
+            "fieldOrder": 50,
+            "validation": {
+              "minimum": 0
+            },
+            "apiProperty": "designAssurance[].dataContractGaps",
+            "controlType": "METRIC",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "incomplete_data_contract_count",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "dataContractGaps"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "routeGaps",
+            "fieldName": "화면 경로 누락",
+            "fieldGroup": "ASSURANCE",
+            "fieldOrder": 51,
+            "validation": {
+              "minimum": 0
+            },
+            "apiProperty": "designAssurance[].routeGaps",
+            "controlType": "METRIC",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "missing_user_route_count",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "routeGaps"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "apiContractGaps",
+            "fieldName": "API 계약 누락",
+            "fieldGroup": "ASSURANCE",
+            "fieldOrder": 52,
+            "validation": {
+              "minimum": 0
+            },
+            "apiProperty": "designAssurance[].apiContractGaps",
+            "controlType": "METRIC",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "missing_api_contract_count",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "apiContractGaps"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": true,
+            "fieldCode": "approvedSafetyTestTypeCount",
+            "fieldName": "안전 테스트 유형 수",
+            "fieldGroup": "ASSURANCE",
+            "fieldOrder": 53,
+            "validation": {
+              "minimum": 0
+            },
+            "apiProperty": "designAssurance[].approvedSafetyTestTypeCount",
+            "controlType": "METRIC",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "approved_safety_test_type_count",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "approvedSafetyTestTypeCount"
+          },
+          {
+            "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+            "required": false,
+            "fieldCode": "nextAction",
+            "fieldName": "다음 보완 작업",
+            "fieldGroup": "ASSURANCE",
+            "fieldOrder": 54,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "designAssurance[].nextAction",
+            "controlType": "TEXT",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "next_action",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_PROCESS_ORCHESTRATION_READ",
+            "evidenceRequired": false,
+            "code": "nextAction"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "VERIFIER",
+            "entryState": "SIMULATION_READY",
+            "commandCode": "RUN_SIMULATION",
+            "resultState": "APPROVAL_READY",
+            "auditRequired": true,
+            "validationRequired": true,
+            "serverAuthorization": true,
+            "idempotencyRequired": true
+          }
+        ],
+        "states": [],
+        "responsive": {
+          "mobile": "single-column",
+          "tablet": "adaptive-two-column",
+          "desktop": "task-optimized",
+          "noTextOverflow": true
+        },
+        "accessibility": {
+          "standard": "WCAG 2.1 AA",
+          "keyboard": true,
+          "focus": true,
+          "errorSummary": true
+        }
+      }
+    ]
   },
   "backend": {
     "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
@@ -99,20 +1662,29 @@
         "resultState": "APPROVAL_READY",
         "auditRequired": true,
         "validationRequired": true,
-        "serverAuthorization": true
+        "serverAuthorization": true,
+        "idempotencyRequired": true
       }
     ],
     "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
       "actorCode": "VERIFIER",
       "ownerActorCode": "PLATFORM_OPERATOR",
-      "tenantIsolation": true,
-      "projectIsolation": true,
-      "delegationChecked": true,
-      "segregationOfDuties": true
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
     },
+    "handoffPolicy": {},
     "handoffs": [
       {
-        "type": "STEP",
         "failure": {
           "onInvalid": "VALIDATION_ERROR",
           "onMissing": "DEPENDENCY_BLOCKED",
@@ -152,6 +1724,7 @@
           "recordId",
           "rowVersion"
         ],
+        "handoffType": "STEP",
         "authorization": {
           "toActor": "APPROVER",
           "fromActor": "VERIFIER",
@@ -164,13 +1737,455 @@
     ]
   },
   "database": {
-    "fieldMappings": [],
     "transactional": true,
+    "migrationRequired": true,
+    "mappings": [
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processes[].processCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_code",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processName",
+            "apiProperty": "processes[].processName",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "domainCode",
+            "apiProperty": "processes[].domainCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "domain_code",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processVersion",
+            "apiProperty": "processes[].version",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_version",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processGoal",
+            "apiProperty": "processes[].goal",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "goal",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "startCondition",
+            "apiProperty": "processes[].startCondition",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "start_condition",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "completionCondition",
+            "apiProperty": "processes[].completionCondition",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "completion_condition",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "apiProperty": "processes[].ownerActorCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "owner_actor_code",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "riskLevel",
+            "apiProperty": "processes[].riskLevel",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "risk_level",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "slaHours",
+            "apiProperty": "processes[].slaHours",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "sla_hours",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "reviewCycleDays",
+            "apiProperty": "processes[].reviewCycleDays",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "review_cycle_days",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processStatus",
+            "apiProperty": "processes[].status",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "lifecycleStatus",
+            "apiProperty": "processes[].lifecycleStatus",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "lifecycle_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepOrder",
+            "apiProperty": "steps[].stepOrder",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_order",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "steps[].stepCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_code",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepName",
+            "apiProperty": "steps[].stepName",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepActorCode",
+            "apiProperty": "steps[].actorCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "actor_code",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "fromState",
+            "apiProperty": "steps[].fromState",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "from_state",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "commandCode",
+            "apiProperty": "steps[].commandCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "command_code",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "toState",
+            "apiProperty": "steps[].toState",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "to_state",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "completionRule",
+            "apiProperty": "steps[].completionRule",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "completion_rule",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "requirementText",
+            "apiProperty": "steps[].requirementText",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "requirement_text",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "inputContract",
+            "apiProperty": "steps[].inputContract",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "input_contract",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "outputContract",
+            "apiProperty": "steps[].outputContract",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "output_contract",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "userPath",
+            "apiProperty": "steps[].userPath",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "user_path",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "adminPath",
+            "apiProperty": "steps[].adminPath",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "admin_path",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "apiContract",
+            "apiProperty": "steps[].apiContract",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "api_contract",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "automationStatus",
+            "apiProperty": "steps[].automationStatus",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "automation_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "caseCode",
+            "apiProperty": "cases[].caseCode",
+            "sourceTable": "framework_simulation_case",
+            "sourceColumn": "case_code",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "caseName",
+            "apiProperty": "cases[].caseName",
+            "sourceTable": "framework_simulation_case",
+            "sourceColumn": "case_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "caseType",
+            "apiProperty": "cases[].caseType",
+            "sourceTable": "framework_simulation_case",
+            "sourceColumn": "case_type",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "caseStatus",
+            "apiProperty": "cases[].status",
+            "sourceTable": "framework_simulation_case",
+            "sourceColumn": "case_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "caseAssertions",
+            "apiProperty": "cases[].assertionsJson",
+            "sourceTable": "framework_simulation_case",
+            "sourceColumn": "assertions_json",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "jobId",
+            "apiProperty": "developmentJobs[].jobId",
+            "sourceTable": "framework_development_job",
+            "sourceColumn": "job_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "jobType",
+            "apiProperty": "developmentJobs[].jobType",
+            "sourceTable": "framework_development_job",
+            "sourceColumn": "job_type",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "jobName",
+            "apiProperty": "developmentJobs[].jobName",
+            "sourceTable": "framework_development_job",
+            "sourceColumn": "job_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "targetPath",
+            "apiProperty": "developmentJobs[].targetPath",
+            "sourceTable": "framework_development_job",
+            "sourceColumn": "target_path",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "jobStatus",
+            "apiProperty": "developmentJobs[].jobStatus",
+            "sourceTable": "framework_development_job",
+            "sourceColumn": "job_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "apiProperty": "developmentJobs[].qualityStatus",
+            "sourceTable": "framework_development_job",
+            "sourceColumn": "quality_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "jobEvidenceRef",
+            "apiProperty": "developmentJobs[].evidenceRef",
+            "sourceTable": "framework_development_job",
+            "sourceColumn": "evidence_ref",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "requiredJobs",
+            "apiProperty": "processDevelopmentProgress[].requiredJobs",
+            "sourceTable": "framework_process_development_progress",
+            "sourceColumn": "required_jobs",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "verifiedJobs",
+            "apiProperty": "processDevelopmentProgress[].verifiedJobs",
+            "sourceTable": "framework_process_development_progress",
+            "sourceColumn": "verified_jobs",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "failedJobs",
+            "apiProperty": "processDevelopmentProgress[].failedJobs",
+            "sourceTable": "framework_process_development_progress",
+            "sourceColumn": "failed_jobs",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "completionPercent",
+            "apiProperty": "processDevelopmentProgress[].completionPercent",
+            "sourceTable": "framework_process_development_progress",
+            "sourceColumn": "completion_percent",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "assuranceStatus",
+            "apiProperty": "designAssurance[].assuranceStatus",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "assurance_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "designAccuracyScore",
+            "apiProperty": "designAssurance[].designAccuracyScore",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "design_accuracy_score",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "designBlockerCount",
+            "apiProperty": "designAssurance[].designBlockerCount",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "design_blocker_count",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "actorContractGaps",
+            "apiProperty": "designAssurance[].actorContractGaps",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "missing_actor_binding_count",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "stateFlowGaps",
+            "apiProperty": "designAssurance[].stateFlowGaps",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "incomplete_transition_count",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "dataContractGaps",
+            "apiProperty": "designAssurance[].dataContractGaps",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "incomplete_data_contract_count",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "routeGaps",
+            "apiProperty": "designAssurance[].routeGaps",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "missing_user_route_count",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "apiContractGaps",
+            "apiProperty": "designAssurance[].apiContractGaps",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "missing_api_contract_count",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "approvedSafetyTestTypeCount",
+            "apiProperty": "designAssurance[].approvedSafetyTestTypeCount",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "approved_safety_test_type_count",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "nextAction",
+            "apiProperty": "designAssurance[].nextAction",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "next_action",
+            "mappingStatus": "DB_RESOLVED"
+          }
+        ],
+        "audience": "ADMIN",
+        "pageCode": "GOV_SIMULATE_WORKSPACE_ADMIN",
+        "primaryEntity": "framework_process_step"
+      }
+    ],
+    "schemaSetVersion": 2,
+    "primaryEntities": [
+      "framework_process_step"
+    ],
     "historyRequired": true,
     "indexesRequired": true,
-    "primaryEntities": [],
-    "migrationRequired": true,
-    "softDeleteDefault": true,
     "foreignKeysRequired": true
   },
   "tests": [
@@ -295,156 +2310,41 @@
         "멱등키와 롤백 명령 계약이 존재함"
       ],
       "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
-    },
-    {
-      "name": "ADMIN 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_ADMIN",
-      "assertions": [
-        "CRUD 트랜잭션,중복 방지,권한,캐시 무효화,감사 로그"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
-    },
-    {
-      "name": "AUTH 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_AUTH",
-      "assertions": [
-        "실패 횟수,잠금,세션,2차 인증,개인정보 노출 방지"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
-    },
-    {
-      "name": "CONTENT 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_CONTENT",
-      "assertions": [
-        "게시 상태,예약 공개,모바일 가독성,첨부파일,검색 노출"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
-    },
-    {
-      "name": "DASHBOARD 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_DASHBOARD",
-      "assertions": [
-        "집계 정확성,기간 필터,빈 데이터,내보내기,비색상 상태 표현"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
-    },
-    {
-      "name": "DETAIL 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_DETAIL",
-      "assertions": [
-        "존재하지 않는 데이터,권한 차단,변경 이력,연관 업무 이동"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
-    },
-    {
-      "name": "FORM 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_FORM",
-      "assertions": [
-        "필수값,임시저장,중복 제출,오류 복구,모바일 입력"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
-    },
-    {
-      "name": "HOME 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_HOME",
-      "assertions": [
-        "반응형 GNB,핵심 업무 진입,인증 전 공개 범위,검색 접근성"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
-    },
-    {
-      "name": "LIST 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_LIST",
-      "assertions": [
-        "검색·초기화,페이지당 10건,정렬,빈 결과,권한별 데이터 격리"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
-    },
-    {
-      "name": "REPORT 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_REPORT",
-      "assertions": [
-        "언어 유지,PDF 생성,진위 검증,다운로드 이력,위변조 방지"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
-    },
-    {
-      "name": "SEARCH 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_SEARCH",
-      "assertions": [
-        "빈 검색,섹션 구분,더보기,상세 이동,권한 필터"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
-    },
-    {
-      "name": "UPLOAD 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_UPLOAD",
-      "assertions": [
-        "확장자·용량,양식 파싱,행 오류,전체 저장,재업로드 멱등성"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
-    },
-    {
-      "name": "WORKFLOW 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_WORKFLOW",
-      "assertions": [
-        "상태 전이,반려·재제출,중복 승인,승인 권한,감사 이력"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
     }
   ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
   "nonfunctional": {
-    "recovery": {
-      "retry": "idempotent-only",
-      "resumeFromLastVerifiedState": true
-    },
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
     "security": {
-      "audit": true,
       "tenantIsolation": true,
       "projectIsolation": true,
-      "serverAuthorization": true
-    },
-    "responsive": {
-      "mobile": "single-column",
-      "tablet": "adaptive-two-column",
-      "desktop": "task-optimized",
-      "noTextOverflow": true
+      "serverAuthorization": true,
+      "segregationOfDuties": true,
+      "rateLimitRequired": false,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
     },
     "performance": {
       "targetP95Ms": 500,
@@ -452,14 +2352,40 @@
       "searchIndexRequired": true
     },
     "accessibility": {
-      "focus": true,
-      "keyboard": true,
       "standard": "WCAG 2.1 AA",
+      "keyboard": true,
+      "focus": true,
       "errorSummary": true
-    }
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": true,
+      "targetHours": 720,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
   },
-  "sourceHash": "bc4bc1d18e1b6d09f50cef4fee5307d6",
+  "sourceHash": "c8ebcfff98484682f70d9969e260baaa",
   "approvalStatus": "APPROVED",
-  "generationStatus": "READY",
-  "packageHash": "915b78e09d7296457016a9586d6338f5dd1982b239cacd3ba3204390a0bc2335"
+  "generationStatus": "GENERATED",
+  "packageHash": "91ba6ab5cd8968c21f0bdc9d7001492f6a69533f8f51eff2f8d6ea819f09d06b"
 }

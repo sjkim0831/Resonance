@@ -1,0 +1,3493 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "REGULATORY_SUBMISSION",
+    "name": "규제기관 제출·접수·보완",
+    "domain": "COMPLIANCE",
+    "workType": "COMPLIANCE",
+    "goal": "확정된 배출량 자료를 관할 규제기관에 제출하고 접수·보완·수리 결과를 증적으로 남긴다."
+  },
+  "step": {
+    "code": "REGULATORY_SUBMISSION_S3",
+    "version": 2,
+    "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "VERIFIER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
+    },
+    "business": {
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
+      "domainCode": "COMPLIANCE",
+      "processName": "규제기관 제출·접수·보완",
+      "stepName": "기관 제출·접수 추적",
+      "goal": "확정된 배출량 자료를 관할 규제기관에 제출하고 접수·보완·수리 결과를 증적으로 남긴다.",
+      "requirement": "기관 제출·접수 추적 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+      "completionRule": "기관 제출·접수 추적의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+      "riskLevel": "CRITICAL",
+      "slaHours": 72,
+      "regulationRefs": "탄소중립기본법, 배출권거래법, 목표관리 지침",
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {},
+      "extensions": {}
+    },
+    "transition": {
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
+      "commandCode": "REGULATORY_SUBMISSION_EXECUTE_3",
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "stepOrder": 3,
+      "stepType": "DECISION",
+      "parentStepCode": null,
+      "completionRule": "기관 제출·접수 추적의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+      "policy": {
+        "auditRequired": true,
+        "optimisticLock": true,
+        "idempotencyRequired": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
+    },
+    "input": {
+      "reportId": "required",
+      "tenantId": "required",
+      "projectId": "required",
+      "authorityCode": "required",
+      "clientRequestId": "required",
+      "reportingProgram": "required",
+      "submissionDeadline": "required"
+    },
+    "output": {
+      "status": "required",
+      "timeline": "required",
+      "nextActions": "required",
+      "packageHash": "required"
+    },
+    "guide": {
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
+      "processCode": "REGULATORY_SUBMISSION",
+      "stepCode": "REGULATORY_SUBMISSION_S3",
+      "stepOrder": 3,
+      "workTypeCode": "COMPLIANCE",
+      "actorCode": "VERIFIER",
+      "title": "기관 제출·접수 추적",
+      "purpose": "기관 제출·접수 추적 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+      "entryCondition": "STEP_2_COMPLETED",
+      "completionCondition": "기관 제출·접수 추적의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+      "userPath": "/emission/report-submission",
+      "adminPath": "/admin/emission/regulatory-submissions",
+      "relatedBusinessRoute": null,
+      "nextStepCode": "REGULATORY_SUBMISSION_S4",
+      "nextAction": "STEP_3_COMPLETED",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+        "route": "/admin/emission/regulatory-submissions",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "ADMIN",
+        "screenType": "DATA_COLLECTION",
+        "title": "기관 제출·접수 추적 관리",
+        "purpose": "기관 제출·접수 추적 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+        "layout": "RESPONSIVE_WORKSPACE",
+        "theme": "KRDS_GOV_DEFAULT",
+        "designAuthority": {
+          "source": "LEGACY_REGISTERED_DEFAULT",
+          "layout": "RESPONSIVE_WORKSPACE",
+          "theme": "KRDS_GOV_DEFAULT",
+          "defaulted": [
+            "layout",
+            "theme"
+          ]
+        },
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "공통",
+            "fieldOrder": 10,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "tenantId"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트",
+            "fieldGroup": "공통",
+            "fieldOrder": 20,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "projectId",
+            "controlType": "PROJECT_SELECT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "projectId"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 30,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "processCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "processCode"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "단계 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 40,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "stepCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "stepCode"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "UUID",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": false,
+            "fieldCode": "recordId",
+            "fieldName": "업무 레코드 ID",
+            "fieldGroup": "공통",
+            "fieldOrder": 50,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": false,
+              "immutable": true
+            },
+            "apiProperty": "recordId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "recordId"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "statusCode",
+            "fieldName": "처리 상태",
+            "fieldGroup": "공통",
+            "fieldOrder": 60,
+            "validation": {
+              "codeGroup": "WORK_STATUS"
+            },
+            "apiProperty": "statusCode",
+            "controlType": "STATUS_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "statusCode"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "fieldName": "담당 액터",
+            "fieldGroup": "공통",
+            "fieldOrder": 70,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "ownerActorCode",
+            "controlType": "ACTOR_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "rowVersion",
+            "fieldName": "데이터 버전",
+            "fieldGroup": "공통",
+            "fieldOrder": 80,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "rowVersion",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "rowVersion"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": false,
+            "fieldCode": "createdAt",
+            "fieldName": "등록 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 90,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "createdAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "createdAt"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": false,
+            "fieldCode": "updatedAt",
+            "fieldName": "최종 수정 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 100,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "updatedAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "updatedAt"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "fieldName": "증빙 수",
+            "fieldGroup": "공통",
+            "fieldOrder": 110,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "evidenceCount",
+            "controlType": "EVIDENCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "evidenceCount"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "YEAR",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "reportingYear",
+            "fieldName": "보고연도",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 200,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "reportingYear",
+            "controlType": "YEAR",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "reporting_year",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "reportingYear"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "organizationId",
+            "fieldName": "조직",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 210,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "organizationId",
+            "controlType": "ORGANIZATION_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "organizationId"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "siteId",
+            "fieldName": "사업장",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 220,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "siteId",
+            "controlType": "SITE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "siteId"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": false,
+            "fieldCode": "facilityId",
+            "fieldName": "배출시설",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 230,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "facilityId",
+            "controlType": "FACILITY_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "facilityId"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "scopeCode",
+            "fieldName": "Scope",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 240,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "scopeCode",
+            "controlType": "SCOPE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "scopeCode"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": false,
+            "fieldCode": "activityValue",
+            "fieldName": "활동량",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 250,
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "activityValue",
+            "controlType": "NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "activityValue"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": false,
+            "fieldCode": "unitCode",
+            "fieldName": "단위",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 260,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "unitCode",
+            "controlType": "UNIT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "unitCode"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": false,
+            "fieldCode": "factorId",
+            "fieldName": "배출계수",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 270,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "factorId",
+            "controlType": "FACTOR_SEARCH",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "factorId"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": false,
+            "fieldCode": "emissionValue",
+            "fieldName": "배출량",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 280,
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "emissionValue",
+            "controlType": "CALCULATED_NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "emissionValue"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "fieldName": "데이터 품질",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 290,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "qualityStatus",
+            "controlType": "QUALITY_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "qualityStatus"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "sourceType",
+            "fieldName": "자료 출처",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 400,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "sourceType",
+            "controlType": "SOURCE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "sourceType"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "sourceReference",
+            "fieldName": "원본 참조",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 410,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "sourceReference",
+            "controlType": "SOURCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "sourceReference"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "ARRAY",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": false,
+            "fieldCode": "attachmentIds",
+            "fieldName": "첨부 증빙",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 420,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "attachmentIds",
+            "controlType": "FILE_UPLOAD",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": true,
+            "code": "attachmentIds"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": false,
+            "fieldCode": "submittedAt",
+            "fieldName": "제출 일시",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 430,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "submittedAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "submittedAt"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "contract_324e59bab8ea",
+            "fieldName": "확정 보고서",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 601,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_324e59bab8ea",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_324e59bab8ea"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "contract_46b24e9a4e03",
+            "fieldName": "기관 코드·명",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 602,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_46b24e9a4e03",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_46b24e9a4e03"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "contract_9edea4a65b5b",
+            "fieldName": "제출 제도",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 603,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_9edea4a65b5b",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_9edea4a65b5b"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "contract_c0b93cac6c85",
+            "fieldName": "보고 기간",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 604,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_c0b93cac6c85",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_c0b93cac6c85"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "contract_9d153d0bbbdf",
+            "fieldName": "법적 근거",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 605,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_9d153d0bbbdf",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": true,
+            "code": "contract_9d153d0bbbdf"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "contract_cb42744be881",
+            "fieldName": "제출 채널·기한",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 606,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_cb42744be881",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_cb42744be881"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "contract_fbea75057ab1",
+            "fieldName": "접수번호",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 607,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_fbea75057ab1",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_fbea75057ab1"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "contract_735ef691b192",
+            "fieldName": "패키지 해시",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 608,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_735ef691b192",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": true,
+            "code": "contract_735ef691b192"
+          },
+          {
+            "route": "/admin/emission/regulatory-submissions",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+            "required": true,
+            "fieldCode": "contract_108421ba4ba0",
+            "fieldName": "보완 사유·기한",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 609,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_108421ba4ba0",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "VERIFIER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_108421ba4ba0"
+          },
+          {
+            "fieldCode": "reportId",
+            "code": "reportId",
+            "fieldName": "reportId",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 35,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "ADMIN"
+          },
+          {
+            "fieldCode": "authorityCode",
+            "code": "authorityCode",
+            "fieldName": "authorityCode",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 36,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "ADMIN"
+          },
+          {
+            "fieldCode": "clientRequestId",
+            "code": "clientRequestId",
+            "fieldName": "clientRequestId",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 37,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "ADMIN"
+          },
+          {
+            "fieldCode": "reportingProgram",
+            "code": "reportingProgram",
+            "fieldName": "reportingProgram",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 38,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "ADMIN"
+          },
+          {
+            "fieldCode": "submissionDeadline",
+            "code": "submissionDeadline",
+            "fieldName": "submissionDeadline",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 39,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "ADMIN"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "VERIFIER",
+            "entryState": "STEP_2_COMPLETED",
+            "commandCode": "REGULATORY_SUBMISSION_EXECUTE_3",
+            "resultState": "STEP_3_COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "retry": "idempotent commands only",
+          "states": [
+            "loading",
+            "empty",
+            "validation-error",
+            "authority-denied",
+            "conflict",
+            "dependency-blocked",
+            "server-error",
+            "recovery"
+          ]
+        },
+        "responsive": {
+          "mobile": "single-column and priority fields",
+          "tablet": "adaptive two-column",
+          "desktop": "task-optimized grid",
+          "overflow": "wrap-or-scroll-with-sticky-key-column"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "errorSummary": true,
+          "focusManagement": true
+        }
+      },
+      {
+        "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+        "route": "/emission/report-submission",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "USER",
+        "screenType": "DATA_COLLECTION",
+        "title": "기관 제출·접수 추적",
+        "purpose": "기관 제출·접수 추적 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+        "layout": "RESPONSIVE_WORKSPACE",
+        "theme": "KRDS_GOV_DEFAULT",
+        "designAuthority": {
+          "source": "LEGACY_REGISTERED_DEFAULT",
+          "layout": "RESPONSIVE_WORKSPACE",
+          "theme": "KRDS_GOV_DEFAULT",
+          "defaulted": [
+            "layout",
+            "theme"
+          ]
+        },
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트 ID",
+            "fieldGroup": "프로젝트",
+            "fieldOrder": 1,
+            "validation": {
+              "type": "code",
+              "nullable": false,
+              "required": true,
+              "allowUnknown": false
+            },
+            "apiProperty": "project.id",
+            "controlType": "SELECT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "projectId"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "projectName",
+            "fieldName": "프로젝트명",
+            "fieldGroup": "프로젝트",
+            "fieldOrder": 2,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "project.name",
+            "controlType": "TEXT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "projectName"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "siteName",
+            "fieldName": "사업장명",
+            "fieldGroup": "프로젝트",
+            "fieldOrder": 3,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "project.site",
+            "controlType": "TEXT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "site_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "siteName"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "projectPeriod",
+            "fieldName": "산정 기간",
+            "fieldGroup": "프로젝트",
+            "fieldOrder": 4,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "project.period",
+            "controlType": "TEXT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "calculation_period",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "projectPeriod"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "LONG",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "reportId",
+            "fieldName": "확정 보고서 ID",
+            "fieldGroup": "확정 보고서",
+            "fieldOrder": 5,
+            "validation": {
+              "minimum": 1
+            },
+            "apiProperty": "eligibleReports[].id",
+            "controlType": "SELECT",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "report_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_WRITE",
+            "evidenceRequired": false,
+            "code": "reportId"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "reportVersion",
+            "fieldName": "보고서 버전",
+            "fieldGroup": "확정 보고서",
+            "fieldOrder": 6,
+            "validation": {
+              "minimum": 1
+            },
+            "apiProperty": "eligibleReports[].version",
+            "controlType": "TEXT",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "version_no",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "reportVersion"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "reportTitle",
+            "fieldName": "보고서 제목",
+            "fieldGroup": "확정 보고서",
+            "fieldOrder": 7,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "eligibleReports[].title",
+            "controlType": "TEXT",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "report_title",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "reportTitle"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "reportStatus",
+            "fieldName": "보고서 상태",
+            "fieldGroup": "확정 보고서",
+            "fieldOrder": 8,
+            "validation": {
+              "enum": [
+                "FINALIZED"
+              ]
+            },
+            "apiProperty": "eligibleReports[].status",
+            "controlType": "STATUS",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "report_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "reportStatus"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": false,
+            "fieldCode": "certificateId",
+            "fieldName": "인증서 ID",
+            "fieldGroup": "확정 보고서",
+            "fieldOrder": 9,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "eligibleReports[].certificateId",
+            "controlType": "TEXT",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "certificate_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "certificateId"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": false,
+            "fieldCode": "integrityHash",
+            "fieldName": "보고서 무결성 해시",
+            "fieldGroup": "확정 보고서",
+            "fieldOrder": 10,
+            "validation": {
+              "maxLength": 64,
+              "minLength": 64
+            },
+            "apiProperty": "eligibleReports[].integrityHash",
+            "controlType": "HASH",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "integrity_hash",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": true,
+            "code": "integrityHash"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "finalizedAt",
+            "fieldName": "보고서 확정 일시",
+            "fieldGroup": "확정 보고서",
+            "fieldOrder": 11,
+            "validation": {
+              "type": "date-time",
+              "nullable": false,
+              "required": true
+            },
+            "apiProperty": "eligibleReports[].finalizedAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_report",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "finalized_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "finalizedAt"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "LONG",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "submissionId",
+            "fieldName": "제출 패키지 ID",
+            "fieldGroup": "제출 패키지",
+            "fieldOrder": 12,
+            "validation": {
+              "minimum": 1
+            },
+            "apiProperty": "items[].id",
+            "controlType": "HIDDEN",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "regulatory_submission_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "submissionId"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "submissionVersion",
+            "fieldName": "제출 버전",
+            "fieldGroup": "제출 패키지",
+            "fieldOrder": 13,
+            "validation": {
+              "minimum": 1
+            },
+            "apiProperty": "items[].version",
+            "controlType": "TEXT",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "submission_version",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "submissionVersion"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "authorityCode",
+            "fieldName": "기관 코드",
+            "fieldGroup": "제출 패키지",
+            "fieldOrder": 14,
+            "validation": {
+              "maxLength": 80
+            },
+            "apiProperty": "items[].authorityCode",
+            "controlType": "TEXT",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "authority_code",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_WRITE",
+            "evidenceRequired": false,
+            "code": "authorityCode"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "authorityName",
+            "fieldName": "기관명",
+            "fieldGroup": "제출 패키지",
+            "fieldOrder": 15,
+            "validation": {
+              "maxLength": 200
+            },
+            "apiProperty": "items[].authorityName",
+            "controlType": "TEXT",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "authority_name",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_WRITE",
+            "evidenceRequired": false,
+            "code": "authorityName"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "reportingProgram",
+            "fieldName": "제출 제도·사업",
+            "fieldGroup": "제출 패키지",
+            "fieldOrder": 16,
+            "validation": {
+              "maxLength": 160
+            },
+            "apiProperty": "items[].reportingProgram",
+            "controlType": "TEXT",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "reporting_program",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_WRITE",
+            "evidenceRequired": false,
+            "code": "reportingProgram"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "reportingPeriod",
+            "fieldName": "보고 기간",
+            "fieldGroup": "제출 패키지",
+            "fieldOrder": 17,
+            "validation": {
+              "maxLength": 80
+            },
+            "apiProperty": "items[].reportingPeriod",
+            "controlType": "TEXT",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "reporting_period",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_WRITE",
+            "evidenceRequired": false,
+            "code": "reportingPeriod"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "legalBasis",
+            "fieldName": "법적 근거",
+            "fieldGroup": "제출 패키지",
+            "fieldOrder": 18,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].legalBasis",
+            "controlType": "TEXTAREA",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "legal_basis",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_WRITE",
+            "evidenceRequired": false,
+            "code": "legalBasis"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "channel",
+            "fieldName": "제출 채널",
+            "fieldGroup": "제출 패키지",
+            "fieldOrder": 19,
+            "validation": {
+              "enum": [
+                "SYSTEM",
+                "PORTAL",
+                "EMAIL",
+                "OFFLINE",
+                "API"
+              ]
+            },
+            "apiProperty": "items[].channel",
+            "controlType": "SELECT",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "submission_channel",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_WRITE",
+            "evidenceRequired": false,
+            "code": "channel"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "DATE",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "deadline",
+            "fieldName": "제출 기한",
+            "fieldGroup": "제출 패키지",
+            "fieldOrder": 20,
+            "validation": {
+              "notPast": true
+            },
+            "apiProperty": "items[].deadline",
+            "controlType": "DATE",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "submission_deadline",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_WRITE",
+            "evidenceRequired": false,
+            "code": "deadline"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "status",
+            "fieldName": "제출 상태",
+            "fieldGroup": "제출 패키지",
+            "fieldOrder": 21,
+            "validation": {
+              "enum": [
+                "PACKAGED",
+                "SUBMITTED",
+                "RECEIVED",
+                "CORRECTION_REQUIRED",
+                "RESUBMITTED",
+                "ACCEPTED",
+                "CANCELLED"
+              ]
+            },
+            "apiProperty": "items[].status",
+            "controlType": "STATUS",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "status"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "packageHash",
+            "fieldName": "패키지 SHA-256",
+            "fieldGroup": "제출 패키지",
+            "fieldOrder": 22,
+            "validation": {
+              "maxLength": 64,
+              "minLength": 64
+            },
+            "apiProperty": "items[].packageHash",
+            "controlType": "HASH",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "package_hash",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": true,
+            "code": "packageHash"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": false,
+            "fieldCode": "receiptNo",
+            "fieldName": "기관 접수번호",
+            "fieldGroup": "제출 패키지",
+            "fieldOrder": 23,
+            "validation": {
+              "maxLength": 120
+            },
+            "apiProperty": "items[].receiptNo",
+            "controlType": "TEXT",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "external_receipt_no",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_RECEIPT_WRITE",
+            "evidenceRequired": true,
+            "code": "receiptNo"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": false,
+            "fieldCode": "correctionReason",
+            "fieldName": "보완 사유",
+            "fieldGroup": "보완·종결",
+            "fieldOrder": 24,
+            "validation": {
+              "requiredWhen": "REQUEST_CORRECTION"
+            },
+            "apiProperty": "items[].correctionReason",
+            "controlType": "TEXTAREA",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "correction_reason",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_DECIDE",
+            "evidenceRequired": true,
+            "code": "correctionReason"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "DATE",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": false,
+            "fieldCode": "correctionDueDate",
+            "fieldName": "보완 제출 기한",
+            "fieldGroup": "보완·종결",
+            "fieldOrder": 25,
+            "validation": {
+              "requiredWhen": "REQUEST_CORRECTION"
+            },
+            "apiProperty": "items[].correctionDueDate",
+            "controlType": "DATE",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "correction_due_date",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_DECIDE",
+            "evidenceRequired": false,
+            "code": "correctionDueDate"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": false,
+            "fieldCode": "note",
+            "fieldName": "처리 메모",
+            "fieldGroup": "보완·종결",
+            "fieldOrder": 26,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "items[].note",
+            "controlType": "TEXTAREA",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "note_text",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_WRITE",
+            "evidenceRequired": false,
+            "code": "note"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": false,
+            "fieldCode": "submittedBy",
+            "fieldName": "제출자",
+            "fieldGroup": "처리 증적",
+            "fieldOrder": 27,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "items[].submittedBy",
+            "controlType": "TEXT",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "PERSONAL",
+            "sourceColumn": "submitted_by",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "submittedBy"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": false,
+            "fieldCode": "submittedAt",
+            "fieldName": "제출 일시",
+            "fieldGroup": "처리 증적",
+            "fieldOrder": 28,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "items[].submittedAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "submitted_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "submittedAt"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": false,
+            "fieldCode": "receivedAt",
+            "fieldName": "접수 일시",
+            "fieldGroup": "처리 증적",
+            "fieldOrder": 29,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "items[].receivedAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "received_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "receivedAt"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": false,
+            "fieldCode": "acceptedAt",
+            "fieldName": "수리 일시",
+            "fieldGroup": "처리 증적",
+            "fieldOrder": 30,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "items[].acceptedAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "accepted_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "acceptedAt"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "createdBy",
+            "fieldName": "패키지 생성자",
+            "fieldGroup": "처리 증적",
+            "fieldOrder": 31,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "items[].createdBy",
+            "controlType": "TEXT",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "PERSONAL",
+            "sourceColumn": "created_by",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "createdBy"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "updatedAt",
+            "fieldName": "최종 변경 일시",
+            "fieldGroup": "처리 증적",
+            "fieldOrder": 32,
+            "validation": {
+              "type": "date-time",
+              "nullable": false,
+              "required": true
+            },
+            "apiProperty": "items[].updatedAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_regulatory_submission",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "updatedAt"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "LONG",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "eventId",
+            "fieldName": "이벤트 ID",
+            "fieldGroup": "감사 이력",
+            "fieldOrder": 33,
+            "validation": {
+              "minimum": 1
+            },
+            "apiProperty": "events[].id",
+            "controlType": "HIDDEN",
+            "sourceTable": "emission_regulatory_submission_event",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "event_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "eventId"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "eventCode",
+            "fieldName": "처리 명령",
+            "fieldGroup": "감사 이력",
+            "fieldOrder": 34,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "events[].code",
+            "controlType": "TIMELINE",
+            "sourceTable": "emission_regulatory_submission_event",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "event_code",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": true,
+            "code": "eventCode"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": false,
+            "fieldCode": "previousStatus",
+            "fieldName": "이전 상태",
+            "fieldGroup": "감사 이력",
+            "fieldOrder": 35,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "events[].previousStatus",
+            "controlType": "STATUS",
+            "sourceTable": "emission_regulatory_submission_event",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "previous_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": true,
+            "code": "previousStatus"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "newStatus",
+            "fieldName": "변경 상태",
+            "fieldGroup": "감사 이력",
+            "fieldOrder": 36,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "events[].newStatus",
+            "controlType": "STATUS",
+            "sourceTable": "emission_regulatory_submission_event",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "new_status",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": true,
+            "code": "newStatus"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "eventActor",
+            "fieldName": "처리 계정",
+            "fieldGroup": "감사 이력",
+            "fieldOrder": 37,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "events[].actor",
+            "controlType": "TEXT",
+            "sourceTable": "emission_regulatory_submission_event",
+            "privacyClass": "PERSONAL",
+            "sourceColumn": "actor_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "eventActor"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": false,
+            "fieldCode": "eventNote",
+            "fieldName": "처리 사유",
+            "fieldGroup": "감사 이력",
+            "fieldOrder": 38,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "events[].note",
+            "controlType": "TEXT",
+            "sourceTable": "emission_regulatory_submission_event",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "event_note",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "eventNote"
+          },
+          {
+            "route": "/emission/report-submission",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+            "required": true,
+            "fieldCode": "eventCreatedAt",
+            "fieldName": "처리 일시",
+            "fieldGroup": "감사 이력",
+            "fieldOrder": 39,
+            "validation": {
+              "type": "date-time",
+              "nullable": false,
+              "required": true
+            },
+            "apiProperty": "events[].createdAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_regulatory_submission_event",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "PERM_REGULATORY_SUBMISSION_READ",
+            "evidenceRequired": false,
+            "code": "eventCreatedAt"
+          },
+          {
+            "fieldCode": "clientRequestId",
+            "code": "clientRequestId",
+            "fieldName": "clientRequestId",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 40,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "USER"
+          },
+          {
+            "fieldCode": "submissionDeadline",
+            "code": "submissionDeadline",
+            "fieldName": "submissionDeadline",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 41,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "USER"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "VERIFIER",
+            "entryState": "STEP_2_COMPLETED",
+            "commandCode": "REGULATORY_SUBMISSION_EXECUTE_3",
+            "resultState": "STEP_3_COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "retry": "idempotent commands only",
+          "states": [
+            "loading",
+            "empty",
+            "validation-error",
+            "authority-denied",
+            "conflict",
+            "dependency-blocked",
+            "server-error",
+            "recovery"
+          ]
+        },
+        "responsive": {
+          "mobile": "single-column and priority fields",
+          "tablet": "adaptive two-column",
+          "desktop": "task-optimized grid",
+          "overflow": "wrap-or-scroll-with-sticky-key-column"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "errorSummary": true,
+          "focusManagement": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorGuard": true,
+        "rowVersion": true,
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": "POST /home/api/emission-projects/{id}/regulatory-submissions/{submissionId}/transition"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "VERIFIER",
+        "entryState": "STEP_2_COMPLETED",
+        "commandCode": "REGULATORY_SUBMISSION_EXECUTE_3",
+        "resultState": "STEP_3_COMPLETED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "idempotencyRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "VERIFIER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
+    },
+    "handoffPolicy": {},
+    "handoffs": [
+      {
+        "failure": {
+          "staleDraft": "RELOAD",
+          "missingSource": "BLOCK",
+          "missingMapping": "USER_INPUT",
+          "conversionFailure": "BLOCK"
+        },
+        "payload": {
+          "toInput": {
+            "reportId": "required",
+            "tenantId": "required",
+            "projectId": "required",
+            "authorityCode": "required",
+            "clientRequestId": "required",
+            "reportingProgram": "required",
+            "submissionDeadline": "required"
+          },
+          "fromOutput": {
+            "status": "required",
+            "timeline": "required",
+            "nextActions": "required",
+            "packageHash": "required"
+          },
+          "fieldMappings": [
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "acceptedAt",
+              "fromField": "acceptedAt",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "authorityCode",
+              "fromField": "authorityCode",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "authorityName",
+              "fromField": "authorityName",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "certificateId",
+              "fromField": "certificateId",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "channel",
+              "fromField": "channel",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "correctionDueDate",
+              "fromField": "correctionDueDate",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "correctionReason",
+              "fromField": "correctionReason",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "createdBy",
+              "fromField": "createdBy",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "deadline",
+              "fromField": "deadline",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "eventActor",
+              "fromField": "eventActor",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "eventCode",
+              "fromField": "eventCode",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "eventCreatedAt",
+              "fromField": "eventCreatedAt",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "eventId",
+              "fromField": "eventId",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "eventNote",
+              "fromField": "eventNote",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "finalizedAt",
+              "fromField": "finalizedAt",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "integrityHash",
+              "fromField": "integrityHash",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "legalBasis",
+              "fromField": "legalBasis",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "newStatus",
+              "fromField": "newStatus",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "note",
+              "fromField": "note",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "packageHash",
+              "fromField": "packageHash",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "previousStatus",
+              "fromField": "previousStatus",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "projectId",
+              "fromField": "projectId",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "projectName",
+              "fromField": "projectName",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "projectPeriod",
+              "fromField": "projectPeriod",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "receiptNo",
+              "fromField": "receiptNo",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "receivedAt",
+              "fromField": "receivedAt",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "reportId",
+              "fromField": "reportId",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "reportingPeriod",
+              "fromField": "reportingPeriod",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "reportingProgram",
+              "fromField": "reportingProgram",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "reportStatus",
+              "fromField": "reportStatus",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "reportTitle",
+              "fromField": "reportTitle",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "reportVersion",
+              "fromField": "reportVersion",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "siteName",
+              "fromField": "siteName",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "status",
+              "fromField": "status",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "submissionId",
+              "fromField": "submissionId",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "submissionVersion",
+              "fromField": "submissionVersion",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "submittedAt",
+              "fromField": "submittedAt",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "submittedBy",
+              "fromField": "submittedBy",
+              "transform": "IDENTITY"
+            },
+            {
+              "source": "EXPLICIT_SEMANTIC_CONTRACT",
+              "toField": "updatedAt",
+              "fromField": "updatedAt",
+              "transform": "IDENTITY"
+            }
+          ],
+          "unmappedPolicy": "USER_INPUT_REQUIRED",
+          "contextMappings": [
+            {
+              "to": "execution.tenantId",
+              "from": "execution.tenantId"
+            },
+            {
+              "to": "execution.projectId",
+              "from": "execution.projectId"
+            },
+            {
+              "to": "execution.periodStart",
+              "from": "execution.periodStart"
+            },
+            {
+              "to": "execution.periodEnd",
+              "from": "execution.periodEnd"
+            }
+          ],
+          "inputPolicyMode": "FAIL_CLOSED",
+          "requiredContext": [
+            "tenantId",
+            "projectId",
+            "recordId",
+            "statusCode",
+            "rowVersion"
+          ],
+          "targetFieldCount": 39,
+          "inputPolicyVersion": 1,
+          "unmappedTargetFields": [],
+          "unmappedFieldPolicies": []
+        },
+        "integrity": {
+          "sourceImmutable": true,
+          "sourceDraftStatus": "SUBMITTED",
+          "currentDraftPrecedence": true
+        },
+        "toStepCode": "REGULATORY_SUBMISSION_S4",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "cycleType",
+          "periodStart",
+          "periodEnd",
+          "executionVersion"
+        ],
+        "handoffType": "STEP",
+        "authorization": {
+          "sourceActor": "completed step assignment",
+          "targetActor": "next step assignment",
+          "tenantIsolation": true,
+          "projectIsolation": true
+        },
+        "toProcessCode": "REGULATORY_SUBMISSION"
+      }
+    ]
+  },
+  "database": {
+    "transactional": true,
+    "migrationRequired": true,
+    "mappings": [
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "tenantId",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "projectId",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "stepCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": false,
+            "fieldCode": "recordId",
+            "apiProperty": "recordId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "statusCode",
+            "apiProperty": "statusCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "apiProperty": "ownerActorCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "rowVersion",
+            "apiProperty": "rowVersion",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "createdAt",
+            "apiProperty": "createdAt",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "updatedAt",
+            "apiProperty": "updatedAt",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "apiProperty": "evidenceCount",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportingYear",
+            "apiProperty": "reportingYear",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "reporting_year",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "organizationId",
+            "apiProperty": "organizationId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "siteId",
+            "apiProperty": "siteId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "facilityId",
+            "apiProperty": "facilityId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "scopeCode",
+            "apiProperty": "scopeCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "activityValue",
+            "apiProperty": "activityValue",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "unitCode",
+            "apiProperty": "unitCode",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "factorId",
+            "apiProperty": "factorId",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "emissionValue",
+            "apiProperty": "emissionValue",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "apiProperty": "qualityStatus",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "sourceType",
+            "apiProperty": "sourceType",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "sourceReference",
+            "apiProperty": "sourceReference",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "attachmentIds",
+            "apiProperty": "attachmentIds",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "submittedAt",
+            "apiProperty": "submittedAt",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_324e59bab8ea",
+            "apiProperty": "contract_324e59bab8ea",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_46b24e9a4e03",
+            "apiProperty": "contract_46b24e9a4e03",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_9edea4a65b5b",
+            "apiProperty": "contract_9edea4a65b5b",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_c0b93cac6c85",
+            "apiProperty": "contract_c0b93cac6c85",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_9d153d0bbbdf",
+            "apiProperty": "contract_9d153d0bbbdf",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_cb42744be881",
+            "apiProperty": "contract_cb42744be881",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_fbea75057ab1",
+            "apiProperty": "contract_fbea75057ab1",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_735ef691b192",
+            "apiProperty": "contract_735ef691b192",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_108421ba4ba0",
+            "apiProperty": "contract_108421ba4ba0",
+            "mappingStatus": "LOGICAL_CONTRACT"
+          }
+        ],
+        "audience": "ADMIN",
+        "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_ADMIN",
+        "primaryEntity": "emission_project_registry"
+      },
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "project.id",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectName",
+            "apiProperty": "project.name",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "siteName",
+            "apiProperty": "project.site",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "site_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectPeriod",
+            "apiProperty": "project.period",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "calculation_period",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportId",
+            "apiProperty": "eligibleReports[].id",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "report_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportVersion",
+            "apiProperty": "eligibleReports[].version",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "version_no",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportTitle",
+            "apiProperty": "eligibleReports[].title",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "report_title",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportStatus",
+            "apiProperty": "eligibleReports[].status",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "report_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "certificateId",
+            "apiProperty": "eligibleReports[].certificateId",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "certificate_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "integrityHash",
+            "apiProperty": "eligibleReports[].integrityHash",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "integrity_hash",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "finalizedAt",
+            "apiProperty": "eligibleReports[].finalizedAt",
+            "sourceTable": "emission_project_report",
+            "sourceColumn": "finalized_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "submissionId",
+            "apiProperty": "items[].id",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "regulatory_submission_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "submissionVersion",
+            "apiProperty": "items[].version",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "submission_version",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "authorityCode",
+            "apiProperty": "items[].authorityCode",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "authority_code",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "authorityName",
+            "apiProperty": "items[].authorityName",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "authority_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportingProgram",
+            "apiProperty": "items[].reportingProgram",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "reporting_program",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportingPeriod",
+            "apiProperty": "items[].reportingPeriod",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "reporting_period",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "legalBasis",
+            "apiProperty": "items[].legalBasis",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "legal_basis",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "channel",
+            "apiProperty": "items[].channel",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "submission_channel",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "deadline",
+            "apiProperty": "items[].deadline",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "submission_deadline",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "status",
+            "apiProperty": "items[].status",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "packageHash",
+            "apiProperty": "items[].packageHash",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "package_hash",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "receiptNo",
+            "apiProperty": "items[].receiptNo",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "external_receipt_no",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "correctionReason",
+            "apiProperty": "items[].correctionReason",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "correction_reason",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "correctionDueDate",
+            "apiProperty": "items[].correctionDueDate",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "correction_due_date",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "note",
+            "apiProperty": "items[].note",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "note_text",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "submittedBy",
+            "apiProperty": "items[].submittedBy",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "submitted_by",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "submittedAt",
+            "apiProperty": "items[].submittedAt",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "submitted_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "receivedAt",
+            "apiProperty": "items[].receivedAt",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "received_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "acceptedAt",
+            "apiProperty": "items[].acceptedAt",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "accepted_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "createdBy",
+            "apiProperty": "items[].createdBy",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "created_by",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "updatedAt",
+            "apiProperty": "items[].updatedAt",
+            "sourceTable": "emission_regulatory_submission",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "eventId",
+            "apiProperty": "events[].id",
+            "sourceTable": "emission_regulatory_submission_event",
+            "sourceColumn": "event_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "eventCode",
+            "apiProperty": "events[].code",
+            "sourceTable": "emission_regulatory_submission_event",
+            "sourceColumn": "event_code",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "previousStatus",
+            "apiProperty": "events[].previousStatus",
+            "sourceTable": "emission_regulatory_submission_event",
+            "sourceColumn": "previous_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "newStatus",
+            "apiProperty": "events[].newStatus",
+            "sourceTable": "emission_regulatory_submission_event",
+            "sourceColumn": "new_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "eventActor",
+            "apiProperty": "events[].actor",
+            "sourceTable": "emission_regulatory_submission_event",
+            "sourceColumn": "actor_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "eventNote",
+            "apiProperty": "events[].note",
+            "sourceTable": "emission_regulatory_submission_event",
+            "sourceColumn": "event_note",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "eventCreatedAt",
+            "apiProperty": "events[].createdAt",
+            "sourceTable": "emission_regulatory_submission_event",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED"
+          }
+        ],
+        "audience": "USER",
+        "pageCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_USER",
+        "primaryEntity": "emission_project_registry"
+      }
+    ],
+    "schemaSetVersion": 5,
+    "primaryEntities": [
+      "emission_project_registry"
+    ],
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "규제기관 제출·접수·보완 - 필수값·업무예외",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "order": 1,
+          "command": "REGULATORY_SUBMISSION_EXECUTE_1",
+          "stepCode": "REGULATORY_SUBMISSION_S1",
+          "actorCode": "COMPANY_MANAGER"
+        },
+        {
+          "order": 2,
+          "command": "REGULATORY_SUBMISSION_EXECUTE_2",
+          "stepCode": "REGULATORY_SUBMISSION_S2",
+          "actorCode": "COMPANY_MANAGER"
+        },
+        {
+          "order": 3,
+          "command": "REGULATORY_SUBMISSION_EXECUTE_3",
+          "stepCode": "REGULATORY_SUBMISSION_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "REGULATORY_SUBMISSION_EXECUTE_4",
+          "stepCode": "REGULATORY_SUBMISSION_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REGULATORY_SUBMISSION_EXCEPTION",
+      "assertions": [
+        "잘못된 입력 거부",
+        "상태 불변",
+        "보완 태스크 생성",
+        "원인과 필드 오류 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "규제기관 제출·접수·보완 - 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "order": 1,
+          "command": "REGULATORY_SUBMISSION_EXECUTE_1",
+          "stepCode": "REGULATORY_SUBMISSION_S1",
+          "actorCode": "COMPANY_MANAGER"
+        },
+        {
+          "order": 2,
+          "command": "REGULATORY_SUBMISSION_EXECUTE_2",
+          "stepCode": "REGULATORY_SUBMISSION_S2",
+          "actorCode": "COMPANY_MANAGER"
+        },
+        {
+          "order": 3,
+          "command": "REGULATORY_SUBMISSION_EXECUTE_3",
+          "stepCode": "REGULATORY_SUBMISSION_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "REGULATORY_SUBMISSION_EXECUTE_4",
+          "stepCode": "REGULATORY_SUBMISSION_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REGULATORY_SUBMISSION_ISOLATION",
+      "assertions": [
+        "타 테넌트·프로젝트 자료 0건",
+        "직접 식별자 접근 403 또는 404",
+        "검색·파일·내보내기 격리"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "규제기관 제출·접수·보완 - 중단·중복요청 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "order": 1,
+          "command": "REGULATORY_SUBMISSION_EXECUTE_1",
+          "stepCode": "REGULATORY_SUBMISSION_S1",
+          "actorCode": "COMPANY_MANAGER"
+        },
+        {
+          "order": 2,
+          "command": "REGULATORY_SUBMISSION_EXECUTE_2",
+          "stepCode": "REGULATORY_SUBMISSION_S2",
+          "actorCode": "COMPANY_MANAGER"
+        },
+        {
+          "order": 3,
+          "command": "REGULATORY_SUBMISSION_EXECUTE_3",
+          "stepCode": "REGULATORY_SUBMISSION_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "REGULATORY_SUBMISSION_EXECUTE_4",
+          "stepCode": "REGULATORY_SUBMISSION_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REGULATORY_SUBMISSION_RECOVERY",
+      "assertions": [
+        "멱등키 중복 생성 없음",
+        "중단 단계부터 안전 재개",
+        "롤백 후 원본 보존",
+        "재시도 횟수와 결과 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    },
+    {
+      "caseCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_HAPPY_PATH",
+      "name": "기관 제출·접수 추적 HAPPY_PATH",
+      "type": "HAPPY_PATH",
+      "status": "APPROVED",
+      "sourceRequirement": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "REGULATORY_SUBMISSION",
+          "stepCode": "REGULATORY_SUBMISSION_S3",
+          "scenario": "HAPPY_PATH"
+        }
+      ],
+      "assertions": [
+        "HAPPY_PATH contract is enforced before live promotion"
+      ]
+    },
+    {
+      "caseCode": "REGULATORY_SUBMISSION_REGULATORY_SUBMISSION_S3_AUTHORITY",
+      "name": "기관 제출·접수 추적 AUTHORITY",
+      "type": "AUTHORITY",
+      "status": "APPROVED",
+      "sourceRequirement": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "REGULATORY_SUBMISSION",
+          "stepCode": "REGULATORY_SUBMISSION_S3",
+          "scenario": "AUTHORITY"
+        }
+      ],
+      "assertions": [
+        "AUTHORITY contract is enforced before live promotion"
+      ]
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
+    "security": {
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true,
+      "segregationOfDuties": true,
+      "rateLimitRequired": false,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "standard": "WCAG 2.1 AA",
+      "keyboard": true,
+      "focus": true,
+      "errorSummary": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": true,
+      "targetHours": 72,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
+  },
+  "sourceHash": "3329776695e5911105b5fcfb32fbe4b2",
+  "approvalStatus": "APPROVED",
+  "packageHash": "4f306d02eeeb706bbd5709dcd6fa532a554842fca145a84aa90eaf1a0582673a"
+}

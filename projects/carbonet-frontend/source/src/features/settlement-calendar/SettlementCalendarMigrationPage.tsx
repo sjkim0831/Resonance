@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -174,37 +175,12 @@ export function SettlementCalendarMigrationPage() {
           icon="calendar_month"
         >
           <form
-            className="grid grid-cols-1 gap-6 lg:grid-cols-5"
+            className="ccus-search-host"
             onSubmit={(event) => {
               event.preventDefault();
               setFilters({ ...draft, pageIndex: 1 });
             }}
-          >
-            <div>
-              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="selectedMonth">{en ? "Month" : "정산 월"}</label>
-              <AdminSelect id="selectedMonth" value={draft.selectedMonth} onChange={(event) => setDraft((current) => ({ ...current, selectedMonth: event.target.value }))}>
-                {monthOptions.map((option, index) => (
-                  <option key={`${stringOf(option, "value")}-${index}`} value={stringOf(option, "value")}>{stringOf(option, "label")}</option>
-                ))}
-              </AdminSelect>
-            </div>
-            <div>
-              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="settlementStatus">{en ? "Status" : "정산 상태"}</label>
-              <AdminSelect id="settlementStatus" value={draft.settlementStatus} onChange={(event) => setDraft((current) => ({ ...current, settlementStatus: event.target.value }))}>
-                {statusOptions.map((option, index) => (
-                  <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>
-                ))}
-              </AdminSelect>
-            </div>
-            <div>
-              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="riskLevel">{en ? "Risk" : "위험도"}</label>
-              <AdminSelect id="riskLevel" value={draft.riskLevel} onChange={(event) => setDraft((current) => ({ ...current, riskLevel: event.target.value }))}>
-                {riskOptions.map((option, index) => (
-                  <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>
-                ))}
-              </AdminSelect>
-            </div>
-            <div className="lg:col-span-2">
+          ><CommonSearchSection basic={<><div className="ccus-search-field"><div className="lg:col-span-2">
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="settlementSearchKeyword">{en ? "Keyword" : "검색어"}</label>
               <div className="flex gap-2">
                 <AdminInput
@@ -214,10 +190,32 @@ export function SettlementCalendarMigrationPage() {
                   value={draft.searchKeyword}
                   onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))}
                 />
-                <button className="gov-btn gov-btn-primary" type="submit">{en ? "Search" : "조회"}</button>
+                
               </div>
-            </div>
-          </form>
+            </div></div>
+<div className="ccus-search-field"><div>
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="settlementStatus">{en ? "Status" : "정산 상태"}</label>
+              <AdminSelect id="settlementStatus" value={draft.settlementStatus} onChange={(event) => setDraft((current) => ({ ...current, settlementStatus: event.target.value }))}>
+                {statusOptions.map((option, index) => (
+                  <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>
+                ))}
+              </AdminSelect>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="selectedMonth">{en ? "Month" : "정산 월"}</label>
+              <AdminSelect id="selectedMonth" value={draft.selectedMonth} onChange={(event) => setDraft((current) => ({ ...current, selectedMonth: event.target.value }))}>
+                {monthOptions.map((option, index) => (
+                  <option key={`${stringOf(option, "value")}-${index}`} value={stringOf(option, "value")}>{stringOf(option, "label")}</option>
+                ))}
+              </AdminSelect>
+            </div></div>
+<div className="ccus-search-field"><div>
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="riskLevel">{en ? "Risk" : "위험도"}</label>
+              <AdminSelect id="riskLevel" value={draft.riskLevel} onChange={(event) => setDraft((current) => ({ ...current, riskLevel: event.target.value }))}>
+                {riskOptions.map((option, index) => (
+                  <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>
+                ))}
+              </AdminSelect>
+            </div></div></>} actions={<><button className="gov-btn gov-btn-primary" type="submit">{en ? "Search" : "조회"}</button></>}></CommonSearchSection></form>
         </CollectionResultPanel>
 
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_0.6fr]">

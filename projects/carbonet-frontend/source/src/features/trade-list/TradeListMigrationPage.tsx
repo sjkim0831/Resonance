@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
@@ -405,13 +406,12 @@ export function TradeListMigrationPage() {
           </div>
 
           <form
-            className="grid grid-cols-1 gap-4 px-6 py-6 lg:grid-cols-[minmax(0,1.6fr)_220px_220px_auto]"
+            className="ccus-search-host"
             onSubmit={(event) => {
               event.preventDefault();
               setFilters({ ...draft, pageIndex: 1 });
             }}
-          >
-            <div>
+          ><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="tradeSearchKeyword">
                 {en ? "Keyword" : "검색어"}
               </label>
@@ -425,8 +425,8 @@ export function TradeListMigrationPage() {
                   onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))}
                 />
               </div>
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="tradeStatus">
                 {en ? "Trade Status" : "거래 상태"}
               </label>
@@ -437,8 +437,7 @@ export function TradeListMigrationPage() {
                   </option>
                 ))}
               </AdminSelect>
-            </div>
-            <div>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="settlementStatus">
                 {en ? "Settlement" : "정산 상태"}
               </label>
@@ -449,12 +448,10 @@ export function TradeListMigrationPage() {
                   </option>
                 ))}
               </AdminSelect>
-            </div>
-            <div className="flex items-end gap-2">
-              <MemberButton className="flex-1 justify-center" size="lg" type="submit" variant="primary">
+            </div></div></>} actions={<><MemberButton className="flex-1 justify-center" size="lg" type="submit" variant="primary">
                 {en ? "Search" : "조회"}
               </MemberButton>
-              <MemberButton
+<MemberButton
                 className="flex-1 justify-center"
                 size="lg"
                 type="button"
@@ -465,9 +462,7 @@ export function TradeListMigrationPage() {
                 }}
               >
                 {en ? "Reset" : "초기화"}
-              </MemberButton>
-            </div>
-          </form>
+              </MemberButton></>}></CommonSearchSection></form>
         </section>
 
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.45fr)_360px]">

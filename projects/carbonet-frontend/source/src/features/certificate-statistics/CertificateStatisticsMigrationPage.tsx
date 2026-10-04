@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -121,29 +122,17 @@ export function CertificateStatisticsMigrationPage() {
           description={en ? "Slice the issuance dashboard by period, issuance type, process state, and institution keyword." : "기간, 발급 유형, 처리 상태, 기관 키워드 기준으로 인증서 통계를 좁혀 봅니다."}
           icon="monitoring"
         >
-          <form className="grid grid-cols-1 gap-4 lg:grid-cols-5" onSubmit={(event) => {
+          <form className="ccus-search-host" onSubmit={(event) => {
             event.preventDefault();
             setFilters({ ...draft, pageIndex: 1 });
-          }}>
-            <div>
-              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="periodFilter">{en ? "Period" : "기간"}</label>
-              <AdminSelect id="periodFilter" value={draft.periodFilter} onChange={(event) => setDraft((current) => ({ ...current, periodFilter: event.target.value }))}>
-                <option value="LAST_12_MONTHS">{en ? "Last 12 months" : "최근 12개월"}</option>
-                <option value="LAST_6_MONTHS">{en ? "Last 6 months" : "최근 6개월"}</option>
-                <option value="Q1_2026">{en ? "2026 Q1" : "2026년 1분기"}</option>
-              </AdminSelect>
-            </div>
-            <div>
-              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="certificateType">{en ? "Certificate Type" : "인증서 유형"}</label>
-              <AdminSelect id="certificateType" value={draft.certificateType} onChange={(event) => setDraft((current) => ({ ...current, certificateType: event.target.value }))}>
-                <option value="">{en ? "All" : "전체"}</option>
-                <option value="EMISSION">{en ? "Emission Certificate" : "배출권 인증서"}</option>
-                <option value="REDUCTION">{en ? "Reduction Confirmation" : "감축실적 확인서"}</option>
-                <option value="REC">{en ? "REC Verification" : "REC 검증서"}</option>
-                <option value="COMPLIANCE">{en ? "Compliance Report" : "준수 확인서"}</option>
-              </AdminSelect>
-            </div>
-            <div>
+          }}><CommonSearchSection basic={<><div className="ccus-search-field"><div className="lg:col-span-2">
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="searchKeyword">{en ? "Institution Keyword" : "기관 키워드"}</label>
+              <div className="flex gap-2">
+                <AdminInput className="flex-1" id="searchKeyword" placeholder={en ? "Institution, operator, or site keyword" : "기관명, 담당자, 배출지 키워드"} value={draft.searchKeyword} onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))} />
+                
+              </div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="issuanceStatus">{en ? "Status" : "처리 상태"}</label>
               <AdminSelect id="issuanceStatus" value={draft.issuanceStatus} onChange={(event) => setDraft((current) => ({ ...current, issuanceStatus: event.target.value }))}>
                 <option value="">{en ? "All" : "전체"}</option>
@@ -152,15 +141,24 @@ export function CertificateStatisticsMigrationPage() {
                 <option value="REJECTED">{en ? "Rejected" : "반려"}</option>
                 <option value="REISSUED">{en ? "Re-issued focus" : "재발급 중심"}</option>
               </AdminSelect>
-            </div>
-            <div className="lg:col-span-2">
-              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="searchKeyword">{en ? "Institution Keyword" : "기관 키워드"}</label>
-              <div className="flex gap-2">
-                <AdminInput className="flex-1" id="searchKeyword" placeholder={en ? "Institution, operator, or site keyword" : "기관명, 담당자, 배출지 키워드"} value={draft.searchKeyword} onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))} />
-                <button className="gov-btn gov-btn-primary" type="submit">{en ? "Search" : "조회"}</button>
-              </div>
-            </div>
-          </form>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="periodFilter">{en ? "Period" : "기간"}</label>
+              <AdminSelect id="periodFilter" value={draft.periodFilter} onChange={(event) => setDraft((current) => ({ ...current, periodFilter: event.target.value }))}>
+                <option value="LAST_12_MONTHS">{en ? "Last 12 months" : "최근 12개월"}</option>
+                <option value="LAST_6_MONTHS">{en ? "Last 6 months" : "최근 6개월"}</option>
+                <option value="Q1_2026">{en ? "2026 Q1" : "2026년 1분기"}</option>
+              </AdminSelect>
+            </div></div>
+<div className="ccus-search-field"><div>
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="certificateType">{en ? "Certificate Type" : "인증서 유형"}</label>
+              <AdminSelect id="certificateType" value={draft.certificateType} onChange={(event) => setDraft((current) => ({ ...current, certificateType: event.target.value }))}>
+                <option value="">{en ? "All" : "전체"}</option>
+                <option value="EMISSION">{en ? "Emission Certificate" : "배출권 인증서"}</option>
+                <option value="REDUCTION">{en ? "Reduction Confirmation" : "감축실적 확인서"}</option>
+                <option value="REC">{en ? "REC Verification" : "REC 검증서"}</option>
+                <option value="COMPLIANCE">{en ? "Compliance Report" : "준수 확인서"}</option>
+              </AdminSelect>
+            </div></div></>} actions={<><button className="gov-btn gov-btn-primary" type="submit">{en ? "Search" : "조회"}</button></>}></CommonSearchSection></form>
         </CollectionResultPanel>
 
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">

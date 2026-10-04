@@ -8,6 +8,7 @@ import lombok.Setter;
 public class ExternalAuthStartRequest {
 
     private String methodCode;
+    private String purpose;
     private String userId;
     private String userSe;
     private String returnUrl;

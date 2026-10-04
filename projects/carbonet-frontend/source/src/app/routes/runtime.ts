@@ -219,13 +219,14 @@ function resolveRuntimePathContext(pathname: string): RuntimePathContext {
   }
 
   const matched = runtimePathRegistry.getByPath(normalizedKoPath) || runtimePathRegistry.getByPath(normalizedPath);
+  const dynamicCandidate = !matched && ["/mypage/", "/emission/", "/co2/", "/monitoring/", "/certificate/", "/trade/", "/support/", "/edu/"].some(prefix => normalizedKoPath.startsWith(prefix));
 
   return {
     normalizedPath,
     normalizedKoPath,
     isReactShellPath: REACT_SHELL_PATH_SET.has(normalizedPath),
     specialCasePage,
-    matchedRouteId: matched ? normalizeRouteId(matched) : ""
+    matchedRouteId: matched ? normalizeRouteId(matched) : dynamicCandidate ? normalizeRouteId("dynamic-page-runtime") : ""
   };
 }
 

@@ -1,0 +1,438 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "WORK_ASSIGNMENT",
+    "name": "프로젝트 업무 배정",
+    "domain": "WORK_ASSIGNMENT",
+    "workType": "WORK_ASSIGNMENT",
+    "goal": "기업의 업무 종류·프로세스·액터·단계를 선택하고 적격한 소속 계정에 원자적으로 배정한다."
+  },
+  "step": {
+    "code": "WORK_ASSIGNMENT_CONFIRM",
+    "version": 1,
+    "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "WORK_ASSIGNMENT_MANAGER",
+      "ownerActorCode": "WORK_ASSIGNMENT_MANAGER",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
+    },
+    "business": {
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
+      "domainCode": "WORK_ASSIGNMENT",
+      "processName": "프로젝트 업무 배정",
+      "stepName": "배정 확정·인계",
+      "goal": "기업의 업무 종류·프로세스·액터·단계를 선택하고 적격한 소속 계정에 원자적으로 배정한다.",
+      "requirement": "배정 결과를 원자적으로 저장하고 담당자에게 알린다.",
+      "completionRule": "계정별 업무 길잡이와 감사 이력에서 배정 결과가 확인됨",
+      "riskLevel": "HIGH",
+      "slaHours": 4,
+      "regulationRefs": "",
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {},
+      "extensions": {}
+    },
+    "transition": {
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
+      "commandCode": "CONFIRM_ASSIGNMENTS",
+      "fromState": "STEPS_ASSIGNED",
+      "toState": "COMPLETED",
+      "stepOrder": 4,
+      "stepType": "APPROVAL",
+      "parentStepCode": null,
+      "completionRule": "계정별 업무 길잡이와 감사 이력에서 배정 결과가 확인됨",
+      "policy": {
+        "auditRequired": true,
+        "optimisticLock": true,
+        "idempotencyRequired": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
+    },
+    "input": {
+      "required": [
+        "assignments",
+        "assignedBy"
+      ]
+    },
+    "output": {
+      "produces": [
+        "assignmentAudit",
+        "workflowNotifications"
+      ]
+    },
+    "guide": {
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
+      "processCode": "WORK_ASSIGNMENT",
+      "stepCode": "WORK_ASSIGNMENT_CONFIRM",
+      "stepOrder": 4,
+      "workTypeCode": "WORK_ASSIGNMENT",
+      "actorCode": "WORK_ASSIGNMENT_MANAGER",
+      "title": "배정 확정·인계",
+      "purpose": "배정 결과를 원자적으로 저장하고 담당자에게 알린다.",
+      "entryCondition": "STEPS_ASSIGNED",
+      "completionCondition": "계정별 업무 길잡이와 감사 이력에서 배정 결과가 확인됨",
+      "userPath": "/emission/work-assignment?workTypeCode=EMISSION&processCode=EMISSION_PROJECT",
+      "adminPath": null,
+      "relatedBusinessRoute": null,
+      "nextStepCode": null,
+      "nextAction": "COMPLETED",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "WORK_ASSIGNMENT_CONFIRM_USER_WORKSPACE",
+        "route": "/emission/work-assignment?workTypeCode=EMISSION&processCode=EMISSION_PROJECT",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "USER",
+        "screenType": "WORKSPACE",
+        "title": "배정 확정·인계",
+        "purpose": "배정 결과를 원자적으로 저장하고 담당자에게 알린다.",
+        "layout": "RESPONSIVE_WORKSPACE",
+        "theme": "KRDS_GOV_DEFAULT",
+        "designAuthority": {
+          "source": "LEGACY_REGISTERED_DEFAULT",
+          "layout": "RESPONSIVE_WORKSPACE",
+          "theme": "KRDS_GOV_DEFAULT",
+          "defaulted": [
+            "layout",
+            "theme"
+          ]
+        },
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "fieldCode": "assignments",
+            "code": "assignments",
+            "fieldName": "assignments",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 1,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "USER"
+          },
+          {
+            "fieldCode": "assignedBy",
+            "code": "assignedBy",
+            "fieldName": "assignedBy",
+            "fieldGroup": "업무 입력",
+            "fieldOrder": 2,
+            "dataType": "STRING",
+            "controlType": "TEXT",
+            "editable": true,
+            "required": true,
+            "validation": {
+              "required": true
+            },
+            "mappingStatus": "CONTRACT_PROJECTED",
+            "privacyClass": "INTERNAL",
+            "audience": "USER"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "WORK_ASSIGNMENT_MANAGER",
+            "entryState": "STEPS_ASSIGNED",
+            "commandCode": "CONFIRM_ASSIGNMENTS",
+            "resultState": "COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": [],
+        "responsive": {
+          "mobile": "single-column",
+          "tablet": "adaptive-two-column",
+          "desktop": "task-optimized",
+          "noTextOverflow": true
+        },
+        "accessibility": {
+          "standard": "WCAG 2.1 AA",
+          "keyboard": true,
+          "focus": true,
+          "errorSummary": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorGuard": true,
+        "rowVersion": true,
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": "/home/api/work-assignments"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "WORK_ASSIGNMENT_MANAGER",
+        "entryState": "STEPS_ASSIGNED",
+        "commandCode": "CONFIRM_ASSIGNMENTS",
+        "resultState": "COMPLETED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "idempotencyRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
+      "actorCode": "WORK_ASSIGNMENT_MANAGER",
+      "ownerActorCode": "WORK_ASSIGNMENT_MANAGER",
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
+    },
+    "handoffPolicy": {},
+    "handoffs": [
+      {
+        "toState": "COMPLETED",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "processCode",
+          "stepCode",
+          "actorCode",
+          "rowVersion"
+        ],
+        "handoffType": "TERMINAL"
+      }
+    ]
+  },
+  "database": {
+    "mappings": [],
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "비권한 배정 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        "배정 API 호출"
+      ],
+      "status": "APPROVED",
+      "caseCode": "WORK_ASSIGNMENT-AUTH",
+      "assertions": [
+        "HTTP 403",
+        "DB 변경 0건"
+      ],
+      "preconditions": "일반 기업 계정 로그인"
+    },
+    {
+      "name": "기업 계정 단계 배정",
+      "type": "HAPPY_PATH",
+      "steps": [
+        "프로젝트 선택",
+        "액터 기본 계정 선택",
+        "단계별 계정 선택",
+        "저장"
+      ],
+      "status": "APPROVED",
+      "caseCode": "WORK_ASSIGNMENT-HAPPY",
+      "assertions": [
+        "단계 담당자 저장",
+        "계정 업무 노출",
+        "알림·감사 생성"
+      ],
+      "preconditions": "업무 배정 담당자와 활성 프로젝트·계정 존재"
+    },
+    {
+      "name": "타 기업 계정 배정 차단",
+      "type": "ISOLATION",
+      "steps": [
+        "배정 저장"
+      ],
+      "status": "APPROVED",
+      "caseCode": "WORK_ASSIGNMENT-ISOLATION",
+      "assertions": [
+        "TENANT_ACCOUNT_NOT_ELIGIBLE",
+        "DB 변경 0건"
+      ],
+      "preconditions": "다른 테넌트 계정 지정"
+    },
+    {
+      "name": "재배정 복구",
+      "type": "RECOVERY",
+      "steps": [
+        "새 계정 재배정",
+        "구 계정 확인",
+        "신규 계정 확인"
+      ],
+      "status": "APPROVED",
+      "caseCode": "WORK_ASSIGNMENT-RECOVERY",
+      "assertions": [
+        "구 배정 비활성",
+        "신규 배정 활성",
+        "감사 이력 보존"
+      ],
+      "preconditions": "기존 담당자 존재"
+    },
+    {
+      "name": "필수 배정 검증",
+      "type": "VALIDATION",
+      "steps": [
+        "배정 저장"
+      ],
+      "status": "APPROVED",
+      "caseCode": "WORK_ASSIGNMENT-VALIDATION",
+      "assertions": [
+        "ASSIGNMENTS_REQUIRED",
+        "DB 변경 0건"
+      ],
+      "preconditions": "단계 또는 계정 누락"
+    },
+    {
+      "caseCode": "WORK_ASSIGNMENT_WORK_ASSIGNMENT_CONFIRM_EXCEPTION",
+      "name": "배정 확정·인계 EXCEPTION",
+      "type": "EXCEPTION",
+      "status": "APPROVED",
+      "sourceRequirement": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+          "processCode": "WORK_ASSIGNMENT",
+          "stepCode": "WORK_ASSIGNMENT_CONFIRM",
+          "scenario": "EXCEPTION"
+        }
+      ],
+      "assertions": [
+        "EXCEPTION contract is enforced before live promotion"
+      ]
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
+    "security": {
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true,
+      "segregationOfDuties": true,
+      "rateLimitRequired": false,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "standard": "WCAG 2.1 AA",
+      "keyboard": true,
+      "focus": true,
+      "errorSummary": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": true,
+      "targetHours": 4,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
+  },
+  "sourceHash": "9294dbaeacca0140ced5b6e9538160a9",
+  "approvalStatus": "APPROVED",
+  "packageHash": "2c905ffbea46dff8e5148142b7c0164c8db39abb6d568ca9136fc538100986d9"
+}

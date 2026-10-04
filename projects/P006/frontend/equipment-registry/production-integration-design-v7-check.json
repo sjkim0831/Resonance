@@ -1,0 +1,12 @@
+{
+  "scope": "DOCUMENT_STRUCTURE_ONLY",
+  "status": "PASS",
+  "gates": 6,
+  "procedureSteps": 11,
+  "aiStages": 5,
+  "requirementsPreserved": 115,
+  "authenticatedRuns": 0,
+  "openGates": 6,
+  "elapsedMs": 35,
+  "paidApiCalls": 0
+}

@@ -290,31 +290,31 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
             String authDi) {
         switch (userSe) {
             case "GNR":
-                genRepository.findById(userId).ifPresent(entity -> {
+                genRepository.findById(userId).map(entity -> {
                     entity.setAuthTy(authTy);
                     entity.setAuthDn(authDn);
                     entity.setAuthCi(authCi);
                     entity.setAuthDi(authDi);
-                    genRepository.save(entity);
-                });
+                    return genRepository.saveAndFlush(entity);
+                }).orElseThrow(() -> new IllegalStateException("인증 대상 계정을 찾을 수 없습니다."));
                 break;
             case "ENT":
-                findEnterpriseMember(userId).ifPresent(entity -> {
+                findEnterpriseMember(userId).map(entity -> {
                     entity.setAuthTy(authTy);
                     entity.setAuthDn(authDn);
                     entity.setAuthCi(authCi);
                     entity.setAuthDi(authDi);
-                    entRepository.save(entity);
-                });
+                    return entRepository.saveAndFlush(entity);
+                }).orElseThrow(() -> new IllegalStateException("인증 대상 계정을 찾을 수 없습니다."));
                 break;
             case "USR":
-                empRepository.findById(userId).ifPresent(entity -> {
+                empRepository.findById(userId).map(entity -> {
                     entity.setAuthTy(authTy);
                     entity.setAuthDn(authDn);
                     entity.setAuthCi(authCi);
                     entity.setAuthDi(authDi);
-                    empRepository.save(entity);
-                });
+                    return empRepository.saveAndFlush(entity);
+                }).orElseThrow(() -> new IllegalStateException("인증 대상 계정을 찾을 수 없습니다."));
                 break;
         }
     }
@@ -328,14 +328,74 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
     }
 
     @Override
+    public LoginResponseDTO resolveAuthenticatedLoginUser(String principalName) {
+        if (ObjectUtils.isEmpty(principalName)) return null;
+        var token = authLoginMapper.selectActiveAuthToken(principalName);
+        if (token == null) return null;
+        String storedId = token.entrySet().stream().filter(e -> "userId".equalsIgnoreCase(e.getKey()))
+                .map(e -> Objects.toString(e.getValue(), "")).findFirst().orElse("");
+        String storedType = token.entrySet().stream().filter(e -> "userSe".equalsIgnoreCase(e.getKey()))
+                .map(e -> Objects.toString(e.getValue(), "")).findFirst().orElse("");
+        if (!principalName.equalsIgnoreCase(storedId) || !List.of("ENT", "GNR", "USR").contains(storedType)) return null;
+        return selectActiveIdentityAccount(storedType, storedId);
+    }
+
+    private LoginResponseDTO selectActiveIdentityAccount(String userSe, String userId) {
+        // Use the same approved-account queries as password login, not legacy ENT status A.
+        return switch (userSe) {
+            case "ENT" -> authLoginMapper.selectEnterpriseLoginUser(userId);
+            case "GNR" -> authLoginMapper.selectGeneralLoginUser(userId);
+            case "USR" -> authLoginMapper.selectEmployeeLoginUser(userId);
+            default -> null;
+        };
+    }
+
+    @Override
+    public long countExternalIdentityMatches(String authCi) {
+        String ci = normalizeExternalIdentity(authCi);
+        if (ObjectUtils.isEmpty(ci)) return 0;
+        return entRepository.countByAuthCi(ci) + genRepository.countByAuthCi(ci) + empRepository.countByAuthCi(ci);
+    }
+
+    /** Link only after server-authenticated account and fresh provider verification.
+     * A shared advisory lock serializes CI assignment across account types and JVMs.
+     * Existing identities cannot be replaced by this first-link operation. */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void linkExternalIdentity(String userId, String userSe, String authTy, String authDn, String authCi, String authDi) {
+        String ci = normalizeExternalIdentity(authCi);
+        if (ObjectUtils.isEmpty(ci)) throw new IllegalArgumentException("본인확인 식별값을 확인하지 못했습니다.");
+        credentialMutationLockService.acquireInCurrentTransaction("external-identity-link");
+        credentialMutationLockService.acquireInCurrentTransaction(userId);
+        LoginResponseDTO account = resolveAuthenticatedLoginUser(userId);
+        if (account == null || !userSe.equals(account.getUserSe())) {
+            throw new IllegalStateException("로그인 세션이 변경되었습니다. 다시 로그인해 주세요.");
+        }
+        String currentCi = normalizeExternalIdentity(account.getAuthCi());
+        long matches = countExternalIdentityMatches(ci);
+        if ((!ObjectUtils.isEmpty(currentCi) && !ci.equals(currentCi)) || matches > (ci.equals(currentCi) ? 1 : 0)) {
+            throw new IllegalStateException("이미 다른 인증 연결이 존재합니다. 자동으로 덮어쓰지 않습니다. 관리자에게 계정 연결 확인을 요청해 주세요.");
+        }
+        updateAuthInfo(userId, userSe, authTy, authDn, ci, authDi);
+        // saveAndFlush propagates SQL failures. Do not use a cached MyBatis account
+        // select to read back a JPA update inside the same transaction.
+    }
+
+    @Override
     public LoginResponseDTO findLoginUserByExternalIdentity(String authCi, String authDi) {
         String normalizedCi = normalizeExternalIdentity(authCi);
         String normalizedDi = normalizeExternalIdentity(authDi);
 
         if (!ObjectUtils.isEmpty(normalizedCi)) {
-            LoginResponseDTO byCi = findLoginUserByCi(normalizedCi);
-            if (byCi != null) {
-                return byCi;
+            long matches = entRepository.countByAuthCi(normalizedCi)
+                    + genRepository.countByAuthCi(normalizedCi)
+                    + empRepository.countByAuthCi(normalizedCi);
+            // A CI collision must not silently select the first account, even across account types.
+            if (matches > 1) {
+                return null;
+            }
+            if (matches == 1) {
+                return findLoginUserByCi(normalizedCi);
             }
         }
 
@@ -349,17 +409,17 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
     private LoginResponseDTO findLoginUserByCi(String authCi) {
         Optional<EntrprsMber> enterprise = entRepository.findFirstByAuthCi(authCi);
         if (enterprise.isPresent()) {
-            return authLoginMapper.selectLoginUser("ENT", enterprise.get().getEntrprsMberId());
+            return selectActiveIdentityAccount("ENT", enterprise.get().getEntrprsMberId());
         }
 
         Optional<GnrlMber> general = genRepository.findFirstByAuthCi(authCi);
         if (general.isPresent()) {
-            return authLoginMapper.selectLoginUser("GNR", general.get().getMberId());
+            return selectActiveIdentityAccount("GNR", general.get().getMberId());
         }
 
         Optional<EmplyrInfo> employee = empRepository.findFirstByAuthCi(authCi);
         if (employee.isPresent()) {
-            return authLoginMapper.selectLoginUser("USR", employee.get().getEmplyrId());
+            return selectActiveIdentityAccount("USR", employee.get().getEmplyrId());
         }
 
         return null;
@@ -368,17 +428,17 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
     private LoginResponseDTO findLoginUserByDi(String authDi) {
         Optional<EntrprsMber> enterprise = entRepository.findFirstByAuthDi(authDi);
         if (enterprise.isPresent()) {
-            return authLoginMapper.selectLoginUser("ENT", enterprise.get().getEntrprsMberId());
+            return selectActiveIdentityAccount("ENT", enterprise.get().getEntrprsMberId());
         }
 
         Optional<GnrlMber> general = genRepository.findFirstByAuthDi(authDi);
         if (general.isPresent()) {
-            return authLoginMapper.selectLoginUser("GNR", general.get().getMberId());
+            return selectActiveIdentityAccount("GNR", general.get().getMberId());
         }
 
         Optional<EmplyrInfo> employee = empRepository.findFirstByAuthDi(authDi);
         if (employee.isPresent()) {
-            return authLoginMapper.selectLoginUser("USR", employee.get().getEmplyrId());
+            return selectActiveIdentityAccount("USR", employee.get().getEmplyrId());
         }
 
         return null;

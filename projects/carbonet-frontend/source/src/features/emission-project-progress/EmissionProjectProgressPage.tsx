@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { EmissionPageIntro } from "../emission-common/EmissionPageIntro";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { HeaderBrand, HeaderDesktopNav, HomeInlineStyles } from "../home-entry/HomeEntrySections";
 import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
@@ -119,7 +120,7 @@ export function EmissionProjectProgressPage() {
         </header>
 
         <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
-          <nav className="text-sm text-slate-500">
+          <nav data-legacy-page-breadcrumb="" className="text-sm text-slate-500">
             <a href={buildLocalizedPath("/emission/project_list", "/en/emission/project_list")}>
               {en ? "Emission Projects" : "배출량 프로젝트"}
             </a>
@@ -137,36 +138,7 @@ export function EmissionProjectProgressPage() {
 
           {data && (
             <>
-              <section className="mt-5 rounded-2xl bg-gradient-to-r from-[#052b57] to-[#174ea6] p-6 text-white">
-                <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-                  <div>
-                    <div className="text-sm font-bold text-blue-200">
-                      {data.id} · {data.status}
-                    </div>
-                    <h1 className="mt-2 text-3xl font-black">{data.name}</h1>
-                    <p className="mt-2 text-blue-100">
-                      {data.site} · {data.period} · {data.scope}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    <a
-                      className="rounded-lg bg-white px-4 py-3 font-bold text-blue-800"
-                      href={buildLocalizedPath(
-                        "/admin/system/actor-process?process=EMISSION_PROJECT",
-                        "/en/admin/system/actor-process?process=EMISSION_PROJECT"
-                      )}
-                    >
-                      {en ? "Simulation Contract" : "시뮬레이션 계약"}
-                    </a>
-                    <a
-                      className="rounded-lg border border-white/50 px-4 py-3 font-bold"
-                      href={pathFor("/emission/project/detail")}
-                    >
-                      {en ? "Project Detail →" : "상세 페이지 →"}
-                    </a>
-                  </div>
-                </div>
-              </section>
+              <EmissionPageIntro category={`${data.id} · ${data.status}`} title={data.name} description={`${data.site} · ${data.period} · ${data.scope}`} actions={<><a href={buildLocalizedPath("/admin/system/actor-process?process=EMISSION_PROJECT", "/en/admin/system/actor-process?process=EMISSION_PROJECT")}>{en ? "Simulation Contract" : "시뮬레이션 계약"}</a><a href={pathFor("/emission/project/detail")}>{en ? "Project Detail →" : "상세 페이지 →"}</a></>} />
 
               <section className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[

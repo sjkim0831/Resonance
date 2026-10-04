@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -268,8 +269,7 @@ export function BatchManagementMigrationPage() {
           icon="schedule"
           title={en ? "Batch Scope Filter" : "배치 조회 조건"}
         >
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4 xl:w-[60rem]">
-            <div>
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="batchKeyword">{en ? "Keyword" : "검색어"}</label>
               <AdminInput
                 id="batchKeyword"
@@ -277,8 +277,8 @@ export function BatchManagementMigrationPage() {
                 value={searchKeyword}
                 onChange={(event) => setSearchKeyword(event.target.value)}
               />
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="batchJobStatus">{en ? "Job Status" : "잡 상태"}</label>
               <AdminSelect id="batchJobStatus" value={jobStatus} onChange={(event) => setJobStatus(event.target.value)}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -286,8 +286,7 @@ export function BatchManagementMigrationPage() {
                 <option value="PAUSED">PAUSED</option>
                 <option value="REVIEW">REVIEW</option>
               </AdminSelect>
-            </div>
-            <div>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="batchNodeStatus">{en ? "Node Status" : "노드 상태"}</label>
               <AdminSelect id="batchNodeStatus" value={nodeStatus} onChange={(event) => setNodeStatus(event.target.value)}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -295,9 +294,7 @@ export function BatchManagementMigrationPage() {
                 <option value="STANDBY">STANDBY</option>
                 <option value="DEGRADED">DEGRADED</option>
               </AdminSelect>
-            </div>
-            <div className="flex items-end gap-2">
-              <button
+            </div></div></>} actions={<><button
                 className="gov-btn gov-btn-outline w-full"
                 onClick={() => {
                   setSearchKeyword("");
@@ -307,9 +304,7 @@ export function BatchManagementMigrationPage() {
                 type="button"
               >
                 {en ? "Reset" : "초기화"}
-              </button>
-            </div>
-          </div>
+              </button></>}></CommonSearchSection></div>
         </CollectionResultPanel>
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4" data-help-id="batch-management-summary">

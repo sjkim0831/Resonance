@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -206,37 +207,12 @@ export function TradeDuplicateMigrationPage() {
           title={en ? "Review Conditions" : "점검 조건"}
         >
           <form
-            className="grid grid-cols-1 gap-6 md:grid-cols-4"
+            className="ccus-search-host"
             onSubmit={(event) => {
               event.preventDefault();
               setFilters({ ...draft, pageIndex: 1 });
             }}
-          >
-            <div>
-              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="duplicateDetectionType">{en ? "Detection Type" : "탐지 유형"}</label>
-              <AdminSelect id="duplicateDetectionType" value={draft.detectionType} onChange={(event) => setDraft((current) => ({ ...current, detectionType: event.target.value }))}>
-                {detectionTypeOptions.map((option, index) => (
-                  <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>
-                ))}
-              </AdminSelect>
-            </div>
-            <div>
-              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="duplicateReviewStatus">{en ? "Review Status" : "검토 상태"}</label>
-              <AdminSelect id="duplicateReviewStatus" value={draft.reviewStatus} onChange={(event) => setDraft((current) => ({ ...current, reviewStatus: event.target.value }))}>
-                {reviewStatusOptions.map((option, index) => (
-                  <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>
-                ))}
-              </AdminSelect>
-            </div>
-            <div>
-              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="duplicateRiskLevel">{en ? "Risk Level" : "위험도"}</label>
-              <AdminSelect id="duplicateRiskLevel" value={draft.riskLevel} onChange={(event) => setDraft((current) => ({ ...current, riskLevel: event.target.value }))}>
-                {riskLevelOptions.map((option, index) => (
-                  <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>
-                ))}
-              </AdminSelect>
-            </div>
-            <div>
+          ><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="duplicateSearchKeyword">{en ? "Keyword" : "검색어"}</label>
               <div className="flex gap-2">
                 <AdminInput
@@ -246,10 +222,32 @@ export function TradeDuplicateMigrationPage() {
                   value={draft.searchKeyword}
                   onChange={(event) => setDraft((current) => ({ ...current, searchKeyword: event.target.value }))}
                 />
-                <button className="gov-btn gov-btn-primary" type="submit">{en ? "Search" : "검색"}</button>
+                
               </div>
-            </div>
-          </form>
+            </div></div>
+<div className="ccus-search-field"><div>
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="duplicateReviewStatus">{en ? "Review Status" : "검토 상태"}</label>
+              <AdminSelect id="duplicateReviewStatus" value={draft.reviewStatus} onChange={(event) => setDraft((current) => ({ ...current, reviewStatus: event.target.value }))}>
+                {reviewStatusOptions.map((option, index) => (
+                  <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>
+                ))}
+              </AdminSelect>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="duplicateDetectionType">{en ? "Detection Type" : "탐지 유형"}</label>
+              <AdminSelect id="duplicateDetectionType" value={draft.detectionType} onChange={(event) => setDraft((current) => ({ ...current, detectionType: event.target.value }))}>
+                {detectionTypeOptions.map((option, index) => (
+                  <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>
+                ))}
+              </AdminSelect>
+            </div></div>
+<div className="ccus-search-field"><div>
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="duplicateRiskLevel">{en ? "Risk Level" : "위험도"}</label>
+              <AdminSelect id="duplicateRiskLevel" value={draft.riskLevel} onChange={(event) => setDraft((current) => ({ ...current, riskLevel: event.target.value }))}>
+                {riskLevelOptions.map((option, index) => (
+                  <option key={`${stringOf(option, "code")}-${index}`} value={stringOf(option, "code")}>{stringOf(option, "label")}</option>
+                ))}
+              </AdminSelect>
+            </div></div></>} actions={<><button className="gov-btn gov-btn-primary" type="submit">{en ? "Search" : "검색"}</button></>}></CommonSearchSection></form>
         </CollectionResultPanel>
 
         <section className="gov-card overflow-hidden p-0" data-help-id="trade-duplicate-table">

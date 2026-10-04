@@ -1,0 +1,101 @@
+{
+  "id": "project-scope",
+  "sortOrder": 1,
+  "name": "프로젝트 · 조직 경계",
+  "assignee": "미배정",
+  "model": "gpt-6-luna",
+  "state": "PLANNED",
+  "goal": "프로젝트 선택·등록 후 사업장과 산정 범위를 확정",
+  "ownedPaths": [
+    "projects/carbonet-frontend/source/src/features/emission-project-list/EmissionProjectListFocusedPage.tsx",
+    "projects/carbonet-frontend/source/src/features/emission-project-list/EmissionProjectCreatePage.tsx",
+    "projects/carbonet-frontend/source/src/features/emission-project-list/EmissionProjectDetailPage.tsx",
+    "projects/carbonet-frontend/source/src/features/organizational-boundary/OrganizationalBoundaryPage.tsx"
+  ],
+  "steps": [
+    {
+      "processCode": "EMISSION_PROJECT_PORTFOLIO",
+      "stepCode": "EMISSION_PROJECT_PORTFOLIO_LIST",
+      "expectedVersion": "2.0.1",
+      "pageIds": [
+        "emission-project-list"
+      ]
+    },
+    {
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_SETUP",
+      "expectedVersion": "4.0.0",
+      "pageIds": [
+        "emission-project-create"
+      ]
+    },
+    {
+      "processCode": "ORGANIZATIONAL_BOUNDARY",
+      "stepCode": "ORGANIZATIONAL_BOUNDARY_S1",
+      "expectedVersion": "2.0.0",
+      "pageIds": [
+        "organizational-boundary"
+      ]
+    },
+    {
+      "processCode": "ORGANIZATIONAL_BOUNDARY",
+      "stepCode": "ORGANIZATIONAL_BOUNDARY_S2",
+      "expectedVersion": "2.0.0",
+      "pageIds": [
+        "organizational-boundary"
+      ]
+    },
+    {
+      "processCode": "ORGANIZATIONAL_BOUNDARY",
+      "stepCode": "ORGANIZATIONAL_BOUNDARY_S3",
+      "expectedVersion": "2.0.0",
+      "pageIds": [
+        "organizational-boundary"
+      ]
+    },
+    {
+      "processCode": "ORGANIZATIONAL_BOUNDARY",
+      "stepCode": "ORGANIZATIONAL_BOUNDARY_S4",
+      "expectedVersion": "2.0.0",
+      "pageIds": [
+        "organizational-boundary"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "pageId": "emission-project-list",
+      "route": "/emission/project_list",
+      "sourcePath": "projects/carbonet-frontend/source/src/features/emission-project-list/EmissionProjectListFocusedPage.tsx",
+      "permissionCodes": []
+    },
+    {
+      "pageId": "emission-project-create",
+      "route": "/emission/project/create",
+      "sourcePath": "projects/carbonet-frontend/source/src/features/emission-project-list/EmissionProjectCreatePage.tsx",
+      "permissionCodes": []
+    },
+    {
+      "pageId": "emission-project-detail",
+      "route": "/emission/project/detail",
+      "sourcePath": "projects/carbonet-frontend/source/src/features/emission-project-list/EmissionProjectDetailPage.tsx",
+      "permissionCodes": []
+    },
+    {
+      "pageId": "organizational-boundary",
+      "route": "/emission/organizational-boundary",
+      "sourcePath": "projects/carbonet-frontend/source/src/features/organizational-boundary/OrganizationalBoundaryPage.tsx",
+      "permissionCodes": []
+    }
+  ],
+  "apis": [],
+  "permissions": [],
+  "dependencies": [
+    {
+      "contractId": "project-context",
+      "version": "1"
+    }
+  ],
+  "migrationVersions": [],
+  "evidence": {}
+}

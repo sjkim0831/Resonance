@@ -1,0 +1,14 @@
+{
+  "scope": "REFERENCE_RENDER_PRESENT_AND_FRAMED_NOT_TYPE_OR_FUNCTION_VERIFICATION",
+  "reviewer": "Codex screenshot inspection",
+  "contactSheets": ["contact-01.png", "contact-02.png", "contact-03.png", "contact-04.png", "contact-05.png", "contact-06.png", "contact-07.png", "contact-08.png"],
+  "variantsInspected": 178,
+  "browserScreens": ["browser-overview.png", "browser-mobile.png"],
+  "changes": ["개별 Variant 카메라 거리·화각 수정 후 197장 재렌더링", "해시 검증을 Kit 종료 후 수행하여 마지막 PNG 비동기 저장 완료를 확인"],
+  "findings": ["검수 접촉시트에서 178개 형상 렌더 존재와 프레임 내 배치를 확인", "베이스 재사용으로 유사 외형이 존재하며 별도 장비로서의 종류/내부 기구 정확성은 아직 미검증", "일부 세부 기구는 단순화된 기준 형상이며 실제 제품·물리 기능 완성 판정에 사용할 수 없음", "모듈 장착/작업물 연결 앵커는 참고 위치이며 현장 장착 검증이 아님"],
+  "typeVerified": false,
+  "functionalVerified": false,
+  "physicalVerified": false,
+  "readyPromotions": 0,
+  "realPromotions": 0
+}

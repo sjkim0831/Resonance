@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-HERMES_ROOT="${HERMES_ROOT:-/opt/util/ai/hermes}"
+HERMES_ROOT="${HERMES_ROOT:-/opt/Resonance/runtime/tools/ai/hermes}"
 OUT_DIR="${OUT_DIR:-$ROOT_DIR/data/ai-runtime}"
 DB_PATH="${DB_PATH:-$OUT_DIR/hermes-rag-vector.sqlite3}"
 MANIFEST_PATH="${MANIFEST_PATH:-$OUT_DIR/hermes-combined-rag-manifest.json}"
@@ -390,9 +390,9 @@ if context_pack_path.exists():
                     "ops/scripts/query-hermes-rag.py",
                     "ops/scripts/update-hermes-vector-rag.sh",
                     "data/ai-runtime/hermes-rag-context-pack.json",
-                    "/opt/util/ai/hermes/.hermes.md",
-                    "/opt/util/ai/hermes/cli.py",
-                    "/opt/util/ai/hermes/agent/prompt_builder.py",
+                    "/opt/Resonance/runtime/tools/ai/hermes/.hermes.md",
+                    "/opt/Resonance/runtime/tools/ai/hermes/cli.py",
+                    "/opt/Resonance/runtime/tools/ai/hermes/agent/prompt_builder.py",
                     "docs/ai/hermes-carbonet-40b-qlora-rag.md",
                 ],
             },
@@ -415,7 +415,7 @@ guidance = f"""# Hermes Local RAG Guidance
 - Start substantial work by reading `{manifest_path}`.
 - Query the combined Resonance/Hermes RAG index before broad scans:
   `python3 /opt/Resonance/ops/scripts/query-hermes-rag.py "question or keywords" --limit 8`
-- The index DB is `{db_path}` and covers `/opt/Resonance` plus `/opt/util/ai/hermes` with generated code/build artifacts excluded.
+- The index DB is `{db_path}` and covers `/opt/Resonance` plus `/opt/Resonance/runtime/tools/ai/hermes` with generated code/build artifacts excluded.
 - For long tasks, checkpoint progress in the session transcript and check forced-resume markers at `/opt/Resonance/var/ai-runtime/hermes-resume/latest.json` and `~/.hermes/resume/latest.json`.
 - For frontend-only Carbonet changes, use `/opt/Resonance/ops/scripts/resonance-k8s-build-deploy-80.sh`; it auto-selects frontend-only deploy when only React/static frontend paths changed, or `FRONTEND_ONLY=true` can force that path.
 - Keep model work source-grounded: cite retrieved file paths, inspect only the matching source files, run the smallest verification first, then widen only when evidence is insufficient.
@@ -450,7 +450,7 @@ ROOT_DIR="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 # shellcheck source=ops/scripts/build.sh
 source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
 init_build_tool
-HERMES_ROOT="${HERMES_ROOT:-/opt/util/ai/hermes}"
+HERMES_ROOT="${HERMES_ROOT:-/opt/Resonance/runtime/tools/ai/hermes}"
 OUT_DIR="${OUT_DIR:-$ROOT_DIR/data/ai-runtime}"
 DB_PATH="${DB_PATH:-$OUT_DIR/hermes-rag-vector.sqlite3}"
 MANIFEST_PATH="${MANIFEST_PATH:-$OUT_DIR/hermes-combined-rag-manifest.json}"
@@ -838,9 +838,9 @@ if context_pack_path.exists():
                     "ops/scripts/query-hermes-rag.py",
                     "ops/scripts/update-hermes-vector-rag.sh",
                     "data/ai-runtime/hermes-rag-context-pack.json",
-                    "/opt/util/ai/hermes/.hermes.md",
-                    "/opt/util/ai/hermes/cli.py",
-                    "/opt/util/ai/hermes/agent/prompt_builder.py",
+                    "/opt/Resonance/runtime/tools/ai/hermes/.hermes.md",
+                    "/opt/Resonance/runtime/tools/ai/hermes/cli.py",
+                    "/opt/Resonance/runtime/tools/ai/hermes/agent/prompt_builder.py",
                     "docs/ai/hermes-carbonet-40b-qlora-rag.md",
                 ],
             },
@@ -863,7 +863,7 @@ guidance = f"""# Hermes Local RAG Guidance
 - Start substantial work by reading `{manifest_path}`.
 - Query the combined Resonance/Hermes RAG index before broad scans:
   `python3 /opt/Resonance/ops/scripts/query-hermes-rag.py "question or keywords" --limit 8`
-- The index DB is `{db_path}` and covers `/opt/Resonance` plus `/opt/util/ai/hermes` with generated code/build artifacts excluded.
+- The index DB is `{db_path}` and covers `/opt/Resonance` plus `/opt/Resonance/runtime/tools/ai/hermes` with generated code/build artifacts excluded.
 - For long tasks, checkpoint progress in the session transcript and check forced-resume markers at `/opt/Resonance/var/ai-runtime/hermes-resume/latest.json` and `~/.hermes/resume/latest.json`.
 - For frontend-only Carbonet changes, use `/opt/Resonance/ops/scripts/resonance-k8s-build-deploy-80.sh`; it auto-selects frontend-only deploy when only React/static frontend paths changed, or `FRONTEND_ONLY=true` can force that path.
 - Keep model work source-grounded: cite retrieved file paths, inspect only the matching source files, run the smallest verification first, then widen only when evidence is insufficient.

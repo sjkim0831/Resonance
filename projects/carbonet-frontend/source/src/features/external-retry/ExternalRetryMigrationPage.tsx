@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -97,21 +98,11 @@ export function ExternalRetryMigrationPage() {
           description={en ? "Narrow the queue before checking manual replay, dedupe guard, or downstream maintenance impact." : "수동 재실행, 중복 방지, 하위 시스템 점검 영향 여부를 보기 전에 대상을 좁힙니다."}
           icon="replay"
         >
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4 xl:w-[68rem]">
-            <div>
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalRetryKeyword">{en ? "Keyword" : "검색어"}</label>
               <AdminInput id="externalRetryKeyword" value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder={en ? "Connection, queue, reason" : "연계명, 큐, 재시도 사유"} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-bold" htmlFor="externalRetryClass">{en ? "Retry Class" : "재시도 분류"}</label>
-              <AdminSelect id="externalRetryClass" value={retryClass} onChange={(event) => setRetryClass(event.target.value)}>
-                <option value="ALL">{en ? "All" : "전체"}</option>
-                <option value="AUTO">AUTO</option>
-                <option value="MANUAL">MANUAL</option>
-                <option value="WEBHOOK">WEBHOOK</option>
-              </AdminSelect>
-            </div>
-            <div>
+            </div></div>
+<div className="ccus-search-field"><div>
               <label className="mb-1 block text-sm font-bold" htmlFor="externalRetryStatus">{en ? "Status" : "상태"}</label>
               <AdminSelect id="externalRetryStatus" value={status} onChange={(event) => setStatus(event.target.value)}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -120,13 +111,17 @@ export function ExternalRetryMigrationPage() {
                 <option value="REVIEW">REVIEW</option>
                 <option value="BLOCKED">BLOCKED</option>
               </AdminSelect>
-            </div>
-            <div className="flex items-end">
-              <button className="gov-btn gov-btn-outline w-full" type="button" onClick={() => { setKeyword(""); setRetryClass("ALL"); setStatus("ALL"); }}>
+            </div></div></>} advanced={<><div className="ccus-search-field"><div>
+              <label className="mb-1 block text-sm font-bold" htmlFor="externalRetryClass">{en ? "Retry Class" : "재시도 분류"}</label>
+              <AdminSelect id="externalRetryClass" value={retryClass} onChange={(event) => setRetryClass(event.target.value)}>
+                <option value="ALL">{en ? "All" : "전체"}</option>
+                <option value="AUTO">AUTO</option>
+                <option value="MANUAL">MANUAL</option>
+                <option value="WEBHOOK">WEBHOOK</option>
+              </AdminSelect>
+            </div></div></>} actions={<><button className="gov-btn gov-btn-outline w-full" type="button" onClick={() => { setKeyword(""); setRetryClass("ALL"); setStatus("ALL"); }}>
                 {en ? "Reset Filters" : "검색 조건 초기화"}
-              </button>
-            </div>
-          </div>
+              </button></>}></CommonSearchSection></div>
         </CollectionResultPanel>
 
         <section className="gov-card overflow-hidden p-0" data-help-id="external-retry-queue">

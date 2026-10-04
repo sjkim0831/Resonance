@@ -19,7 +19,8 @@ final class EmissionProjectCreationPolicy {
 
     static Contract validate(Map<String, Object> body) {
         String name = required(body, "name", 240);
-        String site = required(body, "site", 160);
+        List<String> sites = selectedSites(body);
+        String site = sites.get(0);
         String owner = required(body, "owner", 100);
         String dataOwner = required(body, "dataOwner", 100);
         String calculator = required(body, "calculator", 100);
@@ -60,7 +61,22 @@ final class EmissionProjectCreationPolicy {
         return new Contract(name, site, owner, dataOwner, calculator, verifier, approver,
                 reportingYear, periodStart, periodEnd, dueDate, List.copyOf(scopes),
                 organizationBoundary, emissionStandard, methodologyVersion, verificationLevel,
-                collectionCycle, materialityThreshold);
+                collectionCycle, materialityThreshold, sites);
+    }
+
+    static List<String> selectedSites(Map<String, Object> body) {
+        if (!body.containsKey("sites")) return List.of(required(body, "site", 160));
+        if (!(body.get("sites") instanceof List<?> values) || values.isEmpty() || values.size() > 100)
+            throw new IllegalArgumentException("PROJECT_SITES_REQUIRED_OR_LIMIT_EXCEEDED");
+        LinkedHashSet<String> sites = new LinkedHashSet<>();
+        Set<String> normalized = new java.util.HashSet<>();
+        for (Object raw : values) {
+            if (!(raw instanceof String)) throw new IllegalArgumentException("PROJECT_SITE_INVALID");
+            String site = ((String) raw).trim();
+            if (site.isEmpty() || site.length() > 160) throw new IllegalArgumentException("PROJECT_SITE_INVALID");
+            if (normalized.add(site.toLowerCase(java.util.Locale.ROOT))) sites.add(site);
+        }
+        return List.copyOf(sites);
     }
 
     private static String required(Map<String, Object> body, String key, int maxLength) {
@@ -99,12 +115,18 @@ final class EmissionProjectCreationPolicy {
     }
 
     private static boolean same(String left, String right) {
-        return left.equalsIgnoreCase(right);
+        return !left.isBlank() && !right.isBlank() && left.equalsIgnoreCase(right);
+    }
+
+    private static String optionalAccount(Map<String,Object> body,String key) {
+        String value=body.get(key)==null?"":String.valueOf(body.get(key)).trim();
+        if(value.length()>100) throw new IllegalArgumentException("PROJECT_ACCOUNT_TOO_LONG");
+        return value;
     }
 
     record Contract(String name, String site, String owner, String dataOwner, String calculator,
                     String verifier, String approver, int reportingYear, LocalDate periodStart,
                     LocalDate periodEnd, LocalDate dueDate, List<String> scopes,
                     String organizationBoundary, String emissionStandard, String methodologyVersion,
-                    String verificationLevel, String collectionCycle, int materialityThreshold) {}
+                    String verificationLevel, String collectionCycle, int materialityThreshold, List<String> sites) {}
 }

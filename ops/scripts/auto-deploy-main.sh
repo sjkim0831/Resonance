@@ -30,9 +30,9 @@ PLAN_SCRIPT="${CARBONET_DEPLOY_PLAN_SCRIPT:-ops/scripts/plan-incremental-work.sh
 BRANCH="${CARBONET_DEPLOY_BRANCH:-main}"
 REMOTE="${CARBONET_DEPLOY_REMOTE:-origin}"
 LOCK_FILE="${CARBONET_DEPLOY_LOCK_FILE:-/tmp/carbonet-auto-deploy.lock}"
-DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
-BACKSTAGE_DEPLOY_STATE_FILE="${BACKSTAGE_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/backstage-runtime-success.commit}"
-BACKUP_DIR="${CARBONET_DB_BACKUP_DIR:-/opt/resonance-backups/postgresql/pre-deploy}"
+DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/Resonance/runtime/platform-data/deploy/carbonet-main-success.commit}"
+BACKSTAGE_DEPLOY_STATE_FILE="${BACKSTAGE_DEPLOY_STATE_FILE:-/opt/Resonance/runtime/platform-data/deploy/backstage-runtime-success.commit}"
+BACKUP_DIR="${CARBONET_DB_BACKUP_DIR:-/opt/Resonance/backups/postgresql/pre-deploy}"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 DEPLOYMENT="${CARBONET_K8S_DEPLOYMENT:-carbonet-runtime}"
 POSTGRES_POD="${CARBONET_POSTGRES_POD:-}"
@@ -107,7 +107,7 @@ postgres_data_path="$(kubectl -n "$NAMESPACE" get statefulset postgres-patroni \
 postgres_wal_path="$(kubectl -n "$NAMESPACE" get statefulset postgres-patroni \
   -o jsonpath='{.spec.template.spec.volumes[?(@.name=="wal-archive")].hostPath.path}' 2>/dev/null || true)"
 for protected_path in "$postgres_data_path" "$postgres_wal_path"; do
-  if [[ -z "$protected_path" || "$protected_path" == "$ROOT_DIR"/* || "$protected_path" != /opt/resonance-data/postgresql/* ]]; then
+  if [[ -z "$protected_path" || "$protected_path" == "$ROOT_DIR"/* || "$protected_path" != /opt/Resonance/runtime/platform-data/postgresql/* ]]; then
     echo "[auto-deploy] refusing deployment: PostgreSQL storage is not isolated ($protected_path)" >&2
     exit 9
   fi
@@ -207,10 +207,8 @@ PLAN_BACKSTAGE_REQUIRED="${PLAN_BACKSTAGE_REQUIRED:-false}"
 echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED backstage=$PLAN_BACKSTAGE_REQUIRED"
 echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
 
-# Database availability is a hard prerequisite for Flyway and every runtime
-# health gate. Keep the Patroni image independently recoverable even when
-# Docker/containerd or registry retention removes unused application layers.
-bash ops/scripts/ensure-protected-runtime-images.sh
+# Patroni container image recovery was retired on 2026-09-07.
+# The current native PostgreSQL runtime must not recreate the old registry.
 
 # Keep pre-deploy restore points bounded before build and backup I/O begins.
 # Containerd and PostgreSQL backups share /opt; allowing unlimited dump history

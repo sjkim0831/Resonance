@@ -1,3 +1,4 @@
+import {CommonSearchSection} from '../../components/common-design/CommonSearchSection';
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { buildLocalizedPath, isEnglish, replace } from "../../lib/navigation/runtime";
@@ -255,16 +256,15 @@ export function TagManagementMigrationPage() {
             meta={en ? "Search by tag name, code, category, or owner." : "태그명, 코드, 분류, 담당 기준으로 조회합니다."}
             title={en ? "Filters" : "조회 조건"}
           />
-          <div className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)_auto]">
-            <label className="flex flex-col gap-2">
+          <div className="ccus-search-host"><CommonSearchSection basic={<><div className="ccus-search-field"><label className="flex flex-col gap-2">
               <span className="text-sm font-bold text-[var(--kr-gov-text-primary)]">{en ? "Keyword" : "검색어"}</span>
               <AdminInput
                 placeholder={en ? "Tag name, code, category" : "태그명, 코드, 분류"}
                 value={filters.searchKeyword}
                 onChange={(event) => setFilters((current) => ({ ...current, searchKeyword: event.target.value }))}
               />
-            </label>
-            <label className="flex flex-col gap-2">
+            </label></div>
+<div className="ccus-search-field"><label className="flex flex-col gap-2">
               <span className="text-sm font-bold text-[var(--kr-gov-text-primary)]">{en ? "Status" : "상태"}</span>
               <AdminSelect value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
                 <option value="ALL">{en ? "All" : "전체"}</option>
@@ -272,17 +272,13 @@ export function TagManagementMigrationPage() {
                 <option value="DRAFT">{statusLabel("DRAFT", en)}</option>
                 <option value="HIDDEN">{statusLabel("HIDDEN", en)}</option>
               </AdminSelect>
-            </label>
-            <div className="flex items-end">
-              <MemberButton
+            </label></div></>} actions={<><MemberButton
                 onClick={() => setFilters({ searchKeyword: "", status: "ALL", selectedId: TAG_ROWS[0]?.id || "" })}
                 type="button"
                 variant="secondary"
               >
                 {en ? "Reset" : "초기화"}
-              </MemberButton>
-            </div>
-          </div>
+              </MemberButton></>}></CommonSearchSection></div>
         </section>
 
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)]">

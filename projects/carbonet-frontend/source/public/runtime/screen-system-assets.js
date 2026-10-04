@@ -61,8 +61,133 @@
     if (classSet) element.dataset.uiClassSet = classSet;
   }
 
+  function applyEvidenceProjectPicker() {
+    if (!/^\/(en\/)?emission\/evidence\/?$/.test(window.location.pathname)) return;
+    var root = document.getElementById("root");
+    if (!root || new URLSearchParams(window.location.search).has("projectId")) return;
+    var prompt = Array.prototype.find.call(root.querySelectorAll('[role="alert"]'), function (item) {
+      return /프로젝트 목록에서 대상을 먼저 선택|Select a project from the project list/.test(item.textContent || "");
+    });
+    if (!prompt || root.querySelector("[data-evidence-project-picker]")) return;
+
+    var en = window.location.pathname.indexOf("/en/") === 0;
+    var panel = document.createElement("section");
+    panel.dataset.evidenceProjectPicker = "true";
+    panel.className = "my-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm";
+    var title = document.createElement("h2");
+    title.className = "text-xl font-black text-[#052b57]";
+    title.textContent = en ? "Select a project for evidence" : "증빙을 관리할 프로젝트 선택";
+    var description = document.createElement("p");
+    description.className = "mt-2 text-sm text-slate-600";
+    description.textContent = en
+      ? "Only projects available to your account are shown. Select one to view its activity data and evidence files."
+      : "계정에 접근 권한이 있는 프로젝트만 표시됩니다. 프로젝트를 선택하면 해당 활동자료와 증빙 파일을 확인할 수 있습니다.";
+    var form = document.createElement("form");
+    form.className = "mt-4 grid gap-3 sm:grid-cols-[1fr_auto]";
+    var input = document.createElement("input");
+    input.className = "krds-control min-h-11 rounded-lg border border-slate-300 px-3";
+    input.type = "search";
+    input.placeholder = en ? "Project, site, or owner" : "프로젝트명·사업장·담당자 검색";
+    input.setAttribute("aria-label", input.placeholder);
+    var submit = document.createElement("button");
+    submit.className = "krds-button min-h-11 rounded-lg bg-[#003675] px-5 font-bold text-white";
+    submit.type = "submit";
+    submit.textContent = en ? "Search" : "검색";
+    form.append(input, submit);
+    var status = document.createElement("p");
+    status.className = "mt-4 rounded-lg bg-slate-50 p-4 text-sm text-slate-700";
+    status.setAttribute("role", "status");
+    status.textContent = en ? "Loading accessible projects…" : "접근 가능한 프로젝트를 불러오는 중입니다…";
+    var tableWrap = document.createElement("div");
+    tableWrap.className = "mt-3 overflow-x-auto";
+    panel.append(title, description, form, status, tableWrap);
+    prompt.insertAdjacentElement("afterend", panel);
+    prompt.hidden = true;
+
+    function renderProjects(items) {
+      tableWrap.replaceChildren();
+      if (!items.length) {
+        status.textContent = en ? "No accessible projects were found." : "접근 가능한 프로젝트가 없습니다.";
+        return;
+      }
+      status.textContent = (en ? "Projects found: " : "조회된 프로젝트: ") + items.length;
+      var table = document.createElement("table");
+      table.className = "w-full min-w-[680px] overflow-hidden rounded-lg border border-slate-200 text-left text-sm";
+      var head = document.createElement("thead");
+      head.className = "bg-slate-100 text-slate-800";
+      var headerRow = document.createElement("tr");
+      (en ? ["Project", "Sites", "Period", "Status", "Action"] : ["프로젝트", "사업장", "산정 기간", "상태", "선택"]).forEach(function (label) {
+        var th = document.createElement("th");
+        th.className = "p-3";
+        th.textContent = label;
+        headerRow.appendChild(th);
+      });
+      head.appendChild(headerRow);
+      var body = document.createElement("tbody");
+      items.forEach(function (project) {
+        var row = document.createElement("tr");
+        row.className = "border-t border-slate-200";
+        var name = document.createElement("td");
+        name.className = "p-3 font-bold text-[#052b57]";
+        name.textContent = project.name || project.id || "—";
+        var sites = document.createElement("td");
+        sites.className = "p-3";
+        sites.textContent = (project.sites || []).map(function (site) { return site.name; }).filter(Boolean).join(", ") || project.site || "—";
+        var period = document.createElement("td");
+        period.className = "p-3";
+        period.textContent = project.periodStart && project.periodEnd ? project.periodStart + " ~ " + project.periodEnd : project.legacyPeriod || "—";
+        var state = document.createElement("td");
+        state.className = "p-3";
+        state.textContent = project.status || "—";
+        var action = document.createElement("td");
+        action.className = "p-3";
+        var choose = document.createElement("button");
+        choose.type = "button";
+        choose.className = "krds-button min-h-10 rounded-lg bg-[#246beb] px-4 font-bold text-white";
+        choose.textContent = en ? "Select" : "선택";
+        choose.addEventListener("click", function () {
+          var target = new URL(window.location.href);
+          target.searchParams.set("projectId", project.id);
+          window.location.assign(target.toString());
+        });
+        action.appendChild(choose);
+        row.append(name, sites, period, state, action);
+        body.appendChild(row);
+      });
+      table.append(head, body);
+      tableWrap.appendChild(table);
+    }
+
+    async function loadProjects(keyword) {
+      status.textContent = en ? "Loading accessible projects…" : "접근 가능한 프로젝트를 불러오는 중입니다…";
+      tableWrap.replaceChildren();
+      var endpoint = (en ? "/en/home/api/emission-projects" : "/home/api/emission-projects") + "?keyword=" + encodeURIComponent(keyword || "") + "&page=1&size=100";
+      try {
+        var response = await fetch(endpoint, { credentials: "include", headers: { Accept: "application/json" } });
+        if (response.status === 401) {
+          var returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.assign((en ? "/en" : "") + "/signin/loginView?returnUrl=" + returnUrl);
+          return;
+        }
+        var payload = await response.json();
+        if (!response.ok) throw new Error(payload.message || (en ? "Project search failed." : "프로젝트 조회에 실패했습니다."));
+        renderProjects(Array.isArray(payload.items) ? payload.items : []);
+      } catch (error) {
+        status.textContent = (error && error.message) || (en ? "Project search failed." : "프로젝트 조회에 실패했습니다.");
+        status.setAttribute("role", "alert");
+      }
+    }
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      status.setAttribute("role", "status");
+      void loadProjects(input.value.trim());
+    });
+    void loadProjects("");
+  }
+
   function applyConsentHistoryAssets() {
     queued = false;
+    applyEvidenceProjectPicker();
     if (window.location.pathname !== TARGET_ROUTE) return;
 
     var root = document.getElementById("root");

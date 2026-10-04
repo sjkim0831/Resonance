@@ -51,7 +51,7 @@ public class EmissionProjectRegistryService {
     private final ActorProcessGovernanceService processGovernanceService;
     private final ScopeAccessAuditService scopeAccessAuditService;
     @Autowired
-    public EmissionProjectRegistryService(DataSource dataSource,
+    public EmissionProjectRegistryService(@org.springframework.beans.factory.annotation.Qualifier("dataSource") DataSource dataSource,
                                           ActorProcessGovernanceService processGovernanceService,
                                           ScopeAccessAuditService scopeAccessAuditService) {
         this(new JdbcTemplate(dataSource),processGovernanceService,scopeAccessAuditService);
@@ -68,14 +68,14 @@ public class EmissionProjectRegistryService {
         String tenant = requiredValue(tenantId, "tenantId");
         String term = keyword == null ? "" : keyword.trim(), state = status == null ? "" : status.trim(), siteName = site == null ? "" : site.trim();
         int pageIndex = Math.max(1, page), size = 10;
-        String where = " WHERE tenant_id=? AND (? = '' OR lower(project_id || ' ' || project_name || ' ' || site_name || ' ' || owner_name) LIKE lower(?)) AND (? = '' OR project_status = ?) AND (? = '' OR site_name = ?)";
+        String where = " WHERE tenant_id=? AND (? = '' OR lower(project_id || ' ' || project_name || ' ' || site_name || ' ' || owner_name) LIKE lower(?)) AND (? = '' OR project_status = ?) AND (? = '' OR ? IN (SELECT ps.site_name FROM emission_project_site ps WHERE ps.project_id=emission_project_registry.project_id UNION SELECT emission_project_registry.site_name))";
         String like = "%" + term + "%";
         Integer total = jdbc.queryForObject("SELECT count(*) FROM emission_project_registry" + where, Integer.class, tenant, term, like, state, state, siteName, siteName);
-        List<Map<String, Object>> items = jdbc.queryForList("SELECT project_id AS \"id\", project_name AS \"name\", site_name AS \"site\", calculation_period AS \"period\", scope_name AS \"scope\", owner_name AS \"owner\", progress_percent AS \"progress\", current_step AS \"step\", due_date AS \"dueDate\", project_status AS \"status\" FROM emission_project_registry" + where + " ORDER BY CASE WHEN project_status='완료' THEN 1 ELSE 0 END, due_date NULLS LAST, created_at DESC LIMIT 10 OFFSET ?", tenant, term, like, state, state, siteName, siteName, (pageIndex - 1) * size);
+        List<Map<String, Object>> items = jdbc.queryForList("SELECT project_id AS \"id\", project_name AS \"name\", (coalesce((SELECT string_agg(ps.site_name,', ' ORDER BY ps.display_order) FROM emission_project_site ps WHERE ps.project_id=emission_project_registry.project_id),site_name)) AS \"site\", calculation_period AS \"period\", scope_name AS \"scope\", owner_name AS \"owner\", progress_percent AS \"progress\", current_step AS \"step\", due_date AS \"dueDate\", project_status AS \"status\" FROM emission_project_registry" + where + " ORDER BY CASE WHEN project_status='완료' THEN 1 ELSE 0 END, due_date NULLS LAST, created_at DESC LIMIT 10 OFFSET ?", tenant, term, like, state, state, siteName, siteName, (pageIndex - 1) * size);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("items", items); result.put("total", total == null ? 0 : total); result.put("page", pageIndex); result.put("size", size);
         result.put("summary", jdbc.queryForList("SELECT project_status AS status, count(*) AS count FROM emission_project_registry WHERE tenant_id=? GROUP BY project_status", tenant));
-        result.put("sites", jdbc.queryForList("SELECT DISTINCT site_name FROM emission_project_registry WHERE tenant_id=? ORDER BY site_name", String.class, tenant));
+        result.put("sites", jdbc.queryForList("SELECT DISTINCT coalesce(s.site_name,p.site_name) AS site_name FROM emission_project_registry p LEFT JOIN emission_project_site s ON s.project_id=p.project_id WHERE p.tenant_id=? ORDER BY site_name", String.class, tenant));
         return result;
     }
 
@@ -84,14 +84,14 @@ public class EmissionProjectRegistryService {
         String term=keyword==null?"":keyword.trim(),state=status==null?"":status.trim(),siteName=site==null?"":site.trim(),like="%"+term+"%";
         int pageIndex=Math.max(1,page),size=Math.min(100,Math.max(1,requestedSize));
         String access="(? OR (p.tenant_id=? AND EXISTS (SELECT 1 FROM framework_account_actor_assignment a WHERE a.tenant_id=p.tenant_id AND lower(a.account_id)=lower(?) AND a.assignment_status='ACTIVE' AND (a.valid_from IS NULL OR a.valid_from<=current_date) AND (a.valid_until IS NULL OR a.valid_until>=current_date) AND a.project_id IN ('*',p.project_id) AND (a.data_scope='*' OR p.project_id=ANY(string_to_array(replace(a.data_scope,' ',''),','))))))";
-        String filters=" AND (?='' OR lower(p.project_id||' '||p.project_name||' '||p.site_name||' '||p.owner_name) LIKE lower(?)) AND (?='' OR p.project_status=?) AND (?='' OR p.site_name=?)";
+        String filters=" AND (?='' OR lower(p.project_id||' '||p.project_name||' '||p.site_name||' '||p.owner_name) LIKE lower(?)) AND (?='' OR p.project_status=?) AND (?='' OR ? IN (SELECT ps.site_name FROM emission_project_site ps WHERE ps.project_id=p.project_id UNION SELECT p.site_name))";
         Object[] args={override,tenant,user,term,like,state,state,siteName,siteName};
         Integer total=jdbc.queryForObject("SELECT count(*) FROM emission_project_registry p WHERE "+access+filters,Integer.class,args);
         List<Object> itemArgs=new ArrayList<>(List.of(args)); itemArgs.add(size);itemArgs.add((pageIndex-1)*size);
-        List<Map<String,Object>> items=jdbc.queryForList("SELECT p.project_id AS \"id\",p.project_name AS \"name\",p.site_name AS \"site\",p.calculation_period AS \"period\",p.scope_name AS \"scope\",p.owner_name AS \"owner\",p.progress_percent AS \"progress\",p.current_step AS \"step\",p.due_date AS \"dueDate\",p.project_status AS \"status\" FROM emission_project_registry p WHERE "+access+filters+" ORDER BY p.due_date NULLS LAST,p.created_at DESC LIMIT ? OFFSET ?",itemArgs.toArray());
+        List<Map<String,Object>> items=jdbc.queryForList("SELECT p.project_id AS \"id\",p.project_name AS \"name\",(coalesce((SELECT string_agg(ps.site_name,', ' ORDER BY ps.display_order) FROM emission_project_site ps WHERE ps.project_id=p.project_id),p.site_name)) AS \"site\",p.calculation_period AS \"period\",p.scope_name AS \"scope\",p.owner_name AS \"owner\",p.progress_percent AS \"progress\",p.current_step AS \"step\",p.due_date AS \"dueDate\",p.project_status AS \"status\" FROM emission_project_registry p WHERE "+access+filters+" ORDER BY p.due_date NULLS LAST,p.created_at DESC LIMIT ? OFFSET ?",itemArgs.toArray());
         Map<String,Object> result=new LinkedHashMap<>(); result.put("items",items);result.put("total",total==null?0:total);result.put("page",pageIndex);result.put("size",size);
         result.put("summary",jdbc.queryForList("SELECT p.project_status AS status,count(*) AS count FROM emission_project_registry p WHERE "+access+" GROUP BY p.project_status",override,tenant,user));
-        result.put("sites",jdbc.queryForList("SELECT DISTINCT p.site_name FROM emission_project_registry p WHERE "+access+" ORDER BY p.site_name",String.class,override,tenant,user));
+        result.put("sites",jdbc.queryForList("SELECT DISTINCT coalesce(s.site_name,p.site_name) AS site_name FROM emission_project_registry p LEFT JOIN emission_project_site s ON s.project_id=p.project_id WHERE "+access+" ORDER BY site_name",String.class,override,tenant,user));
         return result;
     }
 
@@ -156,6 +156,8 @@ public class EmissionProjectRegistryService {
         List<Map<String, Object>> projects = jdbc.queryForList("SELECT project_id AS \"id\",project_name AS \"name\",site_name AS \"site\",calculation_period AS \"period\",scope_name AS \"scope\",owner_name AS \"owner\",progress_percent AS \"progress\",current_step AS \"step\",due_date AS \"dueDate\",project_status AS \"status\",reporting_year AS \"reportingYear\",period_start AS \"periodStart\",period_end AS \"periodEnd\",organization_boundary AS \"organizationBoundary\",emission_standard AS \"emissionStandard\",methodology_version AS \"methodologyVersion\",verification_level AS \"verificationLevel\",collection_cycle AS \"collectionCycle\",materiality_threshold AS \"materialityThreshold\",settings_snapshot AS \"settingsSnapshot\" FROM emission_project_registry WHERE project_id=?", id);
         if (projects.isEmpty()) throw new IllegalArgumentException("프로젝트를 찾을 수 없습니다.");
         Map<String, Object> result = new LinkedHashMap<>(projects.get(0));
+        List<String> linkedSites = jdbc.queryForList("SELECT site_name FROM emission_project_site WHERE project_id=? ORDER BY display_order,site_id", String.class, id);
+        result.put("sites", linkedSites.isEmpty() ? List.of(String.valueOf(result.get("site"))) : linkedSites);
         result.put("tasks", jdbc.queryForList("SELECT task_id AS \"id\",task_code AS \"code\",task_name AS \"name\",step_order AS \"order\",task_status AS \"status\",progress_weight AS \"weight\",due_date AS \"dueDate\",target_url AS \"targetUrl\",process_code AS \"processCode\",process_step_code AS \"processStepCode\",actor_code AS \"actorCode\",assignee_id AS \"assignee\",priority,predecessor_codes AS \"predecessorCodes\",completion_rule AS \"completionRule\",blocked_reason AS \"blockedReason\",started_at AS \"startedAt\",completed_at AS \"completedAt\",completed_by AS \"completedBy\" FROM emission_project_task WHERE project_id=? ORDER BY step_order", id));
         result.put("members", jdbc.queryForList("SELECT member_name AS \"name\",role_code AS \"role\" FROM emission_project_member WHERE project_id=? ORDER BY created_at", id));
         result.put("history", jdbc.queryForList("SELECT event_type AS \"type\",event_description AS \"description\",actor_name AS \"actor\",created_at AS \"createdAt\" FROM emission_project_history WHERE project_id=? ORDER BY created_at DESC LIMIT 30", id));
@@ -324,9 +326,13 @@ public class EmissionProjectRegistryService {
         String term=keyword==null?"":keyword.trim(), like="%"+term+"%";
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("project", detail(projectId));
-        result.put("items",jdbc.queryForList("SELECT a.activity_id AS \"id\",a.activity_name AS \"name\",a.category,a.activity_period AS \"period\",a.quantity,a.unit,a.evidence_note AS \"note\",a.factor_id AS \"factorId\",f.factor_name AS \"factorName\",f.factor_value AS \"factorValue\",a.mapping_status AS \"mappingStatus\" FROM emission_activity_data a LEFT JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=? AND (?='' OR a.activity_name ILIKE ? OR a.category ILIKE ?) ORDER BY a.activity_period DESC,a.activity_id DESC",projectId,term,like,like));
+        result.put("sites",jdbc.queryForList("SELECT site_id AS id,site_name AS name FROM emission_project_site WHERE project_id=? ORDER BY display_order",projectId));
+        result.put("items",jdbc.queryForList("SELECT a.activity_id AS \"id\",a.activity_name AS \"name\",a.site_id AS \"siteId\",(SELECT s.site_name FROM emission_site_registry s WHERE s.site_id=a.site_id) AS \"siteName\",a.category,a.activity_period AS \"period\",a.quantity,a.unit,a.evidence_note AS \"note\",a.factor_id AS \"factorId\",f.factor_name AS \"factorName\",f.factor_value AS \"factorValue\",a.mapping_status AS \"mappingStatus\" FROM emission_activity_data a LEFT JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=? AND (?='' OR a.activity_name ILIKE ? OR a.category ILIKE ?) ORDER BY a.activity_period DESC,a.activity_id DESC",projectId,term,like,like));
         result.put("factors",jdbc.queryForList("SELECT factor_id AS \"id\",factor_name AS \"name\",category,unit,factor_value AS \"value\",source_name AS \"source\" FROM emission_factor_reference ORDER BY category,factor_name"));
         result.put("collectionHealth",jdbc.queryForMap("SELECT h.collection_health AS \"status\",h.activity_count AS \"activityCount\",h.missing_evidence_count AS \"missingEvidenceCount\",h.invalid_value_count AS \"invalidValueCount\",h.submitted_version_count AS \"submittedVersionCount\",h.unsealed_submission_count AS \"unsealedSubmissionCount\",(SELECT count(*) FROM emission_activity_request r WHERE r.project_id=h.project_id AND r.tenant_id=h.tenant_id AND r.request_status='ACCEPTED') AS \"acceptedRequestCount\",(SELECT count(*) FROM emission_activity_request r WHERE r.project_id=h.project_id AND r.tenant_id=h.tenant_id AND r.request_status IN ('REQUESTED','IN_PROGRESS','SUBMITTED','CORRECTION_REQUIRED')) AS \"pendingRequestCount\" FROM emission_activity_collection_health h WHERE h.project_id=?",projectId));
+        @SuppressWarnings("unchecked") Map<String,Object> health=(Map<String,Object>)result.get("collectionHealth");
+        health.put("status",currentEvidence(projectId,"ACTIVITY_DATA")?"COMPLETED":"IN_PROGRESS");
+        result.put("currentContract",currentContract(projectId));
         return result;
     }
 
@@ -336,7 +342,10 @@ public class EmissionProjectRegistryService {
         String name=required(body,"name"),category=required(body,"category"),period=required(body,"period"),unit=required(body,"unit");
         double quantity=Double.parseDouble(required(body,"quantity")); if(quantity<0) throw new IllegalArgumentException("활동량은 0보다 작을 수 없습니다.");
         String note=required(body,"note"); if(note.length()>500) throw new IllegalArgumentException("ACTIVITY_EVIDENCE_TOO_LONG");
-        Long id=jdbc.queryForObject("INSERT INTO emission_activity_data(project_id,activity_name,category,activity_period,quantity,unit,evidence_note) VALUES (?,?,?,?,?,?,?) RETURNING activity_id",Long.class,projectId,name,category,period,quantity,unit,note);
+        long siteId=activitySite(projectId,body.get("siteId"));
+        validateActivityPeriod(projectId,period);
+        if(!Double.isFinite(quantity)) throw new IllegalArgumentException("ACTIVITY_QUANTITY_INVALID");
+        Long id=jdbc.queryForObject("INSERT INTO emission_activity_data(project_id,site_id,activity_name,category,activity_period,quantity,unit,evidence_note) VALUES (?,?,?,?,?,?,?,?) RETURNING activity_id",Long.class,projectId,siteId,name,category,period,quantity,unit,note);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) SELECT ?,'ACTIVITY_ADDED',?||' 활동자료가 등록되었습니다.',owner_name FROM emission_project_registry WHERE project_id=?",projectId,name,projectId);
         return id==null?0:id;
     }
@@ -344,7 +353,7 @@ public class EmissionProjectRegistryService {
     public Map<String,Object> activity(String projectId,long activityId,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
         requireAnyProjectActor(projectId,tenant,user,override);
-        List<Map<String,Object>> rows=jdbc.queryForList("SELECT a.activity_id AS \"id\",a.activity_name AS \"name\",a.category,a.activity_period AS \"period\",a.quantity,a.unit,a.evidence_note AS \"note\",a.factor_id AS \"factorId\",f.factor_name AS \"factorName\",f.factor_value AS \"factorValue\",a.mapping_status AS \"mappingStatus\",a.created_at AS \"createdAt\",a.updated_at AS \"updatedAt\" FROM emission_activity_data a LEFT JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=? AND a.activity_id=?",projectId,activityId);
+        List<Map<String,Object>> rows=jdbc.queryForList("SELECT a.activity_id AS \"id\",a.activity_name AS \"name\",a.site_id AS \"siteId\",(SELECT s.site_name FROM emission_site_registry s WHERE s.site_id=a.site_id) AS \"siteName\",a.category,a.activity_period AS \"period\",a.quantity,a.unit,a.evidence_note AS \"note\",a.factor_id AS \"factorId\",f.factor_name AS \"factorName\",f.factor_value AS \"factorValue\",a.mapping_status AS \"mappingStatus\",a.created_at AS \"createdAt\",a.updated_at AS \"updatedAt\" FROM emission_activity_data a LEFT JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=? AND a.activity_id=?",projectId,activityId);
         if(rows.isEmpty()) throw new IllegalArgumentException("ACTIVITY_NOT_FOUND");
         return rows.get(0);
     }
@@ -451,22 +460,66 @@ public class EmissionProjectRegistryService {
         return changed;
     }
 
-    @Transactional
-    public int uploadActivities(String projectId,String tenantId,String actor,boolean override,MultipartFile file) throws Exception {
+    private long activitySite(String projectId,Object selected) {
+        List<Long> sites=jdbc.queryForList("SELECT site_id FROM emission_project_site WHERE project_id=? ORDER BY display_order",Long.class,projectId);
+        if(selected==null||String.valueOf(selected).isBlank()) {
+            if(sites.size()==1)return sites.get(0);
+            throw new IllegalArgumentException("자료를 귀속할 사업장을 선택해 주세요.");
+        }
+        long siteId=Long.parseLong(String.valueOf(selected));
+        if(!sites.contains(siteId))throw new IllegalArgumentException("프로젝트에 포함되지 않은 사업장입니다.");
+        return siteId;
+    }
+    private void validateActivityPeriod(String projectId,String period) {
+        java.time.YearMonth month;
+        try {month=java.time.YearMonth.parse(period);}catch(Exception e){throw new IllegalArgumentException("기간은 YYYY-MM 형식이어야 합니다.");}
+        Map<String,Object> p=jdbc.queryForMap("SELECT period_start,period_end FROM emission_project_registry WHERE project_id=?",projectId);
+        if(p.get("period_start")!=null && month.atEndOfMonth().isBefore(LocalDate.parse(String.valueOf(p.get("period_start")))) || p.get("period_end")!=null && month.atDay(1).isAfter(LocalDate.parse(String.valueOf(p.get("period_end")))))throw new IllegalArgumentException("프로젝트 산정기간 밖의 자료입니다.");
+    }
+    private void validateImportFile(MultipartFile file) {
+        if(file==null||file.isEmpty()||file.getSize()>5*1024*1024)throw new IllegalArgumentException("5MB 이하의 비어 있지 않은 xlsx 파일을 선택해 주세요.");
+    }
+    public Map<String,Object> previewActivityFile(String projectId,String tenant,String actor,boolean override,MultipartFile file)throws Exception {
+        requireProjectActor(projectId,tenant,actor,PROJECT_OPERATION,PROJECT_RESOURCE,"SITE_DATA_OWNER",override);
+        validateImportFile(file);
+        try(InputStream in=file.getInputStream();XSSFWorkbook workbook=new XSSFWorkbook(in)) {
+            Sheet sheet=workbook.getSheetAt(0);Row header=sheet.getRow(0);
+            if(header==null||header.getLastCellNum()<1||header.getLastCellNum()>100||sheet.getLastRowNum()>2000)throw new IllegalArgumentException("첫 행에 제목이 필요하며 최대 100열, 자료 2,000행까지 지원합니다.");
+            DataFormatter fmt=new DataFormatter();List<String> columns=new ArrayList<>();List<List<String>> sample=new ArrayList<>();
+            for(int c=0;c<header.getLastCellNum();c++)columns.add(fmt.formatCellValue(header.getCell(c)));
+            for(int i=1;i<=Math.min(5,sheet.getLastRowNum());i++){List<String> cells=new ArrayList<>();Row row=sheet.getRow(i);for(int c=0;c<columns.size();c++)cells.add(row==null?"":fmt.formatCellValue(row.getCell(c)));sample.add(cells);}
+            return Map.of("columns",columns,"sample",sample,"rowCount",sheet.getLastRowNum(),"sheetName",sheet.getSheetName());
+        }
+    }
+    @Transactional(rollbackFor=Exception.class)
+    public int uploadActivities(String projectId,String tenantId,String actor,boolean override,MultipartFile file)throws Exception {
+        return uploadMappedActivities(projectId,tenantId,actor,override,file,null,"[0,1,2,3,4,5]");
+    }
+    @Transactional(rollbackFor=Exception.class)
+    public int uploadMappedActivities(String projectId,String tenantId,String actor,boolean override,MultipartFile file,String selectedSite,String mappingJson)throws Exception {
         requireProjectActor(projectId,requiredValue(tenantId,"tenantId"),requiredValue(actor,"actor"),PROJECT_OPERATION,PROJECT_RESOURCE,"SITE_DATA_OWNER",override);
-        if(file==null||file.isEmpty()) throw new IllegalArgumentException("엑셀 파일을 선택해 주세요.");
-        int count=0; DataFormatter formatter=new DataFormatter();
-        try(InputStream in=file.getInputStream(); XSSFWorkbook workbook=new XSSFWorkbook(in)) {
+        validateImportFile(file);long siteId=activitySite(projectId,selectedSite);
+        List<Integer> columns=new ObjectMapper().readValue(mappingJson,new TypeReference<List<Integer>>(){});
+        if(columns.size()!=6||new HashSet<>(columns).size()!=6||columns.stream().anyMatch(c->c==null||c<0||c>=100))throw new IllegalArgumentException("6개 항목에 서로 다른 원본 열을 연결해 주세요.");
+        byte[] bytes=file.getBytes();MessageDigest hash=MessageDigest.getInstance("SHA-256");hash.update(bytes);hash.update((siteId+":"+columns).getBytes(java.nio.charset.StandardCharsets.UTF_8));String key=HexFormat.of().formatHex(hash.digest());
+        jdbc.query("SELECT pg_advisory_xact_lock(hashtext(?))",rs->{},projectId+":"+key);
+        if(Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM emission_activity_import WHERE project_id=? AND import_key=?)",Boolean.class,projectId,key)))throw new IllegalArgumentException("같은 사업장에 동일한 파일·매핑이 이미 저장되어 있습니다.");
+        int count=0;DataFormatter formatter=new DataFormatter();
+        try(InputStream in=new java.io.ByteArrayInputStream(bytes);XSSFWorkbook workbook=new XSSFWorkbook(in)) {
             Sheet sheet=workbook.getSheetAt(0);
-            for(int index=1;index<=sheet.getLastRowNum();index++) { Row row=sheet.getRow(index); if(row==null) continue;
-                String name=formatter.formatCellValue(row.getCell(0)).trim(); if(name.isEmpty()) continue;
-                String category=formatter.formatCellValue(row.getCell(1)).trim(), period=formatter.formatCellValue(row.getCell(2)).trim(), quantityText=formatter.formatCellValue(row.getCell(3)).replace(",","").trim(), unit=formatter.formatCellValue(row.getCell(4)).trim(), note=formatter.formatCellValue(row.getCell(5)).trim();
-                if(category.isEmpty()||period.isEmpty()||quantityText.isEmpty()||unit.isEmpty()||note.isEmpty()) throw new IllegalArgumentException((index+1)+"행의 필수값과 증빙 비고를 확인해 주세요.");
-                double quantity=Double.parseDouble(quantityText);
-                jdbc.update("INSERT INTO emission_activity_data(project_id,activity_name,category,activity_period,quantity,unit,evidence_note) VALUES (?,?,?,?,?,?,?)",projectId,name,category,period,quantity,unit,note); count++;
+            if(sheet.getLastRowNum()>2000)throw new IllegalArgumentException("자료는 최대 2,000행까지 지원합니다.");
+            for(int i=1;i<=sheet.getLastRowNum();i++) {
+                Row row=sheet.getRow(i);if(row==null)continue;
+                List<String> values=new ArrayList<>();for(int c:columns)values.add(formatter.formatCellValue(row.getCell(c)).trim());
+                if(values.stream().allMatch(String::isBlank))continue;
+                if(values.stream().anyMatch(String::isBlank))throw new IllegalArgumentException((i+1)+"행의 필수 값이 비어 있습니다.");
+                Map<String,Object> value=new LinkedHashMap<>();String[] fields={"name","category","period","quantity","unit","note"};for(int c=0;c<6;c++)value.put(fields[c],values.get(c));
+                value.put("siteId",siteId);value.put("quantity",values.get(3).replace(",",""));
+                try {saveActivity(projectId,tenantId,actor,override,value);}catch(IllegalArgumentException e){throw new IllegalArgumentException((i+1)+"행: "+e.getMessage());}count++;
             }
         }
-        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) SELECT ?,'EXCEL_UPLOADED',?||'건의 활동자료를 엑셀로 등록했습니다.',owner_name FROM emission_project_registry WHERE project_id=?",projectId,String.valueOf(count),projectId);
+        if(count==0)throw new IllegalArgumentException("저장할 자료가 없습니다.");
+        jdbc.update("INSERT INTO emission_activity_import(project_id,site_id,import_key,file_name,original_file,column_mapping,row_count,created_by) VALUES (?,?,?,?,?,?::jsonb,?,?)",projectId,siteId,key,file.getOriginalFilename()==null?"upload.xlsx":file.getOriginalFilename(),bytes,new ObjectMapper().writeValueAsString(columns),count,actor);
         return count;
     }
 
@@ -478,8 +531,10 @@ public class EmissionProjectRegistryService {
         result.put("runs",runs);
         if(!runs.isEmpty()) { long id=((Number)runs.get(0).get("id")).longValue(); result.put("items",jdbc.queryForList("SELECT activity_name AS name,category,activity_period AS period,quantity,activity_unit AS unit,factor_id AS \"factorId\",factor_name AS \"factorName\",factor_unit AS \"factorUnit\",factor_source AS \"factorSource\",factor_value AS \"factorValue\",emission_value AS \"emissionValue\",formula_text AS formula FROM emission_calculation_item WHERE calculation_id=? ORDER BY emission_value DESC",id)); }
         else result.put("items",List.of());
-        String accepted="WITH accepted AS (SELECT DISTINCT ON (i.activity_id) i.activity_id,i.activity_name,i.category,i.activity_period,i.quantity,i.unit,i.evidence_note,r.last_submission_id FROM emission_activity_request r JOIN emission_activity_submission_item i ON i.submission_id=r.last_submission_id WHERE r.project_id=? AND r.tenant_id=? AND r.request_status='ACCEPTED' ORDER BY i.activity_id,r.accepted_at DESC) ";
-        List<Map<String,Object>> source=jdbc.queryForList(accepted+"SELECT a.activity_id AS id,a.activity_name AS name,a.category,a.activity_period AS period,a.quantity,a.unit,a.evidence_note AS note,a.last_submission_id AS \"submissionId\",d.factor_id AS \"factorId\",f.factor_name AS \"factorName\",f.factor_value AS \"factorValue\",f.unit AS \"factorUnit\",f.source_name AS \"factorSource\",d.mapping_method AS \"mappingMethod\",d.confidence_score AS confidence,d.unit_match AS \"unitMatch\",d.decision_reason AS \"decisionReason\",d.decided_by AS \"decidedBy\",d.decided_at AS \"decidedAt\" FROM accepted a LEFT JOIN emission_factor_mapping_decision d ON d.project_id=? AND d.activity_id=a.activity_id AND d.active_yn='Y' LEFT JOIN emission_factor_reference f ON f.factor_id=d.factor_id ORDER BY a.activity_period,a.activity_id",projectId,tenant,projectId);
+        // Quantities stay sealed in the accepted submission. Site metadata is read-only
+        // enrichment from the same project's activity, not an unscoped identifier lookup.
+        String accepted="WITH accepted AS (SELECT DISTINCT ON (i.activity_id) i.activity_id,(SELECT source.site_id FROM emission_activity_data source WHERE source.activity_id=i.activity_id AND source.project_id=r.project_id) AS site_id,i.activity_name,i.category,i.activity_period,i.quantity,i.unit,i.evidence_note,r.last_submission_id FROM emission_activity_request r JOIN emission_activity_submission_item i ON i.submission_id=r.last_submission_id WHERE r.project_id=? AND r.tenant_id=? AND r.request_status='ACCEPTED' ORDER BY i.activity_id,r.accepted_at DESC) ";
+        List<Map<String,Object>> source=jdbc.queryForList(accepted+"SELECT a.activity_id AS id,a.activity_name AS name,a.site_id AS \"siteId\",(SELECT s.site_name FROM emission_site_registry s WHERE s.site_id=a.site_id) AS \"siteName\",a.category,a.activity_period AS period,a.quantity,a.unit,a.evidence_note AS note,a.last_submission_id AS \"submissionId\",d.factor_id AS \"factorId\",f.factor_name AS \"factorName\",f.factor_value AS \"factorValue\",f.unit AS \"factorUnit\",f.source_name AS \"factorSource\",d.mapping_method AS \"mappingMethod\",d.confidence_score AS confidence,d.unit_match AS \"unitMatch\",d.decision_reason AS \"decisionReason\",d.decided_by AS \"decidedBy\",d.decided_at AS \"decidedAt\" FROM accepted a LEFT JOIN emission_factor_mapping_decision d ON d.project_id=? AND d.activity_id=a.activity_id AND d.active_yn='Y' LEFT JOIN emission_factor_reference f ON f.factor_id=d.factor_id ORDER BY a.activity_period,a.activity_id",projectId,tenant,projectId);
         result.put("sourceItems",source); result.put("activityCount",source.size()); result.put("unmappedCount",source.stream().filter(row->row.get("factorId")==null).count());
         result.put("incompatibleUnitCount",source.stream().filter(row->row.get("factorId")!=null&&!Boolean.TRUE.equals(row.get("unitMatch"))).count());
         result.put("acceptedSubmissionCount",jdbc.queryForObject("SELECT count(DISTINCT last_submission_id) FROM emission_activity_request WHERE project_id=? AND tenant_id=? AND request_status='ACCEPTED'",Integer.class,projectId,tenant));
@@ -589,6 +644,9 @@ public class EmissionProjectRegistryService {
     public long calculate(String projectId,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
         requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"CALCULATOR",override);
+        jdbc.queryForList("SELECT project_id FROM emission_project_registry WHERE project_id=? FOR UPDATE",projectId);
+        Integer stale=jdbc.queryForObject("SELECT count(*) FROM emission_activity_request r JOIN emission_activity_submission s ON s.submission_id=r.last_submission_id JOIN emission_project_registry p ON p.project_id=r.project_id WHERE r.project_id=? AND r.request_status='ACCEPTED' AND s.input_revision IS DISTINCT FROM p.data_revision",Integer.class,projectId);
+        if(stale!=null&&stale>0)throw new IllegalStateException("ACCEPTED_DATA_REVISION_STALE");
         requireAcceptedActivityData(projectId);
         jdbc.query("SELECT pg_advisory_xact_lock(hashtext(?))",rs->{},tenant+":"+projectId+":CALCULATION");
         String accepted="WITH accepted AS (SELECT DISTINCT ON (i.activity_id) i.activity_id,i.activity_name,i.category,i.activity_period,i.quantity,i.unit,r.last_submission_id FROM emission_activity_request r JOIN emission_activity_submission_item i ON i.submission_id=r.last_submission_id WHERE r.project_id=? AND r.tenant_id=? AND r.request_status='ACCEPTED' ORDER BY i.activity_id,r.accepted_at DESC) ";
@@ -635,6 +693,7 @@ public class EmissionProjectRegistryService {
     }
 
     private void requireAcceptedActivityData(String projectId) {
+        if(count("SELECT count(*) FROM emission_activity_request WHERE project_id=? AND request_status IN ('REQUESTED','IN_PROGRESS','SUBMITTED','CORRECTION_REQUIRED')",projectId)>0)throw new IllegalStateException("ALL_ACTIVITY_REQUESTS_MUST_BE_ACCEPTED");
         Integer count=jdbc.queryForObject("SELECT count(*) FROM emission_activity_request WHERE project_id=? AND request_status='ACCEPTED' AND last_submission_id IS NOT NULL",Integer.class,projectId);
         if(count==null||count==0) throw new IllegalStateException("CALCULATION_REQUIRES_ACCEPTED_ACTIVITY_DATA");
     }
@@ -703,6 +762,26 @@ public class EmissionProjectRegistryService {
             applyProcessActorVisibility(result,tenant,actor,workflowAll);
             result.put("catalogVisibility",workflowAll?"ADMIN_FULL_CATALOG":"ACTOR_SCOPED_CATALOG");
         }
+        return result;
+    }
+
+    /** Read-only public definition catalog. Deliberately excludes tenant, actor, task and runtime data. */
+    public Map<String,Object> publicDefinitionCatalog() {
+        List<Map<String,Object>> workTypes = jdbc.queryForList(
+            "select w.work_type_code as \"workTypeCode\",w.work_type_name as \"workTypeName\",w.work_type_name_en as \"workTypeNameEn\",w.sort_order as \"sortOrder\",(w.use_at='Y') as active from framework_business_work_type w order by w.sort_order asc nulls last,w.work_type_code asc");
+        List<Map<String,Object>> processes = jdbc.queryForList(
+            "select p.process_code as \"processCode\",p.process_name as \"processName\",p.domain_code as \"domainCode\",p.process_status as status,p.process_status as \"lifecycleStatus\",p.development_order as \"developmentOrder\",seq.workflow_order as \"workflowOrder\",w.sort_order as \"businessSortOrder\" from framework_process_definition p left join framework_business_work_type w on upper(w.work_type_code)=upper(p.domain_code) left join framework_business_process_sequence seq on seq.process_code=p.process_code order by w.sort_order asc nulls last,seq.workflow_order asc nulls last,p.development_order asc nulls last,p.process_code asc");
+        List<Map<String,Object>> steps = jdbc.queryForList(
+            "select s.process_code as \"processCode\",s.step_order as \"stepOrder\",s.step_code as \"stepCode\",s.step_name as \"stepName\",s.actor_code as \"actorCode\",s.from_state as \"fromState\",s.command_code as \"commandCode\",s.to_state as \"toState\",nullif(s.user_path,'') as \"userPath\",nullif(s.admin_path,'') as \"adminPath\",s.automation_status as \"automationStatus\" from framework_process_step s order by s.process_code asc,s.step_order asc nulls last,s.step_code asc");
+        long processCount = processes.stream().map(p -> String.valueOf(p.get("processCode"))).distinct().count();
+        long stepCount = steps.stream().map(s -> String.valueOf(s.get("processCode"))+"\u0000"+String.valueOf(s.get("stepCode"))).distinct().count();
+        Map<String,Object> result = new LinkedHashMap<>();
+        result.put("catalogVisibility", "PUBLIC_DEFINITION_ONLY");
+        result.put("generatedAt", java.time.OffsetDateTime.now().toString());
+        result.put("workTypes", workTypes);
+        result.put("processCatalog", processes);
+        result.put("processCatalogSteps", steps);
+        result.put("counts", Map.of("businessTypes", workTypes.size(), "activeBusinessTypes", workTypes.stream().filter(w -> Boolean.TRUE.equals(w.get("active"))).count(), "processes", processCount, "steps", stepCount));
         return result;
     }
 
@@ -1364,6 +1443,11 @@ public class EmissionProjectRegistryService {
             default -> false;
         };
         if(!text(task.get("pendingPredecessors")).isBlank()) task.put("actionable",false);
+        satisfied=satisfied&&currentEvidence(projectId,code);
+        var contract=currentContract(projectId);
+        task.put("inputRevision",contract.get("input_revision"));task.put("approvalRequestId",contract.get("approval_request_id"));task.put("approvalRequestStatus",contract.get("request_status"));
+        if("APPROVAL".equals(code)&&!"PENDING".equals(contract.get("request_status"))&&!Boolean.TRUE.equals(contract.get("approval_current"))){task.put("status","BLOCKED");task.put("actionable",false);task.put("blockedReason","CURRENT_APPROVAL_REQUEST_REQUIRED");}
+        if("DONE".equals(task.get("status"))&&!satisfied){task.put("status","BLOCKED");task.put("actionable",false);task.put("blockedReason","CURRENT_VERSION_COMPLETION_EVIDENCE_REQUIRED");}
         task.put("completionSatisfied",satisfied);
         task.put("completionEvidence",completionEvidence(code,satisfied));
     }
@@ -1402,7 +1486,70 @@ public class EmissionProjectRegistryService {
         return jdbc.update("UPDATE emission_project_task SET task_status=?,started_at=coalesce(started_at,current_timestamp),blocked_reason=null,updated_at=current_timestamp WHERE task_id=?",status,taskId);
     }
 
+    public Map<String,Object> currentContract(String projectId) {
+        return jdbc.queryForMap("SELECT * FROM emission_current_contract WHERE project_id=?",projectId);
+    }
+
+    @Transactional public Map<String,Object> confirmProjectSetup(String projectId,String tenantId,String actor,boolean override) {
+        requireProjectActor(projectId,tenantId,actor,PROJECT_OPERATION,PROJECT_RESOURCE,"COMPANY_MANAGER",override);
+        jdbc.queryForList("SELECT project_id FROM emission_project_registry WHERE project_id=? FOR UPDATE",projectId);
+        Map<String,Object> task=new LinkedHashMap<>();task.put("projectId",projectId);task.put("taskCode","BASIC_INFO");
+        enrichCompletionReadiness(task);
+        if(!Boolean.TRUE.equals(task.get("completionSatisfied")))throw new IllegalStateException("PROJECT_SETUP_INCOMPLETE");
+        completeWorkflowTask(projectId,"BASIC_INFO",actor);
+        return Map.of("projectId",projectId,"setupConfirmed",true,"currentContract",currentContract(projectId));
+    }
+
+    private Map<String,Object> requireCurrentCalculation(String projectId,long submissionId) {
+        jdbc.queryForList("SELECT project_id FROM emission_project_registry WHERE project_id=? FOR UPDATE",projectId);
+        Map<String,Object> c=currentContract(projectId);
+        if(!Boolean.TRUE.equals(c.get("calculation_current"))||!String.valueOf(submissionId).equals(text(c.get("submission_id"))))
+            throw new IllegalStateException("CURRENT_VERSION_CALCULATION_REQUIRED");
+        return c;
+    }
+
+    @Transactional public Map<String,Object> requestApproval(String projectId,long submissionId,String tenantId,String actor,boolean override,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"COMPANY_MANAGER",override);
+        Map<String,Object> c=requireCurrentCalculation(projectId,submissionId);
+        String key=required(body,"idempotencyKey"),approver=required(body,"approverId");
+        if(!text(c.get("calculation_id")).equals(required(body,"calculationId"))||!text(c.get("input_revision")).equals(required(body,"inputRevision")))throw new IllegalStateException("APPROVAL_TARGET_VERSION_CONFLICT");
+        requireProjectActor(projectId,tenant,approver,PROJECT_OPERATION,PROJECT_RESOURCE,"APPROVER",false);
+        if(user.equalsIgnoreCase(approver))throw new SecurityException("SELF_APPROVAL_NOT_ALLOWED");
+        var duplicates=jdbc.queryForList("SELECT * FROM emission_approval_request WHERE tenant_id=? AND project_id=? AND idempotency_key=?",tenant,projectId,key);
+        if(!duplicates.isEmpty()) {
+            var old=duplicates.get(0);
+            if(!text(old.get("calculation_id")).equals(text(c.get("calculation_id")))||!text(old.get("approver_id")).equalsIgnoreCase(approver)||!"PENDING".equals(old.get("request_status")))throw new IllegalStateException("APPROVAL_REQUEST_KEY_CONFLICT");
+            return old;
+        }
+        if(!"VERIFIED".equals(c.get("submission_state")))throw new IllegalStateException("APPROVAL_REQUIRES_CURRENT_VERIFIED");
+        if(jdbc.queryForObject("SELECT count(*) FROM emission_approval_request WHERE project_id=? AND request_status='PENDING'",Integer.class,projectId)>0)throw new IllegalStateException("APPROVAL_ALREADY_PENDING");
+        long id=jdbc.queryForObject("INSERT INTO emission_approval_request(tenant_id,project_id,input_revision,submission_id,calculation_id,calculation_version,input_snapshot_hash,request_status,requested_by,approver_id,idempotency_key) VALUES (?,?,?,?,?,?,?,'PENDING',?,?,?) RETURNING approval_request_id",Long.class,tenant,projectId,c.get("input_revision"),submissionId,c.get("calculation_id"),c.get("calculation_version"),c.get("input_snapshot_hash"),user,approver,key);
+        jdbc.update("UPDATE emission_project_task SET task_status='READY',assignee_id=?,completed_at=null,completed_by=null,blocked_reason=null WHERE project_id=? AND task_code='APPROVAL'",approver,projectId);
+        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'APPROVAL_REQUESTED',?,?)",projectId,"approvalRequestId="+id+", revision="+c.get("input_revision")+", calculationId="+c.get("calculation_id"),user);
+        return jdbc.queryForMap("SELECT * FROM emission_approval_request WHERE approval_request_id=?",id);
+    }
+
+    private void requireCurrentReport(String projectId,long reportId) {
+        jdbc.queryForList("SELECT project_id FROM emission_project_registry WHERE project_id=? FOR UPDATE",projectId);
+        if(!currentEvidence(projectId,"APPROVAL")||count("SELECT count(*) FROM emission_project_report r JOIN emission_current_contract c ON c.project_id=r.project_id AND c.calculation_id=r.calculation_id WHERE r.project_id=? AND r.report_id="+reportId,projectId)!=1)throw new IllegalStateException("CURRENT_REPORT_VERSION_REQUIRED");
+    }
+
+    private boolean currentEvidence(String projectId,String taskCode) {
+        var c=currentContract(projectId);
+        boolean calculation=Boolean.TRUE.equals(c.get("calculation_current")),approval=Boolean.TRUE.equals(c.get("approval_current"));
+        return switch(taskCode) {
+            case "ACTIVITY_DATA" -> c.get("submission_id")!=null&&List.of("SUBMITTED","IN_VERIFICATION","VERIFIED","APPROVED").contains(text(c.get("submission_state")))&&count("SELECT count(*) FROM emission_activity_request WHERE project_id=? AND request_status IN ('REQUESTED','IN_PROGRESS','SUBMITTED','CORRECTION_REQUIRED')",projectId)==0;
+            case "CALCULATION" -> calculation;
+            case "VERIFICATION" -> calculation&&List.of("VERIFIED","APPROVED").contains(text(c.get("submission_state")));
+            case "APPROVAL" -> approval&&count("SELECT count(*) FROM emission_result_lock l JOIN emission_current_contract c ON c.project_id=l.project_id AND c.calculation_id=l.calculation_id AND c.submission_id=l.submission_id WHERE l.project_id=? AND c.approval_current",projectId)>0;
+            case "REPORT","REGULATORY_SUBMISSION" -> approval&&count("SELECT count(*) FROM emission_project_report r JOIN emission_current_contract c ON c.project_id=r.project_id AND c.calculation_id=r.calculation_id WHERE r.project_id=? AND r.report_status='FINALIZED' AND r.certificate_id IS NOT NULL AND r.certificate_status='ACTIVE'",projectId)>0;
+            default -> true;
+        };
+    }
+
     private void completeWorkflowTask(String projectId,String taskCode,String actor) {
+        if(!currentEvidence(projectId,taskCode))throw new IllegalStateException("CURRENT_VERSION_COMPLETION_EVIDENCE_REQUIRED:"+taskCode);
         jdbc.update("UPDATE emission_project_task SET task_status='DONE',completed_at=current_timestamp,completed_by=?,blocked_reason=null,updated_at=current_timestamp WHERE project_id=? AND task_code=? AND task_status<>'DONE'",actor,projectId,taskCode);
         jdbc.update("UPDATE emission_project_task n SET task_status='READY',blocked_reason=null,updated_at=current_timestamp WHERE n.project_id=? AND n.task_status IN ('WAITING','BLOCKED') AND NOT EXISTS (SELECT 1 FROM emission_project_task p WHERE p.project_id=n.project_id AND p.task_code=ANY(string_to_array(nullif(n.predecessor_codes,''),',')) AND p.task_status<>'DONE')",projectId);
         jdbc.update("UPDATE emission_project_task n SET task_status='BLOCKED',blocked_reason='선행 업무가 완료되지 않았습니다.',updated_at=current_timestamp WHERE n.project_id=? AND n.task_status='WAITING' AND EXISTS (SELECT 1 FROM emission_project_task p WHERE p.project_id=n.project_id AND p.task_code=ANY(string_to_array(nullif(n.predecessor_codes,''),',')) AND p.task_status<>'DONE')",projectId);
@@ -1410,6 +1557,7 @@ public class EmissionProjectRegistryService {
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'WORKFLOW_TRANSITION',?||' 업무 완료로 다음 단계가 개방되었습니다.',?)",projectId,taskCode,actor);
         jdbc.update("INSERT INTO emission_workflow_notification(tenant_id,project_id,task_id,event_type,recipient_id,actor_code,title,message_text,target_url) SELECT p.tenant_id,n.project_id,n.task_id,'HANDOFF',n.assignee_id,n.actor_code,'다음 업무가 배정되었습니다',p.project_name||' 프로젝트의 '||n.task_name||' 업무를 진행해 주세요.',n.target_url FROM emission_project_task done JOIN emission_project_task n ON n.project_id=done.project_id AND n.step_order>done.step_order JOIN emission_project_registry p ON p.project_id=n.project_id WHERE done.project_id=? AND done.task_code=? AND n.task_status='READY' AND coalesce(n.assignee_id,'')<>'' ORDER BY n.step_order LIMIT 1 ON CONFLICT DO NOTHING",projectId,taskCode);
         synchronizeProcessExecution(projectId,taskCode,actor,"");
+        jdbc.update("UPDATE emission_project_task SET task_status='BLOCKED',blocked_reason='CURRENT_APPROVAL_REQUEST_REQUIRED' WHERE project_id=? AND task_code='APPROVAL' AND task_status='READY' AND NOT EXISTS(SELECT 1 FROM emission_approval_request a WHERE a.project_id=? AND a.request_status='PENDING')",projectId,projectId);
         jdbc.update("UPDATE emission_project_registry p SET progress_percent=least(100,coalesce((SELECT sum(progress_weight) FROM emission_project_task t WHERE t.project_id=p.project_id AND t.task_code IN ('BASIC_INFO','ACTIVITY_DATA','CALCULATION','VERIFICATION','APPROVAL','REPORT','REGULATORY_SUBMISSION') AND t.task_status='DONE'),0)),current_step=coalesce((SELECT task_name FROM emission_project_task t WHERE t.project_id=p.project_id AND t.task_code IN ('BASIC_INFO','ACTIVITY_DATA','CALCULATION','VERIFICATION','APPROVAL','REPORT','REGULATORY_SUBMISSION') AND t.task_status IN ('READY','IN_PROGRESS') ORDER BY step_order LIMIT 1),'완료'),updated_at=current_timestamp WHERE p.project_id=?",projectId);
     }
 
@@ -1470,7 +1618,7 @@ public class EmissionProjectRegistryService {
         // The data owner runs the pre-submit gate and the verifier independently
         // reruns the same deterministic rules during the verification stage.
         requireProjectActorAny(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,override,"SITE_DATA_OWNER","VERIFIER");
-        List<Map<String,Object>> activities=jdbc.queryForList("SELECT a.activity_id AS id,a.activity_name AS name,a.category,a.activity_period AS period,a.quantity,a.unit,a.evidence_note AS note,a.factor_id AS factorId,f.unit AS factorUnit,(SELECT count(*) FROM emission_activity_evidence e WHERE e.tenant_id=? AND e.project_id=a.project_id AND e.activity_id=a.activity_id) AS evidenceFileCount FROM emission_activity_data a LEFT JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=? ORDER BY a.activity_id",tenant,projectId);
+        List<Map<String,Object>> activities=jdbc.queryForList("SELECT a.activity_id AS id,a.activity_name AS name,a.site_id AS \"siteId\",(SELECT s.site_name FROM emission_site_registry s WHERE s.site_id=a.site_id) AS \"siteName\",a.category,a.activity_period AS period,a.quantity,a.unit,a.evidence_note AS note,a.factor_id AS factorId,f.unit AS factorUnit,(SELECT count(*) FROM emission_activity_evidence e WHERE e.tenant_id=? AND e.project_id=a.project_id AND e.activity_id=a.activity_id) AS evidenceFileCount FROM emission_activity_data a LEFT JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=? ORDER BY a.activity_id",tenant,projectId);
         List<QualityIssue> issues=new ArrayList<>();
         Set<String> allowedUnits=Set.of("L","Nm3","kWh","ton","kg","km","m3","GJ","MJ");
         String start=text(project.get("periodStart")),end=text(project.get("periodEnd"));
@@ -1521,10 +1669,13 @@ public class EmissionProjectRegistryService {
     public Map<String,Object> submitActivities(String projectId,long submissionId,String tenantId,String actor,boolean override,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
         requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"SITE_DATA_OWNER",override);
+        jdbc.queryForList("SELECT project_id FROM emission_project_registry WHERE project_id=? FOR UPDATE",projectId);
+        if(count("SELECT count(*) FROM emission_activity_submission s JOIN emission_project_registry p ON p.project_id=s.project_id WHERE s.project_id=? AND s.submission_id="+submissionId+" AND s.input_revision=p.data_revision",projectId)!=1)throw new IllegalStateException("SUBMISSION_REVISION_STALE");
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT submission_state AS state,deadline_date AS deadline FROM emission_activity_submission WHERE submission_id=? AND project_id=? AND tenant_id=? FOR UPDATE",submissionId,projectId,tenant);
         if(rows.isEmpty()) throw new SecurityException("SUBMISSION_SCOPE_DENIED");
         String state=String.valueOf(rows.get(0).get("state"));
         if("SUBMITTED".equals(state)) return Map.of("id",submissionId,"state",state,"duplicate",true);
+        if(!"DRAFT".equals(state))throw new IllegalStateException("NEW_SUBMISSION_VERSION_REQUIRED");
         Object deadlineValue=rows.get(0).get("deadline");
         boolean deadlineExpired=deadlineValue!=null&&LocalDate.parse(String.valueOf(deadlineValue)).isBefore(LocalDate.now());
         boolean administratorExtension=override&&Boolean.TRUE.equals(body.get("deadlineExtended"));
@@ -1632,8 +1783,10 @@ public class EmissionProjectRegistryService {
         String tenant=requiredValue(tenantId,"tenantId");
         assertTenantAccess(projectId,tenant);
         Map<String,Object> result=new LinkedHashMap<>();
+        result.put("currentContract",currentContract(projectId));
+        result.put("approvalRequests",jdbc.queryForList("SELECT * FROM emission_approval_request WHERE project_id=? AND tenant_id=? ORDER BY approval_request_id DESC",projectId,tenant));
         result.put("project",detail(projectId));
-        result.put("submissions",jdbc.queryForList("SELECT s.submission_id AS \"id\",s.version_no AS \"version\",s.submission_state AS \"state\",s.submitted_actor AS \"submittedActor\",s.submitted_at AS \"submittedAt\",cs.calculation_id AS \"calculationId\",(SELECT max(r.request_id) FROM emission_activity_request r WHERE r.last_submission_id=s.submission_id) AS \"requestId\",(l.result_lock_id IS NOT NULL) AS locked FROM emission_activity_submission s LEFT JOIN emission_calculation_submission cs ON cs.submission_id=s.submission_id LEFT JOIN emission_result_lock l ON l.submission_id=s.submission_id WHERE s.tenant_id=? AND s.project_id=? ORDER BY s.version_no DESC",tenant,projectId));
+        result.put("submissions",jdbc.queryForList("SELECT s.submission_id AS \"id\",s.version_no AS \"version\",s.submission_state AS \"state\",s.submitted_actor AS \"submittedActor\",s.submitted_at AS \"submittedAt\",cs.calculation_id AS \"calculationId\",(SELECT max(r.request_id) FROM emission_activity_request r WHERE r.last_submission_id=s.submission_id) AS \"requestId\",(l.result_lock_id IS NOT NULL) AS locked FROM emission_activity_submission s LEFT JOIN LATERAL (SELECT c.calculation_id FROM emission_calculation_run c WHERE c.project_id=s.project_id AND c.tenant_id=s.tenant_id AND s.submission_id::text=ANY(string_to_array(c.accepted_submission_ids,',')) ORDER BY c.version_no DESC LIMIT 1) cs ON true LEFT JOIN emission_result_lock l ON l.submission_id=s.submission_id AND l.calculation_id=cs.calculation_id WHERE s.tenant_id=? AND s.project_id=? ORDER BY s.version_no DESC",tenant,projectId));
         result.put("reviews",jdbc.queryForList("SELECT review_id AS \"id\",submission_id AS \"submissionId\",review_stage AS \"stage\",decision,reviewer_id AS \"reviewer\",comment_text AS comment,issue_count AS \"issueCount\",calculation_id AS \"calculationId\",created_at AS \"createdAt\" FROM emission_submission_review WHERE tenant_id=? AND project_id=? ORDER BY created_at DESC,review_id DESC",tenant,projectId));
         result.put("actors",jdbc.queryForList("SELECT actor_code AS \"actorCode\",user_id AS \"userId\" FROM framework_project_actor_assignment WHERE project_id=? AND active_yn='Y' ORDER BY actor_code,user_id",projectId));
         return result;
@@ -1643,6 +1796,9 @@ public class EmissionProjectRegistryService {
         String tenant=requiredValue(tenantId,"tenantId"); assertTenantAccess(projectId,tenant);
         Map<String,Object> result=new LinkedHashMap<>(); result.put("project",detail(projectId));
         List<Map<String,Object>> approved=jdbc.queryForList("SELECT s.submission_id AS \"submissionId\",s.version_no AS \"submissionVersion\",s.submission_state AS \"submissionState\",c.calculation_id AS \"calculationId\",c.version_no AS \"calculationVersion\",c.total_emission AS \"totalEmission\",l.result_lock_id AS \"lockId\",l.calculation_version AS version,l.result_unit AS \"resultUnit\",l.input_snapshot_hash AS \"snapshotHash\",l.lock_hash AS \"lockHash\",l.locked_at AS \"lockedAt\",l.locked_by AS \"lockedBy\" FROM emission_activity_submission s JOIN emission_submission_review r ON r.submission_id=s.submission_id AND r.review_stage='APPROVAL' AND r.decision='APPROVED' JOIN emission_calculation_run c ON c.calculation_id=r.calculation_id JOIN emission_result_lock l ON l.submission_id=s.submission_id AND l.calculation_id=c.calculation_id AND l.lock_status='LOCKED' WHERE s.tenant_id=? AND s.project_id=? ORDER BY r.created_at DESC LIMIT 1",tenant,projectId);
+        Map<String,Object> current=currentContract(projectId);
+        approved.removeIf(row->!Boolean.TRUE.equals(current.get("approval_current"))||!text(row.get("calculationId")).equals(text(current.get("calculation_id")))||!text(row.get("submissionId")).equals(text(current.get("submission_id"))));
+        result.put("currentContract",current);
         result.put("approved",approved.isEmpty()?null:withLockIntegrity(approved.get(0)));
         result.put("reports",jdbc.queryForList("SELECT report_id AS \"id\",version_no AS \"version\",report_title AS \"title\",report_language AS language,report_status AS status,summary_text AS summary,result_lock_id AS \"resultLockId\",result_lock_hash AS \"resultLockHash\",created_by AS \"createdBy\",created_at AS \"createdAt\",finalized_by AS \"finalizedBy\",finalized_at AS \"finalizedAt\",certificate_id AS \"certificateId\",integrity_hash AS \"integrityHash\",issued_by AS \"issuedBy\",issued_at AS \"issuedAt\",download_count AS \"downloadCount\" FROM emission_project_report WHERE tenant_id=? AND project_id=? ORDER BY version_no DESC",tenant,projectId));
         return result;
@@ -1718,6 +1874,8 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional public Map<String,Object> createReport(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
+        jdbc.queryForList("SELECT project_id FROM emission_project_registry WHERE project_id=? FOR UPDATE",projectId);
+        if(!currentEvidence(projectId,"APPROVAL"))throw new IllegalStateException("CURRENT_APPROVED_LOCK_REQUIRED");
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"CALCULATOR",override);
         List<Map<String,Object>> source=jdbc.queryForList("SELECT s.submission_id AS submission_id,c.calculation_id AS calculation_id,l.result_lock_id AS \"lockId\",l.submission_id AS \"submissionId\",l.calculation_id AS \"calculationId\",l.calculation_version AS version,l.total_emission AS \"totalEmission\",l.result_unit AS \"resultUnit\",l.input_snapshot_hash AS \"snapshotHash\",l.lock_hash AS \"lockHash\" FROM emission_activity_submission s JOIN emission_submission_review r ON r.submission_id=s.submission_id AND r.review_stage='APPROVAL' AND r.decision='APPROVED' JOIN emission_calculation_run c ON c.calculation_id=r.calculation_id JOIN emission_result_lock l ON l.submission_id=s.submission_id AND l.calculation_id=c.calculation_id AND l.lock_status='LOCKED' WHERE s.tenant_id=? AND s.project_id=? AND s.submission_state='APPROVED' AND c.calculation_status='LOCKED' ORDER BY r.created_at DESC LIMIT 1",tenant,projectId);
         if(source.isEmpty()) throw new IllegalStateException("REPORT_REQUIRES_APPROVED_LOCKED_CALCULATION");
@@ -1730,6 +1888,7 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional public Map<String,Object> finalizeReport(String projectId,long reportId,String tenantId,String actor,boolean override) {
+        requireCurrentReport(projectId,reportId);
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"VERIFIER",override);
         int changed=jdbc.update("UPDATE emission_project_report SET report_status='FINALIZED',finalized_by=?,finalized_at=current_timestamp,updated_at=current_timestamp WHERE report_id=? AND project_id=? AND tenant_id=? AND report_status='DRAFT'",user,reportId,projectId,tenant);
         if(changed==0) { Integer exists=jdbc.queryForObject("SELECT count(*) FROM emission_project_report WHERE report_id=? AND project_id=? AND tenant_id=? AND report_status='FINALIZED'",Integer.class,reportId,projectId,tenant); if(exists==null||exists==0)throw new IllegalStateException("REPORT_FINALIZE_STATE_INVALID"); }
@@ -1739,6 +1898,7 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional public Map<String,Object> issueReportCertificate(String projectId,long reportId,String tenantId,String actor,boolean override) {
+        requireCurrentReport(projectId,reportId);
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"APPROVER",override);
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT p.report_id,p.version_no,p.report_title,p.report_status,p.certificate_id,p.integrity_hash,p.result_lock_hash AS \"reportLockHash\",l.submission_id AS \"submissionId\",l.calculation_id AS \"calculationId\",l.calculation_version AS version,l.total_emission AS \"totalEmission\",l.result_unit AS \"resultUnit\",l.input_snapshot_hash AS \"snapshotHash\",l.lock_hash AS \"lockHash\" FROM emission_project_report p JOIN emission_result_lock l ON l.result_lock_id=p.result_lock_id AND l.tenant_id=p.tenant_id AND l.project_id=p.project_id WHERE p.report_id=? AND p.project_id=? AND p.tenant_id=? FOR UPDATE OF p,l",reportId,projectId,tenant);
         if(rows.isEmpty())throw new SecurityException("REPORT_SCOPE_DENIED"); Map<String,Object> row=rows.get(0);
@@ -1753,6 +1913,7 @@ public class EmissionProjectRegistryService {
             jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'REPORT_CERTIFICATE_ISSUED',?,?)",projectId,"보고서 인증번호 "+certificate+" 발급",user);
             completeWorkflowTask(projectId,"REPORT",user);jdbc.update("UPDATE emission_project_registry SET progress_percent=100,current_step='보고서·인증서 발급 완료',project_status='완료',updated_at=current_timestamp WHERE project_id=?",projectId);
         }
+        jdbc.update("UPDATE emission_project_registry p SET project_status=CASE WHEN EXISTS(SELECT 1 FROM emission_project_task t WHERE t.project_id=p.project_id AND t.task_code='REGULATORY_SUBMISSION' AND t.task_status='DONE') THEN '완료' ELSE '보고 완료' END,current_step=CASE WHEN EXISTS(SELECT 1 FROM emission_project_task t WHERE t.project_id=p.project_id AND t.task_code='REGULATORY_SUBMISSION' AND t.task_status='DONE') THEN '완료' ELSE '규제기관 제출·접수 대기' END,progress_percent=least(100,coalesce((SELECT sum(progress_weight) FROM emission_project_task t WHERE t.project_id=p.project_id AND t.task_code IN ('BASIC_INFO','ACTIVITY_DATA','CALCULATION','VERIFICATION','APPROVAL','REPORT','REGULATORY_SUBMISSION') AND t.task_status='DONE'),0)) WHERE project_id=?",projectId);
         return Map.of("reportId",reportId,"certificateId",certificate,"integrityHash",hash,"status","ISSUED");
     }
 
@@ -1780,7 +1941,11 @@ public class EmissionProjectRegistryService {
         Map<String,Object> health=jdbc.queryForMap("SELECT CASE WHEN count(*)=7 AND count(*) FILTER(WHERE coalesce(actor_code,'')='')=0 AND count(*) FILTER(WHERE coalesce(target_url,'')='')=0 AND count(*) FILTER(WHERE coalesce(completion_rule,'')='')=0 AND count(*) FILTER(WHERE due_date IS NULL)=0 THEN 'READY' ELSE 'REPAIR_REQUIRED' END AS status,count(*) AS \"taskCount\",(SELECT count(DISTINCT actor_code) FROM framework_project_actor_assignment WHERE project_id=? AND active_yn='Y') AS \"actorAssignmentCount\",count(*) FILTER(WHERE coalesce(actor_code,'')='') AS \"missingActorCount\",count(*) FILTER(WHERE coalesce(target_url,'')='') AS \"missingRouteCount\",count(*) FILTER(WHERE coalesce(completion_rule,'')='') AS \"missingRuleCount\",count(*) FILTER(WHERE predecessor_codes<>'' AND EXISTS(SELECT 1 FROM unnest(string_to_array(predecessor_codes,',')) code WHERE NOT EXISTS(SELECT 1 FROM emission_project_task p WHERE p.project_id=? AND p.task_code=trim(code)))) AS \"missingPredecessorCount\",count(*) FILTER(WHERE due_date IS NULL)=0 AS \"deadlinesValid\" FROM emission_project_task WHERE project_id=? AND task_code IN ('BASIC_INFO','ACTIVITY_DATA','CALCULATION','VERIFICATION','APPROVAL','REPORT','REGULATORY_SUBMISSION')",projectId,projectId,projectId);
         result.put("workflowHealth",health);result.put("nextTask",next);result.put("completedTaskCount",completed);
         result.put("completionPercent",checklist.isEmpty()?0:Math.round(completed*100.0/checklist.size()));
-        result.put("complete",!checklist.isEmpty()&&completed==checklist.size()&&"READY".equals(health.get("status")));
+        Map<String,Object> contract=currentContract(projectId);
+        result.put("currentContract",contract);
+        result.put("approvalComplete",Boolean.TRUE.equals(contract.get("approval_current")));
+        result.put("processComplete",checklist.stream().filter(t->!"REGULATORY_SUBMISSION".equals(t.get("code"))).count()==6&&checklist.stream().filter(t->!"REGULATORY_SUBMISSION".equals(t.get("code"))).allMatch(t->"DONE".equals(t.get("status"))&&currentEvidence(projectId,text(t.get("code")))));
+        result.put("complete",!checklist.isEmpty()&&completed==checklist.size()&&"READY".equals(health.get("status"))&&currentEvidence(projectId,"REPORT")&&Boolean.TRUE.equals(contract.get("approval_current")));
         return result;
     }
 
@@ -1799,6 +1964,7 @@ public class EmissionProjectRegistryService {
     public Map<String,Object> startVerification(String projectId,long submissionId,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
         requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"VERIFIER",override);
+        requireCurrentCalculation(projectId,submissionId);
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT submission_state AS state FROM emission_activity_submission WHERE submission_id=? AND project_id=? AND tenant_id=? FOR UPDATE",submissionId,projectId,tenant);
         if(rows.isEmpty()) throw new SecurityException("SUBMISSION_SCOPE_DENIED");
         String state=text(rows.get(0).get("state"));
@@ -1817,6 +1983,7 @@ public class EmissionProjectRegistryService {
     public Map<String,Object> decideVerification(String projectId,long submissionId,String tenantId,String actor,boolean override,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),decision=required(body,"decision").toUpperCase();
         requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"VERIFIER",override);
+        requireCurrentCalculation(projectId,submissionId);
         if(!List.of("PASSED","CORRECTION_REQUESTED").contains(decision)) throw new IllegalArgumentException("VERIFICATION_DECISION_INVALID");
         String comment=text(body.get("comment")); int issues=Integer.parseInt(String.valueOf(body.getOrDefault("issueCount",0)));
         if("CORRECTION_REQUESTED".equals(decision)&&comment.isBlank()) throw new IllegalArgumentException("CORRECTION_REASON_REQUIRED");
@@ -1845,14 +2012,22 @@ public class EmissionProjectRegistryService {
     public Map<String,Object> decideApproval(String projectId,long submissionId,String tenantId,String actor,boolean override,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),decision=required(body,"decision").toUpperCase(),comment=text(body.get("comment"));
         requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"APPROVER",override);
+        var current=requireCurrentCalculation(projectId,submissionId);
+        long approvalRequestId=Long.parseLong(required(body,"approvalRequestId"));
+        var requests=jdbc.queryForList("SELECT * FROM emission_approval_request WHERE approval_request_id=? AND project_id=? AND tenant_id=? FOR UPDATE",approvalRequestId,projectId,tenant);
+        if(requests.isEmpty())throw new SecurityException("APPROVAL_REQUEST_SCOPE_DENIED");
+        var approvalRequest=requests.get(0);
+        if(!user.equalsIgnoreCase(text(approvalRequest.get("approver_id")))||user.equalsIgnoreCase(text(approvalRequest.get("requested_by"))))throw new SecurityException("APPROVAL_REQUEST_ACTOR_DENIED");
+        if(!"PENDING".equals(approvalRequest.get("request_status"))||!text(current.get("approval_request_id")).equals(String.valueOf(approvalRequestId))||!text(current.get("input_revision")).equals(text(approvalRequest.get("input_revision")))||!text(current.get("calculation_id")).equals(text(approvalRequest.get("calculation_id")))||!text(current.get("input_snapshot_hash")).equals(text(approvalRequest.get("input_snapshot_hash"))))throw new IllegalStateException("APPROVAL_REQUEST_NOT_CURRENT_PENDING");
         if(!List.of("APPROVED","REJECTED").contains(decision)) throw new IllegalArgumentException("APPROVAL_DECISION_INVALID");
         if("REJECTED".equals(decision)&&comment.isBlank()) throw new IllegalArgumentException("REJECTION_REASON_REQUIRED");
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT submission_state AS state FROM emission_activity_submission WHERE submission_id=? AND project_id=? AND tenant_id=? FOR UPDATE",submissionId,projectId,tenant);
         if(rows.isEmpty()) throw new SecurityException("SUBMISSION_SCOPE_DENIED");
         String previous=text(rows.get(0).get("state")); if(!"VERIFIED".equals(previous)) throw new IllegalStateException("APPROVAL_REQUIRES_VERIFIED");
-        Long calculationId=jdbc.query("SELECT calculation_id FROM emission_calculation_run WHERE project_id=? ORDER BY version_no DESC LIMIT 1",rs->rs.next()?rs.getLong(1):null,projectId);
+        Long calculationId=((Number)approvalRequest.get("calculation_id")).longValue();
         if(calculationId==null) throw new IllegalStateException("APPROVAL_REQUIRES_CALCULATION");
         String next="APPROVED".equals(decision)?"APPROVED":"CORRECTION_REQUIRED";
+        jdbc.update("UPDATE emission_approval_request SET request_status=?,decided_by=?,decided_at=current_timestamp,decision_reason=? WHERE approval_request_id=?",decision,user,comment,approvalRequestId);
         jdbc.update("UPDATE emission_activity_submission SET submission_state=?,updated_at=current_timestamp WHERE submission_id=?",next,submissionId);
         jdbc.update("INSERT INTO emission_submission_review(tenant_id,project_id,submission_id,review_stage,decision,reviewer_id,comment_text,calculation_id) VALUES (?,?,?,'APPROVAL',?,?,?,?)",tenant,projectId,submissionId,decision,user,comment,calculationId);
         jdbc.update("INSERT INTO emission_activity_submission_event(submission_id,event_type,event_actor,previous_state,new_state,event_note) VALUES (?,?,?,?,?,?)",submissionId,"APPROVED".equals(decision)?"APPROVED":"REJECTED",user,previous,next,comment);
@@ -1866,6 +2041,9 @@ public class EmissionProjectRegistryService {
         requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"APPROVER",override);
         List<Map<String,Object>> approved=jdbc.queryForList("SELECT r.submission_id AS \"submissionId\",r.calculation_id AS \"calculationId\",c.version_no AS version,c.total_emission AS \"totalEmission\",c.result_unit AS \"resultUnit\",c.calculation_status AS status,c.input_snapshot_hash AS \"snapshotHash\",r.created_at AS \"approvedAt\",r.reviewer_id AS \"approvedBy\" FROM emission_submission_review r JOIN emission_calculation_run c ON c.calculation_id=r.calculation_id WHERE r.tenant_id=? AND r.project_id=? AND r.review_stage='APPROVAL' AND r.decision='APPROVED' ORDER BY r.review_id DESC LIMIT 1",tenant,projectId);
         List<Map<String,Object>> locks=jdbc.queryForList("SELECT result_lock_id AS \"lockId\",submission_id AS \"submissionId\",calculation_id AS \"calculationId\",calculation_version AS version,total_emission AS \"totalEmission\",result_unit AS \"resultUnit\",input_snapshot_hash AS \"snapshotHash\",lock_hash AS \"lockHash\",lock_status AS status,locked_by AS \"lockedBy\",locked_at AS \"lockedAt\" FROM emission_result_lock WHERE tenant_id=? AND project_id=? ORDER BY locked_at DESC LIMIT 1",tenant,projectId);
+        Map<String,Object> current=currentContract(projectId);
+        approved.removeIf(row->!Boolean.TRUE.equals(current.get("approval_current"))||!text(row.get("calculationId")).equals(text(current.get("calculation_id"))));
+        locks.removeIf(row->!Boolean.TRUE.equals(current.get("approval_current"))||!text(row.get("calculationId")).equals(text(current.get("calculation_id"))));
         Map<String,Object> out=new LinkedHashMap<>();out.put("projectId",projectId);out.put("approvedTarget",approved.isEmpty()?null:approved.get(0));out.put("lock",locks.isEmpty()?null:withLockIntegrity(locks.get(0)));out.put("eligible",!approved.isEmpty()&&locks.isEmpty()&&"APPROVED".equals(text(approved.get(0).get("status"))));out.put("message",approved.isEmpty()?"승인 완료된 산정 결과가 없습니다.":locks.isEmpty()?"승인 결과를 불변 잠금할 수 있습니다.":"승인 결과가 잠금 완료되었습니다.");return out;
     }
 
@@ -1888,6 +2066,8 @@ public class EmissionProjectRegistryService {
     public Map<String,Object> lockApprovedResult(String projectId,long submissionId,long calculationId,String tenantId,String actor,boolean override,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),key=required(body,"idempotencyKey");
         requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"APPROVER",override);
+        var current=requireCurrentCalculation(projectId,submissionId);
+        if(!Boolean.TRUE.equals(current.get("approval_current"))||!text(current.get("calculation_id")).equals(String.valueOf(calculationId)))throw new IllegalStateException("CURRENT_APPROVAL_REQUIRED_FOR_LOCK");
         jdbc.query("SELECT pg_advisory_xact_lock(hashtext(?))",rs->{},tenant+":"+projectId+":RESULT_LOCK:"+calculationId);
         List<Map<String,Object>> existing=jdbc.queryForList("SELECT result_lock_id AS \"lockId\",calculation_id AS \"calculationId\",submission_id AS \"submissionId\",lock_status AS status,locked_at AS \"lockedAt\" FROM emission_result_lock WHERE tenant_id=? AND project_id=? AND idempotency_key=?",tenant,projectId,key);
         if(!existing.isEmpty()) {Map<String,Object> same=new LinkedHashMap<>(existing.get(0));same.put("idempotent",true);return same;}
@@ -2075,7 +2255,7 @@ public class EmissionProjectRegistryService {
         jdbc.queryForList("SELECT actor_code,user_id FROM framework_project_actor_assignment WHERE project_id=? AND active_yn='Y'",sourceId)
             .forEach(row->actors.put(String.valueOf(row.get("actor_code")),String.valueOf(row.get("user_id"))));
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", source.get("name") + " - 복사본"); body.put("site", source.get("site")); body.put("owner", source.get("owner"));
+        body.put("name", source.get("name") + " - 복사본"); body.put("site", source.get("site")); body.put("sites", source.get("sites")); body.put("owner", source.get("owner"));
         body.put("dataOwner",requiredValue(actors.get("SITE_DATA_OWNER"),"dataOwner"));
         body.put("calculator",requiredValue(actors.get("CALCULATOR"),"calculator"));
         body.put("verifier",requiredValue(actors.get("VERIFIER"),"verifier"));
@@ -2140,32 +2320,42 @@ public class EmissionProjectRegistryService {
         List<String> existing=jdbc.queryForList("SELECT project_id FROM emission_project_registry WHERE tenant_id=? AND creation_request_id=?",String.class,tenant,requestId);
         if(!existing.isEmpty()) return existing.get(0);
         String name=contract.name(),site=contract.site(),owner=contract.owner(),dataOwner=contract.dataOwner(),calculator=contract.calculator(),verifier=contract.verifier(),approver=contract.approver();
-        assertActiveSite(tenant,site);
+        for (String selectedSite : contract.sites()) assertActiveSite(tenant,selectedSite);
         assertActorEligible(tenant,owner,"COMPANY_MANAGER");
-        assertActorEligible(tenant,dataOwner,"SITE_DATA_OWNER");
-        assertActorEligible(tenant,calculator,"CALCULATOR");
-        assertActorEligible(tenant,verifier,"VERIFIER");
-        assertActorEligible(tenant,approver,"APPROVER");
+        if(!dataOwner.isBlank()) assertActorEligible(tenant,dataOwner,"SITE_DATA_OWNER");
+        if(!calculator.isBlank()) assertActorEligible(tenant,calculator,"CALCULATOR");
+        if(!verifier.isBlank()) assertActorEligible(tenant,verifier,"VERIFIER");
+        if(!approver.isBlank()) assertActorEligible(tenant,approver,"APPROVER");
         LocalDate start=contract.periodStart(),end=contract.periodEnd(),due=contract.dueDate();int year=contract.reportingYear();
         if (!nameAvailable(tenant,name)) throw new IllegalArgumentException("이미 등록된 프로젝트명입니다.");
         String scope=contract.scopes().stream().sorted().reduce((a,b)->a+"·"+b).orElseThrow();
         String id = "PRJ-" + LocalDate.now().getYear() + "-" + UUID.randomUUID().toString().substring(0,6).toUpperCase();
         jdbc.update("INSERT INTO emission_project_registry(project_id,tenant_id,project_name,site_name,calculation_period,scope_name,owner_name,progress_percent,current_step,due_date,project_status,reporting_year,period_start,period_end,organization_boundary,emission_standard,methodology_version,verification_level,collection_cycle,materiality_threshold,settings_snapshot) VALUES (?,?,?,?,?,?,?,0,'프로젝트 생성',?,'진행',?,?,?,?,?,?,?,?,?,jsonb_build_object('organizationBoundary',?,'emissionStandard',?,'methodologyVersion',?,'verificationLevel',?,'collectionCycle',?,'materialityThreshold',?,'scopes',?))", id,tenant,name,site,start+" ~ "+end,scope,owner,due,year,start,end,contract.organizationBoundary(),contract.emissionStandard(),contract.methodologyVersion(),contract.verificationLevel(),contract.collectionCycle(),contract.materialityThreshold(),contract.organizationBoundary(),contract.emissionStandard(),contract.methodologyVersion(),contract.verificationLevel(),contract.collectionCycle(),contract.materialityThreshold(),scope);
         jdbc.update("UPDATE emission_project_registry SET creation_request_id=?,workflow_initialized_at=current_timestamp WHERE project_id=?",requestId,id);
+        for (int index=0; index<contract.sites().size(); index++) {
+            String selectedSite=contract.sites().get(index);
+            int linked=jdbc.update("INSERT INTO emission_project_site(project_id,site_id,site_name,display_order) SELECT ?,site_id,site_name,? FROM emission_site_registry WHERE tenant_id=? AND lower(trim(site_name))=lower(trim(?)) AND site_status='ACTIVE' AND (effective_until IS NULL OR effective_until>=current_date)",id,index,tenant,selectedSite);
+            if(linked!=1) throw new IllegalArgumentException("PROJECT_SITE_NOT_REGISTERED");
+        }
         jdbc.update("INSERT INTO emission_project_member(project_id,member_name,role_code) VALUES (?,?,'OWNER')", id, owner);
         String[][] tasks = {{"BASIC_INFO","기본정보 확인"},{"ACTIVITY_DATA","활동자료 수집"},{"CALCULATION","배출량 산정"},{"VERIFICATION","데이터 검증"},{"APPROVAL","검토·승인"},{"REPORT","확정·보고"},{"REGULATORY_SUBMISSION","규제기관 제출·접수"}};
         for (int i=0;i<tasks.length;i++) jdbc.update("INSERT INTO emission_project_task(project_id,task_code,task_name,step_order,task_status,progress_weight,due_date) VALUES (?,?,?,?,?,?,?)",id,tasks[i][0],tasks[i][1],i+1,i==0?"IN_PROGRESS":"WAITING",i==0?10:15,due);
         jdbc.update("UPDATE emission_project_task SET process_code=CASE WHEN task_code='REGULATORY_SUBMISSION' THEN 'REGULATORY_SUBMISSION' ELSE 'EMISSION_PROJECT' END,process_step_code=CASE task_code WHEN 'BASIC_INFO' THEN 'EMISSION_PROJECT_SETUP' WHEN 'ACTIVITY_DATA' THEN 'EMISSION_PROJECT_COLLECT' WHEN 'CALCULATION' THEN 'EMISSION_PROJECT_CALCULATE' WHEN 'VERIFICATION' THEN 'EMISSION_PROJECT_VALIDATE' WHEN 'APPROVAL' THEN 'EMISSION_PROJECT_APPROVE' WHEN 'REPORT' THEN 'EMISSION_PROJECT_REPORT' WHEN 'REGULATORY_SUBMISSION' THEN 'REGULATORY_SUBMISSION_S1' END,actor_code=CASE task_code WHEN 'BASIC_INFO' THEN 'COMPANY_MANAGER' WHEN 'ACTIVITY_DATA' THEN 'SITE_DATA_OWNER' WHEN 'CALCULATION' THEN 'CALCULATOR' WHEN 'VERIFICATION' THEN 'VERIFIER' WHEN 'APPROVAL' THEN 'APPROVER' WHEN 'REPORT' THEN 'COMPANY_MANAGER' WHEN 'REGULATORY_SUBMISSION' THEN 'COMPANY_MANAGER' END,predecessor_codes=CASE task_code WHEN 'ACTIVITY_DATA' THEN 'BASIC_INFO' WHEN 'CALCULATION' THEN 'ACTIVITY_DATA' WHEN 'VERIFICATION' THEN 'CALCULATION' WHEN 'APPROVAL' THEN 'VERIFICATION' WHEN 'REPORT' THEN 'APPROVAL' WHEN 'REGULATORY_SUBMISSION' THEN 'REPORT' ELSE '' END,completion_rule=CASE task_code WHEN 'BASIC_INFO' THEN '프로젝트 기본정보와 산정기간이 확정됨' WHEN 'ACTIVITY_DATA' THEN '품질검사를 통과한 활동자료가 제출됨' WHEN 'CALCULATION' THEN '배출량 산정 버전이 생성됨' WHEN 'VERIFICATION' THEN '검증 오류가 없고 검증 이력이 생성됨' WHEN 'APPROVAL' THEN '권한 있는 승인자가 결과를 승인함' WHEN 'REPORT' THEN '확정 결과 보고서가 발행됨' WHEN 'REGULATORY_SUBMISSION' THEN '제출 패키지와 접수번호가 보존되고 규제기관 수리가 완료됨' END WHERE project_id=?",id);
         jdbc.update("UPDATE emission_project_task SET target_url=CASE task_code WHEN 'BASIC_INFO' THEN '/emission/project/detail?id='||project_id WHEN 'ACTIVITY_DATA' THEN '/emission/activity-data?projectId='||project_id WHEN 'CALCULATION' THEN '/emission/calculation?projectId='||project_id WHEN 'VERIFICATION' THEN '/emission/validate?projectId='||project_id WHEN 'APPROVAL' THEN '/emission/validate?tab=approval&projectId='||project_id WHEN 'REPORT' THEN '/emission/report_submit?projectId='||project_id WHEN 'REGULATORY_SUBMISSION' THEN '/emission/report-submission?projectId='||project_id END WHERE project_id=?",id);
-        jdbc.update("INSERT INTO framework_project_actor_assignment(project_id,actor_code,user_id) VALUES (?,'COMPANY_MANAGER',?),(?,'SITE_DATA_OWNER',?),(?,'CALCULATOR',?),(?,'VERIFIER',?),(?,'APPROVER',?) ON CONFLICT DO NOTHING",id,owner,id,dataOwner,id,calculator,id,verifier,id,approver);
-        jdbc.update("INSERT INTO framework_account_actor_assignment(account_id,tenant_id,project_id,actor_code,data_scope,assignment_status) VALUES (?,?,?,'COMPANY_MANAGER',?,'ACTIVE'),(?,?,?,'SITE_DATA_OWNER',?,'ACTIVE'),(?,?,?,'CALCULATOR',?,'ACTIVE'),(?,?,?,'VERIFIER',?,'ACTIVE'),(?,?,?,'APPROVER',?,'ACTIVE') ON CONFLICT(account_id,tenant_id,project_id,actor_code) DO UPDATE SET data_scope=excluded.data_scope,assignment_status='ACTIVE'",owner,tenant,id,id,dataOwner,tenant,id,id,calculator,tenant,id,id,verifier,tenant,id,id,approver,tenant,id,id);
+        String[][] assignments={{"COMPANY_MANAGER",owner},{"SITE_DATA_OWNER",dataOwner},{"CALCULATOR",calculator},{"VERIFIER",verifier},{"APPROVER",approver}};
+        for(String[] assignment:assignments) if(!assignment[1].isBlank()) {
+            jdbc.update("INSERT INTO framework_project_actor_assignment(project_id,actor_code,user_id) VALUES (?,?,?) ON CONFLICT DO NOTHING",id,assignment[0],assignment[1]);
+            jdbc.update("INSERT INTO framework_account_actor_assignment(account_id,tenant_id,project_id,actor_code,data_scope,assignment_status) VALUES (?,?,?,?,?,'ACTIVE') ON CONFLICT(account_id,tenant_id,project_id,actor_code) DO UPDATE SET data_scope=excluded.data_scope,assignment_status='ACTIVE'",assignment[1],tenant,id,assignment[0],id);
+        }
         jdbc.update("UPDATE emission_project_task SET assignee_id=CASE actor_code WHEN 'COMPANY_MANAGER' THEN ? WHEN 'SITE_DATA_OWNER' THEN ? WHEN 'CALCULATOR' THEN ? WHEN 'VERIFIER' THEN ? WHEN 'APPROVER' THEN ? END WHERE project_id=?",owner,dataOwner,calculator,verifier,approver,id);
         jdbc.queryForMap("SELECT * FROM framework_sync_project_processes(?,?)",id,owner);
         jdbc.update("UPDATE emission_project_task child SET predecessor_codes='BASIC_INFO',task_status=CASE WHEN parent.task_status='DONE' AND child.task_status IN ('WAITING','BLOCKED') THEN 'READY' ELSE child.task_status END,blocked_reason=CASE WHEN parent.task_status='DONE' AND child.task_status IN ('WAITING','BLOCKED') THEN null ELSE child.blocked_reason END,updated_at=current_timestamp FROM emission_project_task parent WHERE child.project_id=? AND parent.project_id=child.project_id AND parent.task_code='BASIC_INFO' AND child.process_code='ORGANIZATIONAL_BOUNDARY' AND child.process_step_code='ORGANIZATIONAL_BOUNDARY_S1' AND coalesce(nullif(btrim(child.predecessor_codes),''),'BASIC_INFO')='BASIC_INFO'",id);
-        jdbc.update("INSERT INTO emission_project_activity_request(project_id,tenant_id,site_name,assignee_id,collection_cycle,period_start,period_end,due_date) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(project_id,site_name,assignee_id) DO NOTHING",id,tenant,site,dataOwner,contract.collectionCycle(),start,end,due);
+        if(!dataOwner.isBlank()) {
+        for (String selectedSite : contract.sites()) jdbc.update("INSERT INTO emission_project_activity_request(project_id,tenant_id,site_name,assignee_id,collection_cycle,period_start,period_end,due_date) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(project_id,site_name,assignee_id) DO NOTHING",id,tenant,selectedSite,dataOwner,contract.collectionCycle(),start,end,due);
         jdbc.update("INSERT INTO emission_activity_request(tenant_id,project_id,request_title,request_detail,requested_items,requester_id,assignee_id,due_date,request_status) SELECT ?,?,'월별 활동자료 및 증빙 제출 요청','산정기간의 활동자료를 입력하고 원본 증빙을 함께 제출해 주세요.','연료 사용량, 전력 사용량, 생산량, 계량기·고지서 증빙',?,?,?,'REQUESTED' WHERE NOT EXISTS (SELECT 1 FROM emission_activity_request WHERE tenant_id=? AND project_id=? AND assignee_id=? AND request_status NOT IN ('CLOSED','CANCELLED'))",tenant,id,owner,dataOwner,due,tenant,id,dataOwner);
         jdbc.update("INSERT INTO emission_activity_request_event(request_id,event_code,new_status,actor_id,event_note) SELECT r.request_id,'REQUESTED','REQUESTED',?,'프로젝트 등록 시 최초 활동자료 제출 요청 자동 생성' FROM emission_activity_request r WHERE r.tenant_id=? AND r.project_id=? AND r.assignee_id=? AND NOT EXISTS (SELECT 1 FROM emission_activity_request_event e WHERE e.request_id=r.request_id)",owner,tenant,id,dataOwner);
-        completeWorkflowTask(id,"BASIC_INFO",owner);
+        }
+        // Saving project data does not confirm the setup business step.
         jdbc.update("UPDATE emission_project_task task SET due_date=CASE task.step_order WHEN 1 THEN least(?,current_date) WHEN 6 THEN ? ELSE least(?,current_date+greatest(1,ceil((?-current_date)*task.step_order/6.0)::integer)) END,updated_at=current_timestamp WHERE task.project_id=?",due,due,due,due,id);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'CREATED','배출량 프로젝트가 생성되었습니다.',?)", id, owner);
         return id;

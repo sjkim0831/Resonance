@@ -1,0 +1,15 @@
+{
+  "scope": "DESIGN_STRUCTURE_AND_TRACE_RULE_ASSERTIONS",
+  "status": "PASS",
+  "revision": "v9",
+  "preservedRequirements": 115,
+  "unconnectedRequirements": 49,
+  "controls": 212,
+  "behaviorVerified": 0,
+  "mandatoryFeatureFields": 20,
+  "preventionRules": 8,
+  "workflowSteps": 8,
+  "authenticatedE2E": 0,
+  "implementationStatus": "NOT_IMPLEMENTED",
+  "releaseStatus": "BLOCKED"
+}

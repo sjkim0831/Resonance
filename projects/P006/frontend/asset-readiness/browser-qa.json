@@ -1,0 +1,53 @@
+{
+  "url": "http://172.16.1.232/projects/P006/assets/asset-readiness/index.html",
+  "loadedMs": 643,
+  "totalMs": 16904,
+  "rows": 724,
+  "readyFilter": 10,
+  "selectionNavigates": false,
+  "cases": [
+    {
+      "case": "PASS",
+      "seq": 5,
+      "frame": 600,
+      "instance": "shipping",
+      "state": "COMPLETE",
+      "position": [
+        7,
+        1.0089999771118163,
+        -2
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "REWORK_PASS",
+      "seq": 7,
+      "frame": 1740,
+      "instance": "shipping",
+      "state": "COMPLETE",
+      "position": [
+        7,
+        1.0089999771118163,
+        -2
+      ],
+      "source": "SIMULATED_OPERATOR"
+    },
+    {
+      "case": "SCRAP",
+      "seq": 4,
+      "frame": 2280,
+      "instance": "scrap",
+      "state": "SCRAPPED",
+      "position": [
+        4,
+        0.17999999940395353,
+        3
+      ],
+      "source": "SIMULATED_OPERATOR"
+    }
+  ],
+  "errors": [],
+  "zipBytes": 18910,
+  "businessWrites": 0,
+  "realConnections": 0
+}

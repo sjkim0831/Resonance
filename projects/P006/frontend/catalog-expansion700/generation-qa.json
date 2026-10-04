@@ -1,0 +1,30 @@
+{
+  "baselineTotal": 445,
+  "baselineIndependent": 272,
+  "newCandidates": 600,
+  "newIndependent": 452,
+  "newExcluded": 148,
+  "totalIndependent": 724,
+  "marginAbove700": 24,
+  "domains": 33,
+  "existingUsdPaths": 245,
+  "independentWithPriorUsd": 176,
+  "independentModelPending": 548,
+  "newUsdCreated": 0,
+  "plcAccess": 0,
+  "businessDbWrites": 0,
+  "lexicalPairComparisons": 446700,
+  "manualOverrides": 115,
+  "exactIndependentNameDuplicates": 0,
+  "legacyRawRecords": 1070,
+  "newDecisions": {
+    "독립 등록 대상": 452,
+    "중복·파생형 통합": 109,
+    "하위 부품": 31,
+    "조합 레시피": 8,
+    "보류": 0
+  },
+  "tests": 12,
+  "generationMilliseconds": 245,
+  "outputBytes": 5735611
+}

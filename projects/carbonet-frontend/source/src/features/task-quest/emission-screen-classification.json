@@ -1,0 +1,657 @@
+{
+  "scope": "65 Korean route definitions; not menu visibility or functional verification",
+  "rows": [
+    {
+      "name": "산정 결과 관리",
+      "group": "admin",
+      "path": "/admin/emission/result_list",
+      "phase": "산정·검증",
+      "registeredSteps": [
+        "EMISSION_CALCULATION:EMISSION_CALCULATION_04_APPROVE"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "결과 상세",
+      "group": "admin",
+      "path": "/admin/emission/result_detail",
+      "phase": "산정·검증",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "검증 관리",
+      "group": "admin",
+      "path": "/admin/emission/validate",
+      "phase": "산정·검증",
+      "registeredSteps": [
+        "ACTIVITY_DATA:ACTIVITY_DATA_03_VERIFY",
+        "EMISSION_CALCULATION:EMISSION_CALCULATION_03_VERIFY",
+        "EMISSION_PROJECT:EMISSION_PROJECT_VALIDATE",
+        "EMISSION_PROJECT:EMISSION_PROJECT_CORRECT",
+        "CUSTOMER_WORK_COORDINATION:CUSTOMER_WORK_CONTINUE"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "배출 변수 관리",
+      "group": "admin",
+      "path": "/admin/emission/management",
+      "phase": "사전 설정",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "배출계수 관리",
+      "group": "admin",
+      "path": "/admin/emission/factor-management",
+      "phase": "사전 설정",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "산정식 관리",
+      "group": "admin",
+      "path": "/admin/emission/calculation-rule",
+      "phase": "사전 설정",
+      "registeredSteps": [
+        "EMISSION_CALCULATION:EMISSION_CALCULATION_02_WORK",
+        "EMISSION_PROJECT:EMISSION_PROJECT_CALCULATE",
+        "CUSTOMER_WORK_COORDINATION:CUSTOMER_WORK_OPEN"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "입력 템플릿 관리",
+      "group": "admin",
+      "path": "/admin/emission/input-template",
+      "phase": "사전 설정",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "검증 규칙 관리",
+      "group": "admin",
+      "path": "/admin/emission/validation-rule",
+      "phase": "사전 설정",
+      "registeredSteps": [
+        "MONITORING_ANALYSIS:MONITORING_REVIEW"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "승인 워크플로우 관리",
+      "group": "admin",
+      "path": "/admin/emission/approval-workflow",
+      "phase": "승인·확정",
+      "registeredSteps": [
+        "ACTIVITY_DATA:ACTIVITY_DATA_04_APPROVE",
+        "EMISSION_PROJECT:EMISSION_PROJECT_APPROVE",
+        "CUSTOMER_WORK_COORDINATION:CUSTOMER_WORK_APPROVE"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "보고서 템플릿 관리",
+      "group": "admin",
+      "path": "/admin/emission/report-template",
+      "phase": "사전 설정",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "보고서·인증서 발급 관리",
+      "group": "admin",
+      "path": "/admin/emission/report-certificates",
+      "phase": "보고·발급",
+      "registeredSteps": [
+        "CUSTOMER_WORK_COORDINATION:CUSTOMER_WORK_REPORT"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "보고서 접근 이력",
+      "group": "admin",
+      "path": "/admin/emission/report-access-history",
+      "phase": "보고·발급",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "프로젝트 완료 관리",
+      "group": "admin",
+      "path": "/admin/emission/project-completion",
+      "phase": "운영·추적",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "배출량 프로젝트 운영",
+      "group": "admin",
+      "path": "/admin/emission/project-operations",
+      "phase": "프로젝트 준비",
+      "registeredSteps": [
+        "ACTIVITY_DATA:ACTIVITY_DATA_01_PLAN",
+        "EMISSION_CALCULATION:EMISSION_CALCULATION_01_PLAN",
+        "EMISSION_PROJECT_PORTFOLIO:EMISSION_PROJECT_PORTFOLIO_LIST",
+        "CUSTOMER_WORK_COORDINATION:CUSTOMER_WORK_DISCOVER"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "프로젝트 사전 설정",
+      "group": "admin",
+      "path": "/admin/emission/project-prerequisites",
+      "phase": "사전 설정",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "규제 제출 현황",
+      "group": "admin",
+      "path": "/admin/emission/regulatory-submissions",
+      "phase": "기타 검토",
+      "registeredSteps": [
+        "REGULATORY_SUBMISSION:REGULATORY_SUBMISSION_S1",
+        "REGULATORY_SUBMISSION:REGULATORY_SUBMISSION_S2",
+        "REGULATORY_SUBMISSION:REGULATORY_SUBMISSION_S3",
+        "REGULATORY_SUBMISSION:REGULATORY_SUBMISSION_S4"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "증빙 관리",
+      "group": "admin",
+      "path": "/admin/emission/evidence-management",
+      "phase": "사전 설정",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "감사 로그",
+      "group": "admin",
+      "path": "/admin/emission/audit-log",
+      "phase": "운영·추적",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "외부 시스템 연계",
+      "group": "admin",
+      "path": "/admin/emission/system-link",
+      "phase": "자료 수집",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "LCI 분류 관리",
+      "group": "admin",
+      "path": "/admin/emission/lci-classification",
+      "phase": "선택 업무(LCA·감축)",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "배출 정의 관리",
+      "group": "admin",
+      "path": "/admin/emission/definition-studio",
+      "phase": "사전 설정",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "GWP 값 관리",
+      "group": "admin",
+      "path": "/admin/emission/gwp-values",
+      "phase": "사전 설정",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "ecoinvent 배출계수 관리",
+      "group": "admin",
+      "path": "/admin/emission/ecoinvent",
+      "phase": "선택 업무(LCA·감축)",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "배출 설문 관리",
+      "group": "admin",
+      "path": "/admin/emission/survey-admin",
+      "phase": "보고·발급",
+      "registeredSteps": [
+        "REPORT_CERTIFICATION:REPORT_CERTIFICATION_01_PLAN"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "배출 설문 리포트",
+      "group": "admin",
+      "path": "/admin/emission/survey-report",
+      "phase": "보고·발급",
+      "registeredSteps": [
+        "EMISSION_PROJECT:EMISSION_PROJECT_REPORT",
+        "REPORT_CERTIFICATION:REPORT_CERTIFICATION_02_WORK",
+        "CERTIFICATE_ISSUANCE:CERTIFICATE_ISSUANCE_01_PLAN"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "배출 설문 리포트 출력",
+      "group": "admin",
+      "path": "/admin/emission/survey-report-print",
+      "phase": "보고·발급",
+      "registeredSteps": [
+        "REPORT_CERTIFICATION:REPORT_CERTIFICATION_04_APPROVE",
+        "CERTIFICATE_ISSUANCE:CERTIFICATE_ISSUANCE_02_WORK"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "리포트 진위확인",
+      "group": "admin",
+      "path": "/admin/emission/survey-report-verify",
+      "phase": "보고·발급",
+      "registeredSteps": [
+        "REPORT_CERTIFICATION:REPORT_CERTIFICATION_03_VERIFY",
+        "CERTIFICATE_ISSUANCE:CERTIFICATE_ISSUANCE_03_VERIFY",
+        "CUSTOMER_WORK_COORDINATION:CUSTOMER_WORK_PUBLIC_VERIFY"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "LCA 요약보고서 출력",
+      "group": "admin",
+      "path": "/admin/emission/survey-report-lca-summary",
+      "phase": "선택 업무(LCA·감축)",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "배출 설문 데이터셋",
+      "group": "admin",
+      "path": "/admin/emission/survey-admin-data",
+      "phase": "자료 수집",
+      "registeredSteps": [
+        "ACTIVITY_DATA:ACTIVITY_DATA_02_WORK",
+        "EMISSION_PROJECT:EMISSION_PROJECT_COLLECT",
+        "CUSTOMER_WORK_COORDINATION:CUSTOMER_WORK_PRIORITIZE"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "데이터 변경 이력",
+      "group": "admin",
+      "path": "/admin/emission/data_history",
+      "phase": "운영·추적",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "배출지·배출원 원장",
+      "group": "admin",
+      "path": "/admin/emission/site-management",
+      "phase": "사전 설정",
+      "registeredSteps": [
+        "BUSINESS_SITE_ADMINISTRATION:BUSINESS_SITE_ADMINISTRATION_S1",
+        "BUSINESS_SITE_ADMINISTRATION:BUSINESS_SITE_ADMINISTRATION_S2",
+        "BUSINESS_SITE_ADMINISTRATION:BUSINESS_SITE_ADMINISTRATION_S3",
+        "BUSINESS_SITE_ADMINISTRATION:BUSINESS_SITE_ADMINISTRATION_S4",
+        "COMPANY_ONBOARDING:COMPANY_ONBOARDING_SITE"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "탄소 배출 대시보드",
+      "group": "home",
+      "path": "/emission/index",
+      "phase": "기타 검토",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "배출량 관리",
+      "group": "home",
+      "path": "/emission/project_list",
+      "phase": "프로젝트 준비",
+      "registeredSteps": [
+        "EMISSION_PROJECT_PORTFOLIO:EMISSION_PROJECT_PORTFOLIO_LIST"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "배출량 프로젝트 포트폴리오",
+      "group": "home",
+      "path": "/emission/project-portfolio",
+      "phase": "프로젝트 준비",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "프로젝트 업무 배정",
+      "group": "home",
+      "path": "/emission/work-assignment",
+      "phase": "프로젝트 준비",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "내 배출 업무",
+      "group": "home",
+      "path": "/emission/my-tasks",
+      "phase": "운영·추적",
+      "registeredSteps": [
+        "CUSTOMER_WORK_COORDINATION:CUSTOMER_WORK_DISCOVER"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "마감·지연 현황",
+      "group": "home",
+      "path": "/emission/deadline-status",
+      "phase": "운영·추적",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "자료 제출 요청",
+      "group": "home",
+      "path": "/emission/data-request",
+      "phase": "자료 수집",
+      "registeredSteps": [
+        "ACTIVITY_DATA:ACTIVITY_DATA_01_PLAN"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "활동자료 관리",
+      "group": "home",
+      "path": "/emission/activity-data",
+      "phase": "자료 수집",
+      "registeredSteps": [
+        "ACTIVITY_DATA:ACTIVITY_DATA_02_WORK",
+        "EMISSION_PROJECT:EMISSION_PROJECT_COLLECT",
+        "EMISSION_PROJECT:EMISSION_PROJECT_CORRECT",
+        "CUSTOMER_WORK_COORDINATION:CUSTOMER_WORK_PRIORITIZE"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "엑셀 업로드",
+      "group": "home",
+      "path": "/emission/excel-upload",
+      "phase": "자료 수집",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "외부 데이터 연계",
+      "group": "home",
+      "path": "/emission/external-data",
+      "phase": "자료 수집",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "배출량 산정",
+      "group": "home",
+      "path": "/emission/calculation",
+      "phase": "산정·검증",
+      "registeredSteps": [
+        "EMISSION_CALCULATION:EMISSION_CALCULATION_01_PLAN",
+        "EMISSION_CALCULATION:EMISSION_CALCULATION_02_WORK",
+        "EMISSION_PROJECT:EMISSION_PROJECT_CALCULATE",
+        "CUSTOMER_WORK_COORDINATION:CUSTOMER_WORK_OPEN"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "산정 결과",
+      "group": "home",
+      "path": "/emission/calculation-results",
+      "phase": "산정·검증",
+      "registeredSteps": [
+        "EMISSION_CALCULATION:EMISSION_CALCULATION_04_APPROVE"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "데이터 검증",
+      "group": "home",
+      "path": "/emission/data-validation",
+      "phase": "산정·검증",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "보완·재산정",
+      "group": "home",
+      "path": "/emission/correction",
+      "phase": "산정·검증",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "검토·승인",
+      "group": "home",
+      "path": "/emission/review-approval",
+      "phase": "승인·확정",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "배출량 확정",
+      "group": "home",
+      "path": "/emission/finalization",
+      "phase": "승인·확정",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "보고서 작성",
+      "group": "home",
+      "path": "/emission/report-write",
+      "phase": "보고·발급",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "보고서 제출",
+      "group": "home",
+      "path": "/emission/report-submission",
+      "phase": "보고·발급",
+      "registeredSteps": [
+        "REGULATORY_SUBMISSION:REGULATORY_SUBMISSION_S1",
+        "REGULATORY_SUBMISSION:REGULATORY_SUBMISSION_S2",
+        "REGULATORY_SUBMISSION:REGULATORY_SUBMISSION_S3",
+        "REGULATORY_SUBMISSION:REGULATORY_SUBMISSION_S4"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "감축 시나리오",
+      "group": "home",
+      "path": "/emission/reduction",
+      "phase": "선택 업무(LCA·감축)",
+      "registeredSteps": [
+        "REDUCTION_EXECUTION:REDUCTION_EXECUTION_01_PLAN",
+        "REDUCTION_EXECUTION:REDUCTION_EXECUTION_03_VERIFY",
+        "REDUCTION_EXECUTION:REDUCTION_EXECUTION_04_APPROVE"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "LCI DB 조회",
+      "group": "home",
+      "path": "/emission/lci",
+      "phase": "선택 업무(LCA·감축)",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "활동자료 입력",
+      "group": "home",
+      "path": "/emission/data_input",
+      "phase": "자료 수집",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "증빙 자료함",
+      "group": "home",
+      "path": "/emission/evidence",
+      "phase": "자료 수집",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "산정 결과 조회",
+      "group": "home",
+      "path": "/emission/result",
+      "phase": "산정·검증",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "배출량 보고서 작성",
+      "group": "home",
+      "path": "/emission/report_submit",
+      "phase": "보고·발급",
+      "registeredSteps": [
+        "EMISSION_PROJECT:EMISSION_PROJECT_REPORT",
+        "REPORT_CERTIFICATION:REPORT_CERTIFICATION_01_PLAN",
+        "REPORT_CERTIFICATION:REPORT_CERTIFICATION_02_WORK",
+        "REPORT_CERTIFICATION:REPORT_CERTIFICATION_03_VERIFY",
+        "CERTIFICATE_ISSUANCE:CERTIFICATE_ISSUANCE_01_PLAN",
+        "CERTIFICATE_ISSUANCE:CERTIFICATE_ISSUANCE_02_WORK",
+        "CERTIFICATE_ISSUANCE:CERTIFICATE_ISSUANCE_04_APPROVE",
+        "CUSTOMER_WORK_COORDINATION:CUSTOMER_WORK_REPORT"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "보고서·인증서 다운로드",
+      "group": "home",
+      "path": "/emission/report-download",
+      "phase": "보고·발급",
+      "registeredSteps": [
+        "REPORT_CERTIFICATION:REPORT_CERTIFICATION_04_APPROVE"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "프로젝트 완료 대시보드",
+      "group": "home",
+      "path": "/emission/project-completion",
+      "phase": "운영·추적",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "LCA 분석",
+      "group": "home",
+      "path": "/emission/lca",
+      "phase": "선택 업무(LCA·감축)",
+      "registeredSteps": [
+        "LCA_EXECUTION:LCA_EXECUTION_01_PLAN",
+        "LCA_EXECUTION:LCA_EXECUTION_02_WORK",
+        "LCA_EXECUTION:LCA_EXECUTION_03_VERIFY",
+        "LCA_EXECUTION:LCA_EXECUTION_04_APPROVE"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "감축 전략 시뮬레이션",
+      "group": "home",
+      "path": "/emission/simulate",
+      "phase": "선택 업무(LCA·감축)",
+      "registeredSteps": [
+        "REDUCTION_EXECUTION:REDUCTION_EXECUTION_02_WORK"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "검증·보정",
+      "group": "home",
+      "path": "/emission/validate",
+      "phase": "산정·검증",
+      "registeredSteps": [
+        "ACTIVITY_DATA:ACTIVITY_DATA_03_VERIFY",
+        "ACTIVITY_DATA:ACTIVITY_DATA_04_APPROVE",
+        "EMISSION_CALCULATION:EMISSION_CALCULATION_03_VERIFY",
+        "EMISSION_PROJECT:EMISSION_PROJECT_VALIDATE",
+        "EMISSION_PROJECT:EMISSION_PROJECT_APPROVE",
+        "CUSTOMER_WORK_COORDINATION:CUSTOMER_WORK_CONTINUE",
+        "CUSTOMER_WORK_COORDINATION:CUSTOMER_WORK_APPROVE"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "새 프로젝트 등록",
+      "group": "home",
+      "path": "/emission/project/create",
+      "phase": "프로젝트 준비",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "배출량 프로젝트 상세",
+      "group": "home",
+      "path": "/emission/project/detail",
+      "phase": "프로젝트 준비",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "프로세스 진행",
+      "group": "home",
+      "path": "/emission/project/progress",
+      "phase": "운영·추적",
+      "registeredSteps": [],
+      "status": "절차 직접 연결 없음"
+    },
+    {
+      "name": "조직경계 설정",
+      "group": "home",
+      "path": "/emission/organizational-boundary",
+      "phase": "프로젝트 준비",
+      "registeredSteps": [
+        "EMISSION_PROJECT:EMISSION_PROJECT_SETUP",
+        "ORGANIZATIONAL_BOUNDARY:ORGANIZATIONAL_BOUNDARY_S1",
+        "ORGANIZATIONAL_BOUNDARY:ORGANIZATIONAL_BOUNDARY_S2",
+        "ORGANIZATIONAL_BOUNDARY:ORGANIZATIONAL_BOUNDARY_S3",
+        "ORGANIZATIONAL_BOUNDARY:ORGANIZATIONAL_BOUNDARY_S4"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "조직경계·사업장 관리",
+      "group": "home",
+      "path": "/emission/org-boundary",
+      "phase": "프로젝트 준비",
+      "registeredSteps": [
+        "EMISSION_PROJECT:EMISSION_PROJECT_SETUP",
+        "ORGANIZATIONAL_BOUNDARY:ORGANIZATIONAL_BOUNDARY_S1",
+        "ORGANIZATIONAL_BOUNDARY:ORGANIZATIONAL_BOUNDARY_S2",
+        "ORGANIZATIONAL_BOUNDARY:ORGANIZATIONAL_BOUNDARY_S3",
+        "ORGANIZATIONAL_BOUNDARY:ORGANIZATIONAL_BOUNDARY_S4"
+      ],
+      "status": "기존 절차 연결 있음"
+    },
+    {
+      "name": "조직경계 검토",
+      "group": "admin",
+      "path": "/admin/emission/organizational-boundary",
+      "phase": "프로젝트 준비",
+      "registeredSteps": [
+        "EMISSION_PROJECT:EMISSION_PROJECT_SETUP",
+        "ORGANIZATIONAL_BOUNDARY:ORGANIZATIONAL_BOUNDARY_S1",
+        "ORGANIZATIONAL_BOUNDARY:ORGANIZATIONAL_BOUNDARY_S2",
+        "ORGANIZATIONAL_BOUNDARY:ORGANIZATIONAL_BOUNDARY_S3",
+        "ORGANIZATIONAL_BOUNDARY:ORGANIZATIONAL_BOUNDARY_S4"
+      ],
+      "status": "기존 절차 연결 있음"
+    }
+  ]
+}

@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-ROOT_DIR="${ROOT_DIR:-/opt/util/ai/fine-tuning/hermes-framework-40b-qlora}"
+ROOT_DIR="${ROOT_DIR:-/opt/Resonance/runtime/tools/ai/fine-tuning/hermes-framework-40b-qlora}"
 LOG_DIR="/opt/Resonance/var/ai-runtime/hermes-learning"
 GUARD_SCRIPT="/opt/Resonance/ops/scripts/training-container-guard.sh"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)

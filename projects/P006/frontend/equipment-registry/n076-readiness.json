@@ -1,0 +1,53 @@
+{
+  "checkedAt": "2026-09-29",
+  "assetId": "N076",
+  "name": "유압 딥드로잉 프레스",
+  "readiness": "REFERENCE_ASSET_AVAILABLE_REAL_EQUIPMENT_UNVERIFIED",
+  "available": {
+    "entryUsd": {
+      "path": "/home/sjkim/OmniverseProjects/assets/catalog/N076.usda",
+      "bytes": 1655,
+      "sha256": "2305c053b836b6b0483cb6a8d4bf034bd2e450dea6e7d1c615f641f32e780f8a",
+      "sourcePrim": "/Catalog/N076",
+      "entryScope": "REFERENCE_ONLY_ORIGINAL_GEOMETRY_UNMODIFIED"
+    },
+    "catalogImage": {
+      "url": "http://172.16.1.232/projects/P006/assets/visual-catalog/images/N076.png",
+      "bytes": 85419,
+      "dimensions": "640x480",
+      "classification": "catalog render; not a manufacturer photograph or evidence of a specific installed unit"
+    },
+    "webGlb": {
+      "url": "http://172.16.1.232/projects/P006/assets/3d-derived/N076.glb",
+      "bytes": 34276,
+      "format": "glTF 2.0 binary",
+      "generator": "Khronos glTF Blender I/O v4.5.47",
+      "nodes": 66,
+      "meshes": 21,
+      "triangles": 392,
+      "materials": 0,
+      "animations": 0,
+      "partsNamed": ["base_frame", "housing", "lower_die", "moving_platen", "ram", "tie_rod"],
+      "classification": "low-detail web demonstration geometry; not quality-verified against a particular real press"
+    }
+  },
+  "notFoundInScopedSearch": [
+    "N076-named manufacturer manual PDF",
+    "N076-named manufacturer/site equipment photographs",
+    "N076-named motion video",
+    "N076-named STEP/STP source"
+  ],
+  "currentPlan": {
+    "scene": "E096 프레스 작업물 공정 시연 · 자동차 모듈 · 장소 배정본 · 장소 배정본",
+    "bodyPanelFormingEquipment": "E096 소형 프레스",
+    "n076Connected": false
+  },
+  "decision": "Do not claim exact real-world identity, dimensions, function preservation, or verified process suitability. A model registration can be provisional with unknown fields, but connecting N076 in place of E096 requires an explicit asset mapping and equipment/process evidence.",
+  "nextRequiredInputs": [
+    "manufacturer and exact model or the actual factory equipment identifier",
+    "front/side/nameplate photographs when available",
+    "manual, drawing, CAD/USD/GLB, or motion reference when available",
+    "verified main dimensions and rated press force, otherwise retain UNKNOWN",
+    "whether N076 should replace E096 in body panel forming or be added as another station"
+  ]
+}

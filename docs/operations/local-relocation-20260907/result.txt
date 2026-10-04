@@ -1,0 +1,3 @@
+MOVED_CHECKSUM_VERIFIED /home/sjkim/.local/share/kilo -> /opt/Resonance/runtime/host-data/user-local/share/kilo
+MOVED_CHECKSUM_VERIFIED /home/sjkim/.local/share/ov -> /opt/Resonance/runtime/host-data/user-local/share/ov
+MOVED_CHECKSUM_VERIFIED /home/sjkim/.local/lib/python3.14 -> /opt/Resonance/runtime/host-data/user-local/lib/python3.14

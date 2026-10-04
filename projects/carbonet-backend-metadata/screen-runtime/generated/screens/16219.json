@@ -1,0 +1,568 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 16219,
+  "blueprintCode": "BP_AUTO_FCFB31F22A96D6903EF194B3",
+  "identity": {
+    "processCode": "REDUCTION_ROADMAP",
+    "stepCode": "REDUCTION_ROADMAP_S2",
+    "actorCode": "REDUCTION_MANAGER",
+    "audience": "USER",
+    "pageId": "AUTO_FCFB31F22A96D6903EF1"
+  },
+  "route": "/planned/reduction/reduction-roadmap/reduction-roadmap-s2",
+  "pageName": "감축 로드맵 수립 - 업무 실행·중간 결과 저장",
+  "screenType": "CONTENT",
+  "templateCode": "KRDS_CONTENT",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "kpis": [
+      {
+        "code": "COMPLETION_RATE",
+        "unit": "PERCENT"
+      },
+      {
+        "code": "BLOCKING_ERROR",
+        "unit": "COUNT"
+      },
+      {
+        "code": "SLA_REMAINING",
+        "unit": "MINUTE"
+      }
+    ],
+    "errors": [
+      {
+        "code": "FORBIDDEN",
+        "recovery": "권한·업무분리 확인"
+      },
+      {
+        "code": "CONFLICT",
+        "recovery": "최신 버전 재조회"
+      },
+      {
+        "code": "DEPENDENCY_FAILURE",
+        "recovery": "멱등키로 안전 재시도"
+      }
+    ],
+    "fields": [
+      {
+        "code": "tenantId",
+        "name": "테넌트",
+        "dataType": "STRING",
+        "editable": false,
+        "required": true,
+        "validation": {
+          "minLength": 1
+        },
+        "apiProperty": "tenantId",
+        "controlType": "HIDDEN",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "projectId",
+        "name": "프로젝트",
+        "dataType": "STRING",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "minLength": 1
+        },
+        "apiProperty": "projectId",
+        "controlType": "PROJECT_SELECT",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "processCode",
+        "name": "프로세스 코드",
+        "dataType": "CODE",
+        "editable": false,
+        "required": true,
+        "validation": {
+          "source": "SERVER_CONTEXT",
+          "required": true,
+          "immutable": true
+        },
+        "apiProperty": "processCode",
+        "controlType": "HIDDEN",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "stepCode",
+        "name": "단계 코드",
+        "dataType": "CODE",
+        "editable": false,
+        "required": true,
+        "validation": {
+          "source": "SERVER_CONTEXT",
+          "required": true,
+          "immutable": true
+        },
+        "apiProperty": "stepCode",
+        "controlType": "HIDDEN",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "recordId",
+        "name": "업무 레코드 ID",
+        "dataType": "UUID",
+        "editable": false,
+        "required": false,
+        "validation": {
+          "source": "SERVER_CONTEXT",
+          "required": false,
+          "immutable": true
+        },
+        "apiProperty": "recordId",
+        "controlType": "HIDDEN",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "statusCode",
+        "name": "처리 상태",
+        "dataType": "CODE",
+        "editable": false,
+        "required": true,
+        "validation": {
+          "codeGroup": "WORK_STATUS"
+        },
+        "apiProperty": "statusCode",
+        "controlType": "STATUS_BADGE",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "ownerActorCode",
+        "name": "담당 액터",
+        "dataType": "CODE",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "ownerActorCode",
+        "controlType": "ACTOR_SELECT",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "rowVersion",
+        "name": "데이터 버전",
+        "dataType": "INTEGER",
+        "editable": false,
+        "required": true,
+        "validation": {
+          "min": 0
+        },
+        "apiProperty": "rowVersion",
+        "controlType": "HIDDEN",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "createdAt",
+        "name": "등록 일시",
+        "dataType": "DATETIME",
+        "editable": false,
+        "required": false,
+        "validation": {
+          "type": "date-time",
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "createdAt",
+        "controlType": "DATETIME",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "updatedAt",
+        "name": "최종 수정 일시",
+        "dataType": "DATETIME",
+        "editable": false,
+        "required": false,
+        "validation": {
+          "type": "date-time",
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "updatedAt",
+        "controlType": "DATETIME",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "evidenceCount",
+        "name": "증빙 수",
+        "dataType": "INTEGER",
+        "editable": false,
+        "required": false,
+        "validation": {
+          "min": 0
+        },
+        "apiProperty": "evidenceCount",
+        "controlType": "EVIDENCE_LINK",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "baselineYear",
+        "name": "기준연도",
+        "dataType": "YEAR",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "baselineYear",
+        "controlType": "YEAR",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "baselineEmission",
+        "name": "기준 배출량",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "baselineEmission",
+        "controlType": "NUMBER",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "targetYear",
+        "name": "목표연도",
+        "dataType": "YEAR",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "targetYear",
+        "controlType": "YEAR",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "targetReduction",
+        "name": "목표 감축량",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "targetReduction",
+        "controlType": "NUMBER",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "reductionMethod",
+        "name": "감축 수단",
+        "dataType": "CODE",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": false,
+          "required": true,
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "apiProperty": "reductionMethod",
+        "controlType": "METHOD_SELECT",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "expectedReduction",
+        "name": "예상 감축량",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "required": true,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": false,
+          "required": true
+        },
+        "apiProperty": "expectedReduction",
+        "controlType": "CALCULATED_NUMBER",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "actualReduction",
+        "name": "실적 감축량",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "actualReduction",
+        "controlType": "CALCULATED_NUMBER",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "capex",
+        "name": "투자비",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "capex",
+        "controlType": "CURRENCY",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "opex",
+        "name": "운영비",
+        "dataType": "DECIMAL",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "type": "number",
+          "finite": true,
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "opex",
+        "controlType": "CURRENCY",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "taskComment",
+        "name": "업무 메모",
+        "dataType": "TEXT",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "taskComment",
+        "controlType": "TEXTAREA",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "dueAt",
+        "name": "마감 일시",
+        "dataType": "DATETIME",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "type": "date-time",
+          "nullable": true,
+          "required": false
+        },
+        "apiProperty": "dueAt",
+        "controlType": "DATETIME",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      },
+      {
+        "code": "nextActorCode",
+        "name": "다음 담당 액터",
+        "dataType": "CODE",
+        "editable": true,
+        "required": false,
+        "validation": {
+          "trim": true,
+          "type": "string",
+          "nullable": true,
+          "required": false,
+          "maxLength": 4000,
+          "minLength": 0
+        },
+        "apiProperty": "nextActorCode",
+        "controlType": "ACTOR_VIEW",
+        "permissionCode": "REDUCTION_MANAGER:USER"
+      }
+    ],
+    "states": [
+      "STEP_1_COMPLETED",
+      "LOADING",
+      "EMPTY",
+      "READY",
+      "SAVING",
+      "ERROR",
+      "FORBIDDEN",
+      "CONFLICT",
+      "RECOVERY",
+      "STEP_2_COMPLETED"
+    ],
+    "actions": [
+      {
+        "code": "REDUCTION_ROADMAP_EXECUTE",
+        "transactional": true,
+        "idempotencyRequired": true
+      },
+      {
+        "code": "SAVE_DRAFT",
+        "transactional": true
+      },
+      {
+        "code": "ATTACH_EVIDENCE",
+        "auditRequired": true
+      },
+      {
+        "code": "REDUCTION_ROADMAP_ROLLBACK_2",
+        "recovery": true
+      }
+    ],
+    "sections": [
+      {
+        "code": "TASK_CONTEXT"
+      },
+      {
+        "code": "SEARCH_FILTER"
+      },
+      {
+        "code": "WORKSPACE"
+      },
+      {
+        "code": "EVIDENCE_HISTORY"
+      },
+      {
+        "code": "NEXT_TASK"
+      }
+    ],
+    "extensions": {
+      "contractId": 37378,
+      "sharedRuntime": true
+    },
+    "responsive": {
+      "mobile": "single-column-actions-bottom",
+      "tablet": "adaptive-grid",
+      "desktop": "list-detail-workspace"
+    },
+    "permissions": [
+      {
+        "code": "REDUCTION_MANAGER",
+        "scope": "TENANT_PROJECT",
+        "segregationOfDuties": true,
+        "serverAuthorization": true
+      }
+    ],
+    "validations": [
+      {
+        "code": "ENTRY_AND_REQUIRED_FIELDS",
+        "type": "CONTRACT"
+      },
+      {
+        "code": "STATE_AND_VERSION",
+        "type": "CONCURRENCY"
+      }
+    ],
+    "apiContracts": [
+      {
+        "path": "/home/api/process-executions",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/screen-contract",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/{executionId}/commands",
+        "method": "POST"
+      },
+      {
+        "path": "/home/api/process-executions/draft",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/draft",
+        "method": "PUT"
+      }
+    ],
+    "designSystem": "KRDS_GOV",
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG_2_1_AA",
+      "nonColorStatus": true,
+      "focusManagement": true
+    },
+    "dataContracts": [
+      {
+        "keys": [
+          "tenantId",
+          "projectId",
+          "processCode"
+        ],
+        "entity": "PROCESS_EXECUTION",
+        "versioned": true,
+        "tenantScoped": true
+      },
+      {
+        "keys": [
+          "tenantId",
+          "projectId"
+        ],
+        "entity": "reduction_project",
+        "versioned": true
+      },
+      {
+        "entity": "AUDIT_EVENT",
+        "appendOnly": true
+      }
+    ],
+    "schemaVersion": "2.0.0",
+    "completionRule": "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다.",
+    "exitConditions": [
+      "필수 입력, 액터 권한, 테넌트·프로젝트 격리, 증적, 멱등성과 상태 전이가 모두 검증되어야 한다."
+    ],
+    "businessPurpose": "감축 로드맵 수립의 전문 업무 규칙과 실패·보완·복구 경로를 적용한다.",
+    "entryConditions": [
+      "STEP_1_COMPLETED 상태이고 입력 계약과 액터 권한 검증을 통과해야 한다."
+    ],
+    "actorResponsibilities": [
+      "REDUCTION_MANAGER 액터가 권한·업무분리 정책에 따라 감축 로드맵 수립 - 업무 실행·중간 결과 저장 업무를 수행한다."
+    ]
+  },
+  "traceability": {
+    "contractId": 37378,
+    "requirementIds": [
+      "REDUCTION_ROADMAP:REDUCTION_ROADMAP_S2:USER"
+    ],
+    "generationBatchId": 183,
+    "designReadinessScore": 100,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "406cac5032ea6dabe0829fa31b5f74634acd3ee7e340040c343acc466155d6fe",
+  "artifactHash": "3ee2ec379f4ef546663db32c48ec2de24b57a2563f3cd30b2f6abab6d94eef3a"
+}

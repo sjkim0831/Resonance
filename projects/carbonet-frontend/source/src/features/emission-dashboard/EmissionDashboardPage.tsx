@@ -1,430 +1,102 @@
-import { useEffect, useMemo, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
-import { logGovernanceScope } from "../../app/policy/debug";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
-import { HeaderBrand, HeaderDesktopNav, HeaderMobileMenu, HomeInlineStyles } from "../home-entry/HomeEntrySections";
-import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
-import { HomePayload } from "../home-entry/homeEntryTypes";
-
-const ACTOR_NAMES: Record<string, string> = {
-  COMPANY_MANAGER: "기업 관리자",
-  SITE_DATA_OWNER: "자료 담당자",
-  DATA_OWNER: "자료 담당자",
-  CALCULATOR: "산정 담당자",
-  EMISSION_CALCULATOR: "산정 담당자",
-  VERIFIER: "검증 담당자",
-  APPROVER: "승인 담당자",
-  REGULATOR: "관리기관",
-};
-
-function actorName(code?: string) {
-  return code ? ACTOR_NAMES[code] || "업무 담당자" : "";
+import {FormEvent,useEffect,useRef,useState} from 'react';
+import {buildLocalizedPath,isEnglish} from '../../lib/navigation/runtime';
+import contract from './dashboard-contract.json';
+import '../../components/common-design/publicBusinessPage.css';
+import './emissionDashboard.css';
+import './emission-dashboard-layout.css';
+type Site={id:string;name:string};
+type Row={id:string;name:string;sites:Site[];periodStart:string|null;periodEnd:string|null;legacyPeriod?:string;status:string;calculatedStatus:string;approvedTotalEmission:number|null;approvedResultUnit:string|null;latestCalculationTotal:number|null;latestCalculationUnit:string|null};
+type Summary={projectCount:number;completedCount:number;calculatedCount:number;notCalculatedCount:number;approvedProjectCount:number;approvedTotalEmission:number|null;approvedUnitCount:number;approvedResultUnit:string|null;latestUnapprovedCalculationProjectCount:number;latestUnapprovedCalculationTotalEmission:number|null;latestUnapprovedCalculationUnitCount:number;latestUnapprovedCalculationResultUnit:string|null};
+type Counts={requestedCount:number;pendingAcceptanceCount:number;correctionCount:number;deadlineCount:number};
+type TaskCounts={openCount:number;overdueCount:number;dueSoonCount:number;approvalCount:number;urgentCount:number;serverDate:string};
+type Month={month:string;totalEmission:number};
+type Category={category:string;totalEmission:number};
+type List={contractVersion:number;items:Row[];sites:Site[];totalCount:number;page:number;pageSize:number;canCreate:boolean;scopeNotice?:string;summary?:Summary;actionCounts?:Counts;taskCounts?:TaskCounts;monthlyStatus?:string;monthlyEmissions?:Month[];latestCalculationMonthlyStatus?:string;latestCalculationMonthlyEmissions?:Month[];latestCalculationCategoryEmissions?:Category[]};
+type Filters={keyword:string;siteId:string;status:string;periodFrom:string;periodTo:string};
+type Report={id:number;status?:string;certificateId?:string};
+type Reports={approved?:{totalEmission?:number|null}|null;reports:Report[]};
+const empty:Filters={keyword:'',siteId:'',status:'',periodFrom:'',periodTo:''};
+const statuses:Record<string,string>={IN_PROGRESS:'진행 중',COMPLETED:'완료',STOPPED:'중단',UNKNOWN:'확인 필요'};
+const calculations:Record<string,string>={NOT_CALCULATED:'미산정',RUNNING:'산정 중',CALCULATED:'산정됨',STALE:'재산정 필요',FAILED:'산정 실패',UNKNOWN:'확인 필요'};
+const menuMapping:[string,string,string][]=[['배출량 현황','/emission/index','권한 범위 프로젝트·배출량 상태'],['배출량 프로젝트','/emission/project_list','목록·등록·프로젝트 기본정보'],['탄소배출 내 업무','/emission/my-tasks','담당 업무와 다음 실행'],['마감·지연 현황','/emission/deadline-status','지연·7일 내 마감'],['조직경계·사업장 관리','/emission/org-boundary','집계 사업장·경계 기준'],['활동자료 관리','/emission/activity-data','누락 자료 입력'],['자료 제출 요청','/emission/data-request','제출·접수 상태'],['증빙자료','/emission/evidence','증빙 확인'],['외부 데이터 연계','/emission/external-data','수집 오류 확인'],['배출원·시설 관리','/home/emission/source-register','산정 대상 시설'],['배출량 산정','/emission/calculation','산정 업무'],['산정 결과','/emission/calculation-results','결과 버전 확인'],['데이터 검증','/emission/data-validation','검증 쟁점 처리'],['보완·재산정','/emission/correction','보완 및 재산정'],['산정 기준·배출계수','/home/emission/factor-reference','계수·기준 버전'],['검토·승인','/emission/review-approval','승인 대기 업무'],['배출량 확정','/emission/finalization','대표 확정 버전'],['보고서 작성','/emission/report-write','보고서 작성'],['규제기관 제출','/emission/report-submission','제출·접수·보완'],['인증서·보고서 다운로드','/emission/report-download','발급 파일 열람']];
+async function getJson<T>(url:string,signal:AbortSignal):Promise<T>{
+ const r=await fetch(url,{credentials:'include',signal,headers:{Accept:'application/json'}});
+ if(r.status===401)throw Error('로그인이 만료되었습니다. 다시 로그인해 주세요.');
+ if(r.status===403)throw Error('조회 권한이 없습니다. 소속 회사와 접근 권한을 확인해 주세요.');
+ if(!(r.headers.get('content-type')||'').includes('application/json'))throw Error('정상적인 데이터 응답을 받지 못했습니다. 로그인 상태를 확인해 주세요.');
+ const b=await r.json();if(!r.ok)throw Error(`데이터 조회에 실패했습니다. (HTTP ${r.status})`);return b;
 }
-
-type ProjectRow = {
-  id?: string;
-  projectId?: string;
-  projectName?: string;
-  name?: string;
-  siteName?: string;
-  site?: string;
-  currentStep?: string;
-  currentStepCode?: string;
-  status?: string;
-  projectStatus?: string;
-  progress?: number;
-  progressPercent?: number;
-  dueDate?: string;
-  endDate?: string;
-  ownerName?: string;
-  managerName?: string;
-  scope?: string;
-  baseYear?: string | number;
-  year?: string | number;
-  totalEmission?: number;
-  scope1?: number;
-  scope2?: number;
-  scope3?: number;
-  qualityScore?: number;
-};
-
-type ProjectPayload = { items?: ProjectRow[]; total?: number; sites?: string[] };
-type ProjectOptions = { sites?: string[]; currentUser?: string };
-type ProcessGuideStep = {
-  processCode: string;
-  stepOrder: number;
-  stepCode: string;
-  stepName: string;
-  actorCode?: string;
-  completionRule?: string;
-  workPurpose?: string;
-  userPath?: string;
-};
-type ProcessGuidePayload = { processCatalogSteps?: ProcessGuideStep[] };
-type ReportRow = {
-  id: number;
-  version?: number;
-  title?: string;
-  language?: string;
-  status?: string;
-  createdAt?: string;
-  finalizedAt?: string;
-  certificateId?: string;
-  issuedAt?: string;
-  downloadCount?: number;
-};
-type ReportWorkflowPayload = {
-  approved?: { totalEmission?: number; lockedAt?: string } | null;
-  reports?: ReportRow[];
-};
-
-const STEPS = [
-  { code: "EMISSION_PROJECT_SETUP", ko: "프로젝트 설정", en: "Setup", href: "/emission/project/create", icon: "tune" },
-  { code: "EMISSION_PROJECT_COLLECT", ko: "자료 수집", en: "Collect", href: "/emission/activity-data", icon: "upload_file" },
-  { code: "EMISSION_PROJECT_CALCULATE", ko: "배출량 산정", en: "Calculate", href: "/emission/calculation", icon: "calculate" },
-  { code: "EMISSION_PROJECT_VALIDATE", ko: "데이터 검증", en: "Validate", href: "/emission/validate", icon: "fact_check" },
-  { code: "EMISSION_PROJECT_CORRECT", ko: "보완·재산정", en: "Correct", href: "/emission/activity-data?mode=correction", icon: "published_with_changes" },
-  { code: "EMISSION_PROJECT_APPROVE", ko: "검토·승인", en: "Approve", href: "/emission/validate?tab=approval", icon: "approval" },
-  { code: "EMISSION_PROJECT_REPORT", ko: "확정·보고", en: "Report", href: "/emission/report_submit", icon: "description" }
-] as const;
-
-const STEP_PRESENTATION = Object.fromEntries(
-  STEPS.map((step) => [step.code, step]),
-) as Record<string, (typeof STEPS)[number]>;
-
-const nf = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 1 });
-
-function text(value: unknown, fallback = "—") {
-  return typeof value === "string" && value.trim() ? value.trim() : fallback;
-}
-
-function number(value: unknown) {
-  const parsed = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function projectId(project: ProjectRow) {
-  return text(project.projectId || project.id, "");
-}
-
-function projectName(project: ProjectRow) {
-  return text(project.projectName || project.name, "이름 없는 프로젝트");
-}
-
-function projectSite(project: ProjectRow) {
-  return text(project.siteName || project.site, "미지정");
-}
-
-function projectStep(project: ProjectRow) {
-  return text(project.currentStepCode || project.currentStep, STEPS[0].code);
-}
-
-function projectProgress(project: ProjectRow) {
-  const explicit = number(project.progressPercent ?? project.progress);
-  if (explicit !== null) return Math.max(0, Math.min(100, explicit));
-  const index = STEPS.findIndex((step) => step.code === projectStep(project));
-  return index < 0 ? 0 : Math.round((index / (STEPS.length - 1)) * 100);
-}
-
-function withProject(path: string, id: string) {
-  if (!id) return path;
-  return `${path}${path.includes("?") ? "&" : "?"}projectId=${encodeURIComponent(id)}`;
-}
-
-async function fetchJson<T>(path: string): Promise<T> {
-  const response = await fetch(path, { credentials: "same-origin", headers: { Accept: "application/json" } });
-  const raw = await response.text();
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  if (raw.trim().startsWith("<!DOCTYPE") || raw.trim().startsWith("<html")) throw new Error("AUTHENTICATION_REQUIRED");
-  return JSON.parse(raw) as T;
-}
-
-function DashboardStyles() {
-  return <style>{`
-    :root{--kr-gov-blue:#00378b;--kr-gov-blue-hover:#002d72;--kr-gov-text-primary:#1a1a1a;--kr-gov-text-secondary:#4d4d4d;--kr-gov-border-light:#d9d9d9;--kr-gov-focus:#005fde;--kr-gov-bg-gray:#f2f2f2;--kr-gov-radius:6px}
-    body{font-family:'Noto Sans KR','Public Sans',sans-serif;-webkit-font-smoothing:antialiased}
-    .skip-link{position:absolute;top:-100px;left:0;background:var(--kr-gov-blue);color:#fff;padding:12px;z-index:100}.skip-link:focus{top:0}
-    .material-symbols-outlined{font-variation-settings:'wght' 400,'opsz' 24;font-size:24px}.focus-visible:focus-visible{outline:3px solid var(--kr-gov-focus);outline-offset:2px}
-    .home-brand-copy{min-width:0}.home-brand-title{margin:0!important;font-size:inherit!important;line-height:1.2!important}.home-brand-subtitle{margin:0!important;line-height:1.2}
-    .gnb-item:hover .gnb-depth2{display:block}.gnb-depth2{width:560px!important;padding:10px}.gnb-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.gnb-section{border:1px solid #e5e7eb;border-radius:6px;padding:8px;background:#fafafa}.gnb-section-title{display:block;font-size:12px;font-weight:700;color:var(--kr-gov-blue);margin-bottom:6px;padding:0 4px}body.mobile-menu-open{overflow:hidden}
-    .emission-status-typography{--krds-type-caption:.75rem;--krds-type-label:.875rem;--krds-type-body-sm:.9375rem;--krds-type-body:1rem;--krds-type-subtitle:1.125rem;--krds-type-title:1.5rem;--krds-type-display:2rem;--krds-line-compact:1.45;--krds-line-body:1.6;font-size:var(--krds-type-body-sm);line-height:var(--krds-line-body)}
-    .emission-status-typography :where(.text-xs,[class~="text-[10px]"],[class~="text-[11px]"],[class~="text-[12px]"]):not(.material-symbols-outlined){font-size:var(--krds-type-caption)!important;line-height:var(--krds-line-compact)!important}
-    .emission-status-typography :where(.text-sm,[class~="text-[13px]"],[class~="text-[14px]"]):not(.material-symbols-outlined){font-size:var(--krds-type-label)!important;line-height:var(--krds-line-compact)!important}
-    .emission-status-typography :where(.text-base,[class~="text-[15px]"],[class~="text-[16px]"],[class~="text-[17px]"]):not(.material-symbols-outlined){font-size:var(--krds-type-body)!important;line-height:var(--krds-line-body)!important}
-    .emission-status-typography :where(.text-lg,.text-xl,[class~="text-[18px]"],[class~="text-[20px]"]):not(.material-symbols-outlined){font-size:var(--krds-type-subtitle)!important;line-height:1.45!important}
-    .emission-status-typography :where(.text-2xl,[class~="text-[22px]"],[class~="text-[24px]"]):not(.material-symbols-outlined){font-size:var(--krds-type-title)!important;line-height:1.35!important}
-    .emission-status-typography :where(.text-3xl,.text-4xl,.text-5xl,[class~="text-[32px]"],[class~="text-[40px]"]):not(.material-symbols-outlined){font-size:var(--krds-type-display)!important;line-height:1.2!important}
-    .emission-status-typography section[aria-label="filters"] label{font-size:var(--krds-type-label)!important;line-height:var(--krds-line-compact)!important}
-    #main-content.emission-status-typography section[aria-label="filters"] :where(input,select){font-size:var(--krds-type-body)!important;line-height:var(--krds-line-body)!important}
-    #main-content.emission-status-typography .emission-kpi-grid article>p.text-xs{font-size:var(--krds-type-label)!important;line-height:var(--krds-line-compact)!important}
-    #main-content.emission-status-typography .emission-empty-state>p{font-size:var(--krds-type-body-sm)!important;line-height:var(--krds-line-body)!important}
-    .dashboard-card{border:1px solid #e5e7eb;background:#fff;border-radius:16px;box-shadow:0 2px 10px rgba(15,23,42,.04)}
-    .dashboard-table{width:100%;border-collapse:collapse}.dashboard-table th{background:#f8fafc;color:#475569;font-size:var(--krds-type-label);line-height:var(--krds-line-compact);text-align:left;padding:12px 14px;border-bottom:1px solid #e2e8f0;white-space:nowrap}.dashboard-table td{padding:14px;border-bottom:1px solid #eef2f7;font-size:var(--krds-type-body-sm);line-height:var(--krds-line-body);color:#334155;vertical-align:middle}
-    @media(max-width:767px){.dashboard-table thead{display:none}.dashboard-table,.dashboard-table tbody,.dashboard-table tr,.dashboard-table td{display:block;width:100%}.dashboard-table tr{padding:12px;border-bottom:1px solid #e2e8f0}.dashboard-table td{display:flex;justify-content:space-between;gap:16px;padding:6px 0;border:0}.dashboard-table td:before{content:attr(data-label);font-weight:700;color:#64748b;flex:0 0 92px}.dashboard-table td:first-child{display:block}.dashboard-table td:first-child:before{display:none}}
-  `}</style>;
-}
-
-export function EmissionDashboardPage() {
-  const en = isEnglish();
-  const session = useFrontendSession();
-  const content = LOCALIZED_CONTENT[en ? "en" : "ko"];
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [projects, setProjects] = useState<ProjectRow[]>([]);
-  const [sites, setSites] = useState<string[]>([]);
-  const [processGuideSteps, setProcessGuideSteps] = useState<ProcessGuideStep[]>([]);
-  const [reportWorkflow, setReportWorkflow] = useState<ReportWorkflowPayload>({});
-  const [reportLoading, setReportLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
-  const [projectFilter, setProjectFilter] = useState("ALL");
-  const [siteFilter, setSiteFilter] = useState("ALL");
-  const [yearFilter, setYearFilter] = useState("ALL");
-  const payloadState = useAsyncValue<HomePayload>(() => fetchHomePayload(), [en], {
-    initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-    onError: () => undefined
-  });
-
-  const loadProjects = async () => {
-    setLoading(true);
-    setLoadError("");
-    try {
-      const [list, options, guide] = await Promise.all([
-        fetchJson<ProjectPayload>("/home/api/emission-projects?page=1&size=100"),
-        fetchJson<ProjectOptions>("/home/api/emission-projects/options"),
-        fetchJson<ProcessGuidePayload>("/home/api/emission-tasks")
-      ]);
-      setProjects(Array.isArray(list.items) ? list.items : []);
-      setSites(Array.from(new Set([...(list.sites || []), ...(options.sites || [])].filter(Boolean))));
-      setProcessGuideSteps(
-        (guide.processCatalogSteps || [])
-          .filter((step) => step.processCode === "EMISSION_PROJECT")
-          .sort((a, b) => Number(a.stepOrder) - Number(b.stepOrder)),
-      );
-    } catch (error) {
-      setProjects([]);
-      setLoadError(error instanceof Error ? error.message : "LOAD_FAILED");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { void loadProjects(); }, []);
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-  useEffect(() => {
-    const sync = () => { void payloadState.reload(); void session.reload(); void loadProjects(); };
-    window.addEventListener(getNavigationEventName(), sync);
-    return () => window.removeEventListener(getNavigationEventName(), sync);
-  }, [payloadState, session]);
-
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const years = useMemo(() => Array.from(new Set(projects.map((p) => String(p.baseYear || p.year || "")).filter(Boolean))).sort().reverse(), [projects]);
-  const filtered = useMemo(() => projects.filter((p) => {
-    if (projectFilter !== "ALL" && projectId(p) !== projectFilter) return false;
-    if (siteFilter !== "ALL" && projectSite(p) !== siteFilter) return false;
-    if (yearFilter !== "ALL" && String(p.baseYear || p.year || "") !== yearFilter) return false;
-    return true;
-  }), [projectFilter, projects, siteFilter, yearFilter]);
-  const selected = filtered[0] || projects[0] || null;
-  const selectedId = selected ? projectId(selected) : "";
-  const workflowSteps = useMemo(() => {
-    if (!processGuideSteps.length) return [...STEPS];
-    return processGuideSteps.map((step) => {
-      const presentation = STEP_PRESENTATION[step.stepCode] || STEPS[0];
-      return {
-        code: step.stepCode,
-        ko: step.stepName,
-        en: presentation.en,
-        href: step.userPath || presentation.href,
-        icon: presentation.icon,
-        actorCode: step.actorCode || "",
-        completionRule: step.completionRule || "",
-      };
-    });
-  }, [processGuideSteps]);
-  const currentStepIndex = selected ? Math.max(0, workflowSteps.findIndex((step) => step.code === projectStep(selected))) : -1;
-  const workflowContractAligned =
-    workflowSteps.length === STEPS.length &&
-    STEPS.every((step, index) => workflowSteps[index]?.code === step.code);
-
-  useEffect(() => {
-    if (!payload.isLoggedIn || !selectedId) {
-      setReportWorkflow({});
-      return;
-    }
-    let cancelled = false;
-    setReportLoading(true);
-    void fetchJson<ReportWorkflowPayload>(
-      `/home/api/emission-projects/${encodeURIComponent(selectedId)}/reports`,
-    )
-      .then((value) => {
-        if (!cancelled) setReportWorkflow(value || {});
-      })
-      .catch(() => {
-        if (!cancelled) setReportWorkflow({});
-      })
-      .finally(() => {
-        if (!cancelled) setReportLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [payload.isLoggedIn, selectedId]);
-
-  const synchronizeTaskGuide = (stepCode: string, openOverview = false) => {
-    localStorage.setItem("task-quest-catalog-process", "EMISSION_PROJECT");
-    localStorage.setItem(
-      "task-quest-catalog-step",
-      String(Math.max(0, workflowSteps.findIndex((step) => step.code === stepCode))),
-    );
-    if (selectedId) {
-      localStorage.setItem("task-quest-overview-project", selectedId);
-      localStorage.setItem(
-        "task-quest-focused-workflow",
-        JSON.stringify({ projectId: selectedId, processCode: "EMISSION_PROJECT" }),
-      );
-    }
-    localStorage.setItem("task-quest-open", "1");
-    window.dispatchEvent(
-      new CustomEvent("resonance:task-guide-focus", {
-        detail: {
-          processCode: "EMISSION_PROJECT",
-          stepCode,
-          projectId: selectedId,
-          openOverview,
-        },
-      }),
-    );
-  };
-
-  useEffect(() => {
-    if (!payload.isLoggedIn || loading) return;
-    const processCode = "EMISSION_PROJECT_PORTFOLIO";
-    const stepCode = "EMISSION_PROJECT_PORTFOLIO_LIST";
-    localStorage.setItem("task-quest-catalog-process", processCode);
-    localStorage.setItem("task-quest-catalog-step", "0");
-    localStorage.setItem("task-quest-focused-step", stepCode);
-    localStorage.setItem("task-quest-work-type", "EMISSION");
-    localStorage.setItem("task-quest-open", "1");
-    window.dispatchEvent(
-      new CustomEvent("resonance:task-guide-focus", {
-        detail: { processCode, stepCode, projectId: "", openOverview: false },
-      }),
-    );
-  }, [loading, payload.isLoggedIn]);
-  const totalEmission = filtered.reduce((sum, p) => sum + (number(p.totalEmission) || 0), 0);
-  const hasEmission = filtered.some((p) => number(p.totalEmission) !== null);
-  const scopeValues = ["scope1", "scope2", "scope3"].map((key) => filtered.reduce((sum, p) => sum + (number(p[key as keyof ProjectRow]) || 0), 0));
-  const hasScope = ["scope1", "scope2", "scope3"].map((key) => filtered.some((p) => number(p[key as keyof ProjectRow]) !== null));
-  const overdue = filtered.filter((p) => p.dueDate && new Date(p.dueDate).getTime() < Date.now() && !["COMPLETED", "CLOSED"].includes(text(p.status || p.projectStatus, ""))).length;
-  const averageQuality = filtered.length ? filtered.map((p) => number(p.qualityScore)).filter((v): v is number => v !== null) : [];
-  const quality = averageQuality.length ? averageQuality.reduce((a, b) => a + b, 0) / averageQuality.length : null;
-  const reports = reportWorkflow.reports || [];
-  const finalizedReports = reports.filter((report) => report.status === "FINALIZED");
-  const issuedCertificates = reports.filter((report) => Boolean(report.certificateId));
-
-  useEffect(() => {
-    logGovernanceScope("PAGE", "emission-dashboard", { projectCount: projects.length, filteredCount: filtered.length, currentStep: selected ? projectStep(selected) : null, realData: true });
-  }, [filtered.length, projects.length, selected]);
-
-  const labels = en ? {
-    eyebrow: "Carbon Emission Management", title: "Emission Status", description: "Monitor enterprise emissions and project progress, then continue the next required task.", company: "Company", project: "Project", year: "Base year", site: "Site", scope: "Scope", all: "All", total: "Total emissions", projectCount: "Projects", overdue: "Overdue", quality: "Data quality", trend: "Monthly emission trend", workflow: "Project workflow", ranking: "Site status", scopeTitle: "Scope emissions", actions: "Priority actions", table: "Emission projects", create: "Create project", empty: "No emission project exists yet.", emptyDesc: "Create a project to collect activity data and display calculated emissions here.", retry: "Retry", login: "Sign in to view company emission data.", loginButton: "Sign in", next: "Continue next task", noData: "Calculated data will appear after emission calculation.", name: "Project", status: "Status", step: "Current step", progress: "Progress", due: "Due date", owner: "Owner", open: "Open"
-  } : {
-    eyebrow: "탄소배출 관리", title: "배출량 현황", description: "전사 탄소배출량과 프로젝트 진행 상태를 한눈에 확인하고 다음 필수 업무를 바로 실행합니다.", company: "기업", project: "프로젝트", year: "기준연도", site: "사업장", scope: "Scope", all: "전체", total: "총 탄소배출량", projectCount: "진행 프로젝트", overdue: "마감 지연", quality: "데이터 품질", trend: "월별 배출량 추이", workflow: "프로젝트 업무 진행", ranking: "사업장별 현황", scopeTitle: "Scope별 배출량", actions: "우선 처리 업무", table: "배출량 프로젝트", create: "새 프로젝트 등록", empty: "등록된 배출량 프로젝트가 없습니다.", emptyDesc: "프로젝트를 생성하면 활동자료 수집부터 산정·검증·승인·보고까지의 현황이 이 화면에 연결됩니다.", retry: "다시 불러오기", login: "기업 배출량 데이터를 보려면 로그인해 주세요.", loginButton: "로그인", next: "다음 업무 계속하기", noData: "배출량 산정이 완료되면 실제 수치가 표시됩니다.", name: "프로젝트", status: "상태", step: "현재 단계", progress: "진행률", due: "마감일", owner: "담당자", open: "열기"
-  };
-
-  return <>
-    <DashboardStyles /><HomeInlineStyles en={en} />
-    <div className="min-h-screen bg-[#f4f7fa] text-[var(--kr-gov-text-primary)]">
-      <a className="skip-link" href="#main-content">{en ? "Skip to content" : "본문 바로가기"}</a>
-      <header className="sticky top-0 z-50 border-b-2 border-[#001e40] bg-white">
-        <div className="mx-auto max-w-7xl px-4 lg:px-8"><div className="relative flex h-16 items-center">
-          <div className="h-11 w-11 shrink-0 xl:hidden" aria-hidden="true" />
-          <HeaderBrand content={content} en={en} /><HeaderDesktopNav en={en} homeMenu={payload.homeMenu || []} />
-          <div className="ml-auto flex shrink-0 items-center gap-3">
-            <div className="hidden overflow-hidden rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] xl:flex"><button className={`px-2 py-1 text-xs font-bold ${en ? "bg-white" : "bg-[var(--kr-gov-blue)] text-white"}`} onClick={() => navigate("/emission/index")} type="button">KO</button><button className={`border-l px-2 py-1 text-xs font-bold ${en ? "bg-[var(--kr-gov-blue)] text-white" : "bg-white"}`} onClick={() => navigate("/en/emission/index")} type="button">EN</button></div>
-            {payload.isLoggedIn ? <button className="hidden rounded-md bg-[var(--kr-gov-blue)] px-5 py-2.5 font-bold text-white xl:inline-flex" onClick={() => void session.logout()} type="button">{content.logout}</button> : <a className="hidden rounded-md bg-[var(--kr-gov-blue)] px-5 py-2.5 font-bold text-white xl:inline-flex" href={buildLocalizedPath("/signin/loginView", "/en/signin/loginView")}>{content.login}</a>}
-            <button className="flex h-11 w-11 items-center justify-center rounded-md border text-[var(--kr-gov-blue)] xl:hidden" onClick={() => setMobileMenuOpen((v) => !v)} type="button" aria-label={content.openAllMenu}><span className="material-symbols-outlined">menu</span></button>
-          </div>
-        </div></div>
-      </header>
-      <div className={`${mobileMenuOpen ? "" : "hidden"} fixed inset-0 z-[70] xl:hidden`}><button className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} type="button" aria-label={content.closeAllMenu} /><HeaderMobileMenu content={content} en={en} homeMenu={payload.homeMenu || []} isLoggedIn={Boolean(payload.isLoggedIn)} onClose={() => setMobileMenuOpen(false)} onLogout={session.logout} /></div>
-
-      <main id="main-content" className="emission-status-typography mx-auto max-w-[1440px] px-4 py-7 lg:px-8 lg:py-10">
-        <nav className="mb-4 flex items-center gap-1 text-xs font-bold text-slate-500" aria-label="breadcrumb"><a href={buildLocalizedPath("/home", "/en/home")}>{en ? "Home" : "홈"}</a><span className="material-symbols-outlined text-[15px]">chevron_right</span><span>{labels.eyebrow}</span><span className="material-symbols-outlined text-[15px]">chevron_right</span><span className="text-slate-800">{labels.title}</span></nav>
-        <section className="relative overflow-hidden rounded-[20px] border border-[#d8e4f3] bg-white px-5 py-6 shadow-[0_12px_35px_rgba(15,48,87,.07)] lg:px-8 lg:py-8">
-          <div className="absolute inset-y-0 right-0 hidden w-[38%] bg-[radial-gradient(circle_at_80%_30%,rgba(0,95,222,.13),transparent_62%)] lg:block" aria-hidden="true" />
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"><div><div className="inline-flex items-center gap-2 rounded-full bg-[#eef5ff] px-3 py-1.5 text-xs font-black text-[var(--kr-gov-blue)]"><span className="material-symbols-outlined text-[16px]">monitoring</span>{labels.eyebrow}</div><h1 className="mt-3 text-3xl font-black tracking-[-.035em] text-slate-950 lg:text-[40px] lg:leading-[1.15]">{labels.title}</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 lg:text-base">{labels.description}</p></div><div className="flex flex-wrap gap-2"><a className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-black text-slate-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-50" href={buildLocalizedPath("/emission/project_list", "/en/emission/project_list")}><span className="material-symbols-outlined text-[18px]">list_alt</span>{labels.table}</a><a className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[var(--kr-gov-blue)] px-4 py-3 text-sm font-black text-white shadow-[0_7px_18px_rgba(0,55,139,.22)] transition hover:bg-[var(--kr-gov-blue-hover)]" href={buildLocalizedPath("/emission/project/create", "/en/emission/project/create")}><span className="material-symbols-outlined text-[18px]">add</span>{labels.create}</a></div></div>
-        </section>
-
-        <section className="dashboard-card mt-5 overflow-hidden" aria-label="filters">
-          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-5 py-3"><div className="flex items-center gap-2"><span className="material-symbols-outlined text-[19px] text-[var(--kr-gov-blue)]">filter_alt</span><h2 className="text-sm font-black text-slate-800">{en ? "Filter conditions" : "조회 조건"}</h2></div><button className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-blue-700" onClick={() => { setProjectFilter("ALL"); setYearFilter("ALL"); setSiteFilter("ALL"); }} type="button"><span className="material-symbols-outlined text-[16px]">restart_alt</span>{en ? "Reset" : "초기화"}</button></div>
-          <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="text-xs font-bold text-slate-600">{labels.company}<div className="relative mt-2"><span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">domain</span><input className="h-12 w-full rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm font-bold text-slate-700" value={payload.isLoggedIn ? "Resonance 테스트 기업" : "—"} disabled /></div></label>
-          <label className="text-xs font-bold text-slate-600">{labels.project}<select className="mt-2 h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100" value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}><option value="ALL">{labels.all}</option>{projects.map((p) => <option key={projectId(p)} value={projectId(p)}>{projectName(p)}</option>)}</select></label>
-          <label className="text-xs font-bold text-slate-600">{labels.year}<select className="mt-2 h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}><option value="ALL">{labels.all}</option>{years.map((year) => <option key={year}>{year}</option>)}</select></label>
-          <label className="text-xs font-bold text-slate-600">{labels.site}<select className="mt-2 h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100" value={siteFilter} onChange={(e) => setSiteFilter(e.target.value)}><option value="ALL">{labels.all}</option>{sites.map((site) => <option key={site}>{site}</option>)}</select></label>
-          </div>
-        </section>
-
-        {!payload.isLoggedIn || loadError === "AUTHENTICATION_REQUIRED" ? <section className="dashboard-card mt-6 p-10 text-center"><span className="material-symbols-outlined text-5xl text-slate-300">lock</span><h2 className="mt-4 text-xl font-black">{labels.login}</h2><a className="mt-5 inline-flex rounded-lg bg-[var(--kr-gov-blue)] px-5 py-3 font-black text-white" href={buildLocalizedPath("/signin/loginView", "/en/signin/loginView")}>{labels.loginButton}</a></section> : <>
-          <section className="emission-kpi-grid mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-            {[
-              { label: labels.total, value: hasEmission ? nf.format(totalEmission) : "—", unit: "tCO₂e", icon: "cloud", tone: "bg-blue-50 text-blue-800" },
-              { label: en ? "Calculation result" : "산정 결과", value: reportWorkflow.approved?.totalEmission === undefined ? "—" : nf.format(Number(reportWorkflow.approved.totalEmission)), unit: "tCO₂e", icon: "calculate", tone: "bg-orange-50 text-orange-800" },
-              { label: en ? "Reports" : "보고서", value: reportLoading ? "…" : String(reports.length), unit: en ? "items" : "건", icon: "description", tone: "bg-amber-50 text-amber-800" },
-              { label: en ? "Issued certificates" : "발급 인증서", value: reportLoading ? "…" : String(issuedCertificates.length), unit: en ? "items" : "건", icon: "verified", tone: "bg-cyan-50 text-cyan-800" },
-              { label: labels.projectCount, value: String(filtered.length), unit: overdue ? `${labels.overdue} ${overdue}` : "", icon: "folder_open", tone: "bg-emerald-50 text-emerald-800" },
-              { label: labels.quality, value: quality === null ? "—" : `${nf.format(quality)}%`, unit: quality === null ? labels.noData : "", icon: "verified", tone: "bg-indigo-50 text-indigo-800" }
-            ].map((card) => <article className="dashboard-card group relative overflow-hidden p-5 transition duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_10px_28px_rgba(15,48,87,.09)]" key={card.label}><div className="absolute right-0 top-0 h-20 w-20 translate-x-8 -translate-y-8 rounded-full bg-slate-50 transition group-hover:bg-blue-50" aria-hidden="true" /><div className={`relative flex h-10 w-10 items-center justify-center rounded-xl ${card.tone}`}><span className="material-symbols-outlined text-[21px]">{card.icon}</span></div><p className="relative mt-4 text-xs font-bold text-slate-500">{card.label}</p><p className="relative mt-1 flex min-h-9 flex-wrap items-baseline gap-x-1.5 text-2xl font-black tracking-[-.025em] text-slate-950"><span>{card.value}</span><span className="text-[11px] font-bold tracking-normal text-slate-500">{card.unit}</span></p></article>)}
-          </section>
-
-          {loading ? <section className="dashboard-card mt-6 p-12 text-center text-sm font-bold text-slate-500"><span className="material-symbols-outlined animate-spin align-middle">progress_activity</span> {en ? "Loading data" : "실제 데이터를 불러오는 중입니다."}</section> : loadError ? <section className="dashboard-card mt-6 border-red-200 p-8 text-center"><p className="font-bold text-red-700">{en ? "Failed to load emission data." : "배출량 데이터를 불러오지 못했습니다."}</p><button className="mt-4 rounded-lg bg-[var(--kr-gov-blue)] px-4 py-2 font-bold text-white" onClick={() => void loadProjects()} type="button">{labels.retry}</button></section> : projects.length === 0 ? <section className="emission-empty-state dashboard-card mt-6 p-10 text-center lg:p-14"><span className="material-symbols-outlined text-6xl text-blue-200">inventory</span><h2 className="mt-4 text-xl font-black text-slate-900">{labels.empty}</h2><p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-slate-600">{labels.emptyDesc}</p><a className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[var(--kr-gov-blue)] px-5 py-3 font-black text-white" href={buildLocalizedPath("/emission/project/create", "/en/emission/project/create")}><span className="material-symbols-outlined text-[18px]">add</span>{labels.create}</a></section> : <>
-            <section className="dashboard-card mt-6 p-5 lg:p-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold text-[var(--kr-gov-blue)]">{selected ? projectName(selected) : ""}</p><h2 className="mt-1 text-xl font-black text-slate-950">{labels.workflow}</h2></div>{selected && currentStepIndex >= 0 ? <a className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--kr-gov-blue)] px-4 py-3 text-sm font-black text-white" href={withProject(workflowSteps[currentStepIndex].href, selectedId)} onClick={() => synchronizeTaskGuide(workflowSteps[currentStepIndex].code)}>{labels.next}<span className="material-symbols-outlined text-[18px]">arrow_forward</span></a> : null}</div><div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">{workflowSteps.map((step, index) => { const state = index < currentStepIndex ? "done" : index === currentStepIndex ? "current" : "pending"; return <a className={`relative rounded-xl border p-4 transition hover:-translate-y-0.5 ${state === "done" ? "border-emerald-200 bg-emerald-50" : state === "current" ? "border-blue-500 bg-blue-50 ring-2 ring-blue-100" : "border-slate-200 bg-white"}`} href={withProject(step.href, selectedId)} key={step.code} onClick={() => synchronizeTaskGuide(step.code)}><span className={`material-symbols-outlined ${state === "done" ? "text-emerald-600" : state === "current" ? "text-blue-700" : "text-slate-400"}`}>{state === "done" ? "check_circle" : step.icon}</span><p className="mt-3 text-[11px] font-bold text-slate-400">STEP {index + 1}</p><p className="mt-1 text-sm font-black text-slate-800">{en ? step.en : step.ko}</p>{step.actorCode ? <p className="mt-2 truncate text-[11px] font-bold text-slate-500">{actorName(step.actorCode)}</p> : null}</a>; })}</div></section>
-
-            <section className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_.65fr_.8fr]">
-              <article className="dashboard-card overflow-hidden">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 lg:px-6">
-                  <div>
-                    <p className="text-xs font-bold text-[var(--kr-gov-blue)]">{selected ? projectName(selected) : ""}</p>
-                    <h2 className="mt-1 text-lg font-black">{en ? "Recent reports" : "최근 보고서"}</h2>
-                    <p className={`mt-1 text-xs font-black ${workflowContractAligned ? "text-emerald-700" : "text-red-700"}`}>{workflowContractAligned ? (en ? "Dashboard and full workflow share the same 7-step contract." : "화면 STEP 1~7과 전체 업무 보기의 7단계 계약이 일치합니다.") : (en ? "The workflow contract requires review." : "화면과 전체 업무 보기의 프로세스 계약 점검이 필요합니다.")}</p>
-                  </div>
-                  <a className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-300 px-3 text-sm font-black text-blue-800 hover:bg-blue-50" href={withProject("/emission/report_submit", selectedId)}>
-                    {en ? "Manage reports" : "보고서 관리"}<span className="material-symbols-outlined text-[17px]">arrow_forward</span>
-                  </a>
-                </div>
-                {reportLoading ? <p className="p-6 text-sm font-bold text-slate-500">{en ? "Loading reports…" : "보고서를 불러오는 중입니다."}</p> : reports.length ? <div className="divide-y divide-slate-100">{reports.slice(0, 5).map((report) => <a className="grid gap-2 px-5 py-4 transition hover:bg-blue-50 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center lg:px-6" href={withProject("/emission/report_submit", selectedId)} key={report.id}><div className="min-w-0"><strong className="block truncate text-sm text-slate-900">{report.title || `${en ? "Emission report" : "배출량 보고서"} V${report.version || 1}`}</strong><span className="mt-1 block text-xs text-slate-500">V{report.version || 1} · {report.language || "ko"} · {report.createdAt ? String(report.createdAt).slice(0, 10) : "—"}</span></div><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-xs font-black ${report.status === "FINALIZED" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>{report.status === "FINALIZED" ? (en ? "Finalized" : "확정") : (en ? "Draft" : "작성 중")}</span>{report.certificateId ? <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-800">{en ? "Certificate issued" : "인증서 발급"}</span> : null}</div></a>)}</div> : <div className="p-7 text-center"><span className="material-symbols-outlined text-4xl text-slate-300">description</span><p className="mt-2 text-sm font-bold text-slate-600">{en ? "No report has been created for this project." : "선택한 프로젝트에 생성된 보고서가 없습니다."}</p><a className="mt-4 inline-flex rounded-lg bg-[var(--kr-gov-blue)] px-4 py-2.5 text-sm font-black text-white" href={withProject("/emission/report_submit", selectedId)}>{en ? "Open report workflow" : "보고서 업무 열기"}</a></div>}
-              </article>
-              <article className="dashboard-card p-5 lg:p-6">
-                <h2 className="text-lg font-black">{en ? "Report and certificate status" : "보고·인증 현황"}</h2>
-                <div className="mt-5 space-y-3">{[
-                  [en ? "All reports" : "전체 보고서", reports.length, "description", "bg-slate-100 text-slate-700"],
-                  [en ? "Finalized" : "확정 보고서", finalizedReports.length, "task_alt", "bg-emerald-50 text-emerald-800"],
-                  [en ? "Certificates" : "발급 인증서", issuedCertificates.length, "verified", "bg-blue-50 text-blue-800"],
-                  [en ? "Downloads" : "다운로드", reports.reduce((sum, report) => sum + Number(report.downloadCount || 0), 0), "download", "bg-violet-50 text-violet-800"],
-                ].map(([label, value, icon, tone]) => <div className="flex items-center gap-3 rounded-xl border border-slate-100 p-3" key={String(label)}><span className={`material-symbols-outlined flex h-9 w-9 items-center justify-center rounded-lg text-[19px] ${tone}`}>{icon}</span><span className="min-w-0 flex-1 text-sm font-bold text-slate-600">{label}</span><strong className="text-lg text-slate-950">{value}</strong></div>)}</div>
-                <a className="mt-5 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm font-black text-blue-800" href={buildLocalizedPath("/home/certificate-verify", "/en/home/certificate-verify")}>{en ? "Verify certificate" : "인증서 진위 확인"}<span className="material-symbols-outlined text-[18px]">qr_code_scanner</span></a>
-              </article>
-              <article className="dashboard-card p-5 lg:p-6"><h2 className="text-lg font-black">{labels.actions}</h2><div className="mt-5 space-y-3">{selected ? workflowSteps.slice(currentStepIndex, currentStepIndex + 3).map((step, i) => <a className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 hover:border-blue-300 hover:bg-blue-50" href={withProject(step.href, selectedId)} key={step.code} onClick={() => synchronizeTaskGuide(step.code)}><span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black ${i === 0 ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}>{currentStepIndex + i + 1}</span><span className="min-w-0 flex-1"><strong className="block text-sm text-slate-800">{en ? step.en : step.ko}</strong><small className="text-slate-500">{i === 0 ? labels.next : en ? "Upcoming" : "예정 업무"}{step.actorCode ? ` · ${actorName(step.actorCode)}` : ""}</small></span><span className="material-symbols-outlined text-[18px] text-slate-400">chevron_right</span></a>) : <p className="rounded-xl bg-slate-50 p-5 text-sm text-slate-500">{labels.empty}</p>}</div></article>
-            </section>
-
-            <section className="hidden">
-              <article className="dashboard-card p-5 lg:p-6"><div className="flex items-center justify-between"><h2 className="text-lg font-black">{labels.trend}</h2><span className="text-xs font-bold text-slate-400">tCO₂e</span></div><div className="mt-6 flex h-56 items-end gap-2 border-b border-l border-slate-200 px-3 pb-0">{Array.from({ length: 12 }, (_, i) => <div className="flex h-full flex-1 flex-col items-center justify-end gap-2" key={i}><div className="w-full rounded-t bg-blue-100" style={{ height: hasEmission ? `${20 + ((i * 13) % 65)}%` : "2px" }} /><span className="text-[10px] font-bold text-slate-400">{i + 1}</span></div>)}</div><p className="mt-4 text-center text-xs font-bold text-slate-500">{hasEmission ? (en ? "Monthly values connected to calculated project data" : "산정된 프로젝트의 월별 데이터") : labels.noData}</p></article>
-              <article className="dashboard-card p-5 lg:p-6"><h2 className="text-lg font-black">{labels.scopeTitle}</h2><div className="mt-7 flex justify-center"><div className="relative flex h-40 w-40 items-center justify-center rounded-full" style={{ background: hasScope.some(Boolean) ? `conic-gradient(#005fde 0 42%, #15a46d 42% 73%, #f59e0b 73%)` : "#eef2f7" }}><div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white"><strong className="text-lg">{hasEmission ? nf.format(totalEmission) : "—"}</strong><span className="text-[10px] text-slate-500">tCO₂e</span></div></div></div><div className="mt-6 space-y-3">{["Scope 1", "Scope 2", "Scope 3"].map((label, i) => <div className="flex items-center justify-between text-xs" key={label}><span className="font-bold text-slate-600"><i className={`mr-2 inline-block h-2.5 w-2.5 rounded-full ${i === 0 ? "bg-blue-600" : i === 1 ? "bg-emerald-500" : "bg-amber-500"}`} />{label}</span><strong>{hasScope[i] ? `${nf.format(scopeValues[i])} tCO₂e` : "—"}</strong></div>)}</div></article>
-              <article className="dashboard-card p-5 lg:p-6"><h2 className="text-lg font-black">{labels.actions}</h2><div className="mt-5 space-y-3">{selected ? workflowSteps.slice(currentStepIndex, currentStepIndex + 3).map((step, i) => <a className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 hover:border-blue-300 hover:bg-blue-50" href={withProject(step.href, selectedId)} key={step.code} onClick={() => synchronizeTaskGuide(step.code)}><span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black ${i === 0 ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}>{currentStepIndex + i + 1}</span><span className="min-w-0 flex-1"><strong className="block text-sm text-slate-800">{en ? step.en : step.ko}</strong><small className="text-slate-500">{i === 0 ? labels.next : en ? "Upcoming" : "예정 업무"}{step.actorCode ? ` · ${actorName(step.actorCode)}` : ""}</small></span><span className="material-symbols-outlined text-[18px] text-slate-400">chevron_right</span></a>) : <p className="rounded-xl bg-slate-50 p-5 text-sm text-slate-500">{labels.empty}</p>}</div></article>
-            </section>
-
-            <section className="dashboard-card mt-6 overflow-hidden"><div className="flex items-center justify-between border-b border-slate-200 p-5 lg:px-6"><h2 className="text-lg font-black">{labels.table}</h2><span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{filtered.length}</span></div><div className="overflow-x-auto"><table className="dashboard-table"><thead><tr><th>{labels.name}</th><th>{labels.status}</th><th>{labels.step}</th><th>{labels.progress}</th><th>{labels.due}</th><th>{labels.owner}</th><th aria-label={labels.open} /></tr></thead><tbody>{filtered.map((p) => { const id = projectId(p); const progress = projectProgress(p); const step = workflowSteps.find((s) => s.code === projectStep(p)); return <tr key={id || projectName(p)}><td data-label={labels.name}><strong className="block text-slate-900">{projectName(p)}</strong><span className="mt-1 block text-xs text-slate-500">{projectSite(p)} · {id}</span></td><td data-label={labels.status}><span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-700">{text(p.status || p.projectStatus, en ? "In progress" : "진행 중")}</span></td><td data-label={labels.step}>{step ? (en ? step.en : step.ko) : projectStep(p)}</td><td data-label={labels.progress}><div className="flex items-center gap-2"><div className="h-2 w-20 overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-blue-600" style={{ width: `${progress}%` }} /></div><strong>{progress}%</strong></div></td><td data-label={labels.due}>{text(p.dueDate || p.endDate)}</td><td data-label={labels.owner}>{text(p.ownerName || p.managerName)}</td><td data-label=""><a className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-blue-700 hover:bg-blue-50" href={withProject("/emission/project/detail", id)} aria-label={`${projectName(p)} ${labels.open}`}><span className="material-symbols-outlined text-[18px]">arrow_forward</span></a></td></tr>; })}</tbody></table></div></section>
-          </>}
-        </>}
-      </main>
-    </div>
-  </>;
+export function EmissionDashboardPage(){
+ const en=isEnglish(),local=(p:string)=>buildLocalizedPath(p,'/en'+p);
+ const [draft,setDraft]=useState<Filters>({...empty}),[filters,setFilters]=useState<Filters>({...empty,periodFrom:`${new Date().getFullYear()}-01-01`,periodTo:`${new Date().getFullYear()}-12-31`});
+ const [year,setYear]=useState(String(new Date().getFullYear()));
+ const [chartMode,setChartMode]=useState<'latest'|'approved'>('latest');
+ const [taskMode,setTaskMode]=useState<'all'|'urgent'|'approval'>('all');
+ const [page,setPage]=useState(1),[reload,setReload]=useState(0),[data,setData]=useState<List|null>(null);
+ const [loading,setLoading]=useState(true),[error,setError]=useState(''),[validation,setValidation]=useState(''),[loadedAt,setLoadedAt]=useState('');
+ const [selected,setSelected]=useState<Row|null>(null),[reports,setReports]=useState<Reports|null>(null),[reportError,setReportError]=useState(''),[reportLoading,setReportLoading]=useState(false),[reportRetry,setReportRetry]=useState(0);
+ const [sites,setSites]=useState<Site[]>([]),[siteError,setSiteError]=useState(''),[siteRetry,setSiteRetry]=useState(0);
+ const selectedRef=useRef<HTMLElement|null>(null);
+ useEffect(()=>{const c=new AbortController();setSiteError('');getJson<{sites:Site[]}>(local('/home/api/emission-project-drafts/options'),c.signal).then(b=>{if(!Array.isArray(b.sites))throw Error('사업장 선택 목록 형식을 확인해 주세요.');if(!c.signal.aborted)setSites(b.sites);}).catch(e=>{if(!c.signal.aborted)setSiteError(e.message);});return()=>c.abort();},[en,siteRetry]);
+ useEffect(()=>{const c=new AbortController();setLoading(true);setError('');setData(null);setSelected(null);setReports(null);setLoadedAt('');
+  // One 20-row server page supplies two 10-row display pages.
+  const q=new URLSearchParams({...filters,page:String(Math.ceil(page/2)),pageSize:'20',sort:'UPDATED_DESC'});
+  getJson<List>(local('/home/api/emission-project-list-v1')+'?'+q,c.signal).then(b=>{
+   if(b.contractVersion!==1||!Array.isArray(b.items)||!Array.isArray(b.sites)||!Number.isInteger(b.totalCount)||b.pageSize!==20)throw Error('프로젝트 목록 응답 형식을 확인해 주세요.');
+   if(c.signal.aborted)return;const pages=Math.max(1,Math.ceil(b.totalCount/10));if(page>pages){setPage(pages);return;}
+   setData(b);setLoadedAt(new Date().toLocaleString('ko-KR'));
+  }).catch(e=>{if(!c.signal.aborted)setError(e.message);}).finally(()=>{if(!c.signal.aborted)setLoading(false);});return()=>c.abort();
+ },[filters,page,reload,en]);
+ useEffect(()=>{const c=new AbortController();setReports(null);setReportError('');if(!selected){setReportLoading(false);return()=>c.abort();}setReportLoading(true);
+  getJson<Reports>(local('/home/api/emission-projects/')+encodeURIComponent(selected.id)+'/reports',c.signal).then(b=>{if(!Array.isArray(b.reports))throw Error('보고서 응답 형식을 확인해 주세요.');if(!c.signal.aborted)setReports(b);}).catch(e=>{if(!c.signal.aborted)setReportError(e.message);}).finally(()=>{if(!c.signal.aborted)setReportLoading(false);});return()=>c.abort();
+ },[selected?.id,reportRetry,en]);
+ function search(e:FormEvent){e.preventDefault();const periodFrom=`${year}-01-01`,periodTo=`${year}-12-31`;if(periodFrom>periodTo){setValidation('산정 연도를 확인해 주세요.');return;}setValidation('');setFilters({...draft,keyword:draft.keyword.trim(),periodFrom,periodTo,status:''});setPage(1);}
+ function reset(){const currentYear=String(new Date().getFullYear());setYear(currentYear);setDraft({...empty});setFilters({...empty,periodFrom:`${currentYear}-01-01`,periodTo:`${currentYear}-12-31`});setPage(1);setValidation('');}
+ const ready=Boolean(data&&!loading&&!error),rows=ready?data!.items.slice((page-1)%2*10,(page-1)%2*10+10):[];
+ const pages=Math.max(1,Math.ceil((data?.totalCount||0)/10));
+ const detail=selected?local('/emission/project/detail')+'?projectId='+encodeURIComponent(selected.id):'';
+ const emission=reports?.approved?.totalEmission;
+ const metric=(value:string)=>reportError?'조회 실패':reportLoading||!reports?'조회 중':value;
+ const formatEmission=(value:number|null|undefined,unit='tCO₂e')=>value!==null&&value!==undefined&&Number.isFinite(Number(value))?`${Number(value).toLocaleString('ko-KR',{maximumFractionDigits:6})} ${unit}`:'—';
+ const selectedEmission=emission!==null&&emission!==undefined&&Number.isFinite(Number(emission))?formatEmission(Number(emission),selected?.approvedResultUnit||'tCO₂e'):selected?.approvedTotalEmission!==null&&selected?.approvedTotalEmission!==undefined?formatEmission(selected.approvedTotalEmission,selected.approvedResultUnit||'tCO₂e'):selected?.latestCalculationTotal!==null&&selected?.latestCalculationTotal!==undefined&&selected.calculatedStatus==='CALCULATED'?`확정 전 ${formatEmission(selected.latestCalculationTotal,selected.latestCalculationUnit||'tCO₂e')}`:reports?'확정 결과 없음':'선택 후 조회';
+ const chartEmissions=chartMode==='approved'?data?.monthlyEmissions:data?.latestCalculationMonthlyEmissions;
+ const chartStatus=chartMode==='approved'?data?.monthlyStatus:data?.latestCalculationMonthlyStatus;
+ const categoryEmissions=data?.latestCalculationCategoryEmissions||[];
+ const finalizedReports=reports?reports.reports.filter(r=>r.status==='FINALIZED').length:null;
+ const certificates=reports?new Set(reports.reports.map(r=>r.certificateId).filter(Boolean)).size:null;
+ function downloadRows(){const csv=[['사업장','프로젝트명','프로젝트 ID','산정 시작','산정 종료','진행 상태','산정 상태'],...rows.map(r=>[r.sites.map(s=>s.name).join(', '),r.name,r.id,r.periodStart||'',r.periodEnd||'',statuses[r.status]||r.status,calculations[r.calculatedStatus]||r.calculatedStatus])].map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('\r\n');const url=URL.createObjectURL(new Blob(['\ufeff',csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=`배출량현황_${year}_현재페이지.csv`;a.click();URL.revokeObjectURL(url);}
+ const link=(path:string)=>local(path)+(selected?'?projectId='+encodeURIComponent(selected.id):'');
+ const fallback=error?<div className="ed-empty" role="alert"><strong>{error}</strong><p>프로젝트 목록을 불러오지 못했습니다.</p><button type="button" onClick={()=>setReload(x=>x+1)}>다시 조회</button></div>:loading?<div className="ed-empty">프로젝트를 불러오는 중입니다.</div>:<div className="ed-empty">조회 가능한 프로젝트가 없습니다.</div>;
+ return <div className="ccus-public-business-page"><main id="main-content" className="ccus-business-content emission-dashboard" data-screen-contract={contract.id}>
+ <header className="ed-page-heading"><div><h1>배출량 현황</h1><p>사업장별 배출량과 자료 준비 상태를 확인하고 필요한 업무를 이어갑니다.</p></div><a className="ed-button" href={local('/emission/project_list')}>프로젝트 관리 →</a></header>
+ <form className="ed-filter-form" onSubmit={search} aria-label="배출량 현황 조회 조건">
+  <label>산정 연도<select value={year} onChange={e=>setYear(e.target.value)}>{[new Date().getFullYear(),new Date().getFullYear()-1].map(y=><option key={y} value={y}>{y}</option>)}</select></label>
+  <label>사업장<select aria-label="사업장" value={draft.siteId} onChange={e=>setDraft({...draft,siteId:e.target.value})}><option value="">전체 사업장</option>{sites.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+  <label>프로젝트 검색<input aria-label="프로젝트 검색" placeholder="프로젝트명 또는 프로젝트 ID" value={draft.keyword} maxLength={100} onChange={e=>setDraft({...draft,keyword:e.target.value})}/></label>
+  <div className="ed-filter-actions"><button type="button" onClick={reset}>초기화</button><button className="ed-primary" type="submit">조회</button></div>
+  {validation&&<p role="alert" className="ed-validation">{validation}</p>}{siteError&&<p role="alert" className="ed-validation">사업장 목록: {siteError} <button type="button" onClick={()=>setSiteRetry(x=>x+1)}>다시 조회</button></p>}
+ </form>
+ <div className="ed-scope-line"><span>{year}년 · {filters.siteId?sites.find(s=>s.id===filters.siteId)?.name||'선택 사업장':'전체 사업장'} · 확정본과 최신 미확정 산정본 구분</span><span>조회 범위: 로그인 계정의 접근 가능 프로젝트 · <button type="button" onClick={()=>setReload(x=>x+1)} disabled={loading}>새로고침 ↻</button></span></div>
+ <section className="ed-kpis" aria-label="배출량 요약">
+  <article><div>확정 배출량</div><div className="ed-value">{loading?'조회 중':error?'조회 실패':!data?.summary?'미제공':data.summary.approvedProjectCount===0?'확정본 없음':data.summary.approvedUnitCount>1?'단위 혼재':formatEmission(data.summary.approvedTotalEmission,data.summary.approvedResultUnit||'tCO₂e')}</div><p>{data?.summary?`현재 승인·잠금된 결과 ${data.summary.approvedProjectCount}건`:'확정 결과 집계 확인 중'}</p></article>
+  <article><div>최신 산정 배출량 <span className="ed-tag">미확정</span></div><div className="ed-value">{loading?'조회 중':error?'조회 실패':!data?.summary?'미제공':data.summary.latestUnapprovedCalculationProjectCount===0?'산정 결과 없음':data.summary.latestUnapprovedCalculationUnitCount>1?'단위 혼재':formatEmission(data.summary.latestUnapprovedCalculationTotalEmission,data.summary.latestUnapprovedCalculationResultUnit||'tCO₂e')}</div><p>{data?.summary?`승인 전 최신 산정 ${data.summary.latestUnapprovedCalculationProjectCount}건 · 공식 확정값 아님`:'산정 결과 집계 확인 중'}</p></article>
+  <article><div>유효한 최신 산정 프로젝트</div><div className="ed-value">{loading?'조회 중':error?'조회 실패':(data?.summary?.latestUnapprovedCalculationProjectCount??0).toLocaleString('ko-KR')} <small>건</small></div><p>입력 변경으로 오래된 산정본은 제외</p></article>
+  <article><div>조회 프로젝트</div><div className="ed-value">{loading?'조회 중':error?'조회 실패':(data?.summary?.projectCount??data?.totalCount??0).toLocaleString('ko-KR')} <small>건</small></div><p>{data?.summary?`완료 ${data.summary.completedCount}건 · 미산정 ${data.summary.notCalculatedCount}건`:'검색 조건에 해당하는 프로젝트'}</p></article>
+ </section>
+ <nav className="ed-actions-strip" aria-label="처리 필요 업무 바로가기">{[{title:'미접수 자료',count:data?.actionCounts?.requestedCount,label:'제출·접수 확인 →',path:'/emission/data-request'},{title:'보완 필요',count:data?.actionCounts?.correctionCount,label:'요청 내용 확인 →',path:'/emission/correction'},{title:'검토·승인 대기',count:data?.actionCounts?.pendingAcceptanceCount,label:'검토 대상 확인 →',path:'/emission/review-approval'},{title:'7일 이내 마감',count:data?.actionCounts?.deadlineCount,label:'마감·지연 확인 →',path:'/emission/deadline-status'}].map(item=><a key={item.title} href={link(item.path)}><span>{item.title}<small>{item.label}</small></span><b>{loading?'…':error?'—':Number(item.count??0).toLocaleString('ko-KR')}건</b></a>)}</nav>
+ <div className="ed-charts"><section className="ed-panel ed-panelpad"><div className="ed-section-head"><h2>월별 배출량</h2><div className="ed-chart-switch" role="group" aria-label="월별 산정 결과 구분"><button type="button" aria-pressed={chartMode==='latest'} className={chartMode==='latest'?'active':''} onClick={()=>setChartMode('latest')}>최근 산정 · 미확정</button><button type="button" aria-pressed={chartMode==='approved'} className={chartMode==='approved'?'active':''} onClick={()=>setChartMode('approved')}>승인 확정</button></div></div>{loading?<div className="ed-empty ed-chart-empty">월별 산정 결과 조회 중</div>:error?<div className="ed-empty ed-chart-empty">월별 데이터를 불러오지 못했습니다.</div>:chartStatus==='INCOMPLETE_RESULT_PERIODS'?<div className="ed-empty ed-chart-empty">항목 월 또는 산정 합계 검증이 맞지 않아 이 결과를 차트에서 제외했습니다.</div>:chartEmissions?.length?<div className="ed-monthly-chart" role="img" aria-label={chartMode==='approved'?'승인 확정 결과 월별 배출량':'최근 산정 결과 월별 배출량'}>{chartEmissions.map(m=><div className="ed-month-column" key={m.month} title={`${m.month}: ${Number(m.totalEmission).toLocaleString('ko-KR')} tCO₂e`}><span>{Number(m.totalEmission).toLocaleString('ko-KR',{maximumFractionDigits:6})}</span><i style={{height:`${Math.max(4,Number(m.totalEmission)/Math.max(...chartEmissions.map(x=>Number(x.totalEmission)),1)*100)}%`}}/><small>{m.month.slice(5)}월</small></div>)}</div>:<div className="ed-empty ed-chart-empty">{chartStatus==='NO_APPROVED_RESULT'?'표시할 승인·잠금 월별 결과가 없습니다.':chartStatus==='NO_UNAPPROVED_CALCULATION'?'표시 가능한 최신 미확정 산정본이 없습니다.':'월별 결과가 없습니다.'}</div>}<p className="ed-caption">{chartMode==='approved'?'승인·잠금된 현재 버전만 표시합니다.':'입력 자료와 합계가 검증된 최신 산정본입니다. 승인·확정 전 참고값입니다.'} · 단위 tCO₂e</p></section>
+  <section className="ed-panel ed-panelpad"><div className="ed-section-head"><h2>산정 항목별 배출 구성</h2><a href={link('/emission/calculation-results')}>산정 결과 →</a></div>{categoryEmissions.length?<div className="ed-category-list">{categoryEmissions.map(item=>{const total=Number(data?.summary?.latestUnapprovedCalculationTotalEmission)||1;const share=Math.max(0,Number(item.totalEmission)/total*100);return <div className="ed-category-row" key={item.category}><div><b>{item.category}</b><strong>{formatEmission(item.totalEmission,data?.summary?.latestUnapprovedCalculationResultUnit||'tCO₂e')}</strong></div><span className="ed-category-track"><i style={{width:`${Math.min(100,share)}%`}}/></span><small>{share.toLocaleString('ko-KR',{maximumFractionDigits:1})}%</small></div>;})}</div>:<div className="ed-empty ed-chart-empty">분류된 최신 산정 항목이 없습니다.</div>}<p className="ed-caption">활동자료에 저장된 분류별 최신 산정 합계입니다. Scope 1·2에 해당하는지는 여기서 추정하지 않습니다.</p></section></div>
+ <section className="ed-panel ed-project-panel"><div className="ed-section-head ed-table-head"><div><h2>사업장·프로젝트별 현황</h2><p className="ed-caption" aria-live="polite">{loading?'조회 중':error?'조회 실패':`${data?.totalCount??0}개 프로젝트 · 행을 선택하면 상세 및 다음 업무를 확인할 수 있습니다.`}</p></div><button type="button" onClick={downloadRows} disabled={!ready||!rows.length}>조회 결과 내려받기 ↓</button></div>
+  <div className="ed-table-scroll" role="region" aria-label="사업장·프로젝트 조회 결과" tabIndex={0} aria-busy={loading}><table><caption className="sr-only">프로젝트 목록 · 사업장·자료 접수·상태·확정 배출량·마감</caption><thead><tr><th scope="col">사업장 / 프로젝트</th><th scope="col">자료 접수</th><th scope="col">현재 상태</th><th scope="col" className="ed-num">확정 배출량 <small>tCO₂e</small></th><th scope="col">마감일</th><th scope="col">확인</th></tr></thead><tbody>
+  {error?<tr><td colSpan={6}>{fallback}</td></tr>:loading?<tr><td colSpan={6}>{fallback}</td></tr>:rows.length?rows.map(r=><tr key={r.id} aria-selected={selected?.id===r.id}><td><b>{r.sites.map(s=>s.name).join(', ')||'사업장 매핑 확인 필요'}</b><small>{r.name} · {r.id}</small></td><td>접수 데이터 미연결</td><td><span className="ed-tag">{statuses[r.status]||'확인 필요'}</span><small>{calculations[r.calculatedStatus]||'산정 상태 확인 필요'}</small></td><td className="ed-num">{r.approvedTotalEmission!==null&&r.approvedTotalEmission!==undefined?formatEmission(r.approvedTotalEmission,r.approvedResultUnit||'tCO₂e'):r.latestCalculationTotal!==null&&r.latestCalculationTotal!==undefined&&r.calculatedStatus==='CALCULATED'?`미확정 ${formatEmission(r.latestCalculationTotal,r.latestCalculationUnit||'tCO₂e')}`:r.calculatedStatus==='STALE'?'재산정 필요':'확정값 없음'}<small>{r.approvedTotalEmission!==null&&r.approvedTotalEmission!==undefined?'승인 확정':r.latestCalculationTotal!==null&&r.latestCalculationTotal!==undefined?'최신 산정 · 승인 전':'해당 버전 없음'}</small></td><td>마감일 API 미연결</td><td><button type="button" className="ed-select-row" aria-label={`${r.name} 현황 선택`} aria-pressed={selected?.id===r.id} onClick={()=>{setSelected(r);requestAnimationFrame(()=>selectedRef.current?.scrollIntoView({block:'nearest',behavior:'smooth'}));}}>선택</button></td></tr>):<tr><td colSpan={6}>조건에 맞는 프로젝트가 없습니다. <button type="button" onClick={reset}>조건 초기화</button></td></tr>}
+  </tbody></table></div>
+  {ready&&pages>1&&<nav className="ed-pagination" aria-label="프로젝트 페이지 이동"><button type="button" disabled={page===1} onClick={()=>setPage(p=>p-1)}>이전</button><span aria-live="polite">{page} / {pages}</span><button type="button" disabled={page===pages} onClick={()=>setPage(p=>p+1)}>다음</button></nav>}
+  <p className="ed-caption ed-project-foot">{data?.scopeNotice||'로그인 계정에 조회 권한이 있는 프로젝트만 표시합니다.'} 상단 업무 건수는 조회 범위 프로젝트 집계입니다. 표의 프로젝트별 접수·마감 상세는 미연결이며 임의 산출하지 않습니다.</p>
+ </section>
+ <div className="ed-lower"><section className="ed-panel ed-panelpad"><div className="ed-section-head"><h2>지금 처리할 업무</h2><a href={link('/emission/my-tasks')}>내 업무 전체 →</a></div><div className="ed-task-tabs" role="tablist" aria-label="업무 구분">{([['all','전체'],['urgent','지연·마감 임박'],['approval','검토·승인']] as const).map(([key,label])=><button type="button" role="tab" aria-selected={taskMode===key} aria-pressed={taskMode===key} className={taskMode===key?'active':''} onClick={()=>setTaskMode(key)} key={key}>{label}</button>)}</div><div className="ed-empty ed-task-empty">{loading?'업무 집계 조회 중':error?'업무 집계를 조회하지 못했습니다.':taskMode==='all'?`조회 범위 미완료 업무 ${data?.taskCounts?.openCount??0}건`:taskMode==='urgent'?`지연 ${data?.taskCounts?.overdueCount??0}건 · 7일 이내 마감 ${data?.taskCounts?.dueSoonCount??0}건`:`검토·승인 대기 업무 ${data?.taskCounts?.approvalCount??0}건`}<p>아래 메뉴에서 담당 업무를 확인할 수 있습니다.</p><div className="ed-task-links"><a href={link('/emission/my-tasks')}>탄소배출 내 업무 →</a><a href={link('/emission/deadline-status')}>마감·지연 현황 →</a><a href={link('/emission/review-approval')}>검토·승인 →</a></div></div></section>
+  <aside className="ed-panel ed-panelpad ed-detail" ref={selectedRef} aria-label="선택 프로젝트 상세">{!selected?<><span className="ed-muted">선택 프로젝트</span><h2>프로젝트 상세</h2><div className="ed-empty">목록에서 프로젝트를 선택하면<br/>상태와 업무 바로가기가 표시됩니다.</div></>:<><span className="ed-muted">선택 프로젝트</span><h2>{selected.sites.map(s=>s.name).join(', ')||'사업장 확인 필요'}</h2><p>{selected.name} · {selected.id}</p><dl><dt>현재 상태</dt><dd>{statuses[selected.status]||'확인 필요'} · {calculations[selected.calculatedStatus]||'산정 상태 확인 필요'}</dd><dt>산정 기간</dt><dd>{selected.periodStart||'—'} ~ {selected.periodEnd||'—'}</dd><dt>승인 결과</dt><dd>{metric(selectedEmission)}</dd></dl>{reportError&&<p role="alert" className="ed-validation">보고·인증 현황: {reportError} <button type="button" onClick={()=>setReportRetry(x=>x+1)}>다시 조회</button></p>}<p className="ed-notice">상단 배출량·업무 건수는 조회 범위 합계입니다. 이 프로젝트의 접수·마감 상세는 아직 연결되지 않았습니다.</p><a className="ed-primary ed-detail-primary" href={detail}>선택 프로젝트 업무 열기 →</a><div className="ed-detail-links"><a href={link('/emission/activity-data')}>활동자료</a><a href={link('/emission/evidence')}>증빙자료</a><a href={link('/emission/calculation')}>배출량 산정</a><a href={link('/emission/report-download')}>보고서</a></div></>}</aside></div>
+ <div className="ed-bottom-links"><b>관리 기준</b><a href={local('/emission/org-boundary')}>조직경계·사업장 관리 ↗</a><a href={local('/home/emission/source-register')}>배출원·시설 관리 ↗</a><a href={local('/home/emission/factor-reference')}>산정 기준·배출계수 ↗</a><a href={local('/emission/external-data')}>외부 데이터 연계 ↗</a></div>
+ <details className="ed-help" data-help-id={contract.id}><summary>도움말 · 집계 기준</summary><p>① 기간과 사업장을 선택합니다. ② 승인·잠금 결과 합계와 프로젝트 진행 상태를 확인합니다. ③ 처리 필요 업무 건수는 현재 조회 범위의 자료 요청과 미완료 프로젝트 업무 기준입니다. ④ 목록에서 프로젝트를 선택하고 업무 화면으로 이동합니다.</p><p>{contract.aggregateRule}</p><p>{contract.boundary}</p><p>승인·잠금 결과가 없으면 0건으로 표시합니다. 월별 합계는 항목 기간·합계가 검증된 현재 잠금 버전만 표시합니다. Scope 1·2 분류 및 프로젝트별 접수·마감 상세는 원천 분류·상세 계약이 없어 미제공이며, 서로 다른 단위의 결과는 합산하지 않습니다.</p></details>
+ <details className="ed-help ed-design" data-help-id={`${contract.id}-design`}><summary>화면 설계 · 전체 메뉴 매핑 · QA 검증</summary><div className="ed-designbody"><h3>설계 범위</h3><p>탄소배출 관리 20개 메뉴를 프로젝트 상태 확인, 제출·산정·검증, 확정·보고 흐름에 연결합니다. 현재 사용 가능한 API와 미연결 집계 영역을 화면에서 구분합니다.</p><table><thead><tr><th>메뉴</th><th>이 화면의 역할</th><th>이동</th></tr></thead><tbody>{menuMapping.map(([label,path,purpose])=><tr key={path}><td>{label}</td><td>{purpose}</td><td><a href={local(path)}>열기 ↗</a></td></tr>)}</tbody></table><h3>데이터 계약과 검증</h3><p>프로젝트 목록·승인 잠금 요약·검증된 월별 잠금 결과·자료 요청 상태·프로젝트 업무 건수를 현재 조회 범위로 서버 집계합니다. Scope 1·2 구분은 산정 항목에 원천 분류값이 없어 미제공이며, 업무 건수는 개인 할당 건수가 아닌 조회 범위 프로젝트의 합계입니다.</p><p>프로젝트를 선택해 업무를 이동하면 projectId를 전달합니다. 도착 API는 계정·회사·프로젝트 권한을 다시 검사해야 합니다. 화면 버전 v1.2 · API 계약 emission-project-list-v1.</p><p>검증 순서: 1) 권한 범위 프로젝트 목록 → 2) 연도·사업장·프로젝트 검색 → 3) 자료 요청·업무·월별 집계 → 4) 프로젝트 선택 및 보고 API → 5) projectId 업무 이동 → 6) 새로고침·페이지 이동·반응형 확인.</p></div></details>
+ </main></div>;
 }

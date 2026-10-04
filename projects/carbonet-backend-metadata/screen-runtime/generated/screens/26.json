@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "3.0.0",
+  "blueprintId": 26,
+  "blueprintCode": "BP_ADOPT_4E220E7D94DD3C47B409",
+  "identity": {
+    "processCode": "GOVERNANCE_CHANGE",
+    "stepCode": "GOV_REQUEST",
+    "actorCode": "PLATFORM_OPERATOR",
+    "audience": "ADMIN",
+    "pageId": "ADOPT_4E220E7D94DD3C47B409"
+  },
+  "route": "/admin/emission/data_history",
+  "pageName": "데이터 변경 이력",
+  "screenType": "ADMIN",
+  "templateCode": "KRDS_ADMIN",
+  "ownershipMode": "HYBRID",
+  "runtime": "COMMON_GENERATED_SCREEN",
+  "manualSourceProtected": true,
+  "specification": {
+    "domain": "GOVERNANCE",
+    "designSystem": "KRDS_GOV",
+    "preserveExistingImplementation": true
+  },
+  "traceability": {
+    "menuCode": "A1120112",
+    "caseTypeCount": 5,
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ISOLATION",
+      "EXCEPTION",
+      "RECOVERY"
+    ]
+  },
+  "designHash": "190b1b09efa28b5401c425404b39c3f1b24b0250844a6b3a1e0e0c48450e8a6d",
+  "artifactHash": "8112d08ade4ad705ad3404d00d065e2fa813985f380616d44bbf5904e0d2e009"
+}

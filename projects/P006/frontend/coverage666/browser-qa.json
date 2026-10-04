@@ -1,0 +1,29 @@
+{
+  "url": "http://172.16.1.232/projects/P006/assets/coverage666/index.html",
+  "loadMs": 1187,
+  "totalMs": 13726,
+  "checks": [
+    "public URL 724 rows",
+    "new 294",
+    "phase1 111",
+    "phase2 183",
+    "linked 666",
+    "blocked 58",
+    "all 724",
+    "ID specific USD and thumbnail / inline selection",
+    "BLOCKED no fallback",
+    "instrument group68",
+    "all catalog and cluster images loaded",
+    "resolver666/58 and UNBOUND724",
+    "USD ZIP download not HTML",
+    "reload and desktop/mobile no overflow",
+    "readiness synchronized656/58/10",
+    "178 unique Variant screenshots / 8 contact sheets"
+  ],
+  "jsErrors": [],
+  "zipBytes": 140421,
+  "businessWrites": 0,
+  "plcWrites": 0,
+  "account": "public read-only report; no login actor",
+  "factoryStudioDragDrop": "NOT_TESTED"
+}

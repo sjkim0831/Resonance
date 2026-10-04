@@ -27,7 +27,18 @@ public class ActorProcessGovernanceApiController {
     @GetMapping("/process-closing") public Map<String,Object> processClosing(){return service.processClosingStatus();}
     @PostMapping("/process-closing/audit") public ResponseEntity<?> auditProcessClosing(HttpServletRequest request){return guardedDesignMutation(request,service::auditProcessClosing);}
     @GetMapping("/executable-screens") public Map<String,Object> executableScreens(@RequestParam(defaultValue="") String status,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="100") int size){return service.executableScreens(status,page,size);}
+    @GetMapping("/catalog") public ResponseEntity<?> catalog(HttpServletRequest request){var context=currentUserContextService.resolve(request);ResponseEntity<?> denied=systemReportAccessFailure(context);return denied==null?ResponseEntity.ok(service.processCatalog()):denied;}
     @GetMapping("/process-design") public ResponseEntity<?> processDesign(@RequestParam String processCode){try{return ResponseEntity.ok(service.processDesign(processCode));}catch(Exception e){return bad(e);}}
+    @GetMapping("/processes/{processCode}/revisions")
+    public ResponseEntity<?> processRevisionHistory(@PathVariable String processCode,
+                                                    @RequestParam(defaultValue="50") int limit,
+                                                    HttpServletRequest request){
+        var context=currentUserContextService.resolve(request);
+        ResponseEntity<?> denied=systemReportAccessFailure(context);
+        if(denied!=null)return denied;
+        try{return ResponseEntity.ok(service.processRevisionHistory(processCode,limit));}
+        catch(Exception e){return bad(e);}
+    }
     @GetMapping("/cases") public ResponseEntity<?> cases(@RequestParam String processCode){try{return ResponseEntity.ok(service.simulationCases(processCode));}catch(Exception e){return bad(e);}}
     @GetMapping("/design-assets") public ResponseEntity<?> designAssets(HttpServletRequest request){var context=currentUserContextService.resolve(request);ResponseEntity<?> denied=systemReportAccessFailure(context);return denied==null?ResponseEntity.ok(service.designAssetInventory()):denied;}
     @GetMapping("/assets/search") public Map<String,Object> searchAssets(@RequestParam(defaultValue="") String query,@RequestParam(defaultValue="") String assetType,@RequestParam(defaultValue="30") int limit){return service.searchAssetCatalog(query,assetType,limit);}
@@ -54,6 +65,14 @@ public class ActorProcessGovernanceApiController {
     @PostMapping("/delivery/validate") public ResponseEntity<?> validateDeliveryBlueprint(@RequestBody Map<String,Object>b){try{return ResponseEntity.ok(service.validateProjectDeliveryBlueprint(String.valueOf(b.getOrDefault("blueprintCode",""))));}catch(Exception e){return bad(e);}}
     @PostMapping("/delivery/apply") public ResponseEntity<?> applyDeliveryBlueprint(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.applyProjectDeliveryBlueprint(b,actor));}
     @PostMapping("/processes") public ResponseEntity<?> process(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.createProcess(b,actor));}
+    @PutMapping("/processes/{processCode}/steps/{stepCode}")
+    public ResponseEntity<?> updateStepContract(@PathVariable String processCode,
+                                                @PathVariable String stepCode,
+                                                @RequestBody Map<String,Object> body,
+                                                HttpServletRequest request){
+        return guardedDesignMutation(request,actor->service.updateStepContract(processCode,stepCode,body,actor));
+    }
+
     @PostMapping("/steps") public ResponseEntity<?> step(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.addStep(b,actor));}
     @PostMapping("/development/plan") public ResponseEntity<?> plan(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.generateDevelopmentPlan(String.valueOf(b.get("processCode")),String.valueOf(b.get("stepCode")),actor));}
     @PostMapping("/development/bootstrap-process") public ResponseEntity<?> bootstrapProcess(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.bootstrapProcessDevelopment(b,actor));}

@@ -1,0 +1,230 @@
+[
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/codex-versioned-help-dcb1b77",
+    "statusExit": 0,
+    "changes": 0,
+    "ignoredFiles": 0,
+    "head": "4e1f822782cf1fd579d7d2b167ec894954443e92",
+    "remoteRefs": [],
+    "configReferences": [],
+    "openFiles": false,
+    "removed": false
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/codex-runtime-resource-drift-152a",
+    "statusExit": 0,
+    "changes": 12,
+    "ignoredFiles": 0,
+    "head": "152a5c42e0a490ab323d4d2837bf5252606f87d0",
+    "remoteRefs": [
+      "refs/remotes/origin/HEAD",
+      "refs/remotes/origin/codex/canonical-batch-no-deploy-20260824",
+      "refs/remotes/origin/codex/certificate-verification-rules-dev",
+      "refs/remotes/origin/codex/hpa-restore-gate-20260818",
+      "refs/remotes/origin/codex/my-work-summary-20260821",
+      "refs/remotes/origin/codex/reduction-batch-staged-20260824",
+      "refs/remotes/origin/main"
+    ],
+    "configReferences": [],
+    "openFiles": false,
+    "removed": false
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/codex-global-home-storm-dcb1b77",
+    "statusExit": 0,
+    "changes": 0,
+    "ignoredFiles": 3,
+    "head": "76a08e672ab7054914ec3b5aecb57bc8e7a298fa",
+    "remoteRefs": [
+      "refs/remotes/origin/HEAD",
+      "refs/remotes/origin/codex/canonical-batch-no-deploy-20260824",
+      "refs/remotes/origin/codex/certificate-verification-rules-dev",
+      "refs/remotes/origin/codex/hpa-restore-gate-20260818",
+      "refs/remotes/origin/codex/my-work-summary-20260821",
+      "refs/remotes/origin/codex/reduction-batch-staged-20260824",
+      "refs/remotes/origin/main"
+    ],
+    "configReferences": [],
+    "openFiles": false,
+    "removed": false
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/codex-taskquest-session-42b908",
+    "statusExit": 0,
+    "changes": 0,
+    "ignoredFiles": 1,
+    "head": "dcb1b77b7c09b033a4a756fe22243bcb5e53a943",
+    "remoteRefs": [
+      "refs/remotes/origin/HEAD",
+      "refs/remotes/origin/codex/canonical-batch-no-deploy-20260824",
+      "refs/remotes/origin/codex/certificate-verification-rules-dev",
+      "refs/remotes/origin/codex/hpa-restore-gate-20260818",
+      "refs/remotes/origin/codex/my-work-summary-20260821",
+      "refs/remotes/origin/codex/reduction-batch-staged-20260824",
+      "refs/remotes/origin/main"
+    ],
+    "configReferences": [],
+    "openFiles": false,
+    "removed": false
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/codex-work-execution-support-31df",
+    "statusExit": 0,
+    "changes": 0,
+    "ignoredFiles": 3,
+    "head": "8f884e2a719249a7975e364c670aa2b5df45256e",
+    "remoteRefs": [
+      "refs/remotes/origin/HEAD",
+      "refs/remotes/origin/codex/canonical-batch-no-deploy-20260824",
+      "refs/remotes/origin/codex/certificate-verification-rules-dev",
+      "refs/remotes/origin/codex/hpa-restore-gate-20260818",
+      "refs/remotes/origin/codex/my-work-summary-20260821",
+      "refs/remotes/origin/codex/reduction-batch-staged-20260824",
+      "refs/remotes/origin/main"
+    ],
+    "configReferences": [],
+    "openFiles": false,
+    "removed": false
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/system-test-20260807",
+    "statusExit": 0,
+    "changes": 1,
+    "ignoredFiles": 1498,
+    "head": "697486578d56e5648d7761a57603b4cf790febe3",
+    "remoteRefs": [
+      "refs/remotes/origin/HEAD",
+      "refs/remotes/origin/codex/canonical-batch-no-deploy-20260824",
+      "refs/remotes/origin/codex/certificate-verification-rules-dev",
+      "refs/remotes/origin/codex/hpa-restore-gate-20260818",
+      "refs/remotes/origin/codex/my-work-summary-20260821",
+      "refs/remotes/origin/codex/reduction-batch-staged-20260824",
+      "refs/remotes/origin/main"
+    ],
+    "configReferences": [],
+    "openFiles": false,
+    "removed": false
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/codex-material-symbols-76a",
+    "statusExit": 0,
+    "changes": 0,
+    "ignoredFiles": 1,
+    "head": "c131b42bd2b1794598a287c749ff41b4983b4b88",
+    "remoteRefs": [],
+    "configReferences": [],
+    "openFiles": false,
+    "removed": false
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/codex-favicon-76a08e",
+    "statusExit": 0,
+    "changes": 0,
+    "ignoredFiles": 0,
+    "head": "90c19c3a72bc2c37b335e23db12f9bc48e8f7c6a",
+    "remoteRefs": [],
+    "configReferences": [],
+    "openFiles": false,
+    "removed": false
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/codex-immutable-env-chain-31df",
+    "statusExit": 0,
+    "changes": 0,
+    "ignoredFiles": 0,
+    "head": "6fdc513e4d7317062bc0dbf36cc6fe081c8fcb20",
+    "remoteRefs": [
+      "refs/remotes/origin/HEAD",
+      "refs/remotes/origin/codex/canonical-batch-no-deploy-20260824",
+      "refs/remotes/origin/codex/certificate-verification-rules-dev",
+      "refs/remotes/origin/codex/hpa-restore-gate-20260818",
+      "refs/remotes/origin/codex/my-work-summary-20260821",
+      "refs/remotes/origin/codex/reduction-batch-staged-20260824",
+      "refs/remotes/origin/main"
+    ],
+    "configReferences": [],
+    "openFiles": false,
+    "removed": false
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/codex-final-visual-76a-20260815",
+    "statusExit": 0,
+    "changes": 0,
+    "ignoredFiles": 715,
+    "head": "152a5c42e0a490ab323d4d2837bf5252606f87d0",
+    "remoteRefs": [
+      "refs/remotes/origin/HEAD",
+      "refs/remotes/origin/codex/canonical-batch-no-deploy-20260824",
+      "refs/remotes/origin/codex/certificate-verification-rules-dev",
+      "refs/remotes/origin/codex/hpa-restore-gate-20260818",
+      "refs/remotes/origin/codex/my-work-summary-20260821",
+      "refs/remotes/origin/codex/reduction-batch-staged-20260824",
+      "refs/remotes/origin/main"
+    ],
+    "configReferences": [],
+    "openFiles": false,
+    "removed": false
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/codex-route-override-fix-8f884",
+    "statusExit": 0,
+    "changes": 0,
+    "ignoredFiles": 3,
+    "head": "42b908893382229e6de9f1a77b4f32261ada5f3d",
+    "remoteRefs": [
+      "refs/remotes/origin/HEAD",
+      "refs/remotes/origin/codex/canonical-batch-no-deploy-20260824",
+      "refs/remotes/origin/codex/certificate-verification-rules-dev",
+      "refs/remotes/origin/codex/hpa-restore-gate-20260818",
+      "refs/remotes/origin/codex/my-work-summary-20260821",
+      "refs/remotes/origin/codex/reduction-batch-staged-20260824",
+      "refs/remotes/origin/main"
+    ],
+    "configReferences": [],
+    "openFiles": false,
+    "removed": false
+  },
+  {
+    "path": "/opt/Resonance/var/integration-worktrees/codex-member-relay-false-gate-31df",
+    "statusExit": 0,
+    "changes": 0,
+    "ignoredFiles": 0,
+    "head": "40ac31e6b31abf63db14245619b05aeec56c235c",
+    "remoteRefs": [],
+    "configReferences": [],
+    "openFiles": false,
+    "removed": false
+  },
+  {
+    "path": "/opt/Resonance/var/deploy-worktrees/runtime-build",
+    "statusExit": 0,
+    "changes": 12,
+    "ignoredFiles": 135702,
+    "head": "c49a5f557e6ff20599bc346f2a3c2eeab25ab899",
+    "remoteRefs": [
+      "refs/remotes/origin/HEAD",
+      "refs/remotes/origin/main"
+    ],
+    "configReferences": [
+      "/etc/systemd/system/resonance-safe-disk-cleanup.service",
+      "/etc/systemd/system/resonance-incremental-screen-generation.service",
+      "/etc/systemd/system/resonance-all-process-contract-audit.service",
+      "/etc/systemd/system/resonance-full-screen-nightly.service",
+      "/etc/systemd/system/resonance-react-asset-prune.service",
+      "/etc/systemd/system/resonance-recovery.service"
+    ],
+    "openFiles": false,
+    "removed": false
+  },
+  {
+    "path": "/opt/Resonance/var/deploy-worktrees/backstage-bf9ba5c3",
+    "statusExit": 128,
+    "changes": 0,
+    "ignoredFiles": 0,
+    "head": "",
+    "remoteRefs": [],
+    "configReferences": [],
+    "openFiles": false,
+    "removed": false
+  }
+]

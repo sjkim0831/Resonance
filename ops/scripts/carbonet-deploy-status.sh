@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="${CARBONET_DEPLOY_ROOT:-/opt/Resonance}"
-STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
+STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/Resonance/runtime/platform-data/deploy/carbonet-main-success.commit}"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 DEPLOYMENT="${CARBONET_K8S_DEPLOYMENT:-carbonet-runtime}"
 
