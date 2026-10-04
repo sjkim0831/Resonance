@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "name": "3D Factory Composer · Layout Editor",
+  "coordinateSystem": "RIGHT_HANDED_Y_UP",
+  "unit": "m",
+  "rotation": "XYZ_EULER_DEGREES",
+  "plane": "XZ",
+  "maxInstances": 2000,
+  "relationshipTypes": ["REQUIRES", "CONNECTS_TO", "INPUT_FROM", "OUTPUT_TO", "OPTIONAL_WITH", "SAFETY_FOR", "CONTROLLED_BY", "UTILITY_FOR"],
+  "parameterFields": ["width", "length", "height"],
+  "templates": [
+    {"id":"floor","name":"바닥","shape":"slab","assetId":"E023","width":20,"length":15,"height":0.15,"color":"#dce5eb"},
+    {"id":"wall","name":"벽","shape":"box","assetId":"E024","width":8,"length":0.2,"height":3,"color":"#8195a9"},
+    {"id":"column","name":"기둥","shape":"box","assetId":"E026","width":0.5,"length":0.5,"height":3,"color":"#65798e"},
+    {"id":"door","name":"문","shape":"opening","assetId":"E025","width":1.2,"length":0.15,"height":2.2,"color":"#79b9c6"},
+    {"id":"shutter","name":"셔터","shape":"opening","assetId":"E035","width":4,"length":0.2,"height":3.5,"color":"#93a9bd"},
+    {"id":"aisle","name":"통로","shape":"zone","assetId":"E030","width":2,"length":10,"height":0.01,"color":"#f4ca58"},
+    {"id":"fence","name":"안전 펜스","shape":"fence","assetId":"E031","width":4,"length":0.1,"height":1.8,"color":"#dcad23"},
+    {"id":"zone","name":"작업구역","shape":"zone","assetId":"E029","width":6,"length":5,"height":0.01,"color":"#b8dccf"},
+    {"id":"stairs","name":"계단","shape":"stairs","assetId":"E039","width":1.2,"length":3,"height":2,"color":"#92a3b7"},
+    {"id":"rack","name":"랙","shape":"rack","width":3,"length":1,"height":2.5,"color":"#c5b2a1"},
+    {"id":"pipe","name":"배관/덕트 경로","shape":"route","width":0.3,"length":5,"height":0.3,"color":"#68b6b4"},
+    {"id":"tray","name":"케이블 트레이","shape":"route","width":0.4,"length":5,"height":0.1,"color":"#a5abbb"}
+  ],
+  "guidance": {
+    "help":"검색 → 썸네일 드래그 → 이동/회전 → 우클릭 연관 자산 → 건축 객체 → DB 저장 → USD Stage 생성 → 검증 결과 → Omniverse File/Open. Shift+클릭 다중 선택, Delete 삭제, Ctrl+D 복사, Ctrl+Z 실행 취소.",
+    "design":"Asset는 공유 원장, Equipment는 실제 설비/원장 후보, Canvas Instance는 독립 UUID, Relationship은 설계 연결, Layout은 버전 관리 문서입니다. 실제 포트/안전 조건 검증은 별도입니다.",
+    "qa":"실제 로그인·DB 저장/재조회·Instance/Relationship 동일성·버전 충돌에 더해 USD Reference·단위·독립 수학식 Transform·건축 치수·재질 의존성·Stage 재오픈을 검증합니다. GUI/RTX 상태는 별도 실제 화면 증거가 있을 때만 PASS입니다.",
+    "next":"DB 저장 후 USD Stage 생성으로 서버 경로와 7단계 결과를 확인하세요. 현재 저장된 높이·방향·크기가 의도한 배치인지 검수한 뒤 다음 Layout에 같은 Export를 적용합니다. 양방향 동기화와 설비 정보 후속 6+20개는 별도입니다."
+  }
+}

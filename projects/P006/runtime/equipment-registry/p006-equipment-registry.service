@@ -1,0 +1,15 @@
+[Unit]
+Description=P006 customer equipment registry and shared asset matching
+After=network.target p006-local-backend.service
+[Service]
+User=sjkim
+WorkingDirectory=/opt/Resonance/projects/P006/runtime/equipment-registry
+EnvironmentFile=/opt/p006-runtime/backend/service.env
+Environment=REGISTRY_DATA=/opt/Resonance/projects/P006/runtime/equipment-registry/data
+ExecStart=/usr/bin/python3 /opt/Resonance/projects/P006/runtime/equipment-registry/service.py
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+[Install]
+WantedBy=multi-user.target
