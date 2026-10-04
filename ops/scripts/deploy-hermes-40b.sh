@@ -3,10 +3,11 @@
 
 set -euo pipefail
 
-MODEL_DIR="/opt/util/ai/vLLM/models/qwen3.6-40b-hermes-framework-exl3-4.0bpw"
-LORA_DIR="/opt/util/ai/fine-tuning/hermes-framework-40b-qlora/outputs/hermes-framework-40b-qlora/final"
+MODEL_DIR="/opt/Resonance/runtime/tools/ai/vLLM/models/qwen3.6-40b-hermes-framework-exl3-4.0bpw"
+LORA_DIR="/opt/Resonance/runtime/tools/ai/fine-tuning/hermes-framework-40b-qlora/outputs/hermes-framework-40b-qlora/final"
 PORT="${PORT:-8080}"
-API_KEY="${API_KEY:-qwer1234}"
+API_KEY="${API_KEY:-${QWEN36_API_KEY:-}}"
+: "${API_KEY:?Set API_KEY or QWEN36_API_KEY in the service environment}"
 LOG_DIR="/opt/Resonance/var/ai-runtime/hermes-learning"
 
 echo "=========================================="
@@ -43,7 +44,7 @@ sleep 2
 
 # Start llama-server with LoRA
 echo "Starting llama-server with LoRA adapter..."
-cd /opt/util/ai/vLLM/llama.cpp-tq3/build
+cd /opt/Resonance/runtime/tools/ai/vLLM/llama.cpp-tq3/build
 
 export CUDA_VISIBLE_DEVICES=0
 
@@ -76,7 +77,6 @@ if ps -p $LLAMA_PID > /dev/null 2>&1; then
     echo "Model: Qwen3.6-40B Hermes Framework (4bit EXL3)"
     echo "LoRA: hermes-framework-40b-qlora (200 steps)"
     echo "URL: http://127.0.0.1:$PORT"
-    echo "API Key: $API_KEY"
     echo "=========================================="
 
     # Health check

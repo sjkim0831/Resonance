@@ -3,6 +3,8 @@
 
 LOG="/opt/Resonance/var/ai-runtime/hermes-learning/hermes-8081-watchdog.log"
 PIDFILE="/tmp/hermes-40b-gguf.pid"
+[ ! -r /etc/default/codex-qwen36 ] || . /etc/default/codex-qwen36
+: "${QWEN36_API_KEY:?QWEN36_API_KEY must be set in /etc/default/codex-qwen36}"
 
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG"
@@ -33,11 +35,11 @@ check_and_restart() {
         kill_python3
 
         # Start new server
-        nohup /opt/util/ai/vLLM/llama.cpp-tq3/build/bin/llama-server \
-          -m /opt/util/ai/vLLM/models/qwen3.6-40b-deck-opus-neo-code-q4_k_m/*.gguf \
+        nohup /opt/Resonance/runtime/tools/ai/vLLM/llama.cpp-tq3/build/bin/llama-server \
+          -m /opt/Resonance/runtime/tools/ai/vLLM/models/qwen3.6-40b-deck-opus-neo-code-q4_k_m/*.gguf \
           -a qwen3.6-40b-hermes \
           --host 127.0.0.1 --port 8081 \
-          --api-key qwer1234 \
+          --api-key "$QWEN36_API_KEY" \
           -ngl 60 \
           -c 100000 \
           -np 1 \
@@ -73,11 +75,11 @@ if ! curl -s --max-time 5 http://127.0.0.1:8081/health > /dev/null 2>&1; then
     # Kill python3 to free GPU
     kill_python3
 
-    nohup /opt/util/ai/vLLM/llama.cpp-tq3/build/bin/llama-server \
-      -m /opt/util/ai/vLLM/models/qwen3.6-40b-deck-opus-neo-code-q4_k_m/*.gguf \
+    nohup /opt/Resonance/runtime/tools/ai/vLLM/llama.cpp-tq3/build/bin/llama-server \
+      -m /opt/Resonance/runtime/tools/ai/vLLM/models/qwen3.6-40b-deck-opus-neo-code-q4_k_m/*.gguf \
       -a qwen3.6-40b-hermes \
       --host 127.0.0.1 --port 8081 \
-      --api-key qwer1234 \
+      --api-key "$QWEN36_API_KEY" \
       -ngl 60 \
       -c 100000 \
       -np 1 \

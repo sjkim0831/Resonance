@@ -2,14 +2,15 @@
 set -euo pipefail
 
 ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"
-BASE_DIR="${QWEN40_EXL2_BASE_DIR:-/opt/util/ai/exl2}"
+BASE_DIR="${QWEN40_EXL2_BASE_DIR:-/opt/Resonance/runtime/tools/ai/exl2}"
 VENV_DIR="${QWEN40_EXL2_VENV:-$BASE_DIR/venv}"
 TABBY_DIR="${QWEN40_EXL2_TABBY_DIR:-$BASE_DIR/tabbyAPI}"
-MODEL_DIR="${QWEN40_EXL2_MODEL_DIR:-/opt/util/ai/vLLM/models/qwen3.6-40b-exl2}"
+MODEL_DIR="${QWEN40_EXL2_MODEL_DIR:-/opt/Resonance/runtime/tools/ai/vLLM/models/qwen3.6-40b-exl2}"
 CONFIG_DIR="${QWEN40_EXL2_CONFIG_DIR:-$BASE_DIR/config}"
 MODEL_ID="${QWEN40_EXL2_MODEL_ID:-}"
 PORT="${QWEN40_EXL2_PORT:-24046}"
-API_KEY="${QWEN40_EXL2_API_KEY:-qwer1234}"
+API_KEY="${QWEN40_EXL2_API_KEY:-${QWEN36_API_KEY:-}}"
+: "${API_KEY:?Set QWEN40_EXL2_API_KEY or QWEN36_API_KEY in the service environment}"
 SERVICE_FILE="/etc/systemd/system/codex-qwen36-exl2-candidate.service"
 
 usage() {
@@ -34,6 +35,7 @@ case "$cmd" in
 esac
 
 prepare() {
+  umask 077
   mkdir -p "$BASE_DIR" "$MODEL_DIR" "$CONFIG_DIR"
   if [ ! -d "$TABBY_DIR/.git" ]; then
     git clone --depth 1 https://github.com/theroyallab/tabbyAPI "$TABBY_DIR" >/dev/null

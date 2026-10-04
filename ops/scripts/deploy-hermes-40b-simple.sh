@@ -1,9 +1,10 @@
 #!/bin/bash
 # Hermes 40B System - Using Hermes Prompt with Q4_K_M GGUF
 
-MODEL_PATH="/opt/util/ai/vLLM/models/qwen3.6-40b-deck-opus-neo-code-q4_k_m/Qwen3.6-40B-Deck-Opus-NEO-CODE-HERE-2T-OT-Q4_K_M.gguf"
+MODEL_PATH="/opt/Resonance/runtime/tools/ai/vLLM/models/qwen3.6-40b-deck-opus-neo-code-q4_k_m/Qwen3.6-40B-Deck-Opus-NEO-CODE-HERE-2T-OT-Q4_K_M.gguf"
 PORT="${PORT:-8080}"
-API_KEY="${API_KEY:-qwer1234}"
+API_KEY="${API_KEY:-${QWEN36_API_KEY:-}}"
+: "${API_KEY:?Set API_KEY or QWEN36_API_KEY in the service environment}"
 LOG_DIR="/opt/Resonance/var/ai-runtime/hermes-learning"
 
 HERMES_SYSTEM_PROMPT="You are Hermes-Carbonet, a senior Korean-speaking agent for the Resonance Carbonet framework. You understand the local codebase, Hermes Agent, Kubernetes deployment, AI model routing, recovery, and safe operations. Answer with concrete file paths, cautious execution steps, and verification evidence."
@@ -31,7 +32,7 @@ sleep 2
 # Start Hermes server
 echo "Starting Hermes server with system prompt..."
 
-cd /opt/util/ai/vLLM/llama.cpp-tq3/build
+cd /opt/Resonance/runtime/tools/ai/vLLM/llama.cpp-tq3/build
 
 export CUDA_VISIBLE_DEVICES=0
 
@@ -62,7 +63,6 @@ if ps -p $SERVER_PID > /dev/null 2>&1; then
     echo "Hermes 40B Server Running!"
     echo "=========================================="
     echo "URL: http://127.0.0.1:$PORT"
-    echo "API Key: $API_KEY"
     echo ""
 
     # Health check

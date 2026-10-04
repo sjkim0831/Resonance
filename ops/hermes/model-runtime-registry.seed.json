@@ -85,10 +85,10 @@
       "adapter": {
         "type": "qlora",
         "name": "qwen3.6-40b-hermes-framework-qlora",
-        "path": "/opt/util/ai/fine-tuning/hermes-framework-40b-qlora/outputs/hermes-framework-40b-qlora/final",
-        "servedVia": "/opt/util/ai/exl2/tabbyAPI/loras/qwen3.6-40b-hermes-framework-qlora"
+        "path": "/opt/Resonance/runtime/tools/ai/fine-tuning/hermes-framework-40b-qlora/outputs/hermes-framework-40b-qlora/final",
+        "servedVia": "/opt/Resonance/runtime/tools/ai/exl2/tabbyAPI/loras/qwen3.6-40b-hermes-framework-qlora"
       },
-      "modelPath": "/opt/util/ai/vLLM/models/qwen3.6-40b-hermes-framework-exl3-4.0bpw",
+      "modelPath": "/opt/Resonance/runtime/tools/ai/vLLM/models/qwen3.6-40b-hermes-framework-exl3-4.0bpw",
       "lanes": [
         "judge",
         "framework-builder",
@@ -119,7 +119,7 @@
         "track": "hermes-framework-40b-qlora",
         "records": 2414,
         "steps": 200,
-        "finalAdapter": "/opt/util/ai/fine-tuning/hermes-framework-40b-qlora/outputs/hermes-framework-40b-qlora/final",
+        "finalAdapter": "/opt/Resonance/runtime/tools/ai/fine-tuning/hermes-framework-40b-qlora/outputs/hermes-framework-40b-qlora/final",
         "completedAt": "2026-05-22"
       },
       "status": "approved-live-131k",
@@ -141,10 +141,9 @@
       "conflictGroup": "main-24036",
       "envFile": "/etc/default/codex-qwen36",
       "env": {
-        "QWEN36_MODEL_PATH": "/opt/util/ai/vLLM/models/qwen3.6-40b-deck-opus-neo-code-q4_k_m/Qwen3.6-40B-Deck-Opus-NEO-CODE-HERE-2T-OT-Q4_K_M.gguf",
+        "QWEN36_MODEL_PATH": "/opt/Resonance/runtime/tools/ai/vLLM/models/qwen3.6-40b-deck-opus-neo-code-q4_k_m/Qwen3.6-40B-Deck-Opus-NEO-CODE-HERE-2T-OT-Q4_K_M.gguf",
         "QWEN36_MODEL_ALIAS": "qwen3.6-40b-deck-opus-q4",
         "QWEN36_CONTEXT": "131072",
-        "QWEN36_API_KEY": "qwer1234",
         "QWEN36_CACHE_K": "q4_0",
         "QWEN36_CACHE_V": "q4_0",
         "QWEN36_NGL": "99",
