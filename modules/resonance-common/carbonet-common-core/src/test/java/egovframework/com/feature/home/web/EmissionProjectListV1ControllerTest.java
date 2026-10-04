@@ -112,7 +112,7 @@ class EmissionProjectListV1ControllerTest {
 
     private static Object queryForListResult(InvocationOnMock invocation, Map<String, Object> project) {
         String sql = invocation.getArgument(0);
-        if (sql.contains("SELECT project_id AS id")) return new ArrayList<>(List.of(project));
+        if (sql.contains("SELECT e.project_id AS id")) return new ArrayList<>(List.of(project));
         if (sql.startsWith("SELECT ps.project_id")) {
             return List.of(Map.of("project_id", PROJECT_ID, "id", 9001L, "name", "Fixture site"));
         }
