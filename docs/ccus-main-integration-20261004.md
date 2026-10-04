@@ -11,9 +11,9 @@ GET /home/api/emission-project-list-v1 returns contractVersion 1, items, sites, 
 ## Integration evidence
 12 source/test/dependency files ported onto current main. Includes the read-only controller, existing controller tests, page CSS, sidebar, common search and breadcrumb components and screen-name metadata.
 The page dependency bundle compiles using esbuild with generatedScreenCatalog externalized. This is a partial dependency check, not a full production build.
-Full dependency resolution is blocked by missing generated screen definitions in main (1378 unresolved imports after excluding the added metadata dependency).
-Maven cannot start tests because apps/carbonet-api/pom.xml has no spring-session-jdbc version. No passing backend test claim is made.
+The read-only controller test passes: 2 tests, 0 failures/errors. Fixes include the Spring Session 3.4.3 version from the Spring Boot 3.4.5 BOM, mutable summary assembly and corrected test fixture SQL matcher.
+Full frontend build remains blocked: main's generated catalog expects definition-set hash 7e637d82, but the only available canonical definitions use 1c1d0fef. The guarded generation script rejects the mismatch.
 
 ## Release gate and remaining work
-Draft only. Restore main's generated screen definitions using its intended generator, resolve the Maven dependency management baseline, run controller tests and authenticated browser flow (login -> search -> details -> return). Capture visual evidence at the same viewport as the approved design before merge/deployment.
+Draft only. Recover main's generated screen definitions from the matching source, run the frontend full build and authenticated browser flow (login -> search -> details -> return). Capture visual evidence at the same viewport as the approved design before merge/deployment.
 The live proxy is a separate missing runtime subsystem in main with PortOne and environment-specific dependencies; do not install it from a single-file patch. Existing live development/production services remain unchanged.
