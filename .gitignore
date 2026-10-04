@@ -103,3 +103,12 @@ ops/tools/
 
 # Server-only credentials must never enter source history.
 /.secrets/
+
+# Machine-local build output, databases, and large tool installs.
+/projects/P006/3d-toolchain/bin/
+/projects/P006/assets/nvidia-library/
+/projects/P006/backup/
+/projects/carbonet-frontend/source/.cache/
+/data/carbonet-app/react-app/assets/
+/runtime/build-candidates/
+/runtime/platform-data/postgresql-18000/
