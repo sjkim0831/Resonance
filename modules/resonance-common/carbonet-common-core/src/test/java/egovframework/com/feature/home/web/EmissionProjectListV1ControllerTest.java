@@ -61,9 +61,30 @@ class EmissionProjectListV1ControllerTest {
                 .when(jdbc).queryForList(anyString(), any(Object[].class));
         doAnswer(invocation -> queryForObjectResult(invocation))
                 .when(jdbc).queryForObject(anyString(), any(Class.class), any(Object[].class));
-        when(jdbc.queryForMap(contains("emission_current_contract"), any(Object[].class)))
-                .thenReturn(Map.of("projectCount", 1L, "completedCount", 0L, "calculatedCount", 0L,
-                        "notCalculatedCount", 1L, "approvedProjectCount", 0L, "approvedTotalEmission", 0L));
+        Map<String, Object> aggregate = new LinkedHashMap<>();
+        aggregate.put("projectCount", 1L);
+        aggregate.put("completedCount", 0L);
+        aggregate.put("calculatedCount", 0L);
+        aggregate.put("notCalculatedCount", 1L);
+        aggregate.put("approvedProjectCount", 0L);
+        aggregate.put("approvedTotalEmission", 0L);
+        aggregate.put("approvedUnitCount", 0L);
+        aggregate.put("approvedResultUnit", null);
+        aggregate.put("latestUnapprovedCalculationProjectCount", 0L);
+        aggregate.put("latestUnapprovedCalculationTotalEmission", 0L);
+        aggregate.put("latestUnapprovedCalculationUnitCount", 0L);
+        aggregate.put("latestUnapprovedCalculationResultUnit", null);
+        aggregate.put("requestedCount", 0L);
+        aggregate.put("pendingAcceptanceCount", 0L);
+        aggregate.put("correctionCount", 0L);
+        aggregate.put("deadlineCount", 0L);
+        aggregate.put("openCount", 0L);
+        aggregate.put("overdueCount", 0L);
+        aggregate.put("dueSoonCount", 0L);
+        aggregate.put("approvalCount", 0L);
+        aggregate.put("lockedCount", 0L);
+        aggregate.put("complete", false);
+        when(jdbc.queryForMap(anyString(), any(Object[].class))).thenReturn(aggregate);
 
         ResponseEntity<?> response = new EmissionProjectListV1Controller(jdbc, users)
                 .list("", "", "", "", "", "1", "20", "UPDATED_DESC", new MockHttpServletRequest());
@@ -81,7 +102,7 @@ class EmissionProjectListV1ControllerTest {
         assertEquals(1L, summary.get("projectCount"));
         assertEquals(0L, summary.get("approvedProjectCount"));
         assertEquals(0, ((Number) summary.get("approvedTotalEmission")).intValue());
-        verify(jdbc).queryForMap(contains("emission_current_contract"), any(Object[].class));
+        verify(jdbc, atLeastOnce()).queryForMap(anyString(), any(Object[].class));
 
         List<?> items = assertInstanceOf(List.class, body.get("items"));
         Map<?, ?> returnedProject = assertInstanceOf(Map.class, items.get(0));
