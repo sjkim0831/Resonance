@@ -13,7 +13,8 @@
 
 ## 3. 데이터/API 경계
 
-- 로그인 세션 식별 쿠키가 없으면 페이지 시작부터 로컬 모드로 둔다. 익명 시작 시 계정 계획 목록 조회도 억제하며, 인증 상태를 서버 데이터/권한 없이 임의로 만들지 않는다.
+- 페이지 시작 때 기존 same-origin `/projects/P006/authz`를 확인한다. 응답이 인증됨이면 그 계정으로 계획 목록을 연결하고, 익명/응답 불가이면 로컬 초안 모드로 둔다. 세션 쿠키는 HttpOnly일 수 있으므로 쿠키 문자열을 직접 검사하지 않는다.
+- 서버 계획 바의 `WOOSU 로그인`은 기존 P006 로그인 폼으로 이동하며 현재 경로·query·hash를 returnTo로 전달한다. 로그인 완료 후 현재 화면으로 복귀하고 인증 확인 뒤 계정 계획 목록을 불러온다. 비밀번호를 브라우저 저장소나 URL에 기록하지 않는다.
 - `LOCAL DEVELOPMENT` 후보는 활성 계획의 `p.equipment[]`에서만 생성한다. 후보에 `_localDevOnly`, `_localPlanEquipmentId`, `LOCAL_SAMPLE` 표식을 유지하고 제조사·모델·GLB는 계획 안의 표시값만 보여준다.
 - 로컬 검색은 브라우저 메모리에서 수행하며 `/assets`, `/production-plans`, 자료 업로드 또는 AI 제작 API를 호출하지 않는다.
 - 로컬 후보는 새 원장 자산을 만들지 않는다. 기존 계획의 설비 ID를 해당 공정에 연결하고 설비 적합성 상태는 `ASSIGNED_UNVERIFIED`로 유지한다.
@@ -27,8 +28,9 @@
 3. 설비 선택 후 공정 배정 시 같은 계획의 설비 ID가 공정에 연결되고 미검토 상태로 표시된다.
 4. localStorage 계획 저장 후 새로고침하면 변경이 이 브라우저에서 복구된다.
 5. 익명 시작과 로컬 모드에서 `/assets`, `/production-plans` 및 AI 요청이 발생하지 않고 서버 계획 버튼도 동작하지 않는다.
-6. 로컬 모드를 끄고 로그인한 경우 기존 공용 원장·계정 서버 동작이 유지된다.
-7. 좁은 화면에서도 로컬 전용 경고와 전환 컨트롤이 줄바꿈되며 가로 넘침이 없다.
+6. 이미 로그인된 경우에는 자동으로 세션을 확인하여 기존 계정 계획 목록을 연결한다. 익명 사용자가 로그인 버튼을 누르면 기존 로그인 페이지로 이동 후 원래 query/hash 화면으로 복귀한다.
+7. 로그인된 상태에서 로컬 모드를 끄면 기존 공용 원장·계정 서버 동작이 유지된다.
+8. 좁은 화면에서도 로컬 전용 경고와 전환 컨트롤이 줄바꿈되며 가로 넘침이 없다.
 
 ## 5. 비목표 / 주의
 
@@ -40,6 +42,7 @@
 
 - 구현 파일: `equipment-requirements-ui.js`, `equipment-requirements-ui.css`, `build-live-equipment-requirements.cjs`, `deploy-equipment-requirements-front.py`.
 - 자동 QA: `node test-equipment-local-dev-mode.cjs`, `node test-workspace-front.cjs`, `node qa-local-development-mode.cjs`, ES module `node --check`.
-- 브라우저 결과: 익명 페이지에서 로컬 후보 1개 검색·배정, 서버 저장 비활성, 보호 API 요청 0건, JS 오류 0건. 캡처=`local-development-mode-live.png`.
-- 배포: 2026-10-04 22:50 KST, HTTP 200 · HTML 330,722 bytes · 서비스 재시작 없음. 롤백 백업=`/opt/Resonance/projects/P006/backup/equipment-requirements-ui-20261004-225017` (서버 여유공간 1,381,418,037,248 bytes).
+- 브라우저 결과: 익명 페이지에서 로그인 returnTo 경로(query/hash 포함) 보존, 로컬 후보 1개 검색·배정, 보호 API 요청 0건을 확인했다. 인증 응답은 테스트에서 모의하여 계정 계획 목록 표시와 서버 저장 버튼 활성화도 확인했다. JS 오류 0건. 캡처=`local-development-mode-live.png`, `account-auto-connect-mocked-qa.png`.
+- 계정 연결 주의: 개발용 계정이나 비밀번호를 HTML·JS·localStorage에 박아 넣지 않는다. 기존 P006 로그인 세션을 재사용하고, 계정은 로그인 페이지에서 사용자가 입력한다.
+- 계정 연결 UI 배포: 2026-10-04 23:04 KST, HTTP 200 · HTML 333,294 bytes · 서비스 재시작 없음. 서버 파일 원자 교체 전 백업=`/opt/Resonance/projects/P006/backup/equipment-requirements-ui-20261004-230407` (당시 여유공간 1,381,430,067,200 bytes). 실제 자격증명 로그인 왕복은 실행하지 않았다.
 - 외부 API/AI 사용료: $0. 서버 원장/인증 백엔드 변경: 없음.
