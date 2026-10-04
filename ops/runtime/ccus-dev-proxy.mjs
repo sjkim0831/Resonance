@@ -13,6 +13,10 @@ const listenHost = "0.0.0.0";
 const listenPort = 80;
 const secureListenHost = process.env.CARBONET_DIRECT_HTTPS_HOST || "172.16.1.232";
 const frontend = { host: "127.0.0.1", port: 5175 };
+const p006Frontend = { host: "127.0.0.1", port: 5174 };
+function isP006Path(url = "") {
+  return /^\/(?:projects\/P006|r\/P006)(?:\/|$)/.test(String(url).split("?", 1)[0]);
+}
 const developmentBackend = { host: "127.0.0.1", port: 18000 };
 const productionBackend = { host: "127.0.0.1", port: 18080 };
 const productionHosts = new Set([
@@ -22,12 +26,12 @@ const productionHosts = new Set([
   "ccus.duckdns.org",
   "211.50.135.232"
 ]);
-const tlsKeyPath = process.env.CARBONET_DIRECT_TLS_KEY || "/opt/resonance-data/dev-runtime/certificate-verification/tls/tls.key";
-const tlsCertPath = process.env.CARBONET_DIRECT_TLS_CERT || "/opt/resonance-data/dev-runtime/certificate-verification/tls/tls.crt";
-const externalTlsKeyPath = process.env.CARBONET_EXTERNAL_TLS_KEY || "/opt/resonance-data/dev-runtime/certificate-verification/tls/ccus-duckdns.key";
-const externalTlsCertPath = process.env.CARBONET_EXTERNAL_TLS_CERT || "/opt/resonance-data/dev-runtime/certificate-verification/tls/ccus-duckdns.crt";
-const acmeChallengeRoot = process.env.CARBONET_ACME_CHALLENGE_ROOT || "/opt/resonance-data/acme/carbonet-production/.well-known/acme-challenge";
-const resonanceRoot = "/opt/resonance-data/dev-worktrees/certificate-verification";
+const tlsKeyPath = process.env.CARBONET_DIRECT_TLS_KEY || "/opt/Resonance/runtime/platform-data/dev-runtime/certificate-verification/tls/tls.key";
+const tlsCertPath = process.env.CARBONET_DIRECT_TLS_CERT || "/opt/Resonance/runtime/platform-data/dev-runtime/certificate-verification/tls/tls.crt";
+const externalTlsKeyPath = process.env.CARBONET_EXTERNAL_TLS_KEY || "/opt/Resonance/runtime/platform-data/dev-runtime/certificate-verification/tls/ccus-duckdns.key";
+const externalTlsCertPath = process.env.CARBONET_EXTERNAL_TLS_CERT || "/opt/Resonance/runtime/platform-data/dev-runtime/certificate-verification/tls/ccus-duckdns.crt";
+const acmeChallengeRoot = process.env.CARBONET_ACME_CHALLENGE_ROOT || "/opt/Resonance/runtime/platform-data/acme/carbonet-production/.well-known/acme-challenge";
+const resonanceRoot = "/opt/Resonance/runtime/platform-data/dev-worktrees/certificate-verification";
 const memberClosureScript = `${resonanceRoot}/ops/scripts/run-member-domain-closure-fast-dev.sh`;
 const memberClosureEvidenceRoot = `${resonanceRoot}/var/test-evidence/member-domain-closure`;
 const memberDesignFingerprintScript = `${resonanceRoot}/ops/scripts/member-domain-design-fingerprint.sh`;
@@ -65,7 +69,8 @@ function classifyResponseAlert(req, statusCode) {
 
 function isBackendPath(url = "") {
   const pathname = String(url || "").split("?", 1)[0];
-  return /^\/(?:en\/)?(?:api\/|admin\/api\/|signin\/api\/|actuator\/|runtime\/screens\/)/.test(pathname)
+  return /^\/(?:en\/)?(?:api\/|admin\/api\/|signin\/api\/|home\/api\/|actuator\/|runtime\/screens\/)/.test(pathname)
+    || /^\/(?:en\/)?signin\/external-auth\/(?:methods|start|complete)$/.test(pathname)
     || /^\/(?:en\/)?signin\/(?:actionLogin|actionLogout)$/.test(pathname)
     || /^\/(?:en\/)?signin\/(?:account-recovery\/requests(?:\/[^/]+\/verify)?|resetPassword)$/.test(pathname)
     || /^\/(?:en\/)?admin\/login\/(?:actionLogin|actionLogout)$/.test(pathname)
@@ -248,7 +253,7 @@ const handleRequest = (req, res) => {
     handleMemberClosureQa(req, res);
     return;
   }
-  const target = isBackendPath(req.url) ? backendForRequest(req) : frontend;
+  const target = isP006Path(req.url) ? p006Frontend : isBackendPath(req.url) ? backendForRequest(req) : frontend;
   const upstream = http.request({
     hostname: target.host,
     port: target.port,
@@ -341,7 +346,8 @@ const externalSecureServer = https.createServer({
 }, handleRequest);
 
 function handleUpgrade(req, socket, head) {
-  const upstream = net.connect(frontend.port, frontend.host, () => {
+  const target = isP006Path(req.url) ? p006Frontend : frontend;
+  const upstream = net.connect(target.port, target.host, () => {
     const lines = [`${req.method} ${req.url} HTTP/${req.httpVersion}`];
     for (let index = 0; index < req.rawHeaders.length; index += 2) {
       lines.push(`${req.rawHeaders[index]}: ${req.rawHeaders[index + 1]}`);
