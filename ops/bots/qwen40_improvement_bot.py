@@ -14,7 +14,7 @@ from urllib.parse import parse_qs, urlparse
 ROOT = Path(os.environ.get("RESONANCE_ROOT", "/opt/Resonance"))
 HOST = os.environ.get("QWEN40_BOT_HOST", "0.0.0.0")
 PORT = int(os.environ.get("QWEN40_BOT_PORT", "17892"))
-TOKEN = os.environ.get("QWEN40_BOT_TOKEN", "qwer1234")
+TOKEN = os.environ["QWEN40_BOT_TOKEN"]
 INTERVAL_SECONDS = int(os.environ.get("QWEN40_BOT_INTERVAL_SECONDS", "900"))
 SCRIPT = Path(os.environ.get("QWEN40_BOT_SCRIPT", str(ROOT / "ops/scripts/resonance-qwen40-improvement-loop.sh")))
 OUT_DIR = Path(os.environ.get("QWEN40_BOT_OUT_DIR", str(ROOT / "var/ai-runtime")))
@@ -108,7 +108,7 @@ def load_average_1m() -> float:
 
 
 def active_interactive_hermes_count() -> int:
-    output = shell(["bash", "-lc", "ps -eo args= | grep -F '/opt/util/ai/hermes-agent-v20260516/venv/bin/hermes' | grep -v grep | wc -l"], timeout=5)
+    output = shell(["bash", "-lc", "ps -eo args= | grep -F '/opt/Resonance/runtime/tools/ai/hermes-agent-v20260516/venv/bin/hermes' | grep -v grep | wc -l"], timeout=5)
     try:
         return int(output.strip() or "0")
     except ValueError:
