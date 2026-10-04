@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Authenticated P006 scenario JSON store and side-effect-free authz lookup."""
 
-import base64
+import psycopg2
 import hashlib
 import json
 import os
 import subprocess
 import sys
+import math
 
 
 NS = "carbonet-prod"
@@ -57,25 +58,16 @@ def credentials():
     global _CREDENTIALS
     if _CREDENTIALS is not None:
         return _CREDENTIALS
-    username = cmd([
-        "kubectl", "-n", NS, "get", "secret", "p006-runtime-secret",
-        "-o", "jsonpath={.data.DB_USERNAME}",
-    ])
-    password = cmd([
-        "kubectl", "-n", NS, "get", "secret", "p006-runtime-secret",
-        "-o", "jsonpath={.data.DB_PASSWORD}",
-    ])
-    _CREDENTIALS = base64.b64decode(username).decode(), base64.b64decode(password).decode()
+    _CREDENTIALS = os.environ['SPRING_DATASOURCE_USERNAME'], os.environ['SPRING_DATASOURCE_PASSWORD']
     return _CREDENTIALS
 
 
 def sql(query):
     username, password = credentials()
-    return cmd([
-        "kubectl", "-n", NS, "exec", "-i", "postgres-patroni-0", "--",
-        "env", f"PGPASSWORD={password}", "psql", "-Atq", "-h", "postgres-haproxy",
-        "-U", username, "-d", "woosu_digital_twin",
-    ], query)
+    with psycopg2.connect(host='127.0.0.1',port=35433,dbname='woosu_digital_twin',user=username,password=password,connect_timeout=5,options='-c statement_timeout=10000') as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            return '\n'.join(str(row[0]) for row in cursor.fetchall()) if cursor.description else ''
 
 
 def csv_set(value):
@@ -141,6 +133,18 @@ def scenario(mode):
     scene = sql("select scene_id from dt_scene order by created_at limit 1")
     if mode == "save":
         config = json.load(sys.stdin)
+        if not isinstance(config, dict) or not isinstance(config.get('processes'), list) or not 1 <= len(config['processes']) <= 100:
+            raise ValueError('공정은 1~100개여야 합니다.')
+        rate = config.get('inputPerHour')
+        if isinstance(rate, bool) or not isinstance(rate, (int,float)) or not math.isfinite(rate) or not 0 < rate <= 1000000:
+            raise ValueError('시간당 투입량은 0 초과 1000000 이하여야 합니다.')
+        for process in config['processes']:
+            if not isinstance(process,dict) or not isinstance(process.get('code'),str) or not process['code'].strip():
+                raise ValueError('공정 코드를 입력하세요.')
+            for key, maximum in [('dwellSeconds',86400),('defectRate',100)]:
+                value=process.get(key)
+                if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or not 0 <= value <= maximum:
+                    raise ValueError('공정 시간·불량률 범위를 확인하세요.')
         config["metrics"] = metrics(config)
         payload = json.dumps(config, ensure_ascii=False).replace("'", "''")
         name = str(config.get("scenarioName", "기본 생산 시나리오")).replace("'", "''")
