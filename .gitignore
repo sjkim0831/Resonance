@@ -112,3 +112,15 @@ ops/tools/
 /data/carbonet-app/react-app/assets/
 /runtime/build-candidates/
 /runtime/platform-data/postgresql-18000/
+
+# Host secrets/state and deployment automation runtime records.
+/runtime/host-system/storage/
+/runtime/host-system/mounts/
+/runtime/host-system/evidence/
+/runtime/platform-data/deploy/notification-dedupe/
+/runtime/platform-data/deploy/*.attempted
+/runtime/platform-data/deploy/*.notified
+/runtime/platform-data/deploy/*.lock
+/runtime/platform-data/deploy/*.cache
+/ops/runtime/native-db-endpoints.env
+/projects/P006/runtime/equipment-registry/data/
