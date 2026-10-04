@@ -85,7 +85,7 @@ public class EmissionProjectListV1Controller {
             if(to!=null){where.append(" AND e.period_start<=?");args.add(java.sql.Date.valueOf(to));}
             Long total=jdbc.queryForObject(BASE+"SELECT count(*) FROM enriched e"+where,Long.class,args.toArray());
             long count=total==null?0:total;
-            Map<String,Object> summary=jdbc.queryForMap(BASE+"""
+            Map<String,Object> summary=new LinkedHashMap<>(jdbc.queryForMap(BASE+"""
                 SELECT count(*) AS "projectCount",
                   count(*) FILTER (WHERE e.display_status='COMPLETED') AS "completedCount",
                   count(*) FILTER (WHERE e.calculation_state='CALCULATED') AS "calculatedCount",
@@ -105,7 +105,7 @@ public class EmissionProjectListV1Controller {
                   WHERE c.project_id=e.project_id AND c.approval_current=true
                   ORDER BY l.locked_at DESC,l.result_lock_id DESC LIMIT 1
                 ) a ON true
-                """+where,args.toArray());
+                """+where,args.toArray()));
             Map<String,Object> latestCalculationSummary=jdbc.queryForMap(BASE+"""
                 SELECT count(*) FILTER (WHERE e.calculation_state='CALCULATED'
                     AND e.latest_calculation_status IN ('CALCULATED','VERIFIED')
