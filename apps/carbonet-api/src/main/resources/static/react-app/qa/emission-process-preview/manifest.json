@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "processCode": "EMISSION_PROJECT",
+  "stepCount": 7,
+  "passed": 7,
+  "failed": 0,
+  "durationSeconds": 7.200000,
+  "sizeBytes": 68770,
+  "sha256": "01af639af061ca095dd7c83967d53afcb5b337672fdff1b32f0874294094bfe0",
+  "source": "PROFESSIONAL_DOMAIN_RELAY_PASS"
+}

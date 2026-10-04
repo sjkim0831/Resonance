@@ -1,0 +1,47 @@
+{
+  "processCode": "REQ_922B221066F1",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "REQ_922B221066F1_S001",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/generated/ccus-platform/req_922b221066f1/s001?step=req_922b221066f1_s001"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "REQ_922B221066F1_S002",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/generated/ccus-platform/req_922b221066f1/s002?step=req_922b221066f1_s002"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "REQ_922B221066F1_S003",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/ccus-platform/req_922b221066f1/s003?step=req_922b221066f1_s003"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "REQ_922B221066F1_S004",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/generated/ccus-platform/req_922b221066f1/s004?step=req_922b221066f1_s004"
+    },
+    {
+      "sequence": 5,
+      "stepCode": "REQ_922B221066F1_S005",
+      "actorCode": "PLATFORM_ADMIN",
+      "routePath": "/generated/ccus-platform/req_922b221066f1/s005?step=req_922b221066f1_s005"
+    },
+    {
+      "sequence": 6,
+      "stepCode": "REQ_922B221066F1_S006",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/generated/ccus-platform/req_922b221066f1/s006?step=req_922b221066f1_s006"
+    },
+    {
+      "sequence": 7,
+      "stepCode": "REQ_922B221066F1_S007",
+      "actorCode": "BUSINESS_USER",
+      "routePath": "/generated/ccus-platform/req_922b221066f1/s007?step=req_922b221066f1_s007"
+    }
+  ]
+}

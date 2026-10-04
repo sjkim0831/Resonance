@@ -1,0 +1,1 @@
+function n(e){return{menuCode:e.get("menuCode")||"",pageId:e.get("pageId")||"",menuTitle:e.get("menuTitle")||"",menuUrl:e.get("menuUrl")||""}}function u(e){return[...e].sort((r,t)=>r.sortOrder-t.sortOrder)}export{n as r,u as s};

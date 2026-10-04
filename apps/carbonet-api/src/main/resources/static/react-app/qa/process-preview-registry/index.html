@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>프로세스 미리보기 영상 등록 원장</title>
+  <style>
+    :root{--navy:#052b57;--blue:#246beb;--bg:#f4f6f8;--line:#d7dce5;--green:#087f5b;--amber:#9a6700}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#172b4d;font-family:Arial,"Noto Sans KR",sans-serif}.wrap{max-width:1440px;margin:auto;padding:28px}header{border-radius:20px;background:linear-gradient(135deg,var(--navy),#145493);padding:28px;color:white}h1{margin:6px 0 0;font-size:30px}.eyebrow{font-size:13px;font-weight:900;color:#b9ddff}.summary{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;margin-top:18px}.metric{border:1px solid rgba(255,255,255,.25);border-radius:14px;background:rgba(255,255,255,.1);padding:14px}.metric b{display:block;font-size:26px}.metric span{font-size:12px}.recorder-alert{display:flex;justify-content:space-between;gap:20px;align-items:center;margin:18px 0;padding:16px 18px;border:2px solid #ef4444;border-radius:14px;background:#fff1f2;color:#8a1220}.recorder-alert.ok{border-color:#89d6b6;background:#edfff7;color:#086b4c}.recorder-alert b,.recorder-alert span{display:block}.recorder-alert span{margin-top:5px;font-size:13px}.toolbar{display:flex;gap:10px;margin:20px 0}.toolbar input,.toolbar select{height:44px;border:1px solid var(--line);border-radius:10px;background:white;padding:0 14px;font-weight:700}.toolbar input{flex:1}.work-types{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:20px}.work-type{border:1px solid var(--line);border-radius:12px;background:white;padding:13px;text-align:left;cursor:pointer}.work-type strong,.work-type span{display:block}.work-type span{margin-top:6px;font-size:12px;color:#60708a}.panel{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:white}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #e8ebf0;padding:13px;text-align:left;font-size:13px}th{position:sticky;top:0;background:#eef4ff;color:var(--navy)}code{font-weight:800;color:var(--navy)}.badge{display:inline-flex;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900}.pass{background:#d9f7ea;color:var(--green)}.missing{background:#fff1cc;color:var(--amber)}.ready{background:#e8f1ff;color:#174ea6}.orphan,.stale{background:#ffe1e1;color:#a61b1b}.unknown{background:#eceff3;color:#4b5563}.reason{display:block;margin-top:7px;color:#60708a;font-size:11px;max-width:340px}a{color:var(--blue);font-weight:800}.empty{padding:32px;text-align:center;color:#60708a}.foot{margin-top:14px;font-size:12px;color:#60708a}@media(max-width:1100px){.summary{grid-template-columns:repeat(4,1fr)}}@media(max-width:900px){.summary,.work-types{grid-template-columns:repeat(2,1fr)}.wrap{padding:14px}.panel{overflow:auto}table{min-width:1000px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="eyebrow">QA · AUTHENTICATED RECORDING REGISTRY</div>
+      <h1>프로세스 미리보기 영상 등록 원장</h1>
+      <p>설계 원장의 모든 프로세스와 실제 계정 릴레이 녹화 증거를 자동 대조합니다. <a href="../business-e2e-dashboard/index.html" style="color:#fff">업무 E2E 검증 현황 열기 →</a></p>
+      <section class="summary" id="summary"></section>
+    </header>
+    <section class="recorder-alert ok" id="recorderAlert"><div><b>자동 재녹화 상태 확인 중</b><span>최근 실행 결과를 불러오고 있습니다.</span></div></section>
+    <section class="toolbar"><input id="query" placeholder="프로세스 코드·명칭 검색" /><select id="status"><option value="ALL">전체 상태</option><option value="PASS">영상 등록</option><option value="STALE">최신 설계와 불일치</option><option value="UNKNOWN">신선도 확인 필요</option><option value="UNREGISTERED">영상 미등록</option><option value="ORPHAN">설계 없음</option></select></section>
+    <section class="work-types" id="workTypes"></section>
+    <section class="panel"><table><thead><tr><th>업무 종류</th><th>프로세스</th><th>설계 절차</th><th>녹화 결과</th><th>증거</th></tr></thead><tbody id="rows"></tbody></table><div class="empty" id="empty" hidden>조건에 맞는 프로세스가 없습니다.</div></section>
+    <p class="foot" id="foot"></p>
+  </main>
+  <script>
+    let registry={entries:[]},coverage={},readiness={entries:[]},recorder={},selectedWorkType="ALL";
+    const el=id=>document.getElementById(id);
+    const metric=(value,label)=>`<div class="metric"><b>${value}</b><span>${label}</span></div>`;
+    function state(entry){if(entry.designStatus==="MISSING")return "ORPHAN";if(entry.status==="PASS"&&["STALE","UNKNOWN"].includes(entry.freshnessStatus))return entry.freshnessStatus;return entry.status}
+    function render(){
+      const q=el("query").value.trim().toLowerCase(),filter=el("status").value;
+      const items=registry.entries.filter(e=>(selectedWorkType==="ALL"||e.workTypeCode===selectedWorkType)&&(filter==="ALL"||state(e)===filter)&&(!q||`${e.processCode} ${e.processName||""}`.toLowerCase().includes(q)));
+      const readinessByCode=new Map(readiness.entries.map(e=>[e.processCode,e]));
+      el("rows").innerHTML=items.map(e=>{const s=state(e),r=readinessByCode.get(e.processCode),label=s==="PASS"?"최신 설계":s==="STALE"?"재녹화 필요":s==="UNKNOWN"?"신선도 확인 필요":s==="ORPHAN"?"설계 없음":r?.readiness==="EXECUTABLE_PENDING_ACCOUNT_MAPPING"?"실행 준비":"설계 전용",cls=s==="PASS"?"pass":s==="STALE"?"stale":s==="UNKNOWN"?"unknown":s==="ORPHAN"?"orphan":r?.readiness==="EXECUTABLE_PENDING_ACCOUNT_MAPPING"?"ready":"missing";const reason=s==="STALE"?`<small class="reason">촬영 ${e.recordedAt||"-"} · 설계 ${e.latestDesignApprovedAt||"-"}</small>`:s==="UNKNOWN"?`<small class="reason">녹화 manifest에 recordedDesignHash 등록 필요</small>`:s==="PASS"?"":`<small class="reason">${(r?.blockers||["READINESS_NOT_GENERATED"]).join(" · ")}</small>`;return `<tr><td>${e.workTypeCode||"-"}</td><td><code>${e.processCode}</code><br>${e.processName||""}</td><td>${e.designedStepCount||0}개</td><td><span class="badge ${cls}">${label}</span> ${e.status==="PASS"?`${e.passed||0}/${e.stepCount||0} PASS`:""}${reason}</td><td>${e.videoUrl?`<a href="${e.videoUrl}" target="_blank">영상 열기</a><br><small>영상 ${String(e.sha256||"").slice(0,12)}…</small><br><small>설계 ${String(e.designHash||"").slice(0,12)}…</small>`:"-"}</td></tr>`}).join("");
+      el("empty").hidden=items.length>0;el("foot").textContent=`표시 ${items.length}개 · 생성 ${coverage.generatedAt||"-"}`;
+    }
+    Promise.all([fetch("../process-preview-registry.json",{cache:"no-store"}).then(r=>r.json()),fetch("../process-preview-coverage.json",{cache:"no-store"}).then(r=>r.json()),fetch("../process-preview-readiness.json",{cache:"no-store"}).then(r=>r.json()),fetch("../process-preview-recorder-status.json",{cache:"no-store"}).then(r=>r.ok?r.json():({status:"UNKNOWN",alert:true,reason:"STATUS_NOT_FOUND"}))]).then(([r,c,ready,record])=>{
+      registry=r;coverage=c;readiness=ready;recorder=record;
+      const warning=Boolean(record.alert)||record.durationMs>=50000||record.consecutiveFailures>=3,box=el("recorderAlert");box.classList.toggle("ok",!warning);box.innerHTML=(warning?`<div><b>자동 재녹화 확인 필요 · ${record.status||"UNKNOWN"}</b><span>사유 ${record.reason||(record.failed||[]).join(", ")||"처리 시간 초과"} · 연속 실패 ${record.consecutiveFailures||0}회 · ${record.durationMs||0}ms</span></div><strong>QA 조치 필요</strong>`:`<div><b>자동 재녹화 정상 · ${record.status||"PASS"}</b><span>재녹화 필요 ${c.staleRecordingCount}개 · 연속 실패 ${record.consecutiveFailures||0}회 · 최근 ${record.durationMs||0}ms</span></div><strong>정상</strong>`)+`<a href="../process-preview-recorder-audit/index.html" style="color:inherit">감사 이력 열기</a>`;
+      el("summary").innerHTML=metric(c.designedProcessCount,"설계 프로세스")+metric(c.registeredProcessCount,"녹화 파일")+metric(c.freshRecordingCount,"최신 영상")+metric(c.staleRecordingCount,"재녹화 필요")+metric(c.unknownFreshnessCount,"확인 필요")+metric(`${c.coveragePercent}%`,"등록 커버리지")+metric(`${c.freshnessPercent}%`,"설계 신선도");
+      el("workTypes").innerHTML=`<button class="work-type" data-code="ALL"><strong>전체 업무</strong><span>${c.designedProcessCount}개</span></button>`+c.workTypes.map(w=>`<button class="work-type" data-code="${w.workTypeCode}"><strong>${w.workTypeCode}</strong><span>등록 ${w.registered} · 미등록 ${w.unregistered}</span></button>`).join("");
+      document.querySelectorAll(".work-type").forEach(b=>b.onclick=()=>{selectedWorkType=b.dataset.code;render()});render();
+    }).catch(error=>{el("rows").innerHTML=`<tr><td colspan="5">원장 조회 실패: ${error.message}</td></tr>`});
+    el("query").addEventListener("input",render);el("status").addEventListener("change",render);
+  </script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "processCode": "MENU_SCREEN_GOVERNANCE",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "MENU_SCREEN_GOVERNANCE_S1",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/menu-screen-governance/menu-screen-governance-s1?step=menu_screen_governance_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "MENU_SCREEN_GOVERNANCE_S2",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/menu-screen-governance/menu-screen-governance-s2?step=menu_screen_governance_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "MENU_SCREEN_GOVERNANCE_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/menu-screen-governance/menu-screen-governance-s3?step=menu_screen_governance_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "MENU_SCREEN_GOVERNANCE_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/menu-screen-governance/menu-screen-governance-s4?step=menu_screen_governance_s4"
+    }
+  ]
+}

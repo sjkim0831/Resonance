@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "recordingMode": "ORDERED_ACTUAL_EVIDENCE_REPLAY",
+  "liveInteractionRecording": false,
+  "scenarioCount": 8,
+  "processCount": 22,
+  "stepCount": 84,
+  "secondsPerStep": 2.4,
+  "durationSeconds": 200.333333,
+  "sha256": "22625ad436a08e38d1730a270551631c24599eb35269952b46024fdf5bde9d6f",
+  "video": "/opt/resonance-data/dev-evidence/member-84-step-ordered-replay/20260901T031316Z/member-84-step-ordered-actual-evidence-replay.mp4",
+  "source": "/opt/resonance-data/dev-evidence/member-eight-scenario-continuous/latest/member-eight-scenario-continuous-qa.mp4"
+}

@@ -1,0 +1,29 @@
+{
+  "processCode": "REDUCTION_TARGET_PLANNING",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "REDUCTION_TARGET_PLANNING_S1",
+      "actorCode": "REDUCTION_MANAGER",
+      "routePath": "/generated/reduction-target-planning/reduction-target-planning-s1?step=reduction_target_planning_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "REDUCTION_TARGET_PLANNING_S2",
+      "actorCode": "REDUCTION_MANAGER",
+      "routePath": "/generated/reduction-target-planning/reduction-target-planning-s2?step=reduction_target_planning_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "REDUCTION_TARGET_PLANNING_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/reduction-target-planning/reduction-target-planning-s3?step=reduction_target_planning_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "REDUCTION_TARGET_PLANNING_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/reduction-target-planning/reduction-target-planning-s4?step=reduction_target_planning_s4"
+    }
+  ]
+}

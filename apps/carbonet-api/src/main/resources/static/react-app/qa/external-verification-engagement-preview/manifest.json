@@ -1,0 +1,29 @@
+{
+  "processCode": "EXTERNAL_VERIFICATION_ENGAGEMENT",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "EXTERNAL_VERIFICATION_ENGAGEMENT_S1",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/generated/external-verification-engagement/external-verification-engagement-s1?step=external_verification_engagement_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "EXTERNAL_VERIFICATION_ENGAGEMENT_S2",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/generated/external-verification-engagement/external-verification-engagement-s2?step=external_verification_engagement_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "EXTERNAL_VERIFICATION_ENGAGEMENT_S3",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/external-verification-engagement/external-verification-engagement-s3?step=external_verification_engagement_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "EXTERNAL_VERIFICATION_ENGAGEMENT_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/external-verification-engagement/external-verification-engagement-s4?step=external_verification_engagement_s4"
+    }
+  ]
+}

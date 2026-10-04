@@ -1,0 +1,29 @@
+{
+  "processCode": "CONTENT_OPERATION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "CONTENT_OPERATION_01_PLAN",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/generated/content-operation/content-operation-01-plan?process=CONTENT_OPERATION&step=CONTENT_OPERATION_01_PLAN&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "CONTENT_OPERATION_02_WORK",
+      "actorCode": "SITE_DATA_OWNER",
+      "routePath": "/generated/content-operation/content-operation-02-work?process=CONTENT_OPERATION&step=CONTENT_OPERATION_02_WORK&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DCONTENT_OPERATION%26step%3DCONTENT_OPERATION_02_WORK&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "CONTENT_OPERATION_03_VERIFY",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/content-operation/content-operation-03-verify?process=CONTENT_OPERATION&step=CONTENT_OPERATION_03_VERIFY&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DCONTENT_OPERATION%26step%3DCONTENT_OPERATION_03_VERIFY&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "CONTENT_OPERATION_04_APPROVE",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/content-operation/content-operation-04-approve?process=CONTENT_OPERATION&step=CONTENT_OPERATION_04_APPROVE&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DCONTENT_OPERATION%26step%3DCONTENT_OPERATION_04_APPROVE&commandAudience=ADMIN"
+    }
+  ]
+}

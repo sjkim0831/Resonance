@@ -1,0 +1,1 @@
+var e=[];function t(){return e}function n(){return e.filter(e=>e.componentType===`button`)}export{t as n,n as t};

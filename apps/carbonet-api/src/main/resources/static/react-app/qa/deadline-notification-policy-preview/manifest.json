@@ -1,0 +1,29 @@
+{
+  "processCode": "DEADLINE_NOTIFICATION_POLICY",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "DEADLINE_NOTIFICATION_POLICY_S1",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/deadline-notification-policy/deadline-notification-policy-s1?step=deadline_notification_policy_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "DEADLINE_NOTIFICATION_POLICY_S2",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/deadline-notification-policy/deadline-notification-policy-s2?step=deadline_notification_policy_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "DEADLINE_NOTIFICATION_POLICY_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/deadline-notification-policy/deadline-notification-policy-s3?step=deadline_notification_policy_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "DEADLINE_NOTIFICATION_POLICY_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/deadline-notification-policy/deadline-notification-policy-s4?step=deadline_notification_policy_s4"
+    }
+  ]
+}

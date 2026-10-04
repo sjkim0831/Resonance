@@ -1,0 +1,29 @@
+{
+  "processCode": "REDUCTION_EXECUTION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "REDUCTION_EXECUTION_01_PLAN",
+      "actorCode": "REDUCTION_MANAGER",
+      "routePath": "/generated/reduction-execution/reduction-execution-01-plan?process=REDUCTION_EXECUTION&step=REDUCTION_EXECUTION_01_PLAN&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace&commandAudience=ADMIN&step=reduction_execution_01_plan"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "REDUCTION_EXECUTION_02_WORK",
+      "actorCode": "REDUCTION_MANAGER",
+      "routePath": "/generated/reduction-execution/reduction-execution-02-work?process=REDUCTION_EXECUTION&step=REDUCTION_EXECUTION_02_WORK&commandRoute=%2Femission%2Fsimulate&commandAudience=USER&step=reduction_execution_02_work"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "REDUCTION_EXECUTION_03_VERIFY",
+      "actorCode": "REDUCTION_MANAGER",
+      "routePath": "/generated/reduction-execution/reduction-execution-03-verify?process=REDUCTION_EXECUTION&step=REDUCTION_EXECUTION_03_VERIFY&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DREDUCTION_EXECUTION%26step%3DREDUCTION_EXECUTION_03_VERIFY&commandAudience=ADMIN&step=reduction_execution_03_verify"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "REDUCTION_EXECUTION_04_APPROVE",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/reduction-execution/reduction-execution-04-approve?process=REDUCTION_EXECUTION&step=REDUCTION_EXECUTION_04_APPROVE&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DREDUCTION_EXECUTION%26step%3DREDUCTION_EXECUTION_04_APPROVE&commandAudience=ADMIN&step=reduction_execution_04_approve"
+    }
+  ]
+}

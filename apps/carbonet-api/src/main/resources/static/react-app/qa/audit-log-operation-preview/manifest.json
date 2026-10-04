@@ -1,0 +1,29 @@
+{
+  "processCode": "AUDIT_LOG_OPERATION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "AUDIT_LOG_OPERATION_S1",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/audit-log-operation/audit-log-operation-s1?step=audit_log_operation_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "AUDIT_LOG_OPERATION_S2",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/audit-log-operation/audit-log-operation-s2?step=audit_log_operation_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "AUDIT_LOG_OPERATION_S3",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/audit-log-operation/audit-log-operation-s3?step=audit_log_operation_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "AUDIT_LOG_OPERATION_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/audit-log-operation/audit-log-operation-s4?step=audit_log_operation_s4"
+    }
+  ]
+}

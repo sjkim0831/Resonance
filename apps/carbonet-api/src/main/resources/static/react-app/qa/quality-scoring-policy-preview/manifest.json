@@ -1,0 +1,29 @@
+{
+  "processCode": "QUALITY_SCORING_POLICY",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "QUALITY_SCORING_POLICY_S1",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/quality-scoring-policy/quality-scoring-policy-s1?step=quality_scoring_policy_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "QUALITY_SCORING_POLICY_S2",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/quality-scoring-policy/quality-scoring-policy-s2?step=quality_scoring_policy_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "QUALITY_SCORING_POLICY_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/quality-scoring-policy/quality-scoring-policy-s3?step=quality_scoring_policy_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "QUALITY_SCORING_POLICY_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/quality-scoring-policy/quality-scoring-policy-s4?step=quality_scoring_policy_s4"
+    }
+  ]
+}

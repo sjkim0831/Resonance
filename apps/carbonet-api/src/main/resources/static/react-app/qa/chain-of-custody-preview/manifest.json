@@ -1,0 +1,29 @@
+{
+  "processCode": "CHAIN_OF_CUSTODY",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "CHAIN_OF_CUSTODY_S1",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "routePath": "/generated/chain-of-custody/chain-of-custody-s1?step=chain_of_custody_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "CHAIN_OF_CUSTODY_S2",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "routePath": "/generated/chain-of-custody/chain-of-custody-s2?step=chain_of_custody_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "CHAIN_OF_CUSTODY_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/chain-of-custody/chain-of-custody-s3?step=chain_of_custody_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "CHAIN_OF_CUSTODY_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/chain-of-custody/chain-of-custody-s4?step=chain_of_custody_s4"
+    }
+  ]
+}

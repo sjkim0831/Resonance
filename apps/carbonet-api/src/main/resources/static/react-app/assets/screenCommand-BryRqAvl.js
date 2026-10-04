@@ -1,0 +1,1 @@
+function i(e,n){const t=(e||[]).map(r=>r.trim()).filter(Boolean);return t.length>0?t:n.trim()?[n.trim()]:[]}function o(e,n){return i(e,n)}function a(e,n,t=" -> "){const r=i(e,n);return r.length>0?r.join(t):"-"}export{o as a,a as g};

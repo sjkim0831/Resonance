@@ -1,0 +1,35 @@
+{
+  "version": "profile-settings-four-step-v1",
+  "processCode": "PROFILE_MANAGEMENT",
+  "accountId": "entqa01",
+  "recordedAt": "2026-09-03T01:02:14.363Z",
+  "steps": [
+    {
+      "step": 1,
+      "action": "PROFILE_SAVE",
+      "output": "회원 정보를 저장했습니다."
+    },
+    {
+      "step": 2,
+      "action": "EMAIL_PHONE_VERIFY_SAVE",
+      "output": "인증 후 연락처 저장 완료"
+    },
+    {
+      "step": 3,
+      "action": "MARKETING_TOGGLE_SAVE_RESTORE",
+      "output": "저장 및 원상복구 완료"
+    },
+    {
+      "step": 4,
+      "action": "MFA_VERIFY_RESTORE_PASSWORD_SAVE",
+      "output": "MFA 상태 복구 및 비밀번호 저장 완료"
+    }
+  ],
+  "restored": {
+    "password": true,
+    "mfa": true,
+    "marketing": true
+  },
+  "video": "profile-settings-four-step-preview.mp4",
+  "sha256": "e430a527b2e15c777958ca6251c2bcff8db6dcfb561d0463d723fcca3358f58f"
+}

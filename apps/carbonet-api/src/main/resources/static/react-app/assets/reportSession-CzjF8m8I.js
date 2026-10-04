@@ -1,0 +1,1 @@
+const e="carbonet:emission-survey-report",n="OUTPUT_PRODUCTS";function t(s){try{return window.sessionStorage.setItem(e,JSON.stringify(s)),!0}catch(r){return console.warn("[emission-survey-report:session-persistence]",r),!1}}function o(){const s=window.sessionStorage.getItem(e)||"";if(!s)return null;try{return JSON.parse(s)}catch{return null}}export{n as E,o as l,t as s};

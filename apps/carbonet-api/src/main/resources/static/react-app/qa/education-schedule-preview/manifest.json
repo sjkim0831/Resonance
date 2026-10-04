@@ -1,0 +1,29 @@
+{
+  "processCode": "EDUCATION_SCHEDULE",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "EDUCATION_SCHEDULE_S1",
+      "actorCode": "EDUCATION_MANAGER",
+      "routePath": "/generated/education-schedule/education-schedule-s1?step=education_schedule_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "EDUCATION_SCHEDULE_S2",
+      "actorCode": "EDUCATION_MANAGER",
+      "routePath": "/generated/education-schedule/education-schedule-s2?step=education_schedule_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "EDUCATION_SCHEDULE_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/education-schedule/education-schedule-s3?step=education_schedule_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "EDUCATION_SCHEDULE_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/education-schedule/education-schedule-s4?step=education_schedule_s4"
+    }
+  ]
+}

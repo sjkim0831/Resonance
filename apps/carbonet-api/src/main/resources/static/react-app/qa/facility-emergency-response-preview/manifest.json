@@ -1,0 +1,23 @@
+{
+  "processCode": "FACILITY_EMERGENCY_RESPONSE",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "FER_DECLARE",
+      "actorCode": "FACILITY_OPERATOR",
+      "routePath": "/ccus/facility/facility-emergency-response?step=fer_declare"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "FER_CONTROL",
+      "actorCode": "HSE_MANAGER",
+      "routePath": "/ccus/facility/facility-emergency-response?step=fer_control"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "FER_RECOVER",
+      "actorCode": "HSE_MANAGER",
+      "routePath": "/ccus/facility/facility-emergency-response?step=fer_recover"
+    }
+  ]
+}

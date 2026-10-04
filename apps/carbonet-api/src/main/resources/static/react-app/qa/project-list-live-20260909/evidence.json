@@ -1,0 +1,16 @@
+{
+  "recordedAt": "2026-09-09T07:00:23.203Z",
+  "actor": "webmaster",
+  "projectId": "PRJ-2025-018",
+  "checks": [
+    "Authenticated project list",
+    "Project detail same ID",
+    "10 / 2 pagination",
+    "Status filter",
+    "Selected task and project context"
+  ],
+  "jsErrors": [],
+  "businessWrites": 0,
+  "scope": "목록 → 상세 → 페이징·상태 필터 → 업무 선택·전달 URL 확인. 도착 화면 입력·저장·승인은 미검증.",
+  "sha256": "bcfad9ac5f091795d7b51015b4168ccb922cf710fbd7d2b14a6a0e261ce55ffc"
+}

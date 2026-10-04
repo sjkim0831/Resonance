@@ -1,0 +1,29 @@
+{
+  "processCode": "DATA_INTEGRATION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "DATA_INTEGRATION_01_PLAN",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "routePath": "/generated/data-integration/data-integration-01-plan?process=DATA_INTEGRATION&step=DATA_INTEGRATION_01_PLAN&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DDATA_INTEGRATION%26step%3DDATA_INTEGRATION_01_PLAN&commandAudience=ADMIN&step=data_integration_01_plan"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "DATA_INTEGRATION_02_WORK",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "routePath": "/generated/data-integration/data-integration-02-work?process=DATA_INTEGRATION&step=DATA_INTEGRATION_02_WORK&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DDATA_INTEGRATION%26step%3DDATA_INTEGRATION_02_WORK&commandAudience=ADMIN&step=data_integration_02_work"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "DATA_INTEGRATION_03_VERIFY",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "routePath": "/generated/data-integration/data-integration-03-verify?process=DATA_INTEGRATION&step=DATA_INTEGRATION_03_VERIFY&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DDATA_INTEGRATION%26step%3DDATA_INTEGRATION_03_VERIFY&commandAudience=ADMIN&step=data_integration_03_verify"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "DATA_INTEGRATION_04_APPROVE",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/data-integration/data-integration-04-approve?process=DATA_INTEGRATION&step=DATA_INTEGRATION_04_APPROVE&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DDATA_INTEGRATION%26step%3DDATA_INTEGRATION_04_APPROVE&commandAudience=ADMIN&step=data_integration_04_approve"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "processCode": "CUSTOMER_WORK_COORDINATION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "CUSTOMER_WORK_DISCOVER",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/emission/my-tasks?step=customer_work_discover"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "CUSTOMER_WORK_PRIORITIZE",
+      "actorCode": "SITE_DATA_OWNER",
+      "routePath": "/emission/activity-data?step=customer_work_prioritize"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "CUSTOMER_WORK_OPEN",
+      "actorCode": "CALCULATOR",
+      "routePath": "/emission/calculation?step=customer_work_open"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "CUSTOMER_WORK_CONTINUE",
+      "actorCode": "VERIFIER",
+      "routePath": "/emission/validate?step=customer_work_continue"
+    },
+    {
+      "sequence": 5,
+      "stepCode": "CUSTOMER_WORK_APPROVE",
+      "actorCode": "APPROVER",
+      "routePath": "/emission/validate?step=customer_work_approve"
+    },
+    {
+      "sequence": 6,
+      "stepCode": "CUSTOMER_WORK_REPORT",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/emission/report_submit?step=customer_work_report"
+    },
+    {
+      "sequence": 7,
+      "stepCode": "CUSTOMER_WORK_PUBLIC_VERIFY",
+      "actorCode": "AUDITOR",
+      "routePath": "/home/certificate-verify?step=customer_work_public_verify"
+    }
+  ]
+}

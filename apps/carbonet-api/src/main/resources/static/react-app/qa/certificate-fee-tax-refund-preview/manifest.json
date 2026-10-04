@@ -1,0 +1,23 @@
+{
+  "processCode": "CERTIFICATE_FEE_TAX_REFUND",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "CFTR_BILL",
+      "actorCode": "SETTLEMENT_OPERATOR",
+      "routePath": "/work/certificate-fee-tax-refund?step=cftr_bill"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "CFTR_SETTLE",
+      "actorCode": "SETTLEMENT_OPERATOR",
+      "routePath": "/work/certificate-fee-tax-refund?step=cftr_settle"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "CFTR_REFUND",
+      "actorCode": "SETTLEMENT_OPERATOR",
+      "routePath": "/work/certificate-fee-tax-refund?step=cftr_refund"
+    }
+  ]
+}

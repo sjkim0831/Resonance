@@ -1,0 +1,29 @@
+{
+  "processCode": "COURSE_MANAGEMENT",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "COURSE_MANAGEMENT_S1",
+      "actorCode": "EDUCATION_MANAGER",
+      "routePath": "/generated/course-management/course-management-s1?step=course_management_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "COURSE_MANAGEMENT_S2",
+      "actorCode": "EDUCATION_MANAGER",
+      "routePath": "/generated/course-management/course-management-s2?step=course_management_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "COURSE_MANAGEMENT_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/course-management/course-management-s3?step=course_management_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "COURSE_MANAGEMENT_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/course-management/course-management-s4?step=course_management_s4"
+    }
+  ]
+}

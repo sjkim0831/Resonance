@@ -1,0 +1,29 @@
+{
+  "processCode": "BACKGROUND_DB_VERSION_IMPACT",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "BACKGROUND_DB_VERSION_IMPACT_S1",
+      "actorCode": "LCA_PRACTITIONER",
+      "routePath": "/generated/background-db-version-impact/background-db-version-impact-s1?step=background_db_version_impact_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "BACKGROUND_DB_VERSION_IMPACT_S2",
+      "actorCode": "LCA_PRACTITIONER",
+      "routePath": "/generated/background-db-version-impact/background-db-version-impact-s2?step=background_db_version_impact_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "BACKGROUND_DB_VERSION_IMPACT_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/background-db-version-impact/background-db-version-impact-s3?step=background_db_version_impact_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "BACKGROUND_DB_VERSION_IMPACT_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/background-db-version-impact/background-db-version-impact-s4?step=background_db_version_impact_s4"
+    }
+  ]
+}

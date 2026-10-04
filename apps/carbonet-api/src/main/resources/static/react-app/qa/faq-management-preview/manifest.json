@@ -1,0 +1,29 @@
+{
+  "processCode": "FAQ_MANAGEMENT",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "FAQ_MANAGEMENT_S1",
+      "actorCode": "CONTENT_MANAGER",
+      "routePath": "/generated/faq-management/faq-management-s1?step=faq_management_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "FAQ_MANAGEMENT_S2",
+      "actorCode": "CONTENT_MANAGER",
+      "routePath": "/generated/faq-management/faq-management-s2?step=faq_management_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "FAQ_MANAGEMENT_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/faq-management/faq-management-s3?step=faq_management_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "FAQ_MANAGEMENT_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/faq-management/faq-management-s4?step=faq_management_s4"
+    }
+  ]
+}

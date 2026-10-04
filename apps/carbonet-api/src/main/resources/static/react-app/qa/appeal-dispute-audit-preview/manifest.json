@@ -1,0 +1,29 @@
+{
+  "processCode": "APPEAL_DISPUTE_AUDIT",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "APPEAL_DISPUTE_AUDIT_S1",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/appeal-dispute-audit/appeal-dispute-audit-s1?step=appeal_dispute_audit_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "APPEAL_DISPUTE_AUDIT_S2",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/appeal-dispute-audit/appeal-dispute-audit-s2?step=appeal_dispute_audit_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "APPEAL_DISPUTE_AUDIT_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/appeal-dispute-audit/appeal-dispute-audit-s3?step=appeal_dispute_audit_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "APPEAL_DISPUTE_AUDIT_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/appeal-dispute-audit/appeal-dispute-audit-s4?step=appeal_dispute_audit_s4"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "processCode": "MONITORING_ANALYSIS",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "MONITORING_SCOPE",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/generated/monitoring-analysis/monitoring-scope?process=MONITORING_ANALYSIS&step=MONITORING_SCOPE&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace&commandAudience=ADMIN&step=monitoring_scope"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "MONITORING_REVIEW",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/monitoring-analysis/monitoring-review?process=MONITORING_ANALYSIS&step=MONITORING_REVIEW&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DMONITORING_ANALYSIS%26step%3DMONITORING_REVIEW&commandAudience=ADMIN&step=monitoring_review"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "MONITORING_EXPORT",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/generated/monitoring-analysis/monitoring-export?process=MONITORING_ANALYSIS&step=MONITORING_EXPORT&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DMONITORING_ANALYSIS%26step%3DMONITORING_EXPORT&commandAudience=ADMIN&step=monitoring_export"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "MONITORING_SHARE",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/monitoring-analysis/monitoring-share?process=MONITORING_ANALYSIS&step=MONITORING_SHARE&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DMONITORING_ANALYSIS%26step%3DMONITORING_SHARE&commandAudience=ADMIN&step=monitoring_share"
+    }
+  ]
+}

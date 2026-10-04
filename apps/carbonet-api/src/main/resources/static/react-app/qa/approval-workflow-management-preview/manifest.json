@@ -1,0 +1,29 @@
+{
+  "processCode": "APPROVAL_WORKFLOW_MANAGEMENT",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "APPROVAL_WORKFLOW_MANAGEMENT_S1",
+      "actorCode": "AUTHORITY_ADMIN",
+      "routePath": "/generated/approval-workflow-management/approval-workflow-management-s1?step=approval_workflow_management_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "APPROVAL_WORKFLOW_MANAGEMENT_S2",
+      "actorCode": "AUTHORITY_ADMIN",
+      "routePath": "/generated/approval-workflow-management/approval-workflow-management-s2?step=approval_workflow_management_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "APPROVAL_WORKFLOW_MANAGEMENT_S3",
+      "actorCode": "AUTHORITY_ADMIN",
+      "routePath": "/generated/approval-workflow-management/approval-workflow-management-s3?step=approval_workflow_management_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "APPROVAL_WORKFLOW_MANAGEMENT_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/approval-workflow-management/approval-workflow-management-s4?step=approval_workflow_management_s4"
+    }
+  ]
+}

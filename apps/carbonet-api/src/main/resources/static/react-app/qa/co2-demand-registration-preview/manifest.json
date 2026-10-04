@@ -1,0 +1,29 @@
+{
+  "processCode": "CO2_DEMAND_REGISTRATION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "CO2_DEMAND_REGISTRATION_S1",
+      "actorCode": "TRADE_OPERATOR",
+      "routePath": "/generated/co2-demand-registration/co2-demand-registration-s1?step=co2_demand_registration_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "CO2_DEMAND_REGISTRATION_S2",
+      "actorCode": "TRADE_OPERATOR",
+      "routePath": "/generated/co2-demand-registration/co2-demand-registration-s2?step=co2_demand_registration_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "CO2_DEMAND_REGISTRATION_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/co2-demand-registration/co2-demand-registration-s3?step=co2_demand_registration_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "CO2_DEMAND_REGISTRATION_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/co2-demand-registration/co2-demand-registration-s4?step=co2_demand_registration_s4"
+    }
+  ]
+}

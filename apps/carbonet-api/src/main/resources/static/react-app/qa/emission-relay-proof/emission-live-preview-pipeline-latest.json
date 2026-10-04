@@ -1,0 +1,46 @@
+{
+  "status": "PASS",
+  "version": "emission-live-preview-pipeline-v1",
+  "projectCleanupExpected": true,
+  "stages": [
+    {
+      "stage": "PREPARE",
+      "status": "PASS",
+      "durationMs": 2859
+    },
+    {
+      "stage": "RECORD_22_UI_STEPS",
+      "status": "PASS",
+      "durationMs": 112007
+    },
+    {
+      "stage": "MERGE_MP4",
+      "status": "PASS",
+      "durationMs": 1559
+    },
+    {
+      "stage": "REGISTER_PREVIEW",
+      "status": "PASS",
+      "durationMs": 1119
+    },
+    {
+      "stage": "GENERATE_REGISTRY",
+      "status": "PASS",
+      "durationMs": 617
+    },
+    {
+      "stage": "AUDIT_REGISTRY",
+      "status": "PASS",
+      "durationMs": 360
+    },
+    {
+      "stage": "VERIFY_POPUP_UI",
+      "status": "PASS",
+      "durationMs": 4432
+    }
+  ],
+  "durationMs": 122959,
+  "videoUrl": "/qa/emission-relay-proof/emission-live-22-step-ui-relay.mp4",
+  "registryUrl": "/qa/process-preview-registry.json",
+  "failure": null
+}

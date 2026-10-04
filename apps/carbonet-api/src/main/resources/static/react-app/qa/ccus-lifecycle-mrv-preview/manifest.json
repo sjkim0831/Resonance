@@ -1,0 +1,29 @@
+{
+  "processCode": "CCUS_LIFECYCLE_MRV",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "CCUS_LIFECYCLE_MRV_S1",
+      "actorCode": "CALCULATOR",
+      "routePath": "/generated/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s1?step=ccus_lifecycle_mrv_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "CCUS_LIFECYCLE_MRV_S2",
+      "actorCode": "CALCULATOR",
+      "routePath": "/generated/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s2?step=ccus_lifecycle_mrv_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "CCUS_LIFECYCLE_MRV_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s3?step=ccus_lifecycle_mrv_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "CCUS_LIFECYCLE_MRV_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4?step=ccus_lifecycle_mrv_s4"
+    }
+  ]
+}

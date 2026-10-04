@@ -1,0 +1,23 @@
+{
+  "processCode": "SCHEDULED_STATISTICS_REPORTING",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "SSR_DEFINE",
+      "actorCode": "DATA_ANALYST",
+      "routePath": "/generated/scheduled-statistics-reporting/ssr-define?process=SCHEDULED_STATISTICS_REPORTING&step=SSR_DEFINE&commandRoute=%2Fwork%2Fscheduled-statistics-reporting%3Fstep%3Dssr_define&commandAudience=USER&step=ssr_define"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "SSR_GENERATE",
+      "actorCode": "DATA_ANALYST",
+      "routePath": "/generated/scheduled-statistics-reporting/ssr-generate?process=SCHEDULED_STATISTICS_REPORTING&step=SSR_GENERATE&commandRoute=%2Fwork%2Fscheduled-statistics-reporting%3Fstep%3Dssr_generate&commandAudience=USER&step=ssr_generate"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "SSR_PUBLISH",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/scheduled-statistics-reporting/ssr-publish?process=SCHEDULED_STATISTICS_REPORTING&step=SSR_PUBLISH&commandRoute=%2Fwork%2Fscheduled-statistics-reporting%3Fstep%3Dssr_publish&commandAudience=USER&step=ssr_publish"
+    }
+  ]
+}

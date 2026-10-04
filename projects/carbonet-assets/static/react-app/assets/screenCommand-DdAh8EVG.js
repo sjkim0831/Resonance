@@ -1,0 +1,1 @@
+function e(e,t){let n=(e||[]).map(e=>e.trim()).filter(Boolean);return n.length>0?n:t.trim()?[t.trim()]:[]}function t(t,n){return e(t,n)}function n(t,n,r=` -> `){let i=e(t,n);return i.length>0?i.join(r):`-`}export{t as n,n as t};

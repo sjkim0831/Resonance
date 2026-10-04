@@ -1,0 +1,1 @@
+import{s as e}from"./rolldown-runtime-B6ubh40S.js";import{t}from"./vendor-react-DAit2GPX.js";var n=e(t(),1);function r(e){return e.allowed?(0,n.jsx)(n.Fragment,{children:e.children}):(0,n.jsx)(n.Fragment,{children:e.fallback??null})}export{r as t};

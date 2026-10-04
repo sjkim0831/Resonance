@@ -1,0 +1,1 @@
+import{j as t}from"./vendor-react-xEBTq_wZ.js";function m({children:o,className:r="",screenId:e,...n}){return t.jsx("div",{...n,className:`flex min-h-screen flex-col bg-[var(--kr-gov-bg-gray)] text-[var(--kr-gov-text-primary)] ${r}`,"data-common-component":"COMMON_JOIN_PROCESS_SHELL","data-join-screen":e,children:o})}export{m as C};

@@ -1,0 +1,29 @@
+{
+  "processCode": "DATA_QUALITY_MONITORING",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "DATA_QUALITY_MONITORING_S1",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/data-quality-monitoring/data-quality-monitoring-s1?step=data_quality_monitoring_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "DATA_QUALITY_MONITORING_S2",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/data-quality-monitoring/data-quality-monitoring-s2?step=data_quality_monitoring_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "DATA_QUALITY_MONITORING_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/data-quality-monitoring/data-quality-monitoring-s3?step=data_quality_monitoring_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "DATA_QUALITY_MONITORING_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/data-quality-monitoring/data-quality-monitoring-s4?step=data_quality_monitoring_s4"
+    }
+  ]
+}

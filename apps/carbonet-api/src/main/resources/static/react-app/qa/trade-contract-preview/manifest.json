@@ -1,0 +1,29 @@
+{
+  "processCode": "TRADE_CONTRACT",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "TRADE_CONTRACT_S1",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/trade-contract/trade-contract-s1?step=trade_contract_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "TRADE_CONTRACT_S2",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/trade-contract/trade-contract-s2?step=trade_contract_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "TRADE_CONTRACT_S3",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/trade-contract/trade-contract-s3?step=trade_contract_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "TRADE_CONTRACT_S4",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/trade-contract/trade-contract-s4?step=trade_contract_s4"
+    }
+  ]
+}

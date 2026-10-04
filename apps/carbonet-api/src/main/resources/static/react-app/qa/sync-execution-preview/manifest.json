@@ -1,0 +1,29 @@
+{
+  "processCode": "SYNC_EXECUTION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "SYNC_EXECUTION_S1",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "routePath": "/generated/sync-execution/sync-execution-s1?step=sync_execution_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "SYNC_EXECUTION_S2",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "routePath": "/generated/sync-execution/sync-execution-s2?step=sync_execution_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "SYNC_EXECUTION_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/sync-execution/sync-execution-s3?step=sync_execution_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "SYNC_EXECUTION_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/sync-execution/sync-execution-s4?step=sync_execution_s4"
+    }
+  ]
+}

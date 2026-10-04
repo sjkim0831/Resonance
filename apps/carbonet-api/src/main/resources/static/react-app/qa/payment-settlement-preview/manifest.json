@@ -1,0 +1,29 @@
+{
+  "processCode": "PAYMENT_SETTLEMENT",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "PAYMENT_SETTLEMENT_01_PLAN",
+      "actorCode": "COMPANY_MANAGER",
+      "routePath": "/generated/payment-settlement/payment-settlement-01-plan?process=PAYMENT_SETTLEMENT&step=PAYMENT_SETTLEMENT_01_PLAN&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "PAYMENT_SETTLEMENT_02_WORK",
+      "actorCode": "SITE_DATA_OWNER",
+      "routePath": "/generated/payment-settlement/payment-settlement-02-work?process=PAYMENT_SETTLEMENT&step=PAYMENT_SETTLEMENT_02_WORK&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DPAYMENT_SETTLEMENT%26step%3DPAYMENT_SETTLEMENT_02_WORK&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "PAYMENT_SETTLEMENT_03_VERIFY",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/payment-settlement/payment-settlement-03-verify?process=PAYMENT_SETTLEMENT&step=PAYMENT_SETTLEMENT_03_VERIFY&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DPAYMENT_SETTLEMENT%26step%3DPAYMENT_SETTLEMENT_03_VERIFY&commandAudience=ADMIN"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "PAYMENT_SETTLEMENT_04_APPROVE",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/payment-settlement/payment-settlement-04-approve?process=PAYMENT_SETTLEMENT&step=PAYMENT_SETTLEMENT_04_APPROVE&commandRoute=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DPAYMENT_SETTLEMENT%26step%3DPAYMENT_SETTLEMENT_04_APPROVE&commandAudience=ADMIN"
+    }
+  ]
+}

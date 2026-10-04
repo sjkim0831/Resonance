@@ -1,0 +1,23 @@
+{
+  "processCode": "CO2_LOT_TAG_MANAGEMENT",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "CLT_CREATE",
+      "actorCode": "TRADE_OPERATOR",
+      "routePath": "/work/co2-lot-tag-management?step=clt_create"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "CLT_RECONCILE",
+      "actorCode": "TRADE_OPERATOR",
+      "routePath": "/work/co2-lot-tag-management?step=clt_reconcile"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "CLT_APPROVE",
+      "actorCode": "AUDITOR",
+      "routePath": "/work/co2-lot-tag-management?step=clt_approve"
+    }
+  ]
+}

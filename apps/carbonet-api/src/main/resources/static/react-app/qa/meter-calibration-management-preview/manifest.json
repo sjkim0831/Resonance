@@ -1,0 +1,23 @@
+{
+  "processCode": "METER_CALIBRATION_MANAGEMENT",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "MCM_REGISTER",
+      "actorCode": "INSTRUMENT_ENGINEER",
+      "routePath": "/ccus/facility/meter-calibration-management?step=mcm_register"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "MCM_CALIBRATE",
+      "actorCode": "INSTRUMENT_ENGINEER",
+      "routePath": "/ccus/facility/meter-calibration-management?step=mcm_calibrate"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "MCM_APPROVE",
+      "actorCode": "HSE_MANAGER",
+      "routePath": "/ccus/facility/meter-calibration-management?step=mcm_approve"
+    }
+  ]
+}

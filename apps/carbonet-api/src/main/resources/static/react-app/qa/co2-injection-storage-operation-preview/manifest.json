@@ -1,0 +1,23 @@
+{
+  "processCode": "CO2_INJECTION_STORAGE_OPERATION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "CISO_PLAN",
+      "actorCode": "STORAGE_SITE_MANAGER",
+      "routePath": "/ccus/facility/co2-injection-storage-operation?step=ciso_plan"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "CISO_OPERATE",
+      "actorCode": "STORAGE_SITE_MANAGER",
+      "routePath": "/ccus/facility/co2-injection-storage-operation?step=ciso_operate"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "CISO_REVIEW",
+      "actorCode": "HSE_MANAGER",
+      "routePath": "/ccus/facility/co2-injection-storage-operation?step=ciso_review"
+    }
+  ]
+}

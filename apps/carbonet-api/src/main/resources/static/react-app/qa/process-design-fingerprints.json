@@ -1,0 +1,888 @@
+{
+  "version": "process-design-fingerprints-v1",
+  "generatedAt": "2026-09-03T14:05:08.089873+00:00",
+  "entries": {
+    "ACCOUNT_LOCK_RECOVERY": {
+      "processCode": "ACCOUNT_LOCK_RECOVERY",
+      "designHash": "ea607c4eafe7d6d99034b3e1a78e72762301157c5d8e78e587502ff828e07b0c",
+      "latestDesignApprovedAt": "2026-09-02T10:52:38.873472",
+      "designedStepCount": 4
+    },
+    "ACCOUNT_WITHDRAWAL": {
+      "processCode": "ACCOUNT_WITHDRAWAL",
+      "designHash": "de1dba60c7adea5af9084d31132b2dd5aef510c31207aa1fb8c5342882c786e4",
+      "latestDesignApprovedAt": "2026-09-03T14:20:00.385287",
+      "designedStepCount": 4
+    },
+    "ACTIVITY_DATA": {
+      "processCode": "ACTIVITY_DATA",
+      "designHash": "d9eab4b379fd2540a33d7f58825cb88164e56543b7d975ec1d514783982b8c44",
+      "latestDesignApprovedAt": "2026-08-05T07:57:45.659932",
+      "designedStepCount": 4
+    },
+    "ANALYSIS_EXPORT": {
+      "processCode": "ANALYSIS_EXPORT",
+      "designHash": "8c266dd3ec050b548d2e65d18268987ed71054ff7f4ba1c145ef82f382f57bb0",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "ANOMALY_ALERT_MANAGEMENT": {
+      "processCode": "ANOMALY_ALERT_MANAGEMENT",
+      "designHash": "bf26e6e48a8c684bc1a24d16b36b53cad948d70be21d31cefc17ec29bf870598",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "API_CONNECTION_MANAGEMENT": {
+      "processCode": "API_CONNECTION_MANAGEMENT",
+      "designHash": "b01c2cf324415ba5b594683e03bfd14a51430a91b00c799a27b499e3f6fd3dd7",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "API_KEY_LIFECYCLE": {
+      "processCode": "API_KEY_LIFECYCLE",
+      "designHash": "6b7fb9e56c4a82aad3b157a748592e5afd38111190cad760b38ef28a77e534b2",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "API_USAGE_MONITORING": {
+      "processCode": "API_USAGE_MONITORING",
+      "designHash": "cdf1b61b1e29e53fc263c9269a6eba7cf649aa8e8404eaecc14479130aa40ee3",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "APPEAL_DISPUTE_AUDIT": {
+      "processCode": "APPEAL_DISPUTE_AUDIT",
+      "designHash": "e069378a161a0fc6e5912029a4a9bf8b154b254aa0cd9d4543cae33b1ba9c32a",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 4
+    },
+    "APPROVAL_AUTHORITY": {
+      "processCode": "APPROVAL_AUTHORITY",
+      "designHash": "0515b733ce6fe6ba94a9252d85c7dc7a23e10f610c6020dffe0573567dfc594b",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "APPROVAL_LINE_MANAGEMENT": {
+      "processCode": "APPROVAL_LINE_MANAGEMENT",
+      "designHash": "bf4394a1be7f54444b927c3aa1dfaced05f60d2e040bb482c44800c3da13f888",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "APPROVAL_WORKFLOW_MANAGEMENT": {
+      "processCode": "APPROVAL_WORKFLOW_MANAGEMENT",
+      "designHash": "a2b5d6f46212c0805de46c3ccbf16c48cfddae9c2f8c57d65863ebe73a59a061",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "ATTENDANCE_PROGRESS": {
+      "processCode": "ATTENDANCE_PROGRESS",
+      "designHash": "6585264c3df73ff5498cb3fba7760a81a461abc37df0801417d22070b3417897",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "AUDIT_LOG_OPERATION": {
+      "processCode": "AUDIT_LOG_OPERATION",
+      "designHash": "f6721be8f61407a68f9984adfc793acd07fc6397078ea42ad5ae246845e802f8",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "AUTOMATION_RULE_MANAGEMENT": {
+      "processCode": "AUTOMATION_RULE_MANAGEMENT",
+      "designHash": "ebbd4b7728eeb03614593d26d3611e7f31a48fb5b9ba0f333ad45f64664cdf1b",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "BACKGROUND_DB_VERSION_IMPACT": {
+      "processCode": "BACKGROUND_DB_VERSION_IMPACT",
+      "designHash": "7f8b79fb7b462f9211e1c43f487db800dd45c55883b602e56352678a9a0f549a",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "BATCH_SCHEDULE_OPERATION": {
+      "processCode": "BATCH_SCHEDULE_OPERATION",
+      "designHash": "563ed8037414f4b442ec74203892f177b4ab4cb81fd639425689d8669a1751c6",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "BUILDER_GENERATOR_OPERATION": {
+      "processCode": "BUILDER_GENERATOR_OPERATION",
+      "designHash": "f45fafee29cc85341e130f1a499a49faf94b4e0b4e60fca19a187fbdfb462fc9",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "BUSINESS_SITE_ADMINISTRATION": {
+      "processCode": "BUSINESS_SITE_ADMINISTRATION",
+      "designHash": "5c5d95a2f746cfbc2b30d5e81177dce0eb8a53a3607e0ed99d04611261cc1cfd",
+      "latestDesignApprovedAt": "2026-09-02T09:51:40.938931",
+      "designedStepCount": 4
+    },
+    "CALCULATION_ENGINE_PARITY": {
+      "processCode": "CALCULATION_ENGINE_PARITY",
+      "designHash": "f27895620de9bae3bc5be8d33b3a2c1e592b4d2121bb59a98fa8717e9f11041c",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 3
+    },
+    "CARBON_CREDIT_MANAGEMENT": {
+      "processCode": "CARBON_CREDIT_MANAGEMENT",
+      "designHash": "e58fabf7efbbc497026227b8aa5588bd8310f63e20a35f92bf075a03af0d6100",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "CCUS_LIFECYCLE_MRV": {
+      "processCode": "CCUS_LIFECYCLE_MRV",
+      "designHash": "201ef2274b4205c20fdb17f19b6801cf5c09a457cd0985c0eba4cd44497a990d",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "CERTIFICATE_FEE_TAX_REFUND": {
+      "processCode": "CERTIFICATE_FEE_TAX_REFUND",
+      "designHash": "62661795c3847bc485853f08dac993e6608c74a3b778d34ca3c705784c7c2a3b",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 3
+    },
+    "CERTIFICATE_ISSUANCE": {
+      "processCode": "CERTIFICATE_ISSUANCE",
+      "designHash": "71cf78d391b38e5b1be8a66e79b600e8ed1cbc6d3ff2afde15c825244d4b2be5",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 4
+    },
+    "CERTIFICATE_OBJECTION": {
+      "processCode": "CERTIFICATE_OBJECTION",
+      "designHash": "2e9a23800eeebe0872b948d560fc39d1ffae72266aca0cd9e1e668a230341485",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "CERTIFICATE_REVIEW_ISSUANCE": {
+      "processCode": "CERTIFICATE_REVIEW_ISSUANCE",
+      "designHash": "ae577126f7818a377d09d5da0617a23077f128414850a66512579151674db4e6",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "CERTIFICATE_VERIFICATION": {
+      "processCode": "CERTIFICATE_VERIFICATION",
+      "designHash": "bb70103f66e30210e4cf4ebded82ae5dcd844aa0c8f6d0b3650bedbbabab1c23",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "CERTIFICATION_ELIGIBILITY_CHECK": {
+      "processCode": "CERTIFICATION_ELIGIBILITY_CHECK",
+      "designHash": "83a44448fd38f70c451e2048b59cd5fedc8636e8a3fc406d8352528f6db452ec",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 3
+    },
+    "CHAIN_OF_CUSTODY": {
+      "processCode": "CHAIN_OF_CUSTODY",
+      "designHash": "2d87d8faf2c8b9a1af39fdae3f242b66ee5348116b973b7b1ef0ba80e9a54b8b",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "CO2_DEMAND_REGISTRATION": {
+      "processCode": "CO2_DEMAND_REGISTRATION",
+      "designHash": "23285ca378d0399e461504a6d6871c35f1825ce5a8a420b6592341e9c720dd4f",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "CO2_INJECTION_STORAGE_OPERATION": {
+      "processCode": "CO2_INJECTION_STORAGE_OPERATION",
+      "designHash": "35285b32f7649c203935d6a9912a2f1b2e23515d49c29c7b3d683d322428ad3d",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 3
+    },
+    "CO2_LOT_TAG_MANAGEMENT": {
+      "processCode": "CO2_LOT_TAG_MANAGEMENT",
+      "designHash": "f373a0c93711e6cfcb4e136e0e18bbbb726e0ccb7fd192ee3b34c62ffcdc678b",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 3
+    },
+    "CO2_QUALITY_ANALYSIS": {
+      "processCode": "CO2_QUALITY_ANALYSIS",
+      "designHash": "2fbffb3374ccc49126bfa1a618629a560da5449ae65ea80f5834122a292141db",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 3
+    },
+    "CO2_SUPPLY_REGISTRATION": {
+      "processCode": "CO2_SUPPLY_REGISTRATION",
+      "designHash": "f3a9d0b7af5e6dbed30175b1c388804bf75f52d591cab3a592e05b9a580e70bb",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "COMPANY_MANAGER_DELEGATION": {
+      "processCode": "COMPANY_MANAGER_DELEGATION",
+      "designHash": "6775f540e91769e0f4c013597b91fbbbfb4067e73b098799c5ab3162292154c3",
+      "latestDesignApprovedAt": "2026-09-03T14:32:02.191221",
+      "designedStepCount": 3
+    },
+    "COMPANY_MEMBER_INVITATION": {
+      "processCode": "COMPANY_MEMBER_INVITATION",
+      "designHash": "116f5eac520cdff6daebc721be14bca2ff0f1936212900cf6baea43f7ccc718c",
+      "latestDesignApprovedAt": "2026-09-02T09:51:41.699013",
+      "designedStepCount": 3
+    },
+    "COMPANY_ONBOARDING": {
+      "processCode": "COMPANY_ONBOARDING",
+      "designHash": "b2e58380b1ea5e6e9eb7e888703f56c39965c82011c44229b0e15c835e806a30",
+      "latestDesignApprovedAt": "2026-09-02T09:51:42.099073",
+      "designedStepCount": 5
+    },
+    "COMPANY_REAPPLICATION_PUBLIC": {
+      "processCode": "COMPANY_REAPPLICATION_PUBLIC",
+      "designHash": "eb7d96b294b752364096d5bdf66d08ba1c39adf2f0b015addb3c3d9502649698",
+      "latestDesignApprovedAt": "2026-09-02T10:53:24.653154",
+      "designedStepCount": 2
+    },
+    "COMPANY_REGISTRATION_APPROVAL": {
+      "processCode": "COMPANY_REGISTRATION_APPROVAL",
+      "designHash": "ec9e1a8a16e8ac7a4a52bab020b223574cd448c3592650bf91bd6179c24b54f1",
+      "latestDesignApprovedAt": "2026-09-02T09:51:42.815203",
+      "designedStepCount": 4
+    },
+    "COMPARATIVE_ASSERTION_REVIEW": {
+      "processCode": "COMPARATIVE_ASSERTION_REVIEW",
+      "designHash": "e9ece4f0e5f30e1a61c646a62e06418c654fb5d7aff391b1dc51c6c78c7d5b9c",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 4
+    },
+    "CONTACT_REVERIFICATION": {
+      "processCode": "CONTACT_REVERIFICATION",
+      "designHash": "c48f25c228c722247201e8a0b9f5735b1088b74820186eb1e0bbe19d4e1d16e9",
+      "latestDesignApprovedAt": "2026-09-02T09:51:43.184262",
+      "designedStepCount": 3
+    },
+    "CONTENT_OPERATION": {
+      "processCode": "CONTENT_OPERATION",
+      "designHash": "d99ae1b36c28a98d15f7742a757f5ade6a89865f466bafc193d9b44cb7aef2bd",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 4
+    },
+    "COURSE_MANAGEMENT": {
+      "processCode": "COURSE_MANAGEMENT",
+      "designHash": "d5e0a7a3a2104f24a9f49a29c6a8fe700c3a6fc866915982b5c40f40ef440ff1",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "CUSTOMER_INQUIRY": {
+      "processCode": "CUSTOMER_INQUIRY",
+      "designHash": "b5e931d9756c83da2b60ea1a8fc68132f4e9e036899f1c5f3207606f3a627cd1",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 4
+    },
+    "CUSTOMER_WORK_COORDINATION": {
+      "processCode": "CUSTOMER_WORK_COORDINATION",
+      "designHash": "5aca475d966aac4bd6d7efaf57edda7d73ac1e74814aa3c8536ea3f5d3eb284e",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 7
+    },
+    "DATA_INTEGRATION": {
+      "processCode": "DATA_INTEGRATION",
+      "designHash": "405e14cb9c3e98d3b571a7d18fd64a7c374b4004e4142ea102bb736088ed94a5",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "DATA_QUALITY_MONITORING": {
+      "processCode": "DATA_QUALITY_MONITORING",
+      "designHash": "6ba7f7bd172da1a2ef7c19fc7465fb469e59252d0c5c16ea017b4abb06661634",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "DATA_SCHEMA_CONTRACT": {
+      "processCode": "DATA_SCHEMA_CONTRACT",
+      "designHash": "b62ca5f33e7494dfed8602aea2bec71eacbda3ebd7c8aa8eee302e9b74a79738",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "DATA_SCOPE_AUTHORITY": {
+      "processCode": "DATA_SCOPE_AUTHORITY",
+      "designHash": "e808ca056ca4a6165f2bbc85d2d9ae11019c25066aabcf7a418fbba4b50378a4",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "DEADLINE_NOTIFICATION_POLICY": {
+      "processCode": "DEADLINE_NOTIFICATION_POLICY",
+      "designHash": "44bc9fbad0249364dfd45af5204cb39a25ed5e068ed09bd110ade2c4b498c37b",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "DESIGN_ASSET_GOVERNANCE": {
+      "processCode": "DESIGN_ASSET_GOVERNANCE",
+      "designHash": "6e6f5151a9cf1d8aa208593184737b4d0b36417a7fa271b3948037e1a199ab76",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "DISCLOSURE_CORRECTION": {
+      "processCode": "DISCLOSURE_CORRECTION",
+      "designHash": "0c090b0df4f92ce6af2b74e38b1fbef9abfbe538e64fc6db96adc7083096f1f0",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "DOUBLE_USE_PREVENTION": {
+      "processCode": "DOUBLE_USE_PREVENTION",
+      "designHash": "d9c2ec6eceff73da71733643f07c49f0cc98d22ac0f183252659caa4ae5e275b",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "EDUCATION_APPLICATION": {
+      "processCode": "EDUCATION_APPLICATION",
+      "designHash": "1c213a456affeb2729cc164436ff5706473aa7821f3c4e6015520266bfcdf64b",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "EDUCATION_ASSESSMENT": {
+      "processCode": "EDUCATION_ASSESSMENT",
+      "designHash": "273738cf487e22c98fcd8ea3655525f622b0b4a2099099e26c33db73bfc085a3",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "EDUCATION_SCHEDULE": {
+      "processCode": "EDUCATION_SCHEDULE",
+      "designHash": "05d1484e448778d02af6e515a521d6f06ae53dcb7015287f353a3e10280b13f1",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "EMISSION_CALCULATION": {
+      "processCode": "EMISSION_CALCULATION",
+      "designHash": "b534a32c154830efde41b1d74bb9ab7bb5efbedbdaf9c65a91e1ca146cac0810",
+      "latestDesignApprovedAt": "2026-08-05T14:24:09.409042",
+      "designedStepCount": 4
+    },
+    "EMISSION_PROJECT": {
+      "processCode": "EMISSION_PROJECT",
+      "designHash": "9acb59bb1bedfedc25294419b516b7de42a4850234689291a3069f6e68fc00aa",
+      "latestDesignApprovedAt": "2026-08-05T07:57:45.659932",
+      "designedStepCount": 7
+    },
+    "EMISSION_PROJECT_PORTFOLIO": {
+      "processCode": "EMISSION_PROJECT_PORTFOLIO",
+      "designHash": "d22ec40d7d702fe813b5c7de76e8f9ac309f48ee2e765ae65e1f41ccbb93fb0f",
+      "latestDesignApprovedAt": "2026-08-05T07:57:45.659932",
+      "designedStepCount": 1
+    },
+    "EXTERNAL_SERVICE_STATUS": {
+      "processCode": "EXTERNAL_SERVICE_STATUS",
+      "designHash": "cc61e11d953fe06f6d6dcf100bb888ff75dbf009966ca28d263b7a3f36750b94",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "EXTERNAL_SYSTEM_REGISTRY": {
+      "processCode": "EXTERNAL_SYSTEM_REGISTRY",
+      "designHash": "b8545df0f9d679f3b727fd3c88a7a6c93a79959c3f8588d7631c286597227baf",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "EXTERNAL_VERIFICATION_ENGAGEMENT": {
+      "processCode": "EXTERNAL_VERIFICATION_ENGAGEMENT",
+      "designHash": "d3516723aff56b7748388a61ae7859607f45b602e0ec7d773e2c5bda6381e729",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "FACILITY_ASSET_REGISTRY": {
+      "processCode": "FACILITY_ASSET_REGISTRY",
+      "designHash": "43f193aacef0c08a3e4e68f178ff2226d4acb9598397b91806efb54d1ff8c2e8",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 3
+    },
+    "FACILITY_EMERGENCY_RESPONSE": {
+      "processCode": "FACILITY_EMERGENCY_RESPONSE",
+      "designHash": "2b045e1c4318190a3ca9d622d01bf2b5f217194cd00c05bb3ff5893e4d221ef7",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 3
+    },
+    "FACILITY_OPERATION_MONITORING": {
+      "processCode": "FACILITY_OPERATION_MONITORING",
+      "designHash": "d94632b07325bfae400d3a435155c35df28bb17b4e2c20a69c9003f170e1c1f0",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 3
+    },
+    "FAQ_MANAGEMENT": {
+      "processCode": "FAQ_MANAGEMENT",
+      "designHash": "d4b1c3186db48e1184466927e59aa655121478655348b349aa972809f234d634",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "FEATURE_API_GOVERNANCE": {
+      "processCode": "FEATURE_API_GOVERNANCE",
+      "designHash": "8e5a4410803e41c41580a44a1be33b4e9c2e06ab881c36555d0cefdcdc15ca73",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "GIT_BUILD_DEPLOYMENT": {
+      "processCode": "GIT_BUILD_DEPLOYMENT",
+      "designHash": "b5b3dc809812fa0d367cafc1ebf52c777eaccf8d470eb5bcdbd94d105f413e38",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "GOVERNANCE_CHANGE": {
+      "processCode": "GOVERNANCE_CHANGE",
+      "designHash": "1b262268c3e25ba4857262aa064ec69918adb8d0fa763f1f6a55f4de1eef6f41",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 6
+    },
+    "IDENTITY_VERIFICATION": {
+      "processCode": "IDENTITY_VERIFICATION",
+      "designHash": "1bdb7603ebdf4de219fb382c0413e425e2254a52df400970784fadf3b939fe98",
+      "latestDesignApprovedAt": "2026-09-02T09:51:43.56296",
+      "designedStepCount": 4
+    },
+    "INCIDENT_IMPROVEMENT_REQUEST": {
+      "processCode": "INCIDENT_IMPROVEMENT_REQUEST",
+      "designHash": "0114868c49d12cb59625124145062488962b1e4aa95143aa414024a1092036c6",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "INTEGRATED_MONITORING": {
+      "processCode": "INTEGRATED_MONITORING",
+      "designHash": "5ecdc78f262ce97c30b33b9f7507ec7df80f0a64794be6923118fc769452e75a",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "INTEGRATION_FAILURE_RETRY": {
+      "processCode": "INTEGRATION_FAILURE_RETRY",
+      "designHash": "212e899af11e65682c846c13f48e1b30b8cd2316f1710ad59fd487f606463e57",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "INTEGRATION_LOG_AUDIT": {
+      "processCode": "INTEGRATION_LOG_AUDIT",
+      "designHash": "11ce23a15d1e09fb71016de1075a457ad015514ba1132a07a1f309f6b39920d2",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "LCA_ALLOCATION_SENSITIVITY": {
+      "processCode": "LCA_ALLOCATION_SENSITIVITY",
+      "designHash": "52f2756ded4794346ad208c36174bfcef4d539bbc3060557c536c07fd5838a50",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "LCA_DATA_QUALITY_UNCERTAINTY": {
+      "processCode": "LCA_DATA_QUALITY_UNCERTAINTY",
+      "designHash": "8a84c7131c547e9d134908e3c9a8f143ed48d94af1dc5bc80b9f375bbab25037",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "LCA_EXECUTION": {
+      "processCode": "LCA_EXECUTION",
+      "designHash": "98afb894743566ce98a2d2835c895632cbddda606ef7c131f42cfabb9c8531d0",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "LEAKAGE_INCIDENT_RESPONSE": {
+      "processCode": "LEAKAGE_INCIDENT_RESPONSE",
+      "designHash": "f4a8b84f0312681fd68f8aa1d48a45dcc4cb92743947e133b421c29dd5c7069e",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "LEGAL_NOTIFICATION_DELIVERY": {
+      "processCode": "LEGAL_NOTIFICATION_DELIVERY",
+      "designHash": "bc4553de8a5a6bf62029428f14461cf1f4563dc6ae6a1cabba3f768e47257da1",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 3
+    },
+    "LOGIN_AUTHENTICATION": {
+      "processCode": "LOGIN_AUTHENTICATION",
+      "designHash": "648bc780d42f8a11a6f67f09d4a59e838aad3cc2c063ff85d4d38ebb0892094c",
+      "latestDesignApprovedAt": "2026-09-02T09:51:43.944821",
+      "designedStepCount": 4
+    },
+    "MACC_PORTFOLIO": {
+      "processCode": "MACC_PORTFOLIO",
+      "designHash": "4288431b23f920e6e7f58e3b0ca76fe35b2637aa531add20f8685c78e9ad40bf",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "MEASUREMENT_DATA_QUALITY": {
+      "processCode": "MEASUREMENT_DATA_QUALITY",
+      "designHash": "fe819c3036dbe1dc185ce002cb2572260c008402fb12cc5523093f15a89c090e",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "MEMBER_ADMINISTRATION": {
+      "processCode": "MEMBER_ADMINISTRATION",
+      "designHash": "8df68d4ea69b6569c3ed197256c1b5ac9ae0363883b3a1b451cacf593692098b",
+      "latestDesignApprovedAt": "2026-09-02T09:51:44.32817",
+      "designedStepCount": 4
+    },
+    "MEMBER_APPROVAL": {
+      "processCode": "MEMBER_APPROVAL",
+      "designHash": "2c40bdf646cf95470a80d7e447d86890a7c10a2d0041aff5ea29519ec184f358",
+      "latestDesignApprovedAt": "2026-09-02T09:51:44.692994",
+      "designedStepCount": 4
+    },
+    "MEMBER_LIFECYCLE": {
+      "processCode": "MEMBER_LIFECYCLE",
+      "designHash": "f050167d0d169fa7ad440291415d6114bd190ba6197a6628ac955ba8955fbb45",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "MEMBER_REGISTRATION": {
+      "processCode": "MEMBER_REGISTRATION",
+      "designHash": "a32d620c90e41a17e70b1a86cbdabbb09ff758b314fe42c6cdc9bc9af9d59a7c",
+      "latestDesignApprovedAt": "2026-09-02T10:53:25.063471",
+      "designedStepCount": 5
+    },
+    "MENU_ACCESS_CONTROL": {
+      "processCode": "MENU_ACCESS_CONTROL",
+      "designHash": "ac9d0e4ce9ad7b3d9447a3630c8686a19067ada02e81619662aa7dff34479ed6",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "MENU_SCREEN_GOVERNANCE": {
+      "processCode": "MENU_SCREEN_GOVERNANCE",
+      "designHash": "6a65aa8ea35e469b36e9159b5c9ac8f7215ec54902660cf9601c0c6f646a131e",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "METER_CALIBRATION_MANAGEMENT": {
+      "processCode": "METER_CALIBRATION_MANAGEMENT",
+      "designHash": "8e6fab6a1394072e464c485b49122ebf23e9743c676f4abebf754e80e9f3c07a",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 3
+    },
+    "MFA_MANAGEMENT": {
+      "processCode": "MFA_MANAGEMENT",
+      "designHash": "3168fafdecffd39e4b9e6e07c24e4c49fe9b0d3552b5539840e99d700d9dd846",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "MONITORING_ANALYSIS": {
+      "processCode": "MONITORING_ANALYSIS",
+      "designHash": "edd45bc3a000f32e52078e3fd4dca91b53a1582f5448869dd568312d6f1c46eb",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 4
+    },
+    "MRV_TRACEABILITY": {
+      "processCode": "MRV_TRACEABILITY",
+      "designHash": "fdf45f4eeac0bd014e8a8900d321c6ebd59f0262240dd1fd7c1d541180d51c31",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "NEWSLETTER_OPERATION": {
+      "processCode": "NEWSLETTER_OPERATION",
+      "designHash": "b280b6772b09957f381b2cfedbdd9dd463de043c1102aade7eb34d4bae738713",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "NOTICE_PUBLICATION": {
+      "processCode": "NOTICE_PUBLICATION",
+      "designHash": "cc0c92b983a6b2d3ce786433f4f58b24761136aedb491634a0c5a7c533a543c7",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "NOTIFICATION_CENTER_OPERATION": {
+      "processCode": "NOTIFICATION_CENTER_OPERATION",
+      "designHash": "e522ea549980f21ed36bab5ddfd37479477406c8edc5a35a711deacb3a869b5d",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "ORGANIZATIONAL_BOUNDARY": {
+      "processCode": "ORGANIZATIONAL_BOUNDARY",
+      "designHash": "eccd6cabae87f5a9c4eda6c0dd6f140d16479a209367e605d1f9e9d78fe86e41",
+      "latestDesignApprovedAt": "2026-09-02T09:51:45.420047",
+      "designedStepCount": 5
+    },
+    "ORGANIZATION_DEPARTMENT": {
+      "processCode": "ORGANIZATION_DEPARTMENT",
+      "designHash": "4c19fa2ec967969355dfcd289f0939312c7e15a72adabf45f38efb0a83dc6991",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "OUTLIER_RULE_MANAGEMENT": {
+      "processCode": "OUTLIER_RULE_MANAGEMENT",
+      "designHash": "5ce48862405ce608ddff863df14ee4861a5a0891f4a0479eabfcca3d52678f55",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "PASSWORD_RECOVERY": {
+      "processCode": "PASSWORD_RECOVERY",
+      "designHash": "04c3a80d3d6d6c3722df8a517df48ba45e9280efca38e065fbfb6175d609ba3b",
+      "latestDesignApprovedAt": "2026-09-02T09:51:45.806683",
+      "designedStepCount": 4
+    },
+    "PAYMENT_SETTLEMENT": {
+      "processCode": "PAYMENT_SETTLEMENT",
+      "designHash": "f21dab8dd8a88e00739cc31ac455772e3a4b0b96edde1713245783afd22406e6",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 4
+    },
+    "PCR_EPD_VERIFICATION": {
+      "processCode": "PCR_EPD_VERIFICATION",
+      "designHash": "82795740b712737ef55553e451b88c58ae934891997894d93443e08ebdb1ae43",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "PERSONAL_DATA_RIGHTS": {
+      "processCode": "PERSONAL_DATA_RIGHTS",
+      "designHash": "485c96d6e478cff9216696a0537108b11f55f4fc2e271982be820c17a16274f1",
+      "latestDesignApprovedAt": "2026-09-02T09:51:46.168478",
+      "designedStepCount": 4
+    },
+    "PLATFORM_OPERATION": {
+      "processCode": "PLATFORM_OPERATION",
+      "designHash": "a719cae9f6569b0b28754e3afbac6f9cce75818a9a63e200bccec35614a65b55",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 4
+    },
+    "PREVENTIVE_MAINTENANCE": {
+      "processCode": "PREVENTIVE_MAINTENANCE",
+      "designHash": "e3714d13f54322c572c905f67a7f5a278ebcb6dcbd2857aac7843d6eadbe1c6f",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 3
+    },
+    "PRIVACY_RETENTION_DESTRUCTION": {
+      "processCode": "PRIVACY_RETENTION_DESTRUCTION",
+      "designHash": "4f7435ccc8359edf3bdfa4900a76c7a79525c47723045026bd2db9dda013dd01",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 3
+    },
+    "PROCESS_COMPLETION_POLICY": {
+      "processCode": "PROCESS_COMPLETION_POLICY",
+      "designHash": "7c6ced1ed39857964f003bd73e032bbbb50cac280c937b4cb83a34b1e39d9733",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "PROFILE_MANAGEMENT": {
+      "processCode": "PROFILE_MANAGEMENT",
+      "designHash": "001da4a07cd4f49fa45a8ac5bd5903b6c0b708a5489ec729e348f0154f1a3bfb",
+      "latestDesignApprovedAt": "2026-09-02T09:51:46.545102",
+      "designedStepCount": 4
+    },
+    "PROJECT_LIFECYCLE_CONTROL": {
+      "processCode": "PROJECT_LIFECYCLE_CONTROL",
+      "designHash": "71c14e9f781a9fcde0970602b319415355c12b4322f015fbe18ce9ffd55ed606",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 4
+    },
+    "QUALITY_SCORING_POLICY": {
+      "processCode": "QUALITY_SCORING_POLICY",
+      "designHash": "b908dce8690da9c0b203e708a10c5325faf2b1ccac1a7ea593e0c8166e7fc8e0",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "REDUCTION_EXECUTION": {
+      "processCode": "REDUCTION_EXECUTION",
+      "designHash": "aa5a3fe9eb63281f41a48cf442b9cbe75c3f0998b1c151f44a69b441a3d896d6",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 4
+    },
+    "REDUCTION_PERFORMANCE": {
+      "processCode": "REDUCTION_PERFORMANCE",
+      "designHash": "cf0ba342506d444509940ab9e35f935c9620816f65ba7ca0192f6fc8a08cc8e5",
+      "latestDesignApprovedAt": "2026-08-23T20:25:14.657519",
+      "designedStepCount": 4
+    },
+    "REDUCTION_PROJECT_APPROVAL": {
+      "processCode": "REDUCTION_PROJECT_APPROVAL",
+      "designHash": "a83093c7874b3a45b10b5e47edd80386f8c43435840b52b5a6771e2990a3e383",
+      "latestDesignApprovedAt": "2026-08-23T20:25:07.25542",
+      "designedStepCount": 4
+    },
+    "REDUCTION_PROJECT_REGISTRATION": {
+      "processCode": "REDUCTION_PROJECT_REGISTRATION",
+      "designHash": "5c525c539d693761eb8de1412ee4f86f52fa951a83888fc567e6344bbb14b288",
+      "latestDesignApprovedAt": "2026-08-23T20:25:05.093385",
+      "designedStepCount": 4
+    },
+    "REDUCTION_REPORTING": {
+      "processCode": "REDUCTION_REPORTING",
+      "designHash": "4f1cd0e38ac90ce5d4a7824040a347b3f098739fc3d8faa3adfc9d39563a1a2a",
+      "latestDesignApprovedAt": "2026-08-23T20:25:16.884362",
+      "designedStepCount": 4
+    },
+    "REDUCTION_ROADMAP": {
+      "processCode": "REDUCTION_ROADMAP",
+      "designHash": "bee7b812e10e1d60f3618c3c63f8cc5f961cce9f2e7e3652dbe4be26c0d3ef5a",
+      "latestDesignApprovedAt": "2026-08-23T20:25:09.358251",
+      "designedStepCount": 4
+    },
+    "REDUCTION_SCENARIO": {
+      "processCode": "REDUCTION_SCENARIO",
+      "designHash": "7fc44e6e6201de7eb786c245a93240515b9b8da914c0987a8c9af263e8e1e380",
+      "latestDesignApprovedAt": "2026-08-23T20:25:12.552302",
+      "designedStepCount": 4
+    },
+    "REDUCTION_TARGET_PLANNING": {
+      "processCode": "REDUCTION_TARGET_PLANNING",
+      "designHash": "451d78eadc07282273d3bb1470576a859675e2621eeb1664d950a53397232c48",
+      "latestDesignApprovedAt": "2026-08-23T20:25:02.828637",
+      "designedStepCount": 4
+    },
+    "REFUND_MANAGEMENT": {
+      "processCode": "REFUND_MANAGEMENT",
+      "designHash": "fa5ac25b49907cdf0fff67093bf1476614a6319ba1807492f53a0eee970dd48f",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 4
+    },
+    "REGULATORY_STATUS_MONITORING": {
+      "processCode": "REGULATORY_STATUS_MONITORING",
+      "designHash": "02664b3229e7dc29efe8248eaab395f9b56a43c8db13266626cbee853deb0d7d",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "REGULATORY_SUBMISSION": {
+      "processCode": "REGULATORY_SUBMISSION",
+      "designHash": "d0c3b20f7c772ccbea6b61ded86de2667b330baae3a7b027388363472412ea3c",
+      "latestDesignApprovedAt": "2026-08-06T10:05:21.484977",
+      "designedStepCount": 4
+    },
+    "REPORT_CERTIFICATION": {
+      "processCode": "REPORT_CERTIFICATION",
+      "designHash": "8719e8f5226d26669c319167138160512356f211882ac94e3dc713e2db4b7417",
+      "latestDesignApprovedAt": "2026-08-06T10:00:07.073717",
+      "designedStepCount": 4
+    },
+    "REPORT_GENERATION": {
+      "processCode": "REPORT_GENERATION",
+      "designHash": "c2886e24a0bce91db3e0afaaaaadb1cbee42db4c4f6d0c4a99ea08baba39fcca",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "REPORT_SUBMISSION": {
+      "processCode": "REPORT_SUBMISSION",
+      "designHash": "affc85fd14b3b5a7a5be53660438f3c6d91b58448c3892d15af7e0d43625a40c",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "REPORT_TEMPLATE_MANAGEMENT": {
+      "processCode": "REPORT_TEMPLATE_MANAGEMENT",
+      "designHash": "3b61c25784fe7b3592f559815d4c145c8c10edbe1c31071523e49eade72b4f46",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "REQ_43BDB0EC53F8": {
+      "processCode": "REQ_43BDB0EC53F8",
+      "designHash": "656ef23b031ac189a5f8f20ca1abd6eb4af98bf72d7874c1d4752d75666399ff",
+      "latestDesignApprovedAt": "2026-08-02T02:30:19.950671",
+      "designedStepCount": 7
+    },
+    "REQ_922B221066F1": {
+      "processCode": "REQ_922B221066F1",
+      "designHash": "a46af56ed9f788a8332833283d9507e38a4244efa598492f7e771e63e970b64c",
+      "latestDesignApprovedAt": "2026-08-02T02:30:19.950671",
+      "designedStepCount": 7
+    },
+    "RESOURCE_PUBLICATION": {
+      "processCode": "RESOURCE_PUBLICATION",
+      "designHash": "2e7ca935ba2e8a8f5dac7c2f47b00303d6387eace92410c903576891ca51d148",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "ROLE_AUTHORITY_MANAGEMENT": {
+      "processCode": "ROLE_AUTHORITY_MANAGEMENT",
+      "designHash": "a5ccd5e9297f7c62ec477ebef5517ea8f52f2a72d38660b494459e40e6b9d594",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "SCHEDULED_STATISTICS_REPORTING": {
+      "processCode": "SCHEDULED_STATISTICS_REPORTING",
+      "designHash": "f077a15b52969eb42e4f6ee562378dbfc6fddab5febd9e75b2446ca14047a611",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 3
+    },
+    "SECURITY_POLICY_OPERATION": {
+      "processCode": "SECURITY_POLICY_OPERATION",
+      "designHash": "ea4e48d005c276282a85dbf51b9de3eb9bef9cc64a401d8578d9a555a420ab56",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "STAKEHOLDER_SHARING": {
+      "processCode": "STAKEHOLDER_SHARING",
+      "designHash": "34388ba9c75ecc9dce6a5f00b8ace565c3db0973e2083eb39452da193a0e415f",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 4
+    },
+    "SUPPLY_DEMAND_MATCHING": {
+      "processCode": "SUPPLY_DEMAND_MATCHING",
+      "designHash": "99caa4dc7bb2076d4c2ea1d8d4ab6cc353119ed907e2b2e0c32d8ce1deaf152e",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "SYNC_EXECUTION": {
+      "processCode": "SYNC_EXECUTION",
+      "designHash": "cb2fcd789e93ffd5bf7267f98b8efc07f99839af91881a06e5ce34ce3602612a",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "SYSTEM_MONITORING_RECOVERY": {
+      "processCode": "SYSTEM_MONITORING_RECOVERY",
+      "designHash": "5a32a5137db06295306910d59992b783a54e43b0ee57d4e9432a5b6d6b1f4704",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "TASK_TEMPLATE_MANAGEMENT": {
+      "processCode": "TASK_TEMPLATE_MANAGEMENT",
+      "designHash": "84089904bbb7d5e7bd5d0dac9ab36f552d5953e5ddb956422ba74358fbc1365e",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "TERMS_CONSENT": {
+      "processCode": "TERMS_CONSENT",
+      "designHash": "f5b4eba072ed2b983f1bef14cfe492dd245f435624b87133a2da0cd9d8369a04",
+      "latestDesignApprovedAt": "2026-09-02T09:51:46.925387",
+      "designedStepCount": 4
+    },
+    "TRADE_CONTRACT": {
+      "processCode": "TRADE_CONTRACT",
+      "designHash": "b13faab5e84c490ace1a42b5a5e3b8660768886d8c80d604c4de5bd7e6894b98",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "TRADE_EXECUTION": {
+      "processCode": "TRADE_EXECUTION",
+      "designHash": "826dbc7b46f37860514176847637a8d855c7e07ce346562eefe49d5650cfb91a",
+      "latestDesignApprovedAt": "2026-08-06T07:41:21.977889",
+      "designedStepCount": 4
+    },
+    "TRADE_EXECUTION_TRACKING": {
+      "processCode": "TRADE_EXECUTION_TRACKING",
+      "designHash": "f9e8078d780a79aea32d4d5246640fa7a782968f8dd51faa7e40edd9ab7d41c6",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "TRADE_PROPOSAL": {
+      "processCode": "TRADE_PROPOSAL",
+      "designHash": "e568d818d18ee1a00aa096d10ed61fda31546c950aac05ac83ee0009cb8d4b8e",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "TRADE_SETTLEMENT": {
+      "processCode": "TRADE_SETTLEMENT",
+      "designHash": "db9a512b77c133ee89bcfbb2f3a546c8fc89afa6d751b014c60a721bf3d50504",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "TRAINING_CERTIFICATE": {
+      "processCode": "TRAINING_CERTIFICATE",
+      "designHash": "b96d0a38f486352f8b0527ce5fcb15ba69121c19a7f3e9dfc50aff2a32b14f54",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "USER_AUTHORITY_ASSIGNMENT": {
+      "processCode": "USER_AUTHORITY_ASSIGNMENT",
+      "designHash": "15e79121fa14647f094d9a2266a6bf62c7a198fb4b3b17db4826289c8367e45f",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "VALIDATION_RULE_MANAGEMENT": {
+      "processCode": "VALIDATION_RULE_MANAGEMENT",
+      "designHash": "f0e125da763f6a7de5bc848a973b28e4bd208754d1026735eeaf356754bd7f7b",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "VERSION_BACKUP_RECOVERY": {
+      "processCode": "VERSION_BACKUP_RECOVERY",
+      "designHash": "5b70a019232c293998ed3a599b4fbdcb06870df2e49d371baea6d4ba2eed6292",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "WEBHOOK_MANAGEMENT": {
+      "processCode": "WEBHOOK_MANAGEMENT",
+      "designHash": "81aa80e411151d55f82bafae9fba5dfe7fc02d23c47ddea355882ecd24663c66",
+      "latestDesignApprovedAt": "2026-07-27T14:54:39.075252",
+      "designedStepCount": 4
+    },
+    "WORK_ASSIGNMENT": {
+      "processCode": "WORK_ASSIGNMENT",
+      "designHash": "81abe96f31179c90868bf368f20c3b3736780a012044a9f56497dc7b1e02ffdb",
+      "latestDesignApprovedAt": "2026-08-06T23:49:50.500785",
+      "designedStepCount": 4
+    }
+  }
+}

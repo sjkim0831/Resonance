@@ -1,0 +1,29 @@
+{
+  "processCode": "BATCH_SCHEDULE_OPERATION",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "BATCH_SCHEDULE_OPERATION_S1",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/batch-schedule-operation/batch-schedule-operation-s1?step=batch_schedule_operation_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "BATCH_SCHEDULE_OPERATION_S2",
+      "actorCode": "PLATFORM_OPERATOR",
+      "routePath": "/generated/batch-schedule-operation/batch-schedule-operation-s2?step=batch_schedule_operation_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "BATCH_SCHEDULE_OPERATION_S3",
+      "actorCode": "VERIFIER",
+      "routePath": "/generated/batch-schedule-operation/batch-schedule-operation-s3?step=batch_schedule_operation_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "BATCH_SCHEDULE_OPERATION_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/batch-schedule-operation/batch-schedule-operation-s4?step=batch_schedule_operation_s4"
+    }
+  ]
+}

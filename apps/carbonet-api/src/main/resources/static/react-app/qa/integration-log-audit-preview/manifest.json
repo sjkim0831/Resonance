@@ -1,0 +1,29 @@
+{
+  "processCode": "INTEGRATION_LOG_AUDIT",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "INTEGRATION_LOG_AUDIT_S1",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/integration-log-audit/integration-log-audit-s1?step=integration_log_audit_s1"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "INTEGRATION_LOG_AUDIT_S2",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/integration-log-audit/integration-log-audit-s2?step=integration_log_audit_s2"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "INTEGRATION_LOG_AUDIT_S3",
+      "actorCode": "AUDITOR",
+      "routePath": "/generated/integration-log-audit/integration-log-audit-s3?step=integration_log_audit_s3"
+    },
+    {
+      "sequence": 4,
+      "stepCode": "INTEGRATION_LOG_AUDIT_S4",
+      "actorCode": "APPROVER",
+      "routePath": "/generated/integration-log-audit/integration-log-audit-s4?step=integration_log_audit_s4"
+    }
+  ]
+}

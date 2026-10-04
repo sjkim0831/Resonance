@@ -1,0 +1,23 @@
+{
+  "processCode": "CERTIFICATION_ELIGIBILITY_CHECK",
+  "clips": [
+    {
+      "sequence": 1,
+      "stepCode": "CEC_VALIDATE_COMPANY",
+      "actorCode": "CERTIFICATE_OFFICER",
+      "routePath": "/work/certification-eligibility-check?step=cec_validate_company"
+    },
+    {
+      "sequence": 2,
+      "stepCode": "CEC_VERIFY_EXTERNAL",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "routePath": "/work/certification-eligibility-check?step=cec_verify_external"
+    },
+    {
+      "sequence": 3,
+      "stepCode": "CEC_DECIDE",
+      "actorCode": "CERTIFICATE_OFFICER",
+      "routePath": "/work/certification-eligibility-check?step=cec_decide"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+file '01-request.webm'
+file '02-approval.webm'
+file '03-handover.webm'
+file '04-successor-notification.webm'
+inpoint 0.8
+file '05-predecessor-notification.webm'
+inpoint 0.8
