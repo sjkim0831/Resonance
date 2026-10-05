@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "direction": "COMPOSER_TO_USD_ONLY",
+  "units": "m",
+  "metersPerUnit": 1,
+  "upAxis": "Y",
+  "axes": {"X":"Canvas right", "Y":"height", "Z":"Canvas down"},
+  "origin": "Layout origin; Entry authored root retained; building bottom-center",
+  "position": "identity XYZ",
+  "rotation": "rotateXYZ degrees (canvas.rx, -canvas.ry, canvas.rz); positive Canvas yaw is clockwise in X-right Z-down view",
+  "scale": "identity XYZ; positive only",
+  "xformOpOrder": ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"],
+  "entryPolicy": "Y-up metre Entries only; fail unsupported metadata; Reference child preserves Entry transforms/materials",
+  "relationships": ["REQUIRES","CONNECTS_TO","INPUT_FROM","OUTPUT_TO","OPTIONAL_WITH","SAFETY_FOR","CONTROLLED_BY","UTILITY_FOR"],
+  "states": ["LAYOUT_SAVED","STAGE_GENERATED","USD_STRUCTURE_VERIFIED","TRANSFORM_VERIFIED","REFERENCE_VERIFIED","OMNIVERSE_VERIFIED","RTX_VERIFIED"],
+  "guiGate": "OMNIVERSE_VERIFIED and RTX_VERIFIED require separately reviewed actual GUI evidence; exporter never grants these states",
+  "nonGoals": ["bidirectional sync", "PLC writes", "physical validation", "READY/REAL promotion", "automatic source origin correction"]
+}
