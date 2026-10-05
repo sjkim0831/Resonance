@@ -103,10 +103,18 @@ ops/tools/
 
 # Server-only credentials must never enter source history.
 /.secrets/
+/runtime/platform-data/config/carbonet-production-direct.env
+/runtime/platform-data/config/java-fast-dev-runtime-secret.env
+
+# Local Codex recovery snapshots are not repository source.
+/.codex-backup/
 
 # Machine-local build output, databases, and large tool installs.
 /projects/P006/3d-toolchain/bin/
 /projects/P006/assets/nvidia-library/
+/projects/P006/frontend/equipment-registry/nvidia-library/
+/projects/P006/frontend/3d-derived/NWH-*.glb
+/projects/P006/frontend/3d-derived/NWH-*.png
 /projects/P006/backup/
 /projects/carbonet-frontend/source/.cache/
 /data/carbonet-app/react-app/assets/
