@@ -22,6 +22,14 @@
       updateCounts();
     });
     tools.addEventListener('click', event => {
+      const registerCurrent = event.target.closest('[data-catalog-register-current]');
+      if (registerCurrent) {
+        event.preventDefault();
+        event.stopPropagation();
+        const asset = window.__studioCatalogSelectedAsset;
+        if (asset) document.dispatchEvent(new CustomEvent('p006:studio-register-catalog-equipment', {detail:{asset}}));
+        return;
+      }
       const scope = event.target.closest('[data-scope]');
       if (scope) {
         mode = scope.dataset.scope; total = null; cursor = '';
@@ -100,11 +108,12 @@
   function showWarehouseDetails(asset) {
     if (!asset) return; const box = document.querySelector('#unified-asset-detail'); if (!box) return;
     const canPreview = Boolean(asset.webGlbPath);
-    box.hidden = false; box.innerHTML = `${image(asset.thumbnail,asset.name)} <b>${esc(asset.name)} · ${esc(asset.id)}</b><br><small>NVIDIA Warehouse · ${esc(asset.category || '분류 미기록')} · ${esc(asset.format || 'USD')} · ${Number(asset.bytes || 0).toLocaleString()} B</small><br><small>가동 상태: ${esc(asset.animationStatus || '내용 검사 전')} · 미리보기: ${canPreview ? '변환본 준비' : asset.conversionStatus === 'FAILED' ? '변환 실패 · 재시도 필요' : '변환 대기'}</small><br><small>원본 상대 경로: ${esc(asset.path)}</small><br><small>출처: NVIDIA Warehouse Assets Pack · 사용 조건은 실제 사용 전에 확인</small>${asset.conversionError ? `<div class="notice warn" style="margin-top:6px">변환 오류: ${esc(asset.conversionError)}</div>` : ''}<div style="margin-top:6px">${canPreview ? '웹 3D 변환본이 준비되어 있습니다.' : '원본 USD는 비공개 보존 중입니다. 웹 변환 뒤 3D 미리보기와 계획 연결이 활성화됩니다.'} ${asset.animationStatus === 'STATIC_VERIFIED' ? '원본 파일에서 가동 애니메이션은 확인되지 않았습니다.' : ''}</div>`;
+    window.__studioCatalogSelectedAsset = {...asset, webGlbPath:asset.webGlbPath || ''};
+    box.hidden = false; box.innerHTML = `${image(asset.thumbnail,asset.name)} <b>${esc(asset.name)} · ${esc(asset.id)}</b><br><small>NVIDIA Warehouse · ${esc(asset.category || '분류 미기록')} · ${esc(asset.format || 'USD')} · ${Number(asset.bytes || 0).toLocaleString()} B</small><br><small>가동 상태: ${esc(asset.animationStatus || '내용 검사 전')} · 미리보기: ${canPreview ? '변환본 준비' : asset.conversionStatus === 'FAILED' ? '변환 실패 · 재시도 필요' : '변환 대기'}</small><br><small>원본 상대 경로: ${esc(asset.path)}</small><br><small>출처: NVIDIA Warehouse Assets Pack · 사용 조건은 실제 사용 전에 확인</small>${asset.conversionError ? `<div class="notice warn" style="margin-top:6px">변환 오류: ${esc(asset.conversionError)}</div>` : ''}<div style="margin-top:6px">${canPreview ? '웹 3D 변환본이 준비되어 있습니다.' : '원본 USD는 비공개 보존 중입니다. 웹 변환 뒤 3D 미리보기와 계획 연결이 활성화됩니다.'} ${asset.animationStatus === 'STATIC_VERIFIED' ? '원본 파일에서 가동 애니메이션은 확인되지 않았습니다.' : ''}<br>${canPreview ? '<button type="button" data-catalog-register-current>설비로 등록·선택</button>' : '<button type="button" disabled title="웹 GLB 변환 후 등록할 수 있습니다.">GLB 변환 후 설비 등록 가능</button>'}</div>`;
     if (canPreview) document.dispatchEvent(new CustomEvent('p006:studio-catalog-preview', {detail:{asset:{...asset,id:asset.id,name:asset.name,path:asset.webGlbPath,format:'GLB'}}}));
   }
   function usage(asset) {
-    const s = state(), planned = (s.equipment || []).some(row => row.asset === asset.id || row.assetRef?.assetId === asset.id || row.externalAssetId === asset.id), imported = (s.externalAssets || []).some(row => row.assetRef?.assetId === asset.id || row.id === `registry-${asset.id}`);
+    const s = state(), assetId = asset.assetRef?.assetId || asset.id, planned = (s.equipment || []).some(row => row.asset === assetId || row.assetRef?.assetId === assetId || row.externalAssetId === assetId), imported = (s.externalAssets || []).some(row => row.assetRef?.assetId === assetId || row.id === `registry-${assetId}` || row.id === asset.id);
     return [planned ? '현재 계획 사용 중' : '', imported ? '가져온 자산' : ''].filter(Boolean);
   }
   async function search(reset) {
@@ -132,11 +141,23 @@
     finally { busy = false; if (pendingReset) { pendingReset = false; search(true); } else if (input.value.trim() !== q) search(true); }
   }
   async function showDetails(asset) {
-    if (!asset) return; const box = document.querySelector('#unified-asset-detail'); if (!box) return;
+    if (!asset) return;
+    const s = state();
+    const assetId = asset.assetRef?.assetId || asset.id;
+    const planned = (s.equipment || []).find(row => row.asset === assetId || row.assetRef?.assetId === assetId || row.externalAssetId === assetId);
+    if (planned) {
+      const planScope = document.querySelector('[data-scope="plan"]');
+      if (mode !== 'plan' && planScope) { planScope.click(); queueMicrotask(() => showDetails(asset)); return; }
+      const planCard = document.querySelector(`.studio [data-equipment="${CSS.escape(planned.id)}"]`);
+      if (planCard && !planCard.classList.contains('active')) { planCard.click(); queueMicrotask(() => showDetails(asset)); return; }
+    }
+    const box = document.querySelector('#unified-asset-detail'); if (!box) return;
     const imagePath = asset.image || asset.thumbnail || asset.thumb, statuses = usage(asset), selected = document.querySelector('#unified-registry-results [data-catalog-asset-id="'+CSS.escape(asset.id)+'"]');
     document.querySelectorAll('#unified-registry-results [data-catalog-row]').forEach(row => row.classList.toggle('active',row===selected));
-    box.hidden = false; box.innerHTML = `${image(imagePath,asset.name)} <b>${esc(asset.name)} · ${esc(asset.id)}</b><br><small>${esc(asset.manufacturer_name || asset.provider || '제조사 미연결')} · ${esc(asset.category || '분류 미기록')}</small><br><small>${esc(asset.entry_usd || 'USD 경로 미등록')} · ${esc(statuses.join(' · ') || '계획 미사용')}</small><br><small>선택만으로 계획이나 공정 배정은 변경되지 않습니다.</small><div id="catalog-preview-status" style="margin-top:6px">3D 미리보기를 준비합니다…</div>`;
-    document.dispatchEvent(new CustomEvent('p006:studio-catalog-preview',{detail:{asset}}));
+    const path = asset.webGlbPath || asset.current_version_web_glb_path || asset.path || asset.glb || (asset.entry_usd ? `/projects/P006/assets/3d-derived/${encodeURIComponent(asset.id)}.glb` : '');
+    window.__studioCatalogSelectedAsset = {...asset, webGlbPath:path};
+    box.hidden = false; box.innerHTML = `${image(imagePath,asset.name)} <b>${esc(asset.name)} · ${esc(asset.id)}</b><br><small>${esc(asset.manufacturer_name || asset.manufacturer || asset.provider || '제조사 미연결')} · ${esc(asset.category || '분류 미기록')}</small><br><small>${esc(asset.entry_usd || path || '3D 경로 미등록')} · ${esc(statuses.join(' · ') || '계획 미사용')}</small><br><small>${planned ? `현재 계획 설비와 편집 대상이 ${esc(planned.asset || planned.id)}로 일치합니다.` : '카탈로그 미리보기만 선택했습니다. 현재 편집 설비는 그대로이며, 설비로 등록하면 편집·미리보기가 함께 전환됩니다.'}</small><div style="margin-top:6px"><button type="button" data-catalog-register-current ${path ? '' : 'disabled title="웹 GLB 경로가 없어 설비로 등록할 수 없습니다."'}>설비로 등록·선택</button></div><div id="catalog-preview-status" style="margin-top:6px">3D 미리보기를 준비합니다…</div>`;
+    document.dispatchEvent(new CustomEvent('p006:studio-catalog-preview',{detail:{asset:window.__studioCatalogSelectedAsset}}));
   }
   const observer = new MutationObserver(() => { setup(); renderImported(); }); observer.observe(document.body,{childList:true,subtree:true}); setup();
 })();
