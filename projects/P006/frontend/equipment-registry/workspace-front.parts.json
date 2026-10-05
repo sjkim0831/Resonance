@@ -1,0 +1,37 @@
+{
+  "format": 1,
+  "styles": [
+    {
+      "attrs": "",
+      "filename": "workspace-front-0.css",
+      "suffix": ""
+    },
+    {
+      "attrs": "",
+      "filename": "workspace-front-1.css",
+      "suffix": ""
+    },
+    {
+      "attrs": " id=\"p006-equipment-requirements-css\"",
+      "filename": "workspace-front-2.css",
+      "suffix": "\n\n"
+    }
+  ],
+  "scripts": [
+    {
+      "attrs": " type=\"importmap\"",
+      "filename": "workspace-front-inline-0.js",
+      "suffix": ""
+    },
+    {
+      "attrs": "",
+      "filename": "workspace-front-inline-1.js",
+      "suffix": ""
+    },
+    {
+      "attrs": " type=\"module\"",
+      "filename": "workspace-front-inline-2.js",
+      "suffix": "\n\n\n\n"
+    }
+  ]
+}
