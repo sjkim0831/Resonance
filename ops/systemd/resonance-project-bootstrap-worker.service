@@ -7,11 +7,11 @@ Wants=network-online.target
 Type=oneshot
 User=sjkim
 Group=sjkim
-WorkingDirectory=/opt/resonance-data/control-plane/source
+WorkingDirectory=/opt/Resonance/runtime/platform-data/control-plane/source
 Environment=HOME=/home/sjkim
 Environment=KUBECONFIG=/home/sjkim/.kube/config
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
-ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/source/ops/scripts/resonance-project-bootstrap-worker.sh
+ExecStart=/usr/bin/bash /opt/Resonance/runtime/platform-data/control-plane/source/ops/scripts/resonance-project-bootstrap-worker.sh
 Nice=10
 TimeoutStartSec=30min
 

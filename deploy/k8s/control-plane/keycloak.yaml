@@ -236,5 +236,5 @@ spec:
           volumes:
             - name: backups
               hostPath:
-                path: /opt/resonance-data/backups/keycloak
+                path: /opt/Resonance/runtime/platform-data/backups/keycloak
                 type: DirectoryOrCreate

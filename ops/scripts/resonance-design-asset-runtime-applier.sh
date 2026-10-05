@@ -2,9 +2,9 @@
 set -Eeuo pipefail
 umask 027
 
-ROOT="${RESONANCE_ROOT:-/opt/resonance-data/control-plane/source}"
-QUEUE_ROOT="${RESONANCE_DESIGN_ASSET_QUEUE_ROOT:-/opt/resonance-data/control-plane/design-asset-promotion-queue}"
-STATE_ROOT="${RESONANCE_DESIGN_ASSET_STATE_ROOT:-/opt/resonance-data/control-plane/design-asset-runtime}"
+ROOT="${RESONANCE_ROOT:-/opt/Resonance/runtime/platform-data/control-plane/source}"
+QUEUE_ROOT="${RESONANCE_DESIGN_ASSET_QUEUE_ROOT:-/opt/Resonance/runtime/platform-data/control-plane/design-asset-promotion-queue}"
+STATE_ROOT="${RESONANCE_DESIGN_ASSET_STATE_ROOT:-/opt/Resonance/runtime/platform-data/control-plane/design-asset-runtime}"
 NAMESPACE="${CARBONET_NAMESPACE:-carbonet-prod}"
 POD="${CARBONET_POSTGRES_POD:-postgres-patroni-0}"
 BACKSTAGE_NAMESPACE="${BACKSTAGE_NAMESPACE:-resonance-ops}"

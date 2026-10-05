@@ -5,5 +5,5 @@ After=network-online.target
 [Service]
 Type=oneshot
 User=sjkim
-WorkingDirectory=/opt/resonance-data/control-plane/source
-ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/source/ops/scripts/resonance-design-release-worker.sh
+WorkingDirectory=/opt/Resonance/runtime/platform-data/control-plane/source
+ExecStart=/usr/bin/bash /opt/Resonance/runtime/platform-data/control-plane/source/ops/scripts/resonance-design-release-worker.sh

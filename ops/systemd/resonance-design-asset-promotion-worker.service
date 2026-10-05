@@ -7,9 +7,9 @@ Wants=network-online.target
 Type=oneshot
 User=sjkim
 Group=sjkim
-WorkingDirectory=/opt/resonance-data/control-plane/source
-Environment=RESONANCE_DESIGN_ASSET_QUEUE_ROOT=/opt/resonance-data/control-plane/design-asset-promotion-queue
-ExecStart=/usr/bin/flock -n /run/lock/resonance-design-asset-promotion.lock /opt/resonance-data/control-plane/source/ops/scripts/resonance-design-asset-promotion-worker.sh
+WorkingDirectory=/opt/Resonance/runtime/platform-data/control-plane/source
+Environment=RESONANCE_DESIGN_ASSET_QUEUE_ROOT=/opt/Resonance/runtime/platform-data/control-plane/design-asset-promotion-queue
+ExecStart=/usr/bin/flock -n /run/lock/resonance-design-asset-promotion.lock /opt/Resonance/runtime/platform-data/control-plane/source/ops/scripts/resonance-design-asset-promotion-worker.sh
 TimeoutStartSec=300
 Nice=10
 IOSchedulingClass=best-effort

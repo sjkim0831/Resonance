@@ -10,8 +10,8 @@ for unit in \
   sudo install -m 0644 "$ROOT/ops/systemd/$unit" "/etc/systemd/system/$unit"
 done
 sudo install -d -o sjkim -g sjkim -m 0750 \
-  /opt/resonance-data/project-workspaces \
-  /opt/resonance-data/design-release-queue
+  /opt/Resonance/runtime/platform-data/project-workspaces \
+  /opt/Resonance/runtime/platform-data/design-release-queue
 sudo systemctl daemon-reload
 sudo systemctl enable --now resonance-project-bootstrap-worker.timer
 sudo systemctl enable --now resonance-design-release-worker.timer

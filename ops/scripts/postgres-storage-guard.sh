@@ -2,7 +2,7 @@
 set -euo pipefail
 
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
-STORAGE_ROOT="${CARBONET_POSTGRES_STORAGE_ROOT:-/opt/resonance-data/postgresql}"
+STORAGE_ROOT="${CARBONET_POSTGRES_STORAGE_ROOT:-/opt/Resonance/runtime/platform-data/postgresql}"
 DATA_ROOT="$STORAGE_ROOT/patroni"
 BACKUP_ROOT="${CARBONET_DB_BACKUP_DIR:-/opt/resonance-backups/postgresql/pre-deploy}"
 DEPLOY_TIMER="${CARBONET_DEPLOY_TIMER:-carbonet-auto-deploy.timer}"
@@ -27,7 +27,7 @@ latest_valid_backup() {
   return 1
 }
 
-[[ "$STORAGE_ROOT" == /opt/resonance-data/postgresql ]] || fail "unexpected storage root: $STORAGE_ROOT"
+[[ "$STORAGE_ROOT" == /opt/Resonance/runtime/platform-data/postgresql ]] || fail "unexpected storage root: $STORAGE_ROOT"
 [[ -d "$DATA_ROOT" ]] || fail "Patroni data root is missing"
 
 for boundary in "$STORAGE_ROOT" "$DATA_ROOT"; do

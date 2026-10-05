@@ -2,8 +2,8 @@
 set -Eeuo pipefail
 umask 027
 
-ROOT="${RESONANCE_ROOT:-/opt/resonance-data/control-plane/source}"
-WORKSPACE_ROOT="${RESONANCE_PROJECT_WORKSPACE_ROOT:-/opt/resonance-data/project-workspaces}"
+ROOT="${RESONANCE_ROOT:-/opt/Resonance/runtime/platform-data/control-plane/source}"
+WORKSPACE_ROOT="${RESONANCE_PROJECT_WORKSPACE_ROOT:-/opt/Resonance/runtime/platform-data/project-workspaces}"
 NAMESPACE="${BACKSTAGE_NAMESPACE:-resonance-ops}"
 DB_NAMESPACE="${BACKSTAGE_DB_NAMESPACE:-carbonet-prod}"
 DB_NAME="${BACKSTAGE_PROJECT_DB:-backstage_plugin_resonance-projects}"
